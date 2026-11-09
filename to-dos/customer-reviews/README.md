@@ -2,7 +2,7 @@
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
 group: close
-status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, the functions run main's code. Walked live 2026-11-08 in the owner's Chrome: the Reviews block reads with no Google link and no answers this month, the rating page renders on the sample token (stars, the words box, the Google ask), and a paid ZZ test job's Review asked step was brought to now, where the app sends the ask itself the next morning. Not yet seen: a real text on the owner's phone, a rating that lands, the words on the job. Left: the owner's Google link, the rating from his phone, the owner's look"
+status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, the functions run main's code. Walked live 2026-11-08 in the owner's Chrome: the Reviews block reads with no Google link and no answers this month, the rating page renders on the sample token (stars, the words box, the Google ask), and a paid ZZ test job's Review asked step was brought to now, where the app sends the ask itself the next morning. Not yet seen: a real text on the owner's phone, a rating that lands, the words on the job. The Google link was saved 2026-11-08 and the dev's look of 2026-11-09 read it on the Reviews block and the sample page drawing as the card says. Left: the rating from his phone, the owner's look"
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,9 +15,9 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: The owner or a dev sets the Google review link at Settings → What customers see → Reviews (the page never mentions Google while it is empty). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
+next: The Google review link is set (2026-11-08, the owner's share link saved on Settings → What customers see → Reviews from his Chrome, read back as *Saved. The review page uses it now.*; the dev's look of 2026-11-09 read it in the field and the sample page drew as the card says, under *Where it stands*). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
 size: M, as four PRs after this one, S M S M
-blocker: the owner's Google review link, and the owner's look at the live page.
+blocker: the owner's look at the live page and the rating from his phone; the review link is set since 2026-11-08 and the dev's look is done. Nothing left but the owner's look.
 ver: v2.5934 · 5943 · 5946 · 5948 · 6007
 opinion: built as recommended on the one-tap rating (v2.5876), so the customer gets one ask; the folder closes on the owner's look
 mockup: to-dos/customer-reviews/mockup.html
@@ -404,3 +404,16 @@ foot. The live ask found two things worth knowing:
 
 Rows the walk left (all ZZ): the owner's number on the customer *ZZ TEST Owner On Notice*, and six `contact_step_skips`
 on that customer (Put it back undoes each). Screenshots `185-1` to `185-4` in the walk session's scratchpad.
+
+**2026-11-09, the dev's look** (the deployed client, signed in through the pane magic link in the Chrome the owner handed the
+session; read-only). Settings → What customers see → **Reviews**: *The company's Google review link* holds the share.google
+link saved 2026-11-08 (the same value `app_settings.google_review_link_v1` holds), **Save the link** beside it, the line
+*While this is empty, the review page never mentions Google*, and THIS MONTH 0 asked · 0 answered · — average stars · 0
+pressed Google · 0 of 0 low ones called, *No answers yet this month.* The sample page `/rate?t=sample` draws *Sample — this is
+what a customer sees. Nothing you do here is saved.*, the company name, *Sam, how did we do on the water heater? One tap
+answers it.*, five stars and *Tap a star*, the portal and the office number in the foot; the fifth star read *Great · Thank
+you. Your answer is saved. · Tap a different star any time to change your answer.*, then *Anything we should know?
+(optional)* with **Send the words**, and *Would you put this on Google for us? It takes a minute, and it helps the next family
+find us.* with **Post it on Google** (the sample's own `#sample` link; a real page's button carries the saved link, which
+`job-rating` reads from the key at the customer's load). Nothing was saved. Screenshots `185-1` to `185-3` in the dev look's
+scratchpad. Left: the text from the 9:00 AM run of 2026-11-09 to the owner's number, his taps, and the owner's look.

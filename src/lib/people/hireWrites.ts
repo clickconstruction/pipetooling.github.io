@@ -80,7 +80,7 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
   const kindLabel = KIND_LABELS[input.kind]
   if (input.invite && input.signInBy === 'password') steps.push({ id: 'account', label: 'Login', detail: `${email || 'their email'} as ${kindLabel}, with the password you set — the login and the roster row, linked` })
   else if (input.invite) steps.push({ id: 'account', label: 'Invite', detail: `${email || 'their email'} as ${kindLabel} — the login and the roster row, linked` })
-  else steps.push({ id: 'roster', label: 'Person', detail: `${name || 'the person'} as ${kindLabel}, starting ${input.startDate} — on the roster with no login; a login can be attached later` })
+  else steps.push({ id: 'roster', label: 'Person', detail: `${name || 'the person'} as ${kindLabel}, starting ${input.startDate} — on the roster with no login; Attach a login at the end, or from their desk` })
   if (paid && caps.canAccessPay) {
     steps.push({
       id: 'pay',

@@ -218,7 +218,7 @@ function renderChecklistRow(onDragEnd: () => void) {
       instances={[{ id: 'inst-1', checklist_item_id: 'item-1', scheduled_date: '2026-10-01', checklist_items: { title: TASK, links: null, repeat_type: 'once', created_at: '2026-09-30T15:00:00Z' } }]}
       reorderingUserId={null}
       canManageChecklists
-      isDev={false}
+      canActForOthers={false}
       canSeeCosts
       authUserId="u-taunya"
       onDragEnd={onDragEnd}

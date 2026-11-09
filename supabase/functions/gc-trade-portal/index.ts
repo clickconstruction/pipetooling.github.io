@@ -4,12 +4,13 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortalSlice.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { gcTradePortalSample, gcTradePortalSampleFlow, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork } from '../_shared/gcTradePortalSample.ts'
+import { gcTradePortalSample, gcTradePortalSampleFlow, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork, gcTradePortalSampleThread } from '../_shared/gcTradePortalSample.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { lateWaitingFromRows, portalScheduleJobs, portalSchedulesFromRows, portalScheduleWorkFromRows } from '../_shared/gcTradePortalSchedule.ts'
 import { readScheduleRows } from '../_shared/gcScheduleRead.ts'
 import { readTradeFlowExtra, stampFirstOpen, tradeFlowRowsOf, type TradeFlowRows } from '../_shared/gcTradeFlow.ts'
 import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
+import { loadTradeThread, type PortalThreadLine } from '../_shared/gcTradeThread.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -45,6 +46,15 @@ import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
  * beyond the visit row: an outside visit stamps the live link's first open (`first_opened_at`) once, never a staff look,
  * a preview or the sample.
  *
+ * Since punch list #205's PR 2 (v2.6729), each chart carries `finish`, the day we plan to finish the job from the same
+ * schedule read (`projectedFinish` through `customerSchedulePicture`), and the slice's `gc` row its `start_date` and
+ * `started_on`, so the job page opens on a head: the start, the planned finish and the days left. Nothing else of the
+ * customer's picture leaves. Since PR 4 (v2.6746) the slice carries `files`, the company's own uploads on its jobs
+ * (`gc_trade_files` by its company: what each is, its name, its link and its day), for Your files on this job. Since
+ * PR 5 (v2.6748) `thread` beside the slice: the company's conversation with us on Messages (`_shared/gcTradeThread.ts`,
+ * the lines between us and it by text, email or its portal, on its own jobs, the writer's first name only), so its
+ * Messages tab is the thread with a reply box. A thread that fails to read answers null, and the page keeps its old list.
+ *
  * Since Messages' cut 4c (v2.5329), a statement of work sent to sign that is built from clauses (`gc_sows.paper_id`)
  * carries its paper on its row as `clause_paper`: the job's clauses, then the exhibit for its package's trade, in English
  * and Spanish at one revision (`_shared/clausePaper.ts`). The page shows it and signs at that revision.
@@ -68,7 +78,7 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms, files] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by, created_at').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
@@ -83,6 +93,8 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').eq('company_id', companyId).then(rowsOf),
     // Its vetting form (P5b-1): the day it sent it, never its answers.
     admin.from('gc_company_vetting_forms').select('company_id, sent_on').eq('company_id', companyId).then(rowsOf),
+    // Its uploads (punch list #205, PR 4): what it sent us, newest first, for Your files on this job.
+    admin.from('gc_trade_files').select('id, company_id, project_id, purpose, paper, name, drive_url, uploaded_at, made_by').eq('company_id', companyId).order('uploaded_at', { ascending: false }).limit(200).then(rowsOf),
   ])
   const vettingForm = vettingForms[0] ?? null
   // The lines of its own statements of work (P2c-ii), for the sign screen and its report; the draws on them and the
@@ -114,14 +126,14 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, ...work }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, files, ...work }
   }
   // The job's work (P5c-1) on the trades awarded to it: Building's rows carry no company, so they are read by its trades.
   const awarded = packages.filter((k) => inviteIds.includes(String(k.awarded_invite_id ?? ''))).map((k) => String(k.id))
   const jobRead = readJobWork(admin, awarded)
   const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers, billDayCutoffDays] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
-    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, start_date, started_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_scope_items').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_scope_exclusions').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_plan_sets').select('id, project_id, rev, label, kind, issued_on, note, drive_url').in('project_id', projectIds).then(rowsOf),
@@ -148,7 +160,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, ...work, ...job }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, files, ...work, ...job }
 }
 
 /**
@@ -223,6 +235,16 @@ async function scheduleFor(admin: SupabaseClient, companyId: string, rows: Trade
   }
 }
 
+/** The company's thread (punch list #205, PR 5). A failed read answers null: the page keeps its read-only list. */
+async function threadFor(admin: SupabaseClient, companyId: string): Promise<PortalThreadLine[] | null> {
+  try {
+    return await loadTradeThread(admin, companyId)
+  } catch (e) {
+    console.error('gc-trade-portal: the thread did not read', e)
+    return null
+  }
+}
+
 /** The company's trade flow rows for the first page (Messages cut 8c). A failed read answers null: the page keeps its old home. */
 async function flowFor(admin: SupabaseClient, companyId: string, rows: TradePortalRows): Promise<TradeFlowRows | null> {
   try {
@@ -269,6 +291,7 @@ serve(async (req) => {
         schedules: gcTradePortalSampleSchedules(today),
         ...gcTradePortalSampleScheduleWork(today),
         flow: gcTradePortalSampleFlow(today),
+        thread: gcTradePortalSampleThread(today),
         sample: true,
       })
     }
@@ -296,8 +319,8 @@ serve(async (req) => {
     const read = await readRows(admin, link.company_id)
     if (!read) return jsonResponse({ error: 'linkOff' }, 404)
     // The papers ride on the statements of work, which the chart and the flow do not read, so the three run together.
-    const [rows, schedule, flow] = await Promise.all([withSowPapers(admin, read), scheduleFor(admin, link.company_id, read, today), flowFor(admin, link.company_id, read)])
-    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow })
+    const [rows, schedule, flow, thread] = await Promise.all([withSowPapers(admin, read), scheduleFor(admin, link.company_id, read, today), flowFor(admin, link.company_id, read), threadFor(admin, link.company_id)])
+    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow, thread })
   } catch (e) {
     console.error('gc-trade-portal failed', e)
     return jsonResponse({ error: 'failed' }, 500)

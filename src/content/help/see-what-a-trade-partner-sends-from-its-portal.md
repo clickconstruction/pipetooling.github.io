@@ -43,6 +43,10 @@ The company can ask about the plans until questions close. The question shows in
 
 The company can add people and tick the kinds of email each one gets. Every kind always keeps someone. The people show in the company's window. [Look up a trade partner](/help/look-up-a-trade-partner) says where.
 
+## A line from its Messages tab
+
+The company can write to us from the **Messages** tab of its portal. The line lands on [Messages](/messages) under the company's contact, the way a text does. It carries the job the company picked. Answer it there by text or by email. The company reads your answer in the same tab on its next visit.
+
 ## A charge's answer, or a change it asks for
 
 On a job of ours, the company can press **Agree** on a charge from us. It can also press **Dispute it** and say why. It can press **Ask for a change** to the work it signed for. Each one is saved with the job. No office screen shows them yet.
@@ -60,3 +64,5 @@ The company can pick a file with its quote, a change it asks for, or a submittal
 Each file goes into the job's folder in Drive. A submittal's file goes in **Submittals**. Any other goes in **Team only**, under **From trades** and the company's name.
 
 The quote, the change and the submittal each show the file's link. A file over 10 MB still comes by email, or as a Drive link the company pastes.
+
+The company can also press **Send Click a file** on a job it signed for. It picks a photo or a PDF and types one line that says what it is. The line becomes the file's name. The file lands in **Team only**, under **From trades** and the company's name. No office screen lists it yet, so open the job's folder in Drive to read it. The Draws window reads only the waivers.

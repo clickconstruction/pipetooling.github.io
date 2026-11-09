@@ -11,6 +11,7 @@
  * `docs/ADDING_A_NEW_ROLE.md`), then run the matrix test — it pins every gate for every role.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
+import { isControllerOrDev, isOwnerOrDev } from '../doorRoles'
 
 type Role = string | null | undefined
 
@@ -34,9 +35,35 @@ export function canSeeBankReturned(role: Role): boolean {
   return isStagesOfficeRole(role)
 }
 
-/** dev · controller — dev-level money visibility: the aging and profit charts, collected totals. */
+/**
+ * dev · master_technician · controller — the money team's visibility: the aging and profit charts, collected
+ * totals and Weekly money movement. The owner since v2.6759 (punch list #188 rows 39 and 40): he reads Team
+ * labor and profit on every job already. Mirrors the three RPCs' is_master_or_dev() OR controller gate.
+ */
 export function canSeeStagesMoneyCharts(role: Role): boolean {
-  return role === 'dev' || role === 'controller'
+  return isOwnerOrDev(role as never) || role === 'controller'
+}
+
+/**
+ * Pay speeds (punch list #188 row 44, v2.6759): who excludes a payment from the pay-speed math — the owner pair and
+ * the controller, whose forecast it is (mirrors pay_speed_exclusions' insert and delete policies).
+ */
+export function canTunePaySpeeds(role: Role): boolean {
+  return isStagesOwnerRole(role) || role === 'controller'
+}
+
+/**
+ * The board's billing notification windows (punch list #188 rows 41 and 42, v2.6760): Ready to Bill, Paid and Paid in
+ * Full notifications on the Pipeline and Estimate accepted notifications on Estimates open to the owner pair and the
+ * controller; inside, the recipients are the controller's and a dev's to edit (`isControllerOrDev`, the keys' policy).
+ */
+export function canOpenBillingNotifications(role: Role): boolean {
+  return isStagesOwnerRole(role) || role === 'controller'
+}
+
+/** Pay speeds → Data health's No Count Date (row 44): the controller with a dev (the app_settings key's policy). */
+export function canSetPaySpeedNoCountDate(role: Role): boolean {
+  return isControllerOrDev(role as never)
 }
 
 /** Office + superintendent: who may open the Job Schedule modal from a row. */

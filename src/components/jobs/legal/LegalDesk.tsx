@@ -23,16 +23,17 @@ import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/us
 import { addMarks, authUserIdNow, loadThemes } from '../../../lib/legal/legalThemesIo'
 import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
-import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, readLegalMatterDocumentTexts, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { previewDocumentsForFirm, previewTextIds } from '../../../lib/legal/legalDeskPreviewDocuments'
 import { theirPaperNarrativeMarkdown } from '../../../lib/jobs/theirPaper'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/legalClaimLines'
 import type { ClaimPanel } from './LegalClaimTable'
 import type { PeoplePanel } from './LegalMatterPeopleTable'
 import { seedPeople, type LegalPersonDraft } from '../../../lib/legal/legalMatterPeople'
+import type { ProceedingsPanel } from './LegalProceedingsTable'
+import { keptOutDocumentIds, parseLegalPortalProceedings, proceedingForFirm, type LegalProceedingDraft } from '../../../lib/legal/legalProceedings'
 
-import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
-import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { type NarrativeDesk } from './LegalNarrativeEditor'
 
 import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
@@ -241,6 +242,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
   const [previewOpen, setPreviewOpen] = useState(false)
+  /** v2.6770 (punch list #288): the text documents' words the preview shows under Read here, read when it opens. */
+  const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
   const [previewTab, setPreviewTab] = useState<FirmTab>('account')
 
   useEffect(() => {
@@ -461,7 +464,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   // RPCs; the matter is made by the first save when the account has none, so the list is read again for it.
   const saveClaimLine = async (draft: LegalClaimLineDraft, lineId: string | null): Promise<string | null> => {
     if (!selected) return 'Pick an account first.'
-    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null })
+    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null, p_settlement_only: draft.settlementOnly })
     if (r.error) return r.error
     showToast(lineId ? 'The claim line is saved.' : 'The line is on the claim.', 'success')
     if (!matter) await legal?.reload()
@@ -502,6 +505,24 @@ export default function LegalDesk(props: LegalDeskProps) {
     const added = Number(r.data?.added ?? 0)
     showToast(added ? `${added} ${added === 1 ? 'person is' : 'people are'} on the matter from the record.` : 'Everyone the record knows is on the matter already.', added ? 'success' : 'info')
     if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
+  // v2.6726 (punch list #174 PR 2): the proceedings beside the claim — added, edited or removed through the matter's own
+  // RPCs; the first save makes the matter when the account has none, so the list is read again for it.
+  const saveProceeding = async (draft: LegalProceedingDraft, proceedingId: string | null): Promise<string | null> => {
+    if (!selected) return 'Pick an account first.'
+    const r = await legalRpcData('legal_proceeding_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_proceeding_id: proceedingId, p_kind: draft.kind, p_title: draft.title.trim(), p_agency: draft.agency.trim(), p_reference: draft.reference.trim(), p_person_id: draft.personId, p_status: draft.status, p_status_on: draft.statusOn.trim() || null, p_note: draft.note.trim(), p_document_ids: draft.documentIds, p_keep_out: draft.keepOut })
+    if (r.error) return r.error
+    showToast(proceedingId ? 'The proceeding is saved.' : 'The proceeding is beside the claim.', 'success')
+    if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
+  const removeProceeding = async (proceedingId: string): Promise<string | null> => {
+    const err = await legalRpc('legal_proceeding_remove', { p_proceeding_id: proceedingId })
+    if (err) return err
+    showToast('The proceeding is off the matter.', 'info')
     reload()
     return null
   }
@@ -809,9 +830,23 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
+  const previewTextKey = previewOpen ? previewTextIds(matterDocuments).join(',') : ''
+  useEffect(() => {
+    if (!previewTextKey) return
+    let live = true
+    void readLegalMatterDocumentTexts(supabase, previewTextKey.split(',')).then((t) => {
+      if (live) setPreviewTexts(t)
+    })
+    return () => {
+      live = false
+    }
+  }, [previewTextKey])
   // Below matterDocuments on purpose: a const read before its line throws at render (the Bridge's lesson).
+  // v2.6726 (punch list #174 PR 2): a document a held proceeding names stays out of the claim table's picker — the claim
+  // is what a settlement letter to the other side carries.
+  const keptOut = keptOutDocumentIds(packet?.proceedings ?? [])
   const claimPanel: ClaimPanel = {
-    documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })),
+    documents: matterDocuments.filter((d) => !keptOut.has(d.id)).map((d) => ({ id: d.id, title: d.title })),
     acts: stored && canEditReview && !closed ? { save: saveClaimLine, remove: removeClaimLine } : null,
     onOpenDocument: (id) => {
       const row = matterDocuments.find((d) => d.id === id)
@@ -820,6 +855,12 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   const peoplePanel: PeoplePanel = {
     acts: stored && canEditReview && !closed ? { save: savePerson, remove: removePerson, seed: seedMatterPeople, canSeed: Boolean(packet && seedPeople(packet.account).length > 0) } : null,
+  }
+  const proceedingsPanel: ProceedingsPanel = {
+    people: packet?.people ?? [],
+    documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })),
+    onOpenDocument: claimPanel.onOpenDocument,
+    acts: stored && canEditReview && !closed ? { save: saveProceeding, remove: removeProceeding } : null,
   }
   // v2.6588: who marked what, by user id, for the By theme window.
   const namesById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.name ?? ''])), [users])
@@ -1192,7 +1233,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
-                {packet && w && moneyBarsDraw({ claim: w.claim, offers: standingOffers }) ? (() => {
+                {packet && w && moneyBarsDraw({ claim: w.claim, claimSettlementOnly: w.claimSettlementOnly, offers: standingOffers }) ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
                   // v2.6727 (punch list #171): the gate reads the claim, not the balance — a claim typed onto a matter with no open bill draws too.
                   // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
@@ -1205,6 +1246,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
                           retainageAdded: w.retainageAdded,
                           claimTyped: w.claimTyped,
+                          claimSettlementOnly: w.claimSettlementOnly,
                           balance: w.balance,
                           claim: w.claim,
                           contingencyPct: w.contingencyPct,
@@ -1317,7 +1359,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
-                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} people={peoplePanel} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} people={peoplePanel} proceedings={proceedingsPanel} />
                 ) : null}
                 </div>
               </>
@@ -1389,7 +1431,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocumentsForFirm(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users, calendarYmdInAppTzFromIso, previewTexts), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, proceedings: parseLegalPortalProceedings(packet.proceedings.map((p) => proceedingForFirm(p, packet.people, new Set(matterDocuments.filter((d) => !d.held_reason).map((d) => d.id))))) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -1542,10 +1584,3 @@ export default function LegalDesk(props: LegalDeskProps) {
   )
 }
 
-function previewDocuments(rows: ReadonlyArray<LegalMatterDocumentRow>, users: ReadonlyArray<{ id: string; name: string | null }>): { documents: LegalPortalDocument[]; heldDocumentCount: number } {
-  const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? '' : '')
-  return {
-    documents: rows.filter((r) => !r.held_reason.trim()).map((r) => legalPortalDocumentFromRow(r, nameOf(r.added_by), '', calendarYmdInAppTzFromIso)),
-    heldDocumentCount: rows.filter((r) => r.held_reason.trim()).length,
-  }
-}

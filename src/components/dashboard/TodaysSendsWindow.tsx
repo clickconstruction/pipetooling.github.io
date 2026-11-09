@@ -10,8 +10,9 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { offerRefusalWords, readyRows, todaysSends, TODAYS_SENDS_WORDS, type TodaysSend } from '../../lib/offers/offers'
+import { goesLine, offerRefusalWords, readyRows, todaysSends, TODAYS_SENDS_WORDS, type TodaysSend } from '../../lib/offers/offers'
 import { supabaseOffersIo, type OffersIo } from '../../lib/offers/offersIo'
+import { fenceHm, fieldsOf, isPast, SEND_LATER_WORDS, sendAtFrom, TIME_FIELD } from '../../lib/offers/sendLater'
 
 export interface TodaysSendsWindowProps {
   onClose: () => void
@@ -44,6 +45,8 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
   /** The row whose words are open in the box. */
   const [editing, setEditing] = useState<string | null>(null)
   const [holding, setHolding] = useState<{ id: string; until: string } | null>(null)
+  /** Change the time (v2.6774): the row whose Day and Time fields are open. */
+  const [retiming, setRetiming] = useState<{ id: string; ymd: string; time: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
 
@@ -94,6 +97,27 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
     setBusy(null)
     showToast(failed.length ? `${TODAYS_SENDS_WORDS.sentAll(went)} ${TODAYS_SENDS_WORDS.someFailed(failed.length)}` : TODAYS_SENDS_WORDS.sentAll(went), failed.length ? 'error' : 'success')
     reload()
+  }
+
+  /** Change the time (v2.6774): an office-made text goes at the picked instant instead, through `nudge_offer_retime`. */
+  const retime = async (r: TodaysSend) => {
+    if (!retiming || retiming.id !== r.id || !io.retime) return
+    const at = sendAtFrom(retiming.ymd, retiming.time)
+    if (at === null || isPast(at, Date.now())) {
+      showToast(SEND_LATER_WORDS.past, 'error')
+      return
+    }
+    setBusy(r.id)
+    try {
+      await io.retime(r.id, new Date(at).toISOString())
+      showToast(SEND_LATER_WORDS.timeChanged(at, Date.now()), 'success')
+      setRetiming(null)
+      reload()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The time was not changed.'), 'error')
+    } finally {
+      setBusy(null)
+    }
   }
 
   const act = async (r: TodaysSend, what: 'not this one' | 'hold' | 'stop') => {
@@ -163,11 +187,32 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
                     Held: {r.held}
                   </p>
                 ) : null}
-                {r.goesOn && !r.held ? <p style={{ ...words, color: 'var(--text-muted)' }}>{TODAYS_SENDS_WORDS.goesOn(r.goesOn)}</p> : null}
+                {r.goesOn && !r.held ? (
+                  <p style={{ ...words, color: 'var(--text-muted)' }} data-testid="todays-send-goes">
+                    {goesLine(r, Date.now())}
+                  </p>
+                ) : null}
                 <div style={links}>
                   {!r.held ? (
                     <button type="button" style={quiet} disabled={Boolean(busy)} onClick={() => setEditing(isEditing ? null : r.id)}>
                       {isEditing ? TODAYS_SENDS_WORDS.save : TODAYS_SENDS_WORDS.edit}
+                    </button>
+                  ) : null}
+                  {r.office && r.goesOn && !r.held && io.retime ? (
+                    <button
+                      type="button"
+                      style={quiet}
+                      disabled={Boolean(busy)}
+                      onClick={() => {
+                        if (retiming?.id === r.id) setRetiming(null)
+                        else {
+                          const f = fieldsOf(r.goesAt ?? Date.now())
+                          setRetiming({ id: r.id, ymd: r.goesAt != null ? f.ymd : r.goesOn ?? f.ymd, time: r.goesAt != null ? f.time : '09:00' })
+                        }
+                      }}
+                      data-testid="todays-send-retime"
+                    >
+                      {TODAYS_SENDS_WORDS.changeTime}
                     </button>
                   ) : null}
                   <button type="button" style={quiet} disabled={Boolean(busy)} onClick={() => setHolding(holding?.id === r.id ? null : { id: r.id, until: todayYmdInAppTz() })} data-testid="todays-send-hold">
@@ -180,6 +225,16 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
                     {TODAYS_SENDS_WORDS.notThisOne}
                   </button>
                 </div>
+                {retiming?.id === r.id ? (
+                  <div style={{ ...links, alignItems: 'center' }} data-testid="todays-send-retime-fields">
+                    <input type="date" style={dateBox} value={retiming.ymd} aria-label={SEND_LATER_WORDS.day} onChange={(e) => setRetiming({ ...retiming, ymd: e.target.value })} data-testid="todays-send-retime-day" />
+                    <input type="time" style={dateBox} value={retiming.time} min={TIME_FIELD.min} max={TIME_FIELD.max} step={TIME_FIELD.step} aria-label={SEND_LATER_WORDS.time} onChange={(e) => setRetiming({ ...retiming, time: e.target.value })} onBlur={(e) => setRetiming({ ...retiming, time: fenceHm(e.target.value) })} data-testid="todays-send-retime-time" />
+                    <button type="button" style={btn} disabled={Boolean(busy) || !retiming.ymd} onClick={() => void retime(r)} data-testid="todays-send-retime-go">
+                      {TODAYS_SENDS_WORDS.changeTime}
+                    </button>
+                    <span style={{ ...words, color: 'var(--text-muted)', margin: 0 }}>{SEND_LATER_WORDS.fence}</span>
+                  </div>
+                ) : null}
                 {holding?.id === r.id ? (
                   <div style={{ ...links, alignItems: 'center' }}>
                     <input type="date" style={dateBox} value={holding.until} aria-label={TODAYS_SENDS_WORDS.holdPick} onChange={(e) => setHolding({ id: r.id, until: e.target.value })} data-testid="todays-send-hold-date" />

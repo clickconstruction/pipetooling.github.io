@@ -2,7 +2,7 @@
 name: "Messages → My email: a person's own @clickplumbing.com mail beside the threads, one press to tag a conversation onto a job or a bid"
 number: 230
 group: close
-status: built 2026-11-01 after the owner's "build all of this", every call taken as recommended and the switch on by default; twelve PRs, six migrations pushed, gmail-mine and login-as-user deployed; left: a clickplumbing.com person's first live tag, then a month of use
+status: built 2026-11-01 after the owner's "build all of this", every call taken as recommended and the switch on by default; twelve PRs, six migrations pushed, gmail-mine and login-as-user deployed; one tag row exists since 2026-11-07, made through the seat as Taunya on a ZZ Test job, not a person's own press (Where it stands, 2026-11-09); left: a clickplumbing.com person's first live tag of their own, then a month of use
 summary: >
   Built 2026-11-01. Messages has a second tab, My email, beside Follow up: each office member's own
   @clickplumbing.com Inbox and Sent, read live from Gmail under the delegation the bids@ reader holds,
@@ -345,6 +345,15 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
 - Left: a clickplumbing.com office member's first real tag, which no agent may sign in to do. The
   importers that `npm run check:edge-drift` names, whose drift is the kernel copy alone. Then a month of
   use, counting conversations tagged per person; the tab retires if nobody tags.
+- 2026-11-09: `email_tag_threads` is no longer empty. One row: Taunya's login tagged the conversation
+  *ZZ TEST paper for JP1088 Riders Walk* onto JP1088 on 2026-11-07 at 07:28 UTC, `placed_by_app`
+  false, no tied lines. By its hour and its ZZ subject it is the seat's `apply_mail_tag` running as her
+  login from a session, not her own press on the tab, so the 11-04 review's count (zero tags by a
+  person) still stands and the month of use has not started. The walk planned for today as a new
+  office account (robert@clickplumbing.com) did not run: the account was made with no login attached,
+  and the sign-in waits on the desk's Attach a login. The checklist for the walk, in Grace's words, is
+  in the shared notes folder (`close-out-notes-2026-11-09.md`); PR #7465 gives the seat the verbs to
+  make the account and attach the login, so the next session can run it with the owner.
 
 ## Review 2026-11-04: is this still relevant, and could we do it better?
 

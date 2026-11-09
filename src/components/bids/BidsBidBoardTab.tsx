@@ -99,6 +99,8 @@ type BidsBidBoardTabProps = {
   onNewBid?: () => void
   authUser: { id: string } | null
   isDev: boolean
+  /** Punch list #188 row 63 (v2.6764): the health section's estimator labor — the owner or a dev. */
+  canSeeEstimatingLabor?: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
   showEstimatingHealth?: boolean
   /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
@@ -242,6 +244,7 @@ export function BidsBidBoardTab({
   onNewBid,
   authUser,
   isDev,
+  canSeeEstimatingLabor = false,
   showEstimatingHealth = true,
   showMap = true,
   jobsByBidId,
@@ -2212,7 +2215,7 @@ export function BidsBidBoardTab({
             <BidBoardEstimatingHealthSection
               weeklySentSummaries={bidBoardWeeklySentSummaries}
               filteredBids={filteredBidsForBidBoard}
-              isDev={isDev}
+              canSeeEstimatingLabor={canSeeEstimatingLabor}
               openBid={bidPreview ? (b) => bidPreview.openBidPreviewFromBid(b) : undefined}
             />
           </div>

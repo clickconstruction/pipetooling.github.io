@@ -4,6 +4,7 @@ import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
 import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { Link, useNavigate } from 'react-router-dom'
 import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor'
 import { supabase } from '../../lib/supabase'
@@ -97,6 +98,9 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobThreadSummary } from '../../hooks/useJobThreadSummary'
 import { buildThreadSummary } from '../../lib/jobs/threadSummary'
 import { JobThreadSummary } from './JobThreadSummary'
+import { MyMailJobLine } from '../messages/myMail/MyMailJobLine'
+import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobCustomerBox } from './JobCustomerBox'
@@ -965,6 +969,12 @@ export default function DetailJobModal({
     if (hcp) return hcp
     return (fullJob?.click_number ?? '').trim()
   }, [fullJob, limitedJob])
+  // The job's number as the app shows it elsewhere, JP1077 (punch list #263 PR A): My email's line searches on it and names it.
+  const { prefixMap: ledgerPrefixMap } = useLedgerDisplayPrefixes()
+  const ledgerJobLabel = useMemo(
+    () => (fullJob ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(fullJob.service_type_id, ledgerPrefixMap), fullJob.hcp_number, fullJob.click_number) : ''),
+    [fullJob, ledgerPrefixMap],
+  )
   // The numbers the job answered to before a combine (v2.6226): *also 550 · 543* beside the name, so an old HCP number is never lost.
   const priorWords = priorNumbersBare(fullJob?.prior_numbers)
 
@@ -1831,7 +1841,8 @@ export default function DetailJobModal({
             ) : null}
             {/* Paid-in-full email sits left of the calendar (owner call,
                 v2.1709); the green "$" badge says PAID at a glance (v2.1706). */}
-            {showDetailHeaderRightCluster && (authRole === 'dev' || authRole === 'master_technician') && jobId ? (
+            {/* Punch list #188 row 49 (v2.6760): the assistants bill and collect, so the office sends it (paid-job-email admits the same set). */}
+            {showDetailHeaderRightCluster && isOfficeRole(authRole) && jobId ? (
               <button
                 type="button"
                 onClick={(e) => {
@@ -2396,6 +2407,25 @@ export default function DetailJobModal({
               keeping={summaryKeeping}
               kept={summary !== null && summaryKeptFor === summary.stamp}
               onOpenLine={(href) => {
+                onClose()
+                navigate(href)
+              }}
+            />
+          ) : null}
+          {/* My email's door on the job (punch list #263 PR A, v2.6730): under Where it stands, the viewer's own mail with the
+              job's people that is not on this job yet, read once as the window opened and kept nowhere, with Yes on each. */}
+          {summaryOffered && fullJob && jobId && summaryRead.facts ? (
+            <MyMailJobLine
+              job={{ kind: 'pipeline', id: jobId, key: `pipeline:${jobId}`, num: ledgerJobLabel, name: (fullJob.job_name ?? '').trim() }}
+              who={summaryCustomerName}
+              contactIds={summaryRead.facts.people}
+              narrow={narrowViewport}
+              onTagged={summaryRead.reread}
+              onOpenThread={(contactId) => {
+                onClose()
+                navigate(messagesThreadHref(contactId))
+              }}
+              onOpenHref={(href) => {
                 onClose()
                 navigate(href)
               }}

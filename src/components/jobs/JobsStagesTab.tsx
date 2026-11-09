@@ -1,4 +1,4 @@
-import { listPayer, paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
@@ -31,14 +31,13 @@ import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
-import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
-import { lienBilledOpen } from '../../lib/jobs/lienBilledOpen'
+import type { LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
+import { billedLienClockJobsOf, lienRunwayForJob, paceContextPayerIds } from '../../lib/jobs/lienCalendarRows'
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
 import { usePropertyKinds } from '../../hooks/usePropertyKinds'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
-import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
@@ -73,7 +72,6 @@ import {
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
   billedRowsRemainingTotal,
-  stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
@@ -101,7 +99,6 @@ import {
 } from '../../lib/jobs/jobContractCoverage'
 import { filterJobsByKind, jobKindCounts, parseStagesKindFilter, type StagesKindFilter } from '../../lib/jobs/jobKind'
 import { PipelineOverview } from './PipelineOverview'
-import { isLienLeader, type LienDeskPile } from '../../lib/jobs/lienDesk'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -133,7 +130,6 @@ import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardL
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
-import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { buildPaymentChaseQueue, summarizePaymentChase } from '../../lib/jobs/paymentChase'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import { payerReturnsWords } from '../../lib/jobs/arReturnedCheckPayers'
@@ -141,11 +137,10 @@ import { useArReturnedCheckPayers } from '../../hooks/useArReturnedCheckPayers'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import JobBookModal from './JobBookModal'
-import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
-import { buildFirmActivity, matterIsWithFirm } from '../../lib/legal/legalMatters'
+import { useLegalMatters } from '../../hooks/useLegalMatters'
+import { buildFirmActivity } from '../../lib/legal/legalMatters'
 import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
 import { payerForJob } from '../../lib/legal/legalPacket'
-import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import OwnerConfirmListModal from './OwnerConfirmListModal'
@@ -159,7 +154,6 @@ import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { JobCustomerSheet } from './JobCustomerSheet'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
-import LienDeskModal from './LienDeskModal'
 import { TellCustomerSheet } from '../customers/TellCustomerSheet'
 import { supabaseAppSendsIo } from '../../lib/flows/appSendsIo'
 import type { AppSends } from '../../lib/flows/nudgeDispatch'
@@ -257,10 +251,9 @@ import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsM
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
+import { LIEN_DESK_PATH, lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
-import LienOwnerRecordsModal from './LienOwnerRecordsModal'
-import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
@@ -369,7 +362,6 @@ export type JobsStagesTabHandle = {
   /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
   openMoneyMove: (key: StagesMoneyMoveKey) => void
   /** The Lien desk (v2.3405), optionally landing on one job's item. */
-  openLienDesk: (jobId?: string | null) => void
 }
 
 export type JobsStagesTabProps = {
@@ -989,11 +981,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
-  const billedLienClockJobs = useMemo(
-    // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94).
-    () => jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
-    [jobs],
-  )
+  // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94). The kernel is shared with `/lien-desk` (punch list #182).
+  const billedLienClockJobs = useMemo(() => billedLienClockJobsOf(jobs), [jobs])
   // v2.4153: the Lien calendar's pen bumps this after it writes a property kind, so the clocks re-read the kind.
   const [lienClocksRefresh, setLienClocksRefresh] = useState(0)
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs, lienClocksRefresh)
@@ -1012,6 +1001,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     refreshBilledPaySpeeds,
     promisedPayDates,
     loadPromisedPayDates,
+    paidClaimsByJob,
     promiseRecordsByCustomer,
     loadPromiseRecords,
     promiseSlipByCustomer,
@@ -1035,11 +1025,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
   // the GC payers in its pile, so the board and the desk read one GC's bill at one pace.
   const billedPaceContext = useMemo(() => {
-    const payerIds: Array<string | null> = []
-    for (const r of [...unfilteredBoardLists.billedActiveRows, ...unfilteredBoardLists.collectionsRows]) {
-      if (r.kind === 'job' || !(stageRowBilledRemainingAmount(r) > 0)) continue
-      payerIds.push(listPayer(r.job, r.inv).id)
-    }
+    const payerIds = paceContextPayerIds([...unfilteredBoardLists.billedActiveRows, ...unfilteredBoardLists.collectionsRows])
     return paceContextFor({ facts: paceFacts, paySpeeds: billedPaySpeeds, payerIds })
   }, [unfilteredBoardLists, paceFacts, billedPaySpeeds])
   // v2.4328 (punch list #76): the payer's checks the bank sent back this past year, for the pay history.
@@ -1052,41 +1038,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } | null>(null)
   /** The lien runway for a Billed / Collections row (v2.4051): the expected-pay date the chip reads, against the § 53.052 clock. Null until the clocks load. */
   const lienRunwayFor = useCallback(
-    (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null => {
-      const clock = billedLienClocks?.[job.id]
-      if (!clock) return null
-      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-      // v2.4365: the bill's payer's pace (the GC on a GC-billed bill), the history pay_speed_samples keys on.
-      const payer = inv ? paySpeedPayer(job, inv) : null
-      const model = inv && payer
-        ? billedExpectedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
-            billedPaySpeeds,
-            todayYmd,
-            promisedPayDates?.[job.id] ?? null,
-            paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-          )
-        : null
-      return buildLienPayRunway({
-        todayYmd,
-        // What the sent bills owe (v2.4970), as the desk counts it — never the job's whole balance.
-        openBalance: lienBilledOpen(job, job.invoices ?? [], job.payments ?? []),
-        lastWorkYmd: job.last_work_date ?? null,
-        // The last day of work set by hand (v2.4676) counts first, as on the desk (v2.4830).
-        handLastWorkYmd: job.lien_last_work_on ?? null,
-        createdAt: job.created_at ?? null,
-        propertyKind: clock.propertyKind,
-        expectedPayYmd: model?.expectedYmd ?? null,
-        filedYmd: clock.filedYmd,
-        releasedYmd: clock.releasedYmd,
-        isSub: Boolean(job.gc_customer_id),
-        noticedMonths: clock.noticedMonths,
-        anyNoticeOnFile: clock.noticeOnFile,
-        // v2.5522: the months printed and in the mail draw the In the mail mark instead of a hollow flag.
-        mailedMonths: clock.mailedMonths,
-        workMonths: clock.workMonths,
-      })
-    },
+    // The runway's read is `lienCalendarRows.ts`'s (punch list #182): the Lien desk's page reads the same one.
+    (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null =>
+      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()) }),
     [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext],
   )
   // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
@@ -1112,6 +1066,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
+        // v2.6695: the customer's word that they paid takes the money row (They say paid).
+        claim: paidClaimsByJob?.get(row.job.id) ?? null,
         runway,
         inCollections: jobInCollections(row.job),
         uncollectible: jobUncollectible(row.job),
@@ -1142,39 +1098,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
+    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
    * Null until the board holds its billed jobs and their clocks load (v2.4321): the phone board reads a stage's rows only
    * when its chip is picked, and an unread board is not an empty one.
    */
-  const lienCalendarRows = useMemo<LienCalendarJob[] | null>(() => {
-    if (!cacheMergedScopes.has(scopeForStagesSection('billed')) || !billedLienClocks) return null
-    const out: LienCalendarJob[] = []
-    for (const job of jobs) {
-      if (job.status !== 'billed') continue
-      if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the Deadlines list
-      const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
-      const runway = lienRunwayFor(job, billed.length === 1 ? billed[0]! : null)
-      if (!runway || runway.state === 'none') continue
-      out.push({
-        jobId: job.id,
-        number: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
-        name: (job.job_name ?? '').trim() || 'Job',
-        customer: (job.customer_name ?? '').trim(),
-        gcId: job.gc_customer_id ?? null,
-        gcName: job.gcCustomer?.name?.trim() || null,
-        address: (job.job_address ?? '').trim(),
-        openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
-        isSub: Boolean(job.gc_customer_id),
-        runway,
-        lastWorkYmd: job.lien_last_work_on || job.last_work_date || null,
-        addressId: job.customer_address_id ?? null,
-      })
-    }
-    return out
-  }, [jobs, billedLienClocks, lienRunwayFor, cacheMergedScopes])
   const billedBillLineRenderer = useCallback(
     (row: StageRow): BilledRowBillLine | null => {
       // v2.4168: no words under the bar on a Billed row — the dates block under
@@ -1366,19 +1296,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       },
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
-      lienDesk: (link) => setLienDesk(link),
       // The board may not hold the job yet (or at all): read it, as the desk's book rows do.
       lienWindow: ({ jobId, tab }) => {
         void fetchJobWithDetailsById(jobId).then((job) => {
           if (job) setLienInstrumentsModal({ job, invoice: null, initialTab: tab })
           else showToast('That job could not be loaded. Open it from the Pipeline board.', 'error')
         })
-      },
-      // The Dashboard's "signed for the records" line (punch list #86): the window over the desk, as its own door opens it.
-      ownerRecords: (jobId) => {
-        setLienDesk({ jobId: null, kind: 'next', pile: null })
-        setOwnerRecordsJobId(jobId)
-        setOwnerRecordsOpen(true)
       },
       round: (gcId) => {
         setGcReviewRoundGcId(gcId)
@@ -1602,20 +1525,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
       : '…'
   const forecastTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-  // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
-  // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null; aim?: number } | null>(null)
+  // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub jobs. A light read keeps the menus'
+  // counts and the rows' chips; the desk itself is a page since punch list #182 (`/lien-desk`), which reads for itself.
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
-  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null, hideZzTestJobs: zzTestJobsHiddenForNudges })
-  // The Calendar's rows are the board's billed jobs (`lienCalendarRows`), which the phone board loads only
-  // while Billed is its stage — so the open desk fetches that scope, in the Legal desk's retry-until-merged shape.
-  useEffect(() => {
-    if (lienDesk == null) return
-    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
-  }, [lienDesk, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+  const { data: lienDeskData, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: true, hideZzTestJobs: zzTestJobsHiddenForNudges })
   const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // The Legal desk's doors outside the Collections header (v2.5750): the stage bar's scales and the ☰ menu's
   // Collections row, for the header's own set (`canManageCollections`), with the firm's acts awaiting the office
@@ -1629,17 +1545,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
   const collectionsNoteLine = useCallback((j: JobWithDetails): string | null => collectionsNoteLineFor(j, lienDeskData?.claimCorrectionsByJob[j.id] ?? null), [lienDeskData])
-  // The desk's own jobs. The Calendar's flags come from each row's runway since v2.4308 — it
-  // carries every work month — so these months no longer widen to every billed job.
-  const lienDeskJobs = useMemo(
-    () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
-    [lienDesk, lienDeskData],
-  )
-  const { byJob: lienDeskWorkMonths } = useForecastWorkMonths(lienDeskJobs, forecastTodayYmd)
   const [lienDeskIssuerGen, setLienDeskIssuerGen] = useState(0)
-  const lienDeskIssuer = useMemo(() => (lienDesk || gcNotice ? getPhysicalInvoiceIssuerDraft() : null), [lienDesk, gcNotice, lienDeskIssuerGen])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const lienDeskIssuer = useMemo(() => (gcNotice ? getPhysicalInvoiceIssuerDraft() : null), [gcNotice, lienDeskIssuerGen])
   useEffect(() => {
-    if (!lienDesk && !gcNotice) return
+    if (!gcNotice) return
     let cancelled = false
     void (async () => {
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
@@ -1648,7 +1558,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     return () => {
       cancelled = true
     }
-  }, [lienDesk, gcNotice, authRole])
+  }, [gcNotice, authRole])
   // The lien signer for any lien window (v2.3858): the job's master — his title line or his name — else the person at the keyboard (`lienSigner.ts`). The desk, the tooling prefill, the release and the instruments windows all read it for their own job.
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
@@ -1865,11 +1775,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [stagesReadyToBillNoEmailJobs.length])
 
-  // An owner asked for our records (v2.4544): the window's open flag, and what it reads from the desk.
-  const [ownerRecordsOpen, setOwnerRecordsOpen] = useState(false)
-  /** The job a door asked the window to open on (punch list #86); null when opened from the desk's own button. */
-  const [ownerRecordsJobId, setOwnerRecordsJobId] = useState<string | null>(null)
-  const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecordsOpen ? lienDeskData : null), [ownerRecordsOpen, lienDeskData])
 
   // The Jobs on a map card's hidden choice (per device, `lib/jobs/jobsMap`), held here since
   // v2.4518 so the command bar can offer the way back.
@@ -2524,7 +2429,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusJob: focusJobOnBoard,
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
-      openLienDesk: (jobId) => setLienDesk({ jobId: jobId ?? null }),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: (weekMonday) => {
         setWeeklyMoneyInitialMonday(weekMonday ?? null)
@@ -3216,7 +3120,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       'billed-share-print': () => setBilledShareModalOpen(true),
       'billed-aging-chart': () => setBilledAgingChartOpen(true),
       'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
-      'lien-desk': () => setLienDesk({ jobId: null }),
+      // Punch list #182: the Lien desk is a page, `/lien-desk`; the row goes there and Back returns here.
+      'lien-desk': () => navigate(LIEN_DESK_PATH),
       // Punch list #182 (PR 2): the Legal desk is a page, `/legal-desk`; the row goes there and Back returns here.
       'legal-desk': () => navigate(LEGAL_DESK_PATH),
       'paid-notifications': () => setPaymentEmailSettingsOpen(true),
@@ -3300,7 +3205,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   lienNotices={lienDeskMoneyCard}
                   onOpenLienDesk={(pile) => {
                     setStagesSearchQuery('')
-                    setLienDesk({ jobId: null, kind: 'notice', pile: pile ?? null })
+                    navigate(lienDeskHref({ kind: 'notice', pile: pile ?? null }))
                   }}
                 />
     )
@@ -3371,7 +3276,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       legalDeskCount={legalDeskCount}
                       legalDeskTo={LEGAL_DESK_PATH}
                       contractSweepCount={contractSweepCount}
-                      onOpenLienDesk={() => setLienDesk({ jobId: null })}
+                      onOpenLienDesk={() => navigate(LIEN_DESK_PATH)}
                       onPutGcOnNotice={(gcId) => setGcNotice({ gcId })}
                       onOpenContractSweep={() => setContractSweepOpen(true)}
                       onOpenHideGroups={() => setStagesHideGroupsModalOpen(true)}
@@ -3494,7 +3399,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 if (!legalInBar && !lienDeskEligible) return null
                 return (
                   <>
-                    {lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
+                    {lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} to={LIEN_DESK_PATH} /> : null}
                     {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} to={LEGAL_DESK_PATH} /> : null}
                   </>
                 )
@@ -3877,7 +3782,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
-                  {(stagesGates.isStagesOwnerRole(authRole)) && (
+                  {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setReadyToBillNotifySettingsOpen(true)}
@@ -4052,7 +3957,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Payment forecast
                     </button>
                   )}
-                  {(stagesGates.isStagesOwnerRole(authRole)) && (
+                  {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setPaymentEmailSettingsOpen(true)}
@@ -4164,7 +4069,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   {lienDeskEligible ? (
                     <button
                       type="button"
-                      onClick={() => setLienDesk({ jobId: null })}
+                      onClick={() => navigate(LIEN_DESK_PATH)}
                       title="Lien notices due per unpaid work month on sub jobs — draft, approve, send"
                       aria-label="Lien desk: notices due per unpaid work month"
                       style={{
@@ -4285,7 +4190,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     Chart
                   </button>
                 )}
-                {(stagesGates.isStagesOwnerRole(authRole)) && (
+                {(stagesGates.canOpenBillingNotifications(authRole)) && (
                   <button
                     type="button"
                     onClick={() => setPaidEmailSettingsOpen(true)}
@@ -4351,6 +4256,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
+                  canEditStandingCopies={stagesGates.isStagesOfficeRole(authRole)}
                   canCertify={stagesGates.isStagesOfficeRole(authRole)}
                   onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
                   onOpenJob={(jobId) => {
@@ -4631,7 +4537,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         setBilledAgingFilter={setBilledAgingFilter}
         focusStagesSection={focusStagesSection}
         tryOpenEditJob={tryOpenEditJob}
-        setLienDesk={setLienDesk}
+        onOpenLienDesk={(jobId) => navigate(lienDeskHref({ kind: 'notice', job: jobId }))}
         setCollectionsConfirm={setCollectionsConfirm}
         showToast={showToast}
         loadJobs={loadJobs}
@@ -4694,114 +4600,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })()
         }}
       />
-      <LienDeskModal
-        open={lienDesk != null}
-        onClose={() => setLienDesk(null)}
-        data={lienDeskData}
-        loading={lienDeskLoading}
-        todayYmd={forecastTodayYmd}
-        authRole={authRole}
-        authUserId={authUser?.id ?? null}
-        authName={authProfileName?.trim() ?? ''}
-        workMonths={lienDeskWorkMonths}
-        issuer={lienDeskIssuer}
-        signerNameFor={lienDeskSignerFor}
-        leaderNameFor={lienDeskLeaderFor}
-        signerPhoneFor={lienDeskSignerPhoneFor}
-        initialJobId={lienDesk?.jobId ?? null}
-        // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
-        // A plain open lands on Next up (punch list #82); a door that names a job or a pile keeps landing on Notices.
-        initialKind={lienDesk?.kind ?? (lienDesk?.jobId || lienDesk?.pile ? 'notice' : 'next')}
-        calendarRows={lienCalendarRows}
-        onCalendarChanged={(what) => {
-          // The pen (v2.4153): a promise re-reads the pay dates; a kind re-reads the clocks; the desk's own queue follows either.
-          if (what === 'promise') {
-            void loadPromisedPayDates()
-            void loadPromiseRecords()
-          } else setLienClocksRefresh((k) => k + 1)
-          refetchLienDesk()
-        }}
-        onOpenCalendarLastWork={(jobId) => {
-          const job = jobs.find((x) => x.id === jobId)
-          if (job) setLienInstrumentsModal({ job, invoice: null, openLastWork: true })
-        }}
-        // v2.4523: the desk stays open under a window one of its rows opens (the lien window, the GC
-        // notice), so closing that window lands back on the desk where it was, not on the board.
-        onOpenCalendarJob={(jobId) => {
-          const job = jobs.find((x) => x.id === jobId)
-          if (!job) return
-          setLienInstrumentsModal({ job, invoice: null })
-        }}
-        onOpenOwnerRecords={() => setOwnerRecordsOpen(true)}
-        // v2.4531: a job's number (v2.4628: and the Next up row's name) opens the job itself, over the desk; the desk re-reads on a save and again when the window closes.
-        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk(), onClosed: () => refetchLienDesk() })}
-        initialPile={lienDesk?.pile ?? null}
-        aimKey={lienDesk?.aim}
-        onOpenLegalDesk={() => navigate(LEGAL_DESK_PATH)}
-        legalSignoff={legalMatters.available ? {
-          stateFor: (jobId) => {
-            const m = legalMatters.byJobId.get(jobId)
-            if (!m || !matterIsWithFirm(m)) return null
-            return signoffStateForJob(legalMatters.entriesByMatter.get(m.id) ?? [], jobId)
-          },
-          ask: async (jobId, text) => {
-            const m = legalMatters.byJobId.get(jobId)
-            if (!m || !matterIsWithFirm(m)) return 'This job is not with the firm — mark its account attorney-ready on the Legal desk first.'
-            const job = jobs.find((j) => j.id === jobId)
-            const jobLabel = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''
-            const err = await legalRpc('legal_add_entry', { p_matter_id: m.id, p_kind: 'question', p_body: text, p_meta: newAskMeta({ flavor: 'signoff', jobId, jobLabel, askedBy: authProfileName?.trim() ?? '' }) })
-            if (!err) void legalMatters.reload()
-            return err
-          },
-        } : null}
-        onOpenLienAffidavit={(jobId) => {
-          const job = jobs.find((j) => j.id === jobId)
-          if (!job) {
-            showToast('Open that job from the Pipeline board to file its affidavit — it is not loaded here yet.', 'info')
-            return
-          }
-          setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
-        }}
-        onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
-        onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
-        onOpenLienInstruments={(jobId) => {
-          const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
-          const openWith = (job: JobWithDetails) => {
-            setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
-          }
-          const loaded = jobs.find((j) => j.id === jobId)
-          if (loaded) {
-            openWith(loaded)
-            return
-          }
-          // A book row (v2.3768) can name a job the board has not loaded — fetch it rather than turn the office away (v2.3781).
-          void fetchJobWithDetailsById(jobId).then((job) => {
-            if (job) openWith(job)
-            else showToast('That job could not be loaded — open it from the Pipeline board.', 'error')
-          })
-        }}
-        onPutGcOnNotice={(gcId) => {
-          setGcNotice({ gcId })
-        }}
-      />
-      {/* An owner asked for our records (v2.4544): over the desk, which stays open behind it. */}
-      <LienOwnerRecordsModal
-        open={ownerRecordsOpen}
-        properties={ownerRecordsDesk.properties}
-        seedFor={ownerRecordsDesk.seedFor}
-        claimsByJob={ownerRecordsDesk.claimsByJob}
-        company={lienDeskIssuer?.companyName ?? ''}
-        todayYmd={forecastTodayYmd}
-        authName={authProfileName?.trim() ?? ''}
-        isLeader={isLienLeader(authRole)}
-        isMobile={isMobile}
-        initialJobId={ownerRecordsJobId}
-        onClose={() => {
-          setOwnerRecordsOpen(false)
-          setOwnerRecordsJobId(null)
-        }}
-      />
       {moveTell && authUser ? (
         <TellCustomerSheet moment={moveTell.moment} jobId={moveTell.jobId} jobLabel={moveTell.jobLabel} userId={authUser.id} role={authRole} onClose={() => setMoveTell(null)} />
       ) : null}
@@ -4848,11 +4646,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         }}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
-        // The next step's door (punch list #82): the desk sits under this window, so this one closes and the desk opens on the job.
+        // The next step's door (punch list #82): this window closes and the desk's page opens on the job (punch list #182).
         onOpenLienDesk={(jobId, deskKind) => {
           setLienInstrumentsModal(null)
-          // `aim` changes every press (v2.4612), so a desk already on this job still switches to the tab.
-          setLienDesk({ jobId, kind: deskKind, aim: Date.now() })
+          navigate(lienDeskHref({ kind: deskKind, job: deskKind === 'notice' ? jobId : null }))
         }}
         onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {

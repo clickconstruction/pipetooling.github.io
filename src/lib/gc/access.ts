@@ -104,7 +104,7 @@ export function canOpenOwnerContractFile(role: UserRole | null | undefined): boo
  */
 export const GC_CLAUSE_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
 
-export const GC_CLAUSE_APPROVE_TEAM: readonly UserRole[] = ['dev', 'controller']
+export const GC_CLAUSE_APPROVE_TEAM: readonly UserRole[] = ['dev', 'master_technician', 'controller']
 
 export function canEditClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_EDIT_TEAM.includes(role)

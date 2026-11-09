@@ -225,6 +225,24 @@ describe('PersonDeskAccessSection — a person with no login (punch list #260, v
     expect(screen.queryByRole('button', { name: 'Attach a login…' })).toBeNull()
   })
 
+  // v2.6789: a row made by mistake has Delete… beside Archive…, for the people who may archive, never on a login.
+  it('a dev sees Delete… on a row with no login, and not on a login', () => {
+    renderSection(RIO, DEV)
+    expect(screen.getByTestId('delete-fresh')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Archive…' })).toBeTruthy()
+    const { unmount } = renderWithProviders(<PersonDeskAccessSection user={KAI_LOGIN} viewer={DEV} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={vi.fn()} />)
+    expect(screen.getAllByTestId('delete-fresh')).toHaveLength(1)
+    unmount()
+  })
+
+  it('a leader with no pay access sees no Delete…; the door prop opens the Attach form with the address filled', () => {
+    renderSection(RIO, { ...LEADER, canAccessPay: false })
+    expect(screen.queryByTestId('delete-fresh')).toBeNull()
+    const { unmount } = renderWithProviders(<PersonDeskAccessSection user={{ ...RIO, email: 'rio@example.test' }} viewer={DEV} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={vi.fn()} openAttach />)
+    expect((screen.getByLabelText('Login email') as HTMLInputElement).value).toBe('rio@example.test')
+    unmount()
+  })
+
   it('Attach checks the address, then calls create-user with the id and sends the sign-in email', async () => {
     const { onChanged } = renderSection(RIO, DEV)
     fireEvent.click(screen.getByRole('button', { name: 'Attach a login…' }))

@@ -2,6 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canEditClause, canEditFlows, canOpenGcProjects } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
+import { isControllerOrDev, isOfficeRole, isOwnerOrDev } from './doorRoles'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -65,17 +66,23 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r)) {
     groups.push({ id: 'settings-jobs', label: 'Jobs, bills and liens', zone: 'company', pagesHint: 'Shows on: Pipeline, job windows, and the bills you send customers.' })
   }
-  if (r === 'dev' || r === 'estimator') {
+  // Bids & materials: the estimators' catalog; the owner since v2.6764 (punch list #188 rows 28 and 29) for the wording a
+  // customer meets and the Bid Board value rule, while the catalog blocks stay the estimators' and a dev's.
+  if (r === 'dev' || r === 'estimator' || r === 'master_technician') {
     groups.push({ id: 'settings-catalogs', label: 'Bids & materials', zone: 'company', pagesHint: 'Shows on: Bids, Takeoff, and Materials — trades, part types, and the books.' })
   }
-  if (r === 'dev' || r === 'master_technician') {
+  // People & teams (punch list #188 rows 8–13 and 22, v2.6755): the office's tab — Additional People is the office's filing, the sub
+  // pay schedule the controller's; the owner holds the groups and the switches, a dev the pay approvals and the role map.
+  if (isOfficeRole(r)) {
     groups.push({ id: 'settings-people', label: 'People & teams', zone: 'company', pagesHint: 'Shows on: People — accounts, teams, and review cadence.' })
   }
-  // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. A dev's.
-  if (r === 'dev') {
+  // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. The owner's with a
+  // dev since v2.6762 (punch list #188 row 6): which courses the crew must take is his policy.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-training', label: 'Training', zone: 'company', pagesHint: 'Shows on: the Dashboard under My Time, and People. Which courses each role must take, how long a pass is good for, and where everyone stands.' })
   }
-  if (r === 'dev') {
+  // Emails & reports (punch list #188 row 5, v2.6753): who gets which stream is the owner's call, so the owner reads it with a dev.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-emails', label: 'Emails & reports', zone: 'company', pagesHint: 'The scheduled email streams the office receives.' })
   }
   // v2.3507: the office sends these pages every day — dev, master and the assistant-like roles see them from the customer's side.
@@ -83,8 +90,11 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
     groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page anyone outside the company gets — customers, GCs, subs, supply houses and the collections firm — rendered live with sample data, in the order they meet them.' })
   }
   // v2.4142 (punch list #60): the other side of the mail — every email the team receives, as one person's week.
-  if (r === 'dev') {
+  // Punch list #188 row 4 (v2.6753): read-only samples, so the owner reads them with a dev; the open call of v2.4142 answered.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-what-the-team-sees', label: 'What the team sees', zone: 'company', pagesHint: 'Every email the app sends someone on the team — digests, notices, sign-in — as one person\u2019s week, with sample data.' })
+  }
+  if (r === 'dev') {
     // Punch list #194: every screen, as every role, in every state, drawn live by the real app in sealed frames.
     groups.push({ id: 'settings-what-everyone-sees', label: 'What everyone sees', zone: 'company', pagesHint: 'Every screen of the app, as every role and in every state, drawn live by the real app on an invented company.' })
   }
@@ -112,8 +122,17 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     // Dev doors (v2.5882, punch list #188): the map of every door only a dev or the controller may open today, each a link.
     groups.push({ id: 'settings-dev-doors', label: 'Dev doors', zone: 'system', pagesHint: 'Every page, window and switch only a dev or the controller can open today. Each one is a link.' })
+  }
+  // Usage (punch list #188 row 7, v2.6762): how the company uses the app is the owner's to read, with a dev.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
-    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports, and Recently deleted.' })
+  }
+  // Data & recovery: a dev's backups and Recently deleted; the controller opens it for HCP reconcile and Draft bills on paid jobs
+  // (punch list #188 rows 25 and 74), the owner for Link jobs to their bids (row 77).
+  if (isControllerOrDev(r) || isOwnerOrDev(r)) {
+    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports and Recently deleted for a dev; HCP reconcile and draft bills for the controller; linking jobs to bids for the owner.' })
+  }
+  if (r === 'dev') {
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })
     groups.push({ id: 'settings-digital-twins', label: 'Digital twins & samples', zone: 'system', pagesHint: 'Fleet admin: mint twins, issue keys, safety rungs, endpoints, who the robots calibrate to — and the View-as sample accounts. Running and watching the robots is on Bids → Robots → Console.' })
   }

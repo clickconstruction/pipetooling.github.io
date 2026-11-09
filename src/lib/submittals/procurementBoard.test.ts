@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockersPress, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOfRow, stepOnlyWords, stepShares } from './procurementBoard'
+import { blockersPress, onSiteDoor, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOfRow, stepOnlyWords, stepShares } from './procurementBoard'
 import { orderBlockers } from './procurementLog'
 import { row, spacexLater, spacexToday } from './procurementSpacex.fixtures'
 
@@ -117,5 +117,17 @@ describe('what the lines share', () => {
     expect(sendUpdateLabel(true, 0)).toBe('Send update…')
     expect(sendUpdateLabel(true, 14)).toBe('Send update · 14 changes')
     expect(sendUpdateLabel(true, 1)).toBe('Send update · 1 change')
+  })
+})
+
+describe('onSiteDoor · the Procure step’s door to Materials on site (punch list #209, v2.6740)', () => {
+  it('is nothing until the bid is a job', () => {
+    expect(onSiteDoor(null, 3)).toBeNull()
+    expect(onSiteDoor(undefined, 0)).toBeNull()
+  })
+  it('opens the job’s Materials page and names the parts on site, or says nothing is delivered yet', () => {
+    expect(onSiteDoor('j1', 3)).toEqual({ href: '/jobs?tab=materials&job=j1', words: 'Where the 3 parts on site sit now, by cage and box, and what walked away:', press: 'Materials on site' })
+    expect(onSiteDoor('j1', 1)!.words).toBe('Where the part on site sits now, by cage and box, and what walked away:')
+    expect(onSiteDoor('j1', 0)!.words).toBe('Nothing is marked delivered yet. The cages and boxes on the site:')
   })
 })

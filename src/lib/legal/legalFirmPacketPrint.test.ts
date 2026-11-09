@@ -39,6 +39,16 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html).toContain('a settlement nets the office more than a full win at trial')
     expect(html).toContain(`after your ${Math.round(packet.worth.contingencyPct * 100)}%`)
   })
+  it('leaves a counsel-only document out of the print and says so (v2.6720, punch list #288)', () => {
+    const { payload, m, packet } = sample()
+    const docs = m.documents.map((d, i) => (i === 0 ? { ...d, counselOnly: true } : d))
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: docs, heldDocumentCount: 0 }, particulars: payload.particulars })
+    expect(docs.length).toBeGreaterThan(1)
+    expect(html).not.toContain(docs[0]!.title)
+    expect(html).toContain(docs[1]!.title)
+    expect(html).toContain('1 document for counsel alone is on the portal, not in this print.')
+    expect(html).toContain(`<td class="num">${docs.length - 1}</td>`)
+  })
   it('lists the documents from the office under Section D and letters them as one exhibit (v2.4810)', () => {
     const { payload, m, packet } = sample()
     const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: m.documents, heldDocumentCount: m.heldDocumentCount }, particulars: payload.particulars })
@@ -181,5 +191,22 @@ describe('formatLegalMoney', () => {
     expect(formatLegalMoney(0)).toBe('$0.00')
     expect(formatLegalMoney(-0.001)).toBe('$0.00')
     expect(formatLegalMoney(1234.5)).toBe('$1,234.50')
+  })
+})
+
+describe('a settlement-only line in the firm’s print (v2.6697, punch list #171)', () => {
+  it('is left off the table and out of the demand, with one sentence in its place', () => {
+    const { payload, m, packet } = sample()
+    const lines = [
+      { id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: null, documentTitle: '', settlementOnly: false },
+      { id: 'l2', kind: 'fees' as const, title: 'Fee waiver', amount: 400, basis: '', documentId: null, documentTitle: '', settlementOnly: true },
+    ]
+    const worth = { ...packet.worth, claimLines: lines, claimTyped: 5310, claimSettlementOnly: 400, claim: packet.worth.claim + 5310, claimSettlement: packet.worth.claim + 5710 }
+    const html = buildFirmPacketPrintHtml({ ...packet, worth }, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: '', releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(html).toContain('<b>Materials left on site</b>')
+    expect(html).not.toContain('Fee waiver')
+    expect(html).toContain('One line, $400.00, is marked settlement only and left off this table.')
+    // The demand: the claim as demanded ($16,240 + $5,310) plus the firm's $450 fee; the $400 never enters it.
+    expect(html).toContain('$22,000.00')
   })
 })

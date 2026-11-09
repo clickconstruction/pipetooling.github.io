@@ -353,7 +353,8 @@ export function BankingMercuryAccountingTab({
   // null = not loaded yet. Read by everyone on the tab; flipped by dev/leader.
   // The approving itself happens server-side (bulk_insert RPC + mercury-webhook
   // → auto_approve_pending_accounting_label_suggestions) — nothing here runs it.
-  const canFlipAutoApprove = myRole === 'dev' || myRole === 'master_technician'
+  // Punch list #188 row 54 (v2.6761): she runs Accounting, so the controller flips the two switches with the owner and a dev.
+  const canFlipAutoApprove = myRole === 'dev' || myRole === 'master_technician' || myRole === 'controller'
   const [autoApproveOrgOn, setAutoApproveOrgOn] = useState<boolean | null>(null)
   const [autoApproveSaving, setAutoApproveSaving] = useState(false)
   useEffect(() => {

@@ -5,7 +5,7 @@ import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePo
 import { PortalBillDayContext } from '../components/gc/gcTradePortalBillDay'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
-import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
+import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, tradeFilesByProject, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
 import { goToSignPath, submitTradePortal, tradeFilePlaced, tradeSignPath } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -55,6 +55,8 @@ export default function GcTradePortal() {
   const ready = page.kind === 'ready' ? page : null
   const mapped = useMemo(() => (ready ? tradePortalState(ready.slice, ready.today) : null), [ready])
   const messages = useMemo(() => (ready ? sentMessages(ready.slice) : []), [ready])
+  // Its files by job (punch list #205, PR 4), for Your files on this job.
+  const files = useMemo(() => (ready ? tradeFilesByProject(ready.slice) : {}), [ready])
   const planUrl = useCallback((projectId: string, rev: number) => (ready ? setDriveUrl(ready.slice, projectId, rev) : ''), [ready])
   const lang: PortalLang = portalShownLang(mapped?.lang ?? 'en')
   const retry = () => setTries((n) => n + 1)
@@ -125,11 +127,13 @@ export default function GcTradePortal() {
           lang={lang}
           messages={messages}
           planUrl={planUrl}
+          files={files}
           banner={page.sample ? pt(lang, 'samplePortal') : preview ? pt(lang, 'officePreview') : undefined}
           schedules={page.schedules}
           scheduleWork={page.scheduleWork}
           scheduleTodos={page.scheduleTodos}
           flow={page.flow}
+          thread={page.thread}
         />
         </PortalBillDayContext.Provider>
         </PortalPressContext.Provider>

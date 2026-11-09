@@ -113,10 +113,11 @@ export type PeopleContractsTabProps = {
   /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
   currentUserId?: string | null
   /** Contract Forms (v2.2794): devs see the Forms tab in the Contract library. */
-  isDev?: boolean
+  /** Punch list #188 row 60 (v2.6761): the Forms tab of the Contract library — the controller with a dev. */
+  canUseFormStudio?: boolean
 }
 
-export default function PeopleContractsTab({ people, users, archived = NO_ARCHIVED_ROSTER, canDeletePeopleContracts, currentUserId, isDev = false }: PeopleContractsTabProps) {
+export default function PeopleContractsTab({ people, users, archived = NO_ARCHIVED_ROSTER, canDeletePeopleContracts, currentUserId, canUseFormStudio = false }: PeopleContractsTabProps) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
@@ -3521,7 +3522,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
           assignments={personContractAssignments}
           personDocuments={personContractDocuments}
           canDeletePeopleContracts={canDeletePeopleContracts}
-          isDev={isDev}
+          canUseFormStudio={canUseFormStudio}
           onSaved={() => void loadContracts()}
           onQuickSend={(documentName) => {
             setContractsError(null)

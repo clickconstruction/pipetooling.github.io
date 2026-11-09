@@ -13,8 +13,12 @@
  * - money leading the work by ten points or more outranks the hours; spend over three times
  *   the money budget reads *The money budget looks wrong.* instead of a verdict;
  * - no percent yet, under 8 h in or no hours budget is too early to call;
- * - the proof line is the certified percent, else the checklist count, else the crew's own
- *   percent marked provisional; the move when behind is the open checklist, else *Set the %*.
+ * - the proof line is the office's sign-off on the percent (the owner's first call of 2026-11-07:
+ *   the office's sign-off is the certified percent, never a pay app), then the checklist count,
+ *   then the crew's own percent, provisional until the office signs it; the move when behind is
+ *   the open checklist, else *Set the %*;
+ * - a stage a sub performs counts on the sub's sheet hours (the owner's third call), so the hours
+ *   in are the team's clock hours plus the subs' sheet hours.
  *
  * Pure: the callers feed it from the job budget, the charge timeline and the checklists.
  */
@@ -25,10 +29,14 @@ export type SuperintendentLineInput = {
   pctDone: number | null
   /** Team hours clocked on the job; null while not loaded. */
   hoursUsed: number | null
+  /** The subs' sheet hours on the job (`people_labor_job_items`), counted into the hours in; null or omitted when none are known. */
+  subHours?: number | null
   /** The hours budget the Costs tab stands on: the bid's hours, the typed hours, else the assumed line budgets' sum. */
   hoursBudget: number
   /** Where that budget came from — the same word the Costs strip wears, or the leader's open target. */
   budgetSource: 'bid' | 'typed' | 'book' | 'assumed' | 'target'
+  /** The budget is the hours frozen at award, the number the score reads (the owner's call of 2026-11-09); the words say so. */
+  budgetFrozen?: boolean
   /** When the budget is the leader's target: who set it, when, from what and why, so the card says so. */
   target?: { by: string; at: string; from: number | null; why: string } | null
   /** The money reading the Pipeline's burning card makes: direct spend against the direct-cost budget; null while not loaded. */
@@ -37,8 +45,10 @@ export type SuperintendentLineInput = {
   plannedFinishYmd: string | null
   /** The stage checklists across the job: answered of asked. */
   checklist: { answered: number; asked: number }
-  /** The last certified pay application's percent, or null. */
+  /** The office's sign-off on the percent — the newest percent an office role set — or null when none has. */
   certifiedPct: number | null
+  /** The day of that sign-off, `YYYY-MM-DD`, when known. */
+  certifiedOn?: string | null
   /** Crew hours one calendar day of work spends; 24 = three people at eight hours. Read from `laborDays` when those are given. */
   crewHoursPerDay?: number
   /** The job's own days of team labor: each work date with the hours clocked on it, so the pace reads in this job's crew days. */
@@ -106,10 +116,15 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const hoursPerDayRead = workedDays.length >= 2
   const crewDay = hoursPerDayRead ? workedDays.reduce((s, d) => s + d.hours, 0) / workedDays.length : i.crewHoursPerDay ?? 24
   const donePct = clamp(i.pctDone ?? 0)
+  // The hours in: the team's clock hours and the subs' sheet hours, the score's own rule (the owner's third call).
+  const subHours = Math.max(0, i.subHours ?? 0)
+  const used = i.hoursUsed != null ? i.hoursUsed + subHours : subHours > 0 ? subHours : null
   // Not capped at the budget's edge: a job 242 h past its budget is that far behind, never "on pace".
-  const hoursPct = i.hoursBudget > 0 && i.hoursUsed != null ? Math.max(0, (i.hoursUsed / i.hoursBudget) * 100) : 0
-  const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]} · ${i.hoursUsed != null ? Math.round(i.hoursUsed) : '—'} h in` : 'no hours budget yet'
-  const early = i.pctDone == null || i.hoursUsed == null || i.hoursUsed < 8 || i.hoursBudget <= 0
+  const hoursPct = i.hoursBudget > 0 && used != null ? Math.max(0, (used / i.hoursBudget) * 100) : 0
+  const subWords = subHours > 0 ? (i.hoursUsed != null && i.hoursUsed > 0 ? ` (${Math.round(subHours)} h on sub sheets)` : ', all on sub sheets') : ''
+  const frozenWords = i.budgetFrozen && i.budgetSource !== 'target' ? ', frozen at award' : ''
+  const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]}${frozenWords} · ${used != null ? Math.round(used) : '—'} h in${subWords}` : 'no hours budget yet'
+  const early = i.pctDone == null || used == null || used < 8 || i.hoursBudget <= 0
   // Hours saved or lost against the work done, read in crew days.
   const hoursAhead = ((donePct - hoursPct) / 100) * i.hoursBudget
   const daysByHours = early ? 0 : Math.round(hoursAhead / crewDay)
@@ -145,22 +160,25 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
       ? `Planned finish ${dayWords(i.plannedFinishYmd)}.`
       : `Planned finish ${dayWords(i.plannedFinishYmd)}. At this pace, ${dayWords(addDays(i.plannedFinishYmd, -days))}.`
     : 'No planned finish on the job yet.'
+  // The proof: the office's sign-off is the certified percent (the owner's first call); the crew's own figure is
+  // provisional until the office signs it, and is the signed-off figure once it has.
+  const signed = i.certifiedPct != null && i.pctDone != null && Math.round(i.certifiedPct) === Math.round(i.pctDone)
   const proof = [
-    i.certifiedPct != null ? `Certified: pay app at ${Math.round(i.certifiedPct)}%` : 'No certified pay app yet',
+    i.certifiedPct != null ? `Signed off by the office at ${Math.round(i.certifiedPct)}%${i.certifiedOn ? ` on ${dayWords(i.certifiedOn)}` : ''}` : 'No office sign-off on the percent yet',
     i.checklist.asked > 0 ? `checklist ${i.checklist.answered} of ${i.checklist.asked} ready` : 'no checklist on the stages yet',
-    i.pctDone != null ? `the crew's ${Math.round(i.pctDone)}% reads provisional until the next pay app` : 'set the percent to read a pace',
+    i.pctDone != null ? (signed ? `the crew's ${Math.round(i.pctDone)}% is the signed-off figure` : `the crew's ${Math.round(i.pctDone)}% reads provisional until the office signs it off`) : 'set the percent to read a pace',
   ]
   const proofWords = `${proof.join(' · ')}.`
   const move: SuperintendentLine['move'] =
     tone === 'behind'
       ? i.checklist.asked > 0 && i.checklist.answered < i.checklist.asked
-        ? { kind: 'open-checklist', why: `${Math.round(i.hoursUsed ?? 0)} h in at ${Math.round(donePct)}% done; ${i.checklist.asked - i.checklist.answered} checks still open.` }
-        : { kind: 'set-pct', why: `${Math.round(i.hoursUsed ?? 0)} h in and the percent reads ${Math.round(donePct)}%. If the work moved, set it.` }
+        ? { kind: 'open-checklist', why: `${Math.round(used ?? 0)} h in at ${Math.round(donePct)}% done; ${i.checklist.asked - i.checklist.answered} checks still open.` }
+        : { kind: 'set-pct', why: `${Math.round(used ?? 0)} h in and the percent reads ${Math.round(donePct)}%. If the work moved, set it.` }
       : tone === 'early' && i.pctDone == null
         ? { kind: 'set-pct', why: 'The line needs a percent to read a pace.' }
         : null
   const targetLine = i.budgetSource === 'target' && i.target ? targetWords(i.target, i.hoursBudget) : null
-  const daysUsed = i.hoursUsed != null && crewDay > 0 ? i.hoursUsed / crewDay : null
-  const daysLeft = i.hoursUsed != null && crewDay > 0 && i.hoursBudget > 0 ? Math.max(0, i.hoursBudget - i.hoursUsed) / crewDay : null
+  const daysUsed = used != null && crewDay > 0 ? used / crewDay : null
+  const daysLeft = used != null && crewDay > 0 && i.hoursBudget > 0 ? Math.max(0, i.hoursBudget - used) / crewDay : null
   return { tone, headline, donePct, hoursPct, days, finishWords, proofWords, hoursWords, targetLine, hoursPerDay: crewDay, hoursPerDayRead, daysUsed, daysLeft, money, move }
 }

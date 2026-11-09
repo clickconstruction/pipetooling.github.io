@@ -32,7 +32,8 @@ describe('useClauseNeeds', () => {
     expect(vi.mocked(loadClauseNeeds).mock.calls[0]?.[0]).toBe(role)
   })
 
-  it.each(['assistant', 'estimator', 'master_technician', 'superintendent'])('reads nothing for a %s', async (role) => {
+  // The owner approves clauses since v2.6762 (punch list #188 row 30), so he reads the rows; these four do not.
+  it.each(['assistant', 'estimator', 'superintendent'])('reads nothing for a %s', async (role) => {
     auth.role = role
     const { result } = renderHook(() => useClauseNeeds())
     await new Promise((r) => setTimeout(r, 0))

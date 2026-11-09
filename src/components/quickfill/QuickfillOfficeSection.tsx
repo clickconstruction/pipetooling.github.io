@@ -3,6 +3,7 @@ import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } f
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
@@ -215,9 +216,10 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     readDevOfficeEditFromStorage(variant),
   )
 
-  const isDev = role === 'dev'
-  const officeSortable = isDev && devOfficeChecklistEditMode && items.length > 0
-  const showDevOfficeItemTools = isDev && devOfficeChecklistEditMode
+  // Punch list #188 row 67 (v2.6763): the assistants mark these stations every day, so the office edits the template with a dev.
+  const canEditTemplate = isOfficeRole(role)
+  const officeSortable = canEditTemplate && devOfficeChecklistEditMode && items.length > 0
+  const showDevOfficeItemTools = canEditTemplate && devOfficeChecklistEditMode
   const officeDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const loadOfficeSettings = useCallback(async () => {
@@ -471,9 +473,9 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : items.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          {isDev && !devOfficeChecklistEditMode
+          {canEditTemplate && !devOfficeChecklistEditMode
             ? 'No tasks yet. Turn on Edit checklist below to add items.'
-            : isDev
+            : canEditTemplate
               ? 'No tasks yet. Add checklist items below.'
               : emptyNonDev}
         </p>
@@ -602,7 +604,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
           </div>
         </div>
       ) : null}
-      {isDev ? (
+      {canEditTemplate ? (
         <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"

@@ -8,14 +8,16 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { loadNewestBillLink } from '../billing/billLinkIo'
+import { loadNewestBill } from '../billing/newestBillIo'
+import { boxSetting } from '../messages/boxes'
 import { portalShortUrl } from '../portal/portalShortOrigin'
 import type { Database } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { customerLang } from '../messages/customerLang'
 import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
-import { supabaseReplyIo } from '../messages/replyIo'
+import type { RecipientLine } from '../messages/compose'
+import { loadBoxSettings, makeUsualChannel, supabaseReplyIo } from '../messages/replyIo'
 import { supabaseEstimateLinkIo } from '../messages/estimateLinkIo'
 import { estimateTextShareUrl } from './estimateTextLink'
 import { supabaseOffersIo } from '../offers/offersIo'
@@ -36,6 +38,8 @@ export interface TellJob {
   lang: PortalLang
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628); null with none. */
   billLink?: string | null
+  /** That bill's amount as words, for the Billed line's `{amount}` (v2.6771); null with none. */
+  billAmount?: string | null
   /** The customer's portal short address, when they have one (v2.5943). */
   portalUrl?: string | null
 }
@@ -46,12 +50,16 @@ export interface TellNumber {
   value: string
   /** They sent STOP (the older, every-box stamp). */
   stopped: boolean
+  /** When the office made it their usual (punch list #118); null or unset when never. */
+  usualAt?: string | null
 }
 
 export interface TellContact {
   contactId: string
-  /** Their phone numbers, oldest first. */
+  /** Their phone numbers, oldest first. The sheet orders them by the recipient rule (`numberOrder`). */
   numbers: TellNumber[]
+  /** The thread's texts, in and out, by number and when (punch list #118): the chip's *last line* words. Unset: none read. */
+  lines?: RecipientLine[]
   /** How they asked to hear from us (v2.5597); null when nobody said. */
   prefers: TellPrefers
 }
@@ -82,7 +90,7 @@ export interface TellCustomerIo {
    * the same 14 days. The sheet falls back to the email's own link when this throws (`estimateTextLink.ts`).
    */
   shareEstimateLink(estimateId: string): Promise<string>
-  /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
+  /** Send later (v2.5595's Send in the morning, v2.6774 with the time): the text waits on Today's sends and the run sends it at its time. Resolves to the offer's id. */
   makeOffer(input: TellOffer): Promise<string>
   /** The step's call script and whether the receipt suggests the call at all (v2.5596); null before the push or on a step with no row. */
   loadCallScript(stepKey: string): Promise<TellCallScript | null>
@@ -92,6 +100,10 @@ export interface TellCustomerIo {
   loadMyWay(userId: string): Promise<MyWays>
   /** Make this the office's line (v2.5597): the edited words, blanks back, as the step's team line; the Spanish when the customer reads it. */
   saveOfficeLine(input: { lineId: string | null; stepKey: string; text: string; lang: PortalLang }): Promise<void>
+  /** The To chip's tick (punch list #118, PR 2): make this number their usual, through `contact_channel_make_usual`. A smoke may leave it out. */
+  makeUsual?(channelId: string): Promise<void>
+  /** The number a text goes from (v2.6771): the team box's, as Settings → Phone and texts keeps it; null while Settings holds none. A smoke may leave it out. */
+  loadFromNumber?(): Promise<string | null>
 }
 
 /** What the residential flow's step says about the call after its text. */
@@ -109,8 +121,10 @@ export interface TellOffer {
   /** The step the text is for (`MOMENT_STEP`), so the run never doubles it. */
   stepKey: string
   body: string
-  /** YYYY-MM-DD, the morning it goes. */
+  /** YYYY-MM-DD, the day it goes. */
   sendOn: string
+  /** ISO, the instant it goes (v2.6774, Send later); unset for the morning alone. */
+  sendAt?: string | null
 }
 
 const langOf = (language: string | null | undefined): PortalLang => customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
@@ -128,13 +142,13 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       checkSupabaseError(job, 'read the job')
       const row = job.data as { customer_id: string | null; job_name: string | null; job_address: string | null } | null
       const customerId = row?.customer_id ?? null
-      const [c, billLink, slug] = await Promise.all([
+      const [c, bill, slug] = await Promise.all([
         customerId ? customerRow(customerId) : Promise.resolve(null),
-        loadNewestBillLink(jobId, client),
+        loadNewestBill(jobId, client),
         customerId ? db.from('customer_portal_slugs').select('slug').eq('customer_id', customerId).maybeSingle() : Promise.resolve({ data: null }),
       ])
       const slugValue = (slug?.data as { slug?: string | null } | null)?.slug?.trim() ?? ''
-      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink, portalUrl: slugValue ? portalShortUrl(slugValue) : null }
+      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink: bill?.link ?? null, billAmount: bill?.amount ?? null, portalUrl: slugValue ? portalShortUrl(slugValue) : null }
     },
     async loadCustomer(customerId) {
       const c = await customerRow(customerId)
@@ -142,17 +156,21 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
     },
     async loadContact(customerId) {
       const contactId = await contactForCustomer(customerId)
-      const [channels, who] = await Promise.all([
-        db.from('contact_channels').select('id, kind, value, opted_out_at, created_at').eq('contact_id', contactId).order('created_at'),
+      const [channels, who, texts] = await Promise.all([
+        db.from('contact_channels').select('id, kind, value, opted_out_at, usual_at, created_at').eq('contact_id', contactId).order('created_at'),
         // Their say (v2.5597): a column a client ahead of the push reads as null.
         db.from('contacts').select('prefers').eq('id', contactId).maybeSingle(),
+        // The thread's texts by number (punch list #118, PR 2), for the chip's words and the rule's second choice; a read that fails reads as none.
+        db.from('messages').select('channel_id, at, direction').eq('contact_id', contactId).eq('channel', 'text').order('at', { ascending: false }).limit(200),
       ])
       checkSupabaseError(channels, 'read their numbers')
-      const rows = (channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null }>
+      const rows = (channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null; usual_at?: string | null }>
       const prefers = who.error ? null : ((who.data as { prefers?: string | null } | null)?.prefers ?? null)
+      const lines = texts.error ? [] : ((texts.data ?? []) as Array<{ channel_id: string | null; at: string; direction: string }>)
       return {
         contactId,
-        numbers: rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, stopped: r.opted_out_at != null })),
+        numbers: rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, stopped: r.opted_out_at != null, usualAt: r.usual_at ?? null })),
+        lines: lines.map((l) => ({ channelId: l.channel_id, at: l.at, direction: l.direction as RecipientLine['direction'] })),
         prefers: prefers === 'text' || prefers === 'email' || prefers === 'either' ? prefers : null,
       }
     },
@@ -208,7 +226,17 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
         body: input.body,
         channelId: input.channelId,
         sendOn: input.sendOn,
+        sendAt: input.sendAt ?? null,
       }),
+    makeUsual: (channelId) => makeUsualChannel(channelId),
+    async loadFromNumber() {
+      try {
+        const phone = boxSetting('team', await loadBoxSettings(db)).phone
+        return phone || null
+      } catch {
+        return null
+      }
+    },
     send: (input) =>
       supabaseReplyIo().sendText({
         contactId: input.contactId,

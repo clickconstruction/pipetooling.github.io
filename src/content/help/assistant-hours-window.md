@@ -6,7 +6,7 @@ keywords: assistant, hours, history, weeks, window, limit, week range, visibilit
 order: 87
 ---
 
-Assistants working in People → Hours see a rolling window of recent weeks instead of the full hours history. The same window is how far back an assistant can add or change a clock session. A dev sets how wide that window is.
+Assistants working in People → Hours see a rolling window of recent weeks instead of the full hours history. The same window is how far back an assistant can add or change a clock session. The owner or a dev sets how wide that window is.
 
 Out of the box that window is **three weeks**. That is the current week plus the two before it. Devs, controllers, and pay-approved leaders are never limited.
 

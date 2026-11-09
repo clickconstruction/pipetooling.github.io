@@ -1,7 +1,7 @@
 ---
 title: start a schedule from a template
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician
 keywords: gc mode, schedule, template, first draft, save as a template, shape, set aside, gantt
 where: /gc
 order: 112

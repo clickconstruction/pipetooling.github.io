@@ -17,7 +17,9 @@ export const BANKING_ONLY_PATHS = ['/banking'] as const
 // '/training' (v2.5592): a course page is every signed-in role's; the policy in Settings → Training says who must
 // take it, and the Dashboard card's Start sent a helper here, where the guard bounced them home.
 // '/my-logbook' (v2.6502) is in every list: any teammate may be shown their logbook, and my_logbook() answers only then.
-export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/my-logbook', '/calendar', '/checklist', '/settings', '/tally', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
+// '/b' (v2.6796, punch list #294): the box label's QR lands on /b/:code, which forwards to the Tally's On site tab; without it
+// here a helper, a primary or a superintendent who scanned a label was sent to the Dashboard instead of the box.
+export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/my-logbook', '/calendar', '/checklist', '/settings', '/tally', '/b', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 export const PRIMARY_PATHS = [
   '/dashboard',
@@ -38,6 +40,7 @@ export const PRIMARY_PATHS = [
   '/roadmap',
   '/settings',
   '/tally',
+  '/b',
   '/help',
   '/training',
   '/job-mode/schedule',
@@ -62,6 +65,7 @@ export const SUPERINTENDENT_PATHS = [
   '/checklist',
   '/settings',
   '/tally',
+  '/b',
   '/help',
   '/training',
   '/job-mode/schedule',
@@ -69,13 +73,15 @@ export const SUPERINTENDENT_PATHS = [
   '/job-mode/customers',
 ] as const
 
-function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
+function estimatorAllowedPaths(): string[] {
   return [
     '/dashboard',
     '/my-statement',
     '/my-logbook',
     '/map',
     '/materials',
+    // Duplicate materials (punch list #188 row 75, v2.6766): the catalog's own clean-up, behind the typed part name.
+    '/duplicates',
     '/estimates',
     '/documents',
     '/bids',
@@ -87,7 +93,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     // The Development page (v2.6040): one site's bids and jobs, which the estimator reads as the Bid Board's rows.
     '/developments',
     '/job-mode',
-    ...(estimatorProspectsAccess ? ['/prospects'] : []),
+    // Prospects: the calling deck with the flag; the Research tab (punch list #292) for every estimator, so the path is open and the page keeps the deck behind the flag.
+    '/prospects',
     '/calendar',
     '/checklist',
     // '/people' dropped (v2.2920, journey map J32-N5): ACCESS_CONTROL's matrix has estimators ❌ on
@@ -115,9 +122,10 @@ function matchesAllowedRoot(roots: readonly string[], pathname: string): boolean
  * Estimator Layout guard: exact allowed path or a subpath (e.g. `/estimates/:id`, `/customers/.../edit`),
  * plus trailing-slash normalization.
  */
-export function isEstimatorPathAllowed(pathname: string, estimatorProspectsAccess: boolean): boolean {
+export function isEstimatorPathAllowed(pathname: string, _estimatorProspectsAccess: boolean): boolean {
   if (normalizeAppPathname(pathname) === '/') return false
-  return matchesAllowedRoot(estimatorAllowedPaths(estimatorProspectsAccess), pathname)
+  // The flag no longer moves a path (punch list #292): every estimator reaches /prospects for Research; the page keeps the deck behind the flag.
+  return matchesAllowedRoot(estimatorAllowedPaths(), pathname)
 }
 
 /** Whether `pathname` is allowed for `role` without Layout redirecting away (see Layout `useEffect` on `location.pathname`). */

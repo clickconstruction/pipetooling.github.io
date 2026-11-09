@@ -48,10 +48,11 @@ import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from 
 import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAnswerLike } from './legalGapAnswers'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import { claimRetainage, claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
-import { claimTyped, type LegalClaimLineLike } from './legalClaimLines'
+import { claimSettlementOnly, claimTyped, type LegalClaimLineLike } from './legalClaimLines'
 import { agreementCountsForSuit, signedAgreementBasis, theirPaperGapWords, theirPaperNotCounting } from './legalContractBasis'
 import { theirPaperTermLine } from '../jobs/theirPaper'
 import type { LegalMatterPersonLike } from './legalMatterPeople'
+import type { LegalProceedingLike } from './legalProceedings'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -279,6 +280,8 @@ export type LegalPacketInput = {
   claimLines?: ReadonlyArray<LegalClaimLineLike>
   /** The people on the matter (v2.6705, punch list #174), from `legal_matter_people`: who the letters pick from. Absent on an older caller, or while the account has no matter: none. */
   people?: ReadonlyArray<LegalMatterPersonLike>
+  /** The proceedings beside the claim (v2.6726, punch list #174), from `legal_matter_proceedings`: an agency complaint, a records request, each with its documents and its keep-out hold. Absent on an older caller, or while the account has no matter: none. */
+  proceedings?: ReadonlyArray<LegalProceedingLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -567,8 +570,12 @@ export type LegalWorth = {
   retainageHeldByJob: Record<string, number>
   /** The typed lines of the claim (v2.6679, punch list #171), in the order added; empty while the account has no matter or nothing is typed. */
   claimLines: LegalClaimLineLike[]
-  /** What the typed lines add up to, inside `claim` since v2.6680: `claim = balance + retainageAdded + claimTyped`, the claim table's total. */
+  /** What the typed lines in the demand add up to, inside `claim` since v2.6680: `claim = balance + retainageAdded + claimTyped`, the claim table's total. A settlement-only line (v2.6697) is not in it. */
   claimTyped: number
+  /** The settlement-only lines (v2.6697, punch list #171): claimed in an offer, not in the demand. 0 when none. */
+  claimSettlementOnly: number
+  /** `claim + claimSettlementOnly`: the claim as a settlement reads it — what the claim bar draws and *What each path nets* starts from. Equal to `claim` when no line is settlement only. */
+  claimSettlement: number
 }
 
 /** One open billed line as the money bars read it (v2.6105): the ledger row's words and the day it was billed, with what it still needs. */
@@ -619,6 +626,8 @@ export type LegalPacket = {
   theory: LegalTheory
   /** The people on the matter (v2.6705, punch list #174), in the order added; [] on an older caller or an account with no matter. */
   people: LegalMatterPersonLike[]
+  /** The proceedings beside the claim (v2.6726, punch list #174), in the order added; [] on an older caller or an account with no matter. */
+  proceedings: LegalProceedingLike[]
   worth: LegalWorth
   gaps: LegalGap[]
   /** `warns` counts only the unanswered notes (v2.5920); `answered` is every gap with an answer, red ones included. */
@@ -1085,13 +1094,15 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // v2.6679 (punch list #171 step 1): the typed lines of the claim ride the worth so the Account tab's table and the
   // print read one list; v2.6680 (step 2) folds them into `claim`, so the tile, the bars, the paths and the firm's cut read them.
   const claimLines = [...(input.claimLines ?? [])]
+  // v2.6697 (the owner's call of 2026-11-08): a settlement-only line is out of the claim as demanded and in the claim as settled.
   const typed = claimTyped(claimLines)
+  const settlementOnly = claimSettlementOnly(claimLines)
   const retainageHeld = retainage.held
   const claim = round2(balance + retainage.added + typed)
   const feeAmt = claim * fee.contingencyPct
   const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'
-  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict, openBills, retainageOnBillsByJob, retainageHeldByJob, claimLines, claimTyped: typed }
+  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict, openBills, retainageOnBillsByJob, retainageHeldByJob, claimLines, claimTyped: typed, claimSettlementOnly: settlementOnly, claimSettlement: round2(claim + settlementOnly) }
 
   // --- Steps (what we did, in order) ---------------------------------------
   const steps: LegalStep[] = []
@@ -1279,6 +1290,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     feesAndSteps: { steps },
     theory,
     people: [...(input.people ?? [])],
+    proceedings: [...(input.proceedings ?? [])],
     worth,
     gaps,
     readiness: { stops, warns, answered, label: readinessLabel },

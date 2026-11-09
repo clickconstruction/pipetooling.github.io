@@ -159,7 +159,10 @@ export function buildCostsVerdict(args: {
   const bidHours = c && c.laborHours > 0 ? c.laborHours : null
   const hoursShare = bidHours != null ? args.teamHours / bidHours : null
   const expectedShare = m.percentDone != null ? Math.max(m.percentDone, 1) / 100 : null
-  const read: CostsBaseline['read'] = hoursShare == null ? null : expectedShare == null ? (hoursShare > 1.1 ? 'over' : hoursShare >= 0.8 ? 'near' : 'under') : hoursShare > expectedShare * 1.1 ? 'over' : hoursShare >= expectedShare * 0.8 ? 'near' : 'under'
+  // The read waits: no hour in is nothing to judge, and hours with no percent judge only a bid already run past
+  // (the walks of punch list #234 read "0% of the baseline's hours · the baseline was heavy" before any hour).
+  const read: CostsBaseline['read'] =
+    hoursShare == null || args.teamHours <= 0 ? null : expectedShare == null ? (hoursShare > 1.1 ? 'over' : null) : hoursShare > expectedShare * 1.1 ? 'over' : hoursShare >= expectedShare * 0.8 ? 'near' : 'under'
 
   return {
     priceUsd,
@@ -235,7 +238,11 @@ export function timeLeftWords(t: CostsVerdict['timeLeft'], fmtUsd: (n: number) =
  */
 export function baselineReadWords(b: CostsBaseline, pctDone: number | null): string {
   if (b.kind === 'none' || b.hoursShare == null) return ''
-  const share = `${Math.round(b.hoursShare * 100)}% of the ${b.kind === 'bid' ? "bid's" : "baseline's"} hours`
+  const whose = b.kind === 'bid' ? "bid's" : "baseline's"
+  // Before the first hour, and before a percent, there is nothing to judge: the strip says what it waits on.
+  if (b.teamHours <= 0) return `no hours in yet · the read waits on the first clocked hour`
+  const share = `${Math.round(b.hoursShare * 100)}% of the ${whose} hours`
+  if (b.read == null) return `${share} · set a percent to read it against the work`
   const at = pctDone != null ? ` at ${Math.round(pctDone)}% done` : ''
   const verdict = b.kind === 'bid' ? (b.read === 'over' ? 'the book was light here' : b.read === 'under' ? 'the book was heavy here' : 'on the book') : b.read === 'over' ? 'the baseline was light' : b.read === 'under' ? 'the baseline was heavy' : 'on the baseline'
   return `${share}${at} · ${verdict}`
@@ -269,7 +276,7 @@ export function baselineFrozenWords(b: CostsBaseline, fmtDay: (iso: string) => s
   if (frozenAt) parts.push(`${awardedAsThis ? 'Frozen' : 'Taken'} ${fmtDay(frozenAt)}`)
   if (b.kind === 'book') {
     if (b.book?.hoursPerThousand != null && b.book.priceUsd != null) parts.push(`${b.book.hoursPerThousand.toFixed(1)} h per $1k × ${usd0(b.book.priceUsd)}`)
-    if (b.book && b.book.n > 0) parts.push(`${b.book.n} ${b.book.scope === 'similar' ? 'similar projects' : 'projects'}`)
+    if (b.book && b.book.n > 0) parts.push(`${b.book.n} ${b.book.scope === 'similar' ? 'similar projects' : b.book.scope === 'band' && b.book.band ? `projects in the ${b.book.band} band` : 'projects'}`)
     parts.push('a guess, read as one')
   } else if (b.kind === 'typed') {
     if (b.note) parts.push(`"${b.note}"`)

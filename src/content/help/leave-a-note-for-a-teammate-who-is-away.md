@@ -2,7 +2,7 @@
 title: leave a note for a teammate who is away
 category: Office
 roles: dev, master_technician, controller
-keywords: away note, away, left, note, countdown, day back, sealed, archived, sign in, bring back, one screen
+keywords: away note, away, left, note, countdown, day back, sealed, archived, sign in, bring back, one screen, away section, users
 order: 43
 ---
 A teammate who left can keep their login. While they are away, the app shows them one screen you wrote for them. Nothing else opens. You write the note person by person from their desk.
@@ -43,13 +43,19 @@ Off by default. When on, the office gets a Needs you item on the day, with Bring
 "See you soon, Corinne." Then the note, signed The team. Then the countdown. Then "We're in Kingsbury, TX" with Use my location. Then Call the office.
 :::
 
+## Where they are listed
+
+Open People → Users. A teammate with a note on lists under **Away**, above **Archived**. The row shows the day they left and the day back with the days left. On the day it reads *Back today* in amber. After the day it reads *Due back* with the day. A note with no day back reads *No day back set*.
+
+Press {{button:outline|Edit the note…}} on the row to change the note. Press {{button:blue|Bring back…}} on the row when they return. Archived holds only the people who cannot sign in.
+
 ## From End employment
 
 You can write the note on their last day. In **End employment**, keep **Archive after** ticked and press {{button:outline|Leave a note…}} in the footer. Save it, then finish the end. Their sign-in opens to the note instead of being banned.
 
 ## Change it or take it down
 
-Press {{button:outline|Edit the note…}} on the Status row. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. Their sign-in closes again until they are brought back.
+Press {{button:outline|Edit the note…}} on the Status row or on their Away row. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. Their sign-in closes again until they are brought back.
 
 Bring back takes the note down for you. See [bring back a teammate who left](/help/bring-back-a-teammate).
 

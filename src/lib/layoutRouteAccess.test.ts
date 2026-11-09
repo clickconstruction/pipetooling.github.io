@@ -128,7 +128,8 @@ describe('estimator (v2.2920: /people gate matches the ACCESS_CONTROL matrix —
     }
   })
   it('keeps the Prospects flag behaviour', () => {
-    expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(false)
+    // Research (punch list #292): the path is open to every estimator; the page keeps the calling deck behind the flag.
+    expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(true)
     expect(isPathAllowedForRole('estimator', '/prospects', true)).toBe(true)
   })
 })
@@ -157,5 +158,15 @@ describe('Banking is controller and above (v2.3305)', () => {
     expect(isPathAllowedForRole('controller', '/banking', false)).toBe(true)
     expect(isPathAllowedForRole('master_technician', '/banking', false)).toBe(true)
     expect(isPathAllowedForRole('dev', '/banking', false)).toBe(true)
+  })
+})
+
+describe('the box label\'s door /b/:code (v2.6796, punch list #294: every field role was bounced to the Dashboard)', () => {
+  it('lets a helper, a subcontractor, a primary and a superintendent land on a scanned box, with or without the dash', () => {
+    for (const role of ['subcontractor', 'helpers', 'primary', 'superintendent'] as const) {
+      for (const p of ['/b/4f2a9c18', '/b/4f2a-9c18', '/b/4F2A9C18']) {
+        expect(isPathAllowedForRole(role, p, false), `${role} ${p}`).toBe(true)
+      }
+    }
   })
 })

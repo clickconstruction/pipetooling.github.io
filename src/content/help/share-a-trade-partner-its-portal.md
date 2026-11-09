@@ -25,7 +25,9 @@ A job it passed on leaves the list. So does a trade we gave another company.
 
 Below that the home shows who at the company gets our emails. **Before** lists the asks it passed on, jobs we did not win, and trades we gave another company.
 
-A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
+A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call.
+
+The **Messages** tab is the company's conversation with us. It holds the same lines the office reads on Messages. Those are its texts, our emails and what it wrote from the portal. Under the lines sits a box. The company picks the job it is about, or no job, and presses **Send**. The line lands on Messages under the company's contact. The tab says we answer in office hours and names who to call for something urgent.
 
 The job's address sits at the top of the page with a **Directions** link beside it. The link opens the address in the phone's maps app.
 
@@ -44,7 +46,11 @@ To sign, the company types its name and signs by typing or drawing. It also tick
 
 A statement of work can be built from our clauses. Then the company reads the clauses first, with its trade's exhibit after them. The price and the lines fold under **The price and the lines**. If a clause changes while the page is open, the signing is refused. The company reloads the page to read the new version. Once signed, the statement of work shows the version it signed. So does **See every paper**. [Change a contract clause](/help/change-a-contract-clause#what-a-signed-copy-keeps) says what a signed copy keeps.
 
-On a job we are building, the job page opens on **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show. On a job drawn from a template with phases, the job's phases show first as a strip with their dates. The dates to meet sit under it. Another company's bars never show there either.
+On a job we are building, the job page opens on a head. The head says the day the job started and the day we plan to finish. It counts the days left. Under it, **Your work on this job** is one bar. The bar is the company's own percent done, from the percents it reported. Each line's percent sits under the bar. Then come **Who to call** and **Needs you on this job**. Each line of **Needs you on this job** opens its block on the page.
+
+Under the head, the job page shows **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show. On a job drawn from a template with phases, the job's phases show first as a strip with their dates. The dates to meet sit under it. Another company's bars never show there either.
+
+Under the chart, **The whole job** folds open. It shows the job as stages, one row each, with its dates and its percent. The company's own work is lit in its stage, with its name beside it. Under the rows sit the dates to meet and the day we plan to finish. No other company is named there.
 
 Under each of its own bars the company can press **We will be late**. It gives the new day, picks why and says what happened. Before it sends, it sees what that day would push back. After we push back, it can press **We will make** the day. **Your dates moved** shows the new dates we sent it. It answers **These dates work** or **I need another day**. **Your next three weeks** lists its work for this week and the next two. It marks each bar **Done** or **Not done** at the week's end. It also says how many people a day it will have on site.
 
@@ -78,6 +84,8 @@ Under **Where you are**, **Needs you** lists what else the company has to do, li
 We look at a certificate before it counts. Until we do, its line says we are checking it. The master agreement and the W-9 open on the same signing page our email opens. Each press makes a new signing link, so the link in our email stops working. **See every paper** lists every paper the company signed with us. It can print the list.
 
 It can pick its own quote file and a photo or a ticket for a change. Each goes into the job's folder in Drive. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal#its-files) shows where each thing lands.
+
+On a job it signed for, **Your files on this job** sits under the statement of work. It lists what the company sent us, by what each is, with the day and **Open**. It lists the plans we sent too. Under the list sits **Send Click a file**. It takes a photo or a PDF, with one line that says what it is. The file goes to the office with that line as its name.
 
 ## Make the link
 

@@ -80,6 +80,7 @@
     "test:pg:quick-replies-shortcut": "bash scripts/pgtest-quick-replies-shortcut.sh",
     "test:pg:quick-replies-starter": "bash scripts/pgtest-quick-replies-starter.sh",
     "test:pg:estimate-share-links": "bash scripts/pgtest-estimate-share-links.sh",
+    "test:pg:bill-pay-codes": "bash scripts/pgtest-bill-pay-codes.sh",
     "test:pg:job-people": "bash scripts/pgtest-job-people.sh",
     "test:pg:bid-money-strip": "bash scripts/pgtest-bid-money-strip.sh",
     "test:pg:paid-claim": "bash scripts/pgtest-paid-claim.sh",
@@ -153,7 +154,7 @@
     "walk:bids": "node scripts/bids-live-walk.mjs",
     "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
     "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",
-    "typecheck": "node --max-old-space-size=10240 node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node scripts/typecheck-queued.mjs",
     "format": "prettier --write src",
     "format:check": "prettier --check src"
   },

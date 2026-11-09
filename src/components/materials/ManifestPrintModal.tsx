@@ -13,7 +13,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { boxAddress, boxUrl } from '../../lib/materials/labels'
+import { boxAddressWords, boxUrl, dashedCode } from '../../lib/materials/labels'
 import { lastRecordedWords, manifestContainers, manifestDateWords, manifestPages, manifestPickWords, manifestPressWords, MANIFEST_ADDED_COLUMNS, MANIFEST_ADDED_HEADER, type ManifestPage } from '../../lib/materials/containerManifest'
 import type { Container, ContainerLine, Movement, Place } from '../../lib/materials/onSite'
 import { printRootCss } from '../../lib/printRoot'
@@ -110,7 +110,7 @@ function ManifestSheet({ page: p }: { page: ManifestPage }) {
         {/* The same code the label carries: the camera opens this box on the phone from the paper. */}
         <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }} data-testid="manifest-qr">
           <QRCodeSVG value={boxUrl(p.containerId)} size={112} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em' }}>{p.code}</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em' }}>{dashedCode(p.code)}</div>
         </div>
       </header>
       <div className="on-site-manifest-dates" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -157,7 +157,7 @@ function ManifestSheet({ page: p }: { page: ManifestPage }) {
             ))}
           </tbody>
         </table>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-700)' }}>Write what you add on a line with your name and the day. Scan the code to open this {noun} on your phone, or go to {boxAddress(p.containerId)}, and press it there too, so the count stays true.</div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-700)' }}>Write what you add on a line with your name and the day. Scan the code to open this {noun} on your phone, or go to {boxAddressWords(p.containerId)}, and press it there too, so the count stays true.</div>
       </div>
     </section>
   )

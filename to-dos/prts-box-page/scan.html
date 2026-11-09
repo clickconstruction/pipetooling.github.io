@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prts.co: the scanned box, signed out</title>
+<style>
+  /* Punch list #294. Everything here is made up: Ridgeway Builders' Oak Hollow Apartments Building C, cage B3 at
+     Level 2 by the north stair, the parts and their counts, the code 4F2A9C18. The public page draws on the portal's
+     paper (src/lib/portal/portalTheme.ts: PAPER, INK, CARD, MUTED, HAIR, COPPER, PAPER_GREEN) like /pay and /e, and
+     stays light whatever the phone's theme, as every customer-facing page does. The blue press is the app's #2563eb
+     under white words. Frames are 375 and 320. */
+  :root { color-scheme: light; --paper: #f6f3ec; --card: #fdfcf9; --ink: #16283c; --muted: #5a6b7e; --faint: #5e6d7c; --hair: #ddd6c8; --copper: #9a5b2b; --green: #1f7a3a; --red: #b42318; --blue: #2563eb; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --page: #eceae4; --strong: #111827; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 96ch; }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--strong); }
+  .lede { margin: 0 0 6px; color: #374151; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; } .col.p320 { flex: 0 0 320px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .frame { max-width: 100%; overflow-x: auto; background: var(--paper); border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .screen { font-size: 16px; line-height: 1.45; color: var(--ink); padding: 0 0 18px; }
+  .screen.w375 { width: 375px; } .screen.w320 { width: 320px; }
+  .bar { height: 22px; background: #e7e3d9; }
+  .pad { padding: 16px 16px 0; }
+  .brand { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); margin: 0; }
+  .stencil { margin: 6px 0 0; font-size: 30px; line-height: 1.1; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+  .where { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+  .photo { margin: 14px 16px 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--hair); background: var(--card); }
+  .photo .pic { position: relative; height: 210px; background: linear-gradient(160deg, #8b8f93 0%, #c9c3b5 45%, #6f6a60 100%); }
+  .w320 .photo .pic { height: 180px; }
+  .photo .pic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .photo .capt { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
+  .photo .capt b { color: var(--ink); font-weight: 600; }
+  .sect { margin: 18px 16px 0; }
+  .sect h3 { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  td { padding: 10px 12px; border-top: 1px solid var(--hair); vertical-align: top; }
+  tr:first-child td { border-top: 0; }
+  td.n { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; width: 1%; font-size: 18px; }
+  td .mk { display: block; color: var(--muted); font-size: 13px; }
+  .count { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  .count b { color: var(--ink); font-weight: 600; }
+  .presses { display: grid; gap: 10px; margin: 20px 16px 0; }
+  .press { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 12px; font-weight: 700; font-size: 16px; border: 1px solid var(--hair); background: var(--card); color: var(--ink); text-decoration: none; padding: 0 14px; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.ghost { background: transparent; }
+  .foot { margin: 18px 16px 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+  .foot b { color: var(--ink); font-weight: 600; }
+  .state { margin: 0 16px; }
+  .state h3 { margin: 18px 0 6px; font-size: 20px; color: var(--ink); }
+  .state p { margin: 0 0 12px; color: var(--muted); }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+  .never { margin: 14px 0 0; display: grid; gap: 4px; max-width: 104ch; color: #374151; }
+  .never p { margin: 0; padding-left: 10px; border-left: 3px solid #aab2bd; }
+  .never p.yes { border-color: var(--green); } .never p.no { border-color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #294 · mock-up 1 of 3</p>
+  <h1>prts.co: the scanned box, signed out</h1>
+  <p>Someone points a phone's camera at the label on cage B3. The QR reads <b>PRTS.CO/B/4F2A9C18</b>, printed for people as <b>4F2A-9C18</b>, prts.co forwards it to the app, and the page below opens with no sign-in. It is the laminated manifest with today's counts and the newest photo, and nothing about the job. Every name and number here is made up.</p>
+</header>
+
+<h2>The box, as the scan opens it</h2>
+<p class="lede">Stencil and place at the top so the person knows they scanned the right cage. The newest photo big, because that is what the owner asked to see first. The lines with their counts are the manifest. Two presses, in the order a visitor needs them: change a count means sign in; a part not here means find it on this site.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap">375 · signed out</div>
+    <div class="frame"><div class="screen w375">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <p class="stencil">Cage B3</p>
+        <p class="where">Level 2 · by the north stair</p>
+      </div>
+      <div class="photo">
+        <div class="pic">
+          <svg viewBox="0 0 375 210" aria-hidden="true">
+            <g stroke="rgba(20,20,20,.55)" stroke-width="3" fill="none">
+              <rect x="48" y="30" width="280" height="160" rx="4"/>
+              <path d="M48 70h280M48 110h280M48 150h280M88 30v160M128 30v160M168 30v160M208 30v160M248 30v160M288 30v160"/>
+            </g>
+            <g fill="rgba(255,255,255,.55)">
+              <rect x="60" y="120" width="60" height="26" rx="3"/><rect x="130" y="124" width="48" height="22" rx="3"/><rect x="190" y="116" width="70" height="30" rx="3"/>
+              <rect x="64" y="160" width="100" height="24" rx="3"/><rect x="176" y="158" width="130" height="26" rx="3"/>
+            </g>
+            <g><rect x="60" y="40" width="88" height="40" rx="3" fill="#fdfcf9" stroke="rgba(0,0,0,.3)"/><text x="104" y="66" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="20" font-weight="800" fill="#16283c">B3</text></g>
+          </svg>
+        </div>
+        <div class="capt"><span>Newest photo</span><b>Friday, Nov 7</b></div>
+      </div>
+      <div class="sect">
+        <h3>What is in it</h3>
+        <table>
+          <tr><td>3/4" copper 90° elbows<span class="mk">Mueller</span></td><td class="n">42</td></tr>
+          <tr><td>3/4" copper couplings<span class="mk">Mueller</span></td><td class="n">36</td></tr>
+          <tr><td>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></td><td class="n">18</td></tr>
+          <tr><td>3/4" ball valves, full port<span class="mk">Apollo</span></td><td class="n">12</td></tr>
+          <tr><td>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></td><td class="n">200</td></tr>
+          <tr><td>3/4" pipe hangers<span class="mk">Oatey</span></td><td class="n">60</td></tr>
+        </table>
+        <p class="count">Last counted <b>Wednesday, Nov 5</b>. Counts are the app's as of right now.</p>
+      </div>
+      <div class="presses">
+        <a class="press blue" href="#">Sign in to change a count</a>
+        <a class="press" href="#">Find a part on this site</a>
+      </div>
+      <p class="foot">This page shows what is in the box, not whose job it is. To record a part used, moved or counted, sign in. You come back to this cage.</p>
+    </div></div>
+  </div>
+
+  <div class="col p320">
+    <div class="cap">320 · the same page</div>
+    <div class="frame"><div class="screen w320">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <p class="stencil">Cage B3</p>
+        <p class="where">Level 2 · by the north stair</p>
+      </div>
+      <div class="photo">
+        <div class="pic">
+          <svg viewBox="0 0 320 180" aria-hidden="true">
+            <g stroke="rgba(20,20,20,.55)" stroke-width="3" fill="none">
+              <rect x="40" y="24" width="240" height="140" rx="4"/>
+              <path d="M40 60h240M40 96h240M40 132h240M76 24v140M112 24v140M148 24v140M184 24v140M220 24v140M256 24v140"/>
+            </g>
+            <g fill="rgba(255,255,255,.55)"><rect x="50" y="104" width="54" height="22" rx="3"/><rect x="112" y="108" width="40" height="18" rx="3"/><rect x="160" y="100" width="64" height="26" rx="3"/><rect x="54" y="140" width="90" height="20" rx="3"/><rect x="152" y="138" width="110" height="22" rx="3"/></g>
+            <g><rect x="50" y="32" width="76" height="36" rx="3" fill="#fdfcf9" stroke="rgba(0,0,0,.3)"/><text x="88" y="57" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="18" font-weight="800" fill="#16283c">B3</text></g>
+          </svg>
+        </div>
+        <div class="capt"><span>Newest photo</span><b>Fri, Nov 7</b></div>
+      </div>
+      <div class="sect">
+        <h3>What is in it</h3>
+        <table>
+          <tr><td>3/4" copper 90° elbows<span class="mk">Mueller</span></td><td class="n">42</td></tr>
+          <tr><td>3/4" copper couplings<span class="mk">Mueller</span></td><td class="n">36</td></tr>
+          <tr><td>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></td><td class="n">18</td></tr>
+          <tr><td>3/4" ball valves, full port<span class="mk">Apollo</span></td><td class="n">12</td></tr>
+          <tr><td>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></td><td class="n">200</td></tr>
+          <tr><td>3/4" pipe hangers<span class="mk">Oatey</span></td><td class="n">60</td></tr>
+        </table>
+        <p class="count">Last counted <b>Wed, Nov 5</b>.</p>
+      </div>
+      <div class="presses">
+        <a class="press blue" href="#">Sign in to change a count</a>
+        <a class="press" href="#">Find a part on this site</a>
+      </div>
+      <p class="foot">This page shows what is in the box, not whose job it is.</p>
+    </div></div>
+  </div>
+</div>
+
+<div class="never">
+  <p class="yes"><b>Shown:</b> the stencil and kind, the place and the where-note, the newest photo and its day, every line with its maker and count, the day of the last count.</p>
+  <p class="no"><b>Never shown:</b> the job's number or name, the customer, the address, any price, anyone's name, the history of presses, the other boxes until a search asks for them.</p>
+</div>
+<p class="note"><b>Signed in,</b> the same scan goes straight to the box's screen on the On site tab as it does today, with no stop here. The crew's scan changes only in that it works for every field role (PR 1).</p>
+
+<h2>The three other answers a code can get</h2>
+<p class="lede">A retired box's label still hangs on it for a while. A code typed wrong is no box. Twenty wrong codes in an hour from one connection lock that connection for the hour, the estimate link's guard as it stands.</p>
+<div class="row">
+  <div class="col p320">
+    <div class="cap">retired</div>
+    <div class="frame"><div class="screen w320">
+      <div class="bar"></div>
+      <div class="pad"><p class="brand">Click Plumbing &amp; Electrical</p></div>
+      <div class="state">
+        <h3>This label is from a box that was retired</h3>
+        <p>Cage B3 left the job on Nov 8. Its parts were moved or used before it went.</p>
+      </div>
+      <div class="presses"><a class="press" href="#">Find a part on this site</a></div>
+    </div></div>
+  </div>
+  <div class="col p320">
+    <div class="cap">not a box</div>
+    <div class="frame"><div class="screen w320">
+      <div class="bar"></div>
+      <div class="pad"><p class="brand">Click Plumbing &amp; Electrical</p></div>
+      <div class="state">
+        <h3>4F2A-9C19 is not a box on any job</h3>
+        <p>Check the eight characters under the QR code, or scan the label again.</p>
+      </div>
+      <div class="presses"><a class="press" href="#">Type the code again</a></div>
+    </div></div>
+  </div>
+  <div class="col p320">
+    <div class="cap">locked for the hour</div>
+    <div class="frame"><div class="screen w320">
+      <div class="bar"></div>
+      <div class="pad"><p class="brand">Click Plumbing &amp; Electrical</p></div>
+      <div class="state">
+        <h3>Too many wrong codes from this connection</h3>
+        <p>Wait an hour and scan again. A label's own code still opens from another phone.</p>
+      </div>
+    </div></div>
+  </div>
+</div>
+</div>
+</body>
+</html>

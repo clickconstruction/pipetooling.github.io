@@ -16,8 +16,9 @@ export const TRADE_FILE_MAX_BYTES = 10 * 1024 * 1024
 /** Files a company may put in Drive in an hour, apart from the free-text writes (portal-p5a.md decision 5). */
 export const TRADE_FILE_HOURLY_CAP = 20
 
-// P5b-2: `coi`, the company's insurance certificate, which is its own and on no job.
-export const TRADE_FILE_FOR = ['submittal', 'change', 'quote', 'coi'] as const
+// P5b-2: `coi`, the company's insurance certificate, which is its own and on no job. Punch list #205 PR 4: `note`, a photo
+// or a ticket that belongs to no record, sent with a one-line note that becomes its name (Send Click a file).
+export const TRADE_FILE_FOR = ['submittal', 'change', 'quote', 'coi', 'note'] as const
 export type TradeFileFor = (typeof TRADE_FILE_FOR)[number]
 
 export type TradeFileMime = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/heic' | 'image/heif'
@@ -32,10 +33,15 @@ export interface TradeFileUpload {
   name: string
   bytes: Uint8Array
   mime: TradeFileMime
+  /** A `note` file's one line, which is its name in Drive (punch list #205, PR 4). Unset on every other kind. */
+  note?: string
 }
 
-/** The field each kind of file names its record by. A certificate names none. */
-const RECORD_FIELD: Record<TradeFileFor, string | null> = { submittal: 'submittalId', change: 'packageId', quote: 'inviteId', coi: null }
+/** The field each kind of file names its record by. A certificate names none; a note file names its job. */
+const RECORD_FIELD: Record<TradeFileFor, string | null> = { submittal: 'submittalId', change: 'packageId', quote: 'inviteId', coi: null, note: 'projectId' }
+
+/** The most a note file's line may hold. */
+export const TRADE_FILE_NOTE_MAX = 200
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -100,8 +106,17 @@ export function parseTradeFile(b: Record<string, unknown>): TradeFileUpload | 'f
   const recordId = field === null ? null : b[field]
   if (field !== null && (typeof recordId !== 'string' || !UUID.test(recordId))) return null
   if (typeof b.name !== 'string' || b.name.length > 400) return null
-  const name = cleanFileName(b.name)
+  let name = cleanFileName(b.name)
   if (name === '') return null
+  // A note file (punch list #205, PR 4): its one line, required, becomes its name, with the picked file's extension kept.
+  let note: string | undefined
+  if (f === 'note') {
+    if (typeof b.note !== 'string') return null
+    note = b.note.replace(/\s+/g, ' ').trim()
+    if (note === '' || note.length > TRADE_FILE_NOTE_MAX) return null
+    const ext = /\.[a-z0-9]{1,5}$/i.exec(name)?.[0] ?? ''
+    name = `${cleanFileName(note)}${ext.toLowerCase()}`
+  }
   // The base64 of a file at the cap is a third larger; anything longer is over the cap before it is decoded.
   if (typeof b.base64 !== 'string' || b.base64.length > Math.ceil((TRADE_FILE_MAX_BYTES * 4) / 3) + 200) return typeof b.base64 === 'string' ? 'fileTooBig' : null
   const bytes = bytesOf(b.base64)
@@ -109,7 +124,7 @@ export function parseTradeFile(b: Record<string, unknown>): TradeFileUpload | 'f
   if (bytes.length > TRADE_FILE_MAX_BYTES) return 'fileTooBig'
   const mime = fileMimeOf(bytes)
   if (!mime) return 'fileType'
-  return { for: f, recordId: typeof recordId === 'string' ? recordId : null, name, bytes, mime }
+  return { for: f, recordId: typeof recordId === 'string' ? recordId : null, name, bytes, mime, ...(note === undefined ? {} : { note }) }
 }
 
 /**

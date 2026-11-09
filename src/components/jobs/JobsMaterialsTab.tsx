@@ -21,15 +21,15 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, listContainers, listMovements, listPhotos, listPlaces, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
-import { jobMaterialsSummary, staleWords } from '../../lib/materials/onSiteSummary'
+import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
-import { boxAddress, boxCode, boxUrl, labelRows } from '../../lib/materials/labels'
+import { boxAddressWords, boxCodeWords, boxUrl, labelRows } from '../../lib/materials/labels'
 import { printRootCss } from '../../lib/printRoot'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
@@ -160,7 +160,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const allJobs = [...jobs, ...extraJobs].map(withLinks)
 
   if (!jobId) {
-    const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummary(listContainers(id), listMovements(id), now) }))
+    const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now) }))
     rows.sort((a, b) => b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -293,7 +293,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
   const photos = listPhotos(jobId)
   const lines = containerLines(movements)
   const diffs = countDiffs(movements)
-  const sum = jobMaterialsSummary(containers, movements, now)
+  const sum = jobMaterialsSummaryFor(jobId, now)
   const [section, setSection] = useState<'onsite' | 'missing' | 'deliveries' | 'history'>('onsite')
   /** The green pill's two views: the list of boxes, or the site map (#209: the map is a view of On site, not a fifth step). */
   const [onSiteView, setOnSiteView] = useState<'list' | 'map'>('list')
@@ -410,6 +410,10 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
       {/* The flow row (#209): the material's path left to right at the pills' height — came in → on site → used → missing — each figure in its colour, a badge where a hand is needed. */}
+      {jobLedgerCapped(jobId) ? (
+        /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */
+        <p style={{ ...muted, margin: 0 }} data-testid="materials-capped">This job has more than {MOVEMENTS_LIMIT.toLocaleString('en-US')} ledger rows. History and the boxes show the newest {MOVEMENTS_LIMIT.toLocaleString('en-US')}; the totals come from the database.</p>
+      ) : null}
       <FlowRow
         role="tabs"
         label="Materials on site"
@@ -760,7 +764,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                   </div>
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
                     <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />
-                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-700)' }}>{boxCode(c.id)}</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-700)' }}>{boxCodeWords(c.id)}</div>
                   </div>
                 </div>
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -775,7 +779,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                     ))}
                   </tbody>
                 </table>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scan the code to open this {kind} on your phone, or go to {boxAddress(c.id)}. Write what you add on a blank line.</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scan the code to open this {kind} on your phone, or go to {boxAddressWords(c.id)}. Write what you add on a blank line.</div>
               </div>
             )
           })}

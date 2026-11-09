@@ -18,6 +18,7 @@ import {
 import { boardStateFromRows, type BoardRows } from './boardRows'
 import { withDraws } from './drawRows'
 import { gcProjectFromRows, type GcProjectRows } from './projectRows'
+import { customerSchedulePicture } from './schedule/customerSchedule'
 import { portalSchedule } from './schedule/portalSchedule'
 import { withScheduleRows, type ScheduleRows } from './schedule/rows'
 
@@ -29,7 +30,7 @@ const DOLLARS = ['76543.21', '65432.1', '54321.09', '43210.98', '111111.11', '22
 /** Every word that is not the chart's: a third company, notes, contacts. None may reach the answer. */
 const NEVER = [
   'Spark Electric',
-  'Rough-in',
+  'Panel and branch circuits',
   '210-555-0177',
   'boss@frameright.example',
   'Spark is slow on the panel',
@@ -44,7 +45,8 @@ const LINES: Line[] = [
   { id: 'sC1', pkg: 'kC', label: 'Footings', start: '2026-10-06', finish: '2026-10-09', amount: 23456.78 },
   { id: 'sC2', pkg: 'kC', label: 'Slab', start: '2026-10-12', finish: '2026-10-16', amount: 34567.89 },
   { id: 'sF1', pkg: 'kF', label: 'Wall framing', start: '2026-10-19', finish: '2026-10-23', amount: 45678.9 },
-  { id: 'sE1', pkg: 'kE', label: 'Rough-in', start: '2026-10-26', finish: '2026-10-30', amount: 56789.01 },
+  // Named so no stage is called the same (punch list #205, PR 3): the stage rows carry *Rough-in* legitimately.
+  { id: 'sE1', pkg: 'kE', label: 'Panel and branch circuits', start: '2026-10-26', finish: '2026-10-30', amount: 56789.01 },
 ]
 const TRADES = [
   { id: 'kS', trade: 'Sitework', budget: 76543.21, company: 'lonegrade', name: 'Lone Grade Sitework', price: '111111.11' },
@@ -231,6 +233,28 @@ describe('the trade’s chart, worked out from the rows (calls 4 to 6)', () => {
   })
 })
 
+describe('the whole job’s stages beside the chart (punch list #205, PR 3)', () => {
+  const chart = portalSchedulesFromRows(rowsOf(), MINE, TODAY).p1!
+
+  it('is the customer’s stages in the order built, with the company’s own work named inside its stage only', () => {
+    expect(chart.stages!.map((st) => [st.key, st.label, st.start, st.finish, st.state, st.yours])).toEqual([
+      ['sitePrep', 'Site prep', '2026-10-01', '2026-10-05', 'done', []],
+      // The footings finished Fri Oct 9 at 45%, and the slab waits on them: both stages read behind, as the customer reads them.
+      ['foundations', 'Foundations', '2026-10-06', '2026-10-09', 'behind', ['Footings']],
+      ['slab', 'Slab', '2026-10-12', '2026-10-16', 'behind', ['Slab']],
+      ['framing', 'Framing', '2026-10-19', '2026-10-23', 'notStarted', []],
+      ['roughIn', 'Rough-in', '2026-10-26', '2026-10-30', 'notStarted', []],
+    ])
+  })
+
+  it('names no company, no dollar and only the fields the fold draws', () => {
+    const json = JSON.stringify(chart.stages)
+    for (const name of ['Bedrock', 'Lone Grade', 'Frame Right', 'Spark', 'Our own crew']) expect(json, name).not.toContain(name)
+    for (const figure of DOLLARS) expect(json, figure).not.toContain(figure)
+    for (const st of chart.stages!) expect(Object.keys(st).sort()).toEqual(['finish', 'key', 'label', 'pct', 'start', 'state', 'yours'])
+  })
+})
+
 describe('the copy reads as the office reads (call 1)', () => {
   it('gives the answer src’s own builders give on the same rows, with the neighbours’ send-backs off', () => {
     const rows = rowsOf()
@@ -258,7 +282,13 @@ describe('the copy reads as the office reads (call 1)', () => {
     })
     const empty = { parts: [], milestones: [], failures: [], moves: [], pushes: [], tells: [], answers: [], walks: [], marks: [], lateNotices: [], waits: [], waitHolds: [], crewCounts: [], sends: [], whatIf: null, rough: null }
     const read = withScheduleRows({ state: withoutOthersSendBacks(state, MINE), projectId: 'p1', rows: { ...empty, ...scheduleOf('p1') }, templates: [], names: new Map() })!
-    expect(portalSchedule(read.state, MINE, read.project)).toEqual(portalSchedulesFromRows(rows, MINE, TODAY).p1)
+    const answer = portalSchedulesFromRows(rows, MINE, TODAY).p1!
+    // The planned finish beside the chart (punch list #205, PR 2) is the customer picture's, and nothing else of the picture.
+    const picture = customerSchedulePicture(read.state, read.project)
+    expect(answer).toEqual({ ...portalSchedule(read.state, MINE, read.project), finish: picture.standing.finish, stages: answer.stages })
+    expect(answer.stages!.map(({ yours: _yours, ...st }) => st)).toEqual(picture.stages)
+    expect(answer.finish).toBe('2026-10-30')
+    expect(Object.keys(answer).sort()).toEqual(['after', 'before', 'finish', 'first', 'last', 'mine', 'stages'])
     // Without taking the neighbours' send-backs off, Frame Right would read our 10, not its 30.
     const raw = withScheduleRows({ state, projectId: 'p1', rows: { ...empty, ...scheduleOf('p1') }, templates: [], names: new Map() })!
     expect(portalSchedule(raw.state, MINE, raw.project)!.after[0]!.pct).toBe(10)

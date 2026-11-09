@@ -1,8 +1,8 @@
 ---
 name: "Quickfill: read the thing itself, not the retyped note"
 number: 180
-group: gated
-status: built 2026-10-26 (the owner's "build it all"): v2.5884 #6191 (Assistant Dailys), v2.5885 #6201 (Billed Awaiting), v2.5886 #6203 (Prospects), v2.5887 #6204 (Vehicle check-ins), v2.5888 #6205 (Field photos) · left: the one-time pick on the Dailys' live list, then the owner's look
+group: waiting
+status: built 2026-10-26 (the owner's "build it all"): v2.5884 #6191 (Assistant Dailys), v2.5885 #6201 (Billed Awaiting), v2.5886 #6203 (Prospects), v2.5887 #6204 (Vehicle check-ins), v2.5888 #6205 (Field photos) · the five picks on the Dailys' live list made 2026-11-09 · left: a week of use, the owner's look at the three numbers, then delete the folder
 summary: >
   The owner's lens from the Email station, "replace typed notes with read state", run over
   every Quickfill station's Mark history. Only three stations have ever written a note, and
@@ -13,7 +13,7 @@ summary: >
   and a count that never reaches the mark (Field photos). Each is drawn before and after in
   the Email station's shape: the live count, the oldest item's age, the items past a limit
   with a door, what moved since the last look, and a note that writes itself from the rows.
-next: The one-time pick on the Dailys' live list (Where it stands), a week of use on the five stations, the owner's look at the three numbers on their stance lines, then delete the folder.
+next: A week of use on the five stations from 2026-11-09, the owner's look at the three numbers on their stance lines, then delete the folder.
 size: M as a train of five (S · M · M · S · XS); no migration anywhere
 blocker: none
 opinion: built in the drawn order, the owner's yes of 2026-10-26; the three numbers took their defaults and a dev changes each on its station
@@ -257,13 +257,18 @@ by design: sending the vehicle ask from the station (it is copied and sent from 
 Texts station's standard-words send, #157, can take it over), and a dated due day per prospect
 beyond the warmth cadence.
 
-**Left, the one-time pick on the Dailys' live list**, five minutes as a dev with Edit checklist on:
+**The one-time pick on the Dailys' live list was made 2026-11-09**, as the dev with Edit checklist
+on, on the live app, the owner's ask of the same day:
 
-1. On *Check for obvious schedule conflicts…* pick **Reads the Schedule station**.
-2. On *Is my email inbox clear…* pick **Reads the Email station**.
-3. On *Is the physical inbox clear…* pick **Reads the Physical inbox station**.
-4. On *…upcoming time off* pick **Reads time off coming up**.
-5. Press **Remove** on *When leaving: take out all the trash*. Office Leaving keeps the same box, one
+1. *Check for obvious schedule conflicts…* now **Reads the Schedule station**.
+2. *Is my email inbox clear…* now **Reads the Email station**.
+3. *Is the physical inbox clear…* now **Reads the Physical inbox station**.
+4. *…upcoming time off* now **Reads time off coming up**.
+5. *When leaving: take out all the trash* was **Removed**. Office Leaving keeps the same box, one
    home. Its past ticks stay in the history.
 
-Then a week of use, the owner's look at the three numbers, and this folder goes.
+Read back with Edit checklist off: the three station boxes show their live counts with "not marked
+today" and an Open the station door, the time-off box says nobody is off in the next 14 days, the
+trash box is gone, and the station's Worked it count fell from five to three. Nothing else was pressed.
+
+Left: a week of use from 2026-11-09, the owner's look at the three numbers, and this folder goes.

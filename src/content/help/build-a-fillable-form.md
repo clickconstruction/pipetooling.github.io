@@ -1,7 +1,7 @@
 ---
 title: build a fillable form from a PDF
 category: Office
-roles: dev
+roles: dev, controller
 keywords: forms, form studio, W-9, fillable PDF, boxes, contract library, sensitive, publish, schema JSON
 order: 77
 ---

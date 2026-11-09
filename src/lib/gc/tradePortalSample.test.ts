@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'vettingForm', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'billDayCutoffDays', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'vettingForm', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'billDayCutoffDays', 'files', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -87,6 +87,18 @@ describe('the sample’s job (P4b-i)', () => {
   })
 })
 
+describe('the sample’s files (punch list #205, PR 4)', () => {
+  it('carries three files on the job, by what each is, never the Drive id, the record or the bytes', () => {
+    expect(slice.files?.map((f) => [f.project_id, f.purpose, f.paper, f.name])).toEqual([
+      [SAMPLE_TRADE_IDS.job, 'submittal', null, 'Panelboards cut sheet.pdf'],
+      [SAMPLE_TRADE_IDS.job, 'change', null, 'dental chairs.jpg'],
+      [SAMPLE_TRADE_IDS.job, 'waiver', 'conditional_progress', 'Conditional waiver - Electrical - draw 1.pdf'],
+    ])
+    const json = JSON.stringify(slice.files)
+    for (const word of ['never-passes', 'record_id', 'bytes', 'mime', 'package_id']) expect(json, word).not.toContain(word)
+  })
+})
+
 describe('the sample’s papers (B6-b-ii)', () => {
   it('reads its master agreement signed, its W-9 and its certificate, by the board’s rule, and the one trade it won', () => {
     const partner = state.partners.find((p) => p.id === partnerId)!
@@ -110,6 +122,8 @@ describe('a press on the sample (P2b-ii)', () => {
     const esignConsent = { clauseText: 'I agree to sign electronically.' }
     expect(parseTradeSubmit({ token: 'sample', kind: 'unconditional_waiver', drawId: SAMPLE_TRADE_IDS.draw1, printedName: 'Dana', esignConsent }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'sign_change', changeOrderId: SAMPLE_TRADE_IDS.changeOrder, printedName: 'Dana', esignConsent }).ok).toBe(true)
+    // A line for the thread (punch list #205, PR 5).
+    expect(parseTradeSubmit({ token: 'sample', kind: 'portal_message', projectId: SAMPLE_TRADE_IDS.job, text: 'The panel is in.' }).ok).toBe(true)
   })
 })
 

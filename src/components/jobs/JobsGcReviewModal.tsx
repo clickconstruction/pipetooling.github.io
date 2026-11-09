@@ -275,8 +275,10 @@ type JobsGcReviewModalProps = {
   lastSentByGcId: Record<string, string>
   /** Office user roster for the Standing copies picker (v2.1431). */
   users: Array<{ id: string; name: string; email: string | null; role: string }>
-  /** Standing copies management is dev-only. */
+  /** A dev cancels anyone's scheduled send (`canCancelStatementRequest`). */
   isDev: boolean
+  /** Standing copies (punch list #188 row 43, v2.6760): the office's, since the assistants drive GC Review; a dev's alone before. */
+  canEditStandingCopies: boolean
   /**
    * Click a job row → open Edit Job ON TOP of this modal (v2.1976; Edit Job's
    * overlay z outranks this one). The shell's onSaved refetch re-derives the
@@ -318,6 +320,7 @@ export function JobsGcReviewModal({
   lastSentByGcId,
   users,
   isDev,
+  canEditStandingCopies,
   onOpenJob,
   canCertify,
   onOpenJobDetail,
@@ -2382,10 +2385,10 @@ export function JobsGcReviewModal({
                 </button>
               </div>
             </div>
-            {isDev ? (
+            {canEditStandingCopies ? (
               /* Standing copies (v2.1431): teammates + weekdays for recurring
                  whole-report emails. One repeat_weekly chain per weekday under
-                 the hood — grouped here by recipient. Dev-only. */
+                 the hood — grouped here by recipient. The office's since v2.6760. */
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', marginTop: '0.85rem' }}>
                 <p style={{ margin: '0 0 0.15rem', fontSize: '0.8125rem', fontWeight: 600 }}>Standing copies</p>
                 <p style={{ margin: '0 0 0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>

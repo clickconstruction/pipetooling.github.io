@@ -7,6 +7,7 @@
 import { useCallback, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useTypedConfirm } from '../../hooks/useTypedConfirm'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
   STALE_DRAFT_BILLS_ON_PAID_JOBS_SELECT,
@@ -19,6 +20,7 @@ import {
 
 export default function StaleDraftBillsOnPaidJobsSection() {
   const { showToast } = useToastContext()
+  const typedConfirm = useTypedConfirm()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -46,6 +48,9 @@ export default function StaleDraftBillsOnPaidJobsSection() {
 
   async function retire(row: StaleDraftBillRow) {
     if (retiringId) return
+    // Punch list #188 row 74 (v2.6766): Retire deletes through the audited path and comes back from Recently deleted; the controller
+    // retires one behind its job's number, typed, since a Retire is one bill at a time.
+    if (!(await typedConfirm({ title: `Retire the ${formatStaleDraftBillAmount(row.amount)} draft on job ${row.jobNumber}?`, act: 'retire this draft bill', word: row.jobNumber, confirmLabel: 'Retire the draft' }))) return
     setRetiringId(row.invoiceId)
     try {
       const data = await withSupabaseRetry(

@@ -51,21 +51,28 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'test-reports-ready' }, { ...base, testReportFirst: { jobId: 'j-1', reportId: 'r-1' } }, 'quickfill')).toEqual({ kind: 'test-report', first: { jobId: 'j-1', reportId: 'r-1' }, href: '/jobs?tab=stages' })
   })
 
+  it('materials on site (punch list #209, v2.6728): the desk, or the one job’s page when it holds every box due or every shortfall', () => {
+    expect(needsYouDoor({ key: 'materials-count-due' }, base, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials' })
+    expect(needsYouDoor({ key: 'materials-count-due' }, { ...base, materialsStaleJobId: 'j-7' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=materials&job=j-7' })
+    expect(needsYouDoor({ key: 'materials-missing-week' }, { ...base, materialsMissingJobId: 'j-7' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials&job=j-7' })
+    expect(needsYouDoor({ key: 'materials-missing-week' }, { ...base, materialsStaleJobId: 'j-7' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials' })
+  })
+
   it('the first row of a pile is the landing where one is known', () => {
     expect(needsYouDoor({ key: 'paid-claims-stale' }, { role: 'estimator', staleClaimsFirstBidId: 'b-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/bids?tab=bid-board&bidId=b-1' })
     expect(needsYouDoor({ key: 'paid-claims-stale' }, { role: 'assistant', staleClaimsFirstBidId: 'b-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages' })
     expect(needsYouDoor({ key: 'submittal-sent-back' }, { ...base, submittalFirstBidId: { 'submittal-sent-back': 'b 2' } }, 'dashboard')).toEqual({ kind: 'href', href: '/bids?tab=submittals&bidId=b%202' })
     expect(needsYouDoor({ key: 'team-reviews' }, { ...base, teamReviewFirstId: 'u-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/prospects?tab=team&stage=review&rate=u-1' })
     expect(needsYouDoor({ key: 'lien-notice-batch' }, { ...base, lienBatchGcId: 'gc-1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&gcnotice=gc-1' })
-    expect(needsYouDoor({ key: 'lien-notice-batch' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1' })
+    expect(needsYouDoor({ key: 'lien-notice-batch' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/lien-desk' })
     expect(needsYouDoor({ key: 'bulk-hours' }, { ...base, bulkHoursTypist: { actorId: 'u-2', actorName: 'Rosa M' } }, 'dashboard')).toEqual({ kind: 'href', href: '/people?tab=hours&approvals=1&typed=1&typist=u-2&typistName=Rosa%20M' })
   })
 
   it('secondary links: snooze and dismiss go to the line’s nudge, the lien desk links to the pile', () => {
     expect(needsYouSecondaryDoor({ key: 'bulk-delete' }, 'snooze')).toEqual({ kind: 'nudge', nudge: 'bulk-delete', action: 'snooze' })
     expect(needsYouSecondaryDoor({ key: 'robot-asleep' }, 'dismiss')).toEqual({ kind: 'nudge', nudge: 'robot-asleep', action: 'dismiss' })
-    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'missed')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1&liendeskPile=missed' })
-    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'letter-two')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1&liendeskPile=sent' })
+    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'missed')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=missed' })
+    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'letter-two')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=sent' })
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'snooze')).toBeNull()
     expect(needsYouSecondaryDoor({ key: 'tally-self' }, 'snooze')).toBeNull()
   })

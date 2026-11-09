@@ -1,6 +1,6 @@
 /**
  * The weekly send's switch and last run, read and written for the Bridge's card (v2.5883; `weeklySend.ts` holds the
- * keys and the words). The switch is `app_settings` `bridge_weekly_sheet_on_v1`, which a dev may update and nothing
+ * keys and the words). The switch is `app_settings` `bridge_weekly_sheet_on_v1`, which the owner or a dev may update (v2.6763, punch list #188 row 69) and nothing
  * else; the last run is the function's row, read here and never written. One interface, so the card's smoke hands it
  * a fake.
  */

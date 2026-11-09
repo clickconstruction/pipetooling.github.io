@@ -231,7 +231,7 @@ function jobsTabDoors(): Door[] {
     p({ label: 'Subs', where: 'Jobs · Subs', words: ['sub sheet', 'sub ledger', 'sub labor', 'subcontractors', 'subs'], to: '/jobs?tab=subs', gate: officeOrSuper }),
     p({ label: 'Subs · Pay', where: 'Jobs · Subs, the Pay view', words: ['pay subs', 'sub pay', 'pay a sub'], to: '/jobs?tab=subs&view=pay', gate: officeOrSuper }),
     p({ label: 'Team', where: 'Jobs · Team', words: ['team labor', 'labor rollups', 'combined labor', 'crew labor'], to: '/jobs?tab=combined-labor', gate: role('dev', 'master_technician', 'controller') }),
-    p({ label: 'Crew P&L', where: 'Jobs · Crew P&L', words: ['crew profitability', 'teams summary', 'crew p&l', 'labor against billing'], to: '/jobs?tab=teams-summary', gate: dev }),
+    p({ label: 'Crew P&L', where: 'Jobs · Crew P&L', words: ['crew profitability', 'teams summary', 'crew p&l', 'labor against billing'], to: '/jobs?tab=teams-summary', gate: ownerOrDev }),
     p({ label: 'Parts', where: 'Jobs · Parts', words: ['job parts', 'parts on a job', 'job cost', 'parts'], to: '/jobs?tab=parts', gate: office }),
     p({ label: 'Job Summary', where: 'Jobs · Job Summary', words: ['money story', 'charges', 'payments', 'job money', 'job summary'], to: '/jobs?tab=job-summary', gate: office }),
     p({ label: 'Inspections', where: 'Jobs · Inspections', words: ['inspections', 'inspection'], to: '/jobs?tab=inspections', gate: office }),
@@ -242,7 +242,8 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
-  p({ label: 'Lien desk', kind: 'window', where: 'Jobs · Stages, the orange gavel', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/jobs?tab=stages&liendesk=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "lienDesk: ['liendesk'" } }),
+  // The Lien desk is a page since punch list #182 (v2.6777): its door is its own address, the office's gate.
+  p({ label: 'Lien desk', where: 'The notices, affidavits and retainage notices on every job with money open', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/lien-desk', gate: office }),
   // The Legal desk is a page since punch list #182 (v2.5894): its doors are its own address, the collections roles' gate
   // (`canManageCollections`, the office set). The old `/jobs?tab=stages&legal=…` links redirect there.
   p({ label: 'Legal desk', where: 'Collections accounts before they go to the firm', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/legal-desk', gate: office }),
@@ -276,6 +277,7 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Accounts receivable', where: 'AR', words: ['who owes us', 'owed', 'ar', 'receivables', 'accounts receivable', 'money owed'], to: '/accounts-receivable', gate: office }),
   p({ label: 'Prospects', where: 'Prospects', words: ['prospects', 'new builders', 'new builder pipeline', 'hiring', 'candidates', 'hiring pipeline'], to: '/prospects', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),
   p({ label: 'GC leads', where: 'Prospects · GC leads', words: ['gc leads', 'owners', 'developers', 'architects', 'jobs to build as the gc', 'leads'], to: '/prospects?kind=gc-leads', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),
+  p({ label: 'Permits', where: 'Prospects · Permits', words: ['permits', 'permit ledger', 'building permits', 'who pulled the permit', 'san antonio permits', 'who wins what', 'research'], to: '/prospects?tab=permits', gate: (v) => office(v) || v.role === 'estimator', reads: { file: 'src/pages/Prospects.tsx', text: "tab === 'permits'" } }),
   p({ label: 'Subs for the bench', where: 'Prospects · Subs', words: ['subs', 'the bench', 'trade companies', 'call the top 3', 'find subs'], to: '/prospects?kind=subs', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),
   p({ label: 'GC projects', where: 'GC projects', words: ['gc projects', 'gc mode', 'project board', 'trades', 'scope', 'plans', 'gc'], to: '/gc', gate: (v) => canOpenGcProjects(v.role) }),
   p({ label: 'Trade partners', where: 'GC projects · Trade partners', words: ['trade partners', 'add a company', 'new to us', 'approve a company', 'subcontractor companies'], to: '/gc?view=partners', gate: (v) => canOpenGcProjects(v.role), reads: { file: 'src/pages/GcProjects.tsx', text: "params.get('view')" } }),
@@ -297,14 +299,14 @@ const PAGE_DOORS: readonly Door[] = [
   ),
   p({ label: 'Quickfill', where: 'Quickfill', words: ['quickfill', 'morning round', 'stations', 'office round', 'the round', 'roller'], to: '/quickfill', gate: office }),
   p({ label: 'Moneyfill', where: 'Moneyfill', words: ['moneyfill', 'close the week', 'money round', 'controller round'], to: '/moneyfill', gate: (v) => canOpenMoneyfill(v.role) }),
-  p({ label: 'The Bridge', where: 'Bridge', words: ['bridge', 'where the company stands', 'weakest link', 'monday sheet', 'the link', 'collect desk'], to: '/bridge', gate: dev }),
+  p({ label: 'The Bridge', where: 'Bridge', words: ['bridge', 'where the company stands', 'weakest link', 'monday sheet', 'the link', 'collect desk'], to: '/bridge', gate: ownerOrDev }),
   p({ label: 'Punch list', where: 'Settings · the board', words: ['punch list', 'to-dos', 'todos', 'the board', 'to do list', 'mock-ups'], to: PUNCH_LIST_PATH, gate: (v) => canOpenPunchList(v.role) }),
   p({ label: 'Projects', where: 'Projects', words: ['projects', 'project workflow', 'workflows', 'project'], to: '/projects', gate: officeOrSuper }),
   p({ label: 'New project', kind: 'window', where: 'Projects · the project form', words: ['add project', 'create project', 'new project'], to: '/projects/new', gate: officeOrSuper }),
   p({ label: 'Partnerships', where: 'Partnerships', words: ['partnerships', 'partners', 'partner statement'], to: '/partnerships', gate: dev }),
-  p({ label: 'Templates', where: 'Templates', words: ['templates', 'report templates', 'email templates'], to: '/templates', gate: dev }),
-  // The route guard admits a dev alone, though Settings → Bids & materials links an estimator here too.
-  p({ label: 'Duplicate materials', where: 'Materials · Duplicates', words: ['duplicate materials', 'dedupe parts', 'find duplicates', 'duplicates'], to: '/duplicates', gate: dev }),
+  p({ label: 'Templates', where: 'Templates', words: ['templates', 'report templates', 'email templates'], to: '/templates', gate: ownerOrDev }),
+  // Punch list #188 row 75 (v2.6766): the route guard admits an estimator and a dev. Earlier: the route guard admitted a dev alone, though Settings → Bids & materials links an estimator here too.
+  p({ label: 'Duplicate materials', where: 'Materials · Duplicates', words: ['duplicate materials', 'dedupe parts', 'find duplicates', 'duplicates'], to: '/duplicates', gate: role('dev', 'estimator') }),
   p({ label: 'Dispatch home', where: 'Dispatch Mode', words: ['dispatch mode', 'dispatch home', 'dispatch'], to: '/dispatch-mode', gate: office }),
   p({ label: 'Dispatch · Schedule', where: 'Dispatch Mode', words: ['dispatch schedule', 'schedule'], to: '/dispatch-mode/schedule', gate: office }),
   p({ label: 'Dispatch · Inbox', where: 'Dispatch Mode', words: ['dispatch inbox', 'inbox', 'dispatch requests'], to: '/dispatch-mode/inbox', gate: office }),

@@ -29,6 +29,7 @@ import {
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { SplitBillModal } from './SplitBillModal'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { BILL_TEXT_OFFER_WORDS } from '../../lib/jobs/billTextOffer'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -185,6 +186,7 @@ export function HostedStripeBillPanel({
   onAfterVoidStripeInvoiceSuccess,
   voidConfirmOverlayZIndex = 820,
   viewBillOnClose,
+  justMade = false,
 }: {
   invoice: InvoiceWithJobForBillView
   /** Runs after a successful `get-stripe-invoice-details` (server backfill has returned). */
@@ -202,6 +204,8 @@ export function HostedStripeBillPanel({
   voidConfirmOverlayZIndex?: number
   /** View bill: footer row with Close on the right, Void Stripe on the left when eligible. */
   viewBillOnClose?: () => void
+  /** Bill Customer just made this Stripe bill (v2.6772): the share row opens with the strip offering the text. */
+  justMade?: boolean
 }) {
   const { role: authRole } = useAuth()
   const stripeModeForBilling = authRole === 'dev' ? getBillingStripeModePref() : 'live'
@@ -217,6 +221,8 @@ export function HostedStripeBillPanel({
   const [stripeLoading, setStripeLoading] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
   const [stripeDetailsGeneration, setStripeDetailsGeneration] = useState(0)
+  /** The offer after the bill went or was made (v2.6772, punch list #291): the strip's first line and a key per event. */
+  const [textOffer, setTextOffer] = useState<{ lead: string; key: number } | null>(justMade ? { lead: BILL_TEXT_OFFER_WORDS.leadMade, key: 0 } : null)
   const [unwindOobOpen, setUnwindOobOpen] = useState(false)
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false)
   const [voidConfirmChecked, setVoidConfirmChecked] = useState(false)
@@ -645,7 +651,14 @@ export function HostedStripeBillPanel({
             jobId={job.id}
             customerId={job.customer_id}
             jobStatus={job.status}
-            onSent={() => setStripeDetailsGeneration((g) => g + 1)}
+            onSent={() => {
+              // A send through the row answers the strip's question (v2.6788): the host's own offer goes away here too,
+              // so a re-render of this panel never brings it back once the text or the email went.
+              setTextOffer(null)
+              setStripeDetailsGeneration((g) => g + 1)
+            }}
+            textOffer={textOffer}
+            emailedAt={inv.sent_to_customer_at}
           />
           {stripeDetail && !stripeError && stripeDetail.amount_remaining > 0 ? (
             <StripeInvoiceSendFromStripeButton
@@ -656,6 +669,8 @@ export function HostedStripeBillPanel({
               onSent={() => setStripeDetailsGeneration((g) => g + 1)}
               compact
               recordedLastSendAt={inv.sent_to_customer_at}
+              hideInlineSuccessLine
+              onSentLine={(line) => setTextOffer({ lead: line, key: Date.now() })}
             />
           ) : null}
           {canUnwindStripeOob && stripeDetail && !stripeError ? (

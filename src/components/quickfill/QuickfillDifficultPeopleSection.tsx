@@ -4,6 +4,7 @@ import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSection
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import type { Database } from '../../types/database'
@@ -43,7 +44,8 @@ export function QuickfillDifficultPeopleSection() {
   const [editReason, setEditReason] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
-  const isDev = role === 'dev'
+  // Punch list #188 row 67 (v2.6763): the assistants mark these stations every day, so the office edits the template with a dev.
+  const canEditTemplate = isOfficeRole(role)
 
   const loadData = useCallback(async () => {
     if (!authUser?.id) return
@@ -87,7 +89,7 @@ export function QuickfillDifficultPeopleSection() {
   }, [authUser?.id, showToast])
 
   const loadPeople = useCallback(async () => {
-    if (!authUser?.id || !isDev) return
+    if (!authUser?.id || !canEditTemplate) return
     setPeopleLoading(true)
     try {
       const data = await withSupabaseRetry(
@@ -106,7 +108,7 @@ export function QuickfillDifficultPeopleSection() {
     } finally {
       setPeopleLoading(false)
     }
-  }, [authUser?.id, isDev, showToast])
+  }, [authUser?.id, canEditTemplate, showToast])
 
   useEffect(() => {
     void loadData()
@@ -273,7 +275,7 @@ export function QuickfillDifficultPeopleSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {isDev && (
+      {canEditTemplate && (
         <form
           onSubmit={onAdd}
           style={{
@@ -340,7 +342,7 @@ export function QuickfillDifficultPeopleSection() {
       <div>
         {items.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>
-            {isDev ? 'No items yet. Add one above.' : 'No items yet. A dev can add checklist lines.'}
+            {canEditTemplate ? 'No items yet. Add one above.' : 'No items yet. A dev can add checklist lines.'}
           </p>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -354,7 +356,7 @@ export function QuickfillDifficultPeopleSection() {
                   background: 'var(--surface)',
                 }}
               >
-                {isDev && editRowId === row.id ? (
+                {canEditTemplate && editRowId === row.id ? (
                   <form onSubmit={saveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                     <SearchableSelect
                       value={editPersonId}
@@ -427,7 +429,7 @@ export function QuickfillDifficultPeopleSection() {
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)', marginTop: '0.2rem' }}>Reason: {row.reason_text}</div>
                       </label>
                     </div>
-                    {isDev && (
+                    {canEditTemplate && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '1.6rem' }}>
                         <button
                           type="button"

@@ -23,11 +23,13 @@ Sign-in banned · hidden from active lists and assignment pickers · taken off o
 
 A person with no login is archived the same way. Their row leaves every list even though there is no sign-in to ban.
 
-An Away note changes one thing. When one is on for the person, their sign-in stays open to that one screen instead of being banned. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away).
+A person made by mistake is deleted, not archived. While nothing points at them yet, their desk's **Status** row shows {{button:outline|Delete…}} beside Archive. The row and the roster record go for good. See [made a mistake](/help/hire-someone#made-a-mistake).
+
+An Away note changes one thing. When one is on for the person, their sign-in stays open to that one screen instead of being banned. They list under **Away** on People → Users, above Archived, with the day back. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away).
 
 ## Restore
 
-Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account. Click **Restore** beside one. The account is un-archived and can sign in again. {{button:outline|Restore}} on the person's desk does the same.
+Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account without an Away note. Click **Restore** beside one. The account is un-archived and can sign in again. {{button:outline|Restore}} on the person's desk does the same.
 
 Someone whose employment ended gets {{button:blue|Bring back…}} in Restore's place. One window restores the login and the roster row together and opens a new stint. See *bring back a teammate who left*.
 

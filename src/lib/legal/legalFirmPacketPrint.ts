@@ -19,11 +19,11 @@ import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
-import { claimEvidenceWords, claimTable, claimTotalWords } from './legalClaimLines'
+import { claimEvidenceWords, claimSettlementOnlyPrintWords, claimTable, claimTotalWords } from './legalClaimLines'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
-import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from './legalMatterDocuments'
+import { COUNSEL_ONLY_DOCUMENT_WORDS, legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from './legalMatterDocuments'
 import { settlementPathsOfMatter } from './settlementPaths'
 
 export type FirmPacketPrintOptions = {
@@ -72,7 +72,10 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const contingency = contingencyEntries(opts.matter.entries)
   // v2.6696 (punch list #171): the demand reads the claim, and Section A prints the claim's table as the office's packet does.
   const { feesTotal, demand } = firmDemand(packet.worth.claim, opts.matter.entries)
-  const claim = claimTable(packet.worth, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)
+  // v2.6697: the firm's print is the demand's paper too — a settlement-only line is left out and a sentence says how many were; the portal lists them.
+  const labelOf = (jobId: string) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId
+  const claim = claimTable(packet.worth, labelOf, { forDemand: true })
+  const settlementOnlyNote = claimSettlementOnlyPrintWords(claimTable(packet.worth, labelOf))
   const claimRows = [
     ...claim.rows.map((r) => row([`<b>${esc(r.part)}</b>${r.source === 'typed' ? '' : ' <span class="muted">fills in</span>'}`, esc(r.basis || '—'), esc(r.evidence.kind === 'ledger' ? 'the statement below' : claimEvidenceWords(r.evidence)), formatLegalMoney(r.amount)], [false, false, false, true])),
   ]
@@ -116,7 +119,9 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost') && e.kind !== 'plan' && e.kind !== 'statement' && !e.voided_at).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))
   const officeStepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(firmHistoryKindWords(s.kind)), esc(s.text)]))
 
-  const docs = opts.matter.documents ?? []
+  // v2.6720 (punch list #288): a document for counsel alone stays on the portal and out of this print, which may go to a third party.
+  const counselOnlyDocs = (opts.matter.documents ?? []).filter((d) => d.counselOnly).length
+  const docs = (opts.matter.documents ?? []).filter((d) => !d.counselOnly)
   const heldDocs = opts.matter.heldDocumentCount ?? 0
   // Documents from the office (v2.4810): one more lettered exhibit after the packet's own, when there are any.
   const docLetter = String.fromCharCode(65 + packet.exhibits.length)
@@ -197,7 +202,7 @@ ${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No jobs.')}
 <h3>The claim</h3>
-${table(['Part of the claim', 'Grounds', 'Evidence', 'Amount'], claimRows, '', claimFoot)}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}
+${table(['Part of the claim', 'Grounds', 'Evidence', 'Amount'], claimRows, '', claimFoot)}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}${settlementOnlyNote ? `<p class="muted">${esc(settlementOnlyNote)}</p>` : ''}
 <h3>Statement of account</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.', ledgerFoot)}
 <h3>Where to file</h3>
@@ -221,7 +226,7 @@ ${table(['Date', 'Kind', 'Job', 'What was said', 'Recorded by'], saidRows, 'No c
 <h2><span class="sec">D</span> Field evidence</h2>
 ${table(['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes'], evidenceRows, 'No jobs.')}
 ${statementRows.length ? `<h3>Signed hours statements</h3>\n${table(['Job', 'Record', 'Worker', 'Period', 'Hours', 'Stated days', 'Copy'], statementRows, 'None.')}` : ''}
-${docs.length || heldDocs ? `<h3>Documents from the office${docs.length ? ` (Exhibit ${docLetter})` : ''}</h3>\n${table(['Document', 'What it shows', 'Added'], documentRows, 'None shown.')}${heldDocs ? `<p class="muted">The office held back ${heldDocs} document${heldDocs === 1 ? '' : 's'}.</p>` : ''}` : ''}
+${docs.length || heldDocs || counselOnlyDocs ? `<h3>Documents from the office${docs.length ? ` (Exhibit ${docLetter})` : ''}</h3>\n${table(['Document', 'What it shows', 'Added'], documentRows, 'None shown.')}${heldDocs ? `<p class="muted">The office held back ${heldDocs} document${heldDocs === 1 ? '' : 's'}.</p>` : ''}${counselOnlyDocs ? `<p class="muted">${esc(COUNSEL_ONLY_DOCUMENT_WORDS.printLeftOut(counselOnlyDocs))}</p>` : ''}` : ''}
 ${firmThemesSectionHtml(opts.matter.themes ?? [], docs, opts.matter.entries)}
 <h2><span class="sec">E</span> Fees, costs and steps</h2>
 <h3>${esc(opts.firm.name)}'s fees and costs</h3>

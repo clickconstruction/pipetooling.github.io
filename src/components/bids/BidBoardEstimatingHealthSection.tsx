@@ -11,7 +11,8 @@ import { BidBoardSentShareDevSection } from './BidBoardSentShareDevSection'
 type BidBoardEstimatingHealthSectionProps = {
   weeklySentSummaries: ReturnType<typeof buildBidBoardWeeklySentSummaries>
   filteredBids: BidWithBuilder[]
-  isDev: boolean
+  /** Punch list #188 row 63 (v2.6764): the estimator labor table and the sent share — the owner or a dev. */
+  canSeeEstimatingLabor: boolean
   /** Bids-page override (v2.2390): open the tabbed Bid window instead of the standalone preview. */
   openBid?: (bid: BidWithBuilder) => void
 }
@@ -28,7 +29,7 @@ type BidBoardEstimatingHealthSectionProps = {
 export function BidBoardEstimatingHealthSection({
   weeklySentSummaries,
   filteredBids,
-  isDev,
+  canSeeEstimatingLabor,
   openBid,
 }: BidBoardEstimatingHealthSectionProps) {
   // Bidding-cost card context (v2.2541): won $/week over the same window as the
@@ -41,7 +42,7 @@ export function BidBoardEstimatingHealthSection({
   return (
     <Fragment>
       <BidBoardEstimatingPulseSection filteredBids={filteredBids} openBid={openBid} />
-      {isDev && (
+      {canSeeEstimatingLabor && (
         <Fragment>
           <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} wonDollarsPerWeek={wonDollarsPerWeek} />
           <BidBoardSentShareDevSection filteredBids={filteredBids} />

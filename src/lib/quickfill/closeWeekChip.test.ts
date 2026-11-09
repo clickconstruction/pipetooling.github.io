@@ -41,7 +41,7 @@ describe('closeWeekChip — station → queue map', () => {
     expect(canOpenMoneyfill('dev')).toBe(true)
     expect(canOpenMoneyfill('controller')).toBe(true)
     expect(canOpenMoneyfill('assistant')).toBe(false)
-    expect(canOpenMoneyfill('master_technician')).toBe(false)
+    expect(canOpenMoneyfill('master_technician')).toBe(true)
     expect(canOpenMoneyfill(null)).toBe(false)
   })
 })

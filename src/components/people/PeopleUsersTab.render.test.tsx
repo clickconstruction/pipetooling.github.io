@@ -69,10 +69,11 @@ const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as un
 /** A roster row with an email and no login: the one row the ⋯ menu offers Invite as user on. */
 const ROSTER_ONLY: Person = { id: 'p1', master_user_id: 'u2', kind: 'helper', name: 'Rio Vance', email: 'rio@example.com', phone: null, notes: null, account_user_id: null }
 
-function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void; reloadRoster?: () => void } = {}) {
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; users?: UserRow[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void; reloadRoster?: () => void; deleteFreshPerson?: (row: { userId: string; name: string }) => void } = {}) {
   const ui = () => (
     <PeopleUsersTab
       isDev={false}
+      canUseTags={false}
       narrowViewport={false}
       users={USERS}
       people={[]}
@@ -97,7 +98,7 @@ function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => v
       restoringId={null}
       isAlreadyUser={() => false}
       invitingId={null}
-      setInviteConfirm={() => {}}
+      inviteAsUser={() => {}}
       {...extra}
     />
   )
@@ -150,6 +151,26 @@ describe('PeopleUsersTab', () => {
     expect(within(menu).queryByText('Invite as user') !== null).toBe(isDev)
     // v2.6612: a dev's menu also opens the person's HR file.
     expect(within(menu).queryByText('Open their HR file') !== null).toBe(isDev)
+  })
+
+  // v2.6789: a users row with no login offers Delete… to the people who may archive, and never on your own row.
+  const RIO_ROW: UserRow = { id: 'u-rio', email: null, name: 'Rio Vance', role: 'helpers', notes: null, phone: null, last_sign_in_at: null, read_only: false, login_attached_at: null }
+  it('a users row with no login offers Delete… when the page hands the press, and a login row never does', async () => {
+    const deleteFreshPerson = vi.fn()
+    renderTab({ isDev: true, users: [...USERS, RIO_ROW], deleteFreshPerson })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Rio Vance' }))[0]!)
+    let menu = await screen.findByRole('menu')
+    fireEvent.click(within(menu).getByText('Delete…'))
+    expect(deleteFreshPerson).toHaveBeenCalledWith({ userId: 'u-rio', name: 'Rio Vance' })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Alex Rivera' }))[0]!)
+    menu = await screen.findByRole('menu')
+    expect(within(menu).queryByText('Delete…')).toBeNull()
+  })
+  it('without the press from the page, no row offers Delete…', async () => {
+    renderTab({ isDev: true, users: [...USERS, RIO_ROW] })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Rio Vance' }))[0]!)
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).queryByText('Delete…')).toBeNull()
   })
 
   // Empty states (punch list #184, sweep C): each one names its press, and the press works.
@@ -208,5 +229,33 @@ describe('PeopleUsersTab', () => {
     desk.changeKey = 2
     rerender(ui())
     await waitFor(() => expect(reloadRoster).toHaveBeenCalledTimes(2))
+  })
+
+  // v2.6723: an archived login with an Away note on is away, not gone — it lists above Archived with the day back and
+  // leaves the Archived lists, so Archived means sealed and banned.
+  it('an archived login with an Away note on lists under Away with the day back, and leaves Archived', async () => {
+    const users = TABLE_ROWS.users!
+    // The viewer row the other reads share gets an id here, since the Archived list keys its rows by one.
+    TABLE_ROWS.users = [{ ...(users[0] as object), id: 'u-viewer', archived_at: '2026-01-01T00:00:00Z' }, { id: 'u9', name: 'Nadia Test', email: 'nadia@example.com', role: 'helpers', archived_at: '2026-11-08T17:01:23Z', login_attached_at: '2026-02-16T23:25:04Z' }]
+    TABLE_ROWS.people = [{ account_user_id: 'u9', end_date: '2026-11-03' }]
+    TABLE_ROWS.away_notes = [{ user_id: 'u9', countdown_ymd: '2029-11-08', alert_on_day: true }]
+    try {
+      renderTab({ isDev: true })
+      const away = await screen.findByRole('table', { name: 'Away' })
+      expect(screen.getByText('Away (1)')).toBeTruthy()
+      expect(within(away).getByText('Nadia Test')).toBeTruthy()
+      expect(within(away).getByText('Left Nov 3, 2026')).toBeTruthy()
+      expect(within(away).getByText(/^Back on Thursday, Nov 8, 2029 · /)).toBeTruthy()
+      expect(within(away).getByText('· alert on')).toBeTruthy()
+      expect(within(away).getByRole('button', { name: 'Edit the note…' })).toBeTruthy()
+      expect(within(away).getByRole('button', { name: 'Bring back…' })).toBeTruthy()
+      fireEvent.click(screen.getAllByRole('button', { name: /^Archived \(/ })[0]!)
+      const archived = await screen.findByRole('table', { name: 'Archived logins' })
+      expect(within(archived).queryByText('Nadia Test')).toBeNull()
+    } finally {
+      TABLE_ROWS.users = users
+      delete TABLE_ROWS.people
+      delete TABLE_ROWS.away_notes
+    }
   })
 })

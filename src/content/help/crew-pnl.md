@@ -1,7 +1,7 @@
 ---
 title: read the Crew P&L tab
 category: Billing & Money
-roles: dev
+roles: dev, master_technician
 keywords: crew pnl, teams, labor cost, billing credit, profit per person, hours weighted, estimated, unmatched, cached figures, vehicle, truck, wheels, field hours
 order: 32
 ---

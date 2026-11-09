@@ -121,6 +121,19 @@ describe('projectPace', () => {
     expect(projectPace({ job: job({ budgetKind: 'typed', budgetHours: 200 }), target: null, checklist: none, settings }).baseSource).toBe('typed')
   })
 
+  it("reads the hours frozen at award off the score read before the live row, the number the score reads (the owner's call of 2026-11-09)", () => {
+    // Refresh from bid moved the live row to 220 h; the award froze 180 h and the Scoreboard reads 180.
+    const pace = projectPace({ job: job({ budgetKind: 'bid', budgetHours: 220 }), target: null, checklist: none, settings, score: { certifiedPct: 50, signedOn: '2026-11-08', subHours: 0, awardedHours: 180, awardedKind: 'bid' } })
+    expect(pace).toMatchObject({ baseHours: 180, baseSource: 'bid', baseFrozen: true })
+    expect(pace.line.hoursWords).toContain('180 h budget ◆ from the bid, frozen at award')
+    // A book award is a pace budget too, read as a guess; a project awarded before PR 1a has no award and keeps the live row.
+    expect(projectPace({ job: job({ budgetKind: 'bid', budgetHours: 220 }), target: null, checklist: none, settings, score: { certifiedPct: null, signedOn: null, subHours: 0, awardedHours: 241, awardedKind: 'book' } })).toMatchObject({ baseHours: 241, baseSource: 'book', baseFrozen: true })
+    expect(projectPace({ job: job({ budgetKind: 'bid', budgetHours: 220 }), target: null, checklist: none, settings, score: { certifiedPct: null, signedOn: null, subHours: 0, awardedHours: null, awardedKind: null } })).toMatchObject({ baseHours: 220, baseSource: 'bid', baseFrozen: false })
+    // The leader's target still outranks the award on the line; the words say expected, not frozen.
+    const target = { id: 't1', jobId: 'a', hours: 200, from: 180, by: 'Robert', at: '2026-11-01T20:00:00Z', why: 'framed in a week' }
+    expect(projectPace({ job: job(), target, checklist: none, settings, score: { certifiedPct: null, signedOn: null, subHours: 0, awardedHours: 180, awardedKind: 'bid' } }).line.hoursWords).toBe('200 h budget 🎯 expected · 48 h in')
+  })
+
   it('falls back to the lines when the baseline has no hours or is not a real footing', () => {
     expect(projectPace({ job: job({ budgetKind: 'bid', budgetHours: 0 }), target: null, checklist: none, settings })).toMatchObject({ baseHours: 260, baseSource: 'assumed' })
     expect(projectPace({ job: job({ budgetKind: 'other', budgetHours: 100 }), target: null, checklist: none, settings })).toMatchObject({ baseHours: 260, baseSource: 'assumed' })

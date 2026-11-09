@@ -102,6 +102,8 @@ import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen } from 'lucide-react'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
+import { isOwnerOrDev } from '../lib/doorRoles'
+import { canOpenMoneyfill } from '../lib/quickfill/closeWeekChip'
 import { MessagesBadge } from './MessagesBadge'
 import { SKY_UNDER_WORDS } from '../lib/skyUnderWords'
 import { DESK_MARKS } from '../lib/messages/deskMarks'
@@ -460,7 +462,8 @@ export default function Layout() {
   }, [impersonating, navigate])
 
   useEffect(() => {
-    if (role === 'dev') {
+    // Punch list #188 row 32 (v2.6753): pinning a page for a person is a leader's nudge, so the owner holds it with a dev.
+    if (isOwnerOrDev(role)) {
       // Tier-2 #19 (J28-F10): "Pin for someone" offers live accounts only — no archived ghosts, no twins.
       activeUsersQuery('id, name, email, role, estimator_prospects_access', { includeDev: true, withLogin: true }).then(({ data }) => {
         const rows = (data ?? []) as Array<{ id: string; name: string; email: string; role: string | null; estimator_prospects_access: boolean | null }>
@@ -708,8 +711,10 @@ export default function Layout() {
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
-          {estimatorProspectsAccess && (
+          {estimatorProspectsAccess ? (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
+          ) : (
+            <NavLink to="/prospects?tab=permits" style={linkStyle} onClick={onNavClick}>Permits</NavLink>
           )}
           {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Messages<MessagesBadge /></span></NavLink>}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
@@ -745,17 +750,17 @@ export default function Layout() {
             {quickfillIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && (role === 'dev' || role === 'controller') && (
+        {!excludeHeaderLinks && canOpenMoneyfill(role) && (
           <NavLink to="/moneyfill" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Moneyfill" aria-label="Moneyfill">
             {moneyfillIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && role === 'dev' && (
+        {!excludeHeaderLinks && isOwnerOrDev(role) && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && role === 'dev' && (
+        {!excludeHeaderLinks && isOwnerOrDev(role) && (
           <NavLink to="/bridge" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="The Bridge" aria-label="The Bridge">
             {bridgeIcon}
           </NavLink>
@@ -965,7 +970,7 @@ export default function Layout() {
                       Quickfill
                     </NavLink>
                   )}
-                  {(role === 'dev' || role === 'controller') && (
+                  {canOpenMoneyfill(role) && (
                     <NavLink
                       to="/moneyfill"
                       onClick={() => setMenuOpen(false)}
@@ -985,7 +990,7 @@ export default function Layout() {
                       Moneyfill
                     </NavLink>
                   )}
-                  {role === 'dev' && (
+                  {isOwnerOrDev(role) && (
                     <NavLink
                       to="/bridge"
                       onClick={() => setMenuOpen(false)}
@@ -2121,7 +2126,7 @@ export default function Layout() {
                 </>
               )}
             </button>
-            {role === 'dev' && pinForUsers.length > 0 && (
+            {isOwnerOrDev(role) && pinForUsers.length > 0 && (
               <div ref={pinForRef} style={{ position: 'relative' }}>
                 <button
                   type="button"

@@ -2,7 +2,7 @@
 name: "The Bridge: a desk behind every stage card"
 number: 192
 group: gated
-status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · 2026-11-08 the owner kept the drawn thresholds as his numbers ("Keep the defaults") · left: his live look on /bridge and the two new writes
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,10 +14,10 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: The owner opens each desk live on /bridge, and says whether he wants either of the two new writes (a Build job marked waits, with a reason; desk plans on bridge_calls with a kind marker).
+next: The owner answers the two yes-or-no lines under § The two writes, drawn (he kept the drawn thresholds as his numbers on 2026-11-09 and asked for mock-ups before answering the writes); a yes on write A is one small PR with a migration, a yes on write B one migration and a strip on four desks.
 size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker
-blocker: None. The thresholds are the owner's numbers as drawn, picked 2026-11-08.
-opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; the thresholds are his since 2026-11-08, so retire this folder once he has looked and answered the two writes.
+blocker: The owner's yes or no on each of the two writes, drawn as mock-ups beside this card (2026-11-09). The thresholds are settled as his numbers.
+opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
 ---
 
 # The Bridge: a desk behind every stage card (#192)
@@ -93,25 +93,80 @@ All four desks shipped, one PR each: Build v2.5929 (`src/lib/bridge/build/`, `Br
 
 ## The owner calls
 
-**Thresholds — settled 2026-11-08.** The owner picked **"Keep the defaults"**: the drawn numbers are
-his. Build's quiet-job days stay 14; Bill's day-it-finishes tolerance stays same-day; Sales' aging
-rule stays as drawn (expected dollars fade to zero past twice the asker's answer pace, the no-pace
+**Thresholds — settled.** The owner picked **"Keep the defaults"**: the drawn numbers are his.
+Build's quiet-job days stay 14; Bill's day-it-finishes tolerance stays same-day; Sales' aging rule
+stays as drawn (expected dollars fade to zero past twice the asker's answer pace, the no-pace
 fallback 45 days); Market's fading rule stays asks this quarter under half the quarterly norm, and
-the new-name span stays 91 days. The exported constants listed under *Where it stands* are the
-numbers as built; nothing moves.
+the new-name span stays 91 days. The exported constants under *Where it stands* are the numbers as
+built; nothing moves.
 
 **New writes to decide:** whether a Build job can be marked *waits, with a reason* so the ledger
 stops counting it (no such write exists); whether desk plans ride `bridge_calls` with a kind
-marker (a migration) or recording stays with the lit link only.
+marker (a migration) or recording stays with the lit link only. Both are drawn under
+[§ The two writes, drawn](#the-two-writes-drawn) with a yes-or-no line each.
 
 **Boundary rules:** a ~100%-done unbilled job — Build's row or Bill's; the crewing door —
 Schedule or the job window; whether per-GC win-rate and answer-pace words are fair to print on
 Market and Sales rows (both desks read them from decided bids).
 
+## The two writes, drawn
+
+The owner, 2026-11-09, asked about the two writes: *"I don't understand, you'll have to show me
+mock ups before I can answer this question."* The two mock-ups below open from a clone with no
+server, today on the left and the write on the right, invented jobs and names, nothing saving.
+
+**Write A — a Build job waits, with a reason.**
+[mockups/build-waits-with-reason.html](mockups/build-waits-with-reason.html). Today the Build
+desk's stalled row ends in *Crew it, or name why it waits*, and there is nowhere to name it: a job
+the GC is not ready for counts against the crew in the Stalled tile, the verdict's *N jobs hold $X
+and saw nobody* and the *biggest money idle* chip every Monday it sits (the job's status is
+Working; the app's Waiting means not started). With the write, a stalled row gains a fourth door,
+**Name why it waits ›**, beside Set the %; it opens a small window with six reasons (the GC is not
+ready for us, waiting on materials, waiting on an inspection, the customer asked us to hold,
+weather, something else), a line to type, and **Mark it waiting**. Afterwards the row sits grey
+at the end of the ledger with the reason and the date on it, out of the Stalled tile and the
+verdict and into its own *Waits, with a reason* tile so the dollars never hide, with **Lift the
+wait ›** to put it back; the same mark shows as a chip on the job's Stages card, as a fact row with
+the Lift press in the job window, and as two lines in the job's Activity. The Bridge's Build card
+keeps counting the job: it is still sold work not finished, so the wait changes who the desk
+blames, not what is sold. It costs one migration (a small table, one row per wait: the job, the
+reason, the words, who, since, lifted when, with the four fences), the desk's write and a fifth
+group in `buildDesk.ts`, and the chip and fact row on the two job surfaces. **Recommendation:
+yes.** The desk already tells the owner to name why it waits; this gives the sentence a press.
+
+**Write B — a plan made on a desk, recorded.**
+[mockups/desk-plan-recorded.html](mockups/desk-plan-recorded.html). Today a desk records
+nothing: when the owner reads the Build desk and decides Jorge crews 878 on Tuesday, the plan
+lands in the Schedule block (who, which job, which day, placed when and by whom) and, only when
+Build is the lit link, on the link desk's call as the three preset moves with owners and one free
+note; from a desk whose stage is not the link, recording is refused because one `bridge_calls`
+row holds the link for the week and a Build plan would steal it from Bill. With the write, each
+row gains a plan line (the move, the owner, the day) and the desk's footer **Record the desk's
+plan** inserts a `bridge_calls` row with `kind = 'desk_plan'`; the desk then stamps *Planned Mon,
+Oct 26 by Dana · 1 move*, the row carries a blue *planned · crew it · Jorge · Tue* chip, next
+Monday's row says whether hours followed, and the Last call card gains a second block that reads
+the desk's moves then → now beside the week's call, never as it. The job's Activity would not show
+it without a second write. The mock-up's honesty table shows how small the difference is: the
+plan never moves a crew, the Schedule block does, and what the write saves is the promise on a
+desk that was not the link. It costs one migration (one column with its default and check), the
+call reader filtering to `kind = 'call'` for the held link, the streak and Friday's verdict, the
+strip on four desks and the second block on the Last call card, and it puts two ceremonies on one
+page where the first-timer review already found the record step the hardest to read.
+**Recommendation: no, for now.** Say yes later if a Friday comes when the owner wants to know what
+he planned on a desk that was not the link.
+
+**The two questions, for the owner:**
+
+- Write A: can a Build job be marked *waits, with a reason*, so the desk stops counting it against
+  the crew? Yes or no.
+- Write B: record a desk's plan on `bridge_calls` with a kind marker, or keep recording with the
+  lit link only? Yes or no.
+
 ## What is in this folder
 
 [mockups/](mockups/) — the four approved desks (`<stage>-desk.html`, interactive prototypes:
-press rows, the % slider, the sort flip; nothing saves) and the eight content concepts behind
-them (`<stage>-concept-a/b.html`, wireframes). [findings/](findings/) — the three review files
+press rows, the % slider, the sort flip; nothing saves), the eight content concepts behind
+them (`<stage>-concept-a/b.html`, wireframes) and the two writes drawn
+(`build-waits-with-reason.html`, `desk-plan-recorded.html`). [findings/](findings/) — the three review files
 (owner, skeptic, first-timer) whose rulings bound the rebuilds. The Collect desk needs nothing
 from this to-do; its door on the card is v2.5890.

@@ -13,6 +13,8 @@ const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const DOC_MIGRATION = readFileSync('supabase/migrations/20261107013000_dev_person_doc_write.sql', 'utf8')
 const NAMED_DOCS_MIGRATION = readFileSync('supabase/migrations/20261107040000_person_documents.sql', 'utf8')
+const SHARED_DOCS_MIGRATION = readFileSync('supabase/migrations/20261108210000_shared_documents.sql', 'utf8')
+const COUNSEL_DOCS_MIGRATION = readFileSync('supabase/migrations/20261108230000_matter_document_counsel_only.sql', 'utf8')
 const NARRATIVE_OPS_MIGRATION = readFileSync('supabase/migrations/20261107100000_matter_narrative_ops.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
@@ -44,7 +46,7 @@ describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     // v2.6317: the four plan-part verbs name no RPC — they write the rows the Plans section writes, under RLS (devMcpPlanSets.test.ts).
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
-    expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person']) // v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
+    expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person', 'plan_job', 'apply_job', 'plan_account', 'apply_account', 'plan_login', 'apply_login', 'plan_password_reset', 'apply_password_reset']) // v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
     expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_event_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_doc_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
@@ -154,7 +156,7 @@ describe('devMcpWrites — the allowlist', () => {
     // restPost is reached only from the write branches: once to declare it, three calls in the generic branch, the
     // report verbs' one (v2.6430), the person-matter verbs' one (v2.6582), the plan set verbs' own dry run and stamp
     // (v2.6185), and the hours statement's mark_sent after its send leg (v2.6414).
-    expect(SERVER.match(/restPost\(/g)?.length).toBe(9)
+    expect(SERVER.match(/restPost\(/g)?.length).toBe(10)
     expect(planVerbFor('apply_hr_entry')).toBe('plan_hr_entry')
     expect(planVerbFor('revert_cost_batch')).toBeNull()
   })
@@ -189,7 +191,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
     expect(alreadyApplied('apply_matter_event', { target: MATTER, at: '2026-11-08T06:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_matter_event', { target: MATTER, at: null })).toContain('kind eq event')
   })
-  it('the migration is the plan wrapper\'s shape over legal_event_add with source mcp, and the server names both verbs at 0.40.0', () => {
+  it('the migration is the plan wrapper\'s shape over legal_event_add with source mcp, and the server names both verbs at 0.46.0', () => {
     expect(EVENT_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(EVENT_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_event_write(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(EVENT_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
@@ -204,9 +206,9 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
-    expect(SERVER).toContain('fifty-one verbs')
+    expect(SERVER).toContain('fifty-nine verbs')
   })
 })
 
@@ -322,7 +324,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -361,6 +363,51 @@ describe('the document verbs (v2.6004)', () => {
     expect(writeRpcBody('plan_matter_document', { document: { ...doc, dated_on: 'Oct 27' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_document', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs document') })
   })
+  it('a text document (v2.6716, punch list #288): markdown rides to the RPC with a text file\'s facts, refused empty, over a million characters or on a PDF; the migration keeps the words in documents', () => {
+    const md = { ...doc, original_name: 'Intake memo.md', mime: 'text/markdown', size_bytes: 20, markdown: '## One\n\nThe words.' }
+    const plan = writeRpcBody('plan_matter_document', { document: md })
+    expect(plan).toMatchObject({ ok: true, body: { p: { mime: 'text/markdown', markdown: '## One\n\nThe words.' } } })
+    expect(writeRpcBody('plan_matter_document', { document: { ...md, markdown: '  ' } })).toMatchObject({ ok: false, error: expect.stringContaining('not empty') })
+    expect(writeRpcBody('plan_matter_document', { document: { ...md, markdown: 'x'.repeat(1_000_001) } })).toMatchObject({ ok: false, error: expect.stringContaining('1,000,000') })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, markdown: 'words on a pdf' } })).toMatchObject({ ok: false, error: expect.stringContaining('text file') })
+    const plain = writeRpcBody('plan_matter_document', { document: doc })
+    expect(plain.ok ? (plain.body.p as Record<string, unknown>).markdown : 'refused').toBeUndefined()
+    expect(SHARED_DOCS_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(SHARED_DOCS_MIGRATION).toContain('ALTER TABLE public.person_documents RENAME TO documents;')
+    expect(SHARED_DOCS_MIGRATION).toContain('ALTER TABLE public.person_document_revisions RENAME TO document_revisions;')
+    expect(SHARED_DOCS_MIGRATION).toContain("c.relname = 'person_documents' AND c.relkind = 'r'")
+    expect(SHARED_DOCS_MIGRATION).toContain('ADD CONSTRAINT documents_one_owner_check CHECK ((person_id IS NULL) <> (matter_id IS NULL)) NOT VALID;')
+    expect(SHARED_DOCS_MIGRATION).toContain('CREATE OR REPLACE VIEW public.person_documents\nWITH (security_invoker = true) AS\n  SELECT d.* FROM public.documents d WHERE d.person_id IS NOT NULL;')
+    expect(SHARED_DOCS_MIGRATION).toContain('FOR SELECT USING (matter_id IS NOT NULL AND public.legal_office_can_read());')
+    expect(SHARED_DOCS_MIGRATION).toContain('FOR INSERT WITH CHECK (matter_id IS NOT NULL AND person_id IS NULL AND public.legal_office_can_read());')
+    expect(SHARED_DOCS_MIGRATION).not.toMatch(/FOR DELETE/)
+    expect(SHARED_DOCS_MIGRATION).toContain('ALTER TABLE public.legal_matter_documents ADD COLUMN IF NOT EXISTS text_document_id uuid REFERENCES public.documents(id) ON DELETE SET NULL;')
+    expect(SHARED_DOCS_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_document_write(p jsonb, p_dry_run boolean DEFAULT true, p_file jsonb DEFAULT NULL)')
+    expect(SHARED_DOCS_MIGRATION).toContain("v_markdown text := CASE WHEN p ? 'markdown' THEN p->>'markdown' ELSE NULL END;")
+    expect(SHARED_DOCS_MIGRATION).toContain("IF v_mime NOT IN ('text/plain', 'text/markdown') THEN")
+    expect(SHARED_DOCS_MIGRATION).toContain('INSERT INTO public.documents (matter_id, title, content, author_label, created_by, updated_by)')
+    expect(SHARED_DOCS_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_case_search(p_person_id uuid, p_q text, p_in text DEFAULT NULL, p_limit int DEFAULT 40)')
+    expect(SHARED_DOCS_MIGRATION).toContain('JOIN public.documents t ON t.id = d.text_document_id')
+    expect(SHARED_DOCS_MIGRATION).toContain('FROM public.documents d\n      CROSS JOIN LATERAL public.hr_doc_sections(d.content) s')
+    for (const fence of ['apply_read_only_write_blocks', 'apply_read_only_stmt_blocks', 'apply_digital_twin_write_blocks', 'apply_archived_read_blocks']) expect(SHARED_DOCS_MIGRATION).toContain(`SELECT public.${fence}();`)
+  })
+  it('counsel-only (v2.6720, punch list #288 PR 2): the mark rides to the RPC when true, is refused as a non-boolean, and the migration binds the seat and the print the way the doc says', () => {
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, counsel_only: true } })).toMatchObject({ ok: true, body: { p: { counsel_only: true } } })
+    const off = writeRpcBody('plan_matter_document', { document: { ...doc, counsel_only: false } })
+    expect(off.ok ? (off.body.p as Record<string, unknown>).counsel_only : 'refused').toBeUndefined()
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, counsel_only: 'yes' } })).toMatchObject({ ok: false, error: expect.stringContaining('counsel_only') })
+    expect(COUNSEL_DOCS_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(COUNSEL_DOCS_MIGRATION).toContain('ALTER TABLE public.legal_matter_documents ADD COLUMN IF NOT EXISTS counsel_only boolean NOT NULL DEFAULT false;')
+    expect(COUNSEL_DOCS_MIGRATION).toContain('AS RESTRICTIVE FOR SELECT TO authenticated USING (NOT (counsel_only AND public.request_is_dev_seat()));')
+    expect(COUNSEL_DOCS_MIGRATION).toContain('CREATE POLICY documents_matter_counsel_only_seat ON public.documents')
+    expect(COUNSEL_DOCS_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.matter_counsel_only_count(p_matter_id uuid)')
+    expect(COUNSEL_DOCS_MIGRATION).toContain("v_counsel boolean := COALESCE(NULLIF(btrim(COALESCE(p->>'counsel_only', '')), '')::boolean, false);")
+    expect(COUNSEL_DOCS_MIGRATION).toContain('INSERT INTO public.documents (matter_id, title, content, counsel_only, author_label, created_by, updated_by)')
+    expect(COUNSEL_DOCS_MIGRATION).toContain("SELECT 'matter_document', d.id::text, d.title, s.n, s.heading, d.dated_on::text, d.counsel_only,")
+    expect(COUNSEL_DOCS_MIGRATION).toContain("AND (f.source <> 'matter_document' OR d.text_document_id IS NULL)")
+    expect(COUNSEL_DOCS_MIGRATION).not.toMatch(/FROM public\.person_documents/)
+    expect(COUNSEL_DOCS_MIGRATION).not.toMatch(/CREATE TABLE/)
+  })
   it('carries the paper\'s day and state; a sent paper needs how and to whom, and a received one its day', () => {
     const sent = writeRpcBody('plan_matter_document', { document: { ...doc, dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'The GC, Amarillo office' } })
     expect(sent).toMatchObject({ ok: true, body: { p: { dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'The GC, Amarillo office' } } })
@@ -386,7 +433,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
   })
 })
 
@@ -486,7 +533,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
   })
 })
 
@@ -535,8 +582,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
-    expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain('Writes are fifty-nine verbs and nothing else')
   })
 })
 
@@ -759,8 +806,8 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
-    expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain('Writes are fifty-nine verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })
@@ -1072,9 +1119,9 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('fifty-one verbs')
+    expect(SERVER).toContain('fifty-nine verbs')
   })
 })
 
@@ -1156,7 +1203,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1255,6 +1302,21 @@ describe("the person document verbs (v2.6608)", () => {
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: [] } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: Array.from({ length: 21 }, () => ({ op: 'append', markdown: 'x' })) } })).toMatchObject({ ok: false })
+  })
+
+  it('v2.6713: evidence_id ties a named document to the record it transcribes — alone with doc_id, null to untie, never on the fixed two', () => {
+    const docId = '22222222-3333-4444-8555-666666666666'
+    const recordId = '33333333-4444-4555-8666-777777777777'
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: recordId } })).toMatchObject({
+      ok: true, target: docId, body: { p: { person_id: PERSON, doc_id: docId, evidence_id: recordId }, p_dry_run: true },
+    })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: null } })).toMatchObject({ ok: true, body: { p: { person_id: PERSON, doc_id: docId, evidence_id: null } } })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'Transcript of the call', markdown: '## The call', evidence_id: recordId, counsel_only: true } })).toMatchObject({
+      ok: true, body: { p: { person_id: PERSON, title: 'Transcript of the call', markdown: '## The call', counsel_only: true, evidence_id: recordId } },
+    })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'narrative', markdown: 'x', evidence_id: recordId } })).toMatchObject({ ok: false, error: expect.stringContaining('evidence_id') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: 'not-a-uuid' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'New', evidence_id: recordId } })).toMatchObject({ ok: false })
   })
 
   it('the plan reply points at apply_person_doc, and a repeat apply says the document already reads that way', () => {

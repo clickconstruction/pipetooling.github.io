@@ -122,9 +122,11 @@ export type ProjectStage = { name: string; hours: number; laborUsd: number; pctD
 export type ProjectPace = {
   input: SuperintendentLineInput
   line: SuperintendentLine
-  /** The labor budget's hours from the Costs baseline or the lines' sum, before any target. */
+  /** The labor budget's hours: the award's when the score read carries them, else the Costs baseline, else the lines' sum, before any target. */
   baseHours: number
   baseSource: JobBudgetSource
+  /** The base is the hours frozen at award, the Scoreboard's own number (the owner's call of 2026-11-09). */
+  baseFrozen: boolean
   /** The track's length: the base budget, rounded, at least 1. */
   budgetEdge: number
   /** The stages in order as pieces of the track, each as its share of the base budget in hours and at the cost rate in dollars. */
@@ -137,6 +139,11 @@ export function projectPace(args: {
   target: ExpectedHoursTarget | null | undefined
   checklist: { answered: number; asked: number }
   settings: LineBudgetSettings
+  /**
+   * The office's sign-off on the percent, the subs' sheet hours and the award's hours, off the `superintendent_scores`
+   * read (punch list #234 PR 4); null while not read.
+   */
+  score?: { certifiedPct: number | null; signedOn: string | null; subHours: number; awardedHours?: number | null; awardedKind?: string | null } | null
 }): ProjectPace {
   const { job, settings } = args
   const fixtures = stagedFixtures(job.fixtures ?? []).filter((f) => f.line_kind !== 'discount')
@@ -149,10 +156,14 @@ export function projectPace(args: {
     lines.map((l) => ({ priceUsd: l.price, entry: l.entry, pctDone: l.f.progress_pct != null ? num(l.f.progress_pct) : null })),
     settings,
   )
-  // A book baseline (punch list #234 PR 1a) is a pace budget too, read as a guess.
+  // The owner's call of 2026-11-09: the ahead-or-behind score reads the hours frozen at award, the Scoreboard's own
+  // number, so the line and the score agree. The live row stands in when the read is not here (a viewer it refuses, a
+  // project awarded before PR 1a), the lines' sum last. A book baseline (PR 1a) is a pace budget too, read as a guess.
+  const award = args.score && isJobBudgetRowKind(args.score.awardedKind ?? null) && (args.score.awardedHours ?? 0) > 0 ? { hours: args.score.awardedHours!, kind: args.score.awardedKind as JobBudgetSource } : null
   const fromBaseline = isJobBudgetRowKind(job.budgetKind) && (job.budgetHours ?? 0) > 0
-  const baseHours = fromBaseline ? job.budgetHours! : sums.laborHours
-  const baseSource: JobBudgetSource = fromBaseline ? (job.budgetKind as JobBudgetSource) : 'assumed'
+  const baseHours = award ? award.hours : fromBaseline ? job.budgetHours! : sums.laborHours
+  const baseSource: JobBudgetSource = award ? award.kind : fromBaseline ? (job.budgetKind as JobBudgetSource) : 'assumed'
+  const baseFrozen = award != null
   const budgetEdge = Math.max(1, Math.round(baseHours))
   const shares = stageSharesOf(
     lines.map((l) => ({ id: l.f.id, name: l.f.name, stage_kind: l.f.stage_kind, line_kind: l.f.line_kind, progress_pct: l.f.progress_pct, sequence_order: l.f.sequence_order, laborHours: l.calc.laborHours, laborUsd: l.calc.laborUsd })),
@@ -165,18 +176,23 @@ export function projectPace(args: {
   const input: SuperintendentLineInput = {
     pctDone: job.pct_complete != null ? num(job.pct_complete) : null,
     hoursUsed: teamHoursOf(job),
+    // A sub-performed stage counts on the sub's sheet hours (the owner's third call), as the Scoreboard counts it.
+    subHours: args.score?.subHours ?? null,
     laborDays: laborDaysOf(laborEventsOf(job)),
     hoursBudget: t ? t.hours : baseHours,
     budgetSource: t ? 'target' : baseSource,
+    budgetFrozen: !t && baseFrozen,
     target: t ? { by: t.by, at: t.at, from: t.from, why: t.why } : null,
     // The line reads only the ratio: the read's percent, over a budget of 100.
     money: job.spentPct != null ? { spentUsd: job.spentPct, budgetUsd: 100 } : null,
     // The planned finish frozen at award (punch list #234 PR 2), when the read carries one.
     plannedFinishYmd: job.plannedFinish ?? null,
     checklist: args.checklist,
-    certifiedPct: null,
+    // The office's sign-off is the certified percent (the owner's first call); the same read the Scoreboard makes.
+    certifiedPct: args.score?.certifiedPct ?? null,
+    certifiedOn: args.score?.signedOn ?? null,
   }
-  return { input, line: superintendentLine(input), baseHours, baseSource, budgetEdge, stages, shares }
+  return { input, line: superintendentLine(input), baseHours, baseSource, baseFrozen, budgetEdge, stages, shares }
 }
 
 /** Worst first: money leading, then behind by days, then even, then ahead, then no reading yet. */

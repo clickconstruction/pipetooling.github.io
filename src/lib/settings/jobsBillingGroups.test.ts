@@ -35,15 +35,22 @@ describe('jobsBillingGroups (punch list #261)', () => {
     for (const c of JOBS_BILLING_CARDS) expect('fold' in c).toBe(false)
   })
 
-  it('a dev sees every heading, a master four, the office two, the controller the cut-off too, a tech nothing', () => {
+  it('a dev sees every heading; the owner his prices, switches and firms; the office its filing; the controller the bill’s words and lists (punch list #188, v2.6756); a tech nothing', () => {
     expect(jobsBillingGroupsFor('dev').map((g) => g.cards.length)).toEqual([8, 7, 4, 4, 2, 2])
     const master = jobsBillingGroupsFor('master_technician')
-    expect(master.map((g) => g.id)).toEqual(['money', 'record', 'liens', 'notices'])
-    expect(master.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'gc-card', 'gc-cutoff', 'line-budgets', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'owner-of-record', 'gc-office-notices', 'gc-customer-notice'])
+    expect(master.map((g) => g.id)).toEqual(['money', 'record', 'liens', 'notices', 'repairs'])
+    expect(master.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['trip-charges', 'labor-rate', 'job-book', 'gc-card', 'gc-cutoff', 'line-budgets', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'developments', 'city-lines', 'county-suggestions', 'owner-of-record', 'legal-firm', 'gc-office-notices', 'gc-customer-notice', 'hide-hcp'])
     const office = jobsBillingGroupsFor('assistant')
     expect(office.map((g) => g.id)).toEqual(['money', 'record'])
-    expect(office.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'stage-checklists', 'machine-templates', 'photos', 'test-reports'])
-    expect(jobsBillingGroupsFor('controller').flatMap((g) => g.cards.map((c) => c.slug))).toContain('gc-cutoff')
+    expect(office.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'developments', 'city-lines', 'county-suggestions'])
+    const controller = jobsBillingGroupsFor('controller')
+    expect(controller.map((g) => g.id)).toEqual(['money', 'record', 'bill', 'liens'])
+    expect(controller.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'gc-cutoff', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'developments', 'city-lines', 'county-suggestions', 'invoice-issuer', 'invoice-footer', 'stripe-footer', 'bill-memo', 'uncollectible'])
+    // A dev alone keeps the company owner account, the rate card, the markup and Docsmit (rows 88, 90 and the two cards the audit did not list).
+    for (const slug of ['company-owner', 'rates', 'markup', 'docsmit'] as const) {
+      expect(master.flatMap((g) => g.cards.map((c) => c.slug)), slug).not.toContain(slug)
+      expect(controller.flatMap((g) => g.cards.map((c) => c.slug)), slug).not.toContain(slug)
+    }
     expect(jobsBillingGroupsFor('helpers')).toEqual([])
     expect(jobsBillingGroupsFor(null)).toEqual([])
   })

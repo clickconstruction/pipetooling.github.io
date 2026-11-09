@@ -8,8 +8,11 @@ import {
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
+import { canSeeStagesMoneyCharts } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
+import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useAuth } from '../hooks/useAuth'
@@ -875,9 +878,9 @@ export default function Jobs() {
       landOn(roleGateBounce('team-labor', `/jobs?tab=${tab}`).toTab)
       return
     }
-    // Masters / assistants / controllers: no Crew P&L tab (owner only)
-    const isMasterOrAssistant = authRole === 'master_technician' || isAssistantLike(authRole) || myRole === 'master_technician' || isAssistantLike(myRole)
-    if (isMasterOrAssistant && tab === 'teams-summary') {
+    // Assistants and controllers: no Crew P&L tab (the owner's and a dev's since v2.6757, punch list #188 row 1)
+    const isAssistantLikeViewer = isAssistantLike(authRole) || isAssistantLike(myRole)
+    if (isAssistantLikeViewer && tab === 'teams-summary') {
       landOn(roleGateBounce('crew-pnl', `/jobs?tab=${tab}`).toTab)
       return
     }
@@ -1069,10 +1072,11 @@ export default function Jobs() {
       )
     }
     if (stagesMoneyRole == null) return
-    if (stagesMoneyRole !== 'dev' && stagesMoneyRole !== 'controller') {
+    // The money team (punch list #188 row 39, v2.6759: the owner too).
+    if (!canSeeStagesMoneyCharts(stagesMoneyRole)) {
       // Roles with no Pipeline board at all (primary, superintendent) are already
       // spoken to by the tab gate above — don't stack a second sentence.
-      const onTheBoard = stagesMoneyRole === 'master_technician' || isAssistantLike(stagesMoneyRole)
+      const onTheBoard = isAssistantLike(stagesMoneyRole)
       if (onTheBoard) roleGateBounce('pipeline-money', '/jobs?tab=stages&stagesMoney=1')
       strip()
       return
@@ -1158,6 +1162,16 @@ export default function Jobs() {
     if (!legalRedirect) return
     navigate(legalRedirect, { replace: true })
   }, [legalRedirect, navigate])
+
+  // `?liendesk=1` (+ `&kind=`, `&liendeskJob=`, `&liendeskPile=`) and `?ownerrecords=<job id>` (the Lien desk, v2.3405; Records
+  // for an owner, punch list #86): until punch list #182 these opened the ⏱ Lien desk as a window over the board. The desk
+  // is a page now, `/lien-desk`, and every one of these links lands there (`lienDeskRedirect`), with `replace` so Back
+  // never returns to the redirect. The page gates the roles itself.
+  const lienRedirect = lienDeskRedirect(searchParams)
+  useEffect(() => {
+    if (!lienRedirect) return
+    navigate(lienRedirect, { replace: true })
+  }, [lienRedirect, navigate])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
@@ -1694,10 +1708,11 @@ export default function Jobs() {
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
   const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
   const showStagesAndBillingTabs = showPrimaryRestrictedTabs && !isSuperintendent
+  // Crew P&L (punch list #188 row 1, v2.6757): the owner's and a dev's; the toast already said *Crew P&L is for the owner*.
   const showTeamsTab = showPrimaryRestrictedTabs &&
-    authRole !== 'master_technician' && !isAssistantLike(authRole) &&
+    !isAssistantLike(authRole) &&
     authRole !== 'superintendent' && myRole !== 'superintendent' &&
-    myRole !== 'master_technician' && !isAssistantLike(myRole)
+    !isAssistantLike(myRole)
   const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
     authRole !== 'superintendent' && myRole !== 'superintendent'
   const showSuperintendentExtraTabs = !isSuperintendent
@@ -2184,7 +2199,7 @@ export default function Jobs() {
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
           canAccessBankingForParts={canAccessBankingForParts}
           showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller'}
-          canEditOverheadDials={authRole === 'dev'}
+          canEditOverheadDials={isOwnerOrDev(authRole)}
           onOpenCharges={(jobId) => setChargesWindowJobId(jobId)}
           chargesChip={chargesRateCard ? rateCardChipWords(chargesRateCard) : null}
           nicknameByDebitCard={nicknameByDebitCard}

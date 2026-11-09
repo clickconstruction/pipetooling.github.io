@@ -3,18 +3,27 @@
  * (`JobFormInvoiceList`), in View bill (`HostedStripeBillPanel`) and after Bill Customer makes a Stripe bill
  * (`SendRecordInvoiceModal`). Since punch list #125 PR 6 (v2.6710) the two sends go through the company when the caller
  * hands the job and its customer (`jobId`, `customerId`): **Email** shows the draft and its **Send the email** sends it
- * from the office through `messages-email` (`billShareDoors.ts` picks the address), and **Text** opens the customer's box
- * on Text (`ContractTextDoor`, PR 5's door) with the bill's words and pay link filled, the box's send window the confirm.
- * Neither hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only
- * drafts.
+ * from the office through `messages-email` (`billShareDoors.ts` picks the address), and **Text** opens the Tell the
+ * customer sheet on the bill (v2.6771, punch list #291; before it the customer's bare box): the Billed line filled with
+ * the bill's amount and its own pay page, the number it goes from, Preview, the first-text hold, Send later. Neither
+ * hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only drafts.
+ * After the bill goes (v2.6772, #291 PR 2) the row draws the green strip with the one question, *Text Dana the pay link
+ * too?*, after its own Email door and when a host hands `textOffer` (Send Email invoice, Bill Customer's Stripe bill,
+ * Make Stripe bill), and reads *Emailed 3:30 PM · Texted 3:32 PM* beside the links off the job's thread.
  */
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useOptionalAuth } from '../../hooks/useAuth'
 import { firstName, type Contact } from '../../lib/contacts/kernel'
-import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, BILL_TEXT_DOOR_TITLE, billEmailChannel, billEmailSentWords, billShareDoorsOffered, noEmailOnContactWords } from '../../lib/jobs/billShareDoors'
+import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, billEmailChannel, billEmailSentWords, billShareDoorsOffered, noEmailOnContactWords } from '../../lib/jobs/billShareDoors'
 import { signatureLines } from '../../lib/messages/compose'
 import { jobBoxJobKey, jobBoxJobName } from '../../lib/messages/jobBox'
+import type { TellCustomerIo } from '../../lib/tellCustomer/tellCustomerIo'
+import type { TellPrefers } from '../../lib/tellCustomer/tellCustomer'
+import { billSentMarks } from '../../lib/jobs/billTextOffer'
+import { loadBillTextedAt, loadCustomerPrefers } from '../../lib/jobs/billTextOfferIo'
+import { BillTextOfferStrip } from './BillTextOfferStrip'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
 import { replyCompany } from '../../lib/messages/replyBox'
 import { supabaseReplyIo, type ReplyIo } from '../../lib/messages/replyIo'
@@ -23,8 +32,11 @@ import {
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { billPayCode } from '../../lib/billing/billPayCodeIo'
+import { billTextLink } from '../../lib/billing/billTextLink'
+import { isPayLinkId } from '../../lib/billing/payLink'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { ContractTextDoor } from './ContractTextDoor'
+import { TellCustomerSheet } from '../customers/TellCustomerSheet'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
 import { SmsBillDraftModal } from './SmsBillDraftModal'
 import { BillQrModal } from './BillQrModal'
@@ -93,12 +105,27 @@ export type StripeInvoiceSharePanelProps = {
   /** For a smoke: the customer's contact and the sends. */
   load?: (customerId: string) => Promise<Contact>
   io?: ReplyIo
+  /** For a smoke: the Tell the customer sheet's reads and send (v2.6771). */
+  tellIo?: TellCustomerIo
+  /** The bill's ten-letter code (#290, v2.6769), asked once per bill; a smoke hands a fake. Null = no code, the id's link. */
+  mintPayCode?: (invoiceId: string) => Promise<string | null>
+  /**
+   * The offer after the bill goes (v2.6772): a host that just sent or made the bill hands the strip's first line and a key
+   * that changes per event; the row draws the strip with the question until Not now or the text goes. The row's own Email
+   * door needs none of this.
+   */
+  textOffer?: { lead: string; key: string | number } | null
+  /** When the bill's email went (`jobs_ledger_invoices.sent_to_customer_at`), for the *Emailed* mark; null with none. */
+  emailedAt?: string | null
+  /** For a smoke: the Texted read and the customer's say. */
+  loadTexted?: (jobId: string, invoiceId: string, otherLinks: readonly string[]) => Promise<number | null>
+  loadPrefers?: (customerId: string) => Promise<TellPrefers>
 }
 
-function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
+function shareCopyFromProps(p: StripeInvoiceSharePanelProps, payCode: string | null) {
   return {
     customerName: p.customerName,
-    payUrl: p.hostedInvoiceUrl,
+    payUrl: billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl }),
     amountLabel: p.amountLabel,
     jobName: p.jobName,
     hcpNumber: p.hcpNumber,
@@ -116,32 +143,108 @@ async function copyText(text: string, showToast: (m: string, t?: 'info' | 'error
 
 export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const { showToast } = useToastContext()
+  const auth = useOptionalAuth()
   const [smsDraftOpen, setSmsDraftOpen] = useState(false)
   const [smsDraftText, setSmsDraftText] = useState('')
-  const [textDoorOpen, setTextDoorOpen] = useState(false)
+  /** Text the bill (v2.6771): the Tell the customer sheet open on this bill. */
+  const [tellOpen, setTellOpen] = useState(false)
+  /** The strip after the row's own Email door went (v2.6772): its first line, or null. */
+  const [ownOffer, setOwnOffer] = useState<string | null>(null)
+  /** The host's offer the office put away with Not now, by its key. */
+  const [dismissedKey, setDismissedKey] = useState<string | number | null>(null)
+  /** When the bill was texted, off the job's thread; undefined while unread, null when never. */
+  const [textedAt, setTextedAt] = useState<number | null | undefined>(undefined)
+  const [textedGen, setTextedGen] = useState(0)
+  const [prefers, setPrefers] = useState<TellPrefers>(null)
   const [emailDraftOpen, setEmailDraftOpen] = useState(false)
   const [emailDraftSubject, setEmailDraftSubject] = useState('')
   const [emailDraftBody, setEmailDraftBody] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  /** The bill's short code (#290): asked once when the row draws with a bill id; until it answers the link is the id's. */
+  const [payCode, setPayCode] = useState<string | null>(null)
+  const mintPayCode = p.mintPayCode ?? billPayCode
+  const invoiceIdForCode = isPayLinkId(p.invoiceId) ? p.invoiceId.trim().toLowerCase() : null
+  useEffect(() => {
+    if (!invoiceIdForCode) return
+    let live = true
+    void mintPayCode(invoiceIdForCode).then((code) => {
+      if (live) setPayCode(code)
+    })
+    return () => {
+      live = false
+    }
+    // The minter is stable per caller; the bill's id is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceIdForCode])
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
   /** The doors through the company: the job and its customer at hand. */
   const doors = billShareDoorsOffered(p)
+  /** The sheet needs the signed-in person for its line's `{me}` and the send; without one the copy-only draft stands in. */
+  const tellDoor = doors && Boolean(auth?.user?.id)
   const load = p.load ?? loadCustomerContact
+  /** Stripe's own link: what the office's Customer pay page opens. */
   const url = p.hostedInvoiceUrl.trim()
+  /** The customer's link (#290): the short pay page on my.clickplumbing.com when the bill's id is at hand. */
+  const shareUrl = billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl })
+  const jobIdForReads = (p.jobId ?? '').trim()
+  const invoiceIdForReads = (p.invoiceId ?? '').trim()
+  const loadTexted = p.loadTexted ?? loadBillTextedAt
+  const loadPrefers = p.loadPrefers ?? loadCustomerPrefers
+
+  // The Texted mark (v2.6772): the job's outbound texts carrying this bill's page, read on draw and again after a send.
+  useEffect(() => {
+    if (!doors || !invoiceIdForReads) return
+    let live = true
+    void loadTexted(jobIdForReads, invoiceIdForReads, [url, shareUrl].filter(Boolean)).then((at) => {
+      if (live) setTextedAt(at)
+    })
+    return () => {
+      live = false
+    }
+    // The reader is stable per caller; the bill and the send count are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doors, jobIdForReads, invoiceIdForReads, url, shareUrl, textedGen])
+
+  const hostOffer = p.textOffer && p.textOffer.key !== dismissedKey ? p.textOffer : null
+  const offerLead = ownOffer ?? hostOffer?.lead ?? null
+  // The customer's say (v2.6572's prefers), read once the strip has something to ask.
+  useEffect(() => {
+    if (!offerLead || !doors) return
+    let live = true
+    void loadPrefers((p.customerId ?? '').trim()).then((say) => {
+      if (live) setPrefers(say)
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerLead, doors])
+
+  const putOfferAway = () => {
+    setOwnOffer(null)
+    if (p.textOffer) setDismissedKey(p.textOffer.key)
+  }
+  const emailedAtMs = p.emailedAt ? Date.parse(p.emailedAt) : NaN
+  const marks = doors && textedAt !== undefined ? billSentMarks(Number.isNaN(emailedAtMs) ? null : emailedAtMs, textedAt) : null
+  const marksLine = marks ? (
+    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }} data-testid="bill-sent-marks">
+      {marks}
+    </span>
+  ) : null
 
   function openSmsBillDraft() {
-    if (doors) {
-      setTextDoorOpen(true)
+    if (tellDoor) {
+      setTellOpen(true)
       return
     }
-    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p)))
+    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode)))
     setSmsDraftOpen(true)
   }
 
   function openEmailBillDraft() {
     setEmailDraftSubject(buildStripeInvoiceEmailSubject(p.jobName))
-    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
+    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p, payCode)))
     setEmailDraftOpen(true)
   }
 
@@ -171,6 +274,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
       })
       showToast(billEmailSentWords(channel.value), 'success')
       setEmailDraftOpen(false)
+      // The strip (v2.6772): the same words, with the question under them.
+      setOwnOffer(billEmailSentWords(channel.value))
       p.onSent?.()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The email was not sent.'), 'error')
@@ -179,15 +284,6 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     }
   }
 
-  // The text door's overlay closes on Escape, as the drafts do.
-  useEffect(() => {
-    if (!textDoorOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setTextDoorOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [textDoorOpen])
   const dashUrl = `https://dashboard.stripe.com/invoices/${encodeURIComponent(p.stripeInvoiceId.trim())}`
   const pad = p.compact ? '0.35rem' : '0.5rem'
   const btnStyle: CSSProperties = {
@@ -225,7 +321,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         </svg>
         Text
       </button>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} title="Copy the payment link">
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} title="Copy the payment link">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
           <rect x="9" y="9" width="11" height="11" rx="2" />
           <path d="M5 15V5a2 2 0 0 1 2-2h10" />
@@ -275,7 +371,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           type="button"
           title="Copy payment link"
           aria-label="Copy payment link"
-          onClick={() => void copyText(url, showToast, 'Payment link copied')}
+          onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')}
           style={iconBtnStyle}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
@@ -329,7 +425,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     </span>
   ) : (
     <>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} style={btnStyle}>
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} style={btnStyle}>
         Copy payment link
       </button>
       <button type="button" onClick={openSmsBillDraft} style={btnStyle}>
@@ -406,42 +502,24 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         sendingLabel={BILL_EMAIL_SENDING_LABEL}
         onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
       />
-      {doors && textDoorOpen ? (
-        <div
-          role="presentation"
-          data-testid="bill-text-door-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: smsZ,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
+      {tellDoor && tellOpen && auth?.user ? (
+        <TellCustomerSheet
+          moment="billed"
+          jobId={(p.jobId ?? '').trim()}
+          jobLabel={`${(p.billLabel ?? '').trim() || 'Bill'} · ${jobBoxJobName({ job_name: p.jobName, hcp_number: p.hcpNumber })}`}
+          bill={{ invoiceId: (p.invoiceId ?? '').trim(), amount: p.amountLabel.trim(), link: shareUrl }}
+          userId={auth.user.id}
+          role={auth.role}
+          zIndex={smsZ}
+          onClose={() => setTellOpen(false)}
+          onSent={() => {
+            // The text went: the strip's question is answered and the Texted mark reads again.
+            putOfferAway()
+            setTextedGen((g) => g + 1)
+            p.onSent?.()
           }}
-          onClick={() => setTextDoorOpen(false)}
-        >
-          <div role="dialog" aria-modal="true" aria-label={BILL_TEXT_DOOR_TITLE} style={{ width: '100%', maxWidth: 560, maxHeight: '100%', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <ContractTextDoor
-              title={BILL_TEXT_DOOR_TITLE}
-              jobId={(p.jobId ?? '').trim()}
-              jobName={jobBoxJobName({ job_name: p.jobName, hcp_number: p.hcpNumber })}
-              jobStatus={p.jobStatus ?? null}
-              customerId={(p.customerId ?? '').trim()}
-              typedPhone=""
-              words={buildStripeInvoiceSmsText(shareCopyFromProps(p))}
-              onClose={() => setTextDoorOpen(false)}
-              onSent={() => {
-                setTextDoorOpen(false)
-                p.onSent?.()
-              }}
-              onCopyLink={() => void copyText(url, showToast, 'Payment link copied')}
-              load={p.load}
-              io={p.io}
-            />
-          </div>
-        </div>
+          io={p.tellIo}
+        />
       ) : null}
       {p.invoiceId ? (
         <BillQrModal
@@ -457,11 +535,19 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     </>
   )
 
+  /** The strip after the bill went or was made (v2.6772), with the question that opens the sheet. */
+  const offerStrip =
+    tellDoor && offerLead ? (
+      <BillTextOfferStrip lead={offerLead} first={firstName({ name: p.customerName ?? '', goesBy: null }) || null} prefers={prefers} onText={() => setTellOpen(true)} onNotNow={putOfferAway} compact={p.compact} />
+    ) : null
+
   if (labeledCluster) {
     return (
       <>
         {modals}
+        {offerStrip}
         {labeledCluster}
+        {marksLine}
       </>
     )
   }
@@ -469,8 +555,10 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   return (
     <div style={outerStyle}>
       {modals}
+      {offerStrip}
       <div style={rowStyle}>
         {paymentLinkCluster}
+        {marksLine}
         {!p.omitCustomerPayPage ? (
           <button
             type="button"

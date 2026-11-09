@@ -1,8 +1,9 @@
 /**
  * Materials on site, the field's tab on the Job Parts Tally (punch list #209): the job's containers
  * as big cards, a search across the site, a container's lines with four presses each (Used,
- * Move to…, Can't find), Count this box one line at a time, Add a part. Every press writes a
- * movement row through the store; nothing types a number over another. The spike keeps the rows on
+ * Move to…, Can't find, Short), Count this box one line at a time, Add a part. Every press but
+ * Short writes a movement row through the store; nothing types a number over another. Short
+ * (v2.6742) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The spike keeps the rows on
  * this device (`lib/materials/onSiteStore.ts`) until the tables land.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
@@ -25,6 +26,9 @@ import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
+import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
+import { sendShortRequest } from '../../lib/materials/shortRequestIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
@@ -76,6 +80,7 @@ type View = { kind: 'containers' } | { kind: 'container'; id: string } | { kind:
 type Sheet =
   | null
   | { kind: 'qty'; reason: 'used' | 'cannot_find'; line: ContainerLine; container: Container }
+  | { kind: 'short'; line: ContainerLine; container: Container }
   | { kind: 'move'; line: ContainerLine; container: Container }
   | { kind: 'add-part'; container: Container }
   | { kind: 'add-container'; moveAfter: { line: ContainerLine; qty: number; from: Container } | null }
@@ -429,13 +434,17 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           {l.onHand <= 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={muted}>{container.label} has none left.</span>
+              {/* Short (v2.6742): a line with none left is the one most often short, so the ask stays. */}
+              <button type="button" style={{ ...btn, minHeight: 40, padding: '0 0.7rem', fontSize: '0.8rem', marginLeft: 'auto', borderColor: BLUE, color: BLUE }} onClick={() => setSheet({ kind: 'short', line: l, container })}>Short</button>
             </div>
           ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: '0.3rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: '0.3rem' }}>
             {unsorted ? <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, borderColor: BLUE, color: BLUE }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'move', line: l, container })}>Put in…</button> : null}
             <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0 }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'qty', reason: 'used', line: l, container })}>Used</button>
             {!unsorted ? <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0 }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'move', line: l, container })}>Move to…</button> : null}
             <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'qty', reason: 'cannot_find', line: l, container })}>Can't find</button>
+            {/* Short (v2.6742): the Job Parts Tally's request for more, filed from the line, so what we have and what we need are one screen. */}
+            <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, borderColor: BLUE, color: BLUE }} onClick={() => setSheet({ kind: 'short', line: l, container })}>Short</button>
           </div>
           )}
         </div>
@@ -456,6 +465,29 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </div>
       ) : null}
 
+      {sheet?.kind === 'short' ? (
+        <QtySheet
+          title="How many more do you need?"
+          sub={`${sheet.line.partName}. The office gets the Tally's request for more, as Send to Office files it.`}
+          max={SHORT_MAX}
+          quick
+          note={false}
+          label={shortLabel}
+          after={(n) => shortAfterWords(sheet.container.label, sheet.line.onHand, n)}
+          onClose={() => setSheet(null)}
+          onSave={(n) => {
+            const { line } = sheet
+            setSheet(null)
+            if (!jobId || !byUserId) {
+              showToast('Sign in again to ask the office for parts.', 'error')
+              return
+            }
+            void sendShortRequest(shortRequestRow({ jobId, line, n, byUserId }))
+              .then((outcome) => showToast(shortToast(n, line.partName, outcome), 'success'))
+              .catch((e) => showToast(shortRefusalWords(formatErrorMessage(e, 'The request did not reach the office.'), n, line.partName), 'error'))
+          }}
+        />
+      ) : null}
       {sheet?.kind === 'qty' ? (
         <QtySheet title={sheet.reason === 'used' ? 'How many did you use?' : "How many can't you find?"} sub={`${sheet.line.partName} from ${sheet.container.label}. ${sheet.container.label} has ${sheet.line.onHand}.`} max={sheet.line.onHand} quick={sheet.reason === 'used'} note label={(n) => pressLabel(sheet.reason, n)} after={(n) => leftWords(sheet.container.label, sheet.line.onHand, n)} onClose={() => setSheet(null)} onSave={(n, note) => { write(sheet.reason, sheet.line, n, sheet.container.id, null, note); setSheet(null); showToast(sheet.reason === 'used' ? `${n} used from ${sheet.container.label}. ${sheet.container.label} ${sheet.line.onHand - n <= 0 ? 'has none left' : `has ${sheet.line.onHand - n} left`}.` : `${n} marked can't find in ${sheet.container.label}. The office sees it.`, 'success') }} />
       ) : null}

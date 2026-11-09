@@ -247,6 +247,9 @@ describe('the board’s moves (v2.5627)', () => {
     expect(moveSampleWords(step('done'))).toBe('Dana, this is Rosa with Click Plumbing. The work on the water heater is done. Your bill follows by email. Text me here with any question.')
     const line: QuickReply = { id: 'q-done', text: '{first}, {job} is finished. Thank you from Click Plumbing.', for: 'customer', stepId: 'done', scope: 'team', addedBy: 'u-rosa', addedAt: 0, removed: false, uses: {}, lastUsed: null }
     expect(moveSampleWords(step('done'), [line])).toBe('Dana, the water heater is finished. Thank you from Click Plumbing.')
+    // The Billed step (v2.6773, punch list #291): the bill line with the sample amount and pay page, nothing left in braces.
+    expect(moveSampleWords(step('billed'))).toBe('Hi Dana, this is Rosa with Click Plumbing. Your bill for the water heater is ready, $1,850.00. Text me here with any question. Pay it here: https://my.clickplumbing.com/pay/k7x2m9pq4n')
+    expect(moveSampleWords(step('billed'))).not.toMatch(/\{[a-z ]+\}/)
     expect(appSendSetWords('Done', 'offer', true)).toBe('When a job is moved to Done on the Pipeline, the office is asked before the text goes.')
     expect(appSendSetWords('Done', 'off', true)).toBe('The board no longer asks when a job is moved to Done.')
   })

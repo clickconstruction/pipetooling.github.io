@@ -289,7 +289,7 @@ export default function PaySpeedsBreakdownModal({
   onOpenCustomerBills,
   onOpenJobDetail,
   canExcludePayments = false,
-  isDev = false,
+  canSetNoCountDate = false,
   canEmailMoneyWaiting = false,
   onOpenJobStacked,
   onSpeedsChanged,
@@ -306,7 +306,7 @@ export default function PaySpeedsBreakdownModal({
   /** Devs + master techs may exclude payments in the Data health drill-down (v2.2290). */
   canExcludePayments?: boolean
   /** Devs only: the drill-down's ⚙ No Count Date setting (v2.2303). */
-  isDev?: boolean
+  canSetNoCountDate?: boolean
   /** Staff senders (forecast-email gate): shows "✉ Email this weekly…" on Money waiting (v2.2565). */
   canEmailMoneyWaiting?: boolean
   /** Open a drill-down row's job STACKED above the modals, with a refresh-on-save callback (v2.2311). */
@@ -492,7 +492,7 @@ export default function PaySpeedsBreakdownModal({
             onOpenJobDetail={onOpenJobDetail}
             onOpenJobStacked={onOpenJobStacked}
             canExclude={canExcludePayments}
-            isDev={isDev}
+            canSetNoCountDate={canSetNoCountDate}
             onChanged={onSpeedsChanged}
           />
         )}

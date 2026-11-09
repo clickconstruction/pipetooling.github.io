@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
+import { canOpenBillingNotifications } from '../lib/jobs/stagesRoleGates'
 import { defaultEstimateTitle, isGenericEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
 import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
 import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
@@ -855,7 +856,7 @@ function EstimateList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ margin: 0 }}>Estimates</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {role === 'dev' || role === 'master_technician' ? (
+          {canOpenBillingNotifications(role) ? (
             <button
               type="button"
               onClick={() => setAcceptNotifySettingsOpen(true)}
@@ -5398,7 +5399,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         onSuccess={(jobId) => {
           void (async () => {
             // The estimate's texts move onto the job it became (v2.5706, punch list #139): best effort, before the page leaves.
-            if (row.customer_id) await tieEstimateTextsToJob({ customerId: row.customer_id, sentAt: row.sent_at, tokenHash: row.public_token_hash ?? null, jobId })
+            if (row.customer_id) await tieEstimateTextsToJob({ customerId: row.customer_id, sentAt: row.sent_at, tokenHash: row.public_token_hash ?? null, jobId, estimateId: row.id })
             await load()
             navigate(`/jobs?edit=${jobId}`)
           })()

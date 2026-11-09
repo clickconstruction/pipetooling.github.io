@@ -54,6 +54,8 @@ describe('projectsWithNoBaseline', () => {
     expect(projectsWithNoBaseline(s.jobs, s.fixtures, s.budgets).map((j) => j.id)).toEqual(['1031', '1042', '1070'])
     expect(projectsWithNoBaseline(s.jobs, s.fixtures, [{ job_id: '1031', kind: 'book', labor_hours: '470.4' }]).map((j) => j.id)).toEqual(['1042', '1060', '1070'])
     expect(projectsWithNoBaseline([job('1', '2026-01-01', { kind: 'project', status: 'billed' })], [], [])).toEqual([])
+    // The $2,500 floor (the owner's second call of 2026-11-09): a $350 project never appears; one with no price yet still does.
+    expect(projectsWithNoBaseline([job('2', '2026-01-01', { kind: 'project', revenue: 350 }), job('3', '2026-01-01', { kind: 'project', revenue: 2_500 }), job('4', '2026-01-01', { kind: 'project', revenue: null })], [], []).map((j) => j.id)).toEqual(['3', '4'])
   })
 })
 

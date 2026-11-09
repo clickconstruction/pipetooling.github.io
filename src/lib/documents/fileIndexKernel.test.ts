@@ -76,6 +76,9 @@ describe('textKindOf', () => {
     expect(textKindOf({ name: 'Permit.PDF', mimeType: 'application/octet-stream' })).toBe('pdf')
     expect(textKindOf({ name: 'notes.txt', mimeType: 'text/plain' })).toBe('plain')
     expect(textKindOf({ name: 'counts.csv', mimeType: 'application/octet-stream' })).toBe('plain')
+    // #285: an email file is decoded, by its kind or its name.
+    expect(textKindOf({ name: 'Re: the rock.eml', mimeType: 'application/octet-stream' })).toBe('eml')
+    expect(textKindOf({ name: 'mail', mimeType: 'message/rfc822' })).toBe('eml')
     expect(textKindOf({ name: 'IMG_0412.jpg', mimeType: 'image/jpeg' })).toBe('image')
     expect(textKindOf({ name: 'scan.HEIC', mimeType: 'application/octet-stream' })).toBe('image')
     expect(textKindOf({ name: 'plans.dwg', mimeType: 'application/acad' })).toBe('kind')

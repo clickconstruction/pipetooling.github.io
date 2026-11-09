@@ -22,7 +22,18 @@ import {
 } from './jobModeMessageCustomer'
 import type { PhoneLine } from './quickReplies/phone'
 import type { PortalLang } from './gc/portalI18n'
+import type { RecipientLine } from './messages/compose'
 import { customerLang } from './messages/customerLang'
+
+/** One of the customer's numbers as the To chip lists it (punch list #118, PR 2), a `contact_channels` row. */
+export interface JobModeNumber {
+  channelId: string
+  value: string
+  /** When it sent STOP; null when it can be texted. */
+  optedOutAt: string | null
+  /** When the office or the tech made it their usual; null when never. */
+  usualAt: string | null
+}
 
 /** The job's customer as the sheet reads them. */
 export interface JobModeCustomer {
@@ -35,6 +46,13 @@ export interface JobModeCustomer {
   tail: ThreadTail[]
   /** The language their lines go in (`customerLang`): theirs once Spanish is on, English until then. */
   lang?: PortalLang
+  /**
+   * Their numbers (punch list #118, PR 2), read through the tech's door (`contact_channels_tech_read`) or the office's.
+   * Empty before that door is pushed, so the sheet draws no chip and `quo-send` picks as before.
+   */
+  numbers?: JobModeNumber[]
+  /** The thread's texts by number, for the chip's *last line* words and the rule's second choice. */
+  lines?: RecipientLine[]
 }
 
 /**
@@ -52,6 +70,8 @@ export interface PhoneLineSend {
   quickReplyId: string
   /** The blanks the tech typed, by blank: `{ minutes: '15' }`. Forty characters each at most, on one line. */
   fills: Record<string, string>
+  /** The number the To chip picked (punch list #118, PR 2); unset or null lets `quo-send` pick by the rule. */
+  channelId?: string | null
 }
 
 /** The tech's bio (v2.5590): the second text after their first On my way to a customer, as the picked lines' ids. */
@@ -62,6 +82,8 @@ export interface PhoneBioSend {
   contactId: string | null
   jobId: string
   lineIds: string[]
+  /** The same number the line went to (punch list #118, PR 2), so the bio follows it. */
+  channelId?: string | null
 }
 
 export type PhoneSend = PhoneLineSend | PhoneBioSend
@@ -98,9 +120,18 @@ export function supabaseJobModeMessageIo(client: unknown = supabase): JobModeMes
       const lang = customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
       const contactId = ownContactId((contact.data ?? []) as CustomerContactRow[])
       if (!contactId) return { customerId, customerName, contactId: null, tail: [], lang }
-      const lines = await db.from('messages').select('direction, at, body').eq('contact_id', contactId).order('at', { ascending: false }).limit(TAIL)
+      const [lines, channels, texts] = await Promise.all([
+        db.from('messages').select('direction, at, body').eq('contact_id', contactId).order('at', { ascending: false }).limit(TAIL),
+        // The To chip's numbers and texts (punch list #118, PR 2): a tech before the door's push reads none, and the chip stays away.
+        db.from('contact_channels').select('id, kind, value, opted_out_at, usual_at').eq('contact_id', contactId).order('created_at'),
+        db.from('messages').select('channel_id, at, direction').eq('contact_id', contactId).eq('channel', 'text').order('at', { ascending: false }).limit(200),
+      ])
       checkSupabaseError(lines, 'read their messages')
-      return { customerId, customerName, contactId, tail: (lines.data ?? []) as ThreadTail[], lang }
+      const rows = channels.error ? [] : ((channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null; usual_at?: string | null }>)
+      const numbers: JobModeNumber[] = rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, optedOutAt: r.opted_out_at, usualAt: r.usual_at ?? null }))
+      const textRows = texts.error ? [] : ((texts.data ?? []) as Array<{ channel_id: string | null; at: string; direction: string }>)
+      const recipientLines: RecipientLine[] = textRows.map((l) => ({ channelId: l.channel_id, at: l.at, direction: l.direction as RecipientLine['direction'] }))
+      return { customerId, customerName, contactId, tail: (lines.data ?? []) as ThreadTail[], lang, numbers, lines: recipientLines }
     },
     async loadLines() {
       const result = await db.from('quick_replies').select(LINE_COLUMNS)

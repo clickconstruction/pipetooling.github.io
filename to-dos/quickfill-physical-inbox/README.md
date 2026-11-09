@@ -2,7 +2,7 @@
 name: "Quickfill Physical inbox: a card that decides, not a list that lingers"
 number: 158
 group: close
-status: built 2026-10-24 as v2.5815 · 5818 · 5821 · 5825 · left: the one-time sort on the live deck (the README's steps), then the owner's look
+status: built 2026-10-24 as v2.5815 · 5818 · 5821 · 5825 · the one-time sort done on the live deck 2026-11-09 (four routines, three papers filed, the tray clear) · left: the owner's look, then delete the folder
 summary: >
   Quickfill's Physical inbox station asks "Can I get to the bottom of the pile?" and gives the
   assistant one free box to type what is still in the tray. Its history is 123 marks since April
@@ -12,7 +12,7 @@ summary: >
   from GTD's own answers, the count the undecided paper with its age, a Comes back press that
   turns a monthly kind into a repeating Checklist task); B the list with dates; C retire the
   station into the Assistant Dailys row, the header's doors and the Checklist. The pick is A.
-next: The office makes the four routines with Comes back and files the three projects (Where it stands), then the owner's look, then delete the folder.
+next: The owner's look at the deck and its routines (Where it stands, 2026-11-09), then delete the folder.
 size: M
 blocker: none
 ver: v2.5815 · 5818 · 5821 · 5825
@@ -306,3 +306,11 @@ tray. Each line is typed once and pressed once.
 
 The four routines then list under the deck as the tray's routines, and the station's count
 starts honest.
+
+**2026-11-09: the sort is done**, on the live deck in the owner's Chrome as the dev, every line typed
+once and pressed once as the steps above say. The four routines list under the deck as *The tray's
+routines*, each assigned to Taunya: Toll bills (every Friday, next Friday), Insurance cards,
+Registration renewals and License and certificate renewals (30 days after each is done, next the day
+after). Lawsuit papers (Came Aug 17) filed to the Legal desk, Demand letters (Came Oct 23) to the Lien
+desk, Extra phones (Came Aug 17) under Someday. The tray reads *Nothing undecided · The tray is clear.*
+The morning Mark was left for the office. Left: the owner's look, then delete the folder.

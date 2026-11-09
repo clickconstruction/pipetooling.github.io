@@ -3,9 +3,12 @@
  * sign-off is the certified percent, the bonus is a share of the labor kept (hours saved, in dollars),
  * a stage a sub performs counts on the sub's sheet hours. `superintendent_scores` does the arithmetic
  * inside the database and lets out only what the caller may see; this kernel parses what comes back,
- * folds the rows into one line per superintendent for a period, and words them. Pure.
+ * folds the rows into one line per superintendent for a period, and words them. The owner's calls of
+ * 2026-11-09: the labor kept is priced at the roster's loaded rate (the read carries it), and a
+ * project priced under the $2,500 floor never appears in the score. Pure.
  */
 import { ymdAddDays } from '../../utils/dateUtils'
+import { BASELINE_PRICE_FLOOR_WORDS, underBaselinePriceFloor } from '../jobs/baselinePriceFloor'
 
 export type ScoreRow = {
   userId: string
@@ -13,6 +16,8 @@ export type ScoreRow = {
   jobId: string
   jobLabel: string
   status: string | null
+  /** The job's price; null when the job has none yet. A price under the floor keeps the row out of the fold. */
+  priceUsd: number | null
   awardedKind: 'bid' | 'typed' | 'book' | null
   awardedAt: string | null
   plannedFinish: string | null
@@ -26,7 +31,9 @@ export type ScoreRow = {
   hoursUnder: number | null
   scored: boolean
   signedInPeriod: boolean
-  /** The dollars, only to payroll access. */
+  /** The dollars, only to payroll access. The award's labor dollars are the bid's price of the labor; the rate is what priced the labor kept. */
+  awardedUsd: number | null
+  rateUsd: number | null
   earnedUsd: number | null
   actualUsd: number | null
   keptUsd: number | null
@@ -34,7 +41,12 @@ export type ScoreRow = {
   bonusUsd: number | null
 }
 
-export type ScoreRead = { readsWages: boolean; sharePct: number; burden: number; fromYmd: string; toYmd: string; rows: ScoreRow[] }
+/**
+ * `rateUsd` is the roster's loaded rate the labor kept is priced at (payroll access only, as a wage); `rateSource` says
+ * whether the roster had field hours in the window or each row fell back to its award's own rate — null when the read
+ * came from the function as it was before the rate (the deploy ahead of the push), which priced the award's dollars.
+ */
+export type ScoreRead = { readsWages: boolean; sharePct: number; burden: number; rateUsd: number | null; rateSource: 'roster' | 'award' | null; fromYmd: string; toYmd: string; rows: ScoreRow[] }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
@@ -61,6 +73,8 @@ export function parseScoreRead(raw: unknown): ScoreRead {
     readsWages: o.reads_wages === true,
     sharePct: num(o.share_pct) ?? 10,
     burden: num(o.burden) ?? 1.2,
+    rateUsd: num(o.rate_usd),
+    rateSource: o.rate_source === 'roster' ? 'roster' : o.rate_source === 'award' ? 'award' : null,
     fromYmd: str(o.from) ?? '',
     toYmd: str(o.to) ?? '',
     rows: rows.flatMap((x) => {
@@ -76,6 +90,7 @@ export function parseScoreRead(raw: unknown): ScoreRead {
           jobId,
           jobLabel: jobLabelOf(r),
           status: str(r.status),
+          priceUsd: num(r.price_usd),
           awardedKind: kind === 'bid' || kind === 'typed' || kind === 'book' ? kind : null,
           awardedAt: str(r.awarded_at),
           plannedFinish: str(r.planned_finish),
@@ -88,6 +103,8 @@ export function parseScoreRead(raw: unknown): ScoreRead {
           hoursUnder: num(r.hours_under),
           scored: r.scored === true,
           signedInPeriod: r.signed_in_period === true,
+          awardedUsd: num(r.awarded_usd),
+          rateUsd: num(r.rate_usd),
           earnedUsd: num(r.earned_usd),
           actualUsd: num(r.actual_usd),
           keptUsd: num(r.kept_usd),
@@ -134,9 +151,24 @@ export type SuperintendentScore = {
   usedHours: number
   keptUsd: number | null
   bonusUsd: number | null
-  /** The days against the plan across the scored jobs, as the line reads them; null without a plan. */
+  /** The days against the plan across the scored jobs, as the line reads them; null while nothing can be read. */
   daysVsPlan: number | null
+  /** Why the days read nothing, when they read nothing: the scored jobs have no plan, or a plan waits on hours or a sign-off. */
+  daysHold: DaysVsPlanHold | null
 }
+
+/** What stops a job's days from reading: no planned finish, no sign-off to pace from, or no hours in yet. */
+export type DaysVsPlanHold = 'no-plan' | 'no-sign-off' | 'no-hours'
+
+export function daysVsPlanHoldOf(r: ScoreRow): DaysVsPlanHold | null {
+  if (!r.plannedFinish) return 'no-plan'
+  if (r.certifiedPct == null || r.certifiedPct <= 0) return 'no-sign-off'
+  if (r.teamHours + r.subHours <= 0) return 'no-hours'
+  return null
+}
+
+/** The strongest reason first: a plan waiting on hours outranks a job with no plan at all. */
+const HOLD_RANK: Record<DaysVsPlanHold, number> = { 'no-hours': 0, 'no-sign-off': 1, 'no-plan': 2 }
 
 export function holdReason(r: ScoreRow): string | null {
   if (r.awardedKind === 'book') return "awarded on the book's hours, a guess; the score waits for a bid or typed baseline"
@@ -166,7 +198,9 @@ export function daysVsPlanOf(r: ScoreRow, todayYmd: string, crewHoursPerDay = 24
 export function superintendentScores(read: ScoreRead, todayYmd: string): SuperintendentScore[] {
   const byUser = new Map<string, SuperintendentScore>()
   for (const r of read.rows) {
-    const s = byUser.get(r.userId) ?? { userId: r.userId, userName: r.userName, jobs: [], held: [], hoursUnder: 0, awardedHours: 0, usedHours: 0, keptUsd: read.readsWages ? 0 : null, bonusUsd: null, daysVsPlan: null }
+    // A project priced under the floor never appears: not scored, not held, not listed (the owner's second call of 2026-11-09).
+    if (underBaselinePriceFloor(r.priceUsd)) continue
+    const s = byUser.get(r.userId) ?? { userId: r.userId, userName: r.userName, jobs: [], held: [], hoursUnder: 0, awardedHours: 0, usedHours: 0, keptUsd: read.readsWages ? 0 : null, bonusUsd: null, daysVsPlan: null, daysHold: null }
     byUser.set(r.userId, s)
     const why = holdReason(r)
     if (why) {
@@ -181,6 +215,10 @@ export function superintendentScores(read: ScoreRead, todayYmd: string): Superin
     if (r.bonusUsd != null) s.bonusUsd = (s.bonusUsd ?? 0) + r.bonusUsd
     const d = daysVsPlanOf(r, todayYmd)
     if (d != null) s.daysVsPlan = (s.daysVsPlan ?? 0) + d
+    else {
+      const hold = daysVsPlanHoldOf(r)
+      if (hold && (s.daysHold == null || HOLD_RANK[hold] < HOLD_RANK[s.daysHold])) s.daysHold = hold
+    }
   }
   return [...byUser.values()].sort((a, b) => (b.bonusUsd ?? -1) - (a.bonusUsd ?? -1) || b.hoursUnder - a.hoursUnder || a.userName.localeCompare(b.userName))
 }
@@ -198,6 +236,17 @@ export function daysWords(d: number | null): string {
   if (d == null) return ''
   if (d === 0) return 'on the plan'
   return `${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'} ${d > 0 ? 'ahead of' : 'behind'} the plan`
+}
+
+/**
+ * The Days column: the days when they read, else why they do not — "no plan", "waits on hours" (a plan with
+ * nothing clocked yet; the second walk read *no plan* here), "waits on a sign-off"; "—" with nothing scored.
+ */
+export function daysColumnWords(s: Pick<SuperintendentScore, 'jobs' | 'daysVsPlan' | 'daysHold'>): string {
+  if (s.jobs.length === 0) return '—'
+  const words = daysWords(s.daysVsPlan)
+  if (words) return words
+  return s.daysHold === 'no-hours' ? 'waits on hours' : s.daysHold === 'no-sign-off' ? 'waits on a sign-off' : 'no plan'
 }
 
 /** "$2,130 kept" / "−$1,420, nothing owed back"; '' without payroll access. */
@@ -219,12 +268,25 @@ export function jobScoreWords(r: ScoreRow): string {
   return [r.jobLabel, pct, hours, r.hoursUnder != null ? hoursUnderWords(r.hoursUnder) : null].filter(Boolean).join(' · ')
 }
 
-/** The rule card's lines, the owner's three calls in order. */
+/** The rule card's lines: the owner's three calls of 2026-11-07 and his calls of 2026-11-09, in order. */
 export const SCORE_RULE_LINES: readonly string[] = [
   "Percent: the office's own sign-off on the job's percent. The crew's percent is provisional and never scores.",
-  'Baseline: the hours and labor dollars frozen at award. Refresh from bid never moves the score.',
+  "Baseline: the hours frozen at award. Refresh from bid never moves the score, and the line budgets' sum on the Costs tab is never scored.",
   "Hours: the team's clock hours at the burden factor, and a sub-performed stage on the sub's sheet hours.",
-  'Kept: the labor budget earned at the signed-off percent minus the actual labor cost. The bonus is a share of it; a job over its baseline pays nothing and owes nothing back.',
+  "Kept: the hours earned at the signed-off percent, priced at the roster's loaded rate, minus the actual labor cost. The bonus is a share of it; a job over its baseline pays nothing and owes nothing back.",
   "Days: the planned finish frozen at award against the finish at this pace. Its own figure, never paid on.",
   "A project awarded on the book's hours is a guess and is not scored until a bid or typed baseline replaces it.",
+  `A project priced under ${BASELINE_PRICE_FLOOR_WORDS} is never on the board, as it is never on the baseline deck.`,
 ]
+
+/**
+ * The rate line under the rule: "Labor kept is priced at the roster's loaded rate, $29.01 an hour: the last 90 days of
+ * field wages at the 1.2 burden factor." Without payroll access the figure stays out; with no field hours in the window
+ * the words say each job read its award's own rate; a read from before the rate (no `rate_source` key) states the rule
+ * with no figure and claims nothing about the roster.
+ */
+export function rateRuleWords(read: Pick<ScoreRead, 'readsWages' | 'rateUsd' | 'rateSource' | 'burden'>): string {
+  if (read.rateSource === 'award') return "The roster had no recorded field hours in the 90 days before the period's end, so each job's labor kept is priced at its award's own rate, the bid's price of the labor."
+  const figure = read.rateSource === 'roster' && read.readsWages && read.rateUsd != null ? `, $${read.rateUsd.toFixed(2)} an hour` : ''
+  return `Labor kept is priced at the roster's loaded rate${figure}: the last 90 days of field wages at the ${read.burden} burden factor. The line budgets' rate stays the bid's price.`
+}

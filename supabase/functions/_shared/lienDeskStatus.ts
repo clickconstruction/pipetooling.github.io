@@ -214,10 +214,10 @@ export function lienStatusFacts(p: LienStatusPayload) {
 
 /** The desk's own link: the desk, or for one GC the desk open on its first job. */
 export function lienStatusDeskPath(p: Pick<LienStatusPayload, 'gc' | 'jobs'>): string {
-  const base = '/jobs?tab=stages&liendesk=1'
+  const base = '/lien-desk'
   if (!p.gc) return base
   const first = [...p.jobs].sort(byYmdOrder)[0]
-  return first ? `${base}&liendeskJob=${encodeURIComponent(first.jobId)}` : base
+  return first ? `${base}?tab=notices&job=${encodeURIComponent(first.jobId)}` : base
 }
 
 /** What the link line under the message says. */

@@ -1,8 +1,8 @@
 ---
 name: "A mail conversation onto an HR file: the seat's mail tag lands a thread as dated entries on a person, each with its Gmail id"
 number: 289
-group: ready
-status: built 2026-11-08 on claude/289-mail-onto-hr-file-1c7694 (v2.6715, one PR) · left after the merge — the migration push, gmail-mine then dev-mcp deployed, the live verify on a ZZ Test person
+group: close
+status: built 2026-11-08 on claude/289-mail-onto-hr-file-1c7694 (v2.6715, one PR) · merged 2026-11-08 (#7342) with its migration `20261108194723` in prod's ledger · `gmail-mine` and `dev-mcp` deployed (drift clean 2026-11-09, server 0.45.0) · verified live on ZZ Test Hand 2026-11-09 (below) · left: the October mails of the case, the owner's call, then the owner's look
 summary: >
   The seat's mail tag (v2.6568) puts a whole Gmail conversation onto a job's Activity and notes,
   every mail at its own time. A conversation about a person has no such door: the mails that bear
@@ -11,7 +11,7 @@ summary: >
   Let the mail tag take a person as its target: each mail becomes an HR entry on its day with the
   sender, the recipients, the subject and the body as plain text, the entry carries the Gmail id
   and thread id, and a later mail in the thread follows by itself as the job tag's does.
-next: After the merge push 20261108194723_hr_mail_tag, deploy gmail-mine then dev-mcp, run How to verify on a ZZ Test person and record it below; then the October mails of the case go on as one tag each.
+next: Nothing left to build or deploy. The October mails of the case go on as one tag each on the owner's word (`plan_mail_tag` with `tag.person` from the login's box, then `apply_mail_tag`); then the owner's look and delete the file. Not seen live: a later mail following into a tagged thread (no test login writes to a thread; the writes test holds the follow).
 ver: v2.6715
 size: S
 blocker: None.
@@ -81,3 +81,23 @@ and the follow's `followFiles` branch, the docs and the skill. Two things differ
 gmail-mine's own cron action (the job tag's follow was never in gmail-sync, so gmail-sync is untouched), and *Stop following*
 is the seat's `person: { person_id, stop: true }` for now, not a press on the entry — the Timeline press is a follow-up card
 if the office wants it. Left for after the merge: the push, the two deploys, and How to verify on a ZZ Test person, recorded here.
+
+## Verified (2026-11-09, dev MCP 0.45.0, migration `20261108194723` on prod)
+
+On ZZ Test Hand (a made-up person), from a Claude session through the seat, over a one-mail conversation the seat found in
+an office login's box: the app's own *Paid in full* notice for a ZZ TEST job (no test login can send mail, so the three-mail
+thread of § How to verify became this one):
+
+- `plan_mail_tag { account, thread_id, person: { person_id } }` read the thread and planned one entry: the mail's Gmail
+  id, its sender, its subject, `entryDate` the mail's own day, no files; *1 entry written, 0 on the file already, 0
+  skipped … later mail in the conversation follows as entries.*
+- `apply_mail_tag` wrote it: `person_file_entries` row `1f94d5d7…`, `source` `conversation`, `gmail_message_id` and
+  `gmail_thread_id` the mail's ids. `get_person_file` draws it in the Said lane on its day as a *conversation* line, the
+  fixed shape (From, To, Subject, Sent, then the body as plain text). `email_tag_threads` held the follow row with
+  `person_id` set and no job.
+- Planned again on the same thread: *0 entries written, 1 mail on the file already; the follow is on already and is
+  refreshed* — the mail's `kind` read *already*, *an entry on the file holds this mail*. Nothing was applied.
+- `search_case` (in: entries) for two words from the subject returned the entry with the match marked.
+- `plan_mail_tag` with `person: { person_id, stop: true }`: *the follow on this conversation is lifted … the 1 entry
+  already on the file stay*; `apply_mail_tag` lifted it (`stopped: true`), and `email_tag_threads` no longer holds a row
+  for the thread. The entry stays on the file.

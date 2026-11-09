@@ -970,7 +970,8 @@ export default function SettingsCatalogsTab({
         </>
       )}
 
-      {myRole === 'dev' && (
+      {/* Punch list #188 row 27 (v2.6764): the estimators' own names, with a dev. */}
+      {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Takeoff, Labor, and Price Book Names</h2>
           <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
@@ -1157,7 +1158,8 @@ export default function SettingsCatalogsTab({
         </>
       )}
 
-      {myRole === 'dev' && (
+      {/* Punch list #188 row 27 (v2.6764): the estimators' own names, with a dev. */}
+      {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Counts Quick-add Names</h2>
           <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>

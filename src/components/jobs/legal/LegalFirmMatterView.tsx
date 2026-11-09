@@ -5,10 +5,10 @@ import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeS
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmExhibitWhere, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmDemandWords, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { claimTable, claimTotalWords, type ClaimTableRow } from '../../../lib/legal/legalClaimLines'
+import { CLAIM_SETTLEMENT_ONLY_CHIP, claimSettlementOnlyWords, claimTable, claimTotalWords, type ClaimTableRow } from '../../../lib/legal/legalClaimLines'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
-import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import { COUNSEL_ONLY_DOCUMENT_WORDS, legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { portalThemeCountWords, type PortalTheme } from '../../../lib/legal/legalThemes'
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
 import { counselReadFacts, counselReadLine, counselTriesWords, currentCounselRead } from '../../../lib/legal/counselRead'
@@ -16,6 +16,7 @@ import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
 import { settlementPathsOfMatter } from '../../../lib/legal/settlementPaths'
 import LegalSettlementPaths from './LegalSettlementPaths'
 import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
+import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { CardCell } from './LegalCardCell'
@@ -44,6 +45,8 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { FIRM_TAB_LABELS, firmTabsFor, firmTabShown, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 import { answeredGaps, gapAnswerByline } from '../../../lib/legal/legalGapAnswers'
+import { KEPT_OUT_WORDS, proceedingKindWords, proceedingStatusWords, type LegalProceedingForFirm } from '../../../lib/legal/legalProceedings'
+import { isPersonRole, personRoleWords } from '../../../lib/legal/legalMatterPeople'
 import { partiesStrip } from '../../../lib/legal/legalParties'
 import LegalPartiesStrip from './LegalPartiesStrip'
 
@@ -215,13 +218,54 @@ export function FirmClaimTable({ packet, documents }: { packet: LegalPacket; doc
         head={['Part of the claim', 'Grounds', 'Evidence', 'Amount']}
         numCols={[3]}
         rows={[
-          ...claim.rows.map((r) => [<span key="p"><b>{r.part}</b>{r.source !== 'typed' ? <span style={{ color: FAINT }}> · fills in</span> : null}</span>, r.basis || '—', evidence(r), formatLegalMoney(r.amount)]),
+          ...claim.rows.map((r) => [<span key="p"><b>{r.part}</b>{r.source !== 'typed' ? <span style={{ color: FAINT }}> · fills in</span> : null}{r.settlementOnly ? <span style={{ color: COPPER }}> · {CLAIM_SETTLEMENT_ONLY_CHIP}</span> : null}</span>, r.basis || '—', evidence(r), formatLegalMoney(r.amount)]),
           [<b key="t">{claimTotalWords(claim)}</b>, '', '', <b key="a" data-legal-firm-claim-total>{formatLegalMoney(claim.total)}</b>],
         ]}
         empty=""
       />
       {claim.note ? <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>{claim.note}</p> : null}
+      {claim.settlementOnlyCount > 0 ? <p data-legal-firm-claim-settlement-only style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>{claimSettlementOnlyWords(claim)} What each path nets counts it.</p> : null}
       <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>The open bills and the retainage held fill in from the office's records. The typed lines are what the office claims past the bills, each with its grounds and the document that shows it. The demand above reads this total plus your fees and costs.</p>
+    </div>
+  )
+}
+
+/**
+ * The proceedings beside the claim on the firm's Account tab (v2.6726, punch list #174, the owner's call: the firm sees
+ * the list): kind and name, the agency and its reference, the contact's name and role from the matter's people, where
+ * it stands and the documents behind it as links when they travelled. The office's note never arrives; a proceeding
+ * whose documents are kept out of settlement letters says so, so counsel's own letters honor the hold.
+ */
+export function FirmProceedingsTable({ proceedings, documents }: { proceedings: ReadonlyArray<LegalProceedingForFirm>; documents: ReadonlyArray<LegalPortalDocument> }) {
+  if (!proceedings.length) return null
+  const docCell = (p: LegalProceedingForFirm): JSX.Element => {
+    if (!p.documentIds.length) return <span style={{ color: FAINT }}>—</span>
+    return (
+      <span style={{ display: 'grid', gap: 2 }}>
+        {p.documentIds.map((id) => {
+          const doc = documents.find((d) => d.id === id)
+          if (!doc) return <span key={id} style={{ color: MUTED }}>a document the office holds</span>
+          return doc.url ? <a key={id} href={doc.url} target="_blank" rel="noreferrer" style={{ color: COPPER }}>{doc.title} ↗</a> : <span key={id}>{doc.title}</span>
+        })}
+        {p.keepOut ? <span data-legal-firm-proceeding-kept-out style={{ color: MUTED, fontSize: 12 }}>{KEPT_OUT_WORDS}</span> : null}
+      </span>
+    )
+  }
+  return (
+    <div data-legal-firm-proceedings>
+      <div style={portalH}>Beside the claim</div>
+      <PortalTable
+        head={['Proceeding', 'Agency · reference', 'Contact', 'Where it stands', 'Documents']}
+        rows={proceedings.map((p) => [
+          <span key="p" data-legal-firm-proceeding={p.id}><span style={{ color: MUTED }}>{proceedingKindWords(p.kind)} · </span><b>{p.title}</b></span>,
+          [p.agency, p.reference ? `ref ${p.reference}` : ''].filter(Boolean).join(' · ') || '—',
+          p.contactName ? `${p.contactName}${p.contactRole ? ` · ${isPersonRole(p.contactRole) ? personRoleWords(p.contactRole) : p.contactRole}` : ''}` : '—',
+          proceedingStatusWords(p.status, p.statusOn),
+          docCell(p),
+        ])}
+        empty=""
+      />
+      <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>What runs beside the collections claim: an agency complaint, a records request, a bond claim. A proceeding marked kept out of settlement letters holds its documents out of anything addressed to the other side.</p>
     </div>
   )
 }
@@ -267,6 +311,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
         <WhereToFile account={a} />
         <div style={h}>Property record</div>
         <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· {propertySourceNote(p.source)}</span></span> : p.address, p.county || '—', p.owner || '—', ownerMailingAddressCell(p), p.legalDescription || '—', p.parcelId || '—', propertyKindCell(p.propertyKind)])} empty="No property record on file." />
+        <FirmProceedingsTable proceedings={matter.proceedings ?? []} documents={matter.documents ?? []} />
       </div>
     )
   }
@@ -525,14 +570,17 @@ function FirmThemes({ themes, documents, entries }: { themes: ReadonlyArray<Port
 
 /** Documents from the office (v2.4810), under the field work on the Evidence tab: each with one line on what it shows and a 15-minute link. */
 function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPortalDocument>; held: number }) {
+  // v2.6716 (punch list #288): a text document's words open under its row on Read; the file still opens on its link.
+  const [reading, setReading] = useState<string | null>(null)
   if (documents.length === 0 && held === 0) return null
   return (
     <div data-legal-firm-documents>
       <div style={portalH}>Documents from the office · {documents.length}</div>
       <PortalTable
         head={['Document', 'What it shows', 'State', 'Dated · added', '']}
+        subRows={documents.map((d) => (d.text && reading === d.id ? <div key={d.id} data-legal-firm-document-text className="hr-doc-body" style={{ padding: '6px 10px 10px', fontSize: 13, maxHeight: '60vh', overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: hrDocMarkdownToSafeHtml(d.text) }} /> : null))}
         rows={documents.map((d) => [
-          <span key="t"><b>{d.title}</b><div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
+          <span key="t"><b>{d.title}</b>{d.counselOnly ? <span data-legal-firm-document-counsel title={COUNSEL_ONLY_DOCUMENT_WORDS.portalLine} style={{ marginLeft: 6, fontSize: portalSmall(11), color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 {COUNSEL_ONLY_DOCUMENT_WORDS.chip}</span> : null}<div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}{d.counselOnly ? <> · {COUNSEL_ONLY_DOCUMENT_WORDS.portalLine}</> : null}{d.text ? <> · <button type="button" data-legal-firm-document-read aria-expanded={reading === d.id} onClick={() => setReading(reading === d.id ? null : d.id)} style={{ font: 'inherit', color: COPPER, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>{reading === d.id ? 'Fold' : 'Read here'}</button></> : null}</div></span>,
           d.shows,
           // v2.5846: a draft is shared on purpose (the office's call) and says so; a sent paper carries its record.
           <span key="s" data-legal-firm-document-state={d.state} style={{ color: d.state === 'draft' ? COPPER : MUTED, fontWeight: d.state === 'draft' ? 600 : undefined }}>{legalDocumentStateWords(d) || 'Final'}</span>,

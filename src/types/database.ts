@@ -9390,6 +9390,181 @@ export type Database = {
           },
         ]
       }
+      document_revisions: {
+        Row: {
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          document_id: string
+          id: string
+          matter_id: string | null
+          person_id: string | null
+          replaced_at: string
+          replaced_by: string | null
+          replaced_by_label: string | null
+          title: string
+        }
+        Insert: {
+          author_label?: string | null
+          content: string
+          counsel_only?: boolean
+          document_id: string
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title: string
+        }
+        Update: {
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          document_id?: string
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_revisions_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          created_at: string
+          created_by: string | null
+          evidence_id: string | null
+          id: string
+          matter_id: string | null
+          person_id: string | null
+          source_drive_file_id: string | null
+          source_sha256: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_contract_scans: {
         Row: {
           files: Json
@@ -9858,6 +10033,8 @@ export type Database = {
           last_error: string | null
           last_mail_at: string | null
           last_read_at: string | null
+          person_id: string | null
+          placed_by_app: boolean
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
@@ -9873,6 +10050,8 @@ export type Database = {
           last_error?: string | null
           last_mail_at?: string | null
           last_read_at?: string | null
+          person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9888,6 +10067,8 @@ export type Database = {
           last_error?: string | null
           last_mail_at?: string | null
           last_read_at?: string | null
+          person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9911,6 +10092,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "email_tag_threads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_tag_threads_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -9926,6 +10114,32 @@ export type Database = {
           },
           {
             foreignKeyName: "email_tag_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tag_threads_off: {
+        Row: {
+          gmail_thread_id: string
+          untagged_at: string
+          user_id: string
+        }
+        Insert: {
+          gmail_thread_id: string
+          untagged_at?: string
+          user_id: string
+        }
+        Update: {
+          gmail_thread_id?: string
+          untagged_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tag_threads_off_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -10887,6 +11101,7 @@ export type Database = {
           bid_id: string | null
           bytes: number | null
           checked_at: string
+          counsel_only: boolean
           customer_id: string | null
           drive_file_id: string
           embed_note: string | null
@@ -10895,6 +11110,7 @@ export type Database = {
           folder_kind: string
           indexed_at: string
           jobs_ledger_id: string | null
+          matter_id: string | null
           mime: string
           modified_at: string | null
           name: string
@@ -10904,7 +11120,10 @@ export type Database = {
           pages: number | null
           pages_read: number | null
           path: string
+          person_id: string | null
           search: unknown
+          source: string
+          source_id: string | null
           text: string | null
           text_source: string | null
           text_why: string | null
@@ -10913,6 +11132,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id: string
           embed_note?: string | null
@@ -10921,6 +11141,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime: string
           modified_at?: string | null
           name: string
@@ -10930,7 +11151,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10939,6 +11163,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id?: string
           embed_note?: string | null
@@ -10947,6 +11172,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime?: string
           modified_at?: string | null
           name?: string
@@ -10956,7 +11182,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10981,6 +11210,20 @@ export type Database = {
             columns: ["jobs_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -21751,6 +21994,7 @@ export type Database = {
           lien_offer_pct: number
           lien_offer_set_by: string | null
           lien_offer_taken_at: string | null
+          pay_code: string | null
           retainage_release: boolean
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
@@ -21795,6 +22039,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -21839,6 +22084,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -22710,6 +22956,7 @@ export type Database = {
           matter_id: string
           removed_at: string | null
           removed_by: string | null
+          settlement_only: boolean
           title: string
           updated_at: string
           updated_by: string | null
@@ -22725,6 +22972,7 @@ export type Database = {
           matter_id: string
           removed_at?: string | null
           removed_by?: string | null
+          settlement_only?: boolean
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -22740,6 +22988,7 @@ export type Database = {
           matter_id?: string
           removed_at?: string | null
           removed_by?: string | null
+          settlement_only?: boolean
           title?: string
           updated_at?: string
           updated_by?: string | null
@@ -22786,6 +23035,7 @@ export type Database = {
         Row: {
           added_at: string
           added_by: string | null
+          counsel_only: boolean
           dated_on: string | null
           held_reason: string
           id: string
@@ -22802,6 +23052,7 @@ export type Database = {
           source_message_id: string | null
           state: string
           storage_path: string
+          text_document_id: string | null
           title: string
           voided_at: string | null
           voided_by: string | null
@@ -22810,6 +23061,7 @@ export type Database = {
         Insert: {
           added_at?: string
           added_by?: string | null
+          counsel_only?: boolean
           dated_on?: string | null
           held_reason?: string
           id?: string
@@ -22826,6 +23078,7 @@ export type Database = {
           source_message_id?: string | null
           state?: string
           storage_path: string
+          text_document_id?: string | null
           title: string
           voided_at?: string | null
           voided_by?: string | null
@@ -22834,6 +23087,7 @@ export type Database = {
         Update: {
           added_at?: string
           added_by?: string | null
+          counsel_only?: boolean
           dated_on?: string | null
           held_reason?: string
           id?: string
@@ -22850,6 +23104,7 @@ export type Database = {
           source_message_id?: string | null
           state?: string
           storage_path?: string
+          text_document_id?: string | null
           title?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -22882,6 +23137,27 @@ export type Database = {
             columns: ["source_message_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
             referencedColumns: ["id"]
           },
           {
@@ -26299,6 +26575,7 @@ export type Database = {
           mailbox: string | null
           office_only: boolean
           optout_line: string | null
+          placed_by_app: boolean
           project_id: string | null
           quick_reply_id: string | null
           quo_id: string | null
@@ -26341,6 +26618,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -26383,6 +26661,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -26814,6 +27093,7 @@ export type Database = {
           prepared_at: string
           prepared_by: string
           project_id: string | null
+          send_at: string | null
           send_on: string | null
           sent_at: string | null
           sent_by_user_id: string | null
@@ -26837,6 +27117,7 @@ export type Database = {
           prepared_at?: string
           prepared_by?: string
           project_id?: string | null
+          send_at?: string | null
           send_on?: string | null
           sent_at?: string | null
           sent_by_user_id?: string | null
@@ -26860,6 +27141,7 @@ export type Database = {
           prepared_at?: string
           prepared_by?: string
           project_id?: string | null
+          send_at?: string | null
           send_on?: string | null
           sent_at?: string | null
           sent_by_user_id?: string | null
@@ -28599,6 +28881,172 @@ export type Database = {
           },
         ]
       }
+      permit_pulls: {
+        Row: {
+          city: string
+          error: string | null
+          id: string
+          ran_at: string
+          rows_kept: number
+          rows_seen: number
+          since: string | null
+          source: string
+        }
+        Insert: {
+          city: string
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_kept?: number
+          rows_seen?: number
+          since?: string | null
+          source: string
+        }
+        Update: {
+          city?: string
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_kept?: number
+          rows_seen?: number
+          since?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
+      permit_verdicts: {
+        Row: {
+          decided_at: string
+          decided_by: string
+          id: string
+          look_again_on: string | null
+          permit_id: string
+          prospect_id: string | null
+          reason: string
+          verdict: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by: string
+          id?: string
+          look_again_on?: string | null
+          permit_id: string
+          prospect_id?: string | null
+          reason: string
+          verdict: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string
+          id?: string
+          look_again_on?: string | null
+          permit_id?: string
+          prospect_id?: string | null
+          reason?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_verdicts_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_verdicts_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_verdicts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permits: {
+        Row: {
+          address: string | null
+          address_key: string | null
+          area_sf: number | null
+          city: string
+          contact: string | null
+          declared_value: number | null
+          first_seen_at: string
+          id: string
+          issued_on: string | null
+          kind: string
+          lat: number | null
+          lng: number | null
+          permit_number: string
+          permit_type: string
+          project_name: string | null
+          pulled_at: string
+          raw: Json | null
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string | null
+          work_type: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_key?: string | null
+          area_sf?: number | null
+          city: string
+          contact?: string | null
+          declared_value?: number | null
+          first_seen_at?: string
+          id?: string
+          issued_on?: string | null
+          kind: string
+          lat?: number | null
+          lng?: number | null
+          permit_number: string
+          permit_type: string
+          project_name?: string | null
+          pulled_at?: string
+          raw?: Json | null
+          residential?: boolean
+          source: string
+          stage: string
+          submitted_on?: string | null
+          work_type?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_key?: string | null
+          area_sf?: number | null
+          city?: string
+          contact?: string | null
+          declared_value?: number | null
+          first_seen_at?: string
+          id?: string
+          issued_on?: string | null
+          kind?: string
+          lat?: number | null
+          lng?: number | null
+          permit_number?: string
+          permit_type?: string
+          project_name?: string | null
+          pulled_at?: string
+          raw?: Json | null
+          residential?: boolean
+          source?: string
+          stage?: string
+          submitted_on?: string | null
+          work_type?: string | null
+          zip?: string | null
+        }
+        Relationships: []
+      }
       person_availability: {
         Row: {
           created_at: string
@@ -28921,144 +29369,6 @@ export type Database = {
           },
         ]
       }
-      person_document_revisions: {
-        Row: {
-          author_label: string | null
-          content: string
-          counsel_only: boolean
-          document_id: string
-          id: string
-          person_id: string
-          replaced_at: string
-          replaced_by: string | null
-          replaced_by_label: string | null
-          title: string
-        }
-        Insert: {
-          author_label?: string | null
-          content: string
-          counsel_only?: boolean
-          document_id: string
-          id?: string
-          person_id: string
-          replaced_at?: string
-          replaced_by?: string | null
-          replaced_by_label?: string | null
-          title: string
-        }
-        Update: {
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          document_id?: string
-          id?: string
-          person_id?: string
-          replaced_at?: string
-          replaced_by?: string | null
-          replaced_by_label?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_document_revisions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "person_document_index"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "person_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_replaced_by_fkey"
-            columns: ["replaced_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      person_documents: {
-        Row: {
-          archived_at: string | null
-          author_label: string | null
-          content: string
-          counsel_only: boolean
-          created_at: string
-          created_by: string | null
-          id: string
-          person_id: string
-          source_drive_file_id: string | null
-          source_sha256: string | null
-          title: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          archived_at?: string | null
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          person_id: string
-          source_drive_file_id?: string | null
-          source_sha256?: string | null
-          title: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          archived_at?: string | null
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          person_id?: string
-          source_drive_file_id?: string | null
-          source_sha256?: string | null
-          title?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_documents_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_documents_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_documents_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       person_file_attachments: {
         Row: {
           author_label: string | null
@@ -29152,6 +29462,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           entry_date: string
+          gmail_message_id: string | null
+          gmail_thread_id: string | null
           id: string
           person_id: string
           source: string
@@ -29162,6 +29474,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_date: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
           id?: string
           person_id: string
           source?: string
@@ -29172,6 +29486,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_date?: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
           id?: string
           person_id?: string
           source?: string
@@ -36629,6 +36945,7 @@ export type Database = {
           login_attached_at: string | null
           my_mail_hidden_labels: string[]
           my_mail_on: boolean
+          my_mail_sent_read_at: string | null
           name: string
           needs_supervision: boolean
           notes: string | null
@@ -36666,6 +36983,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name: string
           needs_supervision?: boolean
           notes?: string | null
@@ -36703,6 +37021,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name?: string
           needs_supervision?: boolean
           notes?: string | null
@@ -37759,6 +38078,96 @@ export type Database = {
         }
         Relationships: []
       }
+      development_history_heads: {
+        Row: {
+          agent_label: string | null
+          author_user_id: string | null
+          bid_id: string | null
+          body_chars: number | null
+          body_head: string | null
+          created_at: string | null
+          customer_id: string | null
+          development_id: string | null
+          file_path: string | null
+          happened_at: string | null
+          id: string | null
+          job_id: string | null
+          link_url: string | null
+          source: string | null
+          via: string | null
+        }
+        Insert: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body_chars?: never
+          body_head?: never
+          created_at?: string | null
+          customer_id?: string | null
+          development_id?: string | null
+          file_path?: string | null
+          happened_at?: string | null
+          id?: string | null
+          job_id?: string | null
+          link_url?: string | null
+          source?: string | null
+          via?: string | null
+        }
+        Update: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body_chars?: never
+          body_head?: never
+          created_at?: string | null
+          customer_id?: string | null
+          development_id?: string | null
+          file_path?: string | null
+          happened_at?: string | null
+          id?: string | null
+          job_id?: string | null
+          link_url?: string | null
+          source?: string | null
+          via?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_history_entries_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_change_orders_office: {
         Row: {
           answered_on: string | null
@@ -37874,6 +38283,7 @@ export type Database = {
           counsel_only: boolean | null
           created_at: string | null
           created_by: string | null
+          evidence_id: string | null
           headings: Json | null
           id: string | null
           person_id: string | null
@@ -37891,6 +38301,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37908,6 +38319,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37924,6 +38336,188 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_document_revisions: {
+        Row: {
+          author_label: string | null
+          content: string | null
+          counsel_only: boolean | null
+          document_id: string | null
+          id: string | null
+          matter_id: string | null
+          person_id: string | null
+          replaced_at: string | null
+          replaced_by: string | null
+          replaced_by_label: string | null
+          title: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          document_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string | null
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          document_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string | null
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_revisions_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_documents: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          content: string | null
+          counsel_only: boolean | null
+          created_at: string | null
+          created_by: string | null
+          evidence_id: string | null
+          id: string | null
+          matter_id: string | null
+          person_id: string | null
+          source_drive_file_id: string | null
+          source_sha256: string | null
+          title: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {
@@ -38289,6 +38883,15 @@ export type Database = {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
       }
+      answered_from_own_mailbox: {
+        Args: {
+          p_contact_id: string
+          p_job_id?: string
+          p_job_kind?: string
+          p_words?: string
+        }
+        Returns: string
+      }
       app_today: { Args: never; Returns: string }
       apply_agreed_write_down_to_billed_invoice: {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
@@ -38489,6 +39092,7 @@ export type Database = {
       }
       bid_version_lock_may_override: { Args: never; Returns: boolean }
       bid_version_lock_refusal: { Args: { p_version: string }; Returns: string }
+      bill_pay_code: { Args: { p_invoice_id: string }; Returns: string }
       bio_line_say: {
         Args: { p_id: string; p_say: boolean }
         Returns: undefined
@@ -39204,6 +39808,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_matter_doc_read: {
+        Args: { p_doc_id: string; p_matter_id: string; p_section?: string }
+        Returns: Json
+      }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
         Returns: string
@@ -39427,6 +40035,35 @@ export type Database = {
           indexed_at: string
           name: string
           text: string
+        }[]
+      }
+      file_index_records_drop_gone: { Args: never; Returns: number }
+      file_index_records_due: {
+        Args: {
+          max_rows?: number
+          p_matter_id?: string
+          p_person_id?: string
+          retry_after?: string
+        }
+        Returns: {
+          bucket: string
+          bytes: number
+          counsel_only: boolean
+          drive_file_id: string
+          held: boolean
+          matter_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          person_id: string
+          record_day: string
+          record_id: string
+          record_kind: string
+          record_title: string
+          source: string
+          source_id: string
+          storage_path: string
         }[]
       }
       file_license_expiry_notice: {
@@ -39842,6 +40479,10 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      gc_remove_bench_company: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       gc_remove_punch_item: { Args: { p_item_id: string }; Returns: undefined }
       gc_retainage_held: { Args: { p_sow_id: string }; Returns: number }
@@ -40483,6 +41124,10 @@ export type Database = {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
+      get_customer_pay_speeds: {
+        Args: { p_customer_ids: string[] }
+        Returns: Json
+      }
       get_customers_list_bundle: { Args: never; Returns: Json }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_day_book_payload: {
@@ -40755,6 +41400,10 @@ export type Database = {
           n: number
         }[]
       }
+      hr_doc_slice: {
+        Args: { p_section?: string; p_text: string; p_who?: string }
+        Returns: Json
+      }
       humanize_job_status: { Args: { p: string }; Returns: string }
       import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
       insert_accounting_label_suggestion_service: {
@@ -41007,6 +41656,7 @@ export type Database = {
           p_line_id: string
           p_payer_key: string
           p_payer_name: string
+          p_settlement_only?: boolean
           p_title: string
         }
         Returns: Json
@@ -42680,6 +43330,14 @@ export type Database = {
         Args: { p_bid_id: string; p_name: string }
         Returns: string
       }
+      matter_counsel_only_count: {
+        Args: { p_matter_id: string }
+        Returns: number
+      }
+      matter_text_document_is_counsel_only: {
+        Args: { p_document_id: string }
+        Returns: boolean
+      }
       mercury_bank_return_reason: {
         Args: {
           p_amount: number
@@ -42759,6 +43417,7 @@ export type Database = {
         Args: { p_firm_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_pay_code: { Args: never; Returns: string }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
@@ -42848,10 +43507,15 @@ export type Database = {
           p_contact: string
           p_job_id: string
           p_job_kind: string
+          p_send_at?: string
           p_send_on?: string
           p_step: string
         }
         Returns: string
+      }
+      nudge_offer_retime: {
+        Args: { p_offer: string; p_send_at: string }
+        Returns: undefined
       }
       nudge_offer_sent: {
         Args: { p_message: string; p_offer: string }
@@ -42870,6 +43534,10 @@ export type Database = {
         Returns: string
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
+      on_site_job_summary: {
+        Args: { p_job_id: string; p_since?: string }
+        Returns: Json
+      }
       on_site_line_on_hand: {
         Args: {
           p_container_id: string
@@ -43386,6 +44054,50 @@ export type Database = {
         Returns: string
       }
       request_is_dev_seat: { Args: never; Returns: boolean }
+      research_contact_history: {
+        Args: { p_keys: string[] }
+        Returns: {
+          bids: number
+          key: string
+          last_bid_on: string
+          on_deck: boolean
+          won: number
+        }[]
+      }
+      research_name_key: { Args: { p_name: string }; Returns: string }
+      research_permits: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_permit_on: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_reason: string
+          work_type: string
+          zip: string
+        }[]
+      }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
@@ -44481,6 +45193,7 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: boolean
       }
+      user_can_research_permits: { Args: never; Returns: boolean }
       user_can_work_team_prospect: {
         Args: { p_prospect_id: string }
         Returns: boolean

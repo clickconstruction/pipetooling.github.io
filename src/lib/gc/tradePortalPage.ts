@@ -13,8 +13,8 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { PortalSchedule } from './schedule/portalSchedule'
-import type { ScheduleWork, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import type { PortalStage, ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import { parseTradeThread, type PortalThreadLine } from './tradePortalThread'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -37,14 +37,19 @@ export type TradePortalAnswer =
       today: string
       slice: TradePortalSlice
       sample: boolean
-      /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). None: no chart. */
-      schedules: Record<string, PortalSchedule>
+      /**
+       * The company's chart on each job being built, by the job's id (the schedule's PR 14b), with the day we plan to
+       * finish beside it (punch list #205, PR 2). None: no chart.
+       */
+      schedules: Record<string, TradePortalChart>
       /** Its side of the schedule on each job being built (the Portal's P5d-ii). None: nothing to show. */
       scheduleWork: Record<string, ScheduleWork>
       /** The home's schedule to-dos, worked out where the schedule is (P5d-ii, call 5). */
       scheduleTodos: PortalTodo[]
       /** The company's trade flow rows, for its first page (Messages cut 8c). Null: an older function, or a flow that did not read. */
       flow: TradeFlowRows | null
+      /** Its thread on Messages (punch list #205, PR 5). Null: an older function, or a thread that did not read, and the tab keeps its list. */
+      thread: PortalThreadLine[] | null
     }
   | { kind: 'error'; key: TradePortalErrorKey }
 
@@ -68,6 +73,7 @@ export function readTradePortalAnswer(ok: boolean, body: unknown): TradePortalAn
     scheduleWork: scheduleWorkOf(body.scheduleWork),
     scheduleTodos: scheduleTodosOf(body.scheduleTodos),
     flow: parseTradeFlow(body.flow),
+    thread: parseTradeThread(body.thread),
   }
 }
 
@@ -116,15 +122,78 @@ function scheduleTodosOf(v: unknown): PortalTodo[] {
  * The charts beside the slice (the schedule's PR 14b): each job's that reads as one. A function deployed before the
  * chart sends none, and the page then draws none, so the function and the page deploy in either order.
  */
-function schedulesOf(v: unknown): Record<string, PortalSchedule> {
+function schedulesOf(v: unknown): Record<string, TradePortalChart> {
   if (!isObject(v)) return {}
   const bars = (b: unknown) => Array.isArray(b) && b.every((x) => isObject(x) && typeof x.lineId === 'string' && typeof x.start === 'string' && typeof x.finish === 'string')
   return Object.fromEntries(
-    Object.entries(v).filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string'),
-  ) as Record<string, PortalSchedule>
+    Object.entries(v)
+      .filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string')
+      // The planned finish (punch list #205, PR 2) is a day or nothing, and the whole job's stages (PR 3) each read as one;
+      // an older function sends neither.
+      .map(([id, s]) => {
+        const chart = s as TradePortalChart
+        const stages = Array.isArray(chart.stages) ? chart.stages.filter(stageReads) : []
+        return [id, { ...chart, finish: typeof chart.finish === 'string' ? chart.finish : null, ...(stages.length > 0 ? { stages } : { stages: undefined }) }]
+      }),
+  ) as Record<string, TradePortalChart>
+}
+
+const STAGE_STATES = ['done', 'underway', 'behind', 'notStarted']
+
+/** One stage of the whole job that reads as one (punch list #205, PR 3): its name, dates, percent, state and the company's own labels. */
+function stageReads(x: unknown): x is PortalStage {
+  return (
+    isObject(x) &&
+    typeof x.key === 'string' &&
+    typeof x.label === 'string' &&
+    typeof x.start === 'string' &&
+    typeof x.finish === 'string' &&
+    typeof x.pct === 'number' &&
+    typeof x.state === 'string' &&
+    STAGE_STATES.includes(x.state) &&
+    Array.isArray(x.yours) &&
+    x.yours.every((y) => typeof y === 'string')
+  )
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+/** What a file the company sent us is (punch list #205, PR 4): the `gc_trade_files` purposes the portal names. */
+export type PortalFileWhat = 'submittal' | 'change' | 'quote' | 'waiver' | 'note'
+
+/** One file the company sent us on a job, as Your files on this job lists it. */
+export interface PortalFileRow {
+  id: string
+  what: PortalFileWhat
+  /** A waiver's form (`paper`), else null. */
+  paper: string | null
+  name: string
+  url: string
+  /** The day it went, in the app's calendar (`uploaded_at`'s date part). */
+  day: string
+}
+
+const FILE_WHATS: readonly PortalFileWhat[] = ['submittal', 'change', 'quote', 'waiver', 'note']
+
+/**
+ * The company's files by job (punch list #205, PR 4), newest first: its own uploads and the papers the portal made for
+ * it, each with its Drive link. A row with no https link, or one the portal cannot name, is left out. A slice from an
+ * older function has none.
+ */
+export function tradeFilesByProject(slice: TradePortalSlice): Record<string, PortalFileRow[]> {
+  const out: Record<string, PortalFileRow[]> = {}
+  for (const f of slice.files ?? []) {
+    const what = str(f.purpose)
+    const url = str(f.drive_url).trim()
+    const projectId = str(f.project_id)
+    if (!projectId || !/^https:\/\//.test(url) || !(FILE_WHATS as readonly string[]).includes(what)) continue
+    const at = str(f.uploaded_at)
+    const row: PortalFileRow = { id: str(f.id), what: what as PortalFileWhat, paper: typeof f.paper === 'string' && f.paper !== '' ? f.paper : null, name: str(f.name), url, day: at.slice(0, 10) }
+    ;(out[projectId] ??= []).push(row)
+  }
+  for (const rows of Object.values(out)) rows.sort((a, b) => b.day.localeCompare(a.day) || b.id.localeCompare(a.id))
+  return out
+}
 
 /** The Drive link of a project's set, by its number: where Look at the plans opens. Empty when it has none. */
 export function setDriveUrl(slice: TradePortalSlice, projectId: string, rev: number): string {
@@ -140,6 +209,8 @@ export type SentLine = string | { title?: string; items: string[] }
 export interface SentMessage {
   id: string
   on: string
+  /** The instant it went (`sent_at`, punch list #205 PR 5), for its place among the thread's lines. Unset on an older slice. */
+  at?: string
   subject: string
   lines: SentLine[]
   /** The names it went to. */
@@ -160,6 +231,7 @@ export function sentMessages(slice: TradePortalSlice): SentMessage[] {
     .map((m: SliceRow) => ({
       id: str(m.id),
       on: str(m.sent_on),
+      ...(str(m.sent_at) ? { at: str(m.sent_at) } : {}),
       subject: str(m.subject),
       lines: (Array.isArray(m.lines) ? m.lines : []).map(lineOf).filter((l): l is SentLine => l !== null),
       to: (Array.isArray(m.to_names) ? m.to_names : []).filter((n): n is string => typeof n === 'string' && n.trim() !== ''),

@@ -2,12 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
-import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, withScheduleTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
-import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, withScheduleTodos, type PaperworkLine, type PortalFileRow, type SentMessage } from '../../lib/gc/tradePortalPage'
+import type { ScheduleWork, TradePortalChart } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { TradeFlowRows } from '../../../supabase/functions/_shared/gcTradeFlow'
 import { todayNoon, tradeFirstPage, withoutPageTodos, type TradePagePress } from '../../lib/portal/tradeFirstPage'
 import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
-import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
@@ -15,6 +14,8 @@ import { GcTradePortalProject } from './GcTradePortalProject'
 import { PortalLangContext, usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalPeople } from './GcTradePortalPeople'
+import { GcTradePortalThread } from './GcTradePortalThread'
+import type { PortalThreadLine } from '../../lib/gc/tradePortalThread'
 import { GcTradePortalPaperwork, GcTradePortalPapersPage } from './GcTradePortalPapers'
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 import { GcTradePortalWhere } from './GcTradePortalWhere'
@@ -30,6 +31,10 @@ import { GcTradePortalWhere } from './GcTradePortalWhere'
  * (`flow`, `GcTradePortalWhere`). It carries the company's asks and its own papers, so Your jobs and Asked to bid
  * leave the home, and Needs you keeps what the flow has no step for. Without a flow (an older function, or one that
  * did not read) the home is as it was.
+ *
+ * Since punch list #205's PR 5 the Messages tab is the company's thread with its reply box (`GcTradePortalThread`) when
+ * the answer carries `thread`: the same lines the office reads on Messages, and the emails we sent. Without one (an
+ * older function, or a thread that did not read) the tab keeps the read-only list of what we sent.
  */
 
 const GC = GC_COMPANY.shortName
@@ -40,11 +45,13 @@ export function GcTradePortalView({
   lang,
   messages,
   planUrl,
+  files = {},
   banner,
   schedules = {},
   scheduleWork = {},
   scheduleTodos = [],
   flow = null,
+  thread = null,
 }: {
   state: GcState
   partnerId: string
@@ -52,15 +59,19 @@ export function GcTradePortalView({
   messages: SentMessage[]
   /** The Drive link of a project's set by its number; empty when it has none. */
   planUrl: (projectId: string, rev: number) => string
+  /** The company's files on each job, by the job's id (punch list #205, PR 4). None: no block. */
+  files?: Record<string, PortalFileRow[]>
   /** A line above the page: the sample, or the office's preview. */
   banner?: string
-  /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). */
-  schedules?: Record<string, PortalSchedule>
+  /** The company's chart on each job being built, by the job's id (the schedule's PR 14b), with the planned finish (#205, PR 2). */
+  schedules?: Record<string, TradePortalChart>
   /** Its side of the schedule on each job being built (P5d-ii), and the home's schedule to-dos the function works out. */
   scheduleWork?: Record<string, ScheduleWork>
   scheduleTodos?: PortalTodo[]
   /** The company's trade flow rows, for the home's first page (Messages cut 8c). Null: the home as it was. */
   flow?: TradeFlowRows | null
+  /** Its thread on Messages (punch list #205, PR 5). Null: the tab keeps its read-only list. */
+  thread?: PortalThreadLine[] | null
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
@@ -81,6 +92,10 @@ export function GcTradePortalView({
     top.current?.querySelector(`[data-portal-anchor="${anchor}"]`)?.scrollIntoView?.({ block: 'start' })
     setAnchor(null)
   }, [anchor, shown])
+  // The company's to-dos, once (#205, PR 2): the home's Needs you reads them, and a job's page reads its own under its head.
+  // The schedule's come worked out by the function (P5d-ii-2), in their place by portalTodos' own order.
+  const asks = useMemo(() => portalAsks(state, partnerId), [state, partnerId])
+  const allTodos = useMemo(() => withScheduleTodos(portalHomeTodos(state, partnerId, asks, lang), scheduleTodos), [state, partnerId, asks, lang, scheduleTodos])
   if (!partner) return null
   const tab = (key: 'portal' | 'messages', label: string) => (
     <button
@@ -120,21 +135,32 @@ export function GcTradePortalView({
           <div style={{ marginTop: '0.3rem', fontSize: '1rem', fontWeight: 600 }}>{partner.company}</div>
           <div role="tablist" aria-label={partner.company} style={{ display: 'flex', gap: '0.3rem', marginTop: '0.45rem' }}>
             {tab('portal', pt(lang, 'navPortal'))}
-            {tab('messages', pt(lang, 'navMessages', { gc: GC }))}
+            {tab('messages', thread ? pt(lang, 'navMessagesThread') : pt(lang, 'navMessages', { gc: GC }))}
           </div>
         </header>
         {banner && <div style={{ padding: '0.45rem 0.9rem', borderBottom: `1px solid ${HAIR}`, fontSize: '0.8rem', background: 'var(--bg-amber-100)' }}>{banner}</div>}
         {screen === 'messages' ? (
           <div style={{ padding: '0.9rem' }}>
-            <Messages partner={partner} messages={messages} onOpenPortal={() => go(null)} />
+            {thread ? <GcTradePortalThread lines={thread} messages={messages} projects={state.projects} /> : <Messages partner={partner} messages={messages} onOpenPortal={() => go(null)} />}
           </div>
         ) : screen === 'papers' ? (
           <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
         ) : shown ? (
-          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} work={scheduleWork[shown.id] ?? null} />
+          <GcTradePortalProject
+            project={shown}
+            partner={partner}
+            today={state.today}
+            planUrl={(rev) => planUrl(shown.id, rev)}
+            files={files[shown.id] ?? []}
+            onHome={() => go(null)}
+            schedule={schedules[shown.id] ?? null}
+            work={scheduleWork[shown.id] ?? null}
+            todos={allTodos.filter((todo) => todo.projectId === shown.id)}
+            onTodo={(todo) => go(shown.id, todo.anchor)}
+          />
         ) : (
           <div style={{ padding: '0.9rem' }}>
-            <Home state={state} partner={partner} scheduleTodos={scheduleTodos} flow={flow} onOpenProject={go} onPapers={() => setScreen('papers')} />
+            <Home state={state} partner={partner} asks={asks} allTodos={allTodos} flow={flow} onOpenProject={go} onPapers={() => setScreen('papers')} />
           </div>
         )}
       </div>
@@ -149,28 +175,28 @@ export function GcTradePortalView({
 function Home({
   state,
   partner,
-  scheduleTodos,
+  asks,
+  allTodos,
   flow,
   onOpenProject,
   onPapers,
 }: {
   state: GcState
   partner: Partner
-  scheduleTodos: PortalTodo[]
+  asks: PortalAsk[]
+  /** Every to-do of the company's, the schedule's among them, as the view works them out once (#205, PR 2). */
+  allTodos: PortalTodo[]
   flow: TradeFlowRows | null
   onOpenProject: (id: string, anchor?: string) => void
   onPapers: () => void
 }) {
   const { lang, t } = usePortalLang()
-  const asks = portalAsks(state, partner.id)
   const { jobs, bidding, past } = portalHomeGroups(asks)
   const page = useMemo(
     () => (flow ? tradeFirstPage(flow, Object.fromEntries(state.projects.map((p) => [p.id, p.name])), todayNoon(state.today), lang) : null),
     [flow, state.projects, state.today, lang],
   )
-  // The schedule's to-dos come worked out by the function (P5d-ii-2), in their place by portalTodos' own order. What
-  // the first page shows as theirs leaves Needs you, so each thing to do shows once.
-  const allTodos = withScheduleTodos(portalHomeTodos(state, partner.id, asks, lang), scheduleTodos)
+  // What the first page shows as theirs leaves Needs you, so each thing to do shows once.
   const todos = page ? withoutPageTodos(allTodos, page) : allTodos
   const press = usePortalPress()
   // The paperwork line a to-do opened (P5b-1): its block scrolls into view, and the vetting form opens.

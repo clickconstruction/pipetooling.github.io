@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -29,13 +29,14 @@ A delivery the office lands waits in **Unsorted**. Tap it, then tap {{button:out
 
 ## Use a part, move it or say you can't find it
 
-Tap a box to open it. Each line has three presses.
+Tap a box to open it. Each line has four presses.
 
 - {{button:outline|Used}} takes the number you used out of the box.
 - {{button:outline|Move to…}} puts some in another box, back to the supply house, to the truck or marks them damaged.
 - {{button:outline-amber|Can't find}} says the box should have it and it is not there. The office sees it that day.
+- {{button:outline-blue|Short}} asks the office for more. Type how many more you need and tap **Ask the office for 4**. The request lands on the job's Parts tab, the same as Send to Office. A part from the parts book also gets a draft purchase order. A line with none left keeps Short beside its words.
 
-Every press is one row in the ledger. A wrong press gets a new press. Nothing is edited.
+Every press but Short is one row in the ledger. A wrong press gets a new press. Nothing is edited. Short writes a request, not a row in the box.
 
 ## Count a box
 
@@ -60,6 +61,8 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 ## Scan a label
 
 A printed label carries a code. Point your camera at it and the box opens. The office prints labels from Jobs → Materials. Each label prints on its own sheet.
+
+Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
 

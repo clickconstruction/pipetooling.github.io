@@ -31,6 +31,9 @@
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
+import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
+import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
+import { isJobVerb, jobInput } from './devMcpJobs.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -139,6 +142,23 @@ export const WRITE_VERBS = {
   // read of the person and of any matter standing on them (devMcpPersonMatter.ts), refused when one already stands.
   plan_matter_open_person: { rpc: null, step: 'plan' },
   apply_matter_open_person: { rpc: null, step: 'apply' },
+  // v2.6790 / 0.49.0 (punch list #293): a job as the New Job form makes it — one jobs_ledger row under RLS as the dev,
+  // then the kind; no RPC exists for a job's birth, so rpc is null — the dry run is the server's read of the customer,
+  // the service type, the owner rule's settings and the live jobs wearing the name (devMcpJobs.ts).
+  plan_job: { rpc: null, step: 'plan' },
+  apply_job: { rpc: null, step: 'apply' },
+  // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
+  // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
+  // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
+  // and the RPC the desk itself calls (add_worker, invite-user, create-user, send-sign-in-email, detach-login,
+  // change-user-email, set-user-password, resetPasswordForEmail); no wrapper, so rpc is null — the dry run is the server's
+  // read of the users row, the roster row and the auth stamps (devMcpAccount.ts).
+  plan_account: { rpc: null, step: 'plan' },
+  apply_account: { rpc: null, step: 'apply' },
+  plan_login: { rpc: null, step: 'plan' },
+  apply_login: { rpc: null, step: 'apply' },
+  plan_password_reset: { rpc: null, step: 'plan' },
+  apply_password_reset: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -248,6 +268,18 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isJobVerb(verb)) {
+    // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
+    const built = jobInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isAccountVerb(verb)) {
+    // v2.6792: the shape check is devMcpAccount's; the dry run is the server's read of the account, its roster row and the auth stamps.
+    const built = verb === 'plan_account' || verb === 'apply_account' ? accountInput(verb, input, todayYmd()) : verb === 'plan_login' || verb === 'apply_login' ? loginInput(verb, input) : passwordResetInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isPlanPartVerb(verb)) {
     // v2.6317: the shape check is devMcpPlanSets'; the dry run is the server's read of the part, not an RPC's.
     const built = planPartInput(verb, input)
@@ -275,7 +307,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -288,9 +320,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
     const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
     const archive = typeof doc.archive === 'boolean' ? doc.archive : null
+    // v2.6713 (punch list #287): the record the document transcribes — a uuid, or null to untie; a named document only.
+    const evidenceSet = 'evidence_id' in doc && doc.evidence_id !== undefined
+    const evidenceId = evidenceSet ? (doc.evidence_id === null ? null : typeof doc.evidence_id === 'string' ? doc.evidence_id.trim() : '') : null
+    if (evidenceSet && (kind || (evidenceId !== null && !UUID_RE.test(evidenceId)))) return { ok: false, error: shape }
     if ((counselOnly !== null || archive !== null) && !docId && !(title && counselOnly !== null && archive === null)) return { ok: false, error: shape }
-    // A named document may take the mark or the archive alone; the fixed two and a new title need the text.
-    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null))) return { ok: false, error: shape }
+    // A named document may take the mark, the archive or the record alone; the fixed two and a new title need the text.
+    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null || evidenceSet))) return { ok: false, error: shape }
     // v2.6712 (punch list #286): the server read a Drive file and put its text in as markdown; the source rides to the row.
     // The two come together, on a named document, with the whole text — the RPC holds the same rule.
     const sourceId = typeof doc.source_drive_file_id === 'string' ? doc.source_drive_file_id.trim() : ''
@@ -305,6 +341,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops) p.ops = ops
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
+    if (evidenceSet) p.evidence_id = evidenceId
     if (sourceId) {
       p.source_drive_file_id = sourceId
       p.source_sha256 = sourceSha
@@ -499,7 +536,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
     const document = obj(input.document)
-    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
+    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256) or markdown (a text document's words, kept as text and searched by section; the server makes the .md file), counsel_only? (true: for counsel alone — on the portal with a lock, out of the printed packet, never read by the seat or the agent), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
     if (!document) return { ok: false, error: shape }
     const str = (k: string) => (typeof document[k] === 'string' ? (document[k] as string).trim() : '')
     const matterId = str('matter_id')
@@ -511,6 +548,18 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const sizeBytes = typeof document.size_bytes === 'number' && Number.isInteger(document.size_bytes) ? document.size_bytes : NaN
     if (!UUID_RE.test(matterId) || !title || !shows || !originalName || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0)) return { ok: false, error: shape }
     const p: Json = { matter_id: matterId, title, shows, original_name: originalName, mime, size_bytes: sizeBytes, sha256 }
+    // v2.6716 (punch list #288): a text document's words ride beside the file facts; the RPC keeps them in documents.
+    if (document.markdown !== undefined) {
+      if (typeof document.markdown !== 'string' || document.markdown.trim() === '') return { ok: false, error: `${verb}: markdown must be the document's words, not empty.` }
+      if (document.markdown.length > 1_000_000) return { ok: false, error: `${verb}: markdown is longer than 1,000,000 characters.` }
+      if (mime !== 'text/plain' && mime !== 'text/markdown') return { ok: false, error: `${verb}: markdown goes with a text file (.md or .txt); a ${mime} keeps its bytes alone.` }
+      p.markdown = document.markdown
+    }
+    // v2.6720 (punch list #288 PR 2): for counsel alone, on the Evidence row and on its words.
+    if (document.counsel_only !== undefined) {
+      if (typeof document.counsel_only !== 'boolean') return { ok: false, error: `${verb}: counsel_only must be true or false.` }
+      if (document.counsel_only) p.counsel_only = true
+    }
     const state = str('state') || 'final'
     if (!(DOCUMENT_STATES as readonly string[]).includes(state)) return { ok: false, error: shape }
     p.state = state
@@ -1022,6 +1071,12 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const themeMarks = verb === 'apply_theme_marks'
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
+  const job = verb === 'apply_job'
+  if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
+  // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
+  if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
+  if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || event || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
