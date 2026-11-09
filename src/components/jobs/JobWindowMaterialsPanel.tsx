@@ -7,8 +7,8 @@ import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
 import { REASON_WORDS } from '../../lib/materials/onSite'
-import { listContainers, listMovements } from '../../lib/materials/onSiteStore'
-import { jobMaterialsSummary, staleWords } from '../../lib/materials/onSiteSummary'
+import { listMovements } from '../../lib/materials/onSiteStore'
+import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 
 const chip = (tone: 'amber' | 'red' | 'green' | 'blue' | 'dim'): CSSProperties => ({
   display: 'inline-flex',
@@ -25,9 +25,8 @@ const chip = (tone: 'amber' | 'red' | 'green' | 'blue' | 'dim'): CSSProperties =
 export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate }: { jobId: string; onBeforeNavigate?: () => void }) {
   const navigate = useNavigate()
   const load = useOnSiteJob(jobId)
-  const containers = listContainers(jobId)
   const movements = listMovements(jobId)
-  const sum = jobMaterialsSummary(containers, movements, new Date())
+  const sum = jobMaterialsSummaryFor(jobId, new Date())
   const last = [...movements].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null
   const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
   return (
