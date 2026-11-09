@@ -7,10 +7,10 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
 import { EmptyState } from '../../EmptyState'
-import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentIsText, legalDocumentKindWords, legalDocumentMime, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
+import { COUNSEL_ONLY_DOCUMENT_WORDS, LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentIsText, legalDocumentKindWords, legalDocumentMime, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
 import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
-import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentCounselOnly, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { EVIDENCE_FROM_MESSAGES_WORDS, evidenceJobTiles, messagesLineHref, type EvidenceJobRow } from '../../../lib/legal/evidenceFromMessages'
 import { evidenceFromMessagesIo } from '../../../lib/legal/evidenceFromMessagesIo'
 import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
@@ -44,6 +44,10 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  * Since v2.6716 (punch list #288) a `.md` or `.txt` is a **text document**: its words are read in the browser when it is
  * dropped and kept in the `documents` table beside the file (`text_document_id`), so the row's **Read** press renders them
  * here, the firm's portal renders them, and the seat's `search_case` finds a line of them by section.
+ *
+ * Since v2.6720 (punch list #288 PR 2) a paper can be **counsel-only**: the Add form's tick, the row's lock chip and the
+ * menu's *Counsel-only* / *Not counsel-only after all*. The firm still reads it on its portal (with a lock); the printed
+ * packet leaves it out; the dev seat and the agent never read the row or its words (`COUNSEL_ONLY_DOCUMENT_WORDS`).
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -246,10 +250,13 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
               <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Dated<input type="date" aria-label="Day the paper is from" value={p.draft.datedOn ?? ''} max={todayYmd} onChange={(e) => patchPending(p.key, (x) => ({ ...x, draft: { ...x.draft, datedOn: e.target.value } }))} style={{ ...input, width: 'auto' }} /></label>
               <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>State<select aria-label="State of the paper" value={p.draft.state ?? 'final'} onChange={(e) => patchPending(p.key, (x) => ({ ...x, draft: { ...x.draft, state: e.target.value as LegalDocumentDraft['state'] } }))} style={{ ...input, width: 'auto' }}><option value="final">Final</option><option value="draft">Draft</option><option value="received">Received</option></select></label>
               {p.draft.state === 'received' ? <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Received on<input type="date" aria-label="Day it was received" value={p.draft.receivedOn ?? ''} max={todayYmd} onChange={(e) => patchPending(p.key, (x) => ({ ...x, draft: { ...x.draft, receivedOn: e.target.value } }))} style={{ ...input, width: 'auto' }} /></label> : null}
+              {/* v2.6720: for counsel alone. */}
+              <label data-legal-document-counsel-only style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }} title={COUNSEL_ONLY_DOCUMENT_WORDS.tickSentence}><input type="checkbox" checked={Boolean(p.draft.counselOnly)} onChange={(e) => patchPending(p.key, (x) => ({ ...x, draft: { ...x.draft, counselOnly: e.target.checked } }))} />{COUNSEL_ONLY_DOCUMENT_WORDS.tick}</label>
               {/* v2.6108: whose paper it is, guessed from the title until the person picks. */}
               <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Whose<select aria-label="Whose paper it is" data-legal-document-whose-pick data-guessed={p.whoseTouched ? 'no' : 'yes'} value={p.draft.whose ?? ''} onChange={(e) => patchPending(p.key, (x) => ({ ...x, whoseTouched: true, draft: { ...x.draft, whose: (e.target.value || null) as LegalDocumentWhose | null } }))} style={{ ...input, width: 'auto' }}>{choices.map((c) => <option key={c.value} value={c.value}>{c.words}</option>)}</select></label>
             </span>
             <span style={{ gridColumn: '1 / -1', ...MUTED, fontSize: '0.74rem' }}>{p.file.name} · {legalDocumentSizeWords(p.file.size)}{p.draft.text !== undefined ? <span data-legal-document-pending-text> · kept as text · {p.draft.text.length.toLocaleString('en-US')} characters</span> : null}{problem ? ` · ${problem}` : ''}</span>
+            {p.draft.counselOnly ? <span data-legal-document-pending-counsel style={{ gridColumn: '1 / -1', fontSize: '0.74rem', color: 'var(--text-amber-700)' }}>{COUNSEL_ONLY_DOCUMENT_WORDS.tickSentence}</span> : null}
             {themes ? (
               <span style={{ gridColumn: '1 / -1' }} data-legal-document-themes>
                 <ThemeMarkPicker themes={themes} draft={p.marks} onChange={(next) => patchPending(p.key, (x) => ({ ...x, marks: next }))} testId={`document-theme-picker-${p.key}`} />
@@ -284,6 +291,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                   <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                     <span data-legal-document-state-chip {...(doc.state === 'draft' ? { 'data-legal-document-draft': '' } : null)} title={stateWords || 'The paper as it stands.'} style={{ ...chip, color: stateChipColor(doc.state) }}>{chipWords}</span>
                     {d.held_reason ? <span data-legal-document-held-chip title={`Held from the firm: ${d.held_reason}`} style={{ ...chip, color: 'var(--text-amber-700)' }}>held</span> : null}
+                    {d.counsel_only ? <span data-legal-document-counsel-chip title={COUNSEL_ONLY_DOCUMENT_WORDS.chipTip} style={{ ...chip, color: 'var(--text-amber-800)' }}>🔒 {COUNSEL_ONLY_DOCUMENT_WORDS.chip}</span> : null}
                     {keptOut?.has(d.id) ? <span data-legal-document-kept-out-chip title="A proceeding beside the claim keeps this paper out of settlement letters: the claim's document picker leaves it out." style={{ ...chip, color: 'var(--text-amber-700)' }}>kept out</span> : null}
                   </span>
                   <span data-legal-document-day title={legalDocumentDayWords(doc, shortDay)} style={{ ...MUTED, fontSize: '0.74rem', whiteSpace: 'nowrap' }}>{shortDay(day)}</span>
@@ -347,6 +355,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                                 linkedStatements[d.id] && onOpenStatement ? { label: 'The statement on the Timeline', go: () => onOpenStatement(linkedStatements[d.id]!) } : null,
                                 d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(supabase, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
                                 { label: 'Whose paper…', go: () => { setSentFor(null); setReceivedFor(null); setWhoseFor({ id: d.id, whose: legalDocumentWhoseOf(d.whose) ?? '' }) } },
+                                // v2.6720: for counsel alone, on and off.
+                                { label: d.counsel_only ? COUNSEL_ONLY_DOCUMENT_WORDS.menuOff : COUNSEL_ONLY_DOCUMENT_WORDS.menuOn, go: () => void act('Could not change the document’s counsel-only mark.', () => setLegalMatterDocumentCounselOnly(supabase, d.id, d.text_document_id ?? null, !d.counsel_only)) },
                                 doc.state === 'draft' || doc.state === 'final' ? { label: 'Mark sent…', go: () => { setReceivedFor(null); setWhoseFor(null); setSentFor({ id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) } } : null,
                                 doc.state === 'draft' ? { label: 'Mark final', go: () => void act('Could not mark the document final.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
                                 doc.state === 'final' ? { label: 'Received…', go: () => { setSentFor(null); setWhoseFor(null); setReceivedFor({ id: d.id, on: todayYmd }) } } : null,
