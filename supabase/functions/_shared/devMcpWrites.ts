@@ -32,6 +32,7 @@ import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
+import { isBillVerb } from './devMcpBill.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -149,6 +150,12 @@ export const WRITE_VERBS = {
   // the status through the Pipeline's own update_job_status step by step; rpc is null, the dry run the server's read.
   plan_job_update: { rpc: null, step: 'plan' },
   apply_job_update: { rpc: null, step: 'apply' },
+  // v2.6794 / 0.51.0: a bill as Bill Customer and the share row make and hand it over — the app's own RPCs and functions
+  // in the modal's order (ensure_single_ready_to_bill_invoice_for_job, create-stripe-invoice, bill_pay_code,
+  // update_job_status, quo-send, messages-email); rpc is null, the dry run the server's read (devMcpBill.ts), and the
+  // shape is checked there since it needs the day.
+  plan_bill: { rpc: null, step: 'plan' },
+  apply_bill: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -257,6 +264,11 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = personMatterInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBillVerb(verb)) {
+    // v2.6794: the shape is devMcpBill's billInput, run by the server with today's date (a due date left out is today);
+    // the hash is checked there too. Nothing to build here but the hand-off.
+    return { ok: true, rpc: null, step, body: { p: input }, dryRunBody: null, target: null, planHash }
   }
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
@@ -1056,6 +1068,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
   const job = verb === 'apply_job'
+  if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`

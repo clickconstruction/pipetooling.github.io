@@ -118,6 +118,13 @@ export const ENTRIES = {
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
   // The dev seat's job verbs (punch list #293, v2.6790): the address saved as the New Job form saves it.
   'lib/addressTitleCase.ts': { values: ['titleCaseAddress'], types: [] },
+  // The dev seat's bill verb (punch list #293, v2.6794): the Billed line the sheet sends, the share row's copy, the bill's
+  // short link and the remainder arithmetic Bill Customer bills.
+  'lib/tellCustomer/billedLine.ts': { values: ['BILLED_LINE', 'billedLineWords', 'billedText'], types: ['BilledLineWords'] },
+  'lib/stripeInvoiceShareCopy.ts': { values: ['buildStripeInvoiceEmailSubject', 'buildStripeInvoiceEmailBody', 'buildStripeInvoiceSmsText'], types: ['StripeInvoiceShareCopyInput'] },
+  'lib/billing/billTextLink.ts': { values: ['billTextLink'], types: ['BillTextLinkInput'] },
+  'lib/billing/newestBill.ts': { values: ['billDollars', 'newestBill'], types: ['NewestBill'] },
+  'lib/billing/openLineAllocation.ts': { values: ['allocatedOpenCents', 'moneyCents', 'isRtbPrimaryBundle', 'isOpenLine'], types: ['OpenLineInvoice', 'LinkedPayment'] },
   // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
   'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },
   'lib/photos/photoSave.ts': { values: ['photosToSave', 'PHOTO_SAVE_BATCH'], types: ['PhotoRow', 'PhotoSwitch'] },

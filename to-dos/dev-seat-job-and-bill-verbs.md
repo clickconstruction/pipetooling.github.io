@@ -2,7 +2,7 @@
 name: "The dev seat sets up a job, updates it and sends the bill: the first step of MCP doing everything a user can"
 number: 293
 group: close
-status: asked 2026-11-09 · design agreed in chat the same morning · PR 1 (v2.6790, plan_job / apply_job, #7463) armed · PR 2 (v2.6793, plan_job_update / apply_job_update) built on claude/293-job-update, stacked on PR 1 · PR 3 (plan_bill / apply_bill) next · then the deploy and the ZZ walk from the seat
+status: asked 2026-11-09 · design agreed in chat the same morning · PR 1 (v2.6790, plan_job / apply_job, #7463) armed · PR 2 (v2.6793, plan_job_update / apply_job_update, #7464) stacked on PR 1 · PR 3 (v2.6794, plan_bill / apply_bill) built on claude/293-bill, stacked on PR 2 · then the deploy and the ZZ walk from the seat
 summary: >
   The dev seat read everything and wrote fifty-one named things, but no verb made a job or sent a
   bill, so the short bill link's walk (#290) had to be driven through the app in Chrome. Three
@@ -50,7 +50,7 @@ Rejected: a `dev_job_write` definer wrapper (a migration for rows the app alread
 |---|---|---|---|
 | 1 | `plan_job` / `apply_job` | 0.49.0 | `devMcpJobs.ts`, `devMcpWrites.ts`, `index.ts`, the address kernel into the copy, the docs, this card |
 | 2 | `plan_job_update` / `apply_job_update` | 0.50.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
-| 3 | `plan_bill` / `apply_bill` | main's minor + 1 | `devMcpBill.ts`, the three kernels into the copy, `index.ts` |
+| 3 | `plan_bill` / `apply_bill` | 0.51.0 | `devMcpBill.ts`, the Billed line lifted into `lib/tellCustomer/billedLine.ts` and five kernels into the copy, `index.ts` |
 
 Each merges alone (`gh pr merge N --auto`); after each merge, `supabase functions download dev-mcp --use-api` into a scratch folder and hash-compare to main before `supabase functions deploy dev-mcp`. No migration, so no push and no calls-ahead hold.
 
@@ -99,4 +99,5 @@ Next after this train, in the order the call log asks: a free text or email to a
 ## Where it stands
 
 - 2026-11-09 morning: the design agreed; PR 1 built and tested (`devMcpJobs.test.ts`, the seat's tests green, `check:edge-bundles` OK); #7463 armed.
-- 2026-11-09, later: PR 2 built on PR 1's branch (v2.6793): the update's shape held to the form's payload, the status walk to the RPC's neighbours, the read-back after the PATCH.
+- 2026-11-09, later: PR 2 built on PR 1's branch (v2.6793): the update's shape held to the form's payload, the status walk to the RPC's neighbours, the read-back after the PATCH; #7464.
+- 2026-11-09, afternoon: PR 3 built on PR 2's branch (v2.6794): the remainder as the RPC sizes it, the sheet's words and the share row's draft through the kernel copy, the modal's doors in order with each outcome named.

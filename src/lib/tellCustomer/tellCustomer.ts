@@ -9,6 +9,7 @@
  * `components/customers/TellCustomerSheet.tsx`.
  */
 import { SEED_CALL_SCRIPTS } from '../flows/callScripts'
+import { BILLED_LINE } from './billedLine'
 import type { PortalLang } from '../gc/portalI18n'
 import { windowWords } from '../jobModeText'
 import { scheduleFormatWeekdayLong } from '../jobScheduleChicago'
@@ -60,10 +61,7 @@ export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: 
   },
   // Text the bill (v2.6771, punch list #291): the bill's pay link rides last, nothing after it, and the opening says who
   // is writing, since a bill text is often the customer's first text from us.
-  billed: {
-    text: 'Hi {first}, this is {me} with Click Plumbing. Your bill for {job} is ready, {amount}. Text me here with any question. Pay it here: {bill}',
-    textEs: 'Hola {first}, soy {me} de Click Plumbing. Su factura por {job} está lista, {amount}. Escríbame aquí con cualquier pregunta. Páguela aquí: {bill}',
-  },
+  billed: BILLED_LINE,
 }
 
 /** What to say on the call the receipt offers, until the office writes a script on the step (Settings → Flows, v2.5596). */
