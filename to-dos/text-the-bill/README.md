@@ -2,16 +2,16 @@
 name: "Text the bill: after a bill goes, the office texts the pay link from the company number, sees the text first, a first text says who is writing, and Send later shows and changes the time"
 number: 291
 group: close
-status: BUILT and LIVE 2026-11-09 — PR 1 v2.6771 (#7418), PR 2 v2.6772 (#7435), PR 3 v2.6773 (#7442), PR 4 v2.6774 (#7445) all merged; migration 20261109090000 pushed, messages-nudge-dispatch deployed and booting, the cron reads */15; types regen #7449 armed; the owner's live walk on a ZZ Test customer is left
+status: BUILT, LIVE and WALKED 2026-11-09 — PRs v2.6771 (#7418), v2.6772 (#7435), v2.6773 (#7442), v2.6774 (#7445) merged; migration 20261109090000 pushed; messages-nudge-dispatch deployed; the cron reads */15 and its 9:00 and 9:15 ticks ran as designed; types #7449 merged; the session's walk on a ZZ Test customer passed every step, with two small fixes in #7458; left: the owner's own look and two one-word calls
 summary: >
   A Stripe bill goes to the customer's email. The owner wants the office to be able to text the
   pay link too, from the company number, and to see the text as the customer will before it goes.
   When it is the customer's first text from us, the words must say who is writing, this is Rosa
   with Click Plumbing, and the app's opt-out line rides under it. Send in the morning becomes Send
   later, which names the exact time the text goes and lets the office change it.
-next: the owner's live walk (How to verify, steps 1 to 5) on a ZZ Test customer whose mobile is the test number, and two one-word calls — widen the first-text hold from the bill to every moment or not, and whether the Done line says *by text and email*
+next: the owner's own look (everything on the card is walked); two one-word calls — widen the first-text hold from the bill to every moment or not, and whether the Done line says *by text and email*; #290's switch to the my.clickplumbing.com host once its Worker line is live (the walk's first text carried clicktooling.com/pay/<id> from Bill Customer and my.clickplumbing.com/pay/<code> from the Bills tab)
 size: M as a train of four (S · S · XS · S), all shipped; left: the owner's walk
-blocker: none; the walk is the owner's
+blocker: none
 opinion: build in the card's order; the sheet already exists and the bill line is one more moment on it, so PR 1 is mostly words and one hold
 mockup: to-dos/text-the-bill/main.html
 ---
@@ -198,4 +198,20 @@ from a ZZ Test row.
 - The **Done line** still says *Your bill follows by email*. *By text and email* is the owner's one-word call (`later-text.html`).
 - A text handed to a time outside 8 AM to 9 PM Central (an older client, a clock change) is **moved to the next 8 AM** with *Texts go between 8 AM and 9 PM. It goes at 8 AM.* on its row, never sent at night.
 
-**Left: the owner's live walk**, How to verify above, steps 1 to 5, on a ZZ Test customer whose mobile is the test number. The session's walk was the smokes (the sheet on a bill, the hold, the strip, the marks, the picker, Today's sends) and the prod reads above; no text went from this session.
+**Walked 2026-11-09, 8:40 to 9:20 AM Central**, on the dev server against prod (the same code as main, signed in as the dev), on a fresh residential customer *ZZ Test Text the bill 2026-11-09* with the test number as its mobile and the dev's own email, and its job JP1116 with one $25 line, billed through **Bill Customer → Stripe bill** in Stripe's test mode:
+
+1. **The strip after Bill Customer** drew under the new bill: *The Stripe bill is made. Nothing has gone to the customer yet. Text ZZ the pay link too? A text is read in minutes. Email waits for the evening.* with **Text ZZ the bill…** and **Not now**.
+2. **The sheet on the bill**: *Tell ZZ*, *1116 · ZZ Test Text the bill water heater*, Text to the test number, *from the company number (512) 994-2774 · ZZ reads English*, the chip **First text to this number** with its hint, the line *Hi ZZ, this is Robert with Click Plumbing. Your bill for ZZ Test Text the bill water heater is ready, $25.00. Text me here with any question. Pay it here: …/pay/<id>*, the two hints under it, the act row *Texts ZZ the bill with its pay link from the company number.*
+3. **Preview**: the phone with *ZZ's first text from us* and *A number they have not seen before…*, the caption with the from number, the words with the real link, the grey bubble *Click Plumbing and Electrical. Reply STOP to opt out.* tagged *added by the app · required on a first text*, and *The link is the bill's own pay page. It opens the bill with its Pay button.*
+4. **The hold**: with the opening trimmed, the box's red edge, *This is ZZ's first text from us, so it has to say who is writing. Put 'this is Robert with Click Plumbing' back, or press Put the opening back.*, Send dead, *A later text is not held.* **Put the opening back** restored the first sentence and Send came back.
+5. **The send**: the receipt *Sent to ZZ*, *Text · from the company number · 8:45 AM · in ZZ's thread*; the thread row carries the opt-out line (`optout_line` first). The Bills tab and View bill read **Texted 8:45 AM**.
+6. **Send Email invoice** (test mode, the email to the dev): the strip drew with the email's own success line and the question; the row read **Emailed 8:51 AM · Texted 8:45 AM**. **Text ZZ the bill…** from that strip opened the sheet as a later text (no chip), the send went with no opt-out line, the strip went away and the row re-read **Texted 8:52 AM**.
+7. **Send later**: the press read *Send later · Today 9:00 AM* (8:48 AM); the picker *When it goes* with Now / Tomorrow 9:00 AM / Today 6:00 PM, Day 11/09/2026, Time 09:00, *Goes Monday, Nov 9 at 9:00 AM Central, in about 12 minutes.*, the fence and the where lines, the press *Send today 9:00 AM*; the receipt *Ready to go later* with *Goes Monday, Nov 9 at 9:00 AM Central from the company number.*; the row in `nudge_offers` with `send_at` 15:00Z and `send_on` today.
+8. **Today's sends**: the Dashboard's line *2 texts ready to send, 1 goes later*; the row *Goes Today 9:00 AM* with **Change the time**; Day and Time fields; 09:15 → *It goes Today 9:15 AM.*, the row *Goes Today 9:15 AM*, `send_at` 15:15Z.
+9. **The run**: the 9:00 AM tick ran the morning once (summary at 15:00:05Z, one text prepared, two kept back); the 9:15 tick sent the timed text — the offer stamped `sent_at` 15:15:01Z, the text at 15:15:02 as *The app · from the company number*, the thread's line *The app sent the text the office prepared for this time.*, the function's log *tick: 1 office text went at their time, 0 did not, 0 moved to 8 AM.* The row then read **Emailed 8:51 AM · Texted 9:15 AM**.
+
+**Found and fixed the same day (#7458)**: under Bill Customer's just-made bill the strip stayed up after the first text went (the same strip under View bill cleared as built), so the bill panel now drops its own offer when any send goes through the row; and the hold's red edge mixed `borderColor` with the box's `border` shorthand, a React warning on every keystroke.
+
+**Seen, not changed**: the receipt's Billed call script still says the bill *went out by email today*; the first text from Bill Customer carried `clicktooling.com/pay/<id>` while the Bills tab's carried `my.clickplumbing.com/pay/<ten letters>` (#290's host switch and its pay-code mint per host).
+
+**Cleanup**: the Stripe test invoice voided, the job deleted (Settings → Data & recovery → Recently deleted holds it), the customer deleted. Left, since the app's own writes cannot remove them: the messaging contact (now kind *unknown*, still named ZZ Test Text the bill 2026-11-09) with its channel, its three outbound texts and the event line, the sent `nudge_offers` row and its `nudge_sent` row. Three texts reached the test number.
