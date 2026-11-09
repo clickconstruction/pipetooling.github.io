@@ -18,6 +18,7 @@ import {
 } from '../../../supabase/functions/_shared/devMcpActivityNote'
 import type { Reader, Row, RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -41,7 +42,7 @@ const jobWorld = (latest: ActivityNoteWorld['latest'] = []): ActivityNoteWorld =
 })
 const bidWorld = (gc: { id: string; name: string | null } | null = null): ActivityNoteWorld => ({
   on: 'bid',
-  bid: { id: BID, label: 'BP398', projectName: 'ZZ Test', status: 'bidding' },
+  bid: { id: BID, label: 'BP398', projectName: 'ZZ Test', outcome: null },
   gc,
   latest: [{ id: 'e1', at: '2026-09-29T16:00:00Z', by: 'Robert', text: 'email · ZZ test line' }],
 })
@@ -138,7 +139,7 @@ describe('readActivityNoteWorld — the reads', () => {
       { id: 'n2', body: 'Second', created_at: '2026-11-08T10:00:00Z', author_user_id: DEV, author: { name: 'Robert' } },
       { id: 'n1', body: 'First', created_at: '2026-11-07T10:00:00Z', author_user_id: DEV, author: null },
     ],
-    bids: [{ id: BID, bid_number: '398', project_name: 'ZZ Test', status: 'bidding', service_type_id: 's1' }],
+    bids: [{ id: BID, bid_number: '398', project_name: 'ZZ Test', outcome: null, service_type_id: 's1' }],
     bids_submission_entries: [
       { id: 'e3', notes: null, occurred_at: '2026-10-02T10:00:00Z', contact_method: 'call', gc_customer_id: null, creator: null },
       { id: 'e2', notes: 'Walked the plans', occurred_at: '2026-10-01T10:00:00Z', contact_method: 'email', gc_customer_id: GC, creator: { name: 'Robert' } },
@@ -154,17 +155,34 @@ describe('readActivityNoteWorld — the reads', () => {
       { id: 'n2', at: '2026-11-08T10:00:00Z', by: 'Robert', text: 'Second' },
       { id: 'n1', at: '2026-11-07T10:00:00Z', by: null, text: 'First' },
     ])
+    expect(log.find((l) => l.table === 'jobs_ledger')!.q.select).toBe('id,hcp_number,click_number,job_name,status,customer_name,service_type_id')
     const notes = log.find((l) => l.table === 'jobs_ledger_thread_notes')!
     expect(notes.q).toMatchObject({ filters: [{ column: 'job_id', op: 'eq', value: JOB }], order: [{ column: 'created_at', ascending: false }], limit: ACTIVITY_NOTE_LATEST })
     expect(log.map((l) => l.table)).not.toContain('bids')
   })
   it('finds the bid, keeps only the entries with words, names the GC, and refuses a GC it cannot see', async () => {
-    const world = await readActivityNoteWorld(fake(TABLES), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
-    expect(world).toMatchObject({ on: 'bid', bid: { id: BID, label: 'BP398', projectName: 'ZZ Test' }, gc: { id: GC, name: 'Dana Whitfield' } })
+    const log: Array<{ table: string; q: RowsQuery }> = []
+    const world = await readActivityNoteWorld(fake(TABLES, log), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
+    expect(world).toMatchObject({ on: 'bid', bid: { id: BID, label: 'BP398', projectName: 'ZZ Test', outcome: null }, gc: { id: GC, name: 'Dana Whitfield' } })
+    // The read names the bid's columns as the catalog has them: there is no bids.status (the first live walk hit 42703).
+    const bidsRead = log.find((l) => l.table === 'bids')!
+    expect(bidsRead.q.select).toBe('id,bid_number,project_name,outcome,service_type_id')
     expect((world as ActivityNoteWorld).latest.map((l) => l.id)).toEqual(['e2', 'e1'])
     expect((world as ActivityNoteWorld).latest[0]).toMatchObject({ text: 'email · Walked the plans', by: 'Robert' })
     const noGc = await readActivityNoteWorld(fake({ ...TABLES, customers: [] }), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
     expect(noGc).toMatchObject({ refused: expect.stringContaining('find_customer') })
+  })
+  it('selects only columns the catalog has, on every table the two reads name (the first live walk asked for bids.status, 42703)', async () => {
+    const log: Array<{ table: string; q: RowsQuery }> = []
+    await readActivityNoteWorld(fake(TABLES, log), p({ job: 'JP1113' }))
+    await readActivityNoteWorld(fake(TABLES, log), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
+    expect([...new Set(log.map((l) => l.table))].sort()).toEqual(['bids', 'bids_submission_entries', 'customers', 'jobs_ledger', 'jobs_ledger_thread_notes', 'service_types'])
+    for (const { table, q } of log) {
+      const columns = CATALOG_TABLES[table]?.columns ?? {}
+      // A plain column name; an embed (`author:users!…(name)`) is a relationship the door checks on its own.
+      const plain = (q.select ?? '').split(',').filter((c) => !c.includes('(') && !c.includes(':'))
+      for (const c of plain) expect(columns, `${table}.${c}`).toHaveProperty(c)
+    }
   })
   it('refuses in words what nothing finds or RLS hides', async () => {
     expect(await readActivityNoteWorld(fake(TABLES), p({ job: 'nothing here' }))).toMatchObject({ refused: 'No job matches "nothing here".' })
