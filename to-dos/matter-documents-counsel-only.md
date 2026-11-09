@@ -1,8 +1,8 @@
 ---
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
-group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 built as v2.6720 (migration 20261108230000, stacked on PR 1; dev-mcp 0.45.0) · PR 3 built as v2.6722 (migration 20261108233000, stacked on PR 2; dev-mcp 0.46.0) · the three PRs draft until #286's and #287's migrations are on main, then armed in order, pushed and deployed, and How to verify run on a ZZ TEST matter
+group: close
+status: SHIPPED — PR 1 v2.6716 (#7346, merged 2026-11-08), PR 2 v2.6720 (#7347, merged 2026-11-09 03:04 UTC) and PR 3 v2.6722 (#7348, merged 2026-11-09 05:15 UTC); the three migrations (20261108210000, 20261108230000, 20261108233000) are in prod's ledger, each pushed alone; legal-portal and dev-mcp 0.46.0 deployed and current; How to verify run through the seat on the ZZ TEST GC On Notice matter on 2026-11-09 (Where it stands)
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document
@@ -12,9 +12,9 @@ summary: >
   the attorney by hand. Give a matter document a counsel-only mark the firm's portal and the agent
   role honor, and let a text document on a matter be text, read by section and searched like a
   named document.
-next: Arm PR 1 once #286's and #287's migrations are on main (they alter the table PR 1 renames), push its migration, deploy legal-portal and dev-mcp, regenerate the types and the catalog; then PR 2 and PR 3 in order, each pushed and deployed; then How to verify on a ZZ TEST matter, recorded here. Left for a later card: the seat writing a matter's text document by section (plan_person_doc's ops with a matter owner), once #286's and #287's hands are off dev_person_doc_write.
+next: the owner's look at the Evidence tab of the ZZ TEST GC On Notice matter — the lock chip on the counsel-only memo and Read on the plain memo (both filed 2026-11-09). Two legs of How to verify wait on test data that does not exist: the search_case hit with its section needs a matter standing on a ZZ TEST person (plan_matter_open_person → apply_matter_open_person on one of the ZZ Test people; the only person-standing matter today is a real one and takes no test filings), and the portal's list and packet leaving the held document out need a test firm as counsel of record on the matter. The next types regen (chore(types) after the pushes) adds dev_matter_doc_read, hr_doc_slice, matter_counsel_only_count and matter_text_document_is_counsel_only to the catalog; the verbs run without it. Left for a later card: the seat writing a matter's text document by section (plan_person_doc's ops with a matter owner), once #286's and #287's hands are off dev_person_doc_write.
 size: M · PR 1 text on a matter document and the search union (S) · PR 2 the counsel-only mark on the document, the portal's and the agent's refusals (S) · PR 3 the seat's section reads on a matter document (S)
-blocker: None on the shape (picked 2026-11-08); the firm portal's read of a held document is a product call for PR 2.
+blocker: none for the builder — what is left is the owner's look and two live legs that want test data (next).
 opinion: build PR 1 and PR 2 now — the matter is where counsel reads, and today it is the one place in the case a session cannot search or hold; leave the table merge for when the Legal desk asks for it
 mockup: not required — the Evidence tab's row gains a lock chip and a text viewer; the desk and the portal are shipped surfaces
 ---
@@ -83,3 +83,29 @@ phrase inside it returns a `matter_document` hit with the section. Tick counsel-
 document: the portal's list as the test firm omits it, the packet omits it, the agent role's read
 returns nothing, the dev's read marks it. File a PDF: `content` stays null and the title still
 searches.
+
+## Where it stands
+
+2026-11-09: the three PRs are on main and live. PR 2 (#7347) merged at 03:04 UTC; its migration was
+pushed alone (`--include-all`, since its stamp sits below the ledger's newest), `legal-portal` was
+redeployed from main and `dev-mcp` 0.45.0 from main's code with prod's own catalog kept (the deployed
+catalog was a regen off prod ahead of main; a plain deploy would have taken the `documents` table
+off it). PR 3 (#7348) retargeted to main by itself, took main's merge with the server at 0.46.0
+(main's 0.45.0 + 1; #285's #7344 sat at the same pin, so its session dequeued to let PR 3 go first
+and takes the next free number), and merged at 05:15 UTC after one re-arm; its migration was pushed
+alone and `dev-mcp` 0.46.0 deployed straight from main, whose catalog the types PR #7411 had just
+brought ahead of prod's. `check:migration-drift` reads fully applied after each push.
+
+How to verify, run through the seat on the ZZ TEST GC On Notice matter (a matter on a customer, no
+firm): a counsel-only memo filed with `plan_matter_document` → `apply_matter_document`
+(`counsel_only: true`, kept as text) is absent from the seat's `read_rows` on
+`legal_matter_documents` and on `documents`, `matter_counsel_only_count` counts it, and
+`dev_matter_doc_read` refuses it in words ("for counsel alone — refused to the seat as deployed").
+A plain memo with three numbered sections reads back: the index names the preamble and the three
+sections with their numbers and lines, section 2 comes back with its body and its neighbours named,
+and the older plain-text paper filed before PR 1 (bytes alone, no text row) is refused as "not a
+text document", pointing at its title and what it shows. Not covered on this matter: the
+`search_case` hit with its section (no ZZ TEST person has a matter) and the portal's list and packet
+as a test firm (the matter has no firm); the packet's omission is held by
+`legalFirmPacketPrint.test.ts`. The PDF leg (`content` null, title still searched) is PR 1's and
+was not re-run.
