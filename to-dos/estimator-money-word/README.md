@@ -2,7 +2,7 @@
 name: "The estimator's word on money: the leftovers"
 number: 129
 group: close
-status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: BP166 as an estimator, Messages' *Write down their word* on a real inbound line, the heard-day offer in Messages, the five untyped calls
+status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: Messages' *Write down their word* on a real inbound line (BP166 read as the estimator 2026-11-09 through the dev seat), the heard-day offer in Messages, the five untyped calls
 ver: v2.6694 · v2.6695
 summary: >
   The estimator who sold a job can now see its money and write down the customer's word on
@@ -12,7 +12,7 @@ summary: >
   a signed estimate is one of the job's people too, with a red E beside their name, and the office
   sees a paid claim on the Pipeline's Billed row. This to-do keeps what is left: the live checks
   and the heard-day offer in Messages.
-next: Nothing left to land. The live checks wait on real rows: BP166 read as an estimator (*J878 opened from this bid*), and *Write down their word* under a customer's line in Messages once a customer writes in. The heard-day offer in Messages is a small build of its own when wanted.
+next: Nothing left to land. BP166 was read as the estimator role's sample account through the dev seat on 2026-11-09 (under *Where it stands*). The one live check left waits on a real row: *Write down their word* under a customer's line in Messages once a customer writes in. The heard-day offer in Messages is a small build of its own when wanted.
 size: XS each
 blocker: none — the owner's three calls are answered (2026-11-08)
 opinion: the heard-day offer in Messages is a small build of its own; the untyped calls are typed as each is touched (`list_paid_claims` typed in PR 2)
@@ -56,8 +56,14 @@ The two walks ran on the dev server as the dev the same day:
   `list_paid_claims` is empty again. (The Pipeline hides ZZ jobs per device: Hide groups → ZZ test
   jobs shows them.)
 
-Left on the card: BP166 read as an estimator, Messages' *Write down their word* on a real inbound
-line, the heard-day offer in Messages, and the five calls still untyped.
+- **BP166 as an estimator** (2026-11-09, the dev seat's `view_as` on the estimator role's sample account, `get_bid` on
+  BP166, read-only): the bid reads whole under the estimator's RLS, and its account strip names the job the Job block
+  reads as *J878 opened from this bid*: job 878 *Take 5- Seguin* at the bid's address, with its four supply-house rows.
+  The words themselves were not rendered, since rendering them means pressing Imitate in the owner's Chrome; the row the
+  chip reads is visible to the estimator, which is what the check asked.
+
+Left on the card: Messages' *Write down their word* on a real inbound line, the heard-day offer in
+Messages, and the five calls still untyped.
 
 ## The owner's calls
 

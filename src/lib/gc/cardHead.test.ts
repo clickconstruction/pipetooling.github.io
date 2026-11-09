@@ -120,6 +120,15 @@ describe("a project's card: the doors", () => {
     expect(cardDoors(f).find((d) => d.key === 'billDay')?.title).toBe('Opens Money → Bill day → From the trades on this job.')
   })
 
+  it('offers Word to every trade on a job being built to whoever may email a trade partner (punch list #205, PR 6)', () => {
+    const f = doors({ stage: 'building' }, { word: true })
+    expect(words(f)).toContain('work:Word to every trade')
+    expect(words(f).indexOf('work:Word to every trade')).toBe(words(f).indexOf('work:Draws') + 1)
+    expect(words(doors({ stage: 'building' }))).not.toContain('work:Word to every trade')
+    expect(words(doors({ stage: 'buyout' }, { word: true }))).not.toContain('work:Word to every trade')
+    expect(words(doors({ stage: 'building', lost: true }, { word: true }))).not.toContain('work:Word to every trade')
+  })
+
   it('a closed job keeps Closeout and loses the work set', () => {
     expect(words(doors({ stage: 'closed' }))).toEqual([
       'job:The plans',
