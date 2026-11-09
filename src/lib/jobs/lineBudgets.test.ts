@@ -7,6 +7,8 @@ import {
   applySettingsTarget,
   calcLineBudget,
   DEFAULT_LINE_BUDGET_SETTINGS as S,
+  laborHoursTailWords,
+  linesSumBesideAwardWords,
   learningLinesFor,
   lineBudgetSettingsChanges,
   lineBudgetSettingsSaveWords,
@@ -122,5 +124,19 @@ describe('the company settings on the wire and on the card (v2.6656, punch list 
     expect(lines).toEqual([{ kind: 'any', laborPct: 52, defaultPct: 45, n: 6, words: 'Your Any line lines ran 52% labor on the last 6 tunes, against the 45% default.' }])
     expect(applyLearningLine(S, lines[0]!).splits.any).toEqual([52, 35])
     expect(learningLinesFor([], S)).toEqual([])
+  })
+})
+
+describe("the lines' sum beside the award (the owner's call of 2026-11-09, punch list #234)", () => {
+  it('the Labor tail reads the clocked hours against the hours frozen at award, the lines\' sum beside them', () => {
+    expect(laborHoursTailWords(12, { hours: 120, kind: 'bid' }, 458)).toBe('12 h of 120 h frozen at award (10%) · the lines sum to 458 h')
+    expect(laborHoursTailWords(12, null, 458)).toBe('12 h of 458 h (3%)')
+    expect(laborHoursTailWords(0, null, 0)).toBe('0 h of 0 h')
+  })
+  it('the note names which hours the score reads; a book award is a guess the score skips; none with no award', () => {
+    expect(linesSumBesideAwardWords({ hours: 120, kind: 'bid' }, 240)).toBe('The score reads the 120 h frozen at award ◆ from the bid. The lines sum to 240 h: the line-by-line view, shown beside the award and never scored.')
+    expect(linesSumBesideAwardWords({ hours: 220, kind: 'typed' }, 240)).toContain('220 h frozen at award ✎ typed')
+    expect(linesSumBesideAwardWords({ hours: 241, kind: 'book' }, 563)).toBe('The score skips the 241 h frozen at award ≈ from the book, a guess, until a bid or typed baseline replaces it. The lines sum to 563 h: the line-by-line view, shown beside the award and never scored.')
+    expect(linesSumBesideAwardWords(null, 240)).toBe('')
   })
 })

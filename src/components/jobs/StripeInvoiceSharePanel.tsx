@@ -3,18 +3,20 @@
  * (`JobFormInvoiceList`), in View bill (`HostedStripeBillPanel`) and after Bill Customer makes a Stripe bill
  * (`SendRecordInvoiceModal`). Since punch list #125 PR 6 (v2.6710) the two sends go through the company when the caller
  * hands the job and its customer (`jobId`, `customerId`): **Email** shows the draft and its **Send the email** sends it
- * from the office through `messages-email` (`billShareDoors.ts` picks the address), and **Text** opens the customer's box
- * on Text (`ContractTextDoor`, PR 5's door) with the bill's words and pay link filled, the box's send window the confirm.
- * Neither hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only
- * drafts.
+ * from the office through `messages-email` (`billShareDoors.ts` picks the address), and **Text** opens the Tell the
+ * customer sheet on the bill (v2.6771, punch list #291; before it the customer's bare box): the Billed line filled with
+ * the bill's amount and its own pay page, the number it goes from, Preview, the first-text hold, Send later. Neither
+ * hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only drafts.
  */
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useOptionalAuth } from '../../hooks/useAuth'
 import { firstName, type Contact } from '../../lib/contacts/kernel'
-import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, BILL_TEXT_DOOR_TITLE, billEmailChannel, billEmailSentWords, billShareDoorsOffered, noEmailOnContactWords } from '../../lib/jobs/billShareDoors'
+import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, billEmailChannel, billEmailSentWords, billShareDoorsOffered, noEmailOnContactWords } from '../../lib/jobs/billShareDoors'
 import { signatureLines } from '../../lib/messages/compose'
 import { jobBoxJobKey, jobBoxJobName } from '../../lib/messages/jobBox'
+import type { TellCustomerIo } from '../../lib/tellCustomer/tellCustomerIo'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
 import { replyCompany } from '../../lib/messages/replyBox'
 import { supabaseReplyIo, type ReplyIo } from '../../lib/messages/replyIo'
@@ -27,7 +29,7 @@ import { billPayCode } from '../../lib/billing/billPayCodeIo'
 import { billTextLink } from '../../lib/billing/billTextLink'
 import { isPayLinkId } from '../../lib/billing/payLink'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { ContractTextDoor } from './ContractTextDoor'
+import { TellCustomerSheet } from '../customers/TellCustomerSheet'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
 import { SmsBillDraftModal } from './SmsBillDraftModal'
 import { BillQrModal } from './BillQrModal'
@@ -96,6 +98,8 @@ export type StripeInvoiceSharePanelProps = {
   /** For a smoke: the customer's contact and the sends. */
   load?: (customerId: string) => Promise<Contact>
   io?: ReplyIo
+  /** For a smoke: the Tell the customer sheet's reads and send (v2.6771). */
+  tellIo?: TellCustomerIo
   /** The bill's ten-letter code (#290, v2.6769), asked once per bill; a smoke hands a fake. Null = no code, the id's link. */
   mintPayCode?: (invoiceId: string) => Promise<string | null>
 }
@@ -121,9 +125,11 @@ async function copyText(text: string, showToast: (m: string, t?: 'info' | 'error
 
 export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const { showToast } = useToastContext()
+  const auth = useOptionalAuth()
   const [smsDraftOpen, setSmsDraftOpen] = useState(false)
   const [smsDraftText, setSmsDraftText] = useState('')
-  const [textDoorOpen, setTextDoorOpen] = useState(false)
+  /** Text the bill (v2.6771): the Tell the customer sheet open on this bill. */
+  const [tellOpen, setTellOpen] = useState(false)
   const [emailDraftOpen, setEmailDraftOpen] = useState(false)
   const [emailDraftSubject, setEmailDraftSubject] = useState('')
   const [emailDraftBody, setEmailDraftBody] = useState('')
@@ -148,6 +154,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
   /** The doors through the company: the job and its customer at hand. */
   const doors = billShareDoorsOffered(p)
+  /** The sheet needs the signed-in person for its line's `{me}` and the send; without one the copy-only draft stands in. */
+  const tellDoor = doors && Boolean(auth?.user?.id)
   const load = p.load ?? loadCustomerContact
   /** Stripe's own link: what the office's Customer pay page opens. */
   const url = p.hostedInvoiceUrl.trim()
@@ -155,8 +163,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const shareUrl = billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl })
 
   function openSmsBillDraft() {
-    if (doors) {
-      setTextDoorOpen(true)
+    if (tellDoor) {
+      setTellOpen(true)
       return
     }
     setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode)))
@@ -203,15 +211,6 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     }
   }
 
-  // The text door's overlay closes on Escape, as the drafts do.
-  useEffect(() => {
-    if (!textDoorOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setTextDoorOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [textDoorOpen])
   const dashUrl = `https://dashboard.stripe.com/invoices/${encodeURIComponent(p.stripeInvoiceId.trim())}`
   const pad = p.compact ? '0.35rem' : '0.5rem'
   const btnStyle: CSSProperties = {
@@ -430,42 +429,19 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         sendingLabel={BILL_EMAIL_SENDING_LABEL}
         onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
       />
-      {doors && textDoorOpen ? (
-        <div
-          role="presentation"
-          data-testid="bill-text-door-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: smsZ,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-          }}
-          onClick={() => setTextDoorOpen(false)}
-        >
-          <div role="dialog" aria-modal="true" aria-label={BILL_TEXT_DOOR_TITLE} style={{ width: '100%', maxWidth: 560, maxHeight: '100%', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <ContractTextDoor
-              title={BILL_TEXT_DOOR_TITLE}
-              jobId={(p.jobId ?? '').trim()}
-              jobName={jobBoxJobName({ job_name: p.jobName, hcp_number: p.hcpNumber })}
-              jobStatus={p.jobStatus ?? null}
-              customerId={(p.customerId ?? '').trim()}
-              typedPhone=""
-              words={buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode))}
-              onClose={() => setTextDoorOpen(false)}
-              onSent={() => {
-                setTextDoorOpen(false)
-                p.onSent?.()
-              }}
-              onCopyLink={() => void copyText(shareUrl, showToast, 'Payment link copied')}
-              load={p.load}
-              io={p.io}
-            />
-          </div>
-        </div>
+      {tellDoor && tellOpen && auth?.user ? (
+        <TellCustomerSheet
+          moment="billed"
+          jobId={(p.jobId ?? '').trim()}
+          jobLabel={`${(p.billLabel ?? '').trim() || 'Bill'} · ${jobBoxJobName({ job_name: p.jobName, hcp_number: p.hcpNumber })}`}
+          bill={{ invoiceId: (p.invoiceId ?? '').trim(), amount: p.amountLabel.trim(), link: shareUrl }}
+          userId={auth.user.id}
+          role={auth.role}
+          zIndex={smsZ}
+          onClose={() => setTellOpen(false)}
+          onSent={() => p.onSent?.()}
+          io={p.tellIo}
+        />
       ) : null}
       {p.invoiceId ? (
         <BillQrModal
