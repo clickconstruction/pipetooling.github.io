@@ -28,3 +28,16 @@ export const ESTIMATE_SHORT_ORIGIN: string | null = 'https://my.clickplumbing.co
 export function estimateShortUrl(code: string, origin: string = ESTIMATE_SHORT_ORIGIN ?? PORTAL_SHORT_ORIGIN): string {
   return `${origin.replace(/\/$/, '')}/e/${encodeURIComponent(code)}`
 }
+
+/**
+ * The host the bill text's link rides (v2.6768, punch list #290): the same Worker answers
+ * `my.clickplumbing.com/pay/<bill id or code>` with a 301 to the app's `/pay/:id` route, lower-cased, before the slug
+ * check. That page asks Stripe for the bill's current payment link when it is opened, so the texted link never
+ * expires as Stripe's own does. Null would send the text back to `clicktooling.com/pay/<id>` (`billTextLink`).
+ */
+export const BILL_SHORT_ORIGIN: string | null = 'https://my.clickplumbing.com'
+
+/** `https://my.clickplumbing.com/pay/<bill id or code>`; the app's own origin when the short host is null. */
+export function billShortUrl(idOrCode: string, origin: string = BILL_SHORT_ORIGIN ?? 'https://clicktooling.com'): string {
+  return `${origin.replace(/\/$/, '')}/pay/${encodeURIComponent(idOrCode.trim().toLowerCase())}`
+}

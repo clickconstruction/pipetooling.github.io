@@ -2,13 +2,13 @@
 name: "Messages: an email as rich text, the HTML part kept"
 number: 259
 group: close
-status: built 2026-11-08 on the owner's yes of 2026-11-07 · PR 1 v2.6675 (#7280) and PR 2 v2.6676 (#7289) merged, the migration pushed and gmail-sync redeployed (edge drift clean) · the walk of 2026-11-08 found an older email drawing no switch, as designed; the Rich text press waits on the first email into bids@ since the redeploy
+status: built 2026-11-08 on the owner's yes of 2026-11-07 · PR 1 v2.6675 (#7280) and PR 2 v2.6676 (#7289) merged, the migration pushed and gmail-sync redeployed (edge drift clean) · the walk of 2026-11-08 found an older email drawing no switch, as designed; the first email the reader kept whole landed 2026-11-08 22:30 UTC and the Rich text, Show pictures and reload presses ran on it 2026-11-09 as the card says; nothing left but the owner's look
 summary: >
   Grace asked to read an email as rich text or as plain words, the reader's choice. The bids@ reader
   now keeps each inbound email's HTML part at <line id>/body.html in the message-attachments bucket,
   messages.body_html_path naming it, and the message window draws Rich text · Plain over the words,
   the rich view through DOMPurify pinned with pictures off until Show pictures. Older lines stay plain.
-next: The owner, on the first email that reaches bids@ or the team box after the 2026-11-08 redeploy: open it in Messages, press Rich text, press Show pictures, reload. Nothing arrived in the hours after the redeploy, so that press is still untaken. Delete nothing, the check reads.
+next: The presses ran 2026-11-09 on the first email the reader kept whole (under *Where it stands*): Rich text drew the sender's layout, Show pictures turned the one picture on, a reload reopened on Rich text. Nothing left but the owner's look. One small follow-up when wanted: a signature's `cid:` picture is dropped by design (its bytes are in Gmail), so its frame stays blank after Show pictures even though the message window lists the same picture as an attachment kept on arrival; drawing it from that copy is a PR of its own.
 ver: v2.6675 (PR 1) · v2.6676 (PR 2)
 size: M · PR 1 the reader's write and a migration · PR 2 the switch, a sanitizer and images off until pressed
 blocker: none since the owner's yes of 2026-11-07
@@ -27,6 +27,17 @@ pinned, the guide section *Read an email as the sender laid it out*. Order on pr
 `gmail-sync`, then PR 2's client (`check:calls-ahead` holds it until the push). The live check below is the owner's.
 
 **Walked 2026-11-08** (read-only, as the owner in his Chrome, the client at v2.6691): `npm run check:edge-drift` read every function current, `gmail-sync` among them, so the reader keeps the HTML part from here on. No inbound email had reached bids@ or the team box since the redeploy (the newest was 2026-11-06), so no line carries `body_html_path` yet and the Rich text and Show pictures presses could not be walked. An email from 2026-11-06 opened in the message window draws no Rich text · Plain chips and reads as plain words, as the release note says an older line does. Left: the owner's press on the first new email (`next`).
+
+**Walked 2026-11-09** (the deployed client, signed in through the pane magic link in the Chrome the owner handed the session;
+read-only). The dev seat found one inbound email line with `body_html_path` set: a GC's *Addendum 1* to bids@, sent Friday
+Nov 6 and read by the reader at 22:30 UTC on 2026-11-08, after the redeploy, kept at `<line id>/body.html`. Opened from the
+thread (`/messages?thread=<contact>&at=<line>`), the message window drew the two chips **Rich text** · **Plain** over the words
+for the first time, Plain pressed. **Rich text** drew the sender's HTML on a white card as laid out (the bid date line, the
+paragraphs, the signature block with name, title, address and two numbers) with **Show pictures** · *1 picture is off.* above
+it. **Show pictures** took the off line away; the one picture is the signature's `cid:` inline image, which `richAttr` drops
+by design (its bytes are in Gmail), so its frame drew empty; the same image is listed above as an attachment, *our copy kept
+on arrival*, which is the follow-up in `next`. The reload reopened the window on **Rich text** (pressed) with pictures off
+again, as designed. Nothing was deleted. Screenshots `259-1` to `259-4` in the walk session's scratchpad.
 
 ## The ask
 

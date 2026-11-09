@@ -15,6 +15,7 @@ import { buildTradeWaiverPdf, tradeWaiverPaperFor, tradeWaiverPdfModel, tradeWai
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { mintPaperToken, paperSignPath } from '../_shared/gcTradePaper.ts'
 import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, WAIVER_KINDS, waiverHeld } from '../_shared/gcTradeSubmit.ts'
+import { writeTradeLine } from '../_shared/gcTradeThread.ts'
 
 /**
  * GC mode, the trade partner portal's writes (P2b-i, to-dos/gc-mode/mockups/portal-p2b.md): everything a company
@@ -60,6 +61,11 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * that one the function mints a fresh token (`_shared/gcTradePaper.ts`, as `submit-sub-portal`'s `sign_link` does), hands
  * the verb its hash and expiry, and answers `{ signPath }` with the raw token, which the page goes to in the same tab.
  * The newest link wins, so the emailed one stops working.
+ *
+ * A line for the company's thread (`portal_message`, punch list #205 PR 5) has no verb. After the link, before the Spanish
+ * hold: `writeTradeLine` (`_shared/gcTradeThread.ts`) checks the job is one the company has an invite on (`notYours`),
+ * finds or makes the company's contact row, holds the thread's own cap of 20 lines an hour (`tooMany`) and writes the
+ * line on Messages, where the office reads it as it reads a text. The answer is `{ ok: true, value: line }`.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -322,6 +328,11 @@ serve(async (req) => {
     })
     if (!link) return refuse('linkOff')
     if (parsed.file) return await placeFile(admin, link.company_id, parsed.file)
+    if (parsed.message) {
+      const wrote = await writeTradeLine(admin, { companyId: link.company_id, projectId: parsed.message.projectId, text: parsed.message.text })
+      if (!wrote.ok) return jsonResponse({ error: wrote.key }, wrote.key === 'tooMany' ? 429 : wrote.key === 'notYours' ? 409 : 500)
+      return jsonResponse({ ok: true, value: wrote.line })
+    }
     if (spanishHeld(parsed.call)) return refuse('spanishHeld')
     if (FREE_TEXT_KINDS.has(parsed.kind) && overHourlyCap(await freeTextCounts(admin, link.company_id))) return refuse('tooMany')
 
