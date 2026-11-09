@@ -42,9 +42,15 @@ A second press on the same message sends nothing. The screen says it went before
 
 A reminder is a new message, so it goes out.
 
+## A word to every trade on a job
+
+On a job we are building, the project's card has **Word to every trade**. It opens a window with a subject and a box for the words. The window lists every company awarded a trade on the job. Type the word and press **Tell N companies**. One email goes to each company, in its language, to the people who get the job's emails. Each company reads it in its portal too.
+
+The same words go once. A second press of the same words sends nothing and says so. Change a word and press again to send a new one. A company that could not be reached is named with why, and the others still get theirs.
+
 ## See what was sent
 
-The company's portal lists every email we sent it under **Messages from Click**, newest first. Press **Open it as the office** on the company's portal block to read them.
+The company's portal shows every email we sent it on its **Messages** tab, in its thread with us. Press **Open it as the office** on the company's portal block to read them.
 
 Each email is also kept as a sent copy. The kept copy never shows the company's link, so nobody can open the portal from it.
 
