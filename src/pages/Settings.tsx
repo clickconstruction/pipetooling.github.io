@@ -60,7 +60,7 @@ import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
 import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
-import { isControllerOrDev, isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
+import { isControllerOrDev, isEstimatorOrDev, isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
 import { OfficeHoursSettingsCard } from '../components/settings/OfficeHoursSettingsCard'
 import { MissedCallReplyCard } from '../components/settings/MissedCallReplyCard'
@@ -455,7 +455,8 @@ export default function Settings() {
     saveEstimateCustomerCopyDefaults,
     saveEstimatePublicTerms,
     saveEstimateLineItemCatalog,
-  } = useSettingsProspectsCatalog({ enabled: myRole === 'dev', setError })
+  // Punch list #188 rows 27 and 28 (v2.6764): the estimators' copy and catalog, the owner's customer wording; each section gates itself.
+  } = useSettingsProspectsCatalog({ enabled: isEstimatorOrDev(myRole) || isOwnerOrDev(myRole), setError })
 
   // People & accounts directory engine — extracted to useSettingsPeopleDirectory (v2.857)
   const {
@@ -1703,8 +1704,9 @@ export default function Settings() {
       {myRole === 'dev' ? jobsDevCards.modal : null}
       </SettingsGroup>
 
-      {activeSettingsTab === 'settings-catalogs' && myRole === 'dev' && (
+      {activeSettingsTab === 'settings-catalogs' && (isEstimatorOrDev(myRole) || isOwnerOrDev(myRole)) && (
         <SettingsCatalogsProspectsTab
+          myRole={myRole}
           estimateCxByKey={estimateCxByKey}
           estimateCxSaving={estimateCxSaving}
           estimateCxSectionOpen={estimateCxSectionOpen}
@@ -1872,13 +1874,10 @@ export default function Settings() {
           visibleServiceTypesForMaterials={visibleServiceTypesForMaterials}
         />
       )}
-      {/* v2.2088: the bid cover letter belongs with Bids, not Templates. */}
-      {myRole === 'dev' && (
-        <>
-          <BidCoverLetterDefaultsSettingsBlock openSignal={bidCoverLetterOpenSignal} />
-          <BidBoardValueRuleSettingsBlock />
-        </>
-      )}
+      {/* v2.2088: the bid cover letter belongs with Bids, not Templates. Punch list #188 (v2.6764): the cover letter defaults are
+          the estimators' words (row 27), the Bid Board value rule the owner's (row 29). */}
+      {isEstimatorOrDev(myRole) && <BidCoverLetterDefaultsSettingsBlock openSignal={bidCoverLetterOpenSignal} />}
+      {isOwnerOrDev(myRole) && <BidBoardValueRuleSettingsBlock />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-templates" hidden={activeSettingsTab !== 'settings-templates'} title={settingsGroupTitle('settings-templates', 'Email templates & testing')} description={settingsGroupHint('settings-templates')}>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks } from '../lib/bids/bidBoardJobLinks'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { useBidBoardScope } from '../hooks/useBidBoardScope'
 import { useBidsLoadGates, useBidsPageData } from '../hooks/useBidsPageData'
@@ -1980,6 +1981,7 @@ export default function Bids() {
           onNewBid={newBidPress}
           authUser={authUser}
           isDev={myRole === 'dev'}
+          canSeeEstimatingLabor={isOwnerOrDev(myRole)}
           showMap
           showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}

@@ -10,8 +10,12 @@ import {
 } from '../../lib/estimateCustomerExperience'
 import { computeEstimateLineExtendedCents } from '../../lib/estimateLineItemNormalize'
 import type { EstimateCatalogLineItem } from '../../lib/estimateLineItemCatalog'
+import type { UserRole } from '../../hooks/useAuth'
+import { isEstimatorOrDev, isOwnerOrDev } from '../../lib/doorRoles'
 
 type SettingsCatalogsProspectsTabProps = {
+  /** Punch list #188 (v2.6764): Prospect copy and the line item catalog are the estimators' (row 27); the estimate defaults and the public terms the owner's (row 28). */
+  myRole: UserRole | null
   estimateCxByKey: Record<string, string>
   estimateCxSaving: boolean
   estimateCxSectionOpen: boolean
@@ -49,6 +53,7 @@ type SettingsCatalogsProspectsTabProps = {
 }
 
 export default function SettingsCatalogsProspectsTab({
+  myRole,
   estimateCxByKey,
   estimateCxSaving,
   estimateCxSectionOpen,
@@ -86,6 +91,7 @@ export default function SettingsCatalogsProspectsTab({
 }: SettingsCatalogsProspectsTabProps) {
   return (
     <>
+          {isEstimatorOrDev(myRole) && (
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
@@ -173,7 +179,9 @@ export default function SettingsCatalogsProspectsTab({
               </div>
             )}
           </div>
+          )}
 
+          {isOwnerOrDev(myRole) && (
           <div id="settings-estimate-cx-defaults" style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, scrollMarginTop: '0.75rem' }}>
             <button
               type="button"
@@ -248,7 +256,9 @@ export default function SettingsCatalogsProspectsTab({
               </div>
             )}
           </div>
+          )}
 
+          {isEstimatorOrDev(myRole) && (
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
@@ -409,7 +419,9 @@ export default function SettingsCatalogsProspectsTab({
               </div>
             )}
           </div>
+          )}
 
+          {isOwnerOrDev(myRole) && (
           <div id="settings-estimate-public-terms" style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, scrollMarginTop: '0.75rem' }}>
             <button
               type="button"
@@ -477,6 +489,7 @@ export default function SettingsCatalogsProspectsTab({
               </div>
             )}
           </div>
+          )}
     </>
   )
 }

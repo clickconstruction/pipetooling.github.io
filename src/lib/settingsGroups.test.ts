@@ -134,6 +134,15 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
+  it('Bids & materials opens to the estimator, the owner and a dev (punch list #188 rows 27–29)', () => {
+    for (const role of ['dev', 'estimator', 'master_technician'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).toContain('settings-catalogs')
+    }
+    for (const role of ['assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).not.toContain('settings-catalogs')
+    }
+  })
+
   it('Training and Usage open to the owner with a dev, and to nobody else (punch list #188 rows 6 and 7)', () => {
     for (const role of ['dev', 'master_technician'] as const) {
       const ids = getZonedSettingsGroups(role).map((g) => g.id)
