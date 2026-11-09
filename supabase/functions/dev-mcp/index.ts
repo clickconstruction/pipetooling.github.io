@@ -1122,7 +1122,10 @@ async function readAccount(jwt: string, ref: string): Promise<{ user: AccountUse
   } else {
     const byName = await restGet(jwt, 'users', `select=${ACCOUNT_USER_SELECT}&name=ilike.${encodeURIComponent(accountLikeTerm(key))}&archived_at=is.null&is_digital_twin=eq.false&is_sample=eq.false&order=name&limit=25`)
     if (!byName.ok) return { user: null, person: null, refused: restError(byName.status, byName.body) }
-    const picked = pickByName((Array.isArray(byName.body) ? byName.body : []) as AccountUserRow[], key)
+    const rows = (Array.isArray(byName.body) ? byName.body : []) as AccountUserRow[]
+    // No account wears the name: not a refusal — get_login_state reads it as no_account, and a create may go ahead.
+    if (rows.length === 0) return { user: null, person: null }
+    const picked = pickByName(rows, key)
     if ('refused' in picked) return { user: null, person: null, refused: picked.refused }
     userId = picked.id
   }
