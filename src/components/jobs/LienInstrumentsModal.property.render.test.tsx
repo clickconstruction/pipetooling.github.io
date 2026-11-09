@@ -164,3 +164,20 @@ describe('LienInstrumentsModal · the property kind is the job’s own, read fir
     expect(header()).not.toContain('commercial')
   })
 })
+
+describe('LienInstrumentsModal · the Mechanic’s lien tab prints the desk’s affidavit (v2.6809)', () => {
+  // The report: a GC job never clocked, no day set by hand. The desk's affidavit read the creation month and the GC's
+  // address; one press later this window's paper read *from — through —* and the contractor's name alone.
+  it('a job with no clock hours swears its creation month, and the original contractor line carries the GC’s address', async () => {
+    db.rows.clock_sessions = []
+    // The affidavit's gate, cleared: the owner with a mailing address, the legal description, a § 53.056 notice on record.
+    db.rows.customer_addresses = [{ ...SITE, legal_description: 'LOT 1 BLK 2 SAMPLE SUBD', owner_name: 'Pat Owner', owner_mailing_address: '4 Owner Ct, Liberty Hill, TX 78642', owner_mode: 'homeowner' }]
+    db.rows.job_lien_filings = [{ id: 'f-n', job_id: 'job-891', kind: 'notice_53_056', filed_at: '2026-10-14', serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [], fields: {}, created_at: '2026-10-14T15:00:00Z' }]
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891({ last_work_date: null, created_at: '2026-08-18T05:40:28Z' })} />)
+    await waitFor(() => expect(document.body.textContent).toContain('The name and address of the original contractor is: Burd & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119.'))
+    expect(document.body.textContent).toContain('during the period from August 1, 2026 through August 31, 2026.')
+    expect(document.body.textContent).not.toContain('from — through —')
+    // The strip above the paper names the same month.
+    expect(stepText('last_work')).toContain('Aug 2026')
+  })
+})

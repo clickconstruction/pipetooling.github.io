@@ -7,7 +7,7 @@
  * through the agent. The pure half: the arguments, the file picked off the mail by its name, the inner verb's
  * arguments, the job landing's commitment, the words.
  *
- * Server 0.51.0 (v2.6806): `read_mail_file` reads in pieces. The door cuts every reply at `REPLY_MAX_CHARS`, so a file
+ * Server 0.52.0 (v2.6806): `read_mail_file` reads in pieces. The door cuts every reply at `REPLY_MAX_CHARS`, so a file
  * over about 59 KB used to come back as base64 cut mid-string. A reply now carries at most `MAIL_FILE_SLICE_MAX_BYTES`
  * of the file with `offset`, `length` and `next_offset`, the size and the sha256 of the whole, and the words that say
  * which argument reads on (`mailFileReadReply`).

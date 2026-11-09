@@ -4,7 +4,7 @@
  * file through the evidence verbs, a matter's Evidence tab through the document verbs — the bytes read on the server.
  * The kernel picks the file by name, shapes the inner verb's arguments and the job landing's commitment; the server
  * declares the verbs, keeps view_as off the writes and asks the log before a second apply. Made-up people only.
- * Server 0.51.0 (v2.6806): `read_mail_file` reads in pieces that fit the door's reply, with the argument that reads on.
+ * Server 0.52.0 (v2.6806): `read_mail_file` reads in pieces that fit the door's reply, with the argument that reads on.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -184,7 +184,7 @@ describe('a file off a mail · read in pieces', () => {
 
 describe('the server and the docs', () => {
   it('declares the three verbs, files a job through drive-link as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.52.0'")
     for (const verb of ['read_mail_file', 'plan_mail_file', 'apply_mail_file']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)

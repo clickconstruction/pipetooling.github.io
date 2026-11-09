@@ -2,7 +2,7 @@
 title: build a submittal package
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: assembly parts, which part belongs to which, change the supply house, swap supply house, refresh from the takeoff, make it a part, part of, carrier, to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data, send a cut sheet, save a cut sheet, one cut sheet, cut sheet PDF, superintendent, installer, design change, whose call, signed off, sign-off, engineer, send the link, email the link, send it again,
+keywords: agent, MCP, load rows, where it stands, assembly parts, which part belongs to which, change the supply house, swap supply house, refresh from the takeoff, make it a part, part of, carrier, to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data, send a cut sheet, save a cut sheet, one cut sheet, cut sheet PDF, superintendent, installer, design change, whose call, signed off, sign-off, engineer, send the link, email the link, send it again,
 ---
 A submittal is the list of products you will install. The GC approves it before anything is ordered.
 
@@ -214,6 +214,16 @@ Three chores are reading, and the robot can do them. You confirm. It never sends
 :::example What the robot is sure of
 A tag printed on the sheet, a model number that matches a row, a stamp that says REVISE AND RESUBMIT — sure. A hand-written mark with no tag, a page that could be two sheets — it asks you to look, and never confirms itself.
 :::
+
+## Load rows with your agent
+
+A dev can do part of this page through the MCP seat. The agent adds rows to the draft, one tag or many. It can change a row that is already there. It can also type the order dates on a part.
+
+The agent shows a plan first. The plan says how each row will read. Nothing is written until you say yes.
+
+Ask the agent where a bid's submittals stand. It answers with each row, each part and the next step. It can hand you the status in plain words to paste.
+
+The agent never shares with the GC. It never emails or texts anyone. To set one up, read [connect a coding agent](/help/connect-a-coding-agent).
 
 ## The procurement log
 
