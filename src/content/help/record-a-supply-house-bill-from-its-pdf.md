@@ -12,7 +12,7 @@ Nothing is written until you press {{button:blue|Save invoice}}. The form never 
 
 1. Open **Materials → Supply houses**, open the house and press {{button:blue|Add Invoice}}.
 2. The first section is **The bill**. After *Start from:* you see each PDF or picture from the house's thread that is not on an invoice yet. Press one.
-   A tech's ticket bought on a PO code at this house shows there too, like **Jordan's ticket, Nov 4, PO 41207**. Press it and the fields fill from the ticket's photo. Save ties the ticket to the bill.
+   A tech's ticket bought on a PO code at this house shows there too. The chip reads like **Jordan's ticket, Nov 4, PO 41207**. Press it and the fields fill from the ticket's photo. Save ties the ticket to the bill.
 3. The fields fill in. A line under the picker says how many things are left to check.
 4. Press {{button:outline|Another file…}} to pick a PDF or a picture from your computer or phone instead. The file is kept with the invoice.
 5. Press {{button:outline|No PDF, I will type it}} to type the whole bill as before.
