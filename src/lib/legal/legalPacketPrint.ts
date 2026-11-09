@@ -12,7 +12,7 @@ import { theirPaperWords } from '../jobs/theirPaper'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
-import { claimEvidenceWords, claimTable, claimTotalWords } from './legalClaimLines'
+import { claimEvidenceWords, claimSettlementOnlyPrintWords, claimTable, claimTotalWords } from './legalClaimLines'
 import { ownerMailingAddressCell } from './legalProperty'
 import { gapAnswerByline } from './legalGapAnswers'
 import type { SettlementPaths } from './settlementPaths'
@@ -59,7 +59,9 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const exhibitItems = exhibitDetails(packet).map((x) => `<li><b>${esc(x.section)}</b>${x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? '' : ` ${esc(x.title)}`} <span class="muted">(${x.count})</span></li>`).join('')
   const w = packet.worth
   // v2.6681 (punch list #171, PR 3): the claim as the Account tab draws it — the two rows that fill in, the typed lines, the total — so the firm reads the same table the desk shows and never re-types it from the letters.
-  const claim = claimTable(w, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)
+  // v2.6697: the print is the demand's paper, so a settlement-only line is left out and a sentence says how many were.
+  const claim = claimTable(w, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId, { forDemand: true })
+  const settlementOnlyNote = claimSettlementOnlyPrintWords(claimTable(w, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId))
   const claimRows = [
     ...claim.rows.map((r) => row([`${esc(r.part)}${r.source === 'typed' ? '' : ' <span class="muted">fills in</span>'}`, esc(r.basis || '—'), esc(claimEvidenceWords(r.evidence)), formatLegalMoney(r.amount)], [false, false, false, true])),
     row([`<b>${esc(claimTotalWords(claim))}</b>`, '', '', `<b>${formatLegalMoney(claim.total)}</b>`], [false, false, false, true]),
@@ -116,7 +118,7 @@ ${a.contacts.length ? table(['Contact', 'Email', 'Phone', 'Note'], a.contacts.ma
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance'], jobsRows, 'No jobs.')}
 <h3>The claim</h3>
-${table(['Part of the claim', 'Basis', 'Evidence', 'Amount'], claimRows, '')}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}
+${table(['Part of the claim', 'Basis', 'Evidence', 'Amount'], claimRows, '')}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}${settlementOnlyNote ? `<p class="muted">${esc(settlementOnlyNote)}</p>` : ''}
 <h3>Invoices and payments</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.')}
 <h3>Property record</h3>

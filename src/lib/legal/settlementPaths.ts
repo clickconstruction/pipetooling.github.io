@@ -180,7 +180,7 @@ type MatterEntryLike = { id: string; kind: string; meta: unknown; amount: number
  * the firm's view and both prints call this, so the office and the firm read one set of cards.
  */
 export function settlementPathsOfMatter(
-  worth: Pick<SettlementPathsInput, 'claim' | 'contingencyPct' | 'filingCost'>,
+  worth: Pick<SettlementPathsInput, 'claim' | 'contingencyPct' | 'filingCost'> & { /** v2.6697: the claim with the settlement-only lines in it; absent on an older worth, the claim alone. */ claimSettlement?: number },
   stage: string | null | undefined,
   entries: ReadonlyArray<MatterEntryLike>,
   nameOf: (userId: string | null | undefined) => string | null = () => null,
@@ -189,5 +189,6 @@ export function settlementPathsOfMatter(
     const meta = offerMetaOf(e.meta)
     return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
   })
-  return settlementPaths({ claim: worth.claim, contingencyPct: worth.contingencyPct, filingCost: worth.filingCost, filed: legalSuitFiled(stage), offers, read: currentCounselRead(entries, nameOf) })
+  // v2.6697 (punch list #171, the owner's call of 2026-11-08): the paths are settlement figures, so a settlement-only line is in the claim they start from.
+  return settlementPaths({ claim: worth.claimSettlement ?? worth.claim, contingencyPct: worth.contingencyPct, filingCost: worth.filingCost, filed: legalSuitFiled(stage), offers, read: currentCounselRead(entries, nameOf) })
 }

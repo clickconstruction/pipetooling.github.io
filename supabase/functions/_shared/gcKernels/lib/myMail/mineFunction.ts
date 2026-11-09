@@ -569,6 +569,41 @@ export function wantsGuess(row: Pick<MyMailRow, 'folded'>, held: { tagKey: strin
   return held.tagKey === null && row.folded === null && !(held.line && jobKeyOfRow(held.line))
 }
 
+/**
+ * The guess's thread rule (punch list #263 PR C, call 5, v2.6747): the job a conversation is on already, by the page.
+ * A mail's own conversation says the job outright when another mail of it, on the same page, is held by a line on a
+ * job (`inMessages.jobKey`, or an earlier tag's line the person kept after an untag): that row read *already in
+ * Messages ✓* while its newer reply read *Tag…*, and the guess never looked. One job per conversation; two different
+ * jobs among its held lines say nothing, and the subject, party and domain steps are tried instead. Pure.
+ */
+export function conversationJobs(rows: readonly { threadId: string; jobKey: string | null }[]): Record<string, string> {
+  const seen = new Map<string, string | null>()
+  for (const r of rows) {
+    if (!r.jobKey) continue
+    const had = seen.get(r.threadId)
+    if (had === undefined) seen.set(r.threadId, r.jobKey)
+    else if (had !== null && had !== r.jobKey) seen.set(r.threadId, null)
+  }
+  const out: Record<string, string> = {}
+  for (const [threadId, key] of seen) if (key) out[threadId] = key
+  return out
+}
+
+/** Why the thread rule guessed: *a mail of this conversation is on JP1077 already*. */
+export function conversationWhy(chip: Pick<MyMailJobChip, 'num' | 'name'>): string {
+  return `a mail of this conversation is on ${chip.num.trim() || chip.name.trim() || 'this job'} already`
+}
+
+/**
+ * The thread rule's guess for a row: the chip of the job its conversation is on already (`conversationJobs`), or null
+ * when none is, or when the page did not load that chip. Tried before `guessJob`'s three steps.
+ */
+export function conversationGuess(threadId: string, onJob: Readonly<Record<string, string>>, chips: Readonly<Record<string, MyMailJobChip>>): MyMailGuess | null {
+  const key = onJob[threadId]
+  const chip = key ? chips[key] : undefined
+  return chip ? { ...chip, why: conversationWhy(chip) } : null
+}
+
 // ---------- what a tag writes ----------
 
 /** A line the tag found by its Message-ID, as `planTag` reads it. */
