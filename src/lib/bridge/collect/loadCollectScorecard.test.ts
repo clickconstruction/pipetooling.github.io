@@ -37,11 +37,11 @@ const gteOn = (reads: Array<{ table: string; steps: Step[] }>, table: string) =>
 describe('loadCollectScorecardReads on the company calendar (v2.5950)', () => {
   it('reads the filings from midnight Central on the call day, in summer time and in winter time', async () => {
     const summer = fakeDb({})
-    await loadCollectScorecardReads(summer.db, { sinceYmd: '2026-10-26', jobIds: ['j1'] })
+    await loadCollectScorecardReads(summer.db, { sinceYmd: '2026-10-26', jobIds: ['j1'], zzTestJobIds: null })
     expect(gteOn(summer.reads, 'job_lien_filings')).toEqual(['created_at', '2026-10-26T05:00:00.000Z'])
     expect(gteOn(summer.reads, 'jobs_ledger_payments')).toEqual(['paid_on', '2026-10-26'])
     const winter = fakeDb({})
-    await loadCollectScorecardReads(winter.db, { sinceYmd: '2026-12-07', jobIds: ['j1'] })
+    await loadCollectScorecardReads(winter.db, { sinceYmd: '2026-12-07', jobIds: ['j1'], zzTestJobIds: null })
     expect(gteOn(winter.reads, 'job_lien_filings')).toEqual(['created_at', '2026-12-07T06:00:00.000Z'])
   })
 
@@ -56,7 +56,31 @@ describe('loadCollectScorecardReads on the company calendar (v2.5950)', () => {
         { job_id: 'j1', kind: 'notice', drafted_at: '2026-10-26T05:00:00+00:00', approved_at: null, sent_at: null },
       ],
     })
-    const reads = await loadCollectScorecardReads(db, { sinceYmd: '2026-10-26', jobIds: ['j1'] })
+    const reads = await loadCollectScorecardReads(db, { sinceYmd: '2026-10-26', jobIds: ['j1'], zzTestJobIds: null })
     expect(reads.notices).toEqual({ drafted: 2, signed: 1, mailed: 1, affidavitsFiled: 0 })
+  })
+})
+
+describe('loadCollectScorecardReads: a payment on a ZZ test job is no payer\'s (v2.6813)', () => {
+  const job = (id: string, jobName: string, customerName: string, payer: string) => ({ id, job_name: jobName, customer_name: customerName, bill_to_party: 'customer', customer_id: `c-${id}`, gc_customer_id: null, customer: { name: payer }, gc: null })
+  const rows = {
+    jobs_ledger_payments: [
+      { job_id: 'real', amount: 4_000, paid_on: '2026-10-27' },
+      { job_id: 'zzById', amount: 75, paid_on: '2026-10-27' },
+      { job_id: 'zzByName', amount: 1, paid_on: '2026-10-28' },
+    ],
+    jobs_ledger: [job('real', 'Elm', 'Ann Lee', 'Ann Lee'), job('zzById', 'Renamed since', 'Ann Lee', 'Ann Lee'), job('zzByName', 'ZZ Test bio walk', 'Robert Test', 'Robert Test')],
+  }
+
+  it('leaves by the shared ids, or by the names its job carries', async () => {
+    const { db } = fakeDb(rows)
+    const reads = await loadCollectScorecardReads(db, { sinceYmd: '2026-10-26', jobIds: [], zzTestJobIds: new Set(['zzById']) })
+    expect(reads.payments).toEqual([{ payerId: 'c-real', payerName: 'Ann Lee', usd: 4_000, paidOn: '2026-10-27' }])
+  })
+
+  it('keeps every payment for a dev who shows them', async () => {
+    const { db } = fakeDb(rows)
+    const reads = await loadCollectScorecardReads(db, { sinceYmd: '2026-10-26', jobIds: [], zzTestJobIds: null })
+    expect(reads.payments.map((p) => p.usd)).toEqual([4_000, 75, 1])
   })
 })

@@ -21,6 +21,7 @@ import {
 } from '../../lib/jobs/stripePartPayment'
 import { heldStripeMarkNote, markPaidHoldsStripeClose } from '../../lib/jobs/heldStripeMark'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { IN_KIND_MEMO_LABEL, IN_KIND_MEMO_PLACEHOLDER, IN_KIND_MEMO_REQUIRED, PAYMENT_KIND_CHOICES, inKindWindowNote, isInKindPaymentType } from '../../lib/jobs/inKindPayment'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -36,7 +37,8 @@ export type JobLikeForPayment = {
 
 export type InvoiceWithJobLike = JobsLedgerInvoice & { job: JobLikeForPayment }
 
-const PAYMENT_TYPES = ['Cash', 'Check', 'Wire', 'ACH', 'Card (external)', 'Other'] as const
+/** v2.6816: the kinds live in the kernel, In kind among them, so every picker offers the same list. */
+const PAYMENT_TYPES = PAYMENT_KIND_CHOICES
 
 /** How long the window waits for Stripe's webhook to write the ledger before it lets the office go on. */
 const STRIPE_LANDING_POLL_MS = 350
@@ -173,6 +175,9 @@ export default function BilledPaymentConfirmationModal({
       : null
   // v2.4801: a check at the whole balance is a ledger row only; Stripe closes once it has cleared.
   const holdsStripeClose = markPaidHoldsStripeClose({ stripeHosted: Boolean(stripeInvoicePath), paymentType, planKind: stripePlan?.kind ?? null })
+  // v2.6816: a payment that is not money — the memo says what was given instead, and the words
+  // under the kind say what it counts as; on a Stripe bill it takes the same two paths as cash.
+  const inKind = isInKindPaymentType(paymentType)
 
   useEffect(() => {
     if (!open) return
@@ -249,6 +254,11 @@ export default function BilledPaymentConfirmationModal({
     }
     if (!paymentType) {
       setError('Payment type is required')
+      setSubmitting(false)
+      return
+    }
+    if (inKind && !internalNote.trim()) {
+      setError(IN_KIND_MEMO_REQUIRED)
       setSubmitting(false)
       return
     }
@@ -437,7 +447,7 @@ export default function BilledPaymentConfirmationModal({
                   {heldStripeMarkNote(paidOn.trim(), todayYmdInAppTz())}
                 </p>
               ) : null}
-              {stripeInvoicePath && !holdsStripeClose && stripePlan?.kind !== 'part' && (
+              {stripeInvoicePath && !holdsStripeClose && stripePlan?.kind !== 'part' && !inKind && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
                   received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.
@@ -560,6 +570,11 @@ export default function BilledPaymentConfirmationModal({
             </option>
           ))}
         </select>
+        {inKind ? (
+          <p data-testid="in-kind-note" style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.4 }}>
+            {inKindWindowNote({ stripeHosted: Boolean(stripeInvoicePath), planKind: stripePlan?.kind ?? null })}
+          </p>
+        ) : null}
 
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
           Reference number (optional)
@@ -572,13 +587,14 @@ export default function BilledPaymentConfirmationModal({
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
         />
 
-        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-          Internal notes (optional)
+        <label htmlFor="billed-payment-memo" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          {inKind ? IN_KIND_MEMO_LABEL : 'Internal notes (optional)'}
         </label>
         <textarea
+          id="billed-payment-memo"
           value={internalNote}
           onChange={(e) => setInternalNote(e.target.value)}
-          placeholder="e.g. Picked up"
+          placeholder={inKind ? IN_KIND_MEMO_PLACEHOLDER : 'e.g. Picked up'}
           rows={2}
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
         />

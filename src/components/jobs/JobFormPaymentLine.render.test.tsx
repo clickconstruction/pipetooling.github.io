@@ -251,6 +251,23 @@ describe('JobFormPaymentLine — a hand-typed row', () => {
   })
 })
 
+describe('JobFormPaymentLine — an in-kind row (v2.6816)', () => {
+  it('the Type box offers In kind with the other kinds, and an in-kind row asks for its memo until one is typed', () => {
+    renderLine(paymentRow({ amount: 1000, payment_type: 'In kind', note: null, invoice_id: null, paid_on: '2026-03-03' }), { persisted: false })
+    const type = screen.getByLabelText('Payment type') as HTMLInputElement
+    const list = document.getElementById(type.getAttribute('list')!) as HTMLDataListElement
+    expect([...list.options].map((o) => o.value)).toContain('In kind')
+    expect(screen.getByText('What was given instead of money')).toBeTruthy()
+    expect(screen.getByTestId('in-kind-memo-missing')).toBeTruthy()
+    expect(screen.getByText(/in kind · typed by hand/)).toBeTruthy()
+  })
+  it('with the memo in, nothing is asked for and the memo rides on the line', () => {
+    renderLine(paymentRow({ amount: 1000, payment_type: 'in-kind', note: 'Rent credit, March 2026', paid_on: '2026-03-03' }))
+    expect(screen.queryByTestId('in-kind-memo-missing')).toBeNull()
+    expect(screen.getByText(/Rent credit, March 2026/)).toBeTruthy()
+  })
+})
+
 describe('JobFormPaymentLine — three cells, so a long line wraps inside its words (v2.4300)', () => {
   it('the line is amount · one middle cell (words, chips, buttons) · ⋯, and nothing else', () => {
     const row = paymentRow({ amount: 500, invoice_id: null, paid_on: '2026-09-22', mercury_transaction_id: 'mt1' })

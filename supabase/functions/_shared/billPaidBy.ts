@@ -18,6 +18,7 @@
  * `src/lib/jobs/gcChecksApplied.ts` and tests it there.
  */
 import { attributeJobPayments } from './paymentAttribution.ts'
+import { IN_KIND_CUSTOMER_WORD, isInKindPaymentType } from './inKindPayment.ts'
 
 export type PaidByPayment = {
   invoice_id: string | null | undefined
@@ -36,7 +37,7 @@ export type PaidByBill = {
   billed_at?: string | null
 }
 
-export type CheckKind = 'check' | 'ach' | 'wire' | 'card' | 'other'
+export type CheckKind = 'check' | 'ach' | 'wire' | 'card' | 'in-kind' | 'other'
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 const num = (v: number | string | null | undefined): number => {
@@ -69,6 +70,8 @@ export const money = (n: number): string => `$${n.toLocaleString('en-US', { mini
 export function paymentKind(paymentType: string | null | undefined): CheckKind {
   const t = (paymentType ?? '').trim().toLowerCase()
   if (!t) return 'other'
+  // v2.6816: before the card test, which would read the "credit" in a memo-like type.
+  if (isInKindPaymentType(t)) return 'in-kind'
   if (/che(ck|que)|chk/.test(t)) return 'check'
   if (/ach|eft|direct|transfer/.test(t)) return 'ach'
   if (/wire/.test(t)) return 'wire'
@@ -93,6 +96,8 @@ export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: b
   if (kind === 'ach') return 'ACH'
   if (kind === 'wire') return 'Wire'
   if (kind === 'card') return 'Card'
+  // v2.6816: a credit given instead of money — the rent credit — never a cash word.
+  if (kind === 'in-kind') return IN_KIND_CUSTOMER_WORD
   // Recorded from a bank deposit with no type picked: say so rather than "Payment".
   return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
