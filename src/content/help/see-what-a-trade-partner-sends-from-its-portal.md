@@ -60,3 +60,5 @@ The company can pick a file with its quote, a change it asks for, or a submittal
 Each file goes into the job's folder in Drive. A submittal's file goes in **Submittals**. Any other goes in **Team only**, under **From trades** and the company's name.
 
 The quote, the change and the submittal each show the file's link. A file over 10 MB still comes by email, or as a Drive link the company pastes.
+
+The company can also press **Send Click a file** on a job it signed for. It picks a photo or a PDF and types one line that says what it is. The line becomes the file's name. The file lands in **Team only**, under **From trades** and the company's name. No office screen lists it yet, so open the job's folder in Drive to read it. The Draws window reads only the waivers.

@@ -8,6 +8,7 @@ import { directionsUrlForAddress } from '../../lib/directionsUrl'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import type { PortalTodo } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
+import type { PortalFileRow } from '../../lib/gc/tradePortalPage'
 import { jobHead, jobHeadShown } from '../../lib/gc/tradePortalHead'
 import type { ScheduleWork, TradePortalChart } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
@@ -19,6 +20,7 @@ import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
 import { GcTradePortalDatesMoved } from './GcTradePortalDatesMoved'
+import { GcTradePortalFiles } from './GcTradePortalFiles'
 import { GcTradePortalJob } from './GcTradePortalJob'
 import { GcTradePortalJobHead, GcTradePortalNeedsHere } from './GcTradePortalJobHead'
 import { GcTradePortalLate } from './GcTradePortalLate'
@@ -49,6 +51,7 @@ export function GcTradePortalProject({
   partner,
   today,
   planUrl,
+  files = [],
   onHome,
   schedule = null,
   work = null,
@@ -60,6 +63,8 @@ export function GcTradePortalProject({
   today: string
   /** The Drive link of a set by its number; empty when it has none. */
   planUrl: (rev: number) => string
+  /** The company's files on this job (punch list #205, PR 4), newest first. */
+  files?: PortalFileRow[]
   onHome: () => void
   /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b), with the planned finish (#205, PR 2). Null: none. */
   schedule?: TradePortalChart | null
@@ -129,7 +134,7 @@ export function GcTradePortalProject({
       )}
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (
-        <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} />
+        <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} files={files} />
       ))}
       {!head && <Contacts project={project} />}
     </div>
@@ -143,6 +148,7 @@ function TradeBlocks({
   partner,
   today,
   planUrl,
+  files,
 }: {
   project: GcProject
   pkg: TradePackage
@@ -150,6 +156,7 @@ function TradeBlocks({
   partner: Partner
   today: string
   planUrl: (rev: number) => string
+  files: PortalFileRow[]
 }) {
   const { lang, t } = usePortalLang()
   const news = portalPlanNews(project, pkg, invite)
@@ -248,6 +255,8 @@ function TradeBlocks({
       ) : awardedToMe ? (
         <>
           <GcTradePortalSow project={project} pkg={pkg} />
+          {/* Its files on this job (punch list #205, PR 4): what it sent us and the plans we sent, and Send Click a file. */}
+          {pkg.sow?.status === 'signed' && <GcTradePortalFiles project={project} files={files} planUrl={planUrl} />}
           {/* The job once its statement of work is signed (P5c-1): the report, punch list, submittals, draws and RFIs. */}
           <GcTradePortalJob project={project} pkg={pkg} partner={partner} today={today} />
         </>

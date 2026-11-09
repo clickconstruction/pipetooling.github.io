@@ -154,6 +154,43 @@ function stageReads(x: unknown): x is PortalStage {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
+/** What a file the company sent us is (punch list #205, PR 4): the `gc_trade_files` purposes the portal names. */
+export type PortalFileWhat = 'submittal' | 'change' | 'quote' | 'waiver' | 'note'
+
+/** One file the company sent us on a job, as Your files on this job lists it. */
+export interface PortalFileRow {
+  id: string
+  what: PortalFileWhat
+  /** A waiver's form (`paper`), else null. */
+  paper: string | null
+  name: string
+  url: string
+  /** The day it went, in the app's calendar (`uploaded_at`'s date part). */
+  day: string
+}
+
+const FILE_WHATS: readonly PortalFileWhat[] = ['submittal', 'change', 'quote', 'waiver', 'note']
+
+/**
+ * The company's files by job (punch list #205, PR 4), newest first: its own uploads and the papers the portal made for
+ * it, each with its Drive link. A row with no https link, or one the portal cannot name, is left out. A slice from an
+ * older function has none.
+ */
+export function tradeFilesByProject(slice: TradePortalSlice): Record<string, PortalFileRow[]> {
+  const out: Record<string, PortalFileRow[]> = {}
+  for (const f of slice.files ?? []) {
+    const what = str(f.purpose)
+    const url = str(f.drive_url).trim()
+    const projectId = str(f.project_id)
+    if (!projectId || !/^https:\/\//.test(url) || !(FILE_WHATS as readonly string[]).includes(what)) continue
+    const at = str(f.uploaded_at)
+    const row: PortalFileRow = { id: str(f.id), what: what as PortalFileWhat, paper: typeof f.paper === 'string' && f.paper !== '' ? f.paper : null, name: str(f.name), url, day: at.slice(0, 10) }
+    ;(out[projectId] ??= []).push(row)
+  }
+  for (const rows of Object.values(out)) rows.sort((a, b) => b.day.localeCompare(a.day) || b.id.localeCompare(a.id))
+  return out
+}
+
 /** The Drive link of a project's set, by its number: where Look at the plans opens. Empty when it has none. */
 export function setDriveUrl(slice: TradePortalSlice, projectId: string, rev: number): string {
   const set = slice.sets.find((s) => str(s.project_id) === projectId && Number(s.rev) === rev)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
-import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, withScheduleTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
+import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, withScheduleTodos, type PaperworkLine, type PortalFileRow, type SentMessage } from '../../lib/gc/tradePortalPage'
 import type { ScheduleWork, TradePortalChart } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { TradeFlowRows } from '../../../supabase/functions/_shared/gcTradeFlow'
 import { todayNoon, tradeFirstPage, withoutPageTodos, type TradePagePress } from '../../lib/portal/tradeFirstPage'
@@ -39,6 +39,7 @@ export function GcTradePortalView({
   lang,
   messages,
   planUrl,
+  files = {},
   banner,
   schedules = {},
   scheduleWork = {},
@@ -51,6 +52,8 @@ export function GcTradePortalView({
   messages: SentMessage[]
   /** The Drive link of a project's set by its number; empty when it has none. */
   planUrl: (projectId: string, rev: number) => string
+  /** The company's files on each job, by the job's id (punch list #205, PR 4). None: no block. */
+  files?: Record<string, PortalFileRow[]>
   /** A line above the page: the sample, or the office's preview. */
   banner?: string
   /** The company's chart on each job being built, by the job's id (the schedule's PR 14b), with the planned finish (#205, PR 2). */
@@ -139,6 +142,7 @@ export function GcTradePortalView({
             partner={partner}
             today={state.today}
             planUrl={(rev) => planUrl(shown.id, rev)}
+            files={files[shown.id] ?? []}
             onHome={() => go(null)}
             schedule={schedules[shown.id] ?? null}
             work={scheduleWork[shown.id] ?? null}
