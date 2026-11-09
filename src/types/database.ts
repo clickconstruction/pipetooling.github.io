@@ -44054,6 +44054,17 @@ export type Database = {
         Returns: string
       }
       request_is_dev_seat: { Args: never; Returns: boolean }
+      research_contact_history: {
+        Args: { p_keys: string[] }
+        Returns: {
+          bids: number
+          key: string
+          last_bid_on: string
+          on_deck: boolean
+          won: number
+        }[]
+      }
+      research_name_key: { Args: { p_name: string }; Returns: string }
       research_permits: {
         Args: { p_city: string; p_residential?: boolean; p_since: string }
         Returns: {
