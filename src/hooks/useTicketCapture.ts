@@ -58,8 +58,14 @@ export type TicketInputProps = {
 }
 
 export interface TicketSaveInput {
+  /** Who is saving, and whose folder the bytes go under. */
   userId: string
   byName: string
+  /** Whose ticket it is when the office saves a paper handed in for someone else (PR 4); the saver by default. */
+  takenBy?: string
+  takenByName?: string
+  /** Where the paper came from: the camera, a file on the phone, or the office's desk. */
+  source?: TicketSource
   write: { job_id: string | null; also_job_ids: string[]; no_one_job: boolean; po_entry_id: string | null }
   total: number | null
   note: string
@@ -70,7 +76,7 @@ export interface TicketSaveInput {
 export type TicketSaveOutcome = { kind: 'sent'; ticketId: string } | { kind: 'kept'; ticketId: string }
 
 export interface TicketCaptureIo {
-  send?: (t: TicketDraft, pages: readonly TicketPageDraft[]) => Promise<void>
+  send?: (t: TicketDraft, pages: readonly TicketPageDraft[], uploaderId: string) => Promise<void>
   kept?: KeptPhotosStore
   press?: typeof pressThroughOutbox
   shrink?: typeof shrinkReportPhoto
@@ -210,13 +216,14 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
     const shots = pagesRef.current
     if (shots.length === 0) throw new Error('Take a photo of the ticket first.')
     const timed = shots.find((p) => p.takenAtFrom === 'press') ?? shots.find((p) => p.takenAtFrom === 'photo') ?? shots[0]!
+    const takenBy = input.takenBy ?? input.userId
     const draft: TicketDraft = {
       id: newPhotoId(),
-      takenBy: input.userId,
-      takenByName: input.byName,
+      takenBy,
+      takenByName: input.takenByName ?? input.byName,
       takenAt: timed.takenAt,
-      takenAtFrom: timed.takenAtFrom,
-      source: shots[0]!.source,
+      takenAtFrom: input.source === 'office' ? 'none' : timed.takenAtFrom,
+      source: input.source ?? shots[0]!.source,
       jobId: input.write.job_id,
       alsoJobIds: input.write.also_job_ids,
       noOneJob: input.write.no_one_job,
@@ -229,13 +236,14 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
     setError(null)
     try {
       try {
-        await (ioRef.current.send ?? sendTicket)(draft, pageDrafts)
+        await (ioRef.current.send ?? sendTicket)(draft, pageDrafts, input.userId)
         announceTickets([draft.id])
         discard()
         return { kind: 'sent', ticketId: draft.id }
       } catch (e) {
         // Lost to the signal: keep the bytes and the facts, and the replay sends them when it is back.
-        if (!sendLostSignal(e, TICKET_SEND_ERROR_NAME) || isImpersonationSessionActive()) throw e
+        // The office's scan for someone else never queues: the desk has a signal, and a kept press sends as its presser.
+        if (!sendLostSignal(e, TICKET_SEND_ERROR_NAME) || isImpersonationSessionActive() || takenBy !== input.userId) throw e
         const store = ioRef.current.kept ?? keptPhotos
         const held = await Promise.all(pageDrafts.map((p) => store.keep(p.id, p.blob)))
         if (held.some((ok) => !ok)) {

@@ -44,6 +44,8 @@ export type TallyTeamDayCardProps = {
   asksByCharge?: ReadonlyMap<string, TicketWithPages>
   onAnswerAsk?: (ticket: TicketWithPages, chargeId: string, yes: boolean) => void
   onOpenTicket?: (ticket: TicketWithPages) => void
+  /** A paper handed in at the desk (PR 4): a scan, a photo or a PDF tied to this charge. */
+  onAddTicket?: (row: StaleStaffRow) => void
 }
 
 const money = (n: number) =>
@@ -167,6 +169,7 @@ export function TallyTeamDayCard({
   asksByCharge,
   onAnswerAsk,
   onOpenTicket,
+  onAddTicket,
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
@@ -312,6 +315,11 @@ export function TallyTeamDayCard({
                 >
                   {backchargeBusyId === charge.id ? '…' : 'Backcharge'}
                 </button>
+                {onAddTicket && !ticketOn ? (
+                  <button type="button" style={smallButton} data-testid="tally-team-add-ticket" onClick={() => onAddTicket(row)}>
+                    + Ticket
+                  </button>
+                ) : null}
               </div>
 
               {sel && line ? (
