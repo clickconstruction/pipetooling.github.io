@@ -260,6 +260,8 @@ function AppContent() {
         <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route path="/sub" element={<SubPortal />} />
         <Route path="/pay/:id" element={<PayLink />} />
+        {/* #294 (v2.6797): a box label's code, prts.co/b/<code>. Signed out it is the public box page; signed in it opens the box on the On site tab. Outside the Layout so the sign-in gate never swallows a scan. */}
+        <Route path="/b/:code" element={<BoxCode />} />
         <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
@@ -405,7 +407,6 @@ function AppContent() {
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="punch-list" element={<PunchList />} />
           <Route path="tally" element={<JobTally />} />
-          <Route path="b/:code" element={<BoxCode />} />
           <Route path="m/:code" element={<MachineCode />} />
           <Route path="settings" element={<Settings />} />
           <Route path="help" element={<Help />} />
