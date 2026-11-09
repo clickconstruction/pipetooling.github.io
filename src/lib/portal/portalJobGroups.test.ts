@@ -34,6 +34,10 @@ describe('portalPaymentMethodLabel', () => {
     expect(portalPaymentMethodLabel('check · 1042')).toBe('check · 1042')
     expect(portalPaymentMethodLabel('card')).toBe('card')
   })
+  it('an in-kind payment reads Credit on customer paper, never a cash word (v2.6816)', () => {
+    expect(portalPaymentMethodLabel('In kind')).toBe('Credit')
+    expect(portalPaymentMethodLabel('in-kind #rent')).toBe('Credit')
+  })
 })
 
 describe('portalBillBilledAmount', () => {
