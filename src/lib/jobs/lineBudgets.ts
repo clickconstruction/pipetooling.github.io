@@ -279,3 +279,32 @@ export function learningLinesFor(tuned: readonly TunedLineSource[], s: LineBudge
 export function applyLearningLine(s: LineBudgetSettings, line: LearningLine): LineBudgetSettings {
   return applySettingsSplit(s, line.kind, 'labor', line.laborPct)
 }
+
+/* ---------- the lines' sum beside the award (the owner's call of 2026-11-09) ---------- */
+
+/** The hours frozen at award as the Costs card reads them: the number the score reads, with its source. */
+export type AwardHoursBeside = { hours: number; kind: 'bid' | 'typed' | 'book' }
+
+const AWARD_KIND_WORDS: Record<AwardHoursBeside['kind'], string> = { bid: '◆ from the bid', typed: '✎ typed', book: '≈ from the book' }
+const hrs = (n: number): string => `${Math.round(n).toLocaleString('en-US')} h`
+
+/**
+ * The Labor bar's tail on the Costs card: the clocked hours against the hours frozen at award, the lines' sum beside
+ * them — "12 h of 120 h frozen at award (10%) · the lines sum to 458 h". Without an award, against the lines' sum alone.
+ */
+export function laborHoursTailWords(teamHours: number, award: AwardHoursBeside | null, linesHours: number): string {
+  const of = award ? award.hours : linesHours
+  const pct = of > 0 ? ` (${Math.round((teamHours / of) * 100)}%)` : ''
+  if (!award) return `${hrs(teamHours)} of ${hrs(linesHours)}${pct}`
+  return `${hrs(teamHours)} of ${hrs(award.hours)} frozen at award${pct} · the lines sum to ${hrs(linesHours)}`
+}
+
+/**
+ * The card's note under the bars when the job carries an award: which hours the score reads and what the lines' sum
+ * is for. A book award is a guess the score skips, and the note says so. '' with no award.
+ */
+export function linesSumBesideAwardWords(award: AwardHoursBeside | null, linesHours: number): string {
+  if (!award) return ''
+  const reads = award.kind === 'book' ? `The score skips the ${hrs(award.hours)} frozen at award ${AWARD_KIND_WORDS.book}, a guess, until a bid or typed baseline replaces it.` : `The score reads the ${hrs(award.hours)} frozen at award ${AWARD_KIND_WORDS[award.kind]}.`
+  return `${reads} The lines sum to ${hrs(linesHours)}: the line-by-line view, shown beside the award and never scored.`
+}

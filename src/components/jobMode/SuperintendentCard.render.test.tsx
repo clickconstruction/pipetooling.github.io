@@ -97,7 +97,7 @@ describe('SuperintendentCard', () => {
     }
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     const card = await screen.findByTestId('superintendent-line')
-    expect(card.textContent).toContain('70 h budget ◆ from the bid · 9 h in, all on sub sheets')
+    expect(card.textContent).toContain('70 h budget ◆ from the bid, frozen at award · 9 h in, all on sub sheets')
     expect(card.textContent).toContain("Signed off by the office at 25% on Nov 8 · checklist 3 of 5 ready · the crew's 25% is the signed-off figure.")
     expect(card.textContent).not.toContain('pay app')
     expect(card.textContent).not.toContain('0 h in')

@@ -79,7 +79,7 @@ function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; 
   // The office's sign-off and the subs' sheet hours ride the same read as the score, so the proof line and the hours in
   // say what the Scoreboard counts (the second walk's slips 3 and 4).
   const scoreRow = scores.read?.rows.find((r) => r.jobId === job.id) ?? null
-  const pace = projectPace({ job, target: targets.byJob.get(job.id) ?? null, checklist, settings: lineBudgetSettings, score: scoreRow ? { certifiedPct: scoreRow.certifiedPct, signedOn: scoreRow.signedOn, subHours: scoreRow.subHours } : null })
+  const pace = projectPace({ job, target: targets.byJob.get(job.id) ?? null, checklist, settings: lineBudgetSettings, score: scoreRow ? { certifiedPct: scoreRow.certifiedPct, signedOn: scoreRow.signedOn, subHours: scoreRow.subHours, awardedHours: scoreRow.awardedHours, awardedKind: scoreRow.awardedKind } : null })
   const line = pace.line
   const used = pace.input.hoursUsed ?? 0
   // The next stage with a question left, else the first stage with a checklist at all.
