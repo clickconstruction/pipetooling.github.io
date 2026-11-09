@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: waiting
-status: designed 2026-11-09 from the owner's ask of the same day · nothing built · waiting on the owner's yes and his privacy call on the search
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers added the same day · nothing built · waiting on the owner's yes and his privacy call on the search
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -13,9 +13,12 @@ summary: >
   when someone wants to change a count. The design keeps the printed labels and the redirect as
   they are, moves the box route out from behind the sign-in, and reads the box through one new
   function by its code with the estimate link's guess guard. The search is keyed by a scanned code
-  and covers that site's boxes, never the whole company.
-next: The owner reads the card and the three mock-ups and makes three calls (build it; the search's gate; who edits the Cloudflare rule). Then PR 1, a one-line fix a crew hits today, goes first.
-size: M as a train of three (XS · S · S)
+  and covers that site's boxes, never the whole company. The owner's second ask the same day: the
+  labels will come off two Brother P-touch tape printers for boxes that sit in the sun, so the card
+  adds a Tape format printed through the printer's own driver from the browser's print window, a
+  CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
+next: The owner reads the card and the four mock-ups and makes four calls (build it; the search's gate; who edits the Cloudflare rule; which tape width he will stock). Then PR 1, a one-line fix a crew hits today, goes first.
+size: M as a train of five (XS · S · S · XS · S)
 blocker: The owner's yes, and his call on the search's gate (the card's recommendation is a scanned code).
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
 ---
@@ -97,13 +100,37 @@ Today `prts.co/` forwards to `clicktooling.com/`, the sign-in page. A second red
 
 ### 6. QR codes and labels
 
-Nothing to print. The labels already carry the right address, the QR already encodes the code the page reads, the manifest print already carries the code under its title. `_shared/qrPng.ts` is not needed; the client's `qrcode.react` draws the labels today. The card's one label note: the laminated manifest could carry the words *Scan the label to see today's count* in its foot, since the paper is a snapshot and the page is live. Optional, XS, PR 3.
+Nothing to print for the page itself. The sheet labels already carry the right address, the QR already encodes the code the page reads, the manifest print already carries the code under its title. `_shared/qrPng.ts` is not needed; the client's `qrcode.react` draws the labels today. One label note: the laminated manifest could carry the words *Scan the label to see today's count* in its foot, since the paper is a snapshot and the page is live. Optional, XS, PR 3.
+
+### 7. Tape labels for the two Brother printers
+
+The owner's second ask, 2026-11-09:
+
+> Long term I plan to create QR code by using a Brother PT-E720BT and Brother P-Touch PT-D610BT to put onto boxes that may sometimes go out into the sun. How could we make it easy for the desktop app to print these labels?
+
+**The rule: let the printer's own driver do the work.** Both printers install on a Mac or PC as ordinary printers with Brother's driver, and the tape width becomes the paper size. So the app lays the label out at the tape's size and prints it through the browser's print window, the way it prints the sheet labels today. No printer code in the app, and the same path serves both models and the next one.
+
+What a web app cannot do, so the design does not try: Brother's b-PAC kit is Windows-only and runs as a COM object, out of a browser's reach. The printers' Bluetooth is classic Bluetooth for Brother's own phone app, which Web Bluetooth cannot open. Talking USB from the browser fights the installed driver and breaks per operating system. A helper program on the office computer would work and is one more thing to keep running.
+
+**The experience, step by step.**
+
+*At the desk, the first time.* Jobs → Materials → Labels. Above the labels, two chips: **Sheet** and **Tape**. Press Tape and the preview turns into one strip per box: the QR on the left, the stencil large beside it, the code and the words *Scan for what is inside* underneath. Tick the boxes to print or keep them all. Press **Print 6 tape labels**. The browser's print window opens. Pick the Brother printer, pick the 24 mm paper, set margins to none, press Print. The printer prints the strips one after another and cuts between them. The chip the office picked is remembered on that computer.
+
+*At the desk, every time after.* Press Tape is already on. Press **Print N tape labels**, press Print. The browser remembers the printer and the paper for the site, so the print window opens ready. Two presses from the page to the tape.
+
+*A whole job at once, from Brother's own editor.* **Export the labels as a CSV** on the same panel writes one row per box: the stencil, the code and the full address. Brother's P-touch Editor merges a CSV into a saved template and prints the run. For the office person who already lives in that editor, this is zero new habits.
+
+*In the field, at the cage.* The PT-E720BT prints over Bluetooth from Brother's phone app. The box's screen on the On site tab gets a press, **Copy the label code**, which puts `PRTS.CO/B/4F2A9C18` on the clipboard with a toast saying so. In Brother's app the person adds a QR, pastes, prints. No integration, and it works the day it ships. With no phone at all, both printers make a QR from text typed on their own keypad, and the code is printed under every sheet label to copy from.
+
+**The label itself.** 24 mm tape, the widest both printers take (the owner confirms the width he stocks; the layout takes the width as a setting, 18 and 24). A 21-module QR fills the tape's height less a quiet zone of four modules on every side, so it scans from arm's length, which is right for a label on a cage's door. The stencil in the largest type that fits, since a person reads the stencil and the phone reads the code. Dark modules on a light tape, black on white or black on yellow, because scanners read dark on light; never white on black. The sun is the tape's job: Brother's laminated tape is rated for outdoors, and the strong-adhesive kind holds on a cage's bars.
+
+**The build.** PR 4 (XS): the CSV export, a pure kernel (`labelsCsv.ts`) over the labels the panel already lists, and the phone's Copy the label code press over `boxUrl`. PR 5 (S): the Tape layout, a second print root beside the sheet's with `@page` set to the tape's size, the Sheet · Tape chips remembered per device, the tick list, the counted press from `batchWords`, a render smoke, the guide's Scan a label section saying how to print to tape, and a *Labels* paragraph in `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`. Walked on both printers before it ships, with one run of each width, since the only proof of a tape layout is the tape.
 
 ## Where it plugs in
 
 - **Exists, touched**: `src/App.tsx` (the `/b/:code` route moves to the public block; a `/b` route joins it), `src/pages/BoxCode.tsx` (the signed-out view and the session fork), `src/lib/layoutRouteAccess.ts` (`/b` on the three field lists), `src/lib/customerSurfaceRegistry.ts` (the row for `/b/:code` and `/b`), `supabase/config.toml` (`[functions.box-read] verify_jwt = false`), `scripts/cloudflare/prts-co-redirect.md` (the second rule), the guide *keep track of the material in the cages and boxes on site* (the Scan a label section), `docs/EDGE_FUNCTIONS.md`, `docs/MATERIALS_ON_SITE_ARCHITECTURE.md` (The doors), `docs/twins/APP_DIRECTORY.md` (the `/b` page), `PROJECT_DOCUMENTATION.md`, `ACCESS_CONTROL.md` (who sees what signed out).
 - **Exists, reused as is**: `on_site_job_summary` (the lines), `estimate_link_miss` through `_shared/estimateLinkMisses.ts` (the guard), `public_page_views` through `_shared/publicViewCounting.ts` (the count), `_shared/driveJobFolder.ts`'s `driveMedia` (the photo's bytes), `POST_LOGIN_REDIRECT_KEY` (the return), `portalTheme.ts` (the light paper), `normalizeBoxCode` and `boxCode` in `labels.ts`.
-- **New**: `supabase/functions/box-read/index.ts`, `_shared/boxPage.ts` with `src/lib/materials/boxPage.ts` and its test, `src/components/materials/BoxPublicPage.tsx` with a render smoke, `src/pages/BoxScan.tsx` (the bare `/b` page), one release note and fragment per PR.
+- **New**: `supabase/functions/box-read/index.ts`, `_shared/boxPage.ts` with `src/lib/materials/boxPage.ts` and its test, `src/components/materials/BoxPublicPage.tsx` with a render smoke, `src/pages/BoxScan.tsx` (the bare `/b` page), one release note and fragment per PR. For the tape: `src/lib/materials/labelsCsv.ts` and `tapeLabel.ts` (the strip's rows and the page size per width) with tests, `src/components/materials/TapeLabelPrint.tsx` beside the sheet print in `JobsMaterialsTab.tsx`, the Copy press in `TallyOnSiteTab.tsx` over `boxUrl` in `labels.ts`.
 - **No migration**, unless the dry call in PR 2 finds the service role without EXECUTE on `on_site_job_summary`; then one line.
 
 ## The plan
@@ -111,6 +138,8 @@ Nothing to print. The labels already carry the right address, the QR already enc
 1. **PR 1 · the crew's scan lands on the box (XS)** — `/b` on the subcontractor, primary and superintendent lists in `layoutRouteAccess.ts`, with a test that walks the four roles over `/b/4f2a9c18`. Ships alone and today; it is a fix, not the feature. The guide's Scan a label words come true for the crew.
 2. **PR 2 · the public box page (S)** — `box-read` with the code check, the guard, the view row and the photo stream; the route out of the Layout; `BoxCode.tsx` forking on the session; `BoxPublicPage.tsx` on the portal's paper at 375 and 320; the sign-in press and its return; the registry row; the guide's section; the docs. Deploy the function after the merge (`supabase functions deploy box-read`); nothing in the database changes. `check:calls-ahead` has no table or RPC to label.
 3. **PR 3 · the search and the front door (S)** — `?find=` in the function over the same job; the search box and its results on the public page; the bare `/b` page with the typed code and the remembered site; the second redirect rule on prts.co (the owner, or a session in his Chrome signed in to Cloudflare), mirrored; the manifest foot's line. Redeploy the function.
+4. **PR 4 · the CSV and the Copy press (XS)** — **Export the labels as a CSV** on the Labels panel for Brother's editor, and **Copy the label code** on the box's screen for Brother's phone app. Ships before anything is laid out for tape, so the owner can print from the editor the day the printers arrive.
+5. **PR 5 · the Tape format (S)** — the Sheet · Tape chips on the Labels panel, the strip per box at the tape's width, the tick list and the counted press, printed through the printer's driver from the browser's print window. Walked on the PT-D610BT and the PT-E720BT over USB before it merges.
 
 Later, not owed: a development's sibling jobs in the search; a *Print this list* press on the public page that prints without the job's name; the sign-in page's *You will go back to…* line.
 
@@ -119,6 +148,8 @@ Later, not owed: a development's sibling jobs in the search; a *Print this list*
 - **PR 1**: `/dev-login?as=1`, Settings → View as… → Helper, then open `/b/<a live box's code>` in the address bar at 375. Before: the Dashboard. After: the box's screen on On site. The same as a primary and a superintendent.
 - **PR 2**, on a ZZ test job (never a paid job's box): the office adds a cage on the ZZ job, prints its label, takes one photo on the phone and waits for the sweep to file it (five minutes). In a browser with no session, open `prts.co/b/<CODE>` as printed: the 301, then the page with the stencil, the photo, the lines and the two presses, nothing of the job. Try a code that is no box: *is not a box on any job*, and after 20 wrong codes from one connection the 429 words. Press Sign in to change a count, sign in as a helper on the job's team: the On site tab opens on that cage. Read `public_page_views` for one `box_page` row, and none for the signed-in look. Retire the cage and scan again: the retired words. A real phone's camera on the printed label, iPhone and Android, since the label's capitals are what the rule lower-cases.
 - **PR 3**: from the ZZ cage's page, Find a part: a word on a line in another ZZ box of the same job finds it, a word on a box of another job finds nothing. `prts.co` bare: the Scan a label page, the search line present on the phone that scanned, absent in a fresh browser.
+- **PR 4**: Export the labels as a CSV on a ZZ job with three boxes: three rows, the stencil, the code, the address; open it in Brother's editor, merge into a template with a QR, print one; scan the tape with a phone. On the phone, Copy the label code on a ZZ box and paste it into Notes: the capitals as the sheet label prints them.
+- **PR 5**: on the office Mac with the printer on USB and Brother's driver installed: Labels → Tape → Print 3 tape labels → the print window with the Brother printer and the 24 mm paper → three strips, cut between them, the QR scanning at arm's length to the right box page, the stencil readable from a step back. Once on each printer, once on each width the owner stocks, once on black-on-yellow tape. Close the tab, open it again: Tape is still the chip.
 - Made-up names, jobs, counts and prices only, in the repo, the PR and every screenshot. The mock-ups were drawn with Playwright at 375 and 320 before they were shown; the PNGs stay local.
 
 ## The mock-ups
@@ -126,6 +157,7 @@ Later, not owed: a development's sibling jobs in the search; a *Print this list*
 - [`scan.html`](./scan.html): the scanned box on a phone, signed out, at 375 and 320, and the retired and not-a-box states.
 - [`search.html`](./search.html): Find a part on this site with its results, the empty answer, and the bare `prts.co` page with and without a remembered site.
 - [`sign-in.html`](./sign-in.html): the hand-off in three frames: the public page's press, the sign-in page, the box's screen in the app with its presses.
+- [`tape-labels.html`](./tape-labels.html): the strip on 24 mm tape at print size and enlarged, the Labels panel with its Sheet · Tape chips and the counted press, the print window's first-time picks, and the phone's Copy the label code press.
 
 Every job, person, street, part and count in them is made up: Ridgeway Builders' Oak Hollow Apartments Building C, cage B3 at Level 2 by the north stair, Mateo Ruiz and Jordan Pike on the crew, the parts and their counts.
 
@@ -134,7 +166,8 @@ Every job, person, street, part and count in them is made up: Ridgeway Builders'
 1. **Build it as drawn?** Three PRs, the first a fix the crew hits today.
 2. **The search's gate**: a scanned code, covering that site's boxes (the recommendation), or the whole company open at `prts.co` with no key, knowing what that page shows to anyone who finds the address.
 3. **The Cloudflare rule** for the bare `prts.co`: the owner from the two lines in `prts-co-redirect.md`, or a session in his Chrome once he has signed in to Cloudflare.
+4. **The tape**: which width he will stock (24 mm is the recommendation, 18 mm the fallback), and whether PR 4, the CSV and the Copy press, should go ahead of the public page since it is the smallest and the printers may arrive first.
 
 ## Where it stands
 
-Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; nothing built, nothing on prod touched. The three mock-ups are beside this card. Waiting on the three calls above.
+Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; the tape labels for the two Brother printers added the same day from his second ask. Nothing built, nothing on prod touched. The four mock-ups are beside this card. Waiting on the four calls above.
