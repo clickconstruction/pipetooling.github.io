@@ -6,18 +6,15 @@ Status: written 2026-11-09 00:30 UTC (the evening of 2026-11-08 in Austin) by th
 
 ## 1. Owed now, in order
 
-1. **Thirteen edge functions are behind main** (`npm run check:edge-drift`, read 00:20 UTC). Every migration on main is in prod's ledger (1,177 of 1,177), so the functions are the whole gap. Deploy them, then read the drift check clean:
+1. **Five edge functions wait on #285's migration.** Thirteen were behind main at 00:20 UTC. Six were deployed by their own sessions, and the coordinating session deployed five more from `origin/main` at 00:47 UTC (`customer-portal`, `gc-trade-portal`, `messages-nudge-dispatch`, `photo-save`, `quo-send`), each answering an OPTIONS probe with 200. Left, held back on purpose: #285 PR 1 (#7343, v2.6714) merged at about 00:40 with `20261108200000_file_index_reach`, which was not in prod's ledger at 00:45 (main 1,179 files, prod 1,178), and these five carry its code:
 
    | Function | Behind for |
    |---|---|
-   | `dev-mcp` | v2.6713 (#287), v2.6715 (#289), v2.6731 |
-   | `gmail-mine` | v2.6715 (#289), v2.6731 |
-   | `gmail-sync` (`--no-verify-jwt`, as #207's card says) | v2.6731 (#207 PR 3) |
-   | `gmail-count`, `messages-email`, `quo-webhook`, `walk` | v2.6731 (the shared Gmail and email-line code) |
-   | `quo-send`, `messages-nudge-dispatch` | v2.6732 (#118 PR 2) |
-   | `customer-portal`, `drive-link`, `gc-trade-portal`, `photo-save` | v2.6699, v2.6715, v2.6729, v2.6731, v2.6732 (the shared kernel copy) |
+   | `dev-mcp` | v2.6713 (#287), v2.6714 (#285), v2.6715 (#289), v2.6731 |
+   | `drive-link` | the shared kernel copy, and v2.6714 |
+   | `file-index-sweep`, `hr-evidence-drive`, `plan-set-files` | v2.6714 |
 
-   After `dev-mcp` is up, #287's and #289's live checks on a ZZ TEST person can run (their cards say how).
+   Push the migration first, then deploy the five, then read `npm run check:edge-drift` clean. #285's session was asked to do both. After `dev-mcp` is up, #287's and #289's live checks on a ZZ TEST person can run (their cards say how).
 
 2. **Migrations to push right after their PRs merge**, from a clean checkout of main, each with its Applied line:
 
@@ -27,7 +24,7 @@ Status: written 2026-11-09 00:30 UTC (the evening of 2026-11-08 in Austin) by th
    | #7375 | #205 PR 4 | `20261108220804_gc_trade_files_note`, then `gc-trade-portal` and `submit-gc-trade-portal` |
    | #7376 | #207 the press | `20261108224500_answered_from_own_mailbox` |
    | #7384, #7377 | #263 B and C | `20261108223000_my_email_sent_side`, then `gmail-mine` |
-   | #7343, #7344 | #285 PRs 1 and 2 | `20261108200000_file_index_reach`, `20261108220000_case_search_files`, then `dev-mcp`, `file-index-sweep`, `hr-evidence-drive` |
+   | #7343 (merged), #7344 | #285 PRs 1 and 2 | `20261108200000_file_index_reach` (owed now, item 1), then `20261108220000_case_search_files` with PR 2, each followed by `dev-mcp`, `file-index-sweep`, `hr-evidence-drive` |
    | #7346, #7347, #7348 | #288 PRs 1 to 3 | `20261108210000_shared_documents`, `…230000_matter_document_counsel_only`, `…233000_matter_document_read_by_section`, then `dev-mcp`, `legal-portal` |
    | #7386 to #7400 | #188 PRs 2 to 10 | `20261109001000` to `20261109006000`, the `dev_gates_*` set, then `paid-job-email`, `import-manual-transactions`, `manage-manual-account` |
 
@@ -43,7 +40,7 @@ Arm with `gh pr merge N --auto` only. A queued PR reads auto off and CLEAN; that
 
 | PR | Card | What | Waits on |
 |---|---|---|---|
-| #7343 · #7344 · #7345 | #285 | the file index's reach, the search union, the backfill verb | PR 1's checks; 2 and 3 are drafts on it |
+| #7344 · #7345 | #285 | the search union, the backfill verb | PR 1 (#7343) merged; 2 and 3 are drafts to ready in order |
 | #7346 · #7347 · #7348 | #288 | one documents table (the owner's pick of 2026-11-08), counsel-only, the section reads | #287 has merged, so PR 1 can be readied and its server version bumped |
 | #7367 · #7370 | #209 | the Short press, the summary past 5,000 rows | PR 3 armed; PR 4 on it |
 | #7373 · #7375 · #7379 · #7380 | #205 | the stages fold, the files list, the thread, Word to every trade | PR 3 armed; the rest stacked |
