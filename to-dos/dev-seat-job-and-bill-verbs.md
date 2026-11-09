@@ -52,8 +52,8 @@ Rejected: a `dev_job_write` definer wrapper (a migration for rows the app alread
 |---|---|---|---|
 | 1 | `plan_job` / `apply_job` | 0.49.0 | `devMcpJobs.ts`, `devMcpWrites.ts`, `index.ts`, the address kernel into the copy, the docs, this card |
 | 2 | `plan_job_update` / `apply_job_update` | 0.53.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
-| 3 | `plan_bill` / `apply_bill` | 0.54.0 | `devMcpBill.ts`, the Billed line lifted into `lib/tellCustomer/billedLine.ts` and five kernels into the copy, `index.ts` |
-| 4 | `plan_collections_flag` / `apply_collections_flag` · `plan_contract_ended` / `apply_contract_ended` | 0.55.0 | `devMcpJobMarks.ts`, `index.ts` |
+| 3 | `plan_bill` / `apply_bill` | 0.55.0 | `devMcpBill.ts`, the Billed line lifted into `lib/tellCustomer/billedLine.ts` and five kernels into the copy, `index.ts` |
+| 4 | `plan_collections_flag` / `apply_collections_flag` · `plan_contract_ended` / `apply_contract_ended` | 0.56.0 | `devMcpJobMarks.ts`, `index.ts` |
 
 Each merges alone (`gh pr merge N --auto`); after each merge, `supabase functions download dev-mcp --use-api` into a scratch folder and hash-compare to main before `supabase functions deploy dev-mcp`. No migration, so no push and no calls-ahead hold.
 

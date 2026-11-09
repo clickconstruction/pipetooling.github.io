@@ -57,6 +57,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
   { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: what is in a cage or box on a job site, for whoever scans its QR. Not a customer surface.' },
+  { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },

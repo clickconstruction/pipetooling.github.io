@@ -290,7 +290,8 @@ describe('TallyTeamQueue', () => {
       expect(await screen.findByText('1 pay send is back to sort.')).toBeTruthy()
       // A delete of this press's manual marks, not a `false` mark: no tombstone for the rules to skip.
       expect(flagWrites()).toHaveLength(1)
-      expect(fromCalls).toEqual([
+      // The queue reads the counter tickets too (punch list #295, PR 3); the mark's own writes are the payroll flags'.
+      expect(fromCalls.filter((c) => c.table === 'mercury_tally_payroll_flags')).toEqual([
         {
           table: 'mercury_tally_payroll_flags',
           steps: [

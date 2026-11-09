@@ -86,7 +86,7 @@ describe('devMcpBill — the verbs on the allowlist', () => {
     expect(planVerbFor('apply_bill')).toBe('plan_bill')
     expect(writeRpcBody('plan_bill', { bill: { job_id: JOB } })).toMatchObject({ ok: true, rpc: null, body: { p: { bill: { job_id: JOB } } } })
     expect(writeRpcBody('apply_bill', { bill: {} })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
-    expect(SERVER).toContain('Writes are seventy-one verbs and nothing else:')
+    expect(SERVER).toContain('Writes are seventy-three verbs and nothing else:')
     expect(SERVER).toContain("const shaped = billInput(name, args, todayYmdInAppTz())")
     expect(README).toContain('`plan_bill(bill)` · `apply_bill(bill, plan_hash)`')
     expect([...STRIPE_MODES]).toEqual(['test', 'live'])
