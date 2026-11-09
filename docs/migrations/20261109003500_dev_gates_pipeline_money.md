@@ -10,3 +10,5 @@ Punch list #188, PR 6 of the dev gates: the Pipeline's money doors, rows 38 to 4
 No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, every function `CREATE OR REPLACE`: idempotent, additive.
 
 **Order**: push right after the merge. Until the push the owner's Weekly money movement and the two charts answer *not allowed* in words, and his dial and floor saves come back as refusals.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

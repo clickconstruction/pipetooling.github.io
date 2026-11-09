@@ -54,7 +54,7 @@ Open the job and press **Costs**. The strip under the tiles reads the baseline a
 - **✎ Baseline typed at award, 220 h.** Your words sit under it, with what the book says beside them.
 - **No baseline for this job yet.** Amber. An older project, made before baselines were written at award.
 
-The frozen number never moves. **Refresh from bid** writes the bid's newer figures on the live row. The strip still says what the award froze. **Clear** takes the row off. The job reads against the assumption again.
+The frozen number never moves. **Refresh from bid** writes the bid's newer figures on the live row. The strip still says what the award froze. A row with no award keeps **Clear**. It takes the row off. The job reads against the assumption again.
 
 The **Where we are** card under the strip sums the line budgets. Its Labor bar reads the clocked hours against the hours frozen at award. A note under the bars says the score reads the frozen hours. The lines' sum shows beside them and never scores. The superintendent's line and the Scoreboard read the frozen hours too.
 

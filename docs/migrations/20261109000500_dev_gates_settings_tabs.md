@@ -10,3 +10,5 @@ Punch list #188, PR 1 of the dev gates: on 2026-11-08 the owner took every recom
 No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, the function `CREATE OR REPLACE`: idempotent, additive. The dev's standing policies (`Devs can manage app settings`, the dev's three `user_pinned_tabs` policies) are untouched.
 
 **Order**: push right after the merge. The old client never shows these cards to the owner, so the order is safe either way; the new client shows them, and until the push the owner's save on one would come back as a refusal in words.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

@@ -31,7 +31,7 @@ Prospects.tsx has 9 custom hooks (plus, since v2.5582 and v2.5583, `useLeaveGuar
 The page switches on **three levels of tab state**:
 
 ```
-topTab:    'customers' | 'team'                                   (ProspectsTopTab 96)
+topTab:    'customers' | 'team' | 'research'                      (ProspectsTopTab 96; 'research' is the Permits tab, ?tab=permits, v2.6782)
 activeTab: 'follow-up' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 98, PROSPECTS_TABS 128; only under 'customers')
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review' (TeamProspectsTab 803; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
@@ -39,7 +39,7 @@ stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review' (TeamProspectsT
 One `?tab=` param selects both upper levels: `team` selects the Hiring tab (its label changed from Team to Hiring in v2.1253, and the key stayed `team`), and the four `PROSPECTS_TABS` values select the Customers sub-tabs. `?stage=` (+ `?rate=`) is applied once inside TeamProspectsTab and then stripped.
 
 Access gates:
-- **`canAccessFollowUp`** (1983): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates Follow Up, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (1993–2001).
+- **`canAccessFollowUp`** (1983): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates Follow Up, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (1993–2001), except on the Permits tab since v2.6782 (`canResearchPermits`: the office and every estimator), where they land with no calling-deck tabs.
 - **`canAccessActivityTab`** (416): `authRole === 'dev' || isAssistantLike(authRole)`.
 - **`canOpenHiring`** (270): `teamProspectsAccess || myHiringShares.length > 0`. Since v2.3805, `useMyHiringShares` reads the viewer's own `team_prospect_role_shares` rows. A share holder without the switch gets the trimmed board, because the page passes `shared={!teamProspectsAccess}`.
 

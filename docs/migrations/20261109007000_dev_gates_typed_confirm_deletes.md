@@ -10,3 +10,5 @@ Punch list #188, PR 12 of the dev gates: the typed confirms on the single-row de
 No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge. Until the push the owner's report and write-up deletes and the controller's pay report delete come back as refusals in words.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

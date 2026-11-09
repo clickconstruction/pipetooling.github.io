@@ -72,7 +72,7 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 - **Jobs, Pipeline, the ⋯ Pipeline tools menu.** The desk is also the first row of the jump strip's ☰ **Section tools** menu.
 - **A forecast row.** Its **Send notice…** opens the desk on that job.
 
-The button left of the × makes the desk full screen. The same button sits on Put a GC on notice. Each window opens the way you left it. Press the button again to go back to the window.
+The button left of the × on Put a GC on notice makes that window full screen. The window opens the way you left it. Press the button again to go back to the window.
 
 ## Find a job on the list
 

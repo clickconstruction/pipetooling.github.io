@@ -11,3 +11,5 @@ Punch list #188, PR 5 of the dev gates: the Dashboard, Checklist, Roadmap card, 
 Rows 33 (the pay-approved owner reads `clock_sessions` already), 35 (the forward buttons) and 37 (the roadmap card) read what their audiences read already: client lines alone. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge. Until the push the owner's Help feedback inbox reads his own rows alone, a recurring report he schedules on another leader's scope and a reply he changes come back as refusals in words, and the cost chips stay hidden for him by the table's policy.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

@@ -11,3 +11,5 @@ Punch list #188, PR 3 of the dev gates: Settings → Jobs, bills and liens, rows
 No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, the function `CREATE OR REPLACE`: idempotent, additive.
 
 **Order**: push right after the merge. The old client showed these cards to a dev alone; the new client shows them to their audiences, and until the push a save would come back as a refusal in words.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

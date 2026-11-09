@@ -12,3 +12,5 @@ No table, so no fence appliers. Idempotent (`IF NOT EXISTS`, `CREATE OR REPLACE`
 ## Order
 
 After `20261108190000` (#286), whose function body this one carries. **When this file is pushed before `20261108190000`, that file must fold `evidence_id` in before its own push**, since the later `CREATE OR REPLACE` carries one body. Push, then `supabase functions deploy dev-mcp`; the client's reads fall back to the old column lists until the push (42703), so either order of the client deploy and the push holds. Then regenerate the types (the column was hand-added to `database.ts` and the catalog for this PR; the regen writes the same).
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

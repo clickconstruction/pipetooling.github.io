@@ -145,7 +145,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Review (`/people?tab=review`) | ✓ | **phone only** | — | — | — | — | — | — | 747 vs 992 |
 | Estimates · Jobs · Schedule | ✓ | ✓ | ✓ (Schedule bold) | ✓ (bold) | Estimates | Estimates · Jobs | ✓ | — | 702, 728–729, 782–801 |
 | Projects · Bids | ✓ | ✓ | ✓ | ✓ | Bids | Bids | ✓ | — | 703, 730, 802–817 |
-| Prospects | ✓ | ✓ | ✓ | ✓ | if `estimatorProspectsAccess` | — | — | — | 705, 806 |
+| Prospects | ✓ | ✓ | ✓ | ✓ | if `estimatorProspectsAccess`, else **Permits** (`/prospects?tab=permits`, v2.6782) | — | — | — | 705, 806 |
 | Partner Statement (`useIsPartner`) | — | — | — | — | if partner | **phone only** | if partner (**route refuses**) | if partner | 635, 692, 770 |
 | Map icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | 523–528, 1195–1211, 1731 |
 | Materials icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 496–505, 1212–1228, 1687 |

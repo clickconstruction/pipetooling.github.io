@@ -11,3 +11,5 @@ The bench's Remove press (punch list #153): one function, `gc_remove_bench_compa
 No table is created, so no fence call is owed. `CREATE OR REPLACE`, idempotent.
 
 **Order**: push right after the merge. The client calls a function only this migration creates, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push; until then the press would read the missing function's name as its refusal. The types regen (`database.ts`, the dev-mcp catalog) follows the push as usual.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.
