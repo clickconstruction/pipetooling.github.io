@@ -16,6 +16,7 @@ import { blankNames, fillLine, type BlankFills } from '../quickReplies/blanks'
 import { stepLine, type QuickReply } from '../quickReplies/kernel'
 import { lineWords } from '../quickReplies/spanish'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { SEND_LATER_WORDS } from '../offers/sendLater'
 
 /** The moments that open the sheet. */
 export type TellMoment = 'booked' | 'rescheduled' | 'estimate' | 'working' | 'done' | 'billed'
@@ -451,7 +452,8 @@ export const TELL_WORDS = {
   officeLineHint: 'The words with the blanks back, as the step’s line for everyone. Change any blank before you save.',
   officeLineSave: 'Save as the office’s line',
   officeLineSaved: 'Saved as the office’s line. It fills for the next customer.',
-  morningTitle: 'Ready for the morning',
-  morningLine: (day: string) => `Goes at 9 AM on ${day} from the company number.`,
-  morningWhere: 'Until then it waits on the Dashboard under Today’s sends. You can change it or take it back there.',
+  /** Send later (v2.6774; Send in the morning before it): the receipt once the text is handed to a time. */
+  morningTitle: 'Ready to go later',
+  morningLine: (sendAtMs: number) => SEND_LATER_WORDS.readyLine(sendAtMs),
+  morningWhere: SEND_LATER_WORDS.where,
 } as const

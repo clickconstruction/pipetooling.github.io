@@ -61,7 +61,6 @@ import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPage
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
-import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords } from '../../lib/jobs/lienDeskRun'
@@ -168,14 +167,13 @@ import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lie
  * drafts; the leader approves — once per GC with a standing rule, or per
  * item — or the office sends on his spoken word with a note; approved
  * notices go out and are recorded (the run, PR 3; until then the Lien
- * window's notice tab). Doors: the Dashboard's Needs you cards, the
- * Collections header, the Pipeline's tools menus, the forecast's Send
- * notice…, and `?liendesk=1`.
+ * window's notice tab). A page since punch list #182 (`/lien-desk`,
+ * `pages/LienDeskPage.tsx`, v2.6777; every door to it since v2.6780; the
+ * window frame gone since v2.6781): the page reads the address and tells
+ * the desk what to show, and the desk tells the page every change.
  */
 
-export type LienDeskModalProps = {
-  open: boolean
-  onClose: () => void
+export type LienDeskProps = {
   data: LienDeskData | null
   loading: boolean
   todayYmd: string
@@ -230,12 +228,16 @@ export type LienDeskModalProps = {
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
   /**
-   * How the desk is drawn (punch list #182): `window` is the overlay over the Pipeline with its ✕ and full-screen toggle;
-   * `page` is `/lien-desk` — no overlay, no ✕, no toggle, the page's `backDoor` before the title, and every change of
-   * view, notice and pile told to `onAddressChange` once the rows are in, so the page can write the address.
+   * How the desk lays out (punch list #182, PR 3): `columns` is a computer's list beside its pane; `stacked` is a phone's,
+   * where the Notices list is the whole desk until a notice is open, and the open notice is the whole desk with ← Notices
+   * in the page door's place. Only the page names the phone; a test or another host may stack at any width.
    */
-  frame?: 'page' | 'window'
-  /** The page's way back, drawn before the title (`frame: 'page'`). */
+  layout?: 'columns' | 'stacked'
+  /** Stacked: a press on a notice asks the page to open it (a new history entry), with the pile the list is narrowed to. */
+  onOpenNotice?: (jobId: string, pile: LienDeskPile | null) => void
+  /** Stacked: ← Notices on an open notice asks the page for the list (back one entry when the notice came from it). */
+  onShowList?: () => void
+  /** The page's way back, drawn before the title. */
   backDoor?: ReactNode
   /** The page's address follows the desk: the view, and on Notices the open notice and the pile (never from an empty desk). */
   onAddressChange?: (address: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => void
@@ -320,9 +322,7 @@ const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color
 /** How far into the pane the gates scroll away and the one-line strip takes over (v2.3522). */
 const STRIP_COLLAPSE_PX = 72
 
-export default function LienDeskModal({
-  open,
-  onClose,
+export default function LienDesk({
   data,
   loading,
   todayYmd,
@@ -352,17 +352,19 @@ export default function LienDeskModal({
   aimKey,
   onPutGcOnNotice,
   onOpenCompanySettings,
-  frame = 'window',
+  layout = 'columns',
+  onOpenNotice,
+  onShowList,
   backDoor = null,
   onAddressChange,
-}: LienDeskModalProps) {
-  const onPage = frame === 'page'
+}: LienDeskProps) {
+  const stacked = layout === 'stacked'
+  const isMobile = useIsMobile()
+  // One column (the list or the pane, never both): a phone's width, or a host that stacks the desk (punch list #182 PR 3).
+  const oneColumn = isMobile || stacked
   const { showToast } = useToastContext()
   // Bill Customer over the desk (v2.4969): the same window the Pipeline's Bill button opens, above every other window; null outside its provider.
   const billCustomer = useBillCustomerModal()
-  const isMobile = useIsMobile()
-  /** v2.4065: the title-bar toggle — the desk fills the screen above the app's bottom bar, and remembers the choice. */
-  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(onPage ? undefined : 'lien-desk')
   const leader = isLeader(authRole)
   const office = isOffice(authRole)
   const [gcPickerOpen, setGcPickerOpen] = useState(false)
@@ -373,13 +375,10 @@ export default function LienDeskModal({
   const [find, setFind] = useState('')
   const findWords = useMemo(() => lienFindWords(find), [find])
   const finding = findWords.length > 0
-  useEffect(() => {
-    if (!open) setFind('')
-  }, [open])
   // Each open starts on the pile its door names, or on every pile (v2.4568): a pile from an earlier door no longer sticks.
   useEffect(() => {
-    if (open) setPile(initialPile ?? null)
-  }, [open, initialPile])
+    setPile(initialPile ?? null)
+  }, [initialPile])
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
   const [coverNote, setCoverNote] = useState(true)
@@ -458,9 +457,6 @@ export default function LienDeskModal({
   const [runTakeBack, setRunTakeBack] = useState(false)
   // Share where the liens stand (v2.4311): the title bar's panel; the numbers are read each time it opens.
   const [shareOpen, setShareOpen] = useState(false)
-  useEffect(() => {
-    if (!open) setShareOpen(false)
-  }, [open])
   // The kind (v2.3412): notices per month, or the one affidavit per job.
   const [kind, setKind] = useState<'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
   // The tab row scrolls sideways on a phone (v2.4311); its cut end fades and the picked tab is scrolled into view (v2.4441) — a door can open the desk on Timeline, the last tab.
@@ -469,7 +465,7 @@ export default function LienDeskModal({
   // Every render, but it acts only when the picked tab or the row's width changed (a count loading widens a label), so it never fights a hand on the row.
   useEffect(() => {
     const row = kindTabs.ref.current
-    if (!open || !row) {
+    if (!row) {
       kindShownRef.current = ''
       return
     }
@@ -482,30 +478,24 @@ export default function LienDeskModal({
   })
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
-  // On the page the address is the truth (punch list #182): a view word changed from outside (Back, a pasted link) moves the
-  // desk, and the desk's own press writes the same word back, so this never fights it.
+  // The address is the truth (punch list #182): a view word changed from outside (Back, a pasted link) moves the desk, and
+  // the desk's own press writes the same word back, so this never fights it.
   useEffect(() => {
-    if (onPage) setKind(initialKind ?? 'next')
-  }, [onPage, initialKind])
-  // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
-  const wasOpenRef = useRef(open)
-  useEffect(() => {
-    if (open && !wasOpenRef.current) setKind(initialKind ?? 'notice')
-    wasOpenRef.current = open
-  }, [open, initialKind])
-  // A door can re-aim a desk that is already open (punch list #82: the job's Lien window, opened over the desk,
-  // sends its next step back here). The job it names is new, so its tab is applied as on a fresh open.
-  // v2.4612: `aimKey` says the door was pressed again, so the same job re-aims too.
+    setKind(initialKind ?? 'notice')
+  }, [initialKind])
+  // A door can re-aim the desk (punch list #82: the job's Lien window sends its next step back here through the address).
+  // The job it names is new, so its list is applied as on a fresh open. v2.4612: `aimKey` says the door was pressed again,
+  // so the same job re-aims too.
   const aimedRef = useRef(`${initialJobId ?? ''}|${aimKey ?? 0}`)
   useEffect(() => {
     const next = `${initialJobId ?? ''}|${aimKey ?? 0}`
     const prev = aimedRef.current
     aimedRef.current = next
-    if (open && wasOpenRef.current && initialJobId && next !== prev) {
+    if (initialJobId && next !== prev) {
       setKind(initialKind ?? 'notice')
       setMobileListShown(false)
     }
-  }, [open, initialJobId, initialKind, aimKey])
+  }, [initialJobId, initialKind, aimKey])
   // All filings (punch list #82, PR 5; All paper until v2.4630): the four lists share one view; it reopens on the list last looked at.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
   const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
@@ -519,7 +509,7 @@ export default function LienDeskModal({
   }, [kind])
   /** ZZ test jobs off the book for every role but a dev who shows them (punch list #61, PR 3). */
   const hideZzTestJobs = useZzTestJobsHidden(authRole)
-  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
@@ -567,12 +557,12 @@ export default function LienDeskModal({
     for (const r of calendarRows ?? []) ids.add(r.jobId)
     return [...ids]
   }, [data, calendarRows])
-  const suppliers = useLienJobSuppliers(supplierJobIds, open)
+  const suppliers = useLienJobSuppliers(supplierJobIds, true)
   // The conditional releases the drafts point at (v2.4729): the pane's page and the run's packet read them by row id.
   // The drawn signatures' ink by item (v2.5082), for the pane's paper and the run's.
-  const inks = useLienDeskSignatureInks(data?.items ?? null, open)
+  const inks = useLienDeskSignatureInks(data?.items ?? null, true)
   const releaseIds = useMemo(() => (data?.items ?? []).map((it) => parseLienDeskDraftFields(it.fields)?.releaseId ?? '').filter(Boolean), [data?.items])
-  const releases = useNoticeReleases(releaseIds, open)
+  const releases = useNoticeReleases(releaseIds, true)
   const supplierMarks = useMemo(() => {
     const marks = new Map<string, LienSupplierMark>()
     for (const [jobId, job] of suppliers.byJob) {
@@ -643,9 +633,14 @@ export default function LienDeskModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finding, visible.map((e) => e.jobId).join('|')])
 
-  // Selection follows the list: the requested job, else the first visible row (desktop).
+  // Selection follows the list: the requested job, else the first visible row (desktop). Stacked (a phone, punch list #182
+  // PR 3), the address is the list or one notice: no job in it means the list, whatever was picked before.
   useEffect(() => {
-    if (!open) return
+    if (stacked && !initialJobId) {
+      setSelectedJobId(null)
+      setMobileListShown(true)
+      return
+    }
     if (initialJobId && entries.some((e) => e.jobId === initialJobId)) {
       setSelectedJobId(initialJobId)
       setMobileListShown(false)
@@ -657,9 +652,9 @@ export default function LienDeskModal({
     }
     doorPickedJobId.current = null
     if (selectedJobId && visible.some((e) => e.jobId === selectedJobId)) return
-    setSelectedJobId(!isMobile && visible[0] ? visible[0].jobId : null)
+    setSelectedJobId(!oneColumn && visible[0] ? visible[0].jobId : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialJobId, visible.map((e) => e.jobId).join('|')])
+  }, [stacked, initialJobId, visible.map((e) => e.jobId).join('|')])
 
   const selected = visible.find((e) => e.jobId === selectedJobId) ?? entries.find((e) => e.jobId === selectedJobId) ?? null
   useEffect(() => setStopOpen(null), [selectedJobId])
@@ -672,9 +667,9 @@ export default function LienDeskModal({
   const addressPile = kind === 'notice' ? pile : null
   const hasData = data != null
   useEffect(() => {
-    if (!onPage || !hasData) return
+    if (!hasData) return
     onAddressChangeRef.current?.({ kind, job: addressJob, pile: addressPile })
-  }, [onPage, hasData, kind, addressJob, addressPile])
+  }, [hasData, kind, addressJob, addressPile])
   const job = selected ? data?.jobsById[selected.jobId] : undefined
   const gc = selected?.gcCustomerId ? data?.gcsById[selected.gcCustomerId] : undefined
   const address = job?.customer_address_id ? data?.addressesById[job.customer_address_id] ?? null : null
@@ -928,10 +923,14 @@ export default function LienDeskModal({
     } else {
       // The pile narrows the list to the row's state; the selection effect keeps this pick.
       doorPickedJobId.current = t.jobId
-      setKind('notice')
-      setPile(t.pile)
       setCalendarJobFilter(null)
-      setSelectedJobId(t.jobId)
+      // Stacked, the notice opens through the address, as a history entry of its own (punch list #182 PR 3).
+      if (stacked && onOpenNotice) onOpenNotice(t.jobId, t.pile)
+      else {
+        setKind('notice')
+        setPile(t.pile)
+        setSelectedJobId(t.jobId)
+      }
       // Record what they promised (PR 3 of #274): the row's press opens the footer's form on the notice it selects.
       if (row.action === 'promise') {
         setPromiseYmd('')
@@ -1022,7 +1021,7 @@ export default function LienDeskModal({
   const [codeProblem, setCodeProblem] = useState<string | null>(null)
   useEffect(() => {
     setCodeProblem(null)
-    if (!otherScreen || !masterId || !open) {
+    if (!otherScreen || !masterId) {
       setCodeStatus(null)
       return
     }
@@ -1038,7 +1037,7 @@ export default function LienDeskModal({
     return () => {
       live = false
     }
-  }, [otherScreen, masterId, open, codeStatusTick, selected?.jobId])
+  }, [otherScreen, masterId, codeStatusTick, selected?.jobId])
   const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen ? lienCodeSignerFrom(leaderName, codeStatus) : null
   const wordPreview = selected
     ? wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: jobLabel(job, selected.jobId), gcName: gc?.name ?? null, amountWords: formatUsdNoCents(openBalance) })
@@ -1216,7 +1215,7 @@ export default function LienDeskModal({
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease, paneSignature])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
-  const payPage = useNoticePayPage(selected?.jobId ?? null, open)
+  const payPage = useNoticePayPage(selected?.jobId ?? null, true)
   // The bills behind the claim (v2.4969): the desk's money is what the sent bills still owe (`lien_billed_open()`), so the
   // claim and the pay page cannot disagree; the Months card lists the bills, and the part of the job no sent bill carries.
   const claimBills = payPage.bills
@@ -1545,19 +1544,17 @@ export default function LienDeskModal({
     }, 0)
   }
   useEffect(() => {
-    if (!open) return
     const onMessage = (ev: MessageEvent) => onPreviewMessageRef.current(ev)
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [open])
+  }, [])
   // Whatever changed the pages — a box here, a box there, the cover-note tick — the open preview follows.
   useEffect(() => {
-    if (!open || !previewIsThisJob) return
+    if (!previewIsThisJob) return
     postToPreview()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the pages are a function of exactly these
-  }, [open, previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
+  }, [previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
-  if (!open) return null
   // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sits on the title line
   // left of § Rules on every view (v2.4740 off All filings; v2.4786 there too, the owner's ask — the title line had the room). On a phone it ends the second line.
   const ownerRecordsDoor = office && onOpenOwnerRecords ? (
@@ -1585,11 +1582,11 @@ export default function LienDeskModal({
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
   const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
-  const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!isMobile ? affVisible[0] : undefined) ?? null
+  const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   const retEntries = data?.retainage.entries ?? []
   const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
-  const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!isMobile ? retVisible[0] : undefined) ?? null
+  const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
@@ -1736,8 +1733,12 @@ export default function LienDeskModal({
                   key={e.jobId}
                   type="button"
                   onClick={() => {
-                    setSelectedJobId(e.jobId)
-                    setMobileListShown(false)
+                    // Stacked, the notice opens through the address, as a history entry of its own (punch list #182 PR 3).
+                    if (stacked && onOpenNotice) onOpenNotice(e.jobId, pile)
+                    else {
+                      setSelectedJobId(e.jobId)
+                      setMobileListShown(false)
+                    }
                   }}
                   aria-current={sel ? 'true' : undefined}
                   style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
@@ -1948,9 +1949,12 @@ export default function LienDeskModal({
       setAffSelectedJobId(row.jobId)
       setMobileListShown(false)
     } else if (data?.queue.entries.some((e) => e.jobId === row.jobId)) {
-      setKind('notice')
-      setSelectedJobId(row.jobId)
-      setMobileListShown(false)
+      if (stacked && onOpenNotice) onOpenNotice(row.jobId, null)
+      else {
+        setKind('notice')
+        setSelectedJobId(row.jobId)
+        setMobileListShown(false)
+      }
     } else {
       onOpenLienInstruments(row.jobId)
     }
@@ -2144,7 +2148,7 @@ export default function LienDeskModal({
         </div>
       ) : null}
       {isMobile ? (
-        <button type="button" data-lien-pane-keep onClick={() => setMobileListShown(true)} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
+        <button type="button" data-lien-pane-keep onClick={() => { if (stacked && onShowList) onShowList(); else setMobileListShown(true) }} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
           ← Back to the list
         </button>
       ) : null}
@@ -2893,7 +2897,7 @@ export default function LienDeskModal({
         }}
         // On a phone (v2.4446) the step is a sheet over the desk's card, as in the Lien window: in the footer its 120 px fields cut off their own values.
         layout={isMobile ? 'sheet' : 'box'}
-        onCloseWindow={onClose}
+        onCloseWindow={() => setByHandOpen(false)}
       />
     ) : null
 
@@ -3456,7 +3460,7 @@ export default function LienDeskModal({
   // when the window was narrower than about 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places.
   // Share (v2.4311) is the last of them: beside × on a phone, the end of the tool row on a computer.
   const headerTools = (
-    <span style={isMobile ? { position: 'absolute', right: onPage ? '0.8rem' : '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <span style={isMobile ? { position: 'absolute', right: '0.8rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       {isMobile ? null : rulesAndCaller}
       {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
       <button
@@ -3488,45 +3492,29 @@ export default function LienDeskModal({
       ) : null}
     </span>
   )
-  // The frame (punch list #182): on the page the panel is the whole screen under the app's chrome, a named region with no
-  // overlay, no ✕ and no toggle; as a window it is the overlay over the Pipeline, as it was.
-  const panelStyle: React.CSSProperties = onPage
-    ? { position: 'relative', background: 'var(--surface)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
-    : { position: 'relative', background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
-  const titleRightPad = onPage ? '1.25rem' : isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'
+  // The frame (punch list #182, PR 3: the window's overlay, ✕ and full-screen toggle are gone): the panel is the whole screen under
+  // the app's chrome, a named region; the desk's own sheets and windows stand where they are.
+  const panelStyle: React.CSSProperties = { position: 'relative', background: 'var(--surface)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
+  // Stacked, an open notice is the whole desk: its door back is the list, in the page door's place (punch list #182 PR 3).
+  const noticeOpenStacked = stacked && kind === 'notice' && !mobileListShown && selected != null
   return (
-    <div
-      role={onPage ? 'region' : 'dialog'}
-      aria-modal={onPage ? undefined : 'true'}
-      aria-label="Lien desk"
-      data-lien-desk-page={onPage ? '' : undefined}
-      // The overlay ends above the Dispatch / Job mode footer (--app-bottom-chrome, v2.2184) so the buttons are never under the bar (v2.3522).
-      // The top pads by the status bar (--app-top-chrome, v2.4397) so the title, Share and × are never under an iPhone's clock.
-      // On the page (punch list #182) the frame draws no box of its own: the panel fills the page's cell and the desk's windows stand where they are.
-      style={onPage ? { display: 'contents' } : { position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
-      // The window closes on the dim alone (the panel below stops its own clicks); on the page the frame closes nothing.
-      onClick={(e) => {
-        if (!onPage && e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div
-        onClick={onPage ? undefined : (e) => e.stopPropagation()}
-        style={panelStyle}
-        data-lien-desk-panel={frame}
-      >
+    <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
+      <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${titleRightPad} 0.6rem 1.25rem`, rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
-          {/* The page's way back (punch list #182), before the title. */}
-          {onPage ? backDoor : null}
+        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+          {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
+          {noticeOpenStacked ? (
+            <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, marginRight: 8 }}>
+              <span aria-hidden="true">←</span> Notices
+            </button>
+          ) : backDoor}
           <h2
             // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
-            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: onPage ? undefined : '100%', flex: onPage ? '1 1 auto' : undefined, paddingRight: onPage ? '3rem' : '5.2rem', boxSizing: 'border-box' } : {}) }}
+            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flex: '1 1 auto', paddingRight: '3rem', boxSizing: 'border-box' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
             ⏱ Lien desk
           </h2>
-          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem', border: 'none', color: 'var(--text-muted)' }} /> : null}
-          {onPage ? null : <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>}
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
@@ -3595,7 +3583,7 @@ export default function LienDeskModal({
             : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
-          <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: onPage || isMobile ? 0 : showToggle ? 'calc(1.25rem - 6.2rem)' : 'calc(1.25rem - 2.6rem)', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
+          <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), ...headDoor, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
@@ -3648,7 +3636,7 @@ export default function LienDeskModal({
           </span>
           {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: oneColumn || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {paperOpen != null && paperEntries.length > 0 ? (
             <LienPaperPreviewOverlay
               entries={paperEntries}
@@ -3752,20 +3740,20 @@ export default function LienDeskModal({
               }}
             />
           ) : kind === 'affidavit'
-            ? (isMobile ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
+            ? (oneColumn ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
                 <>
                   {withFind(affList, affVisible.length)}
                   {affPane}
                 </>
               ))
             : kind === 'retainage'
-              ? (isMobile ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
+              ? (oneColumn ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
                   <>
                     {withFind(retList, retVisible.length)}
                     {retPane}
                   </>
                 ))
-            : isMobile ? (mobileListShown ? withFind(list, visible.length) : pane) : (
+            : oneColumn ? (mobileListShown ? withFind(list, visible.length) : pane) : (
             <>
               {withFind(list, visible.length)}
               {pane}
@@ -3890,6 +3878,6 @@ export default function LienDeskModal({
           viewer={{ userId: authUserId, name: authName }}
         />
       ) : null}
-    </div>
+    </section>
   )
 }

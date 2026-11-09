@@ -1,17 +1,17 @@
 ---
 name: "Text the bill: after a bill goes, the office texts the pay link from the company number, sees the text first, a first text says who is writing, and Send later shows and changes the time"
 number: 291
-group: ready
-status: approved by the owner 2026-11-09 after the six-board mock-up; building 2026-11-09 on claude/bold-franklin-3050e0 as four PRs, each merged, pushed and deployed before the next
+group: close
+status: BUILT and LIVE 2026-11-09 — PR 1 v2.6771 (#7418), PR 2 v2.6772 (#7435), PR 3 v2.6773 (#7442), PR 4 v2.6774 (#7445) all merged; migration 20261109090000 pushed, messages-nudge-dispatch deployed and booting, the cron reads */15; types regen #7449 armed; the owner's live walk on a ZZ Test customer is left
 summary: >
   A Stripe bill goes to the customer's email. The owner wants the office to be able to text the
   pay link too, from the company number, and to see the text as the customer will before it goes.
   When it is the customer's first text from us, the words must say who is writing, this is Rosa
   with Click Plumbing, and the app's opt-out line rides under it. Send in the morning becomes Send
   later, which names the exact time the text goes and lets the office change it.
-next: PR 1 (the bill line, the sheet on a bill, the first-text hold, the real link in Preview), then PR 2 (the offer after the bill goes, the Texted mark), PR 3 (Settings → Flows' Billed step), PR 4 (Send later with the time, send_at and the 15-minute run)
-size: M as a train of four (S · S · XS · S)
-blocker: none; the Send later PR pushes a migration and redeploys messages-nudge-dispatch, so the person who pushes is at hand when it merges
+next: the owner's live walk (How to verify, steps 1 to 5) on a ZZ Test customer whose mobile is the test number, and two one-word calls — widen the first-text hold from the bill to every moment or not, and whether the Done line says *by text and email*
+size: M as a train of four (S · S · XS · S), all shipped; left: the owner's walk
+blocker: none; the walk is the owner's
 opinion: build in the card's order; the sheet already exists and the bill line is one more moment on it, so PR 1 is mostly words and one hold
 mockup: to-dos/text-the-bill/main.html
 ---
@@ -183,4 +183,19 @@ from a ZZ Test row.
 
 ## Where it stands
 
-2026-11-09: card opened; PR 1 next.
+**Built and live 2026-11-09**, four PRs, each merged alone on main, in the card's order:
+
+- **PR 1 v2.6771 (#7418)**: the Billed line with `{amount}` and `{bill}`, the sheet on a bill from the share row, *from the company number …*, the first-text chip, the preview's opt-out bubble and real link, the hold with **Put the opening back**. Rebased on main after #290's PR 1 (#7414) landed under it, and merged with main again after #290's PR 2 (#7415): the sheet's link is `billTextLink`'s, so it carries the ten-letter code. Nothing to push or deploy.
+- **PR 2 v2.6772 (#7435)**: the green strip's question and presses after the Email door, Send Email invoice, Bill Customer's Stripe bill and Make Stripe bill; *asked for email only*; *Emailed · Texted* beside the links. No migration.
+- **PR 3 v2.6773 (#7442)**: the Flows Billed step's sample fills the bill line.
+- **PR 4 v2.6774 (#7445)**: Send later with the picker, `nudge_offers.send_at`, `nudge_offer_retime`, the run every fifteen minutes with the 8 AM to 9 PM window. The migration was renumbered from 20261109050000 to **20261109090000** before the PR opened, since main's newest stamp had passed it.
+
+**Deployed and pushed 2026-11-09, after #7445 merged**, in this order: `supabase functions deploy messages-nudge-dispatch` (the deployed copy matched main before PR 4, so nothing on prod was ahead), then `bash scripts/db-push.sh` — *Applying migration 20261109090000_nudge_send_at.sql... Finished supabase db push.* — then `check:migration-drift` read 1201 local, 1201 remote, fully applied. Prod reads back `cron.job` `messages-nudge-dispatch` at `*/15 * * * *`, active; `nudge_offer_make` with its ninth argument `p_send_at timestamptz`; `nudge_offer_retime(p_offer, p_send_at)`; the function boots (`check_edge_boot`). The types regen is #7449.
+
+**Decisions made while building, for the owner's look:**
+
+- The first-text **hold is the bill's alone**. The chip and the preview's bubble show on every moment, but Send is held only on the `billed` moment, so the office's own Booked line keeps its say on a first text. Widening the hold to every moment is a one-line change (`TellCustomerSheet.tsx`, `introHold`) and the owner's call.
+- The **Done line** still says *Your bill follows by email*. *By text and email* is the owner's one-word call (`later-text.html`).
+- A text handed to a time outside 8 AM to 9 PM Central (an older client, a clock change) is **moved to the next 8 AM** with *Texts go between 8 AM and 9 PM. It goes at 8 AM.* on its row, never sent at night.
+
+**Left: the owner's live walk**, How to verify above, steps 1 to 5, on a ZZ Test customer whose mobile is the test number. The session's walk was the smokes (the sheet on a bill, the hold, the strip, the marks, the picker, Today's sends) and the prod reads above; no text went from this session.
