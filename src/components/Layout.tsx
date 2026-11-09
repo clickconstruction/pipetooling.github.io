@@ -714,7 +714,7 @@ export default function Layout() {
           {estimatorProspectsAccess ? (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           ) : (
-            <NavLink to="/prospects?tab=research" style={linkStyle} onClick={onNavClick}>Research</NavLink>
+            <NavLink to="/prospects?tab=permits" style={linkStyle} onClick={onNavClick}>Permits</NavLink>
           )}
           {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Messages<MessagesBadge /></span></NavLink>}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
