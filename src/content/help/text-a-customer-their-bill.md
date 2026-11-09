@@ -67,6 +67,10 @@ A later text is never held. Only the first one has to introduce you.
 
 The customer's reply lands in their thread on this job. Whoever is on Messages answers it.
 
+## Send it later
+
+Late in the day? Press **Send later** beside Skip. The press names the time, like *Send later · Tomorrow 9:00 AM*. The **When it goes** window opens with the chips, a Day and a Time. [Schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-later-instead) walks through it.
+
 ## When the text cannot go
 
 - A customer with no mobile number reads the reason in the sheet. Add a number on the customer.

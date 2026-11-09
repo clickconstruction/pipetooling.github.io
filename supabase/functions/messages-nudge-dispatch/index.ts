@@ -9,7 +9,11 @@
  * number's (`boxForReply`, `sendBox`). A number that sent STOP to that box is kept back as opted out (`stoppedOn`).
  *
  * Modes on the POST:
- * - the cron (no body): X-Cron-Secret. The cron fires at 14:00 and 15:00 UTC, and only the tick that is 9 AM Central
+ * - the cron (no body): X-Cron-Secret. Since v2.6774 (punch list #291, Send later) the cron fires every fifteen minutes:
+ *   a tick inside the 9 AM Central hour runs the morning once (guarded by the last run's day in
+ *   messages_nudge_last_run_v1), and every tick sends the office's texts whose send_at is due, inside 8 AM to 9 PM
+ *   Central (`_shared/sendWindow.ts`); one due outside is moved to the next 8 AM with why. Before v2.6774 the cron fired
+ *   at 14:00 and 15:00 UTC, and only the tick that is 9 AM Central
  *   runs (`runHourNow`). For each text: the send, then its `nudge_sent` row (sent_by 'app') and the thread's event
  *   line, keyed so a retry writes nothing twice. The morning's summary goes in `app_settings`
  *   `messages_nudge_last_run_v1`.
@@ -58,6 +62,7 @@ import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKern
 import type { JobAt } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
 import { isArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { inSendWindow, nextWindowOpen, SEND_WINDOW_HELD } from '../_shared/sendWindow.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -96,7 +101,34 @@ async function all<T>(read: (from: number, to: number) => PromiseLike<Answer<T>>
 const chunks = <T>(xs: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
 
 /** An open `nudge_offers` row: a text waiting on Today's sends, or one the office handed to a morning. */
-type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; about_on: string | null; by_user_id: string | null }
+type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; send_at: string | null; about_on: string | null; by_user_id: string | null }
+
+/** The open `nudge_offers` columns the run reads; `send_at` since v2.6774. */
+const OFFER_COLUMNS = 'id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, send_at, about_on, by_user_id'
+
+/**
+ * The office's texts handed to a time (v2.6774): due when `send_at` has passed. Inside the window they go now; one due
+ * outside (a clock change, an older client) is moved to the next 8 AM and held with why, never texted at night.
+ */
+function dueOfficeTexts(offers: readonly OfferRow[], nowMs: number, walkKitContactId: string | null): { go: OfferRow[]; outside: OfferRow[] } {
+  const timed = offers.filter((o) => o.prepared_by === 'office' && o.send_at !== null && Date.parse(o.send_at) <= nowMs && o.channel_id && o.contact_id !== walkKitContactId)
+  return inSendWindow(nowMs) ? { go: timed, outside: [] } : { go: [], outside: timed }
+}
+
+/** Whether the morning already ran today: the last run's day, in the app's zone, is today. */
+function morningRanToday(lastRun: unknown, today: string): boolean {
+  const at = (lastRun as { at?: unknown; dry?: unknown } | null)?.at
+  if (typeof at !== 'string') return false
+  if ((lastRun as { dry?: unknown }).dry === true) return false
+  const ms = Date.parse(at)
+  return !Number.isNaN(ms) && todayYmdInAppTz(new Date(ms)) === today
+}
+
+/** The office's open timed texts alone, for a tick that is not the morning: one small read instead of everyone's rows. */
+async function readTimedOffers(admin: any): Promise<OfferRow[]> {
+  return all<OfferRow>((a, b) => admin.from('nudge_offers').select(OFFER_COLUMNS).is('sent_at', null).is('dismissed_at', null).eq('prepared_by', 'office').not('send_at', 'is', null).order('id').range(a, b), 'nudge_offers')
+}
+
 
 /** The job an offer sits on, in the column `nudge_sent` and the thread keep it. */
 const jobAtOf = (o: OfferRow): JobAt | null =>
@@ -171,7 +203,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
       (a, b) =>
         admin
           .from('nudge_offers')
-          .select('id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, about_on, by_user_id')
+          .select(OFFER_COLUMNS)
           .is('sent_at', null)
           .is('dismissed_at', null)
           .order('id')
@@ -253,6 +285,134 @@ async function mayDryRun(req: Request, admin: any, supabaseUrl: string, cronOk: 
   return who?.role === 'dev' && !who.archived_at
 }
 
+/**
+ * The office's texts the run sends as the office's own (v2.5595's morning texts; v2.6774's timed ones too): through the
+ * same path, from the box quo-send would pick; each stamped on its row, recorded in `nudge_sent` and said in the thread.
+ * One Quo turned away is held on Today's sends with Quo's words and its time cleared, so the office sees it instead of
+ * the run retrying every tick. Send texts off keeps the rest back, counted, not tried.
+ */
+async function sendOfficeTexts(
+  admin: any,
+  due: readonly OfferRow[],
+  ctx: { now: Date; company: ReturnType<typeof quoCompany>; boxes: Awaited<ReturnType<typeof loadBoxes>>; problems: string[] },
+): Promise<{ sent: number; textsOff: number; refused: RunRefused[] }> {
+  const { now, company, boxes, problems } = ctx
+  const refused: RunRefused[] = []
+  let sent = 0
+  let textsOff = 0
+  const dueKinds = new Map<string, string>()
+  if (due.length) {
+    const { data: kindRows, error: kindError } = await admin.from('contacts').select('id, kind').in('id', [...new Set(due.map((o) => o.contact_id))])
+    if (kindError) throw new Error(`contacts: ${kindError.message}`)
+    for (const c of (kindRows ?? []) as Array<{ id: string; kind: string }>) dueKinds.set(c.id, c.kind)
+  }
+  for (const [k, o] of due.entries()) {
+    const { data: channel, error: channelError } = await admin.from('contact_channels').select('id, value, opted_out_at, opted_out_by_box').eq('id', o.channel_id).maybeSingle()
+    if (channelError) throw new Error(`contact_channels: ${channelError.message}`)
+    const hold = async (why: string) => {
+      const { error } = await admin.from('nudge_offers').update({ held_why: why, send_on: null, send_at: null }).eq('id', o.id)
+      if (error) problems.push(`nudge_offers ${o.id}: ${error.message}`)
+    }
+    if (!channel) {
+      await hold('The number it was going to is gone. Pick another, or call instead.')
+      continue
+    }
+    const { data: lastIn, error: lastInError } = await admin
+      .from('messages')
+      .select('mailbox')
+      .eq('channel_id', o.channel_id)
+      .eq('direction', 'in')
+      .not('mailbox', 'is', null)
+      .order('at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastInError) throw new Error(`messages: ${lastInError.message}`)
+    const box = sendBox(boxForReply(((lastIn as { mailbox: Mailbox } | null)?.mailbox ?? null) as Mailbox | null, { kind: dueKinds.get(o.contact_id) ?? 'unknown' }), boxes)
+    const stops = { channelId: o.channel_id!, optedOutAt: channel.opted_out_at ?? null, optedOutByBox: (channel as { opted_out_by_box?: Record<string, string | null> }).opted_out_by_box ?? {} }
+    if (stoppedOn(stops, box)) {
+      await hold('The number sent STOP. Call instead.')
+      continue
+    }
+    const at = jobAtOf(o)
+    const out = await sendText(
+      admin,
+      {
+        purpose: 'nudge',
+        contactId: o.contact_id,
+        channelId: o.channel_id,
+        to: channel.value,
+        optedOut: false,
+        body: o.body,
+        lastOurTextAt: await lastOurTextAt(admin, o.channel_id!, box),
+        now: Date.now(),
+        company,
+        sender: null,
+        jobId: at?.jobId ?? null,
+      },
+      at,
+      box,
+      boxes,
+    )
+    if (!out.ok && out.refused === 'textsOff') {
+      textsOff += due.length - k
+      break
+    }
+    if (!out.ok) {
+      refused.push({ contactId: o.contact_id, stepId: o.step_key, words: out.words })
+      await hold(out.words)
+      if (out.refused === 'not-set-up') {
+        for (const rest of due.slice(k + 1)) refused.push({ contactId: rest.contact_id, stepId: rest.step_key, words: out.words })
+        break
+      }
+      continue
+    }
+    sent += 1
+    const { error: offerError } = await admin.from('nudge_offers').update({ sent_at: now.toISOString(), message_id: out.messageId }).eq('id', o.id)
+    if (offerError) problems.push(`nudge_offers ${o.id}: ${offerError.message}`)
+    const { error: sentError } = await admin.from('nudge_sent').insert({
+      contact_id: o.contact_id,
+      step_key: o.step_key,
+      bid_id: o.bid_id,
+      project_id: o.project_id,
+      jobs_ledger_id: o.jobs_ledger_id,
+      how: 'text',
+      sent_by: 'person',
+      by_user_id: o.by_user_id,
+      message_id: out.messageId,
+      sent_at: now.toISOString(),
+    })
+    if (sentError) problems.push(`nudge_sent for offer ${o.id}: ${sentError.message}`)
+    const { error: eventError } = await admin.from('messages').upsert(
+      {
+        contact_id: o.contact_id,
+        channel: 'event',
+        direction: 'team',
+        who_text: 'The app',
+        body: o.send_at ? 'The app sent the text the office prepared for this time.' : 'The app sent the text the office prepared for this morning.',
+        bid_id: o.bid_id,
+        project_id: o.project_id,
+        jobs_ledger_id: o.jobs_ledger_id,
+        quo_id: `nudge:offer:${o.id}`,
+      },
+      { onConflict: 'quo_id', ignoreDuplicates: true },
+    )
+    if (eventError) problems.push(`event line for offer ${o.id}: ${eventError.message}`)
+  }
+  return { sent, textsOff, refused }
+}
+
+/** A timed text due outside 8 AM to 9 PM Central moves to the next 8 AM and says so (v2.6774). Answers how many moved. */
+async function holdOutsideWindow(admin: any, outside: readonly OfferRow[], now: Date, problems: string[]): Promise<number> {
+  let moved = 0
+  for (const o of outside) {
+    const at = new Date(nextWindowOpen(now.getTime()))
+    const { error } = await admin.from('nudge_offers').update({ send_at: at.toISOString(), send_on: todayYmdInAppTz(at), held_why: SEND_WINDOW_HELD }).eq('id', o.id)
+    if (error) problems.push(`nudge_offers ${o.id}: ${error.message}`)
+    else moved += 1
+  }
+  return moved
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405)
@@ -270,12 +430,38 @@ serve(async (req) => {
     if (dry ? !(await mayDryRun(req, admin, supabaseUrl, cronOk)) : !cronOk) return json({ ok: false, error: 'Unauthorized' }, 401)
 
     const now = new Date()
-    if (!dry && !runHourNow(now)) return json({ ok: true, ran: false, why: 'Not 9 AM Central. The other tick runs.' })
-
+    const today = todayYmdInAppTz(now)
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+
+    // The tick (v2.6774): every quarter hour. The morning runs once, on the first tick of the 9 AM Central hour whose
+    // last run is not today's; every other tick sends only the office's texts whose time has come.
+    if (!dry) {
+      const { data: lastRow } = await admin.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1).maybeSingle()
+      let lastRun: unknown = null
+      try {
+        lastRun = lastRow?.value_text ? JSON.parse(lastRow.value_text) : null
+      } catch {
+        lastRun = null
+      }
+      const morning = runHourNow(now) && !morningRanToday(lastRun, today)
+      if (!morning) {
+        const kitForTick = await loadWalkKit(admin)
+        const timed = await readTimedOffers(admin)
+        const { go, outside } = dueOfficeTexts(timed, now.getTime(), kitForTick?.contactId ?? null)
+        const problems: string[] = []
+        const moved = await holdOutsideWindow(admin, outside, now, problems)
+        if (!go.length) return json({ ok: problems.length === 0, ran: false, why: runHourNow(now) ? 'The morning already ran today. No office text is due.' : 'Not the morning. No office text is due.', moved, problems })
+        const company = quoCompany()
+        const boxes = await loadBoxes(admin)
+        const out = await sendOfficeTexts(admin, go, { now, company, boxes, problems })
+        console.log(`[messages-nudge-dispatch] tick: ${out.sent} office ${out.sent === 1 ? 'text' : 'texts'} went at their time, ${out.refused.length} did not, ${moved} moved to 8 AM.`)
+        for (const p of problems) console.error(`[messages-nudge-dispatch] ${p}`)
+        return json({ ok: problems.length === 0, ran: true, tick: true, sent: out.sent, refused: out.refused, textsOff: out.textsOff, moved, problems })
+      }
+    }
+
     const [{ rows, customersHeld, offers: openOffers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
     const walkKitContactId = kit?.contactId ?? null
-    const today = todayYmdInAppTz(now)
     // A text about a day that has passed (v2.6387): a moved visit's Rescheduled text carries its new day in `about_on`.
     // Once that day is behind us the words would tell the customer about a visit behind them, so the run puts the text
     // away (`dismissed_why` stale) before planning, and the planner never counts it as a text that waits. Today's sends
@@ -333,8 +519,14 @@ serve(async (req) => {
       run.offers = await keepAnswered(run.offers)
       run.notSent.push(...keptMint)
     }
-    /** The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. Never the kit's. */
-    const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
+    /**
+     * The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. Never
+     * the kit's. Since v2.6774 a text handed to a time (`send_at`) goes at its time, so the morning takes only the ones
+     * with a day alone, plus the timed ones already due inside the window; a timed one due outside is moved to 8 AM.
+     */
+    const dayOnly = offers.filter((o) => o.prepared_by === 'office' && o.send_at === null && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
+    const timedNow = dueOfficeTexts(offers, now.getTime(), walkKitContactId)
+    const due = [...dayOnly, ...timedNow.go]
 
     if (dry) {
       const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, expired: stale.length, now, dry: true })
@@ -464,112 +656,19 @@ serve(async (req) => {
       else prepared += 1
     }
 
-    // The texts the office prepared for this morning (Send in the morning): sent as the office's own, through the same
-    // path, from the box quo-send would pick; stamped on the row, recorded in nudge_sent and said in the thread. One Quo
-    // turned away is held on Today's sends with Quo's words, so the office sees it instead of the run retrying each morning.
+    // The texts the office prepared for this morning (Send in the morning) or handed to a time that has come (Send later,
+    // v2.6774): sent as the office's own through `sendOfficeTexts`; one Quo turned away is held on Today's sends with Quo's
+    // words, so the office sees it instead of the run retrying. A timed text due outside the window moves to 8 AM.
     let morningSent = 0
     if (textsOff) textsOff += due.length
     else {
-      const dueKinds = new Map<string, string>()
-      if (due.length) {
-        const { data: kindRows, error: kindError } = await admin.from('contacts').select('id, kind').in('id', [...new Set(due.map((o) => o.contact_id))])
-        if (kindError) throw new Error(`contacts: ${kindError.message}`)
-        for (const c of (kindRows ?? []) as Array<{ id: string; kind: string }>) dueKinds.set(c.id, c.kind)
-      }
-      for (const [k, o] of due.entries()) {
-        const { data: channel, error: channelError } = await admin.from('contact_channels').select('id, value, opted_out_at, opted_out_by_box').eq('id', o.channel_id).maybeSingle()
-        if (channelError) throw new Error(`contact_channels: ${channelError.message}`)
-        const hold = async (why: string) => {
-          const { error } = await admin.from('nudge_offers').update({ held_why: why, send_on: null }).eq('id', o.id)
-          if (error) problems.push(`nudge_offers ${o.id}: ${error.message}`)
-        }
-        if (!channel) {
-          await hold('The number it was going to is gone. Pick another, or call instead.')
-          continue
-        }
-        const { data: lastIn, error: lastInError } = await admin
-          .from('messages')
-          .select('mailbox')
-          .eq('channel_id', o.channel_id)
-          .eq('direction', 'in')
-          .not('mailbox', 'is', null)
-          .order('at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (lastInError) throw new Error(`messages: ${lastInError.message}`)
-        const box = sendBox(boxForReply(((lastIn as { mailbox: Mailbox } | null)?.mailbox ?? null) as Mailbox | null, { kind: dueKinds.get(o.contact_id) ?? 'unknown' }), boxes)
-        const stops = { channelId: o.channel_id!, optedOutAt: channel.opted_out_at ?? null, optedOutByBox: (channel as { opted_out_by_box?: Record<string, string | null> }).opted_out_by_box ?? {} }
-        if (stoppedOn(stops, box)) {
-          await hold('The number sent STOP. Call instead.')
-          continue
-        }
-        const at = jobAtOf(o)
-        const out = await sendText(
-          admin,
-          {
-            purpose: 'nudge',
-            contactId: o.contact_id,
-            channelId: o.channel_id,
-            to: channel.value,
-            optedOut: false,
-            body: o.body,
-            lastOurTextAt: await lastOurTextAt(admin, o.channel_id!, box),
-            now: Date.now(),
-            company,
-            sender: null,
-            jobId: at?.jobId ?? null,
-          },
-          at,
-          box,
-          boxes,
-        )
-        if (!out.ok && out.refused === 'textsOff') {
-          textsOff += due.length - k
-          break
-        }
-        if (!out.ok) {
-          refused.push({ contactId: o.contact_id, stepId: o.step_key, words: out.words })
-          await hold(out.words)
-          if (out.refused === 'not-set-up') {
-            for (const rest of due.slice(k + 1)) refused.push({ contactId: rest.contact_id, stepId: rest.step_key, words: out.words })
-            break
-          }
-          continue
-        }
-        morningSent += 1
-        sent += 1
-        const { error: offerError } = await admin.from('nudge_offers').update({ sent_at: now.toISOString(), message_id: out.messageId }).eq('id', o.id)
-        if (offerError) problems.push(`nudge_offers ${o.id}: ${offerError.message}`)
-        const { error: sentError } = await admin.from('nudge_sent').insert({
-          contact_id: o.contact_id,
-          step_key: o.step_key,
-          bid_id: o.bid_id,
-          project_id: o.project_id,
-          jobs_ledger_id: o.jobs_ledger_id,
-          how: 'text',
-          sent_by: 'person',
-          by_user_id: o.by_user_id,
-          message_id: out.messageId,
-          sent_at: now.toISOString(),
-        })
-        if (sentError) problems.push(`nudge_sent for offer ${o.id}: ${sentError.message}`)
-        const { error: eventError } = await admin.from('messages').upsert(
-          {
-            contact_id: o.contact_id,
-            channel: 'event',
-            direction: 'team',
-            who_text: 'The app',
-            body: 'The app sent the text the office prepared for this morning.',
-            bid_id: o.bid_id,
-            project_id: o.project_id,
-            jobs_ledger_id: o.jobs_ledger_id,
-            quo_id: `nudge:offer:${o.id}`,
-          },
-          { onConflict: 'quo_id', ignoreDuplicates: true },
-        )
-        if (eventError) problems.push(`event line for offer ${o.id}: ${eventError.message}`)
-      }
+      const out = await sendOfficeTexts(admin, due, { now, company, boxes, problems })
+      morningSent = out.sent
+      sent += out.sent
+      textsOff += out.textsOff
+      refused.push(...out.refused)
     }
+    await holdOutsideWindow(admin, timedNow.outside, now, problems)
 
     const summary = runSummary({ run: { ...run, notSent: [...run.notSent, ...keptAtSend] }, sent, refused, textsOff, unread: reads.unread.length, customersHeld, prepared, morningSent, expired: stale.length, now, dry: false })
     const { error: lastError } = await admin

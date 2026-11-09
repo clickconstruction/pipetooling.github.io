@@ -90,7 +90,7 @@ export interface TellCustomerIo {
    * the same 14 days. The sheet falls back to the email's own link when this throws (`estimateTextLink.ts`).
    */
   shareEstimateLink(estimateId: string): Promise<string>
-  /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
+  /** Send later (v2.5595's Send in the morning, v2.6774 with the time): the text waits on Today's sends and the run sends it at its time. Resolves to the offer's id. */
   makeOffer(input: TellOffer): Promise<string>
   /** The step's call script and whether the receipt suggests the call at all (v2.5596); null before the push or on a step with no row. */
   loadCallScript(stepKey: string): Promise<TellCallScript | null>
@@ -121,8 +121,10 @@ export interface TellOffer {
   /** The step the text is for (`MOMENT_STEP`), so the run never doubles it. */
   stepKey: string
   body: string
-  /** YYYY-MM-DD, the morning it goes. */
+  /** YYYY-MM-DD, the day it goes. */
   sendOn: string
+  /** ISO, the instant it goes (v2.6774, Send later); unset for the morning alone. */
+  sendAt?: string | null
 }
 
 const langOf = (language: string | null | undefined): PortalLang => customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
@@ -224,6 +226,7 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
         body: input.body,
         channelId: input.channelId,
         sendOn: input.sendOn,
+        sendAt: input.sendAt ?? null,
       }),
     makeUsual: (channelId) => makeUsualChannel(channelId),
     async loadFromNumber() {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { goesLine, HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -193,6 +193,16 @@ describe('todaysSendsLine: the Dashboard’s line', () => {
     expect(todaysSendsLine(todaysSends(input([offer()])))).toBe('1 text ready to send')
     expect(todaysSendsLine(todaysSends(input([offer({ channelId: null })])))).toBe('1 held')
     expect(todaysSendsLine([])).toBe('')
+  })
+  it('a text handed to a time counts as going later, and the row names the time (v2.6774)', () => {
+    const now = Date.parse('2026-11-09T21:32:00Z')
+    const rows = todaysSends(input([offer({ id: 'later', preparedBy: 'office', sendOn: '2026-11-10', sendAt: '2026-11-10T15:00:00Z' }), offer({ id: 'morning', contactId: 'c-sam', channelId: 'ch-9', preparedBy: 'office', sendOn: '2026-11-10' })]), new Date(now))
+    expect(rows.find((r) => r.id === 'later')).toMatchObject({ goesOn: '2026-11-10', goesAt: Date.parse('2026-11-10T15:00:00Z'), office: true, held: null })
+    expect(rows.find((r) => r.id === 'morning')).toMatchObject({ goesAt: null, office: true })
+    expect(todaysSendsLine(rows)).toBe('2 go later')
+    expect(goesLine(rows.find((r) => r.id === 'later')!, now)).toBe('Goes Tomorrow 9:00 AM')
+    expect(goesLine(rows.find((r) => r.id === 'morning')!, now)).toBe('Goes in the morning of Tue Nov 10.')
+    expect(readyRows(rows)).toEqual([])
   })
 })
 
