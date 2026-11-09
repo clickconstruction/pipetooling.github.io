@@ -10,8 +10,10 @@
 export {
   buildPayLinkPayload,
   formatPayLinkCents,
+  isPayCode,
   isPayLinkId,
   payLinkPath,
+  payLinkRef,
   parsePayLinkOffer,
   parsePayLinkResponse,
   payLinkRowEligible,
