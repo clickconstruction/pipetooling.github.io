@@ -1,7 +1,7 @@
 ---
 title: see what the team sees
 category: Office
-roles: dev
+roles: dev, master_technician
 keywords: what the team sees, team emails, staff emails, digest preview, crew day, money waiting, payment forecast, billed awaiting, who gets which email, whose week, a person, email subjects, sign-in email, invitation email, workflow notification, email me the real one, next release, settings
 order: 66
 ---

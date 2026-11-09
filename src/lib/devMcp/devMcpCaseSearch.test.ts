@@ -58,6 +58,7 @@ describe('search_case (one full-text search across a person\'s case, v2.6620)', 
     expect(out.hits[0]).toMatchObject({ source: 'document', section_n: 12, read_next: expect.stringContaining('plan_person_doc { doc_id, ops }') })
     expect(out.hits[2]).toMatchObject({ counsel_only: true, read_next: expect.stringContaining('evidence') })
     expect(readNextFor('matter_document')).toContain('a file hit')
+    expect(readNextFor('matter_document')).toContain('text_document_id')
     // #285 PR 2: a file hit carries the record it hangs on and reads further through the index row and the record.
     expect(out.hits[3]).toMatchObject({ source: 'file', record_kind: 'evidence', record_id: 'r1', record_title: 'Call K', counsel_only: true, read_next: expect.stringContaining('file_index') })
     expect(out.note).toContain('in: files')

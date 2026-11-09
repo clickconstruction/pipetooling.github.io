@@ -504,7 +504,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
     const document = obj(input.document)
-    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
+    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256) or markdown (a text document's words, kept as text and searched by section; the server makes the .md file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
     if (!document) return { ok: false, error: shape }
     const str = (k: string) => (typeof document[k] === 'string' ? (document[k] as string).trim() : '')
     const matterId = str('matter_id')
@@ -516,6 +516,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const sizeBytes = typeof document.size_bytes === 'number' && Number.isInteger(document.size_bytes) ? document.size_bytes : NaN
     if (!UUID_RE.test(matterId) || !title || !shows || !originalName || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0)) return { ok: false, error: shape }
     const p: Json = { matter_id: matterId, title, shows, original_name: originalName, mime, size_bytes: sizeBytes, sha256 }
+    // v2.6716 (punch list #288): a text document's words ride beside the file facts; the RPC keeps them in documents.
+    if (document.markdown !== undefined) {
+      if (typeof document.markdown !== 'string' || document.markdown.trim() === '') return { ok: false, error: `${verb}: markdown must be the document's words, not empty.` }
+      if (document.markdown.length > 1_000_000) return { ok: false, error: `${verb}: markdown is longer than 1,000,000 characters.` }
+      if (mime !== 'text/plain' && mime !== 'text/markdown') return { ok: false, error: `${verb}: markdown goes with a text file (.md or .txt); a ${mime} keeps its bytes alone.` }
+      p.markdown = document.markdown
+    }
     const state = str('state') || 'final'
     if (!(DOCUMENT_STATES as readonly string[]).includes(state)) return { ok: false, error: shape }
     p.state = state

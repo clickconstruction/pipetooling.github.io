@@ -54,6 +54,23 @@ describe('a trade’s file (P5a-1)', () => {
     expect([tradeFileFromRoot('coi'), tradeFileFromRoot('change'), tradeFileFromRoot('submittal'), tradeFileFromRoot('quote')]).toEqual([true, false, false, false])
   })
 
+  it('reads a note file on its job, named by its one line with the pick’s extension kept (punch list #205, PR 4)', () => {
+    const f = parseTradeFile({ for: 'note', projectId: SUB, name: 'IMG_0412.JPG', base64: b64(...JPEG), note: '  Trench by the  back door ' })
+    expect(f && typeof f === 'object' ? [f.for, f.recordId, f.name, f.mime, f.note] : f).toEqual(['note', SUB, 'Trench by the back door.jpg', 'image/jpeg', 'Trench by the back door'])
+    expect(parseTradeFile({ for: 'note', projectId: SUB, name: 'ticket', base64: b64(...PDF), note: 'Dump ticket' })).toMatchObject({ name: 'Dump ticket' })
+    expect(tradeFileFolders('note', 'Bright Line Electric')).toEqual(['Team only', 'From trades', 'Bright Line Electric'])
+    expect(tradeFileFromRoot('note')).toBe(false)
+    // No note, a blank one, one past 200 letters, or no job: a shape the page never sends.
+    for (const b of [
+      { for: 'note', projectId: SUB, name: 'a.pdf', base64: b64(...PDF) },
+      { for: 'note', projectId: SUB, name: 'a.pdf', base64: b64(...PDF), note: '   ' },
+      { for: 'note', projectId: SUB, name: 'a.pdf', base64: b64(...PDF), note: 'x'.repeat(201) },
+      { for: 'note', name: 'a.pdf', base64: b64(...PDF), note: 'Dump ticket' },
+    ]) {
+      expect(parseTradeFile(b), JSON.stringify(b).slice(0, 60)).toBeNull()
+    }
+  })
+
   it('refuses a shape the page never sends', () => {
     for (const b of [
       { for: 'w9', submittalId: SUB, name: 'a.pdf', base64: b64(...PDF) },

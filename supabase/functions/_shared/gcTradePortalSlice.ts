@@ -69,6 +69,8 @@ export interface TradePortalRows {
   drawLines?: Row[]
   lineReports?: Row[]
   changeSends?: Row[]
+  /** Its uploads (`gc_trade_files` by `company_id`, punch list #205 PR 4), for Your files on this job. Optional, so a caller with none passes none. */
+  files?: Row[]
 }
 
 export type SliceRow = Record<string, unknown>
@@ -119,6 +121,11 @@ export interface TradePortalSlice {
   drawLines?: SliceRow[]
   lineReports?: SliceRow[]
   changeSends?: SliceRow[]
+  /**
+   * Its files on its jobs (punch list #205, PR 4): what it sent us, by purpose, each with its Drive link. Absent from a
+   * slice the function sent before it was deployed: the page draws no block.
+   */
+  files?: SliceRow[]
 }
 
 /** The fields that pass, table by table. Anything not named here never leaves the server. */
@@ -130,8 +137,9 @@ export const TRADE_PORTAL_FIELDS = {
   contacts: ['id', 'invite_id', 'contacted_on', 'how', 'promised_by'],
   promises: ['id', 'kind', 'project_id', 'package_id', 'what', 'due_on', 'made_on', 'source', 'kept_on'],
   project: ['id', 'name', 'address'],
-  // The day we closed the job (U6d) ends its questions (P5c-1).
-  gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why', 'closed_on'],
+  // The day we closed the job (U6d) ends its questions (P5c-1). The job's planned start and the day we pressed Start
+  // (punch list #205, PR 2) head the job page: dates alone, never our contract or its price.
+  gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why', 'closed_on', 'start_date', 'started_on'],
   team: ['role', 'name', 'phone', 'email'],
   // The award: this company's own ask, or AWARDED_ELSEWHERE when another company holds it (`tradePortalSlice`).
   packages: ['id', 'project_id', 'trade', 'position', 'awarded_invite_id'],
@@ -176,6 +184,9 @@ export const TRADE_PORTAL_FIELDS = {
   drawLines: ['draw_id', 'sow_line_id', 'to_pct', 'stored', 'we_see'],
   lineReports: ['sow_line_id', 'pct', 'reported_on', 'seq'],
   changeSends: ['change_order_id', 'sow_id', 'sent_on', 'signed_on', 'sow_line_id'],
+  // Its own uploads on its jobs (punch list #205, PR 4): what each is, its name, its link and its day. Never the Drive
+  // file's id, the record it is tied to, its bytes or its type.
+  files: ['id', 'project_id', 'purpose', 'paper', 'name', 'drive_url', 'uploaded_at', 'made_by'],
 } as const satisfies Record<string, readonly string[]>
 
 /**
@@ -247,6 +258,8 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
     papers: (rows.papers ?? []).filter((d) => idOf(d, 'company_id') === companyId).map((d) => pick(d, TRADE_PORTAL_FIELDS.papers)),
     vettingForm: rows.vettingForm && idOf(rows.vettingForm, 'company_id') === companyId ? pick(rows.vettingForm, TRADE_PORTAL_FIELDS.vettingForm) : null,
     billDayCutoffDays: typeof rows.billDayCutoffDays === 'number' ? rows.billDayCutoffDays : null,
+    // Its files (punch list #205, PR 4): its own rows on its own projects. A certificate is on no job and shows with its papers.
+    files: (rows.files ?? []).filter((f) => idOf(f, 'company_id') === companyId && projectIds.has(idOf(f, 'project_id'))).map((f) => pick(f, TRADE_PORTAL_FIELDS.files)),
     ...ownWork(rows, companyId, packageIds),
     ...jobWork(rows, companyId, new Set(packages.filter((p) => inviteIds.has(idOf(p, 'awarded_invite_id'))).map((p) => idOf(p)))),
   }

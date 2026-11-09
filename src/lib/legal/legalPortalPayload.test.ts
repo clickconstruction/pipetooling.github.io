@@ -95,14 +95,14 @@ describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
   const doc = { id: 'd1', title: 'Materials on site — count.pdf', shows: 'the count', mime: 'application/pdf', sizeBytes: 100, addedOn: '2026-10-26', addedByName: 'Taunya', url: 'https://signed.example/d1' }
   const lines = [
     { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-10-26T15:00:00Z' },
-    { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z' },
+    { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z', settlement_only: true },
     { junk: true },
   ]
   it('parse as the desk’s rows, a row without an id and a name dropped; [] from an older function', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-11-08', firm, particulars: {}, matters: [{ ...matterRaw(), claimLines: lines }] })!
     expect(p.matters[0]!.claimLines).toEqual([
-      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-10-26T15:00:00Z' },
-      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z' },
+      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-10-26T15:00:00Z', settlement_only: false },
+      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z', settlement_only: true },
     ])
     expect(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!.claimLines).toEqual([])
   })
@@ -111,11 +111,14 @@ describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
     const bare = buildMatterPacket(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!, '2026-11-08', portalFeeModel(p))!
     const packet = buildMatterPacket(p.matters[0]!, '2026-11-08', portalFeeModel(p))!
     expect(packet.worth.claimLines).toEqual([
-      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' },
-      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', documentId: null, documentTitle: '' },
+      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf', settlementOnly: false },
+      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', documentId: null, documentTitle: '', settlementOnly: true },
     ])
-    expect(packet.worth.claimTyped).toBe(8110)
-    expect(packet.worth.claim).toBeCloseTo(bare.worth.claim + 8110, 2)
+    // v2.6697: the settlement-only line is out of the claim as demanded and inside the claim as settled.
+    expect(packet.worth.claimTyped).toBe(5310)
+    expect(packet.worth.claimSettlementOnly).toBe(2800)
+    expect(packet.worth.claim).toBeCloseTo(bare.worth.claim + 5310, 2)
+    expect(packet.worth.claimSettlement).toBeCloseTo(bare.worth.claim + 8110, 2)
   })
 })
 

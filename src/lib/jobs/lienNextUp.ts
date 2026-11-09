@@ -9,6 +9,7 @@
  * (`isLienOffice` / `isLienLeader`); a role that is neither sees the list and no buttons.
  */
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
+import { lienOtherScreen } from './lienCodeSigner'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
@@ -130,6 +131,10 @@ export type LienNextUpInput = {
   leaderName?: (jobId: string) => string | null
   /** Any user by id (the pen train, PR 3): who wrote down a pen record, for the leader's row. */
   userName?: (userId: string) => string | null
+  /** Who is reading (v2.6734, punch list #150): with `masterUserId`, a leader's own rows are the jobs he is master of; on another master's jobs he reads what the office reads. Absent, every leader's rows are his own, as before. */
+  viewerUserId?: string | null
+  /** The job's master by job (v2.6734); null for a job with no master, whose paper the signed-in leader signs as himself. */
+  masterUserId?: (jobId: string) => string | null
   /** The envelopes mailed through the provider that want a person (the Docsmit train, 6b): `mailNeedsYouRows` from the desk's pieces. */
   mailNeedsYou?: ReadonlyArray<{ jobId: string; pieceId: string; who: string; words: string }>
 }
@@ -152,11 +157,24 @@ function compareRows(a: LienNextUpRow, b: LienNextUpRow): number {
   return a.key < b.key ? -1 : a.key > b.key ? 1 : 0
 }
 
+/**
+ * Whether the viewer is the leader this job's paper waits on (v2.6734, punch list #150): a lien leader on a job whose
+ * master is him, or that has none (then the signed-in leader signs as himself); a dev on another master's job is not,
+ * and his Do now reads those rows as the office does — *Waiting on Malachi*, never *Only you can approve*. Without a
+ * viewer or a master lookup, every leader leads every job, as before.
+ */
+export function lienViewerLeadsJob(input: Pick<LienNextUpInput, 'role' | 'viewerUserId' | 'masterUserId'>, jobId: string | null): boolean {
+  if (!isLienLeader(input.role)) return false
+  if (input.viewerUserId === undefined || !input.masterUserId || !jobId) return true
+  return !lienOtherScreen(input.masterUserId(jobId), input.viewerUserId)
+}
+
 export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   const office = isLienOffice(input.role)
   const leader = isLienLeader(input.role)
   const canAct = office || leader
   const rows: LienNextUpRow[] = []
+  const leads = (jobId: string) => leader && lienViewerLeadsJob(input, jobId)
 
   const push = (r: Omit<LienNextUpRow, 'group' | 'button'> & { button?: string | null }) => {
     const button = r.button !== undefined ? r.button : canAct ? BUTTON[r.action] : null
@@ -164,7 +182,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   }
   /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
   const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string } => {
-    if (leader) return { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval' }
+    if (leads(jobId)) return { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval' }
     const name = input.leaderName?.(jobId)?.trim() || 'the leader'
     const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
     return { action: 'approve', button: null, sub: `Waiting on ${name}${/^\d{4}-\d{2}-\d{2}$/.test(since) ? ` · since ${formatYmdMonthDay(since)}` : ''}` }
@@ -216,12 +234,12 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'ready': {
         // Unsigned (v2.5087): the run holds it until the leader's name is on it — his own row with Sign, whatever the GC's count; the office's row says it waits.
         const unsigned = e.item ? lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' : false
-        if (unsigned && leader) {
+        if (unsigned && leads(e.jobId)) {
           push({ ...base, key: `notice:${e.jobId}`, sub: e.item?.approval_mode === 'word' ? 'Approved on your word · unsigned' : 'Approved · unsigned', action: 'sign', button: BUTTON.sign, target: pane('ready') })
           break
         }
         // A pen record the leader has not confirmed (the pen train, PR 3), or a signature by his code on someone else's screen (v2.5791): his own row, first on the list; it blocks nothing, so the office's row is the ready one below.
-        if (leader && e.item && lienPenAwaitsConfirm(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields))) {
+        if (leads(e.jobId) && e.item && lienPenAwaitsConfirm(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields))) {
           const cols = signatureColumnsOf(e.item)
           const day = cols.signed_at ? calendarYmdInAppTzFromIso(cols.signed_at) : ''
           const dayWords = /^\d{4}-\d{2}-\d{2}$/.test(day) ? ` ${formatYmdMonthDay(day)}` : ''
