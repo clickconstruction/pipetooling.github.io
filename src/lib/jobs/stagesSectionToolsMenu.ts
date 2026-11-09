@@ -15,7 +15,7 @@
  * - Payment forecast: dev / master_technician / assistant-like / primary
  *   (mirrors the header's canSeeBilledExpectedPay gate — hidden otherwise).
  * - Ready to Bill notifications + Paid notifications + Paid in Full
- *   notifications: dev / master_technician only.
+ *   notifications: dev / master_technician / controller (the controller since v2.6760).
  * - Lien desk: the office (the Accounts Receivable gate); first row of the
  *   Pipeline group since v2.3799 (punch list #34) — under Collections at the
  *   foot of the menu the owner looked and did not find it; the desk reads the
@@ -27,7 +27,7 @@
  *   office as its badge. Hidden, not disabled, for everyone else.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
-import { canSeeStagesMoneyCharts } from './stagesRoleGates'
+import { canOpenBillingNotifications, canSeeStagesMoneyCharts } from './stagesRoleGates'
 
 export type StagesSectionToolKey =
   | 'recently-added'
@@ -95,7 +95,8 @@ export type StagesSectionToolsMenuInput = {
 
 export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput): StagesSectionToolsGroup[] {
   const { authRole } = input
-  const isDevOrMaster = authRole === 'dev' || authRole === 'master_technician'
+  // The notification windows open to the owner pair and the controller since v2.6760 (punch list #188 row 41).
+  const isDevOrMaster = canOpenBillingNotifications(authRole)
   // No `primary` branch (v2.2882, J4-8): primaries never reach the Pipeline
   // board (Jobs shows them Reports only) and Layout bounces them off
   // /accounts-receivable — the old `|| authRole === 'primary'` was dead code.

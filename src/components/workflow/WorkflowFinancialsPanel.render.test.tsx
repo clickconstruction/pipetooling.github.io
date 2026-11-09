@@ -57,7 +57,7 @@ function props(over: Partial<WorkflowFinancialsPanelProps> = {}): WorkflowFinanc
     projections: [projection('p1', 'Rough', 42000), projection('p2', 'Top Out', 18500)],
     steps,
     lineItems: { s1: [lineItem('i1', 's1', 38120), lineItem('i2', 's1', 880)], s2: [] },
-    isDevOrMaster: true,
+    canEditProjections: true,
     canManageStages: true,
     onAddProjection: vi.fn(),
     onEditProjection: vi.fn(),
@@ -88,7 +88,7 @@ describe('WorkflowFinancialsPanel', () => {
   })
 
   it('shows a stage manager who is not dev or master the Ledger alone', async () => {
-    const p = props({ isDevOrMaster: false, projections: [] })
+    const p = props({ canEditProjections: false, projections: [] })
     await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Ledger: $39,000.00') })
     expect(screen.queryByText(/^Projections:/)).toBeNull()
     expect(screen.queryByText(/^Left:/)).toBeNull()

@@ -70,7 +70,7 @@ export type WorkflowStagesListProps = {
   project: Project
   canManageStages: boolean
   canSeePrivateNotesAndApprove: boolean
-  isDevOrMaster: boolean
+  canEditProjections: boolean
   oldStagesCollapsed: boolean
   setOldStagesCollapsed: Dispatch<SetStateAction<boolean>>
   rowCollapsed: Record<string, boolean>
@@ -106,7 +106,7 @@ export function WorkflowStagesList({
   project,
   canManageStages,
   canSeePrivateNotesAndApprove,
-  isDevOrMaster,
+  canEditProjections,
   oldStagesCollapsed,
   setOldStagesCollapsed,
   rowCollapsed,
@@ -215,7 +215,7 @@ export function WorkflowStagesList({
         // visibility as the top Projections panel.
         const orderedStepIds = [...steps].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)).map((st) => st.id)
         const itemsTotalByStepId = itemsTotalByStep(orderedStepIds, lineItems)
-        const moneyFlow = isDevOrMaster
+        const moneyFlow = canEditProjections
           ? buildWorkflowMoneyFlow(orderedStepIds, projections, itemsTotalByStepId)
           : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {}, stepBalance: {} }
         // Ledger rail (v2.1195): a left balance column aligned to every card and
@@ -228,7 +228,7 @@ export function WorkflowStagesList({
           balance: balanceNow,
           hasMoney,
         } = workflowMoneyTotals(sumAmounts(projections), ledgerTotalForSteps(orderedStepIds, itemsTotalByStepId))
-        const showLedgerRail = isDevOrMaster && wideForLedger && hasMoney
+        const showLedgerRail = canEditProjections && wideForLedger && hasMoney
         const RAIL_W = 150
         const railGutter = (value: number | null) =>
           showLedgerRail ? (
@@ -925,7 +925,7 @@ export function WorkflowStagesList({
               )}
               
               {/* Money drawer (v2.1194) - dev/master: this step's anchored projections + actual items */}
-              {isDevOrMaster && (() => {
+              {canEditProjections && (() => {
                 const key = `${s.id}-money`
                 const isExpanded = sectionExpanded[key] ?? false
                 const beforeProjs = (moneyFlow.beforeByStep[s.id] ?? []).map((m) => m.projection)

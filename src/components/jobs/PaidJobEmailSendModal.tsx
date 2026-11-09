@@ -28,7 +28,7 @@ type EmailVariant = 'detailed' | 'summary'
  * "Send to me" ([TEST]-prefixed, same as the old "Email me a test") and
  * "Send to someone…" (the role-aware picker; the recipient's role picks the
  * variant server-side, and selecting someone flips the preview to their variant).
- * Dev + master_technician only (enforced server-side too). Notes — without
+ * The office — dev, master_technician, assistant, controller — since v2.6760 (punch list #188 row 49; enforced server-side too). Notes — without
  * blocking — when the job isn't actually paid yet; since v2.1103 the email
  * itself is status-aware (progress banner + line items), so partial sends are
  * a feature, not a mistake.

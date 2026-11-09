@@ -7,7 +7,7 @@
  * recurring-job-report-preview / -test-send):
  *
  * - { mode: 'preview', job_id, variant: 'detailed' | 'summary', kind? } —
- *   caller JWT, role dev/master_technician; returns { html }. No DB writes,
+ *   caller JWT, an office role (SENDER_ROLES); returns { html }. No DB writes,
  *   no send. kind 'ready_to_bill' renders that stream's template.
  * - { mode: 'send_to', job_id, recipient_user_id } — same role gate; sends the
  *   REAL email to the chosen active user, variant decided by the RECIPIENT's
@@ -83,6 +83,8 @@ const RTB_RECIPIENTS_V2_SETTING_KEY = 'ready_to_bill_notify_recipients_v2'
 const RTB_RECIPIENTS_SETTING_KEY = 'ready_to_bill_notify_recipients_v1'
 const RTB_CHANNELS_SETTING_KEY = 'ready_to_bill_notify_channels_v1'
 const DETAILED_ROLES = new Set(['dev', 'master_technician'])
+/** Who may call preview / send_to / test_send / test_push: the office (punch list #188 row 49, v2.6760; dev and master before). The variant a RECIPIENT gets still follows DETAILED_ROLES. */
+const SENDER_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 const MAX_QUEUE_BATCH = 20
 const MAX_ATTEMPTS = 5
 
@@ -258,7 +260,7 @@ async function requireDevOrMaster(
     .select('role, email, name, archived_at').match(REAL_ACCOUNT)
     .eq('id', user.id)
     .maybeSingle()
-  if (!meRow || meRow.archived_at || !DETAILED_ROLES.has(String(meRow.role))) {
+  if (!meRow || meRow.archived_at || !SENDER_ROLES.has(String(meRow.role))) {
     return jsonResponse({ error: 'Forbidden' }, 403)
   }
   return {

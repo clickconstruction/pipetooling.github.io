@@ -62,13 +62,13 @@ describe('buildStagesSectionToolsMenu', () => {
     }
   })
 
-  it('Ready to Bill notifications is dev/master only — group hidden for others', () => {
-    for (const authRole of ['dev', 'master_technician']) {
+  it('Ready to Bill notifications is the owner pair’s and the controller’s (v2.6760) — group hidden for others', () => {
+    for (const authRole of ['dev', 'master_technician', 'controller']) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain(
         'ready-to-bill-notifications',
       )
     }
-    for (const authRole of ['assistant', 'controller', 'primary', 'superintendent', null]) {
+    for (const authRole of ['assistant', 'primary', 'superintendent', null]) {
       const groups = buildStagesSectionToolsMenu({ ...base, authRole })
       expect(keysOf(groups)).not.toContain('ready-to-bill-notifications')
       expect(groups.some((g) => g.section === 'Ready to Bill')).toBe(false)
@@ -92,23 +92,11 @@ describe('buildStagesSectionToolsMenu', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
     expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'legal-desk'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
-    expect(keysOf(controllerGroups)).toEqual([
-      'lien-desk',
-      'recently-added',
-      'weekly-movement',
-      'weekly-money',
-      'capable-to-bill',
-      'gc-review',
-      'accounts-receivable',
-      'billed-share-print',
-      'billed-aging-chart',
-      'billed-payment-forecast',
-      'legal-desk',
-      'paid-profit-chart',
-    ])
-    // Controller's Paid in Full group holds only the profit chart (no ⚙).
+    // Since v2.6760 (punch list #188 row 41) the controller opens the notification windows too, so her menu is the dev's.
+    expect(keysOf(controllerGroups)).toEqual(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })))
     const paidGroup = controllerGroups.find((g) => g.section === 'Paid in Full')
-    expect(paidGroup?.items.map((i) => i.key)).toEqual(['paid-profit-chart'])
+    expect(paidGroup?.items.map((i) => i.key)).toContain('paid-profit-chart')
+    expect(paidGroup?.items.map((i) => i.key)).toContain('paid-in-full-notifications')
   })
 
   it('primary sees no admin tools; Accounts Receivable is disabled like every other non-office role (v2.2882, J4-8 dead branch removed)', () => {

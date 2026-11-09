@@ -52,6 +52,15 @@ export function canTunePaySpeeds(role: Role): boolean {
   return isStagesOwnerRole(role) || role === 'controller'
 }
 
+/**
+ * The board's billing notification windows (punch list #188 rows 41 and 42, v2.6760): Ready to Bill, Paid and Paid in
+ * Full notifications on the Pipeline and Estimate accepted notifications on Estimates open to the owner pair and the
+ * controller; inside, the recipients are the controller's and a dev's to edit (`isControllerOrDev`, the keys' policy).
+ */
+export function canOpenBillingNotifications(role: Role): boolean {
+  return isStagesOwnerRole(role) || role === 'controller'
+}
+
 /** Pay speeds → Data health's No Count Date (row 44): the controller with a dev (the app_settings key's policy). */
 export function canSetPaySpeedNoCountDate(role: Role): boolean {
   return isControllerOrDev(role as never)

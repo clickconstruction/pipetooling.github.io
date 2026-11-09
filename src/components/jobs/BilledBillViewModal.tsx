@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
+import { isControllerOrDev } from '../../lib/doorRoles'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
@@ -100,7 +101,7 @@ export default function BilledBillViewModal({
                 <FileSpreadsheet size={16} aria-hidden />
               </button>
             ) : null}
-            {isStripeHosted && stripeId && role === 'dev' ? (
+            {isStripeHosted && stripeId && isControllerOrDev(role) ? (
               <button
                 type="button"
                 title="Open this invoice in Stripe Dashboard"

@@ -115,7 +115,8 @@ export default function Workflow() {
   const { markStarted, deleteStep, assignPerson } = stepWrites
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
-  const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
+  // Projections are the books' (punch list #188 row 48, v2.6760): the owner pair and the controller.
+  const canEditProjections = userRole === 'dev' || userRole === 'master_technician' || (userRole as string | null) === 'controller'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
   const projectionsApi =
@@ -765,12 +766,12 @@ export default function Workflow() {
       </div>
 
       {/* Projections + Ledger - Summary bar and unified table */}
-      {(isDevOrMaster || canManageStages) && (
+      {(canEditProjections || canManageStages) && (
         <WorkflowFinancialsPanel
           projections={projections}
           steps={steps}
           lineItems={lineItems}
-          isDevOrMaster={isDevOrMaster}
+          canEditProjections={canEditProjections}
           canManageStages={canManageStages}
           onAddProjection={() => openEditProjection(null)}
           onEditProjection={openEditProjection}
@@ -787,7 +788,7 @@ export default function Workflow() {
         project={project}
         canManageStages={canManageStages}
         canSeePrivateNotesAndApprove={canSeePrivateNotesAndApprove}
-        isDevOrMaster={isDevOrMaster}
+        canEditProjections={canEditProjections}
         oldStagesCollapsed={oldStagesCollapsed}
         setOldStagesCollapsed={setOldStagesCollapsed}
         rowCollapsed={rowCollapsed}

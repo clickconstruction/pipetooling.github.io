@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { isControllerOrDev } from '../../lib/doorRoles'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
@@ -121,7 +122,8 @@ export default function PaidInFullEmailSettingsModal({
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const copy = VARIANT_COPY[variant]
-  const canEditRecipients = authRole === 'dev'
+  // Punch list #188 rows 41 and 42 (v2.6760): who gets billing emails is the books', so the controller edits the list with a dev.
+  const canEditRecipients = isControllerOrDev(authRole)
 
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<RecipientUser[]>([])

@@ -1693,6 +1693,17 @@ The owner reads Team labor and profit on every job, so the Pipeline's wage-deriv
 | **Pay speeds → Data health ⚙ No Count Date** (row 44) | dev · controller | `canSetPaySpeedNoCountDate` (`canSetNoCountDate` through the forecast windows; was `isDev`); `pay_speed_no_count_date_v1` insert, update and delete for `is_dev() OR is_controller()` |
 | **Contract coverage floor** (row 45) | dev · master_technician | `PipelineContractCoverageCard` `canEdit`; `job_contract_floor_cents_v1` for `is_master_or_dev()` |
 
+## Billing notifications and the office's small doors (v2.6760, punch list #188 rows 41–43, 46, 48–50)
+
+| Door | Who | Where it is decided |
+|---|---|---|
+| **Ready to Bill**, **Paid** and **Paid in Full notifications** windows (row 41) and **Estimate accepted notifications** (row 42) | open: dev · master_technician · controller; edit the recipients: dev · controller | `canOpenBillingNotifications` in `stagesRoleGates.ts` (the Pipeline's ⚙ buttons, the Section tools menu, Estimates' ⚙); `canEditRecipients = isControllerOrDev(authRole)` in the two windows; the six recipient keys take the controller's `INSERT`/`UPDATE` (`20261109004000_dev_gates_notifications_misc.sql`) |
+| **GC Review → Standing copies** (row 43) | dev · master_technician · assistant · controller | `canEditStandingCopies` on `JobsGcReviewModal` (`isStagesOfficeRole`); the office deletes an unsent `repeat_weekly` request anyone wrote |
+| **Open in Stripe Dashboard** on Collect payment, the Billed bill view and Documents (row 46) | dev · controller | `isControllerOrDev(role)` in the three windows |
+| **Workflow → Projections** and **Projects → Forecast specific money** (row 48) | dev · master_technician · controller | `canEditProjections` in `Workflow.tsx` (was `isDevOrMaster`), `canSeeMoney` in `ProjectsForecastSpecificTab`; `workflow_projections` admitted `is_office_staff()` already |
+| Job window → **Send paid-in-full email** (row 49) | dev · master_technician · assistant · controller | `isOfficeRole(authRole)` in `DetailJobModal`; `paid-job-email`'s `SENDER_ROLES` (the recipient's variant still follows `DETAILED_ROLES`) |
+| Dispatch settings → **Travel hints** (row 50) | dev · master_technician · assistant · controller | `canSetTravel = isOfficeRole(role)` in `DispatchSettingsModal`; `travel_hints_config_v1` and `dispatch_note_requirement_config_v1` take the office's `INSERT`/`UPDATE` |
+
 ## Job Summary overhead dials (v2.3259)
 
 The overhead allocation Job Summary charges from (`app_settings.overhead_allocation_v1`: smoothing window · carry share · idle cap · open definition) is **one org-wide setting**. Reads: every authenticated role, through the existing "Authenticated users can read app settings" policy — but the chip that names the constants sits behind the pay lockdown (`showMoney`: dev, master/leader, controller), like every overhead figure. Writes: the owner or a dev since v2.6759 (punch list #188 row 38; dev only before) — the ⚙ dials and *Use for everyone* render for `isOwnerOrDev(authRole)` on the client, and a key-scoped `is_master_or_dev()` policy on `overhead_allocation_v1` (`20261109003500_dev_gates_pipeline_money.sql`) admits him at the database beside the dev's. A dev's exploration of other settings is per device (localStorage) and never changes what anyone else sees.
