@@ -27090,6 +27090,7 @@ export type Database = {
           prepared_at: string
           prepared_by: string
           project_id: string | null
+          send_at: string | null
           send_on: string | null
           sent_at: string | null
           sent_by_user_id: string | null
@@ -27113,6 +27114,7 @@ export type Database = {
           prepared_at?: string
           prepared_by?: string
           project_id?: string | null
+          send_at?: string | null
           send_on?: string | null
           sent_at?: string | null
           sent_by_user_id?: string | null
@@ -27136,6 +27138,7 @@ export type Database = {
           prepared_at?: string
           prepared_by?: string
           project_id?: string | null
+          send_at?: string | null
           send_on?: string | null
           sent_at?: string | null
           sent_by_user_id?: string | null
@@ -43325,10 +43328,15 @@ export type Database = {
           p_contact: string
           p_job_id: string
           p_job_kind: string
+          p_send_at?: string
           p_send_on?: string
           p_step: string
         }
         Returns: string
+      }
+      nudge_offer_retime: {
+        Args: { p_offer: string; p_send_at: string }
+        Returns: undefined
       }
       nudge_offer_sent: {
         Args: { p_message: string; p_offer: string }
