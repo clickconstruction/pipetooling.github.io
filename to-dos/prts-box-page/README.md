@@ -1,0 +1,140 @@
+---
+name: "prts.co: scan a box, see what is in it with no sign-in"
+number: 294
+group: waiting
+status: designed 2026-11-09 from the owner's ask of the same day · nothing built · waiting on the owner's yes and his privacy call on the search
+mockup: to-dos/prts-box-page/scan.html
+summary: >
+  Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
+  and prts.co already forwards every path to the app. Today the scan ends at the sign-in page, and
+  a helper who is signed in is bounced to the Dashboard, because the box route is not on the field
+  roles' list. The owner wants the scan to open a public page: what is in the box with its count,
+  the newest photo and the manifest, a search over the other boxes on that site, and a sign-in only
+  when someone wants to change a count. The design keeps the printed labels and the redirect as
+  they are, moves the box route out from behind the sign-in, and reads the box through one new
+  function by its code with the estimate link's guess guard. The search is keyed by a scanned code
+  and covers that site's boxes, never the whole company.
+next: The owner reads the card and the three mock-ups and makes three calls (build it; the search's gate; who edits the Cloudflare rule). Then PR 1, a one-line fix a crew hits today, goes first.
+size: M as a train of three (XS · S · S)
+blocker: The owner's yes, and his call on the search's gate (the card's recommendation is a scanned code).
+opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
+---
+
+# prts.co: scan a box, see what is in it with no sign-in (#294)
+
+## The ask, in the owner's words
+
+2026-11-09:
+
+> I love the materials on site manager we have created. Since we have the prts.co domain I was thinking we turn that entry point into a part manager page where someone going to that page doesn't need to sign in to see the parts that are in that box: prts.co. I want someone to be able to go up to a box, scan the QR code, have it pull up what's inside with the most recent photo and manifest, and if they want to update the quantity then they have to sign in. But from that non-signed-in screen they should be able to search all the materials on site to find what they're looking for.
+
+## The recommendation in one line
+
+Build it: the label, the domain, the redirect and the arithmetic already exist, so the work is one public page and one read function, and the same change fixes a scan that lands every field role on the Dashboard today.
+
+## What the app has today (read 2026-11-09)
+
+- **Labels with a QR exist.** Jobs → Materials → Labels prints one Letter sheet per cage or box with the stencil, a QR and ruled lines. The QR carries `PRTS.CO/B/<CODE>` in capitals, 18 characters, a 21-module code that scans from across a room (`src/lib/materials/labels.ts`, `boxUrl`). The code is the container id's first eight hex characters in capitals, kept on `job_containers.code` with a unique index. The manifest print carries the same code so the paper and the label name one box.
+- **prts.co forwards everything.** The zone has no origin and no Worker. One Cloudflare redirect rule answers every path with a 301 to the same path on clicktooling.com, lower-cased, query string kept (`scripts/cloudflare/prts-co-redirect.md`). So a scan lands on the app's `/b/<code>` route. A Worker on prts.co would never run while the rule exists; Redirect Rules run before Workers.
+- **The box route is behind the sign-in.** `/b/:code` sits inside the Layout's protected routes (`src/App.tsx`, `src/pages/BoxCode.tsx`). Signed out, a scan lands on the sign-in page and the box is forgotten. Signed in, the page finds the box by its code under the caller's RLS and goes to its screen on the Tally's On site tab.
+- **A crew's scan is broken today.** `/b` is on none of the field allow-lists in `src/lib/layoutRouteAccess.ts` (the subcontractor and helper list, the primary list, the superintendent list), and the Layout sends a role off a path it may not open to the Dashboard. Only the office roles can scan a label and land on the box. The guide tells the crew to point the camera at the label and the box opens; for them it does not.
+- **A box's contents are a sum.** `job_material_movements` is an append-only ledger; a container's lines are the sum of its rows (`src/lib/materials/onSite.ts`, `containerLines`). Since v2.6743 the same arithmetic runs in SQL as `on_site_job_summary(job, since)`: every line of every container of a job in one call, granted to signed-in users (the service role keeps its default grant; PR 2 confirms it with a dry call before anything else, else a one-line GRANT).
+- **There is no stored manifest.** The manifest is a print rendered from the ledger (`src/lib/materials/containerManifest.ts`, `ManifestPrintModal.tsx`): job, site, stencil, printed day, last recorded day and by whom, the lines with their counts, ruled rows. The laminated paper on a cage is a snapshot of the ledger on its print day.
+- **A photo lives in Drive.** The phone shrinks the shot, puts it in the private `box-photos` bucket, writes a `job_box_photos` row; the `photo-save` sweep files it in the job's Drive photo folder, writes `drive_file_id` and `filed_at`, and deletes the bucket copy. The app keeps no lasting copy. The office page draws no thumbnail of a filed photo; the phone that took it draws its own copy from IndexedDB. The function `drive-link` already streams a Drive file's bytes through the service account with no sign-in (`?raw=1`), so a public page can show a filed photo without opening Drive.
+- **Who may see and write.** One gate, `on_site_can_touch_job(job_id)`: the caller can see the job in `jobs_ledger` under their own RLS or is on its team. Every table has RLS for `authenticated` only; `anon` reads nothing. A signed-in person not on the team reads the lines and gets no press.
+- **The public-page precedents.** The estimate link `/e/<ten letters>` and the bill link `/pay/<ten letters>` read one record by a short code through an edge function with `verify_jwt = false`, count wrong codes by the hour per source through `estimate_link_miss` and answer 429 past 20 misses (`_shared/estimateLinkMisses.ts`, reused by `pay-link` as is), and sit outside the Layout as light pages on the portal's paper (`src/pages/PayLink.tsx`, `portalTheme.ts`). Public views land in `public_page_views` with a `surface` and an `entity_id`, and a staff session or `?preview=1` is not counted (`_shared/publicViewCounting.ts`). Every public route must have a row in `src/lib/customerSurfaceRegistry.ts` or CI fails.
+- **The sign-in comes back.** `SignInRoute` honours a one-shot return path in `localStorage` (`POST_LOGIN_REDIRECT_KEY` in `src/lib/iosPwa.ts`), the way the Add Task shortcut returns to `/task` after a sign-in. Internal paths only.
+- **The search that exists is signed in.** Go anywhere's *Boxes on site* group (`src/lib/materials/boxSearch.ts`) finds a box by stencil, part or place across every job the caller can see. Nothing of it is public.
+
+## The design
+
+### The idea
+
+The label is already the key. A scan opens a page that reads one box by its code and shows what the laminated manifest shows, minus the job's name and the people. Changing a count is the app's own press, reached by signing in and coming back to the same box. The search is for the person standing on the site holding a label, so a scanned code is what opens it, and it covers that site's boxes.
+
+### 1. The public read: what a scan shows
+
+`prts.co/b/<code>` → 301 → `clicktooling.com/b/<code>`, the route moved out from behind the sign-in. Signed out, the page reads the box through a new function, `box-read`, and shows:
+
+- **The box**: its stencil and kind (*Cage B3*), its place and where-note (*Level 2 · by the north stair*). The page's own title, so a phone's tab reads *Cage B3*.
+- **The newest photo**, large, with the day it was taken. The function answers the photo's address, which is the function itself: it streams the bytes from Drive by `drive_file_id` through the service account as `drive-link` does, or from the bucket while the sweep has not filed the shot yet, with an hour's cache header. No Drive link ever reaches the page.
+- **The manifest**: every line with something on hand, in name order, with the manufacturer and the count. This is the manifest; the laminated paper is the same list on its print day. A line reads *Last counted Nov 5* or *Never counted* under the table, the day only.
+- **Two presses**: **Sign in to change a count** (the primary) and **Find a part on this site** (the search, PR 3). Below them, small: *Click Plumbing & Electrical*.
+
+What it never shows: the job's number or name, the customer, the address, any price or money, anyone's name (the ledger's `by_name`, the photo's taker), the history of movements, the other boxes (until a search asks), retired boxes. A retired box's code answers *This label is from a box that was retired* with no lines.
+
+**The address stays as printed.** The code is eight hex characters, 32 bits, about four billion values; the live boxes number in the low hundreds, so a guess hits one in tens of millions, and the page carries nothing worth a guess. The estimate link's guard counts every miss per source and locks a source for the hour after 20. Reprinting every label on a yard of cages for a ten-letter code buys nothing the page needs; the card names it so the choice is on record. The code is the id's prefix, which under RLS opens nothing for anyone not signed in.
+
+**The function `box-read`**: `GET ?code=<8 hex>` (anything else is 400 before the database is touched). Service role: the live container by code (404 and a miss when none, 410 when retired), the job's lines from `on_site_job_summary` cut to the container, the newest `job_box_photos` row for it. Answers `{ ok, box: { code, stencil, kind, place, where, lines: [{ partName, manufacturer, onHand }], lastCountedOn, photo: { takenOn, url } | null } }`. Writes one `public_page_views` row, surface `box_page`, `entity_id` the container id, unless the request carries `?preview=1` or a valid staff token (the page sends the browser's token when one exists, as the estimate page does). `GET ?code=<code>&photo=<id>` streams the photo. `verify_jwt = false`. The pure parts (the code check, the answer's shape, the client read) in `_shared/boxPage.ts`, re-exported from `src/lib/materials/boxPage.ts` and tested there, the `payLink.ts` pattern.
+
+### 2. Signed in, nothing changes for the crew
+
+The same route, with a session: the page goes to the box's screen on the On site tab as it does today, and PR 1 lets every field role through. While the session is still loading the page draws the public view, so a scan never waits on the auth gate; the moment the session is known it moves on. A signed-in person who is not on the job's team lands on the app's box screen as today, which reads the lines and offers no press.
+
+### 3. The sign-in step to change a count
+
+**Sign in to change a count** writes `/b/<code>` into the one-shot return key and goes to `/sign-in`. After the sign-in the app lands on `/b/<code>` again, now with a session, which goes to the box's screen on the On site tab: Used, Move to…, Can't find, Count this box, Add a part, Photo — the presses that exist, each writing its movement row under the gate. No new write, no new RPC, no new press. The sign-in page itself does not change; its mock-up frame shows it as it is with one line under the form, *You will go back to Cage B3*, which is an XS nicety and not owed.
+
+### 4. The search, and the privacy line
+
+The owner asked for a search from the signed-out screen. What a search reveals depends on what opens it, so here are the three ways, and what each shows to whom:
+
+| Gate | What anyone with the address sees | Verdict |
+|---|---|---|
+| **Nothing**: `prts.co` open to all | Every live box on every job with its place and contents. The company's whole on-site inventory, which cage holds the brass valves and which the copper, on a page a thief can read from the parking lot. | No. |
+| **A company-wide secret in the address** (`prts.co/s/<secret>`) | The same inventory to anyone who has the address. A secret in a URL is forwarded in a text the day it is useful, and then it is the row above with a longer address. | No. |
+| **A code scanned from any box** (the recommendation) | The boxes **on that box's job** with their stencil, place and the lines that match the words typed. The person is standing on the site with a label in front of them; the search shows them the rest of that site. Nothing about another job. | Yes. |
+
+So: `box-read` takes `?code=<code>&find=<words>` and answers the live containers of **the same job** whose stencil, place or lines match, each with its stencil, place, code and the matching lines with on hand, at most 30 boxes. The code is the key: no code, no search. A hit opens its own box page by its code. The page keeps the last scanned code on the phone for a day, so the bare `/b` page offers **Search the boxes on the site you last scanned** without a second scan.
+
+What the owner gives up with this gate: a person on one site cannot find a part sitting on another site without signing in. The signed-in search (Go anywhere, *Boxes on site*) already does that across every job the person can see, and the public page's sign-in press is one tap away. If the owner wants the whole company searchable with no sign-in, the first row says plainly what that shows, and the card asks him to say so in words.
+
+A development with several jobs on one site is the one case the job scope under-serves; the search can take the development's sibling jobs later (`developments` ties them), noted under Left.
+
+### 5. The bare entry point, `prts.co`
+
+Today `prts.co/` forwards to `clicktooling.com/`, the sign-in page. A second redirect rule on the zone, ahead of the first, sends the bare host (`http.request.uri.path eq "/"`) to `clicktooling.com/b`: the app's new **Scan a label** page, with the words *Point your camera at a box's label*, a box to type the eight characters under the QR, and the search line above when a code was scanned on this phone in the last day. The rule is an XS owner step, mirrored in `prts-co-redirect.md` like the first.
+
+### 6. QR codes and labels
+
+Nothing to print. The labels already carry the right address, the QR already encodes the code the page reads, the manifest print already carries the code under its title. `_shared/qrPng.ts` is not needed; the client's `qrcode.react` draws the labels today. The card's one label note: the laminated manifest could carry the words *Scan the label to see today's count* in its foot, since the paper is a snapshot and the page is live. Optional, XS, PR 3.
+
+## Where it plugs in
+
+- **Exists, touched**: `src/App.tsx` (the `/b/:code` route moves to the public block; a `/b` route joins it), `src/pages/BoxCode.tsx` (the signed-out view and the session fork), `src/lib/layoutRouteAccess.ts` (`/b` on the three field lists), `src/lib/customerSurfaceRegistry.ts` (the row for `/b/:code` and `/b`), `supabase/config.toml` (`[functions.box-read] verify_jwt = false`), `scripts/cloudflare/prts-co-redirect.md` (the second rule), the guide *keep track of the material in the cages and boxes on site* (the Scan a label section), `docs/EDGE_FUNCTIONS.md`, `docs/MATERIALS_ON_SITE_ARCHITECTURE.md` (The doors), `docs/twins/APP_DIRECTORY.md` (the `/b` page), `PROJECT_DOCUMENTATION.md`, `ACCESS_CONTROL.md` (who sees what signed out).
+- **Exists, reused as is**: `on_site_job_summary` (the lines), `estimate_link_miss` through `_shared/estimateLinkMisses.ts` (the guard), `public_page_views` through `_shared/publicViewCounting.ts` (the count), `_shared/driveJobFolder.ts`'s `driveMedia` (the photo's bytes), `POST_LOGIN_REDIRECT_KEY` (the return), `portalTheme.ts` (the light paper), `normalizeBoxCode` and `boxCode` in `labels.ts`.
+- **New**: `supabase/functions/box-read/index.ts`, `_shared/boxPage.ts` with `src/lib/materials/boxPage.ts` and its test, `src/components/materials/BoxPublicPage.tsx` with a render smoke, `src/pages/BoxScan.tsx` (the bare `/b` page), one release note and fragment per PR.
+- **No migration**, unless the dry call in PR 2 finds the service role without EXECUTE on `on_site_job_summary`; then one line.
+
+## The plan
+
+1. **PR 1 · the crew's scan lands on the box (XS)** — `/b` on the subcontractor, primary and superintendent lists in `layoutRouteAccess.ts`, with a test that walks the four roles over `/b/4f2a9c18`. Ships alone and today; it is a fix, not the feature. The guide's Scan a label words come true for the crew.
+2. **PR 2 · the public box page (S)** — `box-read` with the code check, the guard, the view row and the photo stream; the route out of the Layout; `BoxCode.tsx` forking on the session; `BoxPublicPage.tsx` on the portal's paper at 375 and 320; the sign-in press and its return; the registry row; the guide's section; the docs. Deploy the function after the merge (`supabase functions deploy box-read`); nothing in the database changes. `check:calls-ahead` has no table or RPC to label.
+3. **PR 3 · the search and the front door (S)** — `?find=` in the function over the same job; the search box and its results on the public page; the bare `/b` page with the typed code and the remembered site; the second redirect rule on prts.co (the owner, or a session in his Chrome signed in to Cloudflare), mirrored; the manifest foot's line. Redeploy the function.
+
+Later, not owed: a development's sibling jobs in the search; a *Print this list* press on the public page that prints without the job's name; the sign-in page's *You will go back to…* line.
+
+## How to verify
+
+- **PR 1**: `/dev-login?as=1`, Settings → View as… → Helper, then open `/b/<a live box's code>` in the address bar at 375. Before: the Dashboard. After: the box's screen on On site. The same as a primary and a superintendent.
+- **PR 2**, on a ZZ test job (never a paid job's box): the office adds a cage on the ZZ job, prints its label, takes one photo on the phone and waits for the sweep to file it (five minutes). In a browser with no session, open `prts.co/b/<CODE>` as printed: the 301, then the page with the stencil, the photo, the lines and the two presses, nothing of the job. Try a code that is no box: *is not a box on any job*, and after 20 wrong codes from one connection the 429 words. Press Sign in to change a count, sign in as a helper on the job's team: the On site tab opens on that cage. Read `public_page_views` for one `box_page` row, and none for the signed-in look. Retire the cage and scan again: the retired words. A real phone's camera on the printed label, iPhone and Android, since the label's capitals are what the rule lower-cases.
+- **PR 3**: from the ZZ cage's page, Find a part: a word on a line in another ZZ box of the same job finds it, a word on a box of another job finds nothing. `prts.co` bare: the Scan a label page, the search line present on the phone that scanned, absent in a fresh browser.
+- Made-up names, jobs, counts and prices only, in the repo, the PR and every screenshot. The mock-ups were drawn with Playwright at 375 and 320 before they were shown; the PNGs stay local.
+
+## The mock-ups
+
+- [`scan.html`](./scan.html): the scanned box on a phone, signed out, at 375 and 320, and the retired and not-a-box states.
+- [`search.html`](./search.html): Find a part on this site with its results, the empty answer, and the bare `prts.co` page with and without a remembered site.
+- [`sign-in.html`](./sign-in.html): the hand-off in three frames: the public page's press, the sign-in page, the box's screen in the app with its presses.
+
+Every job, person, street, part and count in them is made up: Ridgeway Builders' Oak Hollow Apartments Building C, cage B3 at Level 2 by the north stair, Mateo Ruiz and Jordan Pike on the crew, the parts and their counts.
+
+## Calls for the owner
+
+1. **Build it as drawn?** Three PRs, the first a fix the crew hits today.
+2. **The search's gate**: a scanned code, covering that site's boxes (the recommendation), or the whole company open at `prts.co` with no key, knowing what that page shows to anyone who finds the address.
+3. **The Cloudflare rule** for the bare `prts.co`: the owner from the two lines in `prts-co-redirect.md`, or a session in his Chrome once he has signed in to Cloudflare.
+
+## Where it stands
+
+Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; nothing built, nothing on prod touched. The three mock-ups are beside this card. Waiting on the three calls above.

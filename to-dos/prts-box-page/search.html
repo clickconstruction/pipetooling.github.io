@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prts.co: find a part on this site</title>
+<style>
+  /* Punch list #294. Made-up data throughout (Oak Hollow Apartments Building C's cages and boxes). Portal paper as
+     scan.html. The search is keyed by the scanned code and covers that box's job, never the whole company. */
+  :root { color-scheme: light; --paper: #f6f3ec; --card: #fdfcf9; --ink: #16283c; --muted: #5a6b7e; --faint: #5e6d7c; --hair: #ddd6c8; --copper: #9a5b2b; --green: #1f7a3a; --red: #b42318; --blue: #2563eb; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --page: #eceae4; --strong: #111827; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 34ch; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 96ch; }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--strong); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; } .col.p375 { flex: 0 0 375px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .frame { max-width: 100%; overflow-x: auto; background: var(--paper); border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .screen { width: 375px; font-size: 16px; line-height: 1.45; color: var(--ink); padding: 0 0 18px; }
+  .bar { height: 22px; background: #e7e3d9; }
+  .pad { padding: 16px 16px 0; }
+  .brand { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); margin: 0; }
+  .back { display: inline-block; margin: 10px 0 0; color: var(--blue); font-weight: 600; text-decoration: none; font-size: 15px; }
+  .title { margin: 6px 0 0; font-size: 24px; line-height: 1.15; font-weight: 800; }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  .search { margin: 14px 16px 0; display: flex; gap: 8px; }
+  .search .in { flex: 1; min-height: 48px; border: 1px solid #aab2bd; border-radius: 12px; background: #fff; padding: 0 14px; display: flex; align-items: center; font-size: 17px; color: var(--ink); }
+  .search .in.ph { color: var(--faint); }
+  .search .go { min-width: 64px; min-height: 48px; border-radius: 12px; background: var(--blue); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .found { margin: 14px 16px 0; color: var(--muted); font-size: 14px; }
+  .found b { color: var(--ink); font-weight: 600; }
+  .hit { margin: 10px 16px 0; background: var(--card); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  .hit .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 12px 6px; }
+  .hit .hd b { font-size: 17px; }
+  .hit .hd span { color: var(--muted); font-size: 13px; }
+  .hit .hd.this b::after { content: " · this box"; color: var(--green); font-size: 13px; font-weight: 600; }
+  .hit .ln { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--hair); }
+  .hit .ln em { font-style: normal; background: #fbefc9; border-radius: 3px; padding: 0 2px; }
+  .hit .ln .mk { color: var(--muted); font-size: 13px; display: block; }
+  .hit .ln .n { font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hit .open { display: block; padding: 10px 12px; border-top: 1px solid var(--hair); color: var(--blue); font-weight: 700; text-decoration: none; }
+  .foot { margin: 18px 16px 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+  .foot a { color: var(--blue); font-weight: 600; text-decoration: none; }
+  .empty { margin: 18px 16px 0; padding: 14px; border: 1px dashed #aab2bd; border-radius: 12px; }
+  .empty b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .empty p { margin: 0; color: var(--muted); }
+  .presses { display: grid; gap: 10px; margin: 18px 16px 0; }
+  .press { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 12px; font-weight: 700; font-size: 16px; border: 1px solid var(--hair); background: var(--card); color: var(--ink); text-decoration: none; padding: 0 14px; text-align: center; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .cam { margin: 14px 16px 0; height: 150px; border-radius: 12px; background: linear-gradient(160deg, #3b4047, #1f2429); position: relative; }
+  .cam::after { content: ""; position: absolute; inset: 28px 110px; border: 2px solid rgba(255,255,255,.85); border-radius: 10px; }
+  .cam span { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: #fff; font-size: 13px; }
+  .lbl { margin: 14px 16px 0; font-size: 14px; color: var(--muted); }
+  .code { margin: 6px 16px 0; min-height: 48px; border: 1px solid #aab2bd; border-radius: 12px; background: #fff; padding: 0 14px; display: flex; align-items: center; font-family: ui-monospace, Menlo, monospace; font-size: 20px; letter-spacing: .12em; color: var(--faint); }
+  .or { margin: 16px 16px 0; text-align: center; color: var(--faint); font-size: 13px; }
+  table.gate { border-collapse: collapse; margin: 14px 0 0; max-width: 104ch; width: 100%; background: #fff; border: 1px solid #cfd4db; }
+  table.gate th, table.gate td { text-align: left; padding: 8px 10px; border-top: 1px solid #e5e7eb; vertical-align: top; font-size: 13.5px; color: #374151; }
+  table.gate th { background: #f3f4f6; color: var(--strong); border-top: 0; }
+  table.gate td.v { font-weight: 700; white-space: nowrap; }
+  table.gate td.v.no { color: var(--red); } table.gate td.v.yes { color: var(--green); }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #294 · mock-up 2 of 3</p>
+  <h1>prts.co: find a part on this site</h1>
+  <p>The owner asked for a search from the signed-out screen. What a search shows depends on what opens it. The design: <b>the scanned code is the key</b>, and the search covers the boxes on that box's job. A person on the site holding a label sees the rest of that site, and nothing of any other job.</p>
+</header>
+
+<h2>From cage B3, looking for 3/4" copper</h2>
+<p class="lede">The box the person scanned stays first and is marked. Each hit is a box with the lines that matched and their counts, and a press that opens that box's own page. The foot says what the search covers and where the wider one is.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap">375 · results</div>
+    <div class="frame"><div class="screen">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <a class="back" href="#">‹ Cage B3</a>
+        <p class="title">Find a part on this site</p>
+        <p class="sub">The cages and boxes on the same site as B3.</p>
+      </div>
+      <div class="search"><div class="in">3/4 copper</div><div class="go">Find</div></div>
+      <p class="found"><b>3 boxes</b> hold a line that matches.</p>
+      <div class="hit">
+        <div class="hd this"><b>Cage B3</b><span>Level 2 · by the north stair</span></div>
+        <div class="ln"><span><em>3/4</em>" <em>copper</em> 90° elbows<span class="mk">Mueller</span></span><span class="n">42</span></div>
+        <div class="ln"><span><em>3/4</em>" <em>copper</em> couplings<span class="mk">Mueller</span></span><span class="n">36</span></div>
+      </div>
+      <div class="hit">
+        <div class="hd"><b>Cage A1</b><span>Laydown yard</span></div>
+        <div class="ln"><span><em>3/4</em>" <em>copper</em> pipe, 20 ft<span class="mk">Cerro</span></span><span class="n">24</span></div>
+        <a class="open" href="#">Open Cage A1 ›</a>
+      </div>
+      <div class="hit">
+        <div class="hd"><b>Box C2</b><span>Level 3 · mech room</span></div>
+        <div class="ln"><span><em>3/4</em>" <em>copper</em> tees<span class="mk">Mueller</span></span><span class="n">15</span></div>
+        <a class="open" href="#">Open Box C2 ›</a>
+      </div>
+      <p class="foot">Boxes on this site only, as of right now. <a href="#">Sign in</a> to search every job.</p>
+    </div></div>
+  </div>
+
+  <div class="col p375">
+    <div class="cap">375 · nothing matches</div>
+    <div class="frame"><div class="screen">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <a class="back" href="#">‹ Cage B3</a>
+        <p class="title">Find a part on this site</p>
+        <p class="sub">The cages and boxes on the same site as B3.</p>
+      </div>
+      <div class="search"><div class="in">wax ring</div><div class="go">Find</div></div>
+      <div class="empty">
+        <b>Nothing on this site matches wax ring.</b>
+        <p>Try a shorter word, like wax. If it is not here, the office can order it. Sign in and press Short on a box's line.</p>
+      </div>
+      <div class="presses"><a class="press blue" href="#">Sign in</a></div>
+      <p class="foot">Boxes on this site only, as of right now.</p>
+    </div></div>
+  </div>
+</div>
+
+<h2>Why a scanned code gates the search</h2>
+<table class="gate">
+  <tr><th>What opens the search</th><th>What anyone with the address sees</th><th>Call</th></tr>
+  <tr><td>Nothing: prts.co open to all</td><td>Every live box on every job with its place and contents. The company's whole on-site inventory, which cage holds the brass and which the copper, readable from the parking lot.</td><td class="v no">No</td></tr>
+  <tr><td>A company-wide secret in the address</td><td>The same inventory to anyone who has the address. A secret in a link is forwarded in a text the day it is useful.</td><td class="v no">No</td></tr>
+  <tr><td>A code scanned from any box on the site</td><td>The boxes on that box's job with the lines that match. The person is standing on the site with a label in front of them.</td><td class="v yes">Yes</td></tr>
+</table>
+<p class="note"><b>What this gives up:</b> a person on one site cannot find a part sitting on another site without signing in. The signed-in search (Go anywhere, Boxes on site) already does that across every job the person can see, one tap away. If the owner wants the whole company open with no key, the first row says what that shows.</p>
+
+<h2>The front door: prts.co with nothing after it</h2>
+<p class="lede">Today the bare host forwards to the sign-in page. A second redirect rule sends it to the app's Scan a label page. The phone remembers the last code it scanned for a day, so the search is one press away without a second scan.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap">375 · a phone that scanned a label today</div>
+    <div class="frame"><div class="screen">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <p class="title">Scan a label</p>
+        <p class="sub">Point your camera at the label on a cage or box. It opens here.</p>
+      </div>
+      <div class="cam"><span>Your camera app reads the code. Nothing to install.</span></div>
+      <p class="lbl">Or type the eight characters under the QR code</p>
+      <div class="code">4F2A ····</div>
+      <div class="presses"><a class="press" href="#">Open the box</a></div>
+      <p class="or">You scanned Cage B3 today</p>
+      <div class="presses"><a class="press blue" href="#">Find a part on that site</a></div>
+    </div></div>
+  </div>
+  <div class="col p375">
+    <div class="cap">375 · a fresh browser</div>
+    <div class="frame"><div class="screen">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <p class="title">Scan a label</p>
+        <p class="sub">Point your camera at the label on a cage or box. It opens here.</p>
+      </div>
+      <div class="cam"><span>Your camera app reads the code. Nothing to install.</span></div>
+      <p class="lbl">Or type the eight characters under the QR code</p>
+      <div class="code">········</div>
+      <div class="presses"><a class="press" href="#">Open the box</a></div>
+      <p class="foot">Work here? <a href="#">Sign in</a> to see every job's boxes.</p>
+    </div></div>
+  </div>
+</div>
+</div>
+</body>
+</html>
