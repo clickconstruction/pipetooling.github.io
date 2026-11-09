@@ -52,7 +52,7 @@ export default function BoxScan() {
             autoCorrect="off"
             spellCheck={false}
             inputMode="text"
-            style={{ minHeight: 48, border: `1px solid ${HAIR}`, borderRadius: 12, padding: '0 14px', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 20, letterSpacing: '0.12em', background: '#fff', color: INK }}
+            style={{ minHeight: 48, border: `1px solid ${HAIR}`, borderRadius: 12, padding: '0 14px', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 20, letterSpacing: '0.12em', background: 'var(--surface)', color: INK }}
             data-testid="box-scan-input"
           />
           {slip ? <div style={{ color: '#b42318', fontSize: 14 }} data-testid="box-scan-slip">{slip}</div> : null}
@@ -67,7 +67,7 @@ export default function BoxScan() {
           </section>
         ) : null}
         <p style={{ margin: '10px 0 0', color: FAINT, fontSize: 12.5, lineHeight: 1.45 }}>
-          Work here? <Link to="/sign-in" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}>Sign in</Link> to see every job's boxes.
+          Work here? <Link to="/sign-in" style={{ color: 'var(--text-link)', fontWeight: 700, textDecoration: 'none' }}>Sign in</Link> to see every job's boxes.
         </p>
       </main>
     </div>

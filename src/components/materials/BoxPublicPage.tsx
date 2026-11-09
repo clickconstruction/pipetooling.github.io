@@ -108,7 +108,7 @@ export function BoxPublicPage({ code }: { code: string }) {
             <h1 style={{ ...h1, marginTop: 6 }}>{FIND_WORDS}</h1>
             <p style={para}>The cages and boxes on the same site{payload ? ` as ${payload.box.stencil}` : ''}.</p>
             <form onSubmit={runFind} style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="A part, a maker or a stencil" aria-label="What to find" inputMode="search" autoFocus style={{ flex: 1, minHeight: 48, border: `1px solid ${HAIR}`, borderRadius: 12, padding: '0 14px', fontSize: 17, font: 'inherit', background: '#fff', color: INK, minWidth: 0 }} data-testid="box-page-find-input" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="A part, a maker or a stencil" aria-label="What to find" inputMode="search" autoFocus style={{ flex: 1, minHeight: 48, border: `1px solid ${HAIR}`, borderRadius: 12, padding: '0 14px', fontSize: 17, font: 'inherit', background: 'var(--surface)', color: INK, minWidth: 0 }} data-testid="box-page-find-input" />
               <button type="submit" style={{ ...press, width: 'auto', minWidth: 72, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} data-testid="box-page-find-go">Find</button>
             </form>
             {findView.kind === 'loading' ? <div style={{ ...para, marginTop: 12 }}>Looking…</div> : null}
@@ -262,5 +262,5 @@ export function BoxPublicPage({ code }: { code: string }) {
 
 const press: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 48, width: '100%', boxSizing: 'border-box', borderRadius: 12, border: `1px solid ${HAIR}`, background: CARD, color: INK, font: 'inherit', fontWeight: 700, fontSize: 16, padding: '0 14px', cursor: 'pointer' }
 const h1: React.CSSProperties = { margin: '8px 0 6px', fontSize: 22, lineHeight: 1.2, fontWeight: 800 }
-const link: React.CSSProperties = { background: 'none', border: 0, color: '#2563eb', fontWeight: 700, font: 'inherit', fontSize: 15, cursor: 'pointer', textDecoration: 'none', textAlign: 'left' }
+const link: React.CSSProperties = { background: 'none', border: 0, color: 'var(--text-link)', fontWeight: 700, font: 'inherit', fontSize: 15, cursor: 'pointer', textDecoration: 'none', textAlign: 'left' }
 const para: React.CSSProperties = { margin: 0, color: MUTED, fontSize: 15, lineHeight: 1.5 }
