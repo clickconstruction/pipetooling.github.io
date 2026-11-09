@@ -17,6 +17,7 @@ These presses can wait on the phone. Each one is kept with the moment you presse
 - A field report from {{button:green|Leave Report}}, with its photos. A photo taken with no signal reads *Kept on the phone*. The line at the top counts it, as in *1 photo with it*.
 - Photos added to a job from the Job photos window.
 - A photo taken on a task card. Read [add a photo to a task card](/help/add-a-photo-to-a-task-card#with-no-signal) for what the card does.
+- A photo of a supply house ticket, with the job you picked. Read [take a photo of a supply house ticket](/help/take-a-photo-of-a-supply-house-ticket#with-no-signal) for what Tally shows.
 
 When you press one with no signal, the window closes as it always does. A small message reads *Kept on the phone. It goes out when the signal is back.* The clock shows you clocked in from the moment you pressed. You can go to work. After Clock Out, the clock shows you clocked out the same way.
 

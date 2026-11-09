@@ -33,10 +33,13 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
  * phone with no signal. `checklist-sign` (punch list #237, PR 2): a signed checklist answer, the mark a small PNG in the
  * payload, so a signature on one bar of signal still lands. `task-photo` (punch list #273, v2.6628): one shot taken on
  * a task card's sheet with no signal, kept on the phone as a job photo is and sent to the card when the signal is back.
+ * `counter-ticket` (punch list #295, PR 2): a photo of a supply house ticket saved with no signal, its pages kept on the
+ * phone and sent with its job when the signal is back. It is a photo and a job, never money: the charge is sorted by a
+ * person, online.
  */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo'
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -51,6 +54,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'job-photos': 'Job photos',
   'checklist-sign': 'Signed checklist answer',
   'task-photo': 'Task photo',
+  'counter-ticket': 'Ticket photo',
 }
 
 /**
@@ -191,6 +195,35 @@ export interface TaskPhotoPayload {
 }
 
 /**
+ * A page of a counter ticket kept with no signal (punch list #295, PR 2): its place on the ticket and its kind, a
+ * picture or a PDF. `keptPhotos.ts` holds the bytes by its id.
+ */
+export interface KeptTicketPage extends KeptShot {
+  pageNo: number
+  mime: string
+}
+
+/**
+ * A counter ticket saved with no signal (punch list #295, PR 2): the `counter_tickets` row's facts as `sendTicketRow`
+ * writes them, under the id minted on the phone, and its pages. The replay writes the row, sends the pages still on
+ * the phone, then lands the ticket (`added_at`), each the same write on a second try.
+ */
+export interface CounterTicketPayload {
+  ticketId: string
+  takenAt: string
+  takenAtFrom: 'press' | 'photo' | 'none'
+  source: 'camera' | 'file' | 'office'
+  jobId: string | null
+  alsoJobIds: string[]
+  noOneJob: boolean
+  poEntryId: string | null
+  total: number | null
+  note: string
+  byName: string
+  photos: KeptTicketPage[]
+}
+
+/**
  * A signed checklist answer (punch list #237, PR 2): the pick and the signature in one press, as `signAnswer` takes
  * them. The drawn mark rides as a data URL, a few kilobytes, so the press carries everything it needs; the signed time
  * is the press's own. The landing writes under the table's own policies and lock, and a resend finds the row signed
@@ -223,7 +256,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
           ? ChecklistSignPayload
           : K extends 'task-photo'
             ? TaskPhotoPayload
-            : FieldReportPayload
+            : K extends 'counter-ticket'
+              ? CounterTicketPayload
+              : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
@@ -662,12 +697,12 @@ export function outboxHoldsEverything(presses: readonly OutboxPress[], now: numb
   return holding && !presses.some((p) => needsAPerson(p, now))
 }
 
-/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, and since #273 of a task photo press. */
+/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, since #273 of a task photo press, and since #295 every page of a counter ticket. */
 export function keptPhotoCount(presses: readonly OutboxPress[]): number {
   let n = 0
   for (const p of presses) {
-    if ((p.kind !== 'field-report' && p.kind !== 'job-photos' && p.kind !== 'task-photo') || (p.state !== 'waiting' && p.state !== 'sending')) continue
-    n += ((p.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload).photos ?? []).length
+    if ((p.kind !== 'field-report' && p.kind !== 'job-photos' && p.kind !== 'task-photo' && p.kind !== 'counter-ticket') || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    n += ((p.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload).photos ?? []).length
   }
   return n
 }
