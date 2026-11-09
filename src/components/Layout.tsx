@@ -752,7 +752,7 @@ export default function Layout() {
             {moneyfillIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && role === 'dev' && (
+        {!excludeHeaderLinks && isOwnerOrDev(role) && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
           </NavLink>

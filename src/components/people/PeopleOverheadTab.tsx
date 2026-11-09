@@ -179,7 +179,8 @@ export type PeopleOverheadTabProps = {
   authUser: User | null
   setError: (msg: string) => void
   canAccessOverheadTab: boolean
-  isDev: boolean
+  /** Punch list #188 row 56 (v2.6757): who picks the office job — the owner or a dev (`canPickOfficeJob`). */
+  canPickOfficeJob: boolean
   loadPayConfig: () => Promise<void>
 }
 
@@ -188,7 +189,7 @@ export default function PeopleOverheadTab({
   authUser,
   setError,
   canAccessOverheadTab,
-  isDev,
+  canPickOfficeJob,
   loadPayConfig,
 }: PeopleOverheadTabProps) {
   const { showToast } = useToastContext()
@@ -2367,7 +2368,7 @@ export default function PeopleOverheadTab({
                   ) : (
                     <span style={{ color: 'var(--text-red-700)' }}>Saved job id not found — pick another.</span>
                   )}
-                  {isDev ? (
+                  {canPickOfficeJob ? (
                     <>
                       <button
                         type="button"
@@ -2419,7 +2420,7 @@ export default function PeopleOverheadTab({
               ) : (
                 <p style={{ margin: 0, fontSize: '0.875rem' }}>
                   <span style={{ color: 'var(--text-muted)' }}>No office job configured — bid overhead still shows.</span>{' '}
-                  {isDev ? (
+                  {canPickOfficeJob ? (
                     <button
                       type="button"
                       onClick={() => setOverheadJobPickerOpen(true)}
