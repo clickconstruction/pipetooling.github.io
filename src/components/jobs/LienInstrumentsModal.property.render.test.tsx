@@ -181,3 +181,52 @@ describe('LienInstrumentsModal · the Mechanic’s lien tab prints the desk’s 
     expect(stepText('last_work')).toContain('Aug 2026')
   })
 })
+
+describe('LienInstrumentsModal · the printed papers carry the desk’s claim', () => {
+  // A job billed in stages: $5,000, a $2,000 bill out (the fixture's $350 bill is replaced), the rest not billed. The desk swears the bills,
+  // less a claim set by hand; this window swore the job's $5,000 and never read the correction.
+  const BILL = makeInvoice({ id: 'inv-s1', job_id: 'job-891', amount: 2000, sequence_order: 1, status: 'billed', billed_at: '2026-08-18T14:28:00Z', sent_to_customer_at: '2026-08-18T14:28:10Z' })
+  const staged = () => job891({ status: 'working', revenue: 5000, payments_made: 0, invoices: [BILL], payments: [] })
+  const ready = () => {
+    db.rows.customer_addresses = [{ ...SITE, legal_description: 'LOT 1 BLK 2 SAMPLE SUBD', owner_name: 'Pat Owner', owner_mailing_address: '4 Owner Ct, Liberty Hill, TX 78642', owner_mode: 'homeowner' }]
+    db.rows.job_lien_filings = [{ id: 'f-n', job_id: 'job-891', kind: 'notice_53_056', filed_at: '2026-10-14', serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [], fields: {}, created_at: '2026-10-14T15:00:00Z' }]
+  }
+  const note = (key: string) => (document.querySelector(`[data-lien-window-claim-note="${key}"]`) as HTMLElement | null)?.textContent ?? ''
+
+  it('the affidavit swears what the sent bills owe, and says what is not billed yet', async () => {
+    ready()
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $2,000.00.'))
+    expect(document.body.textContent).toContain('The original contract amount was $5,000.00.')
+    expect(document.body.textContent).not.toContain('due and unpaid is $5,000.00')
+    expect(note('unbilled')).toBe('Not billed yet · $3,000 of the job’s $5,000 · not claimed until it is billed')
+    expect(note('by_hand')).toBe('')
+  })
+
+  it('a claim set by hand on the desk reaches the affidavit and the notice, with who set it and why', async () => {
+    ready()
+    db.rows.job_lien_claim_corrections = [{ job_id: 'job-891', amount_off: 500, per_month: null, reason: 'GC disputes a fixture', carry: true, set_by_name: 'Rey', set_at: '2026-10-20T16:00:00Z', looked_at: null, looked_by_name: '' }]
+    const view = renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $1,500.00.'))
+    expect(document.body.textContent).toContain('in the amount of $1,500.00')
+    expect(note('by_hand')).toContain('Claim set by hand on the Lien desk: $1,500 · $500 under the $2,000 unpaid in the app · carries until cleared · Rey')
+    expect(note('by_hand')).toContain('“GC disputes a fixture”')
+    view.unmount()
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="notice" job={staged()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('Claim amount: $1,500.00 (what the sent bills still owe, with the claim set by hand)'))
+  })
+
+  it('draws no paper until the claim is read, so a sworn amount is never drawn and then changed', async () => {
+    ready()
+    let land!: () => void
+    db.slow.job_lien_claim_corrections = new Promise<void>((r) => (land = r))
+    db.rows.job_lien_claim_corrections = [{ job_id: 'job-891', amount_off: 500, per_month: null, reason: 'GC disputes a fixture', carry: true, set_by_name: 'Rey', set_at: '2026-10-20T16:00:00Z', looked_at: null, looked_by_name: '' }]
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-claim-reading]')).toBeTruthy())
+    expect(document.body.textContent).not.toContain('The amount currently due and unpaid is')
+    land()
+    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $1,500.00.'))
+    expect(document.querySelector('[data-lien-window-claim-reading]')).toBeNull()
+  })
+})
+

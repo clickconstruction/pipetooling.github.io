@@ -54,7 +54,7 @@ import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureCo
 import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { LienWordRecordRow } from './LienWordRecordRow'
-import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienOriginalContractor, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
@@ -110,6 +110,7 @@ import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type Ca
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
@@ -809,15 +810,17 @@ export default function LienDesk({
     const rowAddress = rowJob?.customer_address_id ? data.addressesById[rowJob.customer_address_id] ?? null : null
     const prop = resolveLienProperty(rowAddress, data.ownerByJob[row.jobId] ?? null)
     const rowGc = row.gcId ? data.gcsById[row.gcId] : undefined
+    const affidavitEntry = row.kind === 'affidavit' ? data.affidavits.entries.find((x) => x.jobId === row.jobId) : undefined
     return {
       ownerName: lienPropertyOwnerDisplayName(prop.owner),
       ownerAddress: prop.owner.mailingAddress,
       county: prop.county,
       legalDescription: prop.legalDescription,
-      gcName: rowGc?.name ?? '',
+      // The affidavit names the original contractor by the paper's own rule: on a job contracted with the owner that is our company, so no GC is a blank to pick.
+      gcName: affidavitEntry ? lienOriginalContractor({ isSub: affidavitEntry.isSub, gcName: rowGc?.name, issuer }).name : rowGc?.name ?? '',
       contactPerson: signerNameFor(rowJob?.master_user_id ?? null),
       claimantAddress: (issuer?.addressText ?? '').trim(),
-      affidavitGates: row.kind === 'affidavit' ? data.affidavits.entries.find((x) => x.jobId === row.jobId)?.gates.map((g) => ({ key: g.key, ok: g.ok })) : undefined,
+      affidavitGates: affidavitEntry?.gates.map((g) => ({ key: g.key, ok: g.ok })),
     }
   }
   const paperGapCount = (row: LienNextUpRow): number | null => {
@@ -848,29 +851,7 @@ export default function LienDesk({
       const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
-        const fields = buildLienAffidavitFieldsForJob({
-          jobName: rowJob?.job_name,
-          jobAddress: rowJob?.job_address,
-          serviceTypeName: rowJob?.service_type?.name,
-          isSub: e?.isSub ?? true,
-          originalContractorName: rowGc?.name ?? '',
-          originalContractorAddress: rowGc?.address ?? '',
-          ownerName: f.ownerName,
-          ownerAddress: f.ownerAddress,
-          county: prop.county,
-          legalDescription: prop.legalDescription,
-          customerName: rowJob?.customer_name,
-          revenue: Number(rowJob?.revenue ?? 0),
-          paymentsMade: Number(rowJob?.payments_made ?? 0),
-          openBalance: e?.openBalance,
-          claimAmountOff: correction?.amountOff,
-          lastMonth: e?.lastMonth ?? '',
-          workDays: rowJob ?? null,
-          todayYmd,
-          noticesRecorded: e?.gates.find((g) => g.key === 'notice')?.ok ?? false,
-          contactPerson: f.contactPerson,
-          issuer,
-        })
+        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd })
         const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
         return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }

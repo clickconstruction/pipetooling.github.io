@@ -5,7 +5,9 @@ import {
   buildReleaseOfRecordBlocks,
   filingDocFooter,
   filingDocHtml,
+  appendToFilingPrintHtml,
   filingDocPrintHtml,
+  filingKeepTogetherRuns,
   filingDocText,
   filingLetterheadFromIssuer,
   filingPdfFilename,
@@ -294,3 +296,94 @@ describe('the window envelope blocks (the Docsmit train, PR 4)', () => {
   })
 })
 
+describe('the printed page (v2.6810)', () => {
+  // The office's print of an affidavit: item 10 at the foot of page 1, the signature alone at the head of page 2, and the
+  // browser's own header and footer (the date and time, the title, "about:blank", the page count) on both sheets.
+  const affidavit: LienAffidavitFields = {
+    county: 'Bexar',
+    claimantPersonName: 'Rey Master, Master Plumber',
+    claimantCompany: 'Sample Plumbing',
+    claimantAddress: '1 Sample Dr, Austin, TX',
+    legalDescription: 'Lot 3, Block A',
+    propertyAddress: '12 Sample Rd, San Antonio, TX 78209',
+    contractedWithName: 'Harborline Builders',
+    workDescription: 'Plumbing labor and materials',
+    workStart: '2026-06-03',
+    workEnd: '2026-07-28',
+    ownerName: 'Pat Owner',
+    ownerAddress: '4 Owner Ct, San Antonio, TX 78209',
+    originalContractorName: 'Harborline Builders',
+    originalContractorAddress: '',
+    contractAmount: '5000',
+    paidAmount: '0',
+    unpaidAmount: '5000',
+    includeNoticesSworn: true,
+  }
+  const kinds = (blocks: ReturnType<typeof buildLienAffidavitBlocks>, [first, last]: [number, number]) => blocks.slice(first, last + 1).map((b) => b.kind)
+
+  it('a signature runs with the statement above it and the notary’s block under it', () => {
+    const aff = buildLienAffidavitBlocks(affidavit)
+    const [run] = filingKeepTogetherRuns(aff)
+    expect(filingKeepTogetherRuns(aff)).toHaveLength(1)
+    expect(kinds(aff, run!)).toEqual(['numbered', 'signature', 'notarial'])
+    expect(run![1]).toBe(aff.length - 1)
+    expect(aff[run![0]]).toMatchObject({ kind: 'numbered', n: 10 })
+    // The release: its last paragraph, the signature, the notary.
+    const release = buildReleaseOfRecordBlocks({ county: 'Bexar', claimantCompany: 'Sample Plumbing', claimantPersonName: 'Rey Master', recordingNumber: '1', filedDate: '2026-10-01', legalDescription: 'Lot 3', propertyAddress: '12 Sample Rd', ownerName: 'Pat Owner', paymentDate: '2026-11-09' })
+    expect(kinds(release, filingKeepTogetherRuns(release)[0]!)).toEqual(['paragraph', 'signature', 'notarial'])
+    // The notice: the last form line and the signature; the homestead statement under it is not part of the run.
+    const notice = buildLienNoticeBlocks({ ...NOTICE_FIELDS, homesteadStatement: true })
+    const noticeRun = filingKeepTogetherRuns(notice)[0]!
+    expect(kinds(notice, noticeRun)).toEqual(['formLine', 'signature'])
+    expect(noticeRun[1]).toBeLessThan(notice.length - 1)
+    // No signature, no run; two signatures in a row are one run and never claim a block twice.
+    expect(filingKeepTogetherRuns([{ kind: 'paragraph', text: 'a' }])).toEqual([])
+    expect(filingKeepTogetherRuns([{ kind: 'paragraph', text: 'a' }, { kind: 'signature', lines: ['A'] }, { kind: 'signature', lines: ['B'] }, { kind: 'paragraph', text: 'b' }, { kind: 'signature', lines: ['C'] }])).toEqual([[0, 2], [3, 4]])
+    expect(filingKeepTogetherRuns([{ kind: 'signature', lines: ['A'] }])).toEqual([[0, 0]])
+  })
+
+  it('the print document keeps the run in one unsplittable block, the footer with it, and item 9 outside it', () => {
+    const html = filingDocPrintHtml(buildLienAffidavitBlocks(affidavit), 'Lien Affidavit', filingDocFooter('affidavit'))
+    const keepAt = html.indexOf('<div class="filing-keep">')
+    expect(keepAt).toBeGreaterThan(0)
+    expect(html.match(/class="filing-keep"/g)).toHaveLength(1)
+    expect(html).toContain('.filing-keep { break-inside: avoid; page-break-inside: avoid; }')
+    const at = (text: string) => html.indexOf(text)
+    expect(at('9. All statutory notices')).toBeLessThan(keepAt)
+    expect(at('9. All statutory notices')).toBeGreaterThan(0)
+    for (const inside of ['10. Claimant claims a lien', 'Rey Master, Master Plumber<br/>Sample Plumbing', 'SWORN TO AND SUBSCRIBED BEFORE ME', 'Notary Public, State of Texas', 'Filed pursuant to Texas Property Code']) expect(at(inside), inside).toBeGreaterThan(keepAt)
+    // The words on the paper are the same blocks in the same order.
+    expect(html.match(/Claimant claims a lien/g)).toHaveLength(1)
+    expect(html.match(/Filed pursuant to Texas Property Code/g)).toHaveLength(1)
+  })
+
+  it('the page leaves the browser no room for its own header and footer, and draws its own margins on every page', () => {
+    const html = filingDocPrintHtml(buildLienAffidavitBlocks(affidavit), 'Lien Affidavit', filingDocFooter('affidavit'))
+    expect(html).toContain('@page { size: letter; margin: 0; }')
+    // The head and foot of each page: a table header and footer the print engine repeats, blank on screen.
+    expect(html).toContain('<thead><tr><td><div class="filing-page-gap"></div></td></tr></thead>')
+    expect(html).toContain('<tfoot><tr><td><div class="filing-page-gap"></div></td></tr></tfoot>')
+    expect(html).toContain('.filing-page-gap { height: 0; }')
+    expect(html).toMatch(/@media print \{[^]*\.filing-page-gap \{ height: 0\.6in; \}/)
+  })
+
+  it('a paper with no footer and one whose signature is not last still print whole', () => {
+    const bare = filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS), 'Notice')
+    expect(bare).toContain("(Claimant's address)")
+    expect(bare.match(/class="filing-keep"/g)).toHaveLength(1)
+    const homestead = filingDocPrintHtml(buildLienNoticeBlocks({ ...NOTICE_FIELDS, homesteadStatement: true }), 'Notice', filingDocFooter('notice_53_056'))
+    // The footer is under the statement, after the run closes.
+    expect(homestead.indexOf('Given pursuant to Texas Property Code § 53.056')).toBeGreaterThan(homestead.indexOf(HOMESTEAD_NOTICE_STATEMENT.heading))
+    expect(homestead.match(/Given pursuant to/g)).toHaveLength(1)
+  })
+
+  it('pages added behind the paper go inside the sheet, so they keep its margins', () => {
+    const html = filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS), 'Notice', filingDocFooter('notice_53_056'))
+    const added = appendToFilingPrintHtml(html, '<section>ENCLOSED</section>')
+    expect(added.indexOf('ENCLOSED')).toBeGreaterThan(added.indexOf('Given pursuant to'))
+    expect(added.indexOf('ENCLOSED')).toBeLessThan(added.indexOf('</td></tr></tbody>'))
+    expect(appendToFilingPrintHtml(html, '')).toBe(html)
+    // A page that is not this builder's takes it before the body closes, as before.
+    expect(appendToFilingPrintHtml('<html><body><p>x</p></body></html>', '<i>y</i>')).toBe('<html><body><p>x</p><i>y</i></body></html>')
+  })
+})
