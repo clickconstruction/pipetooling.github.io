@@ -230,7 +230,8 @@ describe('clauseNeeds: the approvers’ Needs you rows', () => {
   })
 
   it('gives nobody else a row, since nobody else can decide one', () => {
-    for (const role of ['assistant', 'estimator', 'master_technician', 'superintendent', null] as const) expect(clauseNeeds(role, all, [BOOK], needCtx)).toEqual([])
+    // The owner is an approver since v2.6762 (punch list #188 row 30).
+    for (const role of ['assistant', 'estimator', 'superintendent', null] as const) expect(clauseNeeds(role, all, [BOOK], needCtx)).toEqual([])
   })
 })
 
