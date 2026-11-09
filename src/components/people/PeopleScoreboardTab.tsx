@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
-import { bonusWords, daysWords, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, SCORE_RULE_LINES, superintendentScores } from '../../lib/people/superintendentScores'
+import { bonusWords, daysColumnWords, daysWords, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, SCORE_RULE_LINES, superintendentScores } from '../../lib/people/superintendentScores'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 
@@ -91,7 +91,7 @@ export function PeopleScoreboardTab() {
                       {l.jobs.length ? `${Math.round(l.usedHours)} h / ${Math.round(l.awardedHours)} h` : '—'}
                       {l.jobs.length ? <div style={{ ...muted, fontSize: '0.74rem' }}>{hoursUnderWords(l.hoursUnder)}</div> : null}
                     </td>
-                    <td style={tdNum}>{daysWords(l.daysVsPlan) || <span style={muted}>no plan</span>}</td>
+                    <td style={tdNum}>{daysWords(l.daysVsPlan) || <span style={muted}>{daysColumnWords(l)}</span>}</td>
                     {read?.readsWages ? <td style={{ ...tdNum, color: l.keptUsd != null && l.keptUsd < 0 ? 'var(--text-red-700)' : 'inherit' }}>{keptWords(l.keptUsd) || '—'}</td> : null}
                     <td style={{ ...tdNum, fontWeight: 700 }}>{bonusWords(l.bonusUsd, read?.sharePct ?? 10) || '—'}</td>
                   </tr>

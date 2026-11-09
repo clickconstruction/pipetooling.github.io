@@ -139,7 +139,7 @@ export async function loadMoneyInWeek(
     ),
     soft<ArReturnCaseRow[]>('returns', [], async () => (await rpcRows<ArReturnCaseRow>(db, 'list_ar_return_cases', { p_include_closed: false })).filter((r) => r && typeof r.mercury_transaction_id === 'string' && r.closed_at == null)),
     soft<PaidClaim[] | null>('claims', null, async () => {
-      const { data, error } = await db.rpc('list_paid_claims' as never)
+      const { data, error } = await db.rpc('list_paid_claims')
       if (error) throw error
       return parsePaidClaimsRpc(data as unknown)
     }),

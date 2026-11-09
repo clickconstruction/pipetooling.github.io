@@ -958,6 +958,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
   /** Counts what Message the customer sent, so Job updates reads the note or the text without a reload. */
   const [jobUpdatesRev, setJobUpdatesRev] = useState(0)
+  /** The details section's Message the customer (#125 PR 7) asks the card's door to open: one sheet, one read. */
+  const [messageDoorRev, setMessageDoorRev] = useState(0)
   /** Hand the phone to the customer (v2.4159): on the clocked-in job, for the roles that speak for the company on site, until the job is signed. */
   const handPhoneJobId = leaveReportTarget?.id ?? null
   const [handPhone, setHandPhone] = useState<HandPhoneState | null>(null)
@@ -1280,6 +1282,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           me={profileName}
           style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           onDone={() => setJobUpdatesRev((n) => n + 1)}
+          openRev={messageDoorRev}
         />
       ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
@@ -1326,6 +1329,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
               jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
               updatesRev={jobUpdatesRev}
+              onMessageCustomer={!loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? () => setMessageDoorRev((n) => n + 1) : undefined}
             />
           </>
         ) : null

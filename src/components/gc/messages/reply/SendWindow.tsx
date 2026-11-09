@@ -322,7 +322,7 @@ export function SendWindow({
                 </div>
               </div>
               {/* Ours, not what they see, so under the head and not in it (punch list #230 PR 0): an answer from a
-                  person's own mailbox reaches this thread only when the box is copied. */}
+                  person's own mailbox reaches this thread only when the box sent it (v2.6731) or is copied. */}
               <p data-send-own-mailbox style={{ ...note, color: 'var(--text-muted)' }}>
                 {ownMailbox.words}{' '}
                 <Link to={OWN_MAILBOX_GUIDE_HREF} style={{ color: 'var(--text-blue-700)' }}>

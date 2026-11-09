@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BODY_FOOT_LINES, bulkByBody, leftOut, outsideInbox } from './leftOut'
+import { BODY_FOOT_LINES, bulkByBody, leftOut, outsideInbox, sentByTheBox } from './leftOut'
 import { isOwnAddress, ownChannels } from '../messages/ownChannels'
 import { kitCarries, type WalkKit } from '../walk/kit'
 
@@ -84,6 +84,30 @@ describe('leftOut: the mail the reader leaves in Gmail', () => {
     for (const c of ['CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS']) {
       expect(leftOut(email({ labels: ['INBOX', c] }), isTheBox)).toBe('category')
     }
+  })
+})
+
+describe("sentByTheBox: a mail the box itself sent (v2.6731, punch list #207 PR 3)", () => {
+  it('is one in the Sent folder from the box, in any case; the app\'s sender as the box too', () => {
+    expect(sentByTheBox(email({ labels: ['SENT'], from: 'Bids@ClickConstruction.example' }), isTheBox)).toBe(true)
+    expect(sentByTheBox(email({ labels: ['SENT', 'INBOX'], from: 'bids@clickconstruction.example' }), isTheBox)).toBe(true)
+    expect(sentByTheBox(email({ labels: ['SENT'], from: 'app@clickconstruction.example' }), isTheBox)).toBe(true)
+  })
+
+  it('is not one a person sent, one not in Sent, or one in Spam or Trash', () => {
+    expect(sentByTheBox(email({ labels: ['SENT'] }), isTheBox)).toBe(false)
+    expect(sentByTheBox(email({ labels: ['INBOX'], from: 'bids@clickconstruction.example' }), isTheBox)).toBe(false)
+    expect(sentByTheBox(email({ labels: ['SENT', 'TRASH'], from: 'bids@clickconstruction.example' }), isTheBox)).toBe(false)
+    expect(sentByTheBox(email({ labels: ['SENT', 'SPAM'], from: 'bids@clickconstruction.example' }), isTheBox)).toBe(false)
+    expect(sentByTheBox({ labels: ['SENT'], from: null }, isTheBox)).toBe(false)
+  })
+
+  it("is not one from bids@ while the walk kit carries that address: the kit's reply is a person writing in", () => {
+    const own = ownChannels(null, 'app@clickconstruction.example', ['bids@clickconstruction.example'])
+    const kit: WalkKit = { customerId: 'cu-walk', contactId: 'c-walk', emailChannelId: 'ch-walk-email', phoneChannelId: null, estimateId: null, email: 'bids@clickconstruction.example', phone: null, testerId: null, sharedPhone: false, madeAt: null }
+    const kitBox = (a: string) => !(isOwnAddress(own, a) && kitCarries(kit, 'email', a)) && isOwnAddress(own, a)
+    expect(sentByTheBox(email({ labels: ['SENT'], from: 'bids@clickconstruction.example' }), kitBox)).toBe(false)
+    expect(sentByTheBox(email({ labels: ['SENT'], from: 'app@clickconstruction.example' }), kitBox)).toBe(true)
   })
 })
 

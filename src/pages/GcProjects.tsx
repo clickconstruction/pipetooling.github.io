@@ -227,6 +227,7 @@ import {
   searchPipelineJobs,
   shareGcBidTab,
   setGcCompanyCoverage,
+  removeGcBenchCompany,
   setGcCompanyLanguage,
   vetGcCompany,
   loadSetEmailParties,
@@ -846,6 +847,10 @@ export default function GcProjects() {
     },
     setCoverage: async (companyId, address, maxMiles) => {
       await setGcCompanyCoverage(companyId, address, maxMiles)
+      await refreshBoard()
+    },
+    removeCompany: async (companyId) => {
+      await removeGcBenchCompany(companyId)
       await refreshBoard()
     },
   }

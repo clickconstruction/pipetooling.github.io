@@ -7,7 +7,7 @@ import type { BilledDatesLedger as LedgerModel, LedgerAction, LedgerRow, LedgerT
  * dot, the words and *how far from today* on the right, then — only when it
  * adds something — one bold verdict under a hairline. Pure presentation:
  * every row and word comes from `buildBilledDatesLedger`. The Expected / They
- * said row opens the promise window; the deadline row and the verdict open
+ * said / They say paid row opens the promise window; the deadline row and the verdict open
  * the job's Lien window (or They said… when the verdict asks for a date).
  */
 
@@ -131,7 +131,7 @@ export default function BilledDatesLedger({
                 {r.sub}
               </div>
             ) : null}
-            {r.key === 'money' && evidence ? <div style={{ paddingLeft: 14, marginTop: -3, minWidth: 0 }}>{evidence}</div> : null}
+            {(r.key === 'money' || r.key === 'claim') && evidence ? <div style={{ paddingLeft: 14, marginTop: -3, minWidth: 0 }}>{evidence}</div> : null}
           </Fragment>
         )
       })}

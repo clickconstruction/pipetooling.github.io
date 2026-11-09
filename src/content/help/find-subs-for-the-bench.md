@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority, ask them to quote, save to the bench and ask
+keywords: prospects, subs, trade partners, bench, remove from the bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority, ask them to quote, save to the bench and ask
 where: /prospects?kind=subs&tab=board
 order: 71
 ---
@@ -94,6 +94,8 @@ Drag a card by its handle to pin it at the top of its column. Pinned cards keep 
 Press the priority on a card or on the deck's card. It reads **Call first**, **Normal** or **Later**. Call first puts a company over who answers, with {{chip:yellow|★ Call first}} on the card. Later puts it at the foot. The flame for warmth is gone on Subs. The priority stands in its place.
 
 On Trade partners, a company from this lane reads *from Prospects* under its name. The line says who landed it, the day and how many calls they answered. It stays until their first quote.
+
+A company with no history has {{button:outline|Remove from the bench…}} on Trade partners. The press puts its card back on this lane. The card keeps its calls and reads *Removed from the bench* with the day. See [Remove a company with no history](/help/add-a-trade-partner#remove-a-company-with-no-history).
 
 ## What GC mode needs
 

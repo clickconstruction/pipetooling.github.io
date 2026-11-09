@@ -202,7 +202,7 @@ describe('the one chip on a card (Run-3)', () => {
   const env = (over: Partial<RunEnvelope> = {}) => envelope(1, 'owner', [notice('a', '650')], over)
   it('says what state the envelope is in and what moves it, in order: waits, prints, owes, records', () => {
     const waits = runEnvelopeStage(envelope(2, 'original_contractor', [notice('b', '712', { signature: null })]), { printed: false })
-    expect(runEnvelopeChip(waits, { tracking: '', method: 'certified_mail' }, { leaderName: 'Robert' })).toEqual({ tone: 'amber', words: 'Waiting on Robert’s signature', next: 'He signs from his phone, or draws it here with Leader here, sign ▸.' })
+    expect(runEnvelopeChip(waits, { tracking: '', method: 'certified_mail' }, { leaderName: 'Robert' })).toEqual({ tone: 'amber', words: 'Waiting on Robert’s signature', next: 'He signs from his phone, or types his code or draws it here with Leader here, sign ▸.' })
     const n = notice('a', '650'); n.recipients[0] = { ...n.recipients[0]!, address: '' }
     const noAddress = runEnvelopeStage(envelope(1, 'owner', [n], { address: '' }), { printed: false })
     expect(runEnvelopeChip(noAddress, { tracking: '', method: 'certified_mail' })).toEqual({ tone: 'amber', words: 'Held · no mailing address', next: null })

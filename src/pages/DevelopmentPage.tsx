@@ -10,7 +10,7 @@
  * the page full while PR 1's *Put it in* fills the development one record at a time (PR 3 fills it
  * in one press).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
@@ -65,7 +65,7 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useMatchMedia } from '../hooks/useMatchMedia'
-import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
+import { fetchDevelopmentPage, readHistoryBodies, readHistoryBody, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, shadowBidIds, sharedAddressWords, sitePeople, withoutShadowBids, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
@@ -80,7 +80,7 @@ import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBa
 import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryLine, narrowLines, narrowedWords, onRecordNotes, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { aboutIsPiece, entryBodyIsHead, entryLine, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
 import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
@@ -181,7 +181,37 @@ export default function DevelopmentPage() {
   const [asking, setAsking] = useState(false)
   const [keeping, setKeeping] = useState(false)
   const [kept, setKept] = useState<HistoryEntry[]>([])
-  const entries = useMemo<HistoryEntry[]>(() => [...kept, ...(data?.historyEntries ?? [])], [kept, data])
+  // The list reads each entry's first words (punch list #280, v2.6735); the whole bodies come once when a search is typed, since a search reads every word, and a kept line never changes, so a body read holds across reloads.
+  const [bodies, setBodies] = useState<Map<string, string> | null>(null)
+  const bodiesRead = useRef<'idle' | 'reading' | 'failed'>('idle')
+  const entries = useMemo<HistoryEntry[]>(() => withBodies([...kept, ...(data?.historyEntries ?? [])], bodies), [kept, data, bodies])
+  const searchingHeads = !!feedQuery.trim() && entries.some(entryBodyIsHead)
+  useEffect(() => {
+    if (!feedQuery.trim()) {
+      // The box cleared: a read that failed may try again on the next search.
+      if (bodiesRead.current === 'failed') bodiesRead.current = 'idle'
+      return
+    }
+    if (!searchingHeads || !developmentId || bodiesRead.current !== 'idle') return
+    bodiesRead.current = 'reading'
+    let live = true
+    readHistoryBodies(developmentId).then(
+      (map) => {
+        if (!live) return
+        bodiesRead.current = 'idle'
+        setBodies((prev) => (prev ? new Map([...prev, ...map]) : map))
+      },
+      (e) => {
+        if (!live) return
+        bodiesRead.current = 'failed'
+        showToast(formatErrorMessage(e, 'The long lines could not be read whole, so the search reads their first words.'), 'error', 6000)
+      },
+    )
+    return () => {
+      live = false
+      if (bodiesRead.current === 'reading') bodiesRead.current = 'idle'
+    }
+  }, [feedQuery, searchingHeads, developmentId, showToast])
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
@@ -1128,7 +1158,7 @@ export default function DevelopmentPage() {
     <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
-      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} />
+      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>

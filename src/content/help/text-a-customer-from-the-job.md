@@ -16,6 +16,8 @@ You can text or email a job's customer right from the job. The message lands in 
 
 The row shows for the office team only. The crew's view of the job keeps the note box as it was.
 
+The customer's email address at the top of the **Job** tab is a door too. Press the address and the customer's sheet opens on **Email**. The small copy press beside it copies the address. Nothing opens your own mail app.
+
 ## From the Pipeline row
 
 The speech bubble beside the customer's name is a shorter way in. It sits on the Pipeline row and on the phone card.
@@ -68,6 +70,8 @@ Press {{button:outline|Note}} to go back to the note box. A note stays on the jo
 
 - *This job has no customer yet.* Add one in **Edit Job**, then come back.
 - A customer with no mobile number cannot get a text. A customer with no email address cannot get an email. The window says which is missing.
+
+A customer with two numbers or more has a **To** chip in the send window and on the sheet. [Pick the number a text goes to](/help/pick-the-number-a-text-goes-to) shows how to switch it and remember the pick.
 
 ## More on the box
 

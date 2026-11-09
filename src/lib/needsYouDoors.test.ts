@@ -51,6 +51,13 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'test-reports-ready' }, { ...base, testReportFirst: { jobId: 'j-1', reportId: 'r-1' } }, 'quickfill')).toEqual({ kind: 'test-report', first: { jobId: 'j-1', reportId: 'r-1' }, href: '/jobs?tab=stages' })
   })
 
+  it('materials on site (punch list #209, v2.6728): the desk, or the one job’s page when it holds every box due or every shortfall', () => {
+    expect(needsYouDoor({ key: 'materials-count-due' }, base, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials' })
+    expect(needsYouDoor({ key: 'materials-count-due' }, { ...base, materialsStaleJobId: 'j-7' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=materials&job=j-7' })
+    expect(needsYouDoor({ key: 'materials-missing-week' }, { ...base, materialsMissingJobId: 'j-7' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials&job=j-7' })
+    expect(needsYouDoor({ key: 'materials-missing-week' }, { ...base, materialsStaleJobId: 'j-7' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=materials' })
+  })
+
   it('the first row of a pile is the landing where one is known', () => {
     expect(needsYouDoor({ key: 'paid-claims-stale' }, { role: 'estimator', staleClaimsFirstBidId: 'b-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/bids?tab=bid-board&bidId=b-1' })
     expect(needsYouDoor({ key: 'paid-claims-stale' }, { role: 'assistant', staleClaimsFirstBidId: 'b-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages' })

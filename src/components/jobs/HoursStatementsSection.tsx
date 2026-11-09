@@ -17,6 +17,7 @@ import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } 
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { HOURS_STATEMENT_ROLES_CHIP, canMakeHoursStatement } from '../../lib/people/hoursStatementAccess'
@@ -73,6 +74,7 @@ export function HoursStatementsSection({
 }) {
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const access = usePeopleAccess(canAccessPayGiven == null ? user?.id : undefined)
   const maker = { role, canAccessPay: canAccessPayGiven ?? access.canAccessPay }
   const [rows, setRows] = useState<HoursStatementRecordRow[] | null>(null)
@@ -151,7 +153,10 @@ export function HoursStatementsSection({
     setPdfBusy(r.id)
     try {
       const url = await signingIo.openSignedPdf(r.contract_document_id)
-      if (!window.open(url, '_blank', 'noopener')) showToast('The window was blocked. Allow pop-ups for this site and press Open the signed PDF again.', 'error')
+      // The gate answers after the press, so a browser that blocks the late window gets the link in a dialog, as the
+      // window's own press and Sign here now's Open the signing page do (the 2026-11-08 walk saw a toast and no PDF).
+      const opened = window.open(url, '_blank', 'noopener')
+      if (!opened) await promptDialog({ title: 'Open the signed PDF', message: 'The window was blocked. Open this link; it works for five minutes.', defaultValue: url, confirmLabel: 'I opened it' })
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'The signed PDF could not be opened.'), 'error')
     } finally {
