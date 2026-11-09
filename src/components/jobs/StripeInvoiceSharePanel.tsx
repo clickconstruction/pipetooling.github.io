@@ -7,6 +7,9 @@
  * customer sheet on the bill (v2.6771, punch list #291; before it the customer's bare box): the Billed line filled with
  * the bill's amount and its own pay page, the number it goes from, Preview, the first-text hold, Send later. Neither
  * hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only drafts.
+ * After the bill goes (v2.6772, #291 PR 2) the row draws the green strip with the one question, *Text Dana the pay link
+ * too?*, after its own Email door and when a host hands `textOffer` (Send Email invoice, Bill Customer's Stripe bill,
+ * Make Stripe bill), and reads *Emailed 3:30 PM · Texted 3:32 PM* beside the links off the job's thread.
  */
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
@@ -17,6 +20,10 @@ import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, billEmailChannel, bill
 import { signatureLines } from '../../lib/messages/compose'
 import { jobBoxJobKey, jobBoxJobName } from '../../lib/messages/jobBox'
 import type { TellCustomerIo } from '../../lib/tellCustomer/tellCustomerIo'
+import type { TellPrefers } from '../../lib/tellCustomer/tellCustomer'
+import { billSentMarks } from '../../lib/jobs/billTextOffer'
+import { loadBillTextedAt, loadCustomerPrefers } from '../../lib/jobs/billTextOfferIo'
+import { BillTextOfferStrip } from './BillTextOfferStrip'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
 import { replyCompany } from '../../lib/messages/replyBox'
 import { supabaseReplyIo, type ReplyIo } from '../../lib/messages/replyIo'
@@ -102,6 +109,17 @@ export type StripeInvoiceSharePanelProps = {
   tellIo?: TellCustomerIo
   /** The bill's ten-letter code (#290, v2.6769), asked once per bill; a smoke hands a fake. Null = no code, the id's link. */
   mintPayCode?: (invoiceId: string) => Promise<string | null>
+  /**
+   * The offer after the bill goes (v2.6772): a host that just sent or made the bill hands the strip's first line and a key
+   * that changes per event; the row draws the strip with the question until Not now or the text goes. The row's own Email
+   * door needs none of this.
+   */
+  textOffer?: { lead: string; key: string | number } | null
+  /** When the bill's email went (`jobs_ledger_invoices.sent_to_customer_at`), for the *Emailed* mark; null with none. */
+  emailedAt?: string | null
+  /** For a smoke: the Texted read and the customer's say. */
+  loadTexted?: (jobId: string, invoiceId: string, otherLinks: readonly string[]) => Promise<number | null>
+  loadPrefers?: (customerId: string) => Promise<TellPrefers>
 }
 
 function shareCopyFromProps(p: StripeInvoiceSharePanelProps, payCode: string | null) {
@@ -130,6 +148,14 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const [smsDraftText, setSmsDraftText] = useState('')
   /** Text the bill (v2.6771): the Tell the customer sheet open on this bill. */
   const [tellOpen, setTellOpen] = useState(false)
+  /** The strip after the row's own Email door went (v2.6772): its first line, or null. */
+  const [ownOffer, setOwnOffer] = useState<string | null>(null)
+  /** The host's offer the office put away with Not now, by its key. */
+  const [dismissedKey, setDismissedKey] = useState<string | number | null>(null)
+  /** When the bill was texted, off the job's thread; undefined while unread, null when never. */
+  const [textedAt, setTextedAt] = useState<number | null | undefined>(undefined)
+  const [textedGen, setTextedGen] = useState(0)
+  const [prefers, setPrefers] = useState<TellPrefers>(null)
   const [emailDraftOpen, setEmailDraftOpen] = useState(false)
   const [emailDraftSubject, setEmailDraftSubject] = useState('')
   const [emailDraftBody, setEmailDraftBody] = useState('')
@@ -161,6 +187,51 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const url = p.hostedInvoiceUrl.trim()
   /** The customer's link (#290): the short pay page on my.clickplumbing.com when the bill's id is at hand. */
   const shareUrl = billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl })
+  const jobIdForReads = (p.jobId ?? '').trim()
+  const invoiceIdForReads = (p.invoiceId ?? '').trim()
+  const loadTexted = p.loadTexted ?? loadBillTextedAt
+  const loadPrefers = p.loadPrefers ?? loadCustomerPrefers
+
+  // The Texted mark (v2.6772): the job's outbound texts carrying this bill's page, read on draw and again after a send.
+  useEffect(() => {
+    if (!doors || !invoiceIdForReads) return
+    let live = true
+    void loadTexted(jobIdForReads, invoiceIdForReads, [url, shareUrl].filter(Boolean)).then((at) => {
+      if (live) setTextedAt(at)
+    })
+    return () => {
+      live = false
+    }
+    // The reader is stable per caller; the bill and the send count are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doors, jobIdForReads, invoiceIdForReads, url, shareUrl, textedGen])
+
+  const hostOffer = p.textOffer && p.textOffer.key !== dismissedKey ? p.textOffer : null
+  const offerLead = ownOffer ?? hostOffer?.lead ?? null
+  // The customer's say (v2.6572's prefers), read once the strip has something to ask.
+  useEffect(() => {
+    if (!offerLead || !doors) return
+    let live = true
+    void loadPrefers((p.customerId ?? '').trim()).then((say) => {
+      if (live) setPrefers(say)
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerLead, doors])
+
+  const putOfferAway = () => {
+    setOwnOffer(null)
+    if (p.textOffer) setDismissedKey(p.textOffer.key)
+  }
+  const emailedAtMs = p.emailedAt ? Date.parse(p.emailedAt) : NaN
+  const marks = doors && textedAt !== undefined ? billSentMarks(Number.isNaN(emailedAtMs) ? null : emailedAtMs, textedAt) : null
+  const marksLine = marks ? (
+    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }} data-testid="bill-sent-marks">
+      {marks}
+    </span>
+  ) : null
 
   function openSmsBillDraft() {
     if (tellDoor) {
@@ -203,6 +274,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
       })
       showToast(billEmailSentWords(channel.value), 'success')
       setEmailDraftOpen(false)
+      // The strip (v2.6772): the same words, with the question under them.
+      setOwnOffer(billEmailSentWords(channel.value))
       p.onSent?.()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The email was not sent.'), 'error')
@@ -439,7 +512,12 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           role={auth.role}
           zIndex={smsZ}
           onClose={() => setTellOpen(false)}
-          onSent={() => p.onSent?.()}
+          onSent={() => {
+            // The text went: the strip's question is answered and the Texted mark reads again.
+            putOfferAway()
+            setTextedGen((g) => g + 1)
+            p.onSent?.()
+          }}
           io={p.tellIo}
         />
       ) : null}
@@ -457,11 +535,19 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     </>
   )
 
+  /** The strip after the bill went or was made (v2.6772), with the question that opens the sheet. */
+  const offerStrip =
+    tellDoor && offerLead ? (
+      <BillTextOfferStrip lead={offerLead} first={firstName({ name: p.customerName ?? '', goesBy: null }) || null} prefers={prefers} onText={() => setTellOpen(true)} onNotNow={putOfferAway} compact={p.compact} />
+    ) : null
+
   if (labeledCluster) {
     return (
       <>
         {modals}
+        {offerStrip}
         {labeledCluster}
+        {marksLine}
       </>
     )
   }
@@ -469,8 +555,10 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   return (
     <div style={outerStyle}>
       {modals}
+      {offerStrip}
       <div style={rowStyle}>
         {paymentLinkCluster}
+        {marksLine}
         {!p.omitCustomerPayPage ? (
           <button
             type="button"
