@@ -1,0 +1,19 @@
+# 20261108210000_shared_documents.sql (2026-11-08, v2.6716)
+
+One documents table for people and matters, punch list #288 PR 1 ([v2.6716](../recent-features/v2.6716.md)). The owner's pick of 2026-11-08 over a text column beside a matter's file: the shared table [#277](../recent-features/v2.6613.md) named as the long-term shape.
+
+- **The rename**: `person_documents` → **`documents`**, `person_document_revisions` → **`document_revisions`**, once (a `DO` block that runs only while `person_documents` is still a table); ids, foreign keys, the archive trigger, the policies and the indexes ride along (the indexes renamed `idx_documents_*`). `person_document_index` follows by itself (a view binds the table's OID) and now lists the matter rows too, which every caller filters by `person_id`.
+- **The second owner**: `documents.matter_id` (→ `legal_matters`, cascade), `person_id` nullable, `CHECK` exactly one of the two (`documents_one_owner_check`, validated), index on `(matter_id, updated_at DESC)`; `document_revisions.matter_id` likewise.
+- **The trigger** `documents_archive_revision` replaces `person_documents_archive_revision` and writes both owner columns.
+- **The old names as views**: `person_documents` = the rows with a `person_id`, `person_document_revisions` likewise, both `security_invoker` and updatable (one table, no aggregate), so `dev_person_doc_write`, `dev_doc_read`, `dev_doc_history` and the HR panel's read by id keep working unchanged; the next PR that touches each moves it to `documents`.
+- **Policies**: the rename keeps the dev policies (`is_dev()`, every row); the office roles (`legal_office_can_read()`) read, add and change the rows with a `matter_id`, and read a matter's revisions. No DELETE policy on either table.
+- **`legal_matter_documents.text_document_id`** (→ `documents`, set null): an Evidence row that is a `.md` or `.txt` points at its words. The bytes stay in the bucket as before.
+- **`dev_legal_document_write`** replaced (from `20261028010000`): `p.markdown` is a text document's words — refused unless the mime is `text/plain` or `text/markdown`, non-blank, at most 1,000,000 characters; the dry run adds `text { chars, lines, sections }`; the apply inserts the `documents` row (as the dev, `author_label` the dev's name) and the Evidence row pointing at it, returning `text_document_id`. `text/markdown` joins the kinds.
+- **`dev_case_search`** replaced (from `20261107070000`): the `document` source reads `documents` by `person_id`; the `matter_document` source gains a sectioned union — `legal_matter_documents d JOIN documents t ON t.id = d.text_document_id CROSS JOIN LATERAL hr_doc_sections(t.content)` — so a hit on a text document's words carries the Evidence row's id and its section; a title or what-it-shows hit carries no section, as before. The GIN index over `documents.content` (renamed from `idx_person_documents_fts`) serves the prefilter.
+- The four fence appliers run and find nothing missing: no table is created.
+
+Idempotent: the rename is guarded, everything else `IF NOT EXISTS` / `OR REPLACE` / `DROP … IF EXISTS`.
+
+## Order
+
+After `20261108193000` (#287) and `20261108190000` (#286), which `ALTER TABLE person_documents` — on a database where this migration ran first that name is a view and theirs would fail, so this file is pushed only once theirs are on `main`. Push, then `supabase functions deploy legal-portal` and `supabase functions deploy dev-mcp`; then `npm run gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs`, since `read_rows` on `documents` and `document_revisions` waits on the catalog. The client reads `documents` directly (`readLegalMatterDocumentText`, the Evidence tab's save) and `legal_matter_documents.text_document_id` with a fallback, so the push comes right after the merge (`check:calls-ahead` labels the PR).
