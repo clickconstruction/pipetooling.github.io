@@ -73,7 +73,7 @@ describe('devMcpJobs — the verbs on the allowlist', () => {
     }
     expect(planVerbFor('apply_job')).toBe('plan_job')
     expect(isJobVerb('plan_bid')).toBe(false)
-    expect(SERVER).toContain('Writes are fifty-three verbs and nothing else:')
+    expect(SERVER).toContain('Writes are fifty-nine verbs and nothing else:')
     expect(README).toContain('`plan_job(job)` · `apply_job(job, plan_hash)`')
   })
   it('holds the kinds and the owner keys to the app’s own', () => {
