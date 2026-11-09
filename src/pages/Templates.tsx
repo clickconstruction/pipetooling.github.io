@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { useAuth } from '../hooks/useAuth'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
@@ -47,7 +48,8 @@ export default function Templates() {
     }
     const role = (me as { role: UserRole } | null)?.role ?? null
     setMyRole(role)
-    if (role !== 'dev') {
+    // Punch list #188 row 70 (v2.6763): the project workflow templates are the owner's process, so he edits them with a dev.
+    if (!isOwnerOrDev(role)) {
       setLoading(false)
       return
     }
@@ -298,8 +300,8 @@ export default function Templates() {
 
   if (loading) return <p>Loading...</p>
   if (error && !myRole) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
-  if (myRole !== 'dev')
-    return <p style={{ marginBottom: '1.5rem' }}>Only owners can edit templates.</p>
+  if (!isOwnerOrDev(myRole))
+    return <p style={{ marginBottom: '1.5rem' }}>Only the owner and a dev can edit templates.</p>
 
   return (
     <div>

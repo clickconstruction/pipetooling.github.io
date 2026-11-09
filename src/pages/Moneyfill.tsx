@@ -14,6 +14,7 @@ import {
   MoneyfillSupplyInvoicesSection,
 } from '../components/moneyfill/MoneyfillMoneyQueuesSections'
 import { addDaysYmd } from '../lib/emailSchedule/emailScheduleWeek'
+import { canOpenMoneyfill } from '../lib/quickfill/closeWeekChip'
 import { weeklyMoneyReportHref } from '../lib/weeklyMoneyReportLink'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
@@ -89,7 +90,8 @@ export default function Moneyfill() {
     )
   }, [noncard.eligible, noncard.rows, weekMonday])
 
-  if (role != null && role !== 'dev' && role !== 'controller') {
+  // Punch list #188 row 68 (v2.6763): the owner reads every other money page, so Moneyfill opens to him with a dev and the controller.
+  if (role != null && !canOpenMoneyfill(role)) {
     return <Navigate to="/dashboard" replace />
   }
   if (role == null) return null

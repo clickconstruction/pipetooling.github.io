@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -170,12 +171,12 @@ export default function Bridge() {
   const [callsError, setCallsError] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
-  const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
+  const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
   /** ZZ test jobs leave the Bill pile for everyone but a dev who shows them, as on the Dashboard (v2.5834). */
   const hideZz = useZzTestJobsHidden(role)
 
   useEffect(() => {
-    if (role !== 'dev' || !user?.id) return
+    if (!isOwnerOrDev(role) || !user?.id) return
     let cancelled = false
     void (async () => {
       try {
@@ -194,7 +195,7 @@ export default function Bridge() {
   }, [role, user?.id, refreshKey])
 
   useEffect(() => {
-    if (role !== 'dev' || !user?.id) return
+    if (!isOwnerOrDev(role) || !user?.id) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -217,7 +218,7 @@ export default function Bridge() {
   }, [role, user?.id, refreshKey])
 
   useEffect(() => {
-    if (role !== 'dev' || !user?.id) return
+    if (!isOwnerOrDev(role) || !user?.id) return
     let cancelled = false
     setBankLoading(true)
     setBankError(null)
@@ -291,7 +292,7 @@ export default function Bridge() {
     const key = collectReadKey
     void (async () => {
       try {
-        const reads = await loadCollectDeskReads(supabase, { jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
+        const reads = await loadCollectDeskReads(supabase, { jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: isOwnerOrDev(role) })
         if (!cancelled) setCollectReads({ forKey: key, reads })
       } catch {
         if (!cancelled) setCollectReads({ forKey: key, reads: { payAppJobIds: new Set(), gcPayerIds: new Set(), sentByInvoice: new Map(), touches: null } })
@@ -1186,7 +1187,8 @@ export default function Bridge() {
   }, [sheet, emailing, showToast])
 
   // A hard load waits for the role before it decides (`pageGate`).
-  const gate = pageGate({ loading: authLoading, user, role }, (r) => r === 'dev')
+  // Punch list #188 row 69 (v2.6763): it is his chart table, so the owner opens the Bridge with a dev.
+  const gate = pageGate({ loading: authLoading, user, role }, (r) => isOwnerOrDev(r))
   if (gate === 'wait') return null
   if (gate === 'away') return <Navigate to="/dashboard" replace />
 

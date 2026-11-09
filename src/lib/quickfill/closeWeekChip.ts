@@ -36,9 +36,9 @@ export function isCloseWeekStation(sectionId: string): boolean {
   return Object.prototype.hasOwnProperty.call(CLOSE_WEEK_STATION_QUEUES, sectionId)
 }
 
-/** Mirrors Moneyfill's route gate (`role !== 'dev' && role !== 'controller'` → redirect). */
+/** Moneyfill's one gate (punch list #188 row 68, v2.6763: the owner too): the page's redirect and the chip read it. */
 export function canOpenMoneyfill(role: string | null | undefined): boolean {
-  return role === 'dev' || role === 'controller'
+  return role === 'dev' || role === 'master_technician' || role === 'controller'
 }
 
 export type CloseWeekChipModel =

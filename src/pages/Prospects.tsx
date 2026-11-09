@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
@@ -3255,7 +3256,7 @@ export default function Prospects() {
       )}
 
       {topTab === 'team' && canOpenHiring && authUser?.id && (
-        <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />
+        <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} canEditOnboarding={isOwnerOrDev(authRole)} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />
       )}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (

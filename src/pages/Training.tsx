@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useToastContext } from '../contexts/ToastContext'
 import { pageGate } from '../lib/roleGate'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { findCourse } from '../lib/training/courseRegistry'
 import { courseProgress, lessonToOpen, type CourseLesson, type FinalCheckResult } from '../lib/training/courseContent'
@@ -207,9 +208,10 @@ export default function Training() {
   }
   if (!loaded || !progress || !lesson) return <div style={WRAP}>Loading…</div>
 
-  const isDev = role === 'dev'
+  // Punch list #188 row 71 (v2.6763): he turns courses on and should read one first, so the owner previews a course that is off with a dev.
+  const canPreview = isOwnerOrDev(role)
   const courseOn = Boolean(loaded.policy?.on)
-  if (!courseOn && !isDev) {
+  if (!courseOn && !canPreview) {
     return (
       <div style={WRAP}>
         <p style={{ marginTop: '2rem' }}>{course.title} is not on yet. A dev turns it on in Settings → Training.</p>
