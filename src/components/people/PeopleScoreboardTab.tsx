@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
-import { bonusWords, daysColumnWords, daysWords, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, SCORE_RULE_LINES, superintendentScores } from '../../lib/people/superintendentScores'
+import { bonusWords, daysColumnWords, daysWords, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, rateRuleWords, SCORE_RULE_LINES, superintendentScores } from '../../lib/people/superintendentScores'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 
@@ -109,6 +109,7 @@ export function PeopleScoreboardTab() {
             {line}
           </div>
         ))}
+        {read ? <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="scoreboard-rate">{rateRuleWords(read)}</div> : null}
         <div style={{ ...muted, marginTop: 4 }}>
           The share is {read?.sharePct ?? 10}% of the labor kept, paid at the office's sign-off, read by the month.
           {canSetRule ? (
