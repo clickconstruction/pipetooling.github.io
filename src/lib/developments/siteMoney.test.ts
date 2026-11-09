@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ExpectedPayModel, PaySpeedData } from '../jobs/billedExpectedPay'
 import type { MemberBid, MemberJob, Members } from './overview'
-import { MONEY_SORT_COLUMN,
+import { MONEY_SORT_COLUMN, paySpeedPayerIds,
   MONEY_SORT_IS_SETTING,
   MONEY_SORT_LABELS,
   MONEY_SORT_MODES,
@@ -274,5 +276,20 @@ describe('unbilledTileWords (the Gun Dog spike, 2026-11-02)', () => {
   it('is null while a bill is open, and null with nothing left on the site', () => {
     expect(unbilledTileWords(model({ left: 500 }, [{ key: 'waiting', left: 500 }]), 1200, money)).toBeNull()
     expect(unbilledTileWords(model({ left: 0 }, []), 0, money)).toBeNull()
+  })
+})
+
+describe('paySpeedPayerIds — the payers the Money look reads the pace of (punch list #280 PR 2)', () => {
+  it('takes each job’s GC when it has one, else its customer, each once in the jobs’ order, and skips a job that bills no one', () => {
+    const jobs = [job({ id: 'j1', customer_id: 'c-owner', gc_customer_id: 'gc-1' }), job({ id: 'j2', customer_id: 'c-direct', gc_customer_id: null }), job({ id: 'j3', customer_id: 'c-other', gc_customer_id: 'gc-1' }), job({ id: 'j4', customer_id: null, gc_customer_id: null })]
+    expect(paySpeedPayerIds(jobs)).toEqual(['gc-1', 'c-direct'])
+    expect(paySpeedPayerIds([])).toEqual([])
+  })
+  it('the RPC the page asks takes those ids and hands back the whole shape cut to them, through the parent read', () => {
+    const sql = readFileSync(join(__dirname, '../../../supabase/migrations/20261109001500_customer_pay_speeds_by_ids.sql'), 'utf8')
+    expect(sql).toContain('FUNCTION public.get_customer_pay_speeds(p_customer_ids uuid[])')
+    expect(sql).toContain('public.get_billed_customer_pay_speeds()')
+    expect(sql).toContain('SECURITY INVOKER')
+    for (const key of ['company', 'segments', 'quality', 'customers', 'customerTypes', 'receipts']) expect(sql, key).toContain(`'${key}'`)
   })
 })

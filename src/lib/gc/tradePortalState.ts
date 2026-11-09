@@ -362,8 +362,9 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
     ourBidSentOn: null,
     ownerContractSignedOn: null,
     permitOn: null,
-    startDate: null,
-    startedOn: null,
+    // The job's dates (punch list #205, PR 2): the planned start and the day we pressed Start, for the job head.
+    startDate: strOrNull(gc.start_date),
+    startedOn: strOrNull(gc.started_on),
     customerId: '',
     owner: '',
     ownerBilling: null,

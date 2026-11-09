@@ -60,6 +60,7 @@ import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
 import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
+import { isControllerOrDev, isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
 import { OfficeHoursSettingsCard } from '../components/settings/OfficeHoursSettingsCard'
 import { MissedCallReplyCard } from '../components/settings/MissedCallReplyCard'
@@ -507,7 +508,7 @@ export default function Settings() {
     openFindDuplicatesModal,
     handleMergeDuplicate,
   } = useSettingsPeopleDirectory({
-    enabled: myRole === 'dev',
+    enabled: isOfficeRole(myRole),
     authUserId: authUser?.id ?? null,
     users,
     setError,
@@ -560,7 +561,7 @@ export default function Settings() {
     loadSupplyHousesAPTotalAndPinnedUsers,
     loadExternalTeamTotalAndPinnedUsers,
     loadCostMatrixPinnedUsers,
-  } = useSettingsFinancialPins(myRole === 'dev')
+  } = useSettingsFinancialPins(isOwnerOrDev(myRole))
 
   const showMyReports =
     myRole === 'dev' ||
@@ -780,8 +781,8 @@ export default function Settings() {
 
     }
     
-    // Load dev-only data (users, people, etc.)
-    if (role === 'dev') {
+    // The roster the People & teams tab's groups and pins pick from: the office's since v2.6755 (punch list #188), a dev's before.
+    if (isOfficeRole(role)) {
     const { data: list, error: eList } = await supabase
       .from('users')
       .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
@@ -1273,7 +1274,8 @@ export default function Settings() {
         <SettingsRecentPushNotifications userId={authUser?.id} />
       </div>
 
-      {myRole === 'dev' && (
+      {/* Punch list #188 row 5 (v2.6753): the owner's with a dev's; the streams' keys and get_global_email_schedule admit is_master_or_dev(). */}
+      {isOwnerOrDev(myRole) && (
         <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title={settingsGroupTitle('settings-emails', 'Emails & reports')} description={settingsGroupHint('settings-emails')}>
           {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection focus={emailStreamFocus} />}
         </SettingsGroup>
@@ -1338,14 +1340,15 @@ export default function Settings() {
           <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
-          {myRole === 'dev' && <OfficeAddressSettingsBlock />}
+          {/* Punch list #188 rows 14 and 15 (v2.6753): the shop's address is the owner's, where the Map opens is the office's. */}
+          {isOwnerOrDev(myRole) && <OfficeAddressSettingsBlock />}
           {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs, bills and liens; its old anchor still lands here. */}
           {myRole === 'dev' && (
             <SettingsFoldCard card={MOVED_SETTINGS_CARDS['office-county']} track="settings-company">
               <OfficeCountySettingsBlock />
             </SettingsFoldCard>
           )}
-          {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
+          {isOfficeRole(myRole) && <MapDefaultViewSettingsBlock />}
         </SettingsGroup>
       )}
 
@@ -1482,8 +1485,10 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title={settingsGroupTitle('settings-people', 'People & teams')} description={settingsGroupHint('settings-people')}>
-      {myRole === 'dev' && (
+      {/* Punch list #188 rows 8–13 and 22 (v2.6755): the tab is the office's; each block inside reads its own row's audience. */}
+      {isOfficeRole(myRole) && (
         <SettingsPeopleTab
+          myRole={myRole}
           additionalPeopleSectionOpen={additionalPeopleSectionOpen}
           allPeopleCount={allPeopleCount}
           deleteNonUserPerson={deleteNonUserPerson}
@@ -1540,10 +1545,11 @@ export default function Settings() {
 
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
-      {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+      {isOwnerOrDev(myRole) && <TeamReviewCadenceSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <SuperintendentBonusSettingsBlock />}
       {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs, bills and liens; its old anchor still lands here. */}
-      {myRole === 'dev' && (
+      {/* Punch list #188 row 22 (v2.6755): the pay-run day is payroll's, the controller's with a dev. */}
+      {isControllerOrDev(myRole) && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">
           <SubPortalPaySettingsBlock />
         </SettingsFoldCard>
@@ -1576,7 +1582,7 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-what-the-team-sees" hidden={activeSettingsTab !== 'settings-what-the-team-sees'} title={settingsGroupTitle('settings-what-the-team-sees', 'What the team sees')} description={settingsGroupHint('settings-what-the-team-sees')}>
-        {activeSettingsTab === 'settings-what-the-team-sees' && myRole === 'dev' && <SettingsWhatTheTeamSeesTab />}
+        {activeSettingsTab === 'settings-what-the-team-sees' && isOwnerOrDev(myRole) && <SettingsWhatTheTeamSeesTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-what-everyone-sees" hidden={activeSettingsTab !== 'settings-what-everyone-sees'} title={settingsGroupTitle('settings-what-everyone-sees', 'What everyone sees')} description={settingsGroupHint('settings-what-everyone-sees')}>

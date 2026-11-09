@@ -13,8 +13,7 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { PortalSchedule } from './schedule/portalSchedule'
-import type { ScheduleWork, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import type { PortalStage, ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -37,8 +36,11 @@ export type TradePortalAnswer =
       today: string
       slice: TradePortalSlice
       sample: boolean
-      /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). None: no chart. */
-      schedules: Record<string, PortalSchedule>
+      /**
+       * The company's chart on each job being built, by the job's id (the schedule's PR 14b), with the day we plan to
+       * finish beside it (punch list #205, PR 2). None: no chart.
+       */
+      schedules: Record<string, TradePortalChart>
       /** Its side of the schedule on each job being built (the Portal's P5d-ii). None: nothing to show. */
       scheduleWork: Record<string, ScheduleWork>
       /** The home's schedule to-dos, worked out where the schedule is (P5d-ii, call 5). */
@@ -116,12 +118,38 @@ function scheduleTodosOf(v: unknown): PortalTodo[] {
  * The charts beside the slice (the schedule's PR 14b): each job's that reads as one. A function deployed before the
  * chart sends none, and the page then draws none, so the function and the page deploy in either order.
  */
-function schedulesOf(v: unknown): Record<string, PortalSchedule> {
+function schedulesOf(v: unknown): Record<string, TradePortalChart> {
   if (!isObject(v)) return {}
   const bars = (b: unknown) => Array.isArray(b) && b.every((x) => isObject(x) && typeof x.lineId === 'string' && typeof x.start === 'string' && typeof x.finish === 'string')
   return Object.fromEntries(
-    Object.entries(v).filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string'),
-  ) as Record<string, PortalSchedule>
+    Object.entries(v)
+      .filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string')
+      // The planned finish (punch list #205, PR 2) is a day or nothing, and the whole job's stages (PR 3) each read as one;
+      // an older function sends neither.
+      .map(([id, s]) => {
+        const chart = s as TradePortalChart
+        const stages = Array.isArray(chart.stages) ? chart.stages.filter(stageReads) : []
+        return [id, { ...chart, finish: typeof chart.finish === 'string' ? chart.finish : null, ...(stages.length > 0 ? { stages } : { stages: undefined }) }]
+      }),
+  ) as Record<string, TradePortalChart>
+}
+
+const STAGE_STATES = ['done', 'underway', 'behind', 'notStarted']
+
+/** One stage of the whole job that reads as one (punch list #205, PR 3): its name, dates, percent, state and the company's own labels. */
+function stageReads(x: unknown): x is PortalStage {
+  return (
+    isObject(x) &&
+    typeof x.key === 'string' &&
+    typeof x.label === 'string' &&
+    typeof x.start === 'string' &&
+    typeof x.finish === 'string' &&
+    typeof x.pct === 'number' &&
+    typeof x.state === 'string' &&
+    STAGE_STATES.includes(x.state) &&
+    Array.isArray(x.yours) &&
+    x.yours.every((y) => typeof y === 'string')
+  )
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')

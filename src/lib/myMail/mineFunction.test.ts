@@ -6,12 +6,15 @@ import { buildLedgerPrefixMap } from '../ledgerDisplayPrefixes'
 import { plainWordsFailures } from '../plainWords'
 import { MY_MAIL_REFUSAL_WORDS, type MyMailJobChip, type MyMailRow } from './contract'
 import { orFilter } from './gmailMineFakes'
-import { guessJob } from './mailGuess'
+import { guessJob, type MyMailGuessFacts } from './mailGuess'
 import {
   bidIsOpen,
   columnNotPushed,
   contactJobsOf,
   contactsByAddress,
+  conversationGuess,
+  conversationJobs,
+  conversationWhy,
   customerOpenJobs,
   domainCustomers,
   domainFilter,
@@ -62,7 +65,13 @@ import {
   parseMyMailRequest,
   pipelineIsOpen,
   planFollow,
+  PLACED_LINE_WORDS,
+  placedByAppWords,
+  placedLineWords,
   planUntag,
+  sentFollowQuery,
+  sentPlacement,
+  sentSince,
   safeFileName,
   stoppedRefusal,
   tagRowJob,
@@ -84,6 +93,7 @@ const ELM = '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a01'
 const HARBOR = '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a02'
 const CLUB = '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a03'
 const CLINIC = '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a04'
+const MILL = '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a05'
 const prefixes = buildLedgerPrefixMap([{ id: 'st-plumb', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }])
 
 const pipeline = (id: string, hcp: string, name: string, over: Partial<MyMailPipelineRow> = {}): MyMailPipelineRow => ({
@@ -441,6 +451,76 @@ describe('the facts a page’s guesses read', () => {
     expect(wantsGuess(row('a'), { tagKey: `pipeline:${ELM}`, line: null })).toBe(false)
     expect(wantsGuess(row('a', { folded: 'bulk' }), { tagKey: null, line: null })).toBe(false)
     expect(wantsGuess(row('a'), { tagKey: null, line: { id: 'm-1', bid_id: CLUB, project_id: null, jobs_ledger_id: null } })).toBe(false)
+  })
+})
+
+describe('the thread rule: a conversation already on a job (punch list #263 PR C)', () => {
+  const elmChip: MyMailJobChip = { kind: 'pipeline', id: ELM, key: `pipeline:${ELM}`, num: 'JP1077', name: '4 Elm Ct' }
+  const clubChip: MyMailJobChip = { kind: 'bid', id: CLUB, key: `bid:${CLUB}`, num: 'BP523', name: 'Cedar Bend clubhouse' }
+
+  it('names the one job a conversation’s held lines are on, and nothing for two different jobs or none', () => {
+    expect(
+      conversationJobs([
+        { threadId: 't-elm', jobKey: null },
+        { threadId: 't-elm', jobKey: elmChip.key },
+        { threadId: 't-elm', jobKey: elmChip.key },
+        { threadId: 't-split', jobKey: elmChip.key },
+        { threadId: 't-split', jobKey: clubChip.key },
+        { threadId: 't-free', jobKey: null },
+      ]),
+    ).toEqual({ 't-elm': elmChip.key })
+    expect(conversationJobs([])).toEqual({})
+  })
+
+  it('guesses that job with the chip and its why, before the subject, the party and the domain; nothing when the chip is not loaded', () => {
+    const onJob = { 't-elm': elmChip.key, 't-club': clubChip.key }
+    expect(conversationGuess('t-elm', onJob, { [elmChip.key]: elmChip })).toEqual({ ...elmChip, why: 'a mail of this conversation is on JP1077 already' })
+    expect(conversationGuess('t-club', onJob, { [elmChip.key]: elmChip })).toBeNull()
+    expect(conversationGuess('t-free', onJob, { [elmChip.key]: elmChip })).toBeNull()
+    expect(conversationWhy({ num: '', name: 'Cedar Bend clubhouse' })).toBe('a mail of this conversation is on Cedar Bend clubhouse already')
+    expect(plainWordsFailures(`${conversationWhy(elmChip)}.`)).toEqual([])
+  })
+})
+
+describe('the Sent side with no press (punch list #263 PR B)', () => {
+  const harbor: MyMailJobChip = { kind: 'pipeline', id: HARBOR, key: `pipeline:${HARBOR}`, num: 'JP1081', name: '19 Harbor Ln' }
+  const mill: MyMailJobChip = { kind: 'pipeline', id: MILL, key: `pipeline:${MILL}`, num: 'JP1090', name: '7 Mill Rd' }
+  const dale = { name: 'Dale Okafor', address: 'dale@ridgeway.example' }
+
+  it('searches the person’s Sent since the cursor, by the second, never the tag’s label or a label they leave out', () => {
+    expect(sentFollowQuery('2026-11-01T00:00:00.000Z', ['Personal', ' personal ', 'Say "hi"'])).toBe(
+      'in:sent after:1793491200 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling" -label:"Personal" -label:"Say hi"',
+    )
+    expect(sentFollowQuery('not a time')).toBe('in:sent after:0 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling"')
+    expect(sentSince({ at: '2026-11-01T00:00:00.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(true)
+    expect(sentSince({ at: '2026-10-31T23:59:59.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(false)
+    expect(sentSince({ at: null }, '2026-11-01T00:00:00.000Z')).toBe(true)
+  })
+
+  it('places by the party’s one open job or their domain’s one customer, never by the subject', () => {
+    const facts: MyMailGuessFacts = {
+      subjectJobs: [{ key: harbor.key, labels: ['1081'], name: '19 Harbor Ln', mine: true }],
+      partyJobs: [{ chip: harbor, star: false, open: true }],
+      domainJobs: [{ chip: mill, customer: 'Ridgeway Builders' }],
+      taggedJob: null,
+    }
+    expect(sentPlacement(dale, facts)).toEqual({ ...harbor, why: 'Dale Okafor is on this job' })
+    expect(sentPlacement(dale, { ...facts, partyJobs: [] })).toEqual({ ...mill, why: 'ridgeway.example is Ridgeway Builders' })
+    expect(sentPlacement(dale, { ...facts, partyJobs: [{ chip: harbor, star: false, open: true }, { chip: mill, star: false, open: true }], domainJobs: [] })).toBeNull()
+    // The subject's job alone never places a sent mail.
+    expect(sentPlacement(dale, { ...facts, partyJobs: [], domainJobs: [] })).toBeNull()
+  })
+
+  it('writes the grey line’s words and the line’s small print in plain words', () => {
+    const words = placedByAppWords({ name: 'Wendi Cole', email: 'wendi@clickplumbing.example' }, { name: 'Rusty Vale', address: 'rusty@harborgc.example' }, { num: 'BP523', name: 'Harbor Club' }, 'Rusty Vale is on this job')
+    expect(words).toBe("The app put Wendi Cole's mail to Rusty Vale on BP523, since Rusty Vale is on this job. Later mail in it lands here by itself.")
+    expect(plainWordsFailures(words)).toEqual([])
+    expect(placedByAppWords({ name: '', email: 'wendi@clickplumbing.example' }, { name: '', address: 'rusty@harborgc.example' }, { num: '', name: 'Harbor Club' }, 'harborgc.example is Harbor GC')).toBe(
+      "The app put wendi@clickplumbing.example's mail to rusty@harborgc.example on Harbor Club, since harborgc.example is Harbor GC. Later mail in it lands here by itself.",
+    )
+    expect(placedLineWords('Wendi Cole')).toBe("from Wendi Cole's mail · put here by the app")
+    expect(placedLineWords('')).toBe('from their mail · put here by the app')
+    for (const w of [PLACED_LINE_WORDS.untagAsk, PLACED_LINE_WORDS.untagged, PLACED_LINE_WORDS.notUntagged]) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
 

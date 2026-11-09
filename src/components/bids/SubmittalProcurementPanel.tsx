@@ -50,7 +50,7 @@ import {
   type ProcurementStage,
   type StageDates,
 } from '../../lib/submittals/procurementLog'
-import { blockersPress, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
+import { blockersPress, onSiteDoor, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
 import { calendarAxis, groupMark, type CalendarAxis, type CalendarMark } from '../../lib/submittals/procurementCalendar'
 import { groupDateWords, orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
 import { loadProcurementRecords, loadProcurementUpdates, loadStageDatesForBid, loadTagStagesForBid, type ProcurementUpdate } from '../../lib/submittals/procurementLogIo'
@@ -1102,6 +1102,15 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <div aria-hidden="true" title={`${steps[3]?.count ?? 0} of ${rows.length} part${rows.length === 1 ? '' : 's'} on site`} style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', background: 'var(--bg-muted)' }} data-testid="procurement-share">
             {stepShares(steps).map((sh) => <span key={sh.key} style={{ width: `${sh.percent}%`, background: STEP_SHARE_COLOR[sh.key] }} />)}
           </div>
+          {(() => {
+            // Materials on site (punch list #209, v2.6740): once the bid is a job, the On site step's note opens the job's cages and boxes.
+            const door = onSiteDoor(jobId, steps[3]?.count ?? 0)
+            return door ? (
+              <div style={smallMuted} data-testid="procurement-on-site-door">
+                {door.words} <Link to={door.href} style={link}>{door.press}</Link>
+              </div>
+            ) : null
+          })()}
           {rows.length > 0 ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">
               {/* v2.4688 · no bold Next: here — the strip above already has one, and a page with two Nexts has none (punch list #89, item 5). */}

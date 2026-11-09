@@ -29,6 +29,8 @@ vi.mock('../../messages/useMyMailJobLineThreadSlots', () => ({ useMyMailJobLineT
 vi.mock('../../followUp/useNewLaneThreadSlots', () => ({ useNewLaneThreadSlots: () => ({}) }))
 // v2.6509: the email viewer's row (Start a bid, Put it on a bid…, Open the bid) is its own smoke, `useEmailViewerThreadSlots.render.test.tsx`.
 vi.mock('../../messages/useEmailViewerThreadSlots', () => ({ useEmailViewerThreadSlots: () => ({}) }))
+// Punch list #263 PR B: the mark and Untag under a line the app placed, read through its own smoke.
+vi.mock('../../messages/useMyMailPlacedLineThreadSlots', () => ({ useMyMailPlacedLineThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {
@@ -88,9 +90,10 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current.location.search).toBe('?kind=all')
   })
 
-  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, cut 3’s reply box, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {
+  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, #207’s own-mailbox strip above the box, cut 3’s reply box, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(Object.keys(result.current).sort()).toEqual(['box', 'headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
+    // `aboveBox` since v2.6745: #207's *Answered them from your own mailbox?* strip (`useOwnMailboxThreadSlots`).
+    expect(Object.keys(result.current).sort()).toEqual(['aboveBox', 'box', 'headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
     expect(result.current.headerRight).toBe(cut2.headerRight)
     expect(result.current.statusRow).toBe(cut2.statusRow)
     expect(result.current.menuRows?.({} as Contact)).toEqual([])

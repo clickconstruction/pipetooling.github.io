@@ -18,3 +18,14 @@ describe('sections · Messages carries the Texts station (v2.6098, punch list #1
     expect(QUICKFILL_SECTION_LABEL_BY_ID.get('messages')).toBe('Messages')
   })
 })
+
+describe('sections · Complete, no Total Bill carries the Jobs Billing station (v2.6750, punch list #176, decision 4)', () => {
+  it('Jobs Billing is no longer a station of its own; its id folds into Complete, no Total Bill, whose history reads both', () => {
+    expect(QUICKFILL_SECTIONS.some((s) => s.sectionId === 'jobs-billing')).toBe(false)
+    expect(QUICKFILL_SECTIONS.some((s) => s.sectionId === 'complete-no-bill')).toBe(true)
+    expect(QUICKFILL_RETIRED_SECTIONS['jobs-billing']).toEqual({ label: 'Jobs Billing', into: 'complete-no-bill' })
+    expect(foldRetiredSectionId('jobs-billing')).toBe('complete-no-bill')
+    expect(markHistorySectionIds('complete-no-bill')).toEqual(['complete-no-bill', 'jobs-billing'])
+    expect(QUICKFILL_SECTION_LABEL_BY_ID.get('jobs-billing')).toBe('Jobs Billing')
+  })
+})

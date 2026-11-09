@@ -193,3 +193,20 @@ describe('formatLegalMoney', () => {
     expect(formatLegalMoney(1234.5)).toBe('$1,234.50')
   })
 })
+
+describe('a settlement-only line in the firm’s print (v2.6697, punch list #171)', () => {
+  it('is left off the table and out of the demand, with one sentence in its place', () => {
+    const { payload, m, packet } = sample()
+    const lines = [
+      { id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: null, documentTitle: '', settlementOnly: false },
+      { id: 'l2', kind: 'fees' as const, title: 'Fee waiver', amount: 400, basis: '', documentId: null, documentTitle: '', settlementOnly: true },
+    ]
+    const worth = { ...packet.worth, claimLines: lines, claimTyped: 5310, claimSettlementOnly: 400, claim: packet.worth.claim + 5310, claimSettlement: packet.worth.claim + 5710 }
+    const html = buildFirmPacketPrintHtml({ ...packet, worth }, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: '', releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(html).toContain('<b>Materials left on site</b>')
+    expect(html).not.toContain('Fee waiver')
+    expect(html).toContain('One line, $400.00, is marked settlement only and left off this table.')
+    // The demand: the claim as demanded ($16,240 + $5,310) plus the firm's $450 fee; the $400 never enters it.
+    expect(html).toContain('$22,000.00')
+  })
+})
