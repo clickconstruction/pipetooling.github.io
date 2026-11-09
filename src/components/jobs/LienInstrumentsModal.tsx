@@ -43,6 +43,8 @@ import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/deman
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow, lienCourtesyFromItems } from '../../lib/jobs/lienTimelineDesk'
+import { readLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
+import type { LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import type { LienTimelineCourtesy } from '../../lib/jobs/lienTimeline'
 import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
@@ -306,6 +308,27 @@ export default function LienInstrumentsModal({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open of a job; the row's link is only the fallback
+  }, [open, job?.id])
+
+  // The claim set by hand on the job (`job_lien_claim_corrections`): the desk carries it to the notice and the affidavit, and the window's papers
+  // never read it. Null while the read is out, and the filing tabs wait for it: a sworn amount is not drawn and then changed.
+  const [claimRead, setClaimRead] = useState<{ correction: LienClaimCorrection | null; failed: boolean } | null>(null)
+  useEffect(() => {
+    setClaimRead(null)
+    if (!open || !job) return
+    let cancelled = false
+    readLienClaimCorrection(job.id).then(
+      (correction) => {
+        if (!cancelled) setClaimRead({ correction, failed: false })
+      },
+      () => {
+        if (!cancelled) setClaimRead({ correction: null, failed: true })
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open of a job
   }, [open, job?.id])
 
   // Open-reset + context fetches (history, customer address).
@@ -709,10 +732,12 @@ export default function LienInstrumentsModal({
   // The filing tabs get the job with its own link as well: the notice by hand finds the jobs at the same property by it.
   // The tab's job row: the board's row with the property link, and the trade from the full job read (v2.6118) — a board row carries no
   // `serviceType`, and the tab's papers name the trade as the kind of work.
+  // Its money is the full read's once it lands: the claim is what the sent bills still owe, counted from the job's bills and payments as they are now.
   const linkedJob = useMemo(() => {
     if (!job) return job
     const serviceType = job.serviceType ?? effJob?.serviceType ?? null
-    return { ...job, serviceType, ...(property ? { customer_address_id: property.link } : {}) }
+    const money = effJob && effJob !== job ? { status: effJob.status, revenue: effJob.revenue, payments_made: effJob.payments_made, invoices: effJob.invoices, payments: effJob.payments } : {}
+    return { ...job, ...money, serviceType, ...(property ? { customer_address_id: property.link } : {}) }
   }, [job, property, effJob])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
@@ -1681,6 +1706,10 @@ export default function LienInstrumentsModal({
           <div data-lien-window-property-reading style={{ padding: '1rem 1.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Reading the job’s property record…
           </div>
+        ) : !claimRead ? (
+          <div data-lien-window-claim-reading style={{ padding: '1rem 1.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Reading the claim on the job…
+          </div>
         ) : (
           <LienFilingTabs
             noticeMonths={noticeMonths ?? null}
@@ -1699,6 +1728,8 @@ export default function LienInstrumentsModal({
             isSub={isSub}
             originalContractorName={originalContractorName}
             originalContractorAddress={originalContractorAddress}
+            claimCorrection={claimRead.correction}
+            claimCorrectionUnread={claimRead.failed}
             ownerEmail={(jobOwnerRow?.owner_email ?? '').trim()}
             originalContractorEmail={isSub ? gcEmail : ''}
             onChanged={() => {

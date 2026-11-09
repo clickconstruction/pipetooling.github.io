@@ -6,7 +6,8 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienProperty'
-import { buildLienAffidavitFieldsForJob, buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from './lienNoticeDraft'
+import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from './lienNoticeDraft'
+import { buildLienDeskAffidavitFields } from './lienDeskAffidavitFields'
 import { coverLetterKindFor } from './gcOnNotice'
 import { runCoverNoteBlocks } from './lienDeskRun'
 
@@ -41,27 +42,19 @@ export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYm
   const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
   const property = resolveLienProperty(address, data.ownerByJob[jobId] ?? null)
   const correction = data.claimCorrectionsByJob[jobId] ?? null
-  const fields = buildLienAffidavitFieldsForJob({
-    jobName: job?.job_name,
-    jobAddress: job?.job_address,
-    serviceTypeName: job?.service_type?.name,
-    isSub: entry.isSub,
-    originalContractorName: gc?.name ?? '',
-    originalContractorAddress: gc?.address ?? '',
+  // The desk's one recipe: this page passed its own list and left out what the sent bills owe, so it swore the job's whole balance beside the pane.
+  const fields = buildLienDeskAffidavitFields({
+    job,
+    entry,
+    gc,
     ownerName: lienPropertyOwnerDisplayName(property.owner),
     ownerAddress: property.owner.mailingAddress,
     county: property.county,
     legalDescription: property.legalDescription,
-    customerName: job?.customer_name,
-    revenue: Number(job?.revenue ?? 0),
-    paymentsMade: Number(job?.payments_made ?? 0),
-    claimAmountOff: correction?.amountOff,
-    lastMonth: entry.lastMonth,
-    workDays: job ?? null,
-    todayYmd,
-    noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
+    correction,
     contactPerson: signerNameFor(job?.master_user_id ?? null),
     issuer,
+    todayYmd,
   })
   const html = filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] }))
   return [{ key: 'affidavit', label: 'Page 1 of 1 · the affidavit', html }]
