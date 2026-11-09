@@ -2,8 +2,8 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · a design card, nothing built · waiting on the owner's nine calls
-mockup: not required — stages 1 to 3 draw one line on a bill's row, a check window and a matching list; the views of stage 4 want a mock-up before they are built, and this card says so there
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · waiting on the critique and the nine calls · nothing built
+mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
   paper are not rows anywhere, so nobody can ask how many of a part the company buys, how often, or
@@ -14,10 +14,10 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: The owner's word on the nine calls. Then stage 1a, which draws no screen, and its live check on one real bill from each of the three main houses.
+next: The owner's critique of the nine frames and their word on the nine calls. Then stage 1a, which draws no screen, and its live check on one real bill from each of the three main houses.
 size: XL as a train of about nine (1a M · 1b M · 1c S · 2a M · 2b S · 3 M · 4a M · 4b M · 4c S), the joins of stage 5 apart
-blocker: The owner's nine calls, the reader's shape first. Before the backfill, a probe of whether the app can open the bills' Drive links.
-opinion: build stages 1 to 3 — the reader, the sum check and the PDFs all exist, and the lines are worth having before anyone draws a view; hold stage 4 for a mock-up
+blocker: The owner's critique of the mock-up and the nine calls, the reader's shape first. Before the backfill, a probe of whether the app can open the bills' Drive links.
+opinion: build stages 1 to 3 first — the reader, the sum check and the PDFs all exist, and the lines are worth having before any view is built; stage 4 once the frames G to I are agreed
 ver: v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
@@ -32,6 +32,23 @@ helps us gauge what we should stack up on."*
 The question this card answers: how does every supply house bill's line items get into the app as
 rows, matched to parts, so the office can see what the company buys, how often and at what price,
 and decide what to stock?
+
+## The mock-up
+
+[`mockup.html`](./mockup.html), nine frames, every name, code, part, price and count made up. The
+same frames are on the design canvas, where each can be switched to the dark theme:
+*Supply bill lines mock-up* — https://claude.ai/artifact/4K2iapynV38jpWUuzTYUpc
+
+- **A**: the Supply houses tab today, a bill as a total and a link.
+- **B · C**, stage 1: the Lines column on a house's bills (adds up, a gap with *Look*, no PDF,
+  reading, a credit); the *Look* window with the paper beside the lines read, the gap in words,
+  the missing line typed in, and *Count it as read anyway*.
+- **D · E**, stage 2: *Codes with no part* on the Parts Book, by dollars, with the app's offers and
+  the four presses; what one *This is it* does (the unit factor, the book's price moved with the
+  bill as the note, the lines regrouped) and a tenfold price offered, not written.
+- **F**, stage 3: the backfill's screen, read · held · no PDF · ready, each held reason with its
+  count and its door, the Drive-link probe first.
+- **G · H · I**, stage 4: What we buy, Price over time, What to stock, with the limits on the page.
 
 ## The evidence
 
@@ -313,8 +330,8 @@ The bills on file, read by the sweep stage 1 built, as a batch that does what is
 
 ### Stage 4: the views
 
-**This stage wants a mock-up before it is built**, drawn with made-up parts and prices, since it is
-the part the owner will look at. A new tab on Materials is the likely home; the mock-up settles it.
+Drawn as frames G, H and I of the mock-up, as a new tab on Materials, *What we buy*, with the three
+views as its own tabs. The owner's critique of those frames comes before the build.
 
 - **4a · What we buy.** Per part, or per house and code where no part is matched: quantity and
   spend by month, how many bills, which houses, which jobs. Filters for a house, a job, a service
@@ -446,7 +463,8 @@ New:
 
 ## Where it stands
 
-A design card. Nothing is built. The research above was read on 2026-11-09; the prod counts will
-drift. Three things were not checked and are named where they matter: whether the service account
+A design card with its mock-up. Nothing is built. The owner said on 2026-11-09 they want to build
+it; the nine frames were drawn the same day for their critique. The research above was read on
+2026-11-09; the prod counts will drift. Three things were not checked and are named where they matter: whether the service account
 can open the bills' Drive links, how many supplier mails with a bill reach a mailbox the app does
 not read, and how much of the spend the top unmatched codes cover.

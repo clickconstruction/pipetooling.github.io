@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Every supply house bill's lines as rows — the mock-up</title>
+<style>
+  /* Punch list #298. Everything here is made up: Ridgeway Supply and Pecan Supply Co, Oak Hollow Building C (JP1042)
+     and Cedar Bend (JP1038), every code, part, price, bill number, count and amount. The frames are the canvas's
+     artboards (https://claude.ai/artifact/4K2iapynV38jpWUuzTYUpc), drawn in the app's own light-theme values. */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eceae4; color: #1f2937; font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 0 16px 72px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #5f6672; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: #111827; max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 20px; margin: 46px 0 6px; color: #111827; }
+  .say { margin: 0 0 12px; font-size: 13px; color: #374151; max-width: 100ch; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid #cfd4db; border-radius: 12px; box-shadow: 0 8px 24px rgba(17,24,39,.08); background: #f0f2f5; }
+  .frame > .board { border-radius: 12px; }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid #9a4a1c; background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: #111827; }
+  ol.calls { margin: 10px 0 0; padding-left: 20px; max-width: 104ch; color: #374151; }
+  ol.calls li { margin: 0 0 6px; }
+  /* ---- the frames ---- */
+/* Punch list #298, the mock-up's shared styles. The values are the app's own tokens (src/index.css), light and dark.
+   Everything drawn with them is made up: Ridgeway Supply, Pecan Supply Co, every code, part, price, bill and job. */
+.board { box-sizing: border-box; font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--ink); background: var(--page); padding: 20px 22px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.board * { box-sizing: border-box; }
+.board.light { --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --mutedbg: #f3f4f6; --strong: #111827; --ink: #1f2937; --muted: #5f6672; --border: #cfd4db; --line: #e5e7eb; --link: #1d4ed8; --blue: #2563eb; --blue-bg: #eff6ff; --green: #15803d; --green-bg: #dcfce7; --amber: #92400e; --amber-bg: #fffbeb; --amber-line: #f0c36d; --red: #b91c1c; --red-bg: #fef2f2; --copper: #9a4a1c; --paper: #ffffff; --paper-ink: #2b2f36; --paper-rule: #c9ced6; --dead: #e5e7eb; --dead-ink: #5f6672; --orange: #c2410c; }
+.board.dark { --page: #111827; --surface: #1f2937; --subtle: #18212f; --mutedbg: #374151; --strong: #f9fafb; --ink: #e5e7eb; --muted: #a3acb9; --border: #4b5563; --line: #374151; --link: #93c5fd; --blue: #2563eb; --blue-bg: #1e3a5f; --green: #4ade80; --green-bg: #14331f; --amber: #fcd34d; --amber-bg: #3a2d10; --amber-line: #8a6a1f; --red: #fca5a5; --red-bg: #3b1616; --copper: #f0a878; --paper: #f5f5f2; --paper-ink: #2b2f36; --paper-rule: #c9ced6; --dead: #374151; --dead-ink: #a3acb9; --orange: #fdba74; }
+
+.crumb { font-size: 12px; color: var(--muted); }
+.crumb b { color: var(--strong); font-weight: 600; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: 13px; }
+.tab.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.head h2 { margin: 0; font-size: 17px; color: var(--strong); }
+.head .sub { font-size: 13px; color: var(--muted); }
+h3.t { margin: 0; font-size: 15px; color: var(--strong); }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.strong { color: var(--strong); font-weight: 600; }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 7px 10px; border-bottom: 1px solid var(--border); background: var(--subtle); white-space: nowrap; }
+.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl th.num, .tbl td.num { text-align: right; }
+.tbl a, a.lnk { color: var(--link); text-decoration: none; }
+.tbl tr.flag td { background: var(--amber-bg); }
+.tbl tr.add td { background: var(--blue-bg); }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pill.ok { background: var(--green-bg); color: var(--green); }
+.pill.off { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-line); }
+.pill.grey { background: var(--mutedbg); color: var(--ink); }
+.pill.blue { background: var(--blue-bg); color: var(--link); }
+.ico { width: 14px; height: 14px; flex: 0 0 auto; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 14px; border-radius: 8px; border: 1px solid transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn.blue { background: var(--blue); color: #fff; }
+.btn.line { background: var(--surface); color: var(--link); border-color: var(--border); }
+.btn.quiet { background: transparent; color: var(--muted); border-color: transparent; font-weight: 500; }
+.btn.dead { background: var(--dead); color: var(--dead-ink); cursor: default; }
+.btn.sm { min-height: 30px; padding: 3px 10px; font-size: 12px; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.new { outline: 2px dashed var(--copper); outline-offset: 2px; border-radius: 8px; }
+.tag-new { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); }
+.strip { border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.strip.off { background: var(--amber-bg); border: 1px solid var(--amber-line); color: var(--amber); }
+.strip.ok { background: var(--green-bg); color: var(--green); }
+.strip.note { background: var(--subtle); border: 1px solid var(--line); color: var(--ink); }
+.strip b { color: inherit; }
+
+.cols { display: flex; gap: 14px; align-items: stretch; min-height: 0; }
+.sel { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--ink); }
+.sel svg { width: 12px; height: 12px; }
+.chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--ink); }
+.chip.on { background: var(--strong); color: var(--surface); border-color: var(--strong); font-weight: 600; }
+.code { font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--mutedbg); border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+.inp { display: inline-block; min-width: 40px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--strong); font: inherit; font-size: 13px; }
+
+/* the paper, always light: a PDF is a white page */
+.paper { background: var(--paper); color: var(--paper-ink); border: 1px solid var(--paper-rule); border-radius: 4px; padding: 22px 22px 18px; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.paper .lh { font: 700 15px/1.2 system-ui, sans-serif; letter-spacing: .02em; }
+.paper .meta { display: flex; justify-content: space-between; gap: 10px; margin: 8px 0 12px; }
+.paper table { width: 100%; border-collapse: collapse; }
+.paper th { text-align: left; border-bottom: 1px solid var(--paper-ink); padding: 3px 4px; font-weight: 700; }
+.paper td { padding: 3px 4px; border-bottom: 1px dotted var(--paper-rule); }
+.paper .r { text-align: right; }
+.paper tr.hit td { background: #fde9b8; }
+.paper .tot { margin-top: 10px; margin-left: auto; width: 46%; }
+.paper .tot div { display: flex; justify-content: space-between; padding: 2px 4px; }
+.paper .tot .g { border-top: 1px solid var(--paper-ink); font-weight: 700; }
+
+.bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 26px; }
+.bars i { display: block; width: 9px; background: var(--blue); border-radius: 2px 2px 0 0; opacity: .85; }
+.bars i.z { height: 2px; background: var(--border); opacity: 1; }
+.meter { height: 10px; border-radius: 999px; background: var(--mutedbg); overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat .v { font-size: 20px; font-weight: 700; color: var(--strong); font-variant-numeric: tabular-nums; }
+.stat .d { font-size: 12px; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #298 · mock-up · 2026-11-09</p>
+  <h1>Every supply house bill's lines as rows</h1>
+  <p>Nine frames, A to I, one per stage of the card. Every name, code, part, price and count is made up. The dashed copper outline marks what is new on a screen that exists. The same frames are on the design canvas, where each can be switched to the dark theme.</p>
+</header>
+
+<h2>A · Today: a bill is a total and a link</h2>
+<p class="say">The Supply houses tab as it is. A bill is its total, its job and a link to its PDF. The lines live in the PDF and nothing can count them.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 470px;">
+  <div class="crumb">Materials › <b>Supply houses</b> › Ridgeway Supply</div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <h2>Ridgeway Supply · bills</h2>
+      <div class="btnrow"><button class="btn blue" type="button">Add Invoice</button></div>
+    </div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Invoice #</th><th>Purchase Order #</th><th>Date</th><th>Due</th><th class="num">Amount</th><th>Jobs</th><th>Paid</th><th>Link</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="strong">S-118460</td><td>41233</td><td>Oct 30</td><td>Nov 29</td><td class="num">$2,940.00</td><td>JP1042 Oak Hollow C</td><td><span class="pill grey">Open</span></td><td><a class="lnk" href="#pdf">PDF</a></td></tr>
+        <tr><td class="strong">CM-20931</td><td>41207</td><td>Oct 30</td><td></td><td class="num">−$128.40</td><td>JP1042 Oak Hollow C</td><td><span class="pill grey">Credit</span></td><td><a class="lnk" href="#pdf">PDF</a></td></tr>
+        <tr><td class="strong">S-118455</td><td>41229</td><td>Oct 29</td><td>Nov 28</td><td class="num">$96.31</td><td>JP1038 Cedar Bend</td><td><span class="pill grey">Open</span></td><td class="muted">none</td></tr>
+        <tr><td class="strong">S-118402</td><td>41218</td><td>Oct 27</td><td>Nov 26</td><td class="num">$212.06</td><td>JP1038 Cedar Bend</td><td><span class="pill grey">Open</span></td><td><a class="lnk" href="#pdf">PDF</a></td></tr>
+        <tr><td class="strong">S-118377</td><td>41207</td><td>Oct 24</td><td>Nov 23</td><td class="num">$1,284.10</td><td>JP1042 Oak Hollow C</td><td><span class="pill ok">Paid</span></td><td><a class="lnk" href="#pdf">PDF</a></td></tr>
+        <tr><td class="strong">S-118342</td><td>41207</td><td>Oct 22</td><td>Nov 21</td><td class="num">$719.54</td><td>JP1042 Oak Hollow C</td><td><span class="pill ok">Paid</span></td><td><a class="lnk" href="#pdf">PDF</a></td></tr>
+      </tbody>
+    </table>
+    <div class="strip note">A bill is its total, its job and a link to its PDF. What was bought is inside the PDF, and nothing in the app can count it.</div>
+  </div>
+</div>
+</div>
+
+<h2>B · The bill's row says what was read</h2>
+<p class="say">Stage 1b. A new Lines column on the house's bills. A bill with a PDF is read after Save with no press. Adds up is green; a gap is amber with Look; no PDF offers Add the PDF; a credit counts as a return.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 560px;">
+  <div class="crumb">Materials › <b>Supply houses</b> › Ridgeway Supply</div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <h2>Ridgeway Supply · bills</h2>
+      <div class="btnrow"><span class="small muted new" style="padding: 4px 8px;">Lines read on 5 of 6 bills · 1 to look at</span><button class="btn blue" type="button">Add Invoice</button></div>
+    </div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Invoice #</th><th>Date</th><th class="num">Amount</th><th>Jobs</th><th>Paid</th><th>Link</th><th class="new" style="padding: 7px 10px;">Lines <span class="tag-new">new</span></th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="strong">S-118460</td><td>Oct 30</td><td class="num">$2,940.00</td><td>JP1042 Oak Hollow C</td><td><span class="pill grey">Open</span></td><td><a class="lnk" href="#pdf">PDF</a></td>
+          <td><span class="pill ok"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>18 lines · adds up</span> <span class="small muted">· pages 2–3 of a file of 3 bills</span></td></tr>
+        <tr><td class="strong">CM-20931</td><td>Oct 30</td><td class="num">−$128.40</td><td>JP1042 Oak Hollow C</td><td><span class="pill grey">Credit</span></td><td><a class="lnk" href="#pdf">PDF</a></td>
+          <td><span class="pill ok"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>2 lines · adds up</span> <span class="small muted">· a credit, counted as a return</span></td></tr>
+        <tr><td class="strong">S-118455</td><td>Oct 29</td><td class="num">$96.31</td><td>JP1038 Cedar Bend</td><td><span class="pill grey">Open</span></td><td class="muted">none</td>
+          <td><span class="small muted">No PDF on this bill</span> <button class="btn line sm" type="button">Add the PDF</button></td></tr>
+        <tr><td class="strong">S-118402</td><td>Oct 27</td><td class="num">$212.06</td><td>JP1038 Cedar Bend</td><td><span class="pill grey">Open</span></td><td><a class="lnk" href="#pdf">PDF</a></td>
+          <td><span class="pill grey">Reading the PDF…</span></td></tr>
+        <tr><td class="strong">S-118377</td><td>Oct 24</td><td class="num">$1,284.10</td><td>JP1042 Oak Hollow C</td><td><span class="pill ok">Paid</span></td><td><a class="lnk" href="#pdf">PDF</a></td>
+          <td><span class="pill ok"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>41 lines · adds up</span></td></tr>
+        <tr class="flag"><td class="strong">S-118342</td><td>Oct 22</td><td class="num">$719.54</td><td>JP1042 Oak Hollow C</td><td><span class="pill ok">Paid</span></td><td><a class="lnk" href="#pdf">PDF</a></td>
+          <td><span class="pill off">5 lines · $12.40 short of the subtotal</span> <button class="btn line sm" type="button">Look</button></td></tr>
+      </tbody>
+    </table>
+    <div class="strip note">A bill with a PDF is read after Save, with no press. Its lines count toward what we buy only once they add up, or once a person has looked and said so.</div>
+  </div>
+</div>
+</div>
+
+<h2>C · Look: the paper beside its lines</h2>
+<p class="say">Stage 1b. Look opens the paper beside the lines read. The strip says which sum is off and by how much. Here a line is missing: the person types it, the strip turns green before Save, and Count it as read anyway keeps the gap beside the lines with their name.</p>
+<div class="frame">
+<div class="board light" style="width: 1240px; height: 800px; padding: 18px 20px;">
+  <div class="panel" style="flex: 1; gap: 12px;">
+    <div class="head">
+      <div>
+        <h2>S-118342 · Ridgeway Supply · Oct 22 · $719.54</h2>
+        <div class="sub">JP1042 Oak Hollow Building C · PO 41207 · read from the PDF on the row, 1 page</div>
+      </div>
+      <button class="btn quiet" type="button" aria-label="Close">✕ Close</button>
+    </div>
+    <div class="strip off"><b>$12.40 short of the subtotal.</b> The 5 lines read sum to $652.30. The paper prints a subtotal of $664.70. Each line's own arithmetic holds, so a line is missing. Tax $54.84 and the total $719.54 match the paper and the row.</div>
+    <div class="cols" style="flex: 1;">
+      <div style="flex: 0 0 470px; display: flex; flex-direction: column; gap: 6px;">
+        <div class="small muted">The paper · <a class="lnk" href="#drive">Open in Drive</a></div>
+        <div class="paper">
+          <div class="lh">RIDGEWAY SUPPLY</div>
+          <div class="meta"><span>INVOICE S-118342<br>10/22/2026 · ACCT 40288</span><span>PO 41207<br>SHIP TO: OAK HOLLOW BLDG C</span></div>
+          <table>
+            <thead><tr><th>ITEM</th><th>DESCRIPTION</th><th class="r">ORD</th><th class="r">SHP</th><th>UM</th><th class="r">PRICE</th><th class="r">EXT</th></tr></thead>
+            <tbody>
+              <tr><td>RS-40712</td><td>3/4 COP 90 ELL CXC</td><td class="r">25</td><td class="r">25</td><td>EA</td><td class="r">4.70</td><td class="r">117.50</td></tr>
+              <tr><td>RS-40718</td><td>3/4 COP TEE CXCXC</td><td class="r">12</td><td class="r">12</td><td>EA</td><td class="r">7.85</td><td class="r">94.20</td></tr>
+              <tr><td>RS-11204</td><td>3/4 X 10 TYPE L COP TUBE</td><td class="r">8</td><td class="r">8</td><td>EA</td><td class="r">38.40</td><td class="r">307.20</td></tr>
+              <tr><td>RS-55310</td><td>3/4 FIP BALL VLV FP</td><td class="r">6</td><td class="r">6</td><td>EA</td><td class="r">21.15</td><td class="r">126.90</td></tr>
+              <tr class="hit"><td>RS-90021</td><td>WAX RING W/HORN</td><td class="r">4</td><td class="r">4</td><td>EA</td><td class="r">3.10</td><td class="r">12.40</td></tr>
+              <tr><td>FRT</td><td>FUEL SURCHARGE</td><td class="r">1</td><td class="r">1</td><td>EA</td><td class="r">6.50</td><td class="r">6.50</td></tr>
+            </tbody>
+          </table>
+          <div class="tot"><div><span>SUBTOTAL</span><span>664.70</span></div><div><span>TAX 8.25%</span><span>54.84</span></div><div class="g"><span>TOTAL</span><span>719.54</span></div></div>
+        </div>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <div class="small muted">The lines as read · the row a person adds is marked on the paper</div>
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Code</th><th>Description</th><th class="num">Shipped</th><th>Unit</th><th class="num">Price</th><th class="num">Extension</th><th>Part</th></tr></thead>
+          <tbody>
+            <tr><td class="muted">1</td><td><span class="code">RS-40712</span></td><td>3/4 COP 90 ELL CXC</td><td class="num">25</td><td>EA</td><td class="num">$4.70</td><td class="num">$117.50</td><td class="small">Copper 90 elbow 3/4 in.</td></tr>
+            <tr><td class="muted">2</td><td><span class="code">RS-40718</span></td><td>3/4 COP TEE CXCXC</td><td class="num">12</td><td>EA</td><td class="num">$7.85</td><td class="num">$94.20</td><td class="small">Copper tee 3/4 in.</td></tr>
+            <tr><td class="muted">3</td><td><span class="code">RS-11204</span></td><td>3/4 X 10 TYPE L COP TUBE</td><td class="num">8</td><td>EA</td><td class="num">$38.40</td><td class="num">$307.20</td><td class="small muted">No part yet</td></tr>
+            <tr><td class="muted">4</td><td><span class="code">RS-55310</span></td><td>3/4 FIP BALL VLV FP</td><td class="num">6</td><td>EA</td><td class="num">$21.15</td><td class="num">$126.90</td><td class="small">Ball valve 3/4 in. FIP</td></tr>
+            <tr><td class="muted">5</td><td><span class="code">FRT</span></td><td>FUEL SURCHARGE</td><td class="num">1</td><td>EA</td><td class="num">$6.50</td><td class="num">$6.50</td><td class="small muted">A charge</td></tr>
+            <tr class="add"><td class="muted">+</td><td><span class="inp">RS-90021</span></td><td><span class="inp" style="min-width: 150px;">WAX RING W/HORN</span></td><td class="num"><span class="inp">4</span></td><td><span class="inp">EA</span></td><td class="num"><span class="inp">3.10</span></td><td class="num"><span class="inp">12.40</span></td><td class="small muted">matched on Save</td></tr>
+          </tbody>
+        </table>
+        <div class="strip ok"><b>With this line the lines sum to $664.70.</b> That is the paper's subtotal. The bill will add up.</div>
+        <div class="btnrow" style="margin-top: auto; justify-content: space-between;">
+          <div class="btnrow"><button class="btn blue" type="button">Save 1 line</button><button class="btn line" type="button">Read the PDF again</button></div>
+          <div class="btnrow"><button class="btn quiet" type="button">Count it as read anyway</button></div>
+        </div>
+        <div class="small muted">Count it as read anyway records your name and the gap. The lines then count, with the gap kept beside them.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<h2>D · Codes with no part, biggest spend first</h2>
+<p class="say">Stage 2a. A tab on the Parts Book: one row per house and code with no part, sorted by dollars, with the app's offer where it has one. This is it teaches the code once; every past and future line with it carries the part. The batch press names its count.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 830px;">
+  <div class="crumb">Materials › <b>Parts Book</b></div>
+  <div class="tabs"><span class="tab">Parts</span><span class="tab">Prices</span><span class="tab on new">Codes with no part <span style="opacity: .85;">· 212</span></span></div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <div>
+        <h2>Codes with no part</h2>
+        <div class="sub">212 codes on 1,480 bill lines · $48,310 spent on them · teach a code once and every past and future line with it carries the part</div>
+      </div>
+      <div class="btnrow"><button class="btn blue" type="button">Match 14 offered codes</button></div>
+    </div>
+    <div class="btnrow"><span class="sel">All houses <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span><span class="chip on">By dollars</span><span class="chip">By how often</span><span class="chip">Offered first</span></div>
+    <table class="tbl">
+      <thead><tr><th>House · code</th><th>As printed</th><th class="num">Bought</th><th class="num">Spent</th><th>The app's offer</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="strong">Ridgeway Supply</span><br><span class="code">RS-11204</span></td>
+          <td>3/4 X 10 TYPE L COP TUBE</td>
+          <td class="num">31 times<br><span class="small muted">420 EA</span></td>
+          <td class="num strong">$16,128.00</td>
+          <td><span class="pill blue">Offered</span> Copper tube, type L, 3/4 in. × 10 ft<br><span class="small muted">the name is close · 1 EA on the bill is 10 ft in the book</span></td>
+          <td><div class="btnrow"><button class="btn blue sm" type="button">This is it</button><button class="btn line sm" type="button">Another part…</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+        <tr>
+          <td><span class="strong">Pecan Supply Co</span><br><span class="code">0417-2210</span></td>
+          <td>PVC SCH40 PIPE 2X20 PE</td>
+          <td class="num">22 times<br><span class="small muted">196 EA</span></td>
+          <td class="num strong">$9,870.40</td>
+          <td><span class="small muted">No part yet. Nothing in the book reads like it.</span></td>
+          <td><div class="btnrow"><button class="btn line sm" type="button">Pick a part…</button><button class="btn line sm" type="button">New part in the book</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+        <tr>
+          <td><span class="strong">Ridgeway Supply</span><br><span class="code">RS-40712</span></td>
+          <td>3/4 COP 90 ELL CXC</td>
+          <td class="num">58 times<br><span class="small muted">1,240 EA</span></td>
+          <td class="num strong">$5,828.00</td>
+          <td><span class="pill blue">Offered</span> Copper 90 elbow 3/4 in. C×C<br><span class="small muted">the same maker's number is matched at Pecan Supply Co</span></td>
+          <td><div class="btnrow"><button class="btn blue sm" type="button">This is it</button><button class="btn line sm" type="button">Another part…</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+        <tr>
+          <td><span class="strong">Pecan Supply Co</span><br><span class="code">0980-1105</span></td>
+          <td>CLOSET FLANGE PVC 4X3 W/KNOCKOUT</td>
+          <td class="num">19 times<br><span class="small muted">64 EA</span></td>
+          <td class="num strong">$1,203.20</td>
+          <td><span class="pill blue">Offered</span> Closet flange PVC 4 in. × 3 in.<br><span class="small muted">the name is close</span></td>
+          <td><div class="btnrow"><button class="btn blue sm" type="button">This is it</button><button class="btn line sm" type="button">Another part…</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+        <tr>
+          <td><span class="strong">Ridgeway Supply</span><br><span class="code">FRT</span></td>
+          <td>FUEL SURCHARGE</td>
+          <td class="num">96 times</td>
+          <td class="num strong">$624.00</td>
+          <td><span class="pill blue">Offered</span> Not a part: a charge<br><span class="small muted">counted as spend under Charges, never as a part</span></td>
+          <td><div class="btnrow"><button class="btn blue sm" type="button">Not a part</button><button class="btn line sm" type="button">Pick a part…</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+        <tr>
+          <td><span class="strong">Pecan Supply Co</span><br><span class="code">0331-0070</span></td>
+          <td>CPVC CEMENT ORANGE QT</td>
+          <td class="num">14 times<br><span class="small muted">14 EA</span></td>
+          <td class="num strong">$319.06</td>
+          <td><span class="small muted">No part yet.</span></td>
+          <td><div class="btnrow"><button class="btn line sm" type="button">Pick a part…</button><button class="btn line sm" type="button">New part in the book</button><button class="btn quiet sm" type="button">Later</button></div></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="small muted">206 more, $14,337 between them. The top 40 codes carry four fifths of the spend. A line with no part still counts in What we buy, under its house's code.</div>
+  </div>
+</div>
+</div>
+
+<h2>E · What teaching one code does</h2>
+<p class="say">Stage 2a and 2b. What one This is it does: the unit factor, the book's price moved from the newest bill with the bill as the note, the lines regrouped. A price that moved tenfold is offered, never written.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 640px;">
+  <div class="crumb">Materials › <b>Parts Book</b> › Codes with no part</div>
+  <div class="panel">
+    <div class="head"><h3 class="t">After <i>This is it</i> on RS-11204</h3><span class="small muted">just now · by you</span></div>
+    <div class="strip ok"><b>RS-11204 at Ridgeway Supply is Copper tube, type L, 3/4 in. × 10 ft.</b> 31 past lines now carry the part, and every future one will.</div>
+    <table class="tbl">
+      <tbody>
+        <tr><td style="width: 220px;" class="muted">The unit</td><td>1 EA on the bill is <span class="strong">10 ft</span> in the book. The book prices a foot, so $38.40 a stick is $3.84 a foot.</td></tr>
+        <tr><td class="muted">The book's price</td><td>Ridgeway Supply, 3/4 in. type L: <span class="strong">$3.62 → $3.84 a foot</span>, from the bill of Oct 22. The history keeps both, with the bill's number as the note.</td></tr>
+        <tr><td class="muted">What we buy</td><td>The 31 lines move from <i>Ridgeway Supply · RS-11204</i> into the part's own row, beside the 12 lines Pecan Supply Co sold under its code.</td></tr>
+      </tbody>
+    </table>
+    <div class="btnrow"><button class="btn line sm" type="button">Undo</button><button class="btn quiet sm" type="button">Change the unit…</button></div>
+  </div>
+  <div class="panel">
+    <div class="head"><h3 class="t">A price that moved a lot is offered, not written</h3><span class="pill off">Offered</span></div>
+    <div class="small">RS-55310 · 3/4 FIP BALL VLV FP · matched to <span class="strong">Ball valve 3/4 in. FIP</span></div>
+    <table class="tbl">
+      <thead><tr><th>Where</th><th class="num">Price</th><th>Read as</th></tr></thead>
+      <tbody>
+        <tr><td>The bill of Oct 29, line 3</td><td class="num strong">$211.50</td><td>1 EA at $211.50</td></tr>
+        <tr><td>The book, Ridgeway Supply, checked Oct 22</td><td class="num strong">$21.15</td><td>each</td></tr>
+      </tbody>
+    </table>
+    <div class="strip note">Ten times the book's price. That is usually a pack: the bill's 1 EA may be a box of 10. The book is left as it is until you say.</div>
+    <div class="btnrow"><button class="btn blue sm" type="button">A pack of 10 · $21.15 each</button><button class="btn line sm" type="button">Use $211.50 each</button><button class="btn quiet sm" type="button">Leave the book alone</button></div>
+  </div>
+</div>
+</div>
+
+<h2>F · The bills already on file</h2>
+<p class="say">Stage 3. The backfill as a sweep: read, held, no PDF, ready. Each held reason has its count and its door. The probe of the Drive links runs first.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 700px;">
+  <div class="crumb">Materials › <b>Supply houses</b></div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <div>
+        <h2>Lines read on 212 of 539 bills</h2>
+        <div class="sub">Read in the background, newest first, a few a minute. About a cent a bill.</div>
+      </div>
+      <div class="btnrow"><button class="btn blue" type="button">Read 287 bills</button></div>
+    </div>
+    <div class="meter" aria-hidden="true"><i style="width: 39%; background: var(--green);"></i><i style="width: 4%; background: var(--amber-line);"></i><i style="width: 3.5%; background: var(--border);"></i></div>
+    <div class="btnrow small" style="gap: 16px;"><span><span class="strong">212</span> read and adding up</span><span><span class="strong">21</span> held</span><span><span class="strong">19</span> with no PDF</span><span><span class="strong">287</span> ready to read</span></div>
+    <h3 class="t" style="margin-top: 6px;">Held, each with its reason</h3>
+    <table class="tbl">
+      <thead><tr><th>Why it is held</th><th class="num">Bills</th><th>What opens it</th></tr></thead>
+      <tbody>
+        <tr><td>The sums are off: the lines read do not reach the paper's subtotal</td><td class="num">9</td><td><button class="btn line sm" type="button">Look at the 9</button></td></tr>
+        <tr><td>The app cannot open the link: the file is not shared with it</td><td class="num">6</td><td><button class="btn line sm" type="button">Show the 6</button> <span class="small muted">share the file, or paste a link the app can open</span></td></tr>
+        <tr><td>A bill in the file has no row: the file holds 3 bills and only 2 are recorded</td><td class="num">3</td><td><button class="btn line sm" type="button">Add invoice, filled from the paper</button></td></tr>
+        <tr><td>The row's number is not in its file</td><td class="num">2</td><td><button class="btn line sm" type="button">Look at the 2</button> <span class="small muted">pick the pages, or fix the link</span></td></tr>
+        <tr><td>The file is over the reader's size limit</td><td class="num">1</td><td><span class="small muted">a smaller scan</span></td></tr>
+        <tr><td>No PDF on the row, so nothing to read</td><td class="num">19</td><td><button class="btn line sm" type="button">Show the 19</button> <span class="small muted">Add the PDF on each row</span></td></tr>
+      </tbody>
+    </table>
+    <div class="strip note"><b>The first check, before any reading:</b> can the app open the bills' Drive links at all? It tries 20. If it cannot, the door is the owner's: share the bills' folder with the app, or move it into the Shared Drive. Nothing above runs until that reads yes.</div>
+  </div>
+</div>
+</div>
+
+<h2>G · What we buy</h2>
+<p class="say">Stage 4a. Per part, or per house and code where no part is matched: how often, how many, spend, by month, which houses, the last price. Only bills that add up are counted, and the foot says so.</p>
+<div class="frame">
+<div class="board light" style="width: 1180px; height: 720px;">
+  <div class="crumb">Materials › <b>What we buy</b> <span class="tag-new">new tab</span></div>
+  <div class="tabs"><span class="tab on">What we buy</span><span class="tab">Price over time</span><span class="tab">What to stock</span></div>
+  <div class="panel" style="flex: 1;">
+    <div class="btnrow" style="justify-content: space-between;">
+      <div class="btnrow">
+        <span class="sel">All houses <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+        <span class="sel">All jobs <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+        <span class="sel">Plumbing <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+        <span class="sel">May – Oct 2026 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+      </div>
+      <div class="btnrow"><span class="small muted">Sort</span><span class="chip on">Spend</span><span class="chip">Quantity</span><span class="chip">How often</span></div>
+    </div>
+    <div class="btnrow" style="gap: 12px;">
+      <div class="stat" style="flex: 1;"><span class="k">Spent on parts</span><span class="v">$61,480</span><span class="d">on 318 bills that add up</span></div>
+      <div class="stat" style="flex: 1;"><span class="k">Charges</span><span class="v">$1,912</span><span class="d">freight, fuel, fees</span></div>
+      <div class="stat" style="flex: 1;"><span class="k">Distinct parts</span><span class="v">412</span><span class="d">206 by code only, no part yet</span></div>
+      <div class="stat" style="flex: 1;"><span class="k">Bills not counted</span><span class="v">21</span><span class="d">held, with a reason each</span></div>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Part</th><th class="num">Bought</th><th class="num">Quantity</th><th class="num">Spend</th><th>By month · May to Oct</th><th>Houses</th><th class="num">Last paid</th></tr></thead>
+      <tbody>
+        <tr><td class="strong">Copper tube, type L, 3/4 in.</td><td class="num">43 times</td><td class="num">5,320 ft</td><td class="num strong">$19,702</td><td><span class="bars" aria-hidden="true"><i style="height: 12px;"></i><i style="height: 18px;"></i><i style="height: 26px;"></i><i style="height: 9px;"></i><i style="height: 22px;"></i><i style="height: 16px;"></i></span></td><td class="small">Ridgeway, Pecan</td><td class="num">$3.84 /ft</td></tr>
+        <tr><td><span class="strong">PVC SCH40 PIPE 2X20 PE</span><br><span class="small muted">no part yet · Pecan Supply Co 0417-2210</span></td><td class="num">22 times</td><td class="num">196 EA</td><td class="num strong">$9,870</td><td><span class="bars" aria-hidden="true"><i style="height: 6px;"></i><i class="z"></i><i style="height: 20px;"></i><i style="height: 26px;"></i><i style="height: 14px;"></i><i style="height: 8px;"></i></span></td><td class="small">Pecan</td><td class="num">$50.36</td></tr>
+        <tr><td class="strong">Copper 90 elbow 3/4 in. C×C</td><td class="num">58 times</td><td class="num">1,240 EA</td><td class="num strong">$5,828</td><td><span class="bars" aria-hidden="true"><i style="height: 16px;"></i><i style="height: 20px;"></i><i style="height: 24px;"></i><i style="height: 18px;"></i><i style="height: 26px;"></i><i style="height: 22px;"></i></span></td><td class="small">Ridgeway, Pecan</td><td class="num">$4.70</td></tr>
+        <tr><td class="strong">Water heater, 50 gal gas</td><td class="num">6 times</td><td class="num">6 EA</td><td class="num strong">$5,214</td><td><span class="bars" aria-hidden="true"><i class="z"></i><i style="height: 26px;"></i><i class="z"></i><i style="height: 13px;"></i><i class="z"></i><i style="height: 26px;"></i></span></td><td class="small">Ridgeway</td><td class="num">$869.00</td></tr>
+        <tr><td class="strong">Ball valve 3/4 in. FIP</td><td class="num">27 times</td><td class="num">148 EA</td><td class="num strong">$3,130</td><td><span class="bars" aria-hidden="true"><i style="height: 10px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i><i style="height: 12px;"></i><i style="height: 18px;"></i><i style="height: 20px;"></i></span></td><td class="small">Ridgeway, Pecan</td><td class="num">$21.15</td></tr>
+        <tr><td class="strong">Closet flange PVC 4 in. × 3 in.</td><td class="num">19 times</td><td class="num">64 EA</td><td class="num strong">$1,203</td><td><span class="bars" aria-hidden="true"><i style="height: 8px;"></i><i style="height: 26px;"></i><i style="height: 10px;"></i><i style="height: 6px;"></i><i style="height: 18px;"></i><i style="height: 12px;"></i></span></td><td class="small">Pecan</td><td class="num">$18.80</td></tr>
+        <tr><td class="strong">Wax ring with horn</td><td class="num">23 times</td><td class="num">61 EA</td><td class="num strong">$189</td><td><span class="bars" aria-hidden="true"><i style="height: 14px;"></i><i style="height: 18px;"></i><i style="height: 12px;"></i><i style="height: 22px;"></i><i style="height: 26px;"></i><i style="height: 16px;"></i></span></td><td class="small">Ridgeway, Pecan</td><td class="num">$3.10</td></tr>
+      </tbody>
+    </table>
+    <div class="small muted">405 more rows. Counts bills and credits whose lines add up, or that a person counted as read. Quotes, acknowledgements and ship tickets are never counted. A bill split across jobs by percent gives its lines to each job by that percent.</div>
+  </div>
+</div>
+</div>
+
+<h2>H · Price over time</h2>
+<p class="say">Stage 4b. One part, every purchase a point, each house its own colour, the book's price as the dashed line with the day it was checked. Last paid per house beside the book.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 720px;">
+  <div class="crumb">Materials › <b>What we buy</b> › Price over time</div>
+  <div class="tabs"><span class="tab">What we buy</span><span class="tab on">Price over time</span><span class="tab">What to stock</span></div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <div><h2>Copper tube, type L, 3/4 in.</h2><div class="sub">a foot · 43 purchases since January · every purchase is a point</div></div>
+      <span class="sel">Copper tube, type L, 3/4 in. <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+    </div>
+    <div class="cols">
+      <div style="flex: 1; min-width: 0;">
+        <svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-label="Unit price a foot by month, two houses, the book's price as a dashed line">
+          <line x1="40" y1="20" x2="40" y2="205" stroke="currentColor" stroke-opacity=".3"/>
+          <line x1="40" y1="205" x2="640" y2="205" stroke="currentColor" stroke-opacity=".3"/>
+          <text x="8" y="24" font-size="11" fill="currentColor" fill-opacity=".7">$4.00</text>
+          <text x="8" y="114" font-size="11" fill="currentColor" fill-opacity=".7">$3.70</text>
+          <text x="8" y="204" font-size="11" fill="currentColor" fill-opacity=".7">$3.40</text>
+          <text x="40" y="224" font-size="11" fill="currentColor" fill-opacity=".7">Jan</text>
+          <text x="232" y="224" font-size="11" fill="currentColor" fill-opacity=".7">Apr</text>
+          <text x="424" y="224" font-size="11" fill="currentColor" fill-opacity=".7">Jul</text>
+          <text x="616" y="224" font-size="11" fill="currentColor" fill-opacity=".7">Oct</text>
+          <line x1="40" y1="134" x2="640" y2="134" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="5 4"/>
+          <text x="470" y="129" font-size="11" fill="currentColor" fill-opacity=".7">the book: $3.62, checked Jul 14</text>
+          <polyline points="40,164 168,146 296,134 360,134 488,107 552,86 616,68" fill="none" stroke="#2563eb" stroke-width="2"/>
+          <polyline points="104,173 232,155 424,122 552,107 616,107" fill="none" stroke="#c2410c" stroke-width="2"/>
+          <circle cx="40" cy="164" r="4" fill="#2563eb"/><circle cx="168" cy="146" r="4" fill="#2563eb"/><circle cx="296" cy="134" r="4" fill="#2563eb"/><circle cx="360" cy="134" r="4" fill="#2563eb"/><circle cx="488" cy="107" r="4" fill="#2563eb"/><circle cx="552" cy="86" r="4" fill="#2563eb"/><circle cx="616" cy="68" r="4" fill="#2563eb"/>
+          <circle cx="104" cy="173" r="4" fill="#c2410c"/><circle cx="232" cy="155" r="4" fill="#c2410c"/><circle cx="424" cy="122" r="4" fill="#c2410c"/><circle cx="552" cy="107" r="4" fill="#c2410c"/><circle cx="616" cy="107" r="4" fill="#c2410c"/>
+        </svg>
+        <div class="btnrow small" style="gap: 14px;"><span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2563eb;"></span> Ridgeway Supply</span><span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #c2410c;"></span> Pecan Supply Co</span></div>
+      </div>
+      <div style="flex: 0 0 300px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="stat"><span class="k">Last paid · Ridgeway Supply</span><span class="v">$3.84</span><span class="d">Oct 22 · up 6% since June</span></div>
+        <div class="stat"><span class="k">Last paid · Pecan Supply Co</span><span class="v">$3.71</span><span class="d">Oct 30 · cheapest these 90 days</span></div>
+        <div class="stat"><span class="k">The book</span><span class="v">$3.62</span><span class="d">checked Jul 14 · stale · <a class="lnk" href="#book">Use $3.84</a></span></div>
+      </div>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Day</th><th>House</th><th>Bill</th><th class="num">Quantity</th><th class="num">A foot</th><th>Job</th></tr></thead>
+      <tbody>
+        <tr><td>Oct 30</td><td>Pecan Supply Co</td><td><a class="lnk" href="#bill">PS-77120</a></td><td class="num">120 ft</td><td class="num">$3.71</td><td>JP1038 Cedar Bend</td></tr>
+        <tr><td>Oct 22</td><td>Ridgeway Supply</td><td><a class="lnk" href="#bill">S-118342</a></td><td class="num">80 ft</td><td class="num">$3.84</td><td>JP1042 Oak Hollow C</td></tr>
+        <tr><td>Sep 18</td><td>Ridgeway Supply</td><td><a class="lnk" href="#bill">S-117902</a></td><td class="num">200 ft</td><td class="num">$3.78</td><td>JP1042 Oak Hollow C</td></tr>
+      </tbody>
+    </table>
+    <div class="small muted">40 more purchases. A price is the bill's unit price through the pricing unit and the house's unit, so a stick and a foot land on one scale.</div>
+  </div>
+</div>
+</div>
+
+<h2>I · What to stock</h2>
+<p class="say">Stage 4c. Parts bought on many separate days in small counts, ranked by trips. The two limits are on the page: purchases are not usage, and big-box card purchases are not here.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px; height: 720px;">
+  <div class="crumb">Materials › <b>What we buy</b> › What to stock</div>
+  <div class="tabs"><span class="tab">What we buy</span><span class="tab">Price over time</span><span class="tab on">What to stock</span></div>
+  <div class="panel" style="flex: 1;">
+    <div class="head">
+      <div><h2>What we keep going back for</h2><div class="sub">parts bought on many separate days in small counts, the last 90 days · ranked by trips to the counter, since the trip is what stock would save</div></div>
+      <span class="sel">Last 90 days <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Part</th><th class="num">Trips</th><th class="num">At a time</th><th class="num">Jobs</th><th class="num">Spent</th><th>Where</th><th>Read as</th></tr></thead>
+      <tbody>
+        <tr><td class="strong">Wax ring with horn</td><td class="num strong">23</td><td class="num">2 to 4</td><td class="num">9</td><td class="num">$189</td><td class="small">the counter, both houses</td><td class="small">a trip every 4 days for a $3 part</td></tr>
+        <tr><td class="strong">Angle stop 1/2 in. × 3/8 in.</td><td class="num strong">19</td><td class="num">2 to 6</td><td class="num">11</td><td class="num">$612</td><td class="small">the counter, Ridgeway</td><td class="small">on nearly every trim-out</td></tr>
+        <tr><td class="strong">Supply line, 3/8 in. × 12 in. braided</td><td class="num strong">17</td><td class="num">2 to 8</td><td class="num">10</td><td class="num">$341</td><td class="small">the counter, both houses</td><td class="small">with the angle stops</td></tr>
+        <tr><td class="strong">PVC cement, medium, pint</td><td class="num strong">14</td><td class="num">1</td><td class="num">8</td><td class="num">$158</td><td class="small">the counter, Pecan</td><td class="small">one at a time, 14 times</td></tr>
+        <tr><td class="strong">Copper 90 elbow 3/4 in. C×C</td><td class="num strong">12</td><td class="num">10 to 50</td><td class="num">4</td><td class="num">$1,410</td><td class="small">delivered, PO</td><td class="small">bought big, not a counter part</td></tr>
+        <tr><td class="strong">Closet bolts, pair</td><td class="num strong">11</td><td class="num">2 to 4</td><td class="num">7</td><td class="num">$66</td><td class="small">the counter, both houses</td><td class="small">with the wax rings</td></tr>
+      </tbody>
+    </table>
+    <div class="strip note"><b>What this can and cannot say.</b> A bill says what was bought, when, from whom and for what. It does not say what was installed, what sat on a truck, what moved between jobs or what walked away: that is the On site ledger's <i>Used</i> press, not a bill. So this list answers <i>what do we keep going back for</i>, not <i>how many did the jobs use</i>.</div>
+    <div class="strip off"><b>Big-box card purchases are not here.</b> 118 card charges at hardware stores in these 90 days have no lines on any paper. Those are the small, frequent buys this list most wants. A photo of the receipt at the counter (punch list #295) is the door for them.</div>
+  </div>
+</div>
+</div>
+
+<div class="note"><b>The calls at the foot of the card</b>, drawn here with their defaults: the model reader first and parsers after (A to C); a bill read by itself after Save (B); whoever keeps the Parts Book matches codes, by dollars (D); a bill moves the book's price by itself under 25 percent and is offered above it (E); every bill on file, newest first (F); freight and fees as Charges (D, G); the office and an estimator see the views (G to I); bills and credits only until stage 5; no feed from a house yet.</div>
+</div>
+</body>
+</html>
