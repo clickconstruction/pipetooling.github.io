@@ -8,6 +8,7 @@ import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcT
 import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
+import { gcTradePortalSampleThread } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { askChips, askWhen, paperworkLineOf, pastWords, portalHomeGroups, portalHomeTodos, readTradePortalAnswer, sentMessages, setDriveUrl, todoWaitsOnWaivers, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
@@ -21,6 +22,15 @@ describe('the function’s answer', () => {
     expect(a.kind === 'ready' && [a.today, a.sample, a.slice.company.name]).toEqual([TODAY, true, 'Sample Electric Co.'])
     const b = readTradePortalAnswer(true, { today: TODAY, slice })
     expect(b.kind === 'ready' && b.sample).toBe(false)
+  })
+
+  it('keeps the thread beside the slice, and reads none from a function deployed before it (punch list #205, PR 5)', () => {
+    const thread = gcTradePortalSampleThread(TODAY)
+    const a = readTradePortalAnswer(true, { today: TODAY, slice, thread })
+    expect(a.kind === 'ready' && a.thread).toEqual(thread)
+    const b = readTradePortalAnswer(true, { today: TODAY, slice })
+    expect(b.kind === 'ready' && b.thread).toBeNull()
+    expect(sentMessages(slice)[0]?.at).toBe(`${TODAY.slice(0, 8)}30T15:00:00Z`.replace('2026-10-30', '2026-09-30'))
   })
 
   it('turns every refusal into a key the page says in the company’s language', () => {

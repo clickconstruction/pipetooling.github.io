@@ -63,7 +63,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(32)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(33)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -273,6 +273,18 @@ describe('each kind, read into its verb', () => {
 
   describe('a file and the links that carry it (P5a-1)', () => {
     const PDF = btoa(String.fromCharCode(0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37))
+
+    it('reads a line for the thread as the kind the function writes, with no verb (punch list #205, PR 5)', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'portal_message', projectId: TRADE, text: '  The panel ships Monday. ' })
+      expect(parsed).toEqual({ ok: true, token: TOKEN, kind: 'portal_message', call: { rpc: '', params: {} }, message: { text: 'The panel ships Monday.', projectId: TRADE } })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'portal_message', text: 'No job.' })).toMatchObject({ ok: true, message: { text: 'No job.', projectId: null } })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'portal_message', projectId: '', text: 'No job.' })).toMatchObject({ ok: true, message: { projectId: null } })
+      // A blank line, one past 2,000 letters, a job that is not a uuid: shapes the page never sends.
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'portal_message', text: '   ' })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'portal_message', text: 'x'.repeat(2001) })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'portal_message', projectId: 'job-1', text: 'Hi.' })).toEqual({ ok: false })
+      expect(FREE_TEXT_KINDS.has('portal_message')).toBe(false)
+    })
 
     it('reads a file for a change as the kind the function places, with no verb', () => {
       const parsed = parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'change', packageId: TRADE, name: ' chairs.pdf ', base64: PDF })

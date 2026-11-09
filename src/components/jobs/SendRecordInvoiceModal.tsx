@@ -499,6 +499,8 @@ export default function SendRecordInvoiceModal({
   const [stripeResult, setStripeResult] = useState<{
     hosted_invoice_url: string
     stripe_invoice_id: string
+    /** `jobs_ledger_invoices.id`, so the share row's text carries the short pay link (#290). */
+    ledger_invoice_id: string
     stripe_invoice_status: string | null
     idempotent?: boolean
     invoice_preview: StripeInvoiceLinesSnapshot | null
@@ -1857,6 +1859,7 @@ export default function SendRecordInvoiceModal({
         setStripeResult({
           hosted_invoice_url: hosted,
           stripe_invoice_id: stripeId,
+          ledger_invoice_id: invId,
           stripe_invoice_status: typeof body?.stripe_invoice_status === 'string' ? body.stripe_invoice_status : null,
           idempotent: body?.idempotent === true,
           invoice_preview: parseStripeInvoiceLinesSnapshot(body?.invoice_preview),
@@ -3308,6 +3311,7 @@ export default function SendRecordInvoiceModal({
                 <StripeInvoiceSharePanel
                   hostedInvoiceUrl={stripeResult.hosted_invoice_url}
                   stripeInvoiceId={stripeResult.stripe_invoice_id}
+                  invoiceId={stripeResult.ledger_invoice_id}
                   customerEmail={job.customer_email}
                   customerName={job.customer_name}
                   jobName={job.job_name}

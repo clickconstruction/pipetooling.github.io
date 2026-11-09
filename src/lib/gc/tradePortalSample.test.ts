@@ -122,6 +122,8 @@ describe('a press on the sample (P2b-ii)', () => {
     const esignConsent = { clauseText: 'I agree to sign electronically.' }
     expect(parseTradeSubmit({ token: 'sample', kind: 'unconditional_waiver', drawId: SAMPLE_TRADE_IDS.draw1, printedName: 'Dana', esignConsent }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'sign_change', changeOrderId: SAMPLE_TRADE_IDS.changeOrder, printedName: 'Dana', esignConsent }).ok).toBe(true)
+    // A line for the thread (punch list #205, PR 5).
+    expect(parseTradeSubmit({ token: 'sample', kind: 'portal_message', projectId: SAMPLE_TRADE_IDS.job, text: 'The panel is in.' }).ok).toBe(true)
   })
 })
 

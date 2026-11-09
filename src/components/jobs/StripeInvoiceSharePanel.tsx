@@ -23,6 +23,7 @@ import {
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { billTextLink } from '../../lib/billing/billTextLink'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ContractTextDoor } from './ContractTextDoor'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
@@ -98,7 +99,7 @@ export type StripeInvoiceSharePanelProps = {
 function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
   return {
     customerName: p.customerName,
-    payUrl: p.hostedInvoiceUrl,
+    payUrl: billTextLink({ invoiceId: p.invoiceId, hostedInvoiceUrl: p.hostedInvoiceUrl }),
     amountLabel: p.amountLabel,
     jobName: p.jobName,
     hcpNumber: p.hcpNumber,
@@ -128,7 +129,10 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   /** The doors through the company: the job and its customer at hand. */
   const doors = billShareDoorsOffered(p)
   const load = p.load ?? loadCustomerContact
+  /** Stripe's own link: what the office's Customer pay page opens. */
   const url = p.hostedInvoiceUrl.trim()
+  /** The customer's link (#290): the short pay page on my.clickplumbing.com when the bill's id is at hand. */
+  const shareUrl = billTextLink({ invoiceId: p.invoiceId, hostedInvoiceUrl: p.hostedInvoiceUrl })
 
   function openSmsBillDraft() {
     if (doors) {
@@ -225,7 +229,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         </svg>
         Text
       </button>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} title="Copy the payment link">
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} title="Copy the payment link">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
           <rect x="9" y="9" width="11" height="11" rx="2" />
           <path d="M5 15V5a2 2 0 0 1 2-2h10" />
@@ -275,7 +279,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           type="button"
           title="Copy payment link"
           aria-label="Copy payment link"
-          onClick={() => void copyText(url, showToast, 'Payment link copied')}
+          onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')}
           style={iconBtnStyle}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
@@ -329,7 +333,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     </span>
   ) : (
     <>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} style={btnStyle}>
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} style={btnStyle}>
         Copy payment link
       </button>
       <button type="button" onClick={openSmsBillDraft} style={btnStyle}>
@@ -436,7 +440,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
                 setTextDoorOpen(false)
                 p.onSent?.()
               }}
-              onCopyLink={() => void copyText(url, showToast, 'Payment link copied')}
+              onCopyLink={() => void copyText(shareUrl, showToast, 'Payment link copied')}
               load={p.load}
               io={p.io}
             />
