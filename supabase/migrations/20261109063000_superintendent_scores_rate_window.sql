@@ -3,7 +3,7 @@ SET lock_timeout = '3s';
 -- Punch list #234, after 20261109040000 (v2.6779): the roster's loaded rate read its 90 days up to the period's end,
 -- so for the current month the window ran from the 1st of the month before to a day not yet come, while Bids → Labor
 -- and Settings → Line budgets read today's last 90 days, and the two cards showed two figures on the same day. The
--- window now ends at LEAST(p_to, CURRENT_DATE): the current month prices at the number those cards show, a past month
+-- window now ends at LEAST(p_to, public.app_today()): the current month prices at the number those cards show, a past month
 -- at its own end. Nothing else moves; CREATE OR REPLACE from the newest definition, same signature.
 -- docs/migrations/20261109063000_superintendent_scores_rate_window.md.
 
@@ -57,7 +57,7 @@ BEGIN
       AND s.clocked_out_at IS NOT NULL AND s.rejected_at IS NULL AND s.revoked_at IS NULL
       AND s.clocked_out_at > s.clocked_in_at
       -- The window ends today for the current month (the Labor tab's own 90 days) and at a past period's own end.
-      AND s.work_date BETWEEN LEAST(p_to, CURRENT_DATE) - 90 AND LEAST(p_to, CURRENT_DATE)
+      AND s.work_date BETWEEN LEAST(p_to, public.app_today()) - 90 AND LEAST(p_to, public.app_today())
   )
   SELECT COALESCE(SUM(hours), 0), COALESCE(SUM(hours * wage), 0) INTO v_roster_hours, v_roster_usd FROM field;
   v_rate := CASE WHEN v_roster_hours > 0 AND v_roster_usd > 0 THEN round(v_roster_usd / v_roster_hours * v_burden, 4) END;
