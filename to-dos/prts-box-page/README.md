@@ -2,7 +2,7 @@
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
 group: waiting
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers added the same day · nothing built · waiting on the owner's yes and his privacy call on the search
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · nothing built · waiting on the owner's yes and his privacy call on the search
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -17,6 +17,8 @@ summary: >
   labels will come off two Brother P-touch tape printers for boxes that sit in the sun, so the card
   adds a Tape format printed through the printer's own driver from the browser's print window, a
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
+  His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
+  voice, while the bare code keeps working and the QR stays as small as it is.
 next: The owner reads the card and the four mock-ups and makes four calls (build it; the search's gate; who edits the Cloudflare rule; which tape width he will stock). Then PR 1, a one-line fix a crew hits today, goes first.
 size: M as a train of five (XS · S · S · XS · S)
 blocker: The owner's yes, and his call on the search's gate (the card's recommendation is a scanned code).
@@ -114,15 +116,23 @@ What a web app cannot do, so the design does not try: Brother's b-PAC kit is Win
 
 **The experience, step by step.**
 
-*At the desk, the first time.* Jobs → Materials → Labels. Above the labels, two chips: **Sheet** and **Tape**. Press Tape and the preview turns into one strip per box: the QR on the left, the stencil large beside it, the code and the words *Scan for what is inside* underneath. Tick the boxes to print or keep them all. Press **Print 6 tape labels**. The browser's print window opens. Pick the Brother printer, pick the 24 mm paper, set margins to none, press Print. The printer prints the strips one after another and cuts between them. The chip the office picked is remembered on that computer.
+*At the desk, the first time.* Jobs → Materials → Labels. Above the labels, two chips: **Sheet** and **Tape**. Press Tape and the preview turns into one strip per box: the QR on the left, the stencil large beside it, the code with its dash and the words *Scan for what is inside* underneath. Tick the boxes to print or keep them all. Press **Print 6 tape labels**. The browser's print window opens. Pick the Brother printer, pick the 24 mm paper, set margins to none, press Print. The printer prints the strips one after another and cuts between them. The chip the office picked is remembered on that computer.
 
 *At the desk, every time after.* Press Tape is already on. Press **Print N tape labels**, press Print. The browser remembers the printer and the paper for the site, so the print window opens ready. Two presses from the page to the tape.
 
 *A whole job at once, from Brother's own editor.* **Export the labels as a CSV** on the same panel writes one row per box: the stencil, the code and the full address. Brother's P-touch Editor merges a CSV into a saved template and prints the run. For the office person who already lives in that editor, this is zero new habits.
 
-*In the field, at the cage.* The PT-E720BT prints over Bluetooth from Brother's phone app. The box's screen on the On site tab gets a press, **Copy the label code**, which puts `PRTS.CO/B/4F2A9C18` on the clipboard with a toast saying so. In Brother's app the person adds a QR, pastes, prints. No integration, and it works the day it ships. With no phone at all, both printers make a QR from text typed on their own keypad, and the code is printed under every sheet label to copy from.
+*In the field, at the cage.* The PT-E720BT prints over Bluetooth from Brother's phone app. The box's screen on the On site tab gets a press, **Copy the label code**, which puts `PRTS.CO/B/4F2A-9C18` on the clipboard with a toast saying so. In Brother's app the person adds a QR, pastes, prints. No integration, and it works the day it ships. With no phone at all, both printers make a QR from text typed on their own keypad, and the code is printed under every sheet label to copy from.
 
 **The label itself.** 24 mm tape, the widest both printers take (the owner confirms the width he stocks; the layout takes the width as a setting, 18 and 24). A 21-module QR fills the tape's height less a quiet zone of four modules on every side, so it scans from arm's length, which is right for a label on a cage's door. The stencil in the largest type that fits, since a person reads the stencil and the phone reads the code. Dark modules on a light tape, black on white or black on yellow, because scanners read dark on light; never white on black. The sun is the tape's job: Brother's laminated tape is rated for outdoors, and the strong-adhesive kind holds on a cage's bars.
+
+### 8. The code reads with a dash
+
+The owner's third ask, 2026-11-09: the printed code should read `PRTS.CO/B/4F2A-9C18`, four characters, a dash, four characters, so a person can relay it over the phone, while `4F2A9C18` keeps working and the QR stays as small as possible.
+
+Two facts make this cheap. **The reader already takes the dash**: `normalizeBoxCode` strips everything that is not a letter or a digit before it checks for eight, and its test already holds `7D75-9246` → `7D759246`, so `/b/4f2a-9c18` opens the box today, and the Cloudflare rule passes a dash through untouched. **The dash would not grow the QR**: the labels draw the code at level M, where a 21-module code holds 20 characters, and `PRTS.CO/B/4F2A-9C18` is 19. The design still keeps the QR bare as asked, since the camera never reads the dash and 18 characters leaves the most room for error correction; the card notes that the dashed form would fit so the choice is on record.
+
+So the change is one pure function and the places people read the code: `boxCodeWords(id)` → `4F2A-9C18` and `boxAddressWords(id)` → `prts.co/b/4F2A-9C18` in `labels.ts`, used by the sheet label's line under the QR and its address sentence, the manifest's code and foot, the tape strip, the Copy the label code press (the clipboard gets the dashed form, since a person pastes it into Brother's app and the printer's own QR reads either), the public page's words (*4F2A-9C19 is not a box on any job*) and the typed-code box on the bare `/b` page, which puts the dash in as the person types and takes it back out before asking. The QR's value stays `boxUrl`, the bare capitals. `box-read` strips the dash before its eight-hex check, so both forms open the box and the dashed form never counts as a miss.
 
 **The build.** PR 4 (XS): the CSV export, a pure kernel (`labelsCsv.ts`) over the labels the panel already lists, and the phone's Copy the label code press over `boxUrl`. PR 5 (S): the Tape layout, a second print root beside the sheet's with `@page` set to the tape's size, the Sheet · Tape chips remembered per device, the tick list, the counted press from `batchWords`, a render smoke, the guide's Scan a label section saying how to print to tape, and a *Labels* paragraph in `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`. Walked on both printers before it ships, with one run of each width, since the only proof of a tape layout is the tape.
 
@@ -135,7 +145,7 @@ What a web app cannot do, so the design does not try: Brother's b-PAC kit is Win
 
 ## The plan
 
-1. **PR 1 · the crew's scan lands on the box (XS)** — `/b` on the subcontractor, primary and superintendent lists in `layoutRouteAccess.ts`, with a test that walks the four roles over `/b/4f2a9c18`. Ships alone and today; it is a fix, not the feature. The guide's Scan a label words come true for the crew.
+1. **PR 1 · the crew's scan lands on the box, and the code reads with a dash (XS)** — `/b` on the subcontractor, primary and superintendent lists in `layoutRouteAccess.ts`, with a test that walks the four roles over `/b/4f2a9c18` and `/b/4f2a-9c18`; `boxCodeWords` and `boxAddressWords` in `labels.ts` on the sheet label, the manifest and the guide, with tests. Ships alone and today; the first half is a fix, not the feature. The guide's Scan a label words come true for the crew.
 2. **PR 2 · the public box page (S)** — `box-read` with the code check, the guard, the view row and the photo stream; the route out of the Layout; `BoxCode.tsx` forking on the session; `BoxPublicPage.tsx` on the portal's paper at 375 and 320; the sign-in press and its return; the registry row; the guide's section; the docs. Deploy the function after the merge (`supabase functions deploy box-read`); nothing in the database changes. `check:calls-ahead` has no table or RPC to label.
 3. **PR 3 · the search and the front door (S)** — `?find=` in the function over the same job; the search box and its results on the public page; the bare `/b` page with the typed code and the remembered site; the second redirect rule on prts.co (the owner, or a session in his Chrome signed in to Cloudflare), mirrored; the manifest foot's line. Redeploy the function.
 4. **PR 4 · the CSV and the Copy press (XS)** — **Export the labels as a CSV** on the Labels panel for Brother's editor, and **Copy the label code** on the box's screen for Brother's phone app. Ships before anything is laid out for tape, so the owner can print from the editor the day the printers arrive.
@@ -145,7 +155,7 @@ Later, not owed: a development's sibling jobs in the search; a *Print this list*
 
 ## How to verify
 
-- **PR 1**: `/dev-login?as=1`, Settings → View as… → Helper, then open `/b/<a live box's code>` in the address bar at 375. Before: the Dashboard. After: the box's screen on On site. The same as a primary and a superintendent.
+- **PR 1**: `/dev-login?as=1`, Settings → View as… → Helper, then open `/b/<a live box's code>` in the address bar at 375, once bare and once with the dash. Before: the Dashboard. After: the box's screen on On site. The same as a primary and a superintendent. Print one sheet label and one manifest on a ZZ job: the line under the QR reads `4F2A-9C18`, the QR still scans to the box, and the QR is still 21 modules across.
 - **PR 2**, on a ZZ test job (never a paid job's box): the office adds a cage on the ZZ job, prints its label, takes one photo on the phone and waits for the sweep to file it (five minutes). In a browser with no session, open `prts.co/b/<CODE>` as printed: the 301, then the page with the stencil, the photo, the lines and the two presses, nothing of the job. Try a code that is no box: *is not a box on any job*, and after 20 wrong codes from one connection the 429 words. Press Sign in to change a count, sign in as a helper on the job's team: the On site tab opens on that cage. Read `public_page_views` for one `box_page` row, and none for the signed-in look. Retire the cage and scan again: the retired words. A real phone's camera on the printed label, iPhone and Android, since the label's capitals are what the rule lower-cases.
 - **PR 3**: from the ZZ cage's page, Find a part: a word on a line in another ZZ box of the same job finds it, a word on a box of another job finds nothing. `prts.co` bare: the Scan a label page, the search line present on the phone that scanned, absent in a fresh browser.
 - **PR 4**: Export the labels as a CSV on a ZZ job with three boxes: three rows, the stencil, the code, the address; open it in Brother's editor, merge into a template with a QR, print one; scan the tape with a phone. On the phone, Copy the label code on a ZZ box and paste it into Notes: the capitals as the sheet label prints them.
@@ -170,4 +180,4 @@ Every job, person, street, part and count in them is made up: Ridgeway Builders'
 
 ## Where it stands
 
-Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; the tape labels for the two Brother printers added the same day from his second ask. Nothing built, nothing on prod touched. The four mock-ups are beside this card. Waiting on the four calls above.
+Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; the tape labels for the two Brother printers added the same day from his second ask, and the dashed code from his third. Nothing built, nothing on prod touched. The four mock-ups are beside this card. Waiting on the four calls above.
