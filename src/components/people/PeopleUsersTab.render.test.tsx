@@ -69,7 +69,7 @@ const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as un
 /** A roster row with an email and no login: the one row the ⋯ menu offers Invite as user on. */
 const ROSTER_ONLY: Person = { id: 'p1', master_user_id: 'u2', kind: 'helper', name: 'Rio Vance', email: 'rio@example.com', phone: null, notes: null, account_user_id: null }
 
-function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void; reloadRoster?: () => void } = {}) {
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; users?: UserRow[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void; reloadRoster?: () => void; deleteFreshPerson?: (row: { userId: string; name: string }) => void } = {}) {
   const ui = () => (
     <PeopleUsersTab
       isDev={false}
@@ -98,7 +98,7 @@ function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => v
       restoringId={null}
       isAlreadyUser={() => false}
       invitingId={null}
-      setInviteConfirm={() => {}}
+      inviteAsUser={() => {}}
       {...extra}
     />
   )
@@ -151,6 +151,26 @@ describe('PeopleUsersTab', () => {
     expect(within(menu).queryByText('Invite as user') !== null).toBe(isDev)
     // v2.6612: a dev's menu also opens the person's HR file.
     expect(within(menu).queryByText('Open their HR file') !== null).toBe(isDev)
+  })
+
+  // v2.6789: a users row with no login offers Delete… to the people who may archive, and never on your own row.
+  const RIO_ROW: UserRow = { id: 'u-rio', email: null, name: 'Rio Vance', role: 'helpers', notes: null, phone: null, last_sign_in_at: null, read_only: false, login_attached_at: null }
+  it('a users row with no login offers Delete… when the page hands the press, and a login row never does', async () => {
+    const deleteFreshPerson = vi.fn()
+    renderTab({ isDev: true, users: [...USERS, RIO_ROW], deleteFreshPerson })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Rio Vance' }))[0]!)
+    let menu = await screen.findByRole('menu')
+    fireEvent.click(within(menu).getByText('Delete…'))
+    expect(deleteFreshPerson).toHaveBeenCalledWith({ userId: 'u-rio', name: 'Rio Vance' })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Alex Rivera' }))[0]!)
+    menu = await screen.findByRole('menu')
+    expect(within(menu).queryByText('Delete…')).toBeNull()
+  })
+  it('without the press from the page, no row offers Delete…', async () => {
+    renderTab({ isDev: true, users: [...USERS, RIO_ROW] })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Rio Vance' }))[0]!)
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).queryByText('Delete…')).toBeNull()
   })
 
   // Empty states (punch list #184, sweep C): each one names its press, and the press works.

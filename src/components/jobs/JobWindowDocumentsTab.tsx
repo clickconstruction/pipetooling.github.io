@@ -177,6 +177,9 @@ export function JobWindowDocumentsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '0.5rem' }}>
+      {/* Plans first (v2.6791, the owner's ask on job 879): what a person opens most from this tab sat below the papers, off the screen on most jobs. */}
+      <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
+
       <section aria-labelledby="job-documents-pay-apps" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <FileSpreadsheet size={18} color="#16a34a" aria-hidden />
@@ -354,7 +357,6 @@ export function JobWindowDocumentsTab({
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 
-      <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>

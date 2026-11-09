@@ -597,3 +597,16 @@ describe('Hours statements on the Documents tab (punch list #212, PR 2)', () => 
     expect(screen.queryByText(/dev only, PR 1/)).toBeNull()
   })
 })
+
+describe('the Plans section sits first (v2.6791)', () => {
+  it('draws Plans above Pay applications, under the banner the window draws', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={job} onOverlayOpenChange={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Pay applications' })
+    const plansEl = document.querySelector('section[aria-labelledby="job-documents-plans"]')
+    const payApps = document.querySelector('section[aria-labelledby="job-documents-pay-apps"]')
+    expect(plansEl).toBeTruthy()
+    expect(payApps).toBeTruthy()
+    // DOCUMENT_POSITION_FOLLOWING: pay apps comes after plans.
+    expect(plansEl!.compareDocumentPosition(payApps!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})

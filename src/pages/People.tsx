@@ -97,6 +97,9 @@ import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeC
 import { foldHoursApproved, type HoursApprovedNudge } from '../lib/people/payWeekLinks'
 import { PayrollCatchUpModal } from '../components/pay/PayrollCatchUpModal'
 import { HirePersonModal } from '../components/people/HirePersonModal'
+import { DESK_EDITOR_Z } from '../components/personDesk/personDeskShared'
+import { attachLogin } from '../lib/people/attachLogin'
+import { runFreshDelete } from '../lib/people/freshPersonDelete'
 import { PayrollForecastModal } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
 import { summarizeStubDayBreakdown } from '../lib/officeJobRateSplit'
@@ -279,18 +282,37 @@ export default function People() {
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [invitingId, setInvitingId] = useState<string | null>(null)
-  const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
-  /** Add-to-roster follow-ons (v2.2762): invite by email and/or open the new person's desk. */
-  const [rosterFormInviteAfter, setRosterFormInviteAfter] = useState(false)
+  /**
+   * Add-to-roster follow-ons (v2.2762): attach a login and/or open the new person's desk. Since v2.6514 the add makes a
+   * users row with no login, so the invite was a dead door (invite-user refuses a row that exists); v2.6789 attaches the
+   * login on the row's own id right after the save, and opens the desk only once the form has closed — one window at a
+   * time, and the invite confirm that used to sit under the drawer is gone.
+   */
+  const [rosterFormAttachLoginAfter, setRosterFormAttachLoginAfter] = useState(false)
   const [rosterFormOpenDeskAfter, setRosterFormOpenDeskAfter] = useState(true)
   const personDesk = useOptionalPersonDesk()
   async function handleRosterFormSubmit(e: React.FormEvent) {
     const wasEditing = Boolean(editing)
     const saved = await handleSave(e)
     if (!saved || wasEditing) return
-    if (rosterFormInviteAfter && saved.email?.trim()) setInviteConfirm(saved)
-    if (rosterFormOpenDeskAfter && personDesk?.canOpen) personDesk.open({ personId: saved.id, displayName: saved.name })
-    setRosterFormInviteAfter(false)
+    const wantAttach = rosterFormAttachLoginAfter && isDev && Boolean(saved.email?.trim()) && Boolean(saved.account_user_id)
+    setRosterFormAttachLoginAfter(false)
+    let attached = false
+    if (wantAttach && saved.account_user_id && saved.email) {
+      try {
+        const r = await attachLogin(supabase, { userId: saved.account_user_id, email: saved.email, redirectTo: new URL('dashboard', window.location.href).href })
+        showToast(`${saved.name} is on the roster. Sign-in email sent to ${r.email}.`, 'success')
+        attached = true
+        void loadPeople()
+      } catch (err) {
+        showToast(formatErrorMessage(err, 'The login was not attached.'), 'error')
+      }
+    }
+    // A failed attach lands on the desk's Attach form so the one press left is in view.
+    const toAttach = wantAttach && !attached
+    if (personDesk?.canOpen && (rosterFormOpenDeskAfter || toAttach)) {
+      personDesk.open({ userId: saved.account_user_id, personId: saved.id, displayName: saved.name, section: toAttach ? 'access' : null, flow: toAttach ? 'attach_login' : null })
+    }
   }
   const [activeTab, setActiveTab] = useState<PeopleTab>('users')
   /** Per-group last-view memory (v2.2811): clicking a group tab lands on the view you used last there. Device-local. */
@@ -1034,11 +1056,34 @@ export default function People() {
     }
   }
 
-  function confirmAndInvite() {
-    if (!inviteConfirm) return
-    const p = inviteConfirm
-    setInviteConfirm(null)
-    inviteAsUser(p)
+  /** The ⋯ menu's Invite as user on a roster record with no users row: the app's one confirm window, then invite-user. */
+  async function confirmInvite(p: Person) {
+    const ok = await confirmDialog({ message: `Send ${p.name} an invite at ${p.email ?? 'their email'}? They get an email to set their own password.`, confirmLabel: 'Send the invite' })
+    if (ok) await inviteAsUser(p)
+  }
+
+  /**
+   * v2.6789: a row made by mistake. The dry run first, then the typed confirm and the delete, or the holds named with
+   * Archive offered instead (the desk, where Archive… is). The same people who may archive.
+   */
+  const canDeleteFreshPerson = isDev || authUserRole === 'controller' || (authUserRole === 'master_technician' && canAccessPay)
+  async function deleteFreshRow(row: { userId: string; name: string }) {
+    try {
+      const outcome = await runFreshDelete({
+        client: supabase,
+        userId: row.userId,
+        name: row.name,
+        confirm: (opts) => confirmDialog(opts),
+        archiveInstead: () => personDesk?.open({ userId: row.userId, displayName: row.name, section: 'access' }),
+      })
+      if (outcome === 'deleted') {
+        showToast(`${row.name} deleted. The roster row went with them.`, 'success')
+        void loadPeople()
+        void loadPayConfig()
+      }
+    } catch (err) {
+      showToast(formatErrorMessage(err, 'The person was not deleted.'), 'error')
+    }
   }
 
   // v2.3702: the Users tab's Pay lens edits the pay-config map, which only the Hours / Payroll / Review
@@ -1959,7 +2004,8 @@ export default function People() {
           restoringId={restoringId}
           isAlreadyUser={isAlreadyUser}
           invitingId={invitingId}
-          setInviteConfirm={setInviteConfirm}
+          inviteAsUser={(p) => void confirmInvite(p)}
+          deleteFreshPerson={canDeleteFreshPerson ? (row) => void deleteFreshRow(row) : undefined}
         />
       )}
 
@@ -2722,14 +2768,15 @@ export default function People() {
         </div>
       )}
 
+      {/* v2.6789: every window this page opens sits on the desk's editor rung (DESK_EDITOR_Z, above the drawer's DESK_Z), so none is ever under the drawer. */}
       {formOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: DESK_EDITOR_Z, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="roster-form-title" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(480px, 94vw)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div>
               <h2 id="roster-form-title" style={{ margin: 0, fontSize: '1.125rem' }}>{editing ? 'Edit person' : 'Add to roster'}</h2>
               {!editing ? (
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                  A roster row, no login. Their portal, paperwork and pay work from this alone. You can invite them to sign in now or later.
+                  A person with no login. Their hours, portal, paperwork and pay work from this alone. {isDev ? 'You can attach a login now, or later from their desk.' : 'A dev attaches a login later from their desk.'}
                 </p>
               ) : null}
             </div>
@@ -2774,10 +2821,12 @@ export default function People() {
               </div>
               {!editing ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8125rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }} title={email.trim() ? undefined : 'Needs an email'}>
-                    <input type="checkbox" checked={rosterFormInviteAfter && Boolean(email.trim())} disabled={saving || !email.trim()} onChange={(e) => setRosterFormInviteAfter(e.target.checked)} />
-                    Also invite them to sign in (sends an email)
-                  </label>
+                  {isDev ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }} title={email.trim() ? 'The login lands on this same person. They choose a password from the email.' : 'Needs an email'}>
+                      <input type="checkbox" checked={rosterFormAttachLoginAfter && Boolean(email.trim())} disabled={saving || !email.trim()} onChange={(e) => setRosterFormAttachLoginAfter(e.target.checked)} />
+                      Also attach a login (sends them a sign-in email)
+                    </label>
+                  ) : null}
                   {personDesk?.canOpen ? (
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <input type="checkbox" checked={rosterFormOpenDeskAfter} disabled={saving} onChange={(e) => setRosterFormOpenDeskAfter(e.target.checked)} />
@@ -2796,20 +2845,8 @@ export default function People() {
           </div>
         </div>
       )}
-      {inviteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <p style={{ marginBottom: '1rem' }}>They&apos;ll get an email to set their own password.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={confirmAndInvite} style={{ padding: '0.5rem 1rem' }}>Send invite</button>
-              <button type="button" onClick={() => setInviteConfirm(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {editingUserNote && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, paddingTop: 'var(--app-top-chrome, 0px)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: DESK_EDITOR_Z, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
             <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Full name, title, and phone</h3>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{editingUserNote.name}</p>

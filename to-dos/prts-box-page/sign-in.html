@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prts.co: sign in to change a count</title>
+<style>
+  /* Punch list #294. Made-up data (Oak Hollow Apartments Building C, cage B3, Mateo Ruiz). Frame 1 is the public page
+     on the portal's paper; frames 2 and 3 are the app as it is today, drawn with src/index.css's light tokens: the
+     sign-in page unchanged, then the box's screen on the Tally's On site tab with the presses that exist. */
+  :root { color-scheme: light; --paper: #f6f3ec; --card: #fdfcf9; --ink: #16283c; --muted: #5a6b7e; --faint: #5e6d7c; --hair: #ddd6c8; --copper: #9a5b2b; --blue: #2563eb; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --page: #eceae4; --strong: #111827;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-muted: #6b7280; --text-faint: #9ca3af; --green-700: #15803d; --amber: #b45309; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 34ch; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 96ch; }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--strong); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; flex: 0 0 375px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .cap .n { display: inline-flex; width: 22px; height: 22px; border-radius: 999px; background: var(--strong); color: #fff; align-items: center; justify-content: center; font-size: 12px; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; background: var(--paper); }
+  .frame.app { background: var(--bg-page); color: var(--text-base); }
+  .screen { width: 375px; font-size: 16px; line-height: 1.45; padding: 0 0 18px; }
+  .bar { height: 22px; background: #e7e3d9; } .app .bar { background: #e5e7eb; }
+  .pad { padding: 16px 16px 0; }
+  .brand { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); margin: 0; }
+  .stencil { margin: 6px 0 0; font-size: 30px; line-height: 1.1; font-weight: 800; }
+  .where { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+  .photo { margin: 14px 16px 0; height: 120px; border-radius: 12px; border: 1px solid var(--hair); background: linear-gradient(160deg, #8b8f93 0%, #c9c3b5 45%, #6f6a60 100%); }
+  table { width: calc(100% - 32px); margin: 14px 16px 0; border-collapse: collapse; background: var(--card); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  td { padding: 9px 12px; border-top: 1px solid var(--hair); } tr:first-child td { border-top: 0; }
+  td.n { text-align: right; font-weight: 700; font-size: 18px; width: 1%; }
+  .presses { display: grid; gap: 10px; margin: 18px 16px 0; }
+  .press { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 12px; font-weight: 700; font-size: 16px; border: 1px solid var(--hair); background: var(--card); color: var(--ink); text-decoration: none; padding: 0 14px; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.ring { outline: 3px solid var(--copper); outline-offset: 3px; }
+  .arrow { align-self: center; font-size: 28px; color: var(--muted); padding: 0 2px; }
+  /* sign-in */
+  .signin { padding: 40px 24px 0; display: grid; gap: 12px; }
+  .signin .logo { font-size: 22px; font-weight: 800; color: var(--text-strong); margin: 0 0 8px; }
+  .signin .in { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); padding: 0 14px; display: flex; align-items: center; color: var(--text-faint); font-size: 16px; }
+  .signin .in.filled { color: var(--text-base); }
+  .signin .btn { min-height: 48px; border-radius: 10px; background: var(--blue); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .signin .back { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-muted); font-size: 14px; }
+  .signin .back b { color: var(--text-strong); }
+  .signin .opt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); }
+  /* app box screen */
+  .tabs { display: flex; gap: 6px; padding: 12px 16px 0; }
+  .tab { padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); }
+  .tab.on { background: var(--text-strong); color: #fff; border-color: var(--text-strong); }
+  .job { margin: 12px 16px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--text-base); }
+  .job span { color: var(--text-muted); font-size: 13px; }
+  .boxhd { margin: 14px 16px 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .boxhd b { font-size: 22px; color: var(--text-strong); } .boxhd span { color: var(--text-muted); font-size: 13.5px; }
+  .line { margin: 10px 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; color: var(--text-base); }
+  .line .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .line .top b { font-size: 20px; }
+  .line .mk { color: var(--text-muted); font-size: 13px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { min-height: 32px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-strong); }
+  .chip.g { border-color: var(--green-700); color: var(--green-700); }
+  .acts { margin: 14px 16px 0; display: grid; gap: 8px; }
+  .act { min-height: 44px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-strong); }
+  .act.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .more { margin: 10px 16px 0; color: var(--text-muted); font-size: 13px; }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+  ol.steps { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 96ch; }
+  ol.steps li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #294 · mock-up 3 of 3</p>
+  <h1>prts.co: sign in to change a count</h1>
+  <p>Reading is free. Writing is the app's own press, behind the sign-in, under the gate every table already has. The public page remembers which box it came from, the sign-in page is the one that exists, and the person lands on that box's screen on the On site tab with Used, Move to…, Can't find, Count this box, Add a part and Photo. <b>No new write, no new RPC, no new press.</b></p>
+</header>
+
+<h2>The hand-off in three frames</h2>
+<div class="row">
+  <div class="col">
+    <div class="cap"><span class="n">1</span> the public page, signed out</div>
+    <div class="frame"><div class="screen">
+      <div class="bar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <p class="stencil">Cage B3</p>
+        <p class="where">Level 2 · by the north stair</p>
+      </div>
+      <div class="photo"></div>
+      <table>
+        <tr><td>3/4" copper 90° elbows</td><td class="n">42</td></tr>
+        <tr><td>3/4" copper couplings</td><td class="n">36</td></tr>
+        <tr><td>1/2" copper pipe, 10 ft</td><td class="n">18</td></tr>
+      </table>
+      <div class="presses">
+        <a class="press blue ring" href="#">Sign in to change a count</a>
+        <a class="press" href="#">Find a part on this site</a>
+      </div>
+    </div></div>
+  </div>
+  <div class="arrow">›</div>
+  <div class="col">
+    <div class="cap"><span class="n">2</span> the app's sign-in page, as it is</div>
+    <div class="frame app"><div class="screen">
+      <div class="bar"></div>
+      <div class="signin">
+        <p class="logo">PipeTooling</p>
+        <div class="in filled">mateo@example.com</div>
+        <div class="in">Password</div>
+        <div class="btn">Sign in</div>
+        <div class="back"><span class="opt">Optional, not owed</span><br>After you sign in you go back to <b>Cage B3</b>.</div>
+      </div>
+    </div></div>
+  </div>
+  <div class="arrow">›</div>
+  <div class="col">
+    <div class="cap"><span class="n">3</span> the box's screen on the On site tab, today's</div>
+    <div class="frame app"><div class="screen">
+      <div class="bar"></div>
+      <div class="tabs"><span class="tab">Transactions</span><span class="tab">Materials Estimate</span><span class="tab on">On site</span></div>
+      <div class="job">Oak Hollow Apartments Building C <span>Change</span></div>
+      <div class="boxhd"><b>Cage B3</b><span>Level 2 · by the north stair</span></div>
+      <div class="line">
+        <div class="top"><span>3/4" copper 90° elbows<br><span class="mk">Mueller</span></span><b>42</b></div>
+        <div class="chips"><span class="chip">Used</span><span class="chip">Move to…</span><span class="chip">Can't find</span><span class="chip g">Short</span></div>
+      </div>
+      <div class="line">
+        <div class="top"><span>3/4" copper couplings<br><span class="mk">Mueller</span></span><b>36</b></div>
+        <div class="chips"><span class="chip">Used</span><span class="chip">Move to…</span><span class="chip">Can't find</span><span class="chip g">Short</span></div>
+      </div>
+      <p class="more">4 more lines</p>
+      <div class="acts"><div class="act blue">Count this box</div><div class="act">Add a part</div><div class="act">Photo</div></div>
+    </div></div>
+  </div>
+</div>
+
+<h2>What happens between the frames</h2>
+<ol class="steps">
+  <li>The press writes <b>/b/4f2a9c18</b> into the app's one-shot return key, the same key the Add Task shortcut uses, and goes to the sign-in page.</li>
+  <li>The sign-in page is unchanged. Once signed in, the app reads the key, clears it, and lands on <b>/b/4f2a9c18</b> with a session.</li>
+  <li>With a session, that route does what it does today: finds the box under the person's own permissions and opens its screen on the On site tab. PR 1 makes sure a helper, a primary or a superintendent is let through instead of bounced to the Dashboard.</li>
+  <li>A signed-in person who is not on the job's team sees the lines and no press, as today. Every press that writes still goes through the one gate on the five tables.</li>
+</ol>
+<p class="note"><b>A crew member who is already signed in</b> never sees frame 1: the scan goes straight to frame 3. The public page is for the phone with no session: a new helper, a GC's superintendent, an inspector, or the owner on a borrowed phone.</p>
+</div>
+</body>
+</html>
