@@ -42,7 +42,7 @@ describe('What everyone sees · the training lessons', () => {
     },
   ]
 
-  it('ends the dev\'s screens with each lesson that draws a figure, at its own door, and no other role\'s', () => {
+  it('ends the dev\'s and the owner\'s screens with each lesson that draws a figure, at its own door, and no other role\'s', () => {
     const dev = lensScreens('dev', { courses: pipes })
     expect(dev.slice(-2)).toEqual([
       { id: 'lesson:pipes/01-in', label: 'Pipes · Lesson 1 · In', where: 'Training', to: '/training/pipes?lesson=01-in', kind: 'lesson' },
@@ -50,7 +50,9 @@ describe('What everyone sees · the training lessons', () => {
     ])
     expect(dev.filter((s) => s.kind === 'lesson')).toHaveLength(2)
     expect(lensReadsLessons('dev')).toBe(true)
-    for (const r of LENS_ROLES.filter((x) => x !== 'dev')) {
+    // The owner previews a course that is off since v2.6763 (punch list #188 row 71), so his screens carry the lessons too.
+    expect(lensReadsLessons('master_technician')).toBe(true)
+    for (const r of LENS_ROLES.filter((x) => x !== 'dev' && x !== 'master_technician')) {
       expect(lensReadsLessons(r), r).toBe(false)
       expect(lensScreens(r, { courses: pipes }).some((s) => s.kind === 'lesson'), r).toBe(false)
     }
