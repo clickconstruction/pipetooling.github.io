@@ -31,6 +31,8 @@
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
+import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
+import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -139,6 +141,18 @@ export const WRITE_VERBS = {
   // read of the person and of any matter standing on them (devMcpPersonMatter.ts), refused when one already stands.
   plan_matter_open_person: { rpc: null, step: 'plan' },
   apply_matter_open_person: { rpc: null, step: 'apply' },
+  // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
+  // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
+  // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
+  // and the RPC the desk itself calls (add_worker, invite-user, create-user, send-sign-in-email, detach-login,
+  // change-user-email, set-user-password, resetPasswordForEmail); no wrapper, so rpc is null — the dry run is the server's
+  // read of the users row, the roster row and the auth stamps (devMcpAccount.ts).
+  plan_account: { rpc: null, step: 'plan' },
+  apply_account: { rpc: null, step: 'apply' },
+  plan_login: { rpc: null, step: 'plan' },
+  apply_login: { rpc: null, step: 'apply' },
+  plan_password_reset: { rpc: null, step: 'plan' },
+  apply_password_reset: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -245,6 +259,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isPersonMatterVerb(verb)) {
     // v2.6582: the shape check is devMcpPersonMatter's; the dry run is the server's read of the person and the standing matter.
     const built = personMatterInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isAccountVerb(verb)) {
+    // v2.6792: the shape check is devMcpAccount's; the dry run is the server's read of the account, its roster row and the auth stamps.
+    const built = verb === 'plan_account' || verb === 'apply_account' ? accountInput(verb, input, todayYmd()) : verb === 'plan_login' || verb === 'apply_login' ? loginInput(verb, input) : passwordResetInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1039,6 +1059,10 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const themeMarks = verb === 'apply_theme_marks'
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
+  // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
+  if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
+  if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || event || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
