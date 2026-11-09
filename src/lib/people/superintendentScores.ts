@@ -43,9 +43,10 @@ export type ScoreRow = {
 
 /**
  * `rateUsd` is the roster's loaded rate the labor kept is priced at (payroll access only, as a wage); `rateSource` says
- * whether the roster had field hours in the window or each row fell back to its award's own rate.
+ * whether the roster had field hours in the window or each row fell back to its award's own rate — null when the read
+ * came from the function as it was before the rate (the deploy ahead of the push), which priced the award's dollars.
  */
-export type ScoreRead = { readsWages: boolean; sharePct: number; burden: number; rateUsd: number | null; rateSource: 'roster' | 'award'; fromYmd: string; toYmd: string; rows: ScoreRow[] }
+export type ScoreRead = { readsWages: boolean; sharePct: number; burden: number; rateUsd: number | null; rateSource: 'roster' | 'award' | null; fromYmd: string; toYmd: string; rows: ScoreRow[] }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
@@ -73,7 +74,7 @@ export function parseScoreRead(raw: unknown): ScoreRead {
     sharePct: num(o.share_pct) ?? 10,
     burden: num(o.burden) ?? 1.2,
     rateUsd: num(o.rate_usd),
-    rateSource: o.rate_source === 'roster' ? 'roster' : 'award',
+    rateSource: o.rate_source === 'roster' ? 'roster' : o.rate_source === 'award' ? 'award' : null,
     fromYmd: str(o.from) ?? '',
     toYmd: str(o.to) ?? '',
     rows: rows.flatMap((x) => {
@@ -281,10 +282,11 @@ export const SCORE_RULE_LINES: readonly string[] = [
 /**
  * The rate line under the rule: "Labor kept is priced at the roster's loaded rate, $29.01 an hour: the last 90 days of
  * field wages at the 1.2 burden factor." Without payroll access the figure stays out; with no field hours in the window
- * the words say each job read its award's own rate.
+ * the words say each job read its award's own rate; a read from before the rate (no `rate_source` key) states the rule
+ * with no figure and claims nothing about the roster.
  */
 export function rateRuleWords(read: Pick<ScoreRead, 'readsWages' | 'rateUsd' | 'rateSource' | 'burden'>): string {
   if (read.rateSource === 'award') return "The roster had no recorded field hours in the 90 days before the period's end, so each job's labor kept is priced at its award's own rate, the bid's price of the labor."
-  const figure = read.readsWages && read.rateUsd != null ? `, $${read.rateUsd.toFixed(2)} an hour` : ''
+  const figure = read.rateSource === 'roster' && read.readsWages && read.rateUsd != null ? `, $${read.rateUsd.toFixed(2)} an hour` : ''
   return `Labor kept is priced at the roster's loaded rate${figure}: the last 90 days of field wages at the ${read.burden} burden factor. The line budgets' rate stays the bid's price.`
 }

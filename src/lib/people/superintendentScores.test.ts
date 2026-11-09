@@ -51,7 +51,7 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(pat.hoursUnder).toBeCloseTo(41.7, 1)
     // The old read, with no rate keys, reads as the award's rate and no price: nothing is dropped.
     const old = parseScoreRead(raw)
-    expect(old).toMatchObject({ rateUsd: null, rateSource: 'award' })
+    expect(old).toMatchObject({ rateUsd: null, rateSource: null })
     expect(old.rows[0]!.priceUsd).toBeNull()
     expect(superintendentScores(old, '2026-10-31')[0]!.jobs).toHaveLength(1)
   })
@@ -59,6 +59,8 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(rateRuleWords({ readsWages: true, rateUsd: 29.01, rateSource: 'roster', burden: 1.2 })).toBe("Labor kept is priced at the roster's loaded rate, $29.01 an hour: the last 90 days of field wages at the 1.2 burden factor. The line budgets' rate stays the bid's price.")
     expect(rateRuleWords({ readsWages: false, rateUsd: null, rateSource: 'roster', burden: 1.2 })).toBe("Labor kept is priced at the roster's loaded rate: the last 90 days of field wages at the 1.2 burden factor. The line budgets' rate stays the bid's price.")
     expect(rateRuleWords({ readsWages: true, rateUsd: null, rateSource: 'award', burden: 1.2 })).toContain("priced at its award's own rate")
+    // A read from the function before the rate (the deploy ahead of the push) states the rule and claims nothing about the roster.
+    expect(rateRuleWords({ readsWages: true, rateUsd: null, rateSource: null, burden: 1.2 })).toBe("Labor kept is priced at the roster's loaded rate: the last 90 days of field wages at the 1.2 burden factor. The line budgets' rate stays the bid's price.")
     expect(SCORE_RULE_LINES).toHaveLength(7)
     expect(SCORE_RULE_LINES[6]).toBe('A project priced under $2,500 is never on the board, as it is never on the baseline deck.')
     expect(SCORE_RULE_LINES[3]).toContain("priced at the roster's loaded rate")
