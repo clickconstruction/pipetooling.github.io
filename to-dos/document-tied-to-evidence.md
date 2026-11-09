@@ -2,7 +2,7 @@
 name: "A document names the evidence record it transcribes, so a search hit on a line of a call opens the call"
 number: 287
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · built the same day as v2.6713 on claude/287-document-tied-to-evidence-f4804f (the column, the two chips, the picker, the seat's evidence_id, the brief's and the search's pair) · the migration push, the dev-mcp deploy and the live check on a ZZ TEST person follow the merge
+status: proposed 2026-11-08 · the owner's yes the same day · built the same day as v2.6713 on claude/287-document-tied-to-evidence-f4804f (the column, the two chips, the picker, the seat's evidence_id, the brief's and the search's pair) · merged 2026-11-08 (#7341) with its migration `20261108193000` in prod's ledger · left: the `dev-mcp` deploy (`check:edge-drift` names it for v2.6713 on 2026-11-09 00:20 UTC) and the live check on a ZZ TEST person
 ver: v2.6713
 summary: >
   A transcript on an HR file is a named document; the recording it transcribes is an evidence
@@ -11,7 +11,7 @@ summary: >
   named document name its evidence record: the document shows the record's date, hash and audio
   door, the record shows "transcript on file" with a door to the document, and the case brief and
   search carry the pair.
-next: After the merge push the migration and deploy dev-mcp, run How to verify on a ZZ TEST person, then set the link on this week's documents through the seat (a section-free plan per transcript), applied on the owner's word.
+next: Deploy dev-mcp (the migration is pushed), run How to verify on a ZZ TEST person, then set the link on this week's documents through the seat (a section-free plan per transcript), applied on the owner's word.
 size: S
 blocker: None.
 opinion: build — one nullable column and two chips, and it turns a pile of transcripts into evidence a reader can open from either side

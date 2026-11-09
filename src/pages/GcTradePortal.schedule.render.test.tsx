@@ -79,6 +79,45 @@ describe('the trade’s chart in its portal (the schedule’s PR 14b)', () => {
   })
 })
 
+describe('the whole job under the bars (punch list #205, PR 3)', () => {
+  it('folds open to one row a stage, the company’s own work lit in its stage, the dates to meet and the planned finish', async () => {
+    await openJob()
+    const chart = screen.getByRole('region', { name: 'Your schedule on this job' })
+    const fold = chart.querySelector('[data-portal-whole-job]')!
+    expect(fold).toBeTruthy()
+    expect(within(chart).getByText('The whole job')).toBeTruthy()
+    expect(fold.querySelectorAll('[data-portal-stage]')).toHaveLength(5)
+    expect(fold.querySelectorAll('[data-portal-stage="mine"]')).toHaveLength(2)
+    expect(fold.textContent).toContain('Oct 3 – Oct 19 · 70% · your Rough-in is here')
+    expect(fold.textContent).toContain('Oct 20 – Nov 10 · not started · your Trim and fixtures is here')
+    expect(fold.textContent).toContain('Aug 9 – Aug 24 · done')
+    const foot = fold.querySelector('[data-portal-whole-foot]')!
+    expect(foot.textContent).toContain('Dates to meet: Roof on Oct 2, met · Rough-in inspection Oct 19 · Certificate of occupancy Nov 17')
+    expect(foot.textContent).toContain('Click plans to finish Nov 17')
+    // Under the bars, and no company's name in it.
+    expect(within(chart).getByText('Waiting on you').compareDocumentPosition(fold) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    for (const name of ['Hill Country Framing', 'Brushline Painting', 'Sample Electric']) expect(fold.textContent).not.toContain(name)
+    expect(fold.textContent).not.toContain('$')
+  })
+
+  it('says its words in Spanish, and draws no fold without stages', () => {
+    const schedule = gcTradePortalSampleSchedules(TODAY)[ID.job]!
+    render(
+      <PortalLangContext.Provider value="es">
+        <GcTradePortalSchedule schedule={schedule} today={TODAY} />
+      </PortalLangContext.Provider>,
+    )
+    const fold = document.querySelector('[data-portal-whole-job]')!
+    expect(fold.textContent).toContain('Toda la obra')
+    expect(fold.textContent).toContain('su Rough-in está aquí')
+    expect(fold.textContent).toContain('Click planea terminar el 17 nov')
+    cleanup()
+    const { stages: _stages, ...bare } = schedule
+    render(<GcTradePortalSchedule schedule={bare} today={TODAY} />)
+    expect(document.querySelector('[data-portal-whole-job]')).toBeNull()
+  })
+})
+
 describe('the job’s phases above the bars (#204 PR 6, the owner’s call 5)', () => {
   it('draws the phases as a strip with their dates and the dates to meet, by name and dates alone', async () => {
     await openJob()

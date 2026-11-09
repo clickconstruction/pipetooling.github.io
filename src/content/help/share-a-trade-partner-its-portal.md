@@ -48,6 +48,8 @@ On a job we are building, the job page opens on a head. The head says the day th
 
 Under the head, the job page shows **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show. On a job drawn from a template with phases, the job's phases show first as a strip with their dates. The dates to meet sit under it. Another company's bars never show there either.
 
+Under the chart, **The whole job** folds open. It shows the job as stages, one row each, with its dates and its percent. The company's own work is lit in its stage, with its name beside it. Under the rows sit the dates to meet and the day we plan to finish. No other company is named there.
+
 Under each of its own bars the company can press **We will be late**. It gives the new day, picks why and says what happened. Before it sends, it sees what that day would push back. After we push back, it can press **We will make** the day. **Your dates moved** shows the new dates we sent it. It answers **These dates work** or **I need another day**. **Your next three weeks** lists its work for this week and the next two. It marks each bar **Done** or **Not done** at the week's end. It also says how many people a day it will have on site.
 
 Once its statement of work is signed, the job page shows the job too. It shows each line's percent done and what we paid through. It shows the punch list, the submittals it owes, its draws and its questions while we build.

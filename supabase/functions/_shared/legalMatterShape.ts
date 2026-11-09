@@ -97,7 +97,9 @@ export const MATTER_GAP_ANSWER_COLUMNS = ['matter_id', 'gap_key', 'label', 'answ
  * amount, the basis, the Evidence document's id and the order added. Never who typed it, who changed it or when a
  * removed line went (the function sends live rows only).
  */
-export const MATTER_CLAIM_LINE_COLUMNS = ['id', 'kind', 'title', 'amount', 'basis', 'document_id', 'added_at'] as const
+export const MATTER_CLAIM_LINE_COLUMNS = ['id', 'kind', 'title', 'amount', 'basis', 'document_id', 'added_at', 'settlement_only'] as const
+/** v2.6697: the flag's column, read with a fallback until migration 20261108123000 is pushed. */
+export const MATTER_CLAIM_LINE_PENDING_COLUMNS: ReadonlyArray<string> = ['settlement_only']
 
 /** The select strings: each list, plus the columns only the function reads (the PDF paths it signs, the payer key). */
 export const MATTER_COUNSEL_SELECT = {

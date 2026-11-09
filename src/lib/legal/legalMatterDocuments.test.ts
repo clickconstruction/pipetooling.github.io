@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_GROUP_ORDER, LEGAL_DOCUMENT_MAX_BYTES, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentGroupWords, legalDocumentPassesFilter, legalDocumentPayerPossessive, legalDocumentStateChipWords, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalDocumentKindWords, legalDocumentMime, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateOf, legalDocumentStateWords, legalDocumentStoragePath, legalDocumentTimelineDay, legalDocumentTitleFromName, legalPortalDocumentFromRow, parseLegalPortalDocuments } from './legalMatterDocuments'
+import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_GROUP_ORDER, LEGAL_DOCUMENT_MAX_BYTES, LEGAL_TEXT_DOCUMENT_MAX_CHARS, groupLegalDocumentsByWhose, legalDocumentIsText, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentGroupWords, legalDocumentPassesFilter, legalDocumentPayerPossessive, legalDocumentStateChipWords, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalDocumentKindWords, legalDocumentMime, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateOf, legalDocumentStateWords, legalDocumentStoragePath, legalDocumentTimelineDay, legalDocumentTitleFromName, legalPortalDocumentFromRow, parseLegalPortalDocuments } from './legalMatterDocuments'
 
 describe('legalMatterDocuments (v2.4810)', () => {
   it('a document needs a title, one line on what it shows, and a kind the portal takes under 10 MB', () => {
@@ -24,7 +24,20 @@ describe('legalMatterDocuments (v2.4810)', () => {
     expect(legalDocumentSizeWords(1_300_000)).toBe('1.2 MB')
     expect(legalDocumentKindWords('message/rfc822')).toBe('Email')
     expect(legalPortalDocumentFromRow({ id: 'd', title: ' Billing report ', shows: 'The itemization.', mime: 'application/pdf', size_bytes: 64075, added_at: '2026-10-07T15:00:00Z' }, 'Robin Ortega', 'https://x/signed', (iso) => iso.slice(0, 10)))
-      .toEqual({ id: 'd', title: 'Billing report', shows: 'The itemization.', mime: 'application/pdf', sizeBytes: 64075, addedOn: '2026-10-07', addedByName: 'Robin Ortega', url: 'https://x/signed', datedOn: '', state: 'final', sentOn: '', sentHow: '', sentTo: '', proofDocumentId: '', receivedOn: '' })
+      .toEqual({ id: 'd', title: 'Billing report', shows: 'The itemization.', mime: 'application/pdf', sizeBytes: 64075, addedOn: '2026-10-07', addedByName: 'Robin Ortega', url: 'https://x/signed', datedOn: '', state: 'final', sentOn: '', sentHow: '', sentTo: '', proofDocumentId: '', receivedOn: '', text: '' })
+  })
+
+  it('a .md or .txt is a text document (v2.6716, punch list #288): its kind, its words on the firm\'s row, and the cap on the words', () => {
+    expect(legalDocumentMime({ type: '', name: 'Intake memo.md' })).toBe('text/markdown')
+    expect(legalDocumentMime({ type: 'text/markdown', name: 'x' })).toBe('text/markdown')
+    expect(legalDocumentIsText('text/markdown')).toBe(true)
+    expect(legalDocumentIsText('text/plain')).toBe(true)
+    expect(legalDocumentIsText('application/pdf')).toBe(false)
+    expect(legalDocumentKindWords('text/markdown')).toBe('Text')
+    expect(legalPortalDocumentFromRow({ id: 'd', title: 'Memo', shows: 'S', mime: 'text/markdown', size_bytes: 10, added_at: '2026-11-08T15:00:00Z' }, 'R', '', (iso) => iso.slice(0, 10), '## One\n\nWords.').text).toBe('## One\n\nWords.')
+    expect(parseLegalPortalDocuments([{ id: 'e', title: 'U', text: '# T' }, { id: 'f', title: 'V' }]).map((d) => d.text)).toEqual(['# T', ''])
+    expect(legalDocumentProblem({ title: 'T', shows: 'S', text: 'x'.repeat(LEGAL_TEXT_DOCUMENT_MAX_CHARS + 1) })).toContain('longer than')
+    expect(legalDocumentProblem({ title: 'T', shows: 'S', text: 'fine' })).toBeNull()
   })
 })
 
