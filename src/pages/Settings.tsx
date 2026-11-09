@@ -60,7 +60,7 @@ import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
 import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
-import { isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
+import { isControllerOrDev, isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
 import { OfficeHoursSettingsCard } from '../components/settings/OfficeHoursSettingsCard'
 import { MissedCallReplyCard } from '../components/settings/MissedCallReplyCard'
@@ -508,7 +508,7 @@ export default function Settings() {
     openFindDuplicatesModal,
     handleMergeDuplicate,
   } = useSettingsPeopleDirectory({
-    enabled: myRole === 'dev',
+    enabled: isOfficeRole(myRole),
     authUserId: authUser?.id ?? null,
     users,
     setError,
@@ -781,8 +781,8 @@ export default function Settings() {
 
     }
     
-    // Load dev-only data (users, people, etc.)
-    if (role === 'dev') {
+    // The roster the People & teams tab's groups and pins pick from: the office's since v2.6755 (punch list #188), a dev's before.
+    if (isOfficeRole(role)) {
     const { data: list, error: eList } = await supabase
       .from('users')
       .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
@@ -1485,8 +1485,10 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title={settingsGroupTitle('settings-people', 'People & teams')} description={settingsGroupHint('settings-people')}>
-      {myRole === 'dev' && (
+      {/* Punch list #188 rows 8–13 and 22 (v2.6755): the tab is the office's; each block inside reads its own row's audience. */}
+      {isOfficeRole(myRole) && (
         <SettingsPeopleTab
+          myRole={myRole}
           additionalPeopleSectionOpen={additionalPeopleSectionOpen}
           allPeopleCount={allPeopleCount}
           deleteNonUserPerson={deleteNonUserPerson}
@@ -1543,10 +1545,11 @@ export default function Settings() {
 
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
-      {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+      {isOwnerOrDev(myRole) && <TeamReviewCadenceSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <SuperintendentBonusSettingsBlock />}
       {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs, bills and liens; its old anchor still lands here. */}
-      {myRole === 'dev' && (
+      {/* Punch list #188 row 22 (v2.6755): the pay-run day is payroll's, the controller's with a dev. */}
+      {isControllerOrDev(myRole) && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">
           <SubPortalPaySettingsBlock />
         </SettingsFoldCard>
