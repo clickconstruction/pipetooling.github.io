@@ -1,8 +1,8 @@
 ---
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
-group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 built as v2.6720 (migration 20261108230000, stacked on PR 1; dev-mcp 0.45.0) · PR 3 next
+group: close
+status: LIVE 2026-11-09 · the owner's pick of 2026-11-08, one documents table for people and matters · PR 1 the table and text documents (v2.6716, #7346), PR 2 the counsel-only mark (v2.6720, #7347), PR 3 the seat's section read (v2.6722, #7348) and the firm preview's Read here (v2.6770, #7416) merged; migrations 20261108210000, 20261108230000 and 20261108233000 on prod; legal-portal and dev-mcp 0.46.0 deployed; How to verify run on two ZZ TEST matters 2026-11-09 (Where it stands)
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document
@@ -12,9 +12,10 @@ summary: >
   the attorney by hand. Give a matter document a counsel-only mark the firm's portal and the agent
   role honor, and let a text document on a matter be text, read by section and searched like a
   named document.
-next: Merge PR 1 after #286's and #287's migrations are on main (they alter the table PR 1 renames), push the migration, deploy legal-portal and dev-mcp, regenerate the types and the catalog; then PR 2 the counsel-only mark on the Evidence row and PR 3 the seat's section reads on a matter's text document.
+next: The owner's two calls under Where it stands: whether to stand up a ZZ test firm for the one leg not walked (the live portal as a firm), and whether to keep or archive the ZZ TEST rows the verify left. Then delete this card. Owed by this session: a types PR once #7427 lands, for the two new read functions.
 size: M · PR 1 text on a matter document and the search union (S) · PR 2 the counsel-only mark on the document, the portal's and the agent's refusals (S) · PR 3 the seat's section reads on a matter document (S)
-blocker: None on the shape (picked 2026-11-08); the firm portal's read of a held document is a product call for PR 2.
+blocker: None.
+ver: v2.6716 · 6720 · 6722 · 6770
 opinion: build PR 1 and PR 2 now — the matter is where counsel reads, and today it is the one place in the case a session cannot search or hold; leave the table merge for when the Legal desk asks for it
 mockup: not required — the Evidence tab's row gains a lock chip and a text viewer; the desk and the portal are shipped surfaces
 ---
@@ -74,7 +75,7 @@ hold on the matter.
 |---|---|---|
 | 1 | The shared `documents` table (the rename, `matter_id`, the views with the old names) and `legal_matter_documents.text_document_id`; the desk, the seat and the mail door keep text for a text file; the desk and the portal render it; `dev_case_search` searches it by section. Migration, `legal-portal` and `dev-mcp` redeployed. **Built: v2.6716.** | M |
 | 2 | `counsel_only` on a matter document: the tick on the desk's add form, the seat's and the mail door's field, the portal's list wearing the lock and the packet leaving it out, the seat refused the row and its words by policy (the agent role has none), the lock chip on the row and the menu's on and off, `ACCESS_CONTROL.md` and `docs/HR_FILES.md` stating the limit. **Built: v2.6720.** | S |
-| 3 | The seat reads a matter document by section (`get_matter_document { matter_id, doc_id, section? }`) and `search_case` hits on it carry the section, as a named document's do. | S |
+| 3 | The seat reads a matter document by section (`get_matter_document { matter_id, doc_id, section? }`) and `search_case` hits on it carry the section, as a named document's do (the hits since PR 1; the read through `hr_doc_slice`, the grammar `get_person_document` shares). **Built: v2.6722.** | S |
 
 ## How to verify
 
@@ -83,3 +84,23 @@ phrase inside it returns a `matter_document` hit with the section. Tick counsel-
 document: the portal's list as the test firm omits it, the packet omits it, the agent role's read
 returns nothing, the dev's read marks it. File a PDF: `content` stays null and the title still
 searches.
+
+## Where it stands
+
+2026-11-09, after the three PRs and the preview fix were live. Run as a dev through the seat, on the dev server against prod data in headless Chrome, and by read-only queries of prod's catalog. Every row written is a ZZ TEST row.
+
+- **A text document through the seat.** A ZZ TEST matter opened on the ZZ Test Hand file. A made-up `.md` filed with `markdown` kept its words in `documents`, and its Evidence row points at them.
+- **The search.** `search_case` for a phrase inside it returned one `matter_document` hit naming section 1. #285's file index also read the bytes, and that row was left out of the hits, so the line is found once.
+- **The desk.** The matter's Evidence tab showed **Read** on the memo and drew it with its two headings. The PDF had no Read. The counsel-only row wore the lock.
+- **Counsel-only.** The seat's `read_rows` on `legal_matter_documents` and on `documents` returned only the plain document; the counsel-only row and its words were refused. `search_case` returned that hit marked counsel-only. `hr_agent` holds no grant and no policy on either table. `get_matter_document` on it was refused with the count. On the ZZ TEST GC matter, the release sheet's **Preview what the firm sees** showed both counsel-only papers locked, with *For counsel alone. Not in the printed packet.*
+- **A PDF.** Filed as bytes, it kept no text and was found by its title alone. `get_matter_document` refused it as not a text document.
+- **The section read.** `get_matter_document` on the memo gave the section index, then section 1 alone with its neighbours named.
+
+**Found and fixed on the way.** The firm preview listed a text document with no **Read here**, because the desk never passed the words; v2.6770 reads them when the preview opens, and a re-walk showed three Read here presses. The queue's SQL beds refused PR 3's first migration (a doubled function header and a lost `DECLARE`); it was fixed and a test now holds each function whole.
+
+**Not walked.** The live portal as a firm. No ZZ matter is released to a firm and there is no test firm; releasing one would reach a real firm's portal. The printed packet leaving a counsel-only paper out is held by `legalFirmPacketPrint.test.ts`.
+
+**Left on prod.** The ZZ TEST matter on ZZ Test Hand with its three documents, the counsel-only memo on the ZZ TEST GC matter, and the ZZ TEST sink job flagged into Collections for the walk and back out.
+
+**Watch.** #285's PR 2 (#7344) carries a `dev_case_search` body at `20261108220000`. It must drop that body or renumber after `20261108233000`, or a late push would wipe the counsel-only marks on matter-document hits.
+

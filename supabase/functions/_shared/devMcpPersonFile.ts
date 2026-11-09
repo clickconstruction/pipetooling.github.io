@@ -270,7 +270,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const docs: Record<string, DocRow> = {}
   for (const d of docRows) if (d.kind === 'summary' || d.kind === 'narrative') docs[d.kind] = d
   // v2.6613 (punch list #277): the named documents, from the index view — the list without the text; read one whole with
-  // read_rows on person_documents by id. Quiet until the catalog knows the view (regenerated after the migration's push).
+  // get_person_document by id, or read_rows on documents (v2.6716's table). Quiet until the catalog knows the view (regenerated after the migration's push).
   const documentRows = isDev ? ((await quiet(() => reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,created_at,updated_at,archived_at,chars,sections', filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP }))) as unknown as DocIndexRow[]) : []
   const documents = documentRows
     .filter((d) => !d.archived_at)
@@ -299,6 +299,6 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     files_before_records: attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at })),
     docs: filter.docs ? { summary: docs.summary ?? null, narrative: docs.narrative ?? null } : 'left out (docs: false)',
     documents,
-    documents_note: isDev ? 'The named documents on the file (v2.6613), newest first, without their text: read one with read_rows on person_documents (select content) by id; change one with plan_person_doc { doc_id }; archived ones are left out.' : 'dev only',
+    documents_note: isDev ? 'The named documents on the file (v2.6613), newest first, without their text: read one with get_person_document { doc_id, section? } or read_rows on documents (select content) by id; change one with plan_person_doc { doc_id }; archived ones are left out.' : 'dev only',
   }
 }

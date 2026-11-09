@@ -23,6 +23,14 @@ describe('billTextLink — the customer’s link for a bill', () => {
   it('is 69 characters against Stripe’s 160-odd', () => {
     expect(billTextLink({ invoiceId: ID, hostedInvoiceUrl: STRIPE })).toHaveLength(69)
   })
+
+  it('the ten-letter code comes first (v2.6769): 43 characters, lower-cased; a code that is not one is ignored', () => {
+    expect(billTextLink({ invoiceId: ID, payCode: 'abc2def3gh', hostedInvoiceUrl: STRIPE })).toBe('https://my.clickplumbing.com/pay/abc2def3gh')
+    expect(billTextLink({ invoiceId: ID, payCode: 'ABC2DEF3GH', hostedInvoiceUrl: STRIPE })).toHaveLength(43)
+    expect(billTextLink({ invoiceId: ID, payCode: 'abc1def0gh', hostedInvoiceUrl: STRIPE })).toBe(`https://my.clickplumbing.com/pay/${ID}`)
+    expect(billTextLink({ invoiceId: ID, payCode: null, hostedInvoiceUrl: STRIPE })).toBe(`https://my.clickplumbing.com/pay/${ID}`)
+    expect(billTextLink({ payCode: 'abc2def3gh', hostedInvoiceUrl: STRIPE })).toBe('https://my.clickplumbing.com/pay/abc2def3gh')
+  })
 })
 
 describe('billShortUrl', () => {

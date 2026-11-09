@@ -44,20 +44,20 @@ describe('buildStagesSectionToolsMenu', () => {
     ])
   })
 
-  it('the paid profit Chart is dev/controller only — hidden for others', () => {
-    for (const authRole of ['dev', 'controller']) {
+  it('the paid profit Chart is the money team’s (the owner since v2.6759) — hidden for others', () => {
+    for (const authRole of ['dev', 'master_technician', 'controller']) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('paid-profit-chart')
     }
-    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+    for (const authRole of ['assistant', 'primary', 'superintendent', null]) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('paid-profit-chart')
     }
   })
 
-  it('the billed aging Chart is dev/controller only — hidden for others', () => {
-    for (const authRole of ['dev', 'controller']) {
+  it('the billed aging Chart is the money team’s (the owner since v2.6759) — hidden for others', () => {
+    for (const authRole of ['dev', 'master_technician', 'controller']) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('billed-aging-chart')
     }
-    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+    for (const authRole of ['assistant', 'primary', 'superintendent', null]) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('billed-aging-chart')
     }
   })
@@ -75,21 +75,17 @@ describe('buildStagesSectionToolsMenu', () => {
     }
   })
 
-  it('weekly money is dev/controller only — hidden (not disabled) for others', () => {
-    for (const authRole of ['dev', 'controller']) {
+  it('weekly money is the money team’s (the owner since v2.6759) — hidden (not disabled) for others', () => {
+    for (const authRole of ['dev', 'master_technician', 'controller']) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('weekly-money')
     }
-    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+    for (const authRole of ['assistant', 'primary', 'superintendent', null]) {
       expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('weekly-money')
     }
   })
 
-  it('master_technician matches dev except the dev/controller-only tools', () => {
-    expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'master_technician' }))).toEqual(
-      keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })).filter(
-        (k) => k !== 'weekly-money' && k !== 'billed-aging-chart' && k !== 'paid-profit-chart',
-      ),
-    )
+  it('master_technician matches dev on every tool since v2.6759 (punch list #188 rows 39 and 40)', () => {
+    expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'master_technician' }))).toEqual(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })))
   })
 
   it('assistant and controller get Share / Print but not the notification settings', () => {

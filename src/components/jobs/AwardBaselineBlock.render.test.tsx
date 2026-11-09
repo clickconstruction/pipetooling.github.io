@@ -11,7 +11,7 @@ import { AwardBaselineBlock } from './AwardBaselineBlock'
 import { awardBaselineOptions, awardBaselinePick, type AwardBaselineInput, type AwardBaselineSource } from '../../lib/jobs/awardBaseline'
 
 const thinBid = { has_estimate: true, labor_hours: 71, labor_rate: 42, labor_usd: 2_982, materials_usd: 0, completeness: { rows_total: 31, rows_with_hours: 9, rate_set: true, usable: false } }
-const book = { n: 12, medianHoursPerThousand: 4.2, p25: 3.5, p75: 5.1, impliedHours: 470.4, billed: 10, scope: 'similar' as const }
+const book = { n: 12, medianHoursPerThousand: 4.2, p25: 3.5, p75: 5.1, impliedHours: 470.4, billed: 10, scope: 'similar' as const, band: '$100k–$1M', total: 12 }
 
 function Host({ input }: { input: Omit<AwardBaselineInput, 'typedHours'> }) {
   const [pick, setPick] = useState<AwardBaselineSource | null>(null)
