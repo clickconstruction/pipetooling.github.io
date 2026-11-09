@@ -12,21 +12,26 @@ status: >
   and ar-returned-checks are deployed) and (2) as v2.5033 (*Add the $30 fee to bill N*, migration
   20261010003000 on prod 2026-10-09) with v2.5091 (the fee survives the revenue rewrites, migration
   20261010023000 on prod 2026-10-09, types #5196) and v2.5102 (the Bill tab no longer reads the fee as covering
-  the next unbilled line, client only). Left: two live steps for (1), the office's and the owner's.
+  the next unbilled line, client only). The two live steps for (1) ran 2026-11-09 in the owner's Chrome on his yes: step 1 is done
+  (both webhook endpoints carry the four events; the test one lives in the *PipeTooling sandbox*); step 2 opened two test-mode
+  dispute cases and closed the second as lost with both notices sent, but **Put the bill back** never drew, because the webhook
+  opened each case a few milliseconds before `invoice.paid` wrote the payment row, so the case holds no payment (the dispute test card
+  disputes the charge the instant it is paid). Left: a small migration so a later dispute event back-fills the case's payment, then
+  the press on the lost case that is waiting.
 summary: >
   Every check the bank sends back is now a case on top of To match, told to the office once,
   taken off every job in one press, closed when the new check lands. Four things were set aside
   on purpose and kept here so they were not lost; all four have shipped, and two live steps for the
   Stripe cases are what keeps the card open.
 next: >
-  Ready to pick up on any computer where the owner's Chrome is signed in to the app and to Stripe:
-  § Pick up below is the whole brief. Step 1, subscribe the webhook endpoint (test and live) to
-  `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and
-  `payment_intent.payment_failed`. Step 2, one test-mode dispute on a ZZ TEST Stripe bill (the case
-  opens, the notice goes out, Put the bill back). Delete this card once both are done.
+  Step 1 is done and step 2 ran (2026-11-09, under § Where it stands). One small PR: `record_ar_stripe_case` fills a case's
+  `payment_id` on a later event of the same dispute when it is still null (the first event can land before `invoice.paid`
+  writes the payment), so the lost case's pane draws **Put the bill back**; then press it on the lost ZZ TEST case that is
+  waiting on Came back (job 1114, the $1 bill) and read the four effects the brief names. The two ZZ TEST cases and the job stay
+  until then, or until the owner says to close them under More.
 flagged: true
 size: XS (two live steps, no code; a docs-only PR at the end)
-blocker: A signed-in Stripe Dashboard in the Chrome the extension drives — the 2026-11-09 pick-up met the Dashboard's sign-in page and entered nothing; a Dashboard setting and one test dispute; the brief is written, nothing is left to decide.
+blocker: the back-fill migration for a case opened before its payment row existed (found 2026-11-09 on the test dispute, under § Where it stands); the Stripe side is done.
 ver: v2.4902 · 4950 · 5033 · 5091 · 5102
 opinion: your call — the code is done; the two live steps are the office's and the owner's.
 mockup: not required — each piece copies the case and its words, which exist
@@ -38,7 +43,7 @@ The plan, the two critiques and the twelve boards: *Returned checks — #76 mock
 
 ## The pieces
 
-1. **Stripe chargebacks and failed bank debits.** Shipped v2.4950: `stripe-webhook` opens a case on the bill (`ar_stripe_cases`, `record_ar_stripe_case`). It shows as *card disputed* until Stripe decides, *dispute lost* with **Put the bill back** (`put_back_lost_dispute_bill`) once the customer wins, or *bank payment failed* for an ACH debit.
+1. **Stripe chargebacks and failed bank debits.** Shipped v2.4950: `stripe-webhook` opens a case on the bill (`ar_stripe_cases`, `record_ar_stripe_case`). It shows as *card disputed* until Stripe decides, *dispute lost* with **Put the bill back** (`put_back_lost_dispute_bill`) once the customer wins, or *bank payment failed* for an ACH debit. v2.6775 (migration `20261109023000`) fills the case's payment on a later dispute event when the first one beat the `invoice.paid` payment row, so the lost case draws its press.
 2. **A returned-check fee.** Shipped v2.5033: *Add the $30 fee to bill N* on a Came back case (`add_ar_return_case_fee`, `list_ar_return_case_fees`, the bill's `fee_lines`, the case's `fee_*` columns; the kernel `src/lib/jobs/arReturnCaseFee.ts`). v2.5091 keeps the fee in the job's total when Edit Job, Add discount, a tip or Collect Payment rewrites the revenue (`job_rider_fees`). v2.5102 keeps it off the ② waterfall: the fee is its bill's own line, so it covers no unbilled line (`dollarCoverageForSegments`). Set aside on purpose: a Stripe bill takes no fee, a check that paid no bill by name gets no press, § 3.506(c) is on the hover and not checked, and the GC billing job's revenue reset (`gc_owner_billing_revenue`) still drops a fee — the GC crew's change.
    - **The cap**: $30 is a ceiling — Tex. Bus. & Com. Code § 3.506(b), *"may charge the drawer or indorser a maximum processing fee of $30"*, as amended by H.B. 2793 (82nd Leg., R.S., ch. 333, eff. Sept. 1, 2011; enrolled text at capitol.texas.gov/tlodocs/82R/billtext/html/HB02793F.htm); no later amendment to (b) found (read 2026-10-09).
 3. **A check recorded by hand and never deposited.** Shipped v2.4902: an *unbanked* case under Came back (`ar_unbanked_check_cases`, `open_ar_unbanked_check_cases`, ten days, floor Jul 1 2026); eight opened quietly on the push.
@@ -53,7 +58,13 @@ The plan, the two critiques and the twelve boards: *Returned checks — #76 mock
 
 2026-11-08: the owner asked for the two live steps to run from another computer, so the brief below was written onto the card instead of walking them here. Nothing was pressed in Stripe or in the app; the webhook endpoint still listens for the events the Ops line of `docs/EDGE_FUNCTIONS.md` named before v2.4950, and no dispute case has ever opened on prod.
 
-2026-11-09: picked up in the Chrome the owner handed the session. The Dashboard answered `/test/webhooks` with its sign-in page (email, password, Google, Passkey, SSO), and the one Chrome the extension reaches carried no Stripe session (the app's own session came from the pane magic link, not the owner's sign-in). Per the rule above nothing was entered, and both steps are held: step 1 (the events, both modes) and step 2 (the test-mode dispute) wait for a Chrome window that is signed in to the Stripe Dashboard, where the session shows the endpoint's event list before saving and asks the owner once per endpoint. The brief below stands unchanged.
+2026-11-09: picked up in the Chrome the owner handed the session. The Dashboard answered `/test/webhooks` with its sign-in page (email, password, Google, Passkey, SSO), and the one Chrome the extension reaches carried no Stripe session (the app's own session came from the pane magic link, not the owner's sign-in). Per the rule above nothing was entered until the owner signed in to Stripe in that window the same hour and said go to all three asks (the live endpoint's event, the test endpoint's two, the test dispute).
+
+**Step 1, done 2026-11-09.** The account's own *Test mode* holds no webhook destination; the app's test keys belong to the *PipeTooling sandbox* (a second sandbox on the account), whose Workbench → Webhooks lists **pipe testing** on the stripe-webhook URL. Before: live **pipetooling** listened to 32 events, the three `charge.dispute.*` among them (with `funds_reinstated` and `funds_withdrawn`), `credit_note.created` and every `invoice.*` the Ops line names, but not `payment_intent.payment_failed`; test **pipe testing** listened to 33, the three `charge.dispute.*` among them, but neither `payment_intent.payment_failed` nor `credit_note.created`. Added and saved, on the owner's yes per endpoint: `payment_intent.payment_failed` on live (33 events after), `payment_intent.payment_failed` and `credit_note.created` on test (35 after). Nothing else on either endpoint changed. The Ops line of `docs/EDGE_FUNCTIONS.md` now says where the test endpoint lives.
+
+**Step 2, ran 2026-11-09; the lost press did not draw.** A new job *ZZ TEST dispute walk* (1114) on the ZZ customer whose contact is the dev-login address and the owner's number, one $5 line, moved to Ready to Bill, Bill Customer → Stripe → **Test**, **Create Stripe invoice** (the sandbox's own invoice), paid on the hosted page with the dispute test card. Within a minute `invoice.paid` marked the bill paid and `charge.dispute.created` opened the case: Accounts Receivable → Came back read *$5.00 Robert Test · card disputed · bill 1 on #1114 · answer by 11/17*, the pane *Robert Test disputed it. They say they did not make the payment. · #1114 reads paid. Stripe holds the $5 while the dispute runs. · Answer the dispute in Stripe by Nov 17.* with **Open the dispute in Stripe** and **They said…**, and the notice went out (`notified_at` set). Losing it: the Dashboard's Counter dispute wizard, with *losing_evidence* typed in its Other box and its additional-information box, submitted and left the dispute *under review* for good (the wizard does not write Stripe's `uncategorized_text`, and a submitted dispute takes no second submission and no close), and `charge.dispute.updated` brought the case to *under_review*. A second $1 line on the same job, billed again (**Bill this job again anyway**), paid with the same card, opened a second case; `stripe disputes update du_… -d "evidence[uncategorized_text]=losing_evidence" -d submit=true` in the sandbox's Workbench Shell closed it **lost** within a minute, the case read *lost* with `lost_notified_at` set, and Came back read *$1.00 Robert Test · dispute lost · #1114 reads paid*, the pane *They won the dispute. Stripe keeps the money. · #1114 reads paid. The $1 is gone. Put the bill back and it is billed again.* and *The money is gone. Put the bill back, then bill Robert Test again.* — but under it only **More ▾** (Settled another way…, Not coming…). **The defect:** `arReturnCase.ts` draws the press only with `payment_live`, the case's `payment_id` joined to a payment, and both cases hold `payment_id` null: `record_ar_stripe_case` picks the bill's payment when the case opens, and the dispute test card disputes the charge the instant it is paid, so `charge.dispute.created` was handled 13 ms before `invoice.paid` wrote the payment row (case 03:49:28.811, payment 03:49:28.824); the later events only bring the status up to date. A real dispute comes days after the payment, so the office would not meet this, but a case that reads *lost* with no press is a dead end, and the fix is one `CREATE OR REPLACE`: on an existing case with `payment_id` null, look the payment up again. **Put the bill back was not pressed.** Left as the step left it: job 1114 reads paid with two paid test bills ($5 and $1), the two cases sit open on Came back (one *card disputed · under review*, one *dispute lost*) and count on the Dashboard's Needs you; the sandbox holds the two invoices and disputes. The owner closes the cases under More or leaves them for the back-fill PR's walk. Screenshots `76-1` to `76-17` in the walk session's scratchpad.
+
+The brief below stands for the press that is left.
 
 ## Pick up
 

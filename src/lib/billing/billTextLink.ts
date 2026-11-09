@@ -5,19 +5,25 @@
  * a link on it never expires. The text carries that page on the short host (`BILL_SHORT_ORIGIN`,
  * `my.clickplumbing.com/pay/<bill id>`, 69 characters), and only a caller with no bill id at hand falls back to Stripe's
  * link. The office's own *Customer pay page* press keeps Stripe's link: it opens Stripe, not a page for the customer.
+ * Since v2.6769 the bill's ten-letter code (`bill_pay_code`, `billPayCodeIo.ts`) comes first: the same page at 43
+ * characters, `my.clickplumbing.com/pay/<code>`.
  */
 import { billShortUrl } from '../portal/portalShortOrigin'
-import { isPayLinkId } from './payLink'
+import { isPayCode, isPayLinkId } from './payLink'
 
 export type BillTextLinkInput = {
   /** `jobs_ledger_invoices.id`; absent or not a UUID → Stripe's own link. */
   invoiceId?: string | null
+  /** The bill's ten-letter code when it has been asked for (v2.6769); absent, null or not a code → the id's link. */
+  payCode?: string | null
   /** Stripe's `hosted_invoice_url`, the fallback. */
   hostedInvoiceUrl: string
 }
 
-/** The customer's link for the bill: the short pay page when the bill's id is at hand, else Stripe's own link. */
+/** The customer's link for the bill: the short pay page by code, else by the bill's id, else Stripe's own link. */
 export function billTextLink(p: BillTextLinkInput): string {
+  const code = (p.payCode ?? '').trim().toLowerCase()
+  if (isPayCode(code)) return billShortUrl(code)
   const id = (p.invoiceId ?? '').trim()
   if (isPayLinkId(id)) return billShortUrl(id)
   return p.hostedInvoiceUrl.trim()

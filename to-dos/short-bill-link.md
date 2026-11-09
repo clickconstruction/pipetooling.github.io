@@ -2,7 +2,7 @@
 name: "The bill text's link: short, on a Click Plumbing address, and it never expires"
 number: 290
 group: ready
-status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768: the Worker's /pay/ branch, the text and Copy link on my.clickplumbing.com/pay/<bill id>) built 2026-11-08 · PR 2 (the ten-letter code, its version claimed when it is built) next
+status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768: the Worker's /pay/ branch, live as version 82fda521, the text and Copy link on my.clickplumbing.com/pay/<bill id>) built and armed 2026-11-08 (#7414) · PR 2 (v2.6769: the ten-letter code, migration `20261109033000`, pay-link by code) built 2026-11-08 on `claude/290-bill-pay-code`, stacked on PR 1
 summary: >
   The text the share row sends with a Stripe bill ended in Stripe's own hosted link, about 160
   characters, which Stripe retires 30 days after the bill's due date. The app already had a door
@@ -11,8 +11,8 @@ summary: >
   PRs: the text and Copy link move onto that page through the Worker on my.clickplumbing.com
   (69 characters, never expires), then a ten-letter code on the bill row takes the place of the
   36-character id (43 characters), with the estimate link's guess guard.
-next: PR 2 — the migration (pay_code on jobs_ledger_invoices, bill_pay_code), pay-link by code with the miss guard, the page's second shape, the client's mint with the PR 1 link as its fallback; then the push, the deploys and the ZZ TEST walk.
-ver: v2.6768 (PR 1)
+next: The Worker's /pay/ line in the Cloudflare dashboard (the owner's sign-in), then PR 1 armed and merged; PR 2 rebased onto main and armed; after its merge the push, `supabase functions deploy pay-link create-stripe-invoice`, the ZZ TEST walk recorded here.
+ver: v2.6768 (PR 1) · v2.6769 (PR 2)
 size: XS (PR 1, the Worker edit and a kernel) + S (PR 2, one migration and one function)
 blocker: None. The Worker edit is a Cloudflare dashboard step (the owner, or the session in his Chrome).
 opinion: build — the pay page is already the resolver; PR 1 is one kernel and a Worker line, PR 2 is one column, one RPC and a second lookup in a function that exists
@@ -61,7 +61,7 @@ So "the bill won't expire" can mean: the link in the text works for the life of 
 
 **PR 1 (XS, v2.6768, built).** The Worker's `/pay/` branch (deployed in the dashboard, mirrored); `BILL_SHORT_ORIGIN`; `billTextLink` with its tests; the share row and Collect payment on the short link; the post-bill panel handing the id; two render tests; the guides *ready-to-bill-pipeline* and *turn a bill into a Stripe bill*; `docs/DOMAIN_CUTOVER.md`. No migration, no function deploy. The Worker edit must be live before the merge, or a texted link lands on the Worker's slug shell.
 
-**PR 2 (S, one migration; its version claimed when it is built).**
+**PR 2 (S, v2.6769, one migration, built).**
 
 - Migration (numbered from `origin/main`, `SET lock_timeout = '3s'`): `ALTER TABLE jobs_ledger_invoices ADD COLUMN IF NOT EXISTS pay_code text` with a shape check (`^[23456789abcdefghjkmnpqrstuvwxyz]{10}$`) and a unique partial index; `bill_pay_code(p_invoice_id uuid) → text`, SECURITY INVOKER, `UPDATE … SET pay_code = COALESCE(pay_code, <mint>) WHERE id = $1 RETURNING pay_code`, so the table's RLS and the read-only, twin and archived fences do the refusing (a training account gets a refusal and the client falls back to PR 1's link). The minter is the same unbiased loop as `share_estimate_link`'s, in a helper `mint_pay_code()`. No CREATE TABLE, so no fence appliers. `docs/migrations/<stamp>_bill_pay_codes.md`.
 - `pay-link`: `GET ?code=<ten letters>` reads the row by `pay_code` and runs the same flow; a code that opens nothing counts a miss and answers 429 past the limit; `_shared/payLink.ts` gains `isPayCode`. `create-stripe-invoice` calls the RPC after the write, best effort, so new bills carry a code from birth. `docs/EDGE_FUNCTIONS.md` for both.
@@ -82,4 +82,6 @@ PR 2: the same walk with the link ending in ten letters (43 characters); a bill 
 
 ## Where it stands
 
-- 2026-11-08: asked, designed (the design's trade-offs above), the owner's yes the same evening. PR 1 built as v2.6768 on `claude/charming-golick-9e4bfc`. Left on PR 1: the Worker edit in the dashboard, the merge, the walk. PR 2 next.
+- 2026-11-08, 21:25 CT: the Worker's `/pay/` line deployed in the dashboard as version `82fda521` (the owner signed in, the session typed the two lines under the `/e/` line and pressed Deploy); `curl -sI https://my.clickplumbing.com/pay/abc2def3gh` answers `HTTP/2 301` with `location: https://clicktooling.com/pay/abc2def3gh`, a capitalised bill id comes back lower-cased, `/e/` and a portal slug answer as before. PR 1 (#7414) armed and queued. PR 2 (#7415) opened on PR 1's branch; its SQL bed failed twice in CI (a customer with no master; a training account that read an existing code back, which is right) and was fixed; it is rebased onto main and armed once PR 1 lands.
+- 2026-11-08, later: PR 2 built as v2.6769 on `claude/290-bill-pay-code` (stacked on PR 1's branch): migration `20261109033000_bill_pay_codes.sql`, `pay-link` by code with the miss guard, the page's second shape, `billPayCodeIo` with the share row's and Collect payment's mint, the SQL bed `scripts/pgtest-bill-pay-codes.sh`. The Cloudflare dashboard asked for a sign-in the session cannot do, so the Worker's `/pay/` line is the owner's step (the exact line is in the mirror file); PR 1 is not armed until it is live.
+- 2026-11-08: asked, designed (the design's trade-offs above), the owner's yes the same evening. PR 1 built as v2.6768 on `claude/charming-golick-9e4bfc` (#7414). Left on PR 1: the Worker edit in the dashboard, the merge, the walk.
