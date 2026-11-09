@@ -16,6 +16,7 @@ import { readLabelFormat, readTapeWidth, writeLabelFormat, writeTapeWidth } from
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { TAPE_WIDTHS_MM, TAPE_WORDS, sheetPressLabel, tapeHintWords, tapeLayout, tapePressLabel, tapePrintCss, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 
 const BLUE = '#2563eb'
@@ -54,7 +55,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const cell: CSSProperties = { borderBottom: '1px solid var(--border-400)', padding: '0 0.3rem', height: '1.9rem', fontSize: '0.84rem', verticalAlign: 'bottom', color: 'var(--text-strong)' }
   const exportCsv = () => {
     const rows = labelsCsvRows(containers, places)
-    downloadFile(new File([labelsCsvText(rows)], labelsCsvFileName(jl, new Date().toISOString().slice(0, 10)), { type: 'text/csv' }))
+    downloadFile(new File([labelsCsvText(rows)], labelsCsvFileName(jl, todayYmdInAppTz()), { type: 'text/csv' }))
   }
   return createPortal(
     <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
