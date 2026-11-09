@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -29,13 +29,14 @@ A delivery the office lands waits in **Unsorted**. Tap it, then tap {{button:out
 
 ## Use a part, move it or say you can't find it
 
-Tap a box to open it. Each line has three presses.
+Tap a box to open it. Each line has four presses.
 
 - {{button:outline|Used}} takes the number you used out of the box.
 - {{button:outline|Move to…}} puts some in another box, back to the supply house, to the truck or marks them damaged.
 - {{button:outline-amber|Can't find}} says the box should have it and it is not there. The office sees it that day.
+- {{button:outline-blue|Short}} asks the office for more. Type how many more you need and tap **Ask the office for 4**. The request lands on the job's Parts tab, the same as Send to Office. A part from the parts book also gets a draft purchase order. A line with none left keeps Short beside its words.
 
-Every press is one row in the ledger. A wrong press gets a new press. Nothing is edited.
+Every press but Short is one row in the ledger. A wrong press gets a new press. Nothing is edited. Short writes a request, not a row in the box.
 
 ## Count a box
 
