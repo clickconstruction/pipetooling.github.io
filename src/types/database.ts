@@ -9390,6 +9390,181 @@ export type Database = {
           },
         ]
       }
+      document_revisions: {
+        Row: {
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          document_id: string
+          id: string
+          matter_id: string | null
+          person_id: string | null
+          replaced_at: string
+          replaced_by: string | null
+          replaced_by_label: string | null
+          title: string
+        }
+        Insert: {
+          author_label?: string | null
+          content: string
+          counsel_only?: boolean
+          document_id: string
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title: string
+        }
+        Update: {
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          document_id?: string
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_revisions_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          created_at: string
+          created_by: string | null
+          evidence_id: string | null
+          id: string
+          matter_id: string | null
+          person_id: string | null
+          source_drive_file_id: string | null
+          source_sha256: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_contract_scans: {
         Row: {
           files: Json
@@ -9859,6 +10034,7 @@ export type Database = {
           last_mail_at: string | null
           last_read_at: string | null
           person_id: string | null
+          placed_by_app: boolean
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
@@ -9875,6 +10051,7 @@ export type Database = {
           last_mail_at?: string | null
           last_read_at?: string | null
           person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9891,6 +10068,7 @@ export type Database = {
           last_mail_at?: string | null
           last_read_at?: string | null
           person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9936,6 +10114,32 @@ export type Database = {
           },
           {
             foreignKeyName: "email_tag_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tag_threads_off: {
+        Row: {
+          gmail_thread_id: string
+          untagged_at: string
+          user_id: string
+        }
+        Insert: {
+          gmail_thread_id: string
+          untagged_at?: string
+          user_id: string
+        }
+        Update: {
+          gmail_thread_id?: string
+          untagged_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tag_threads_off_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -10897,6 +11101,7 @@ export type Database = {
           bid_id: string | null
           bytes: number | null
           checked_at: string
+          counsel_only: boolean
           customer_id: string | null
           drive_file_id: string
           embed_note: string | null
@@ -10905,6 +11110,7 @@ export type Database = {
           folder_kind: string
           indexed_at: string
           jobs_ledger_id: string | null
+          matter_id: string | null
           mime: string
           modified_at: string | null
           name: string
@@ -10914,7 +11120,10 @@ export type Database = {
           pages: number | null
           pages_read: number | null
           path: string
+          person_id: string | null
           search: unknown
+          source: string
+          source_id: string | null
           text: string | null
           text_source: string | null
           text_why: string | null
@@ -10923,6 +11132,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id: string
           embed_note?: string | null
@@ -10931,6 +11141,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime: string
           modified_at?: string | null
           name: string
@@ -10940,7 +11151,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10949,6 +11163,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id?: string
           embed_note?: string | null
@@ -10957,6 +11172,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime?: string
           modified_at?: string | null
           name?: string
@@ -10966,7 +11182,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10991,6 +11210,20 @@ export type Database = {
             columns: ["jobs_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -22720,6 +22953,7 @@ export type Database = {
           matter_id: string
           removed_at: string | null
           removed_by: string | null
+          settlement_only: boolean
           title: string
           updated_at: string
           updated_by: string | null
@@ -22735,6 +22969,7 @@ export type Database = {
           matter_id: string
           removed_at?: string | null
           removed_by?: string | null
+          settlement_only?: boolean
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -22750,6 +22985,7 @@ export type Database = {
           matter_id?: string
           removed_at?: string | null
           removed_by?: string | null
+          settlement_only?: boolean
           title?: string
           updated_at?: string
           updated_by?: string | null
@@ -22812,6 +23048,7 @@ export type Database = {
           source_message_id: string | null
           state: string
           storage_path: string
+          text_document_id: string | null
           title: string
           voided_at: string | null
           voided_by: string | null
@@ -22836,6 +23073,7 @@ export type Database = {
           source_message_id?: string | null
           state?: string
           storage_path: string
+          text_document_id?: string | null
           title: string
           voided_at?: string | null
           voided_by?: string | null
@@ -22860,6 +23098,7 @@ export type Database = {
           source_message_id?: string | null
           state?: string
           storage_path?: string
+          text_document_id?: string | null
           title?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -22892,6 +23131,27 @@ export type Database = {
             columns: ["source_message_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_text_document_id_fkey"
+            columns: ["text_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
             referencedColumns: ["id"]
           },
           {
@@ -26309,6 +26569,7 @@ export type Database = {
           mailbox: string | null
           office_only: boolean
           optout_line: string | null
+          placed_by_app: boolean
           project_id: string | null
           quick_reply_id: string | null
           quo_id: string | null
@@ -26351,6 +26612,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -26393,6 +26655,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -28927,154 +29190,6 @@ export type Database = {
             columns: ["supersedes_person_contract_document_id"]
             isOneToOne: false
             referencedRelation: "person_contract_documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      person_document_revisions: {
-        Row: {
-          author_label: string | null
-          content: string
-          counsel_only: boolean
-          document_id: string
-          id: string
-          person_id: string
-          replaced_at: string
-          replaced_by: string | null
-          replaced_by_label: string | null
-          title: string
-        }
-        Insert: {
-          author_label?: string | null
-          content: string
-          counsel_only?: boolean
-          document_id: string
-          id?: string
-          person_id: string
-          replaced_at?: string
-          replaced_by?: string | null
-          replaced_by_label?: string | null
-          title: string
-        }
-        Update: {
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          document_id?: string
-          id?: string
-          person_id?: string
-          replaced_at?: string
-          replaced_by?: string | null
-          replaced_by_label?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_document_revisions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "person_document_index"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "person_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_document_revisions_replaced_by_fkey"
-            columns: ["replaced_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      person_documents: {
-        Row: {
-          archived_at: string | null
-          author_label: string | null
-          content: string
-          counsel_only: boolean
-          created_at: string
-          created_by: string | null
-          evidence_id: string | null
-          id: string
-          person_id: string
-          source_drive_file_id: string | null
-          source_sha256: string | null
-          title: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          archived_at?: string | null
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          created_at?: string
-          created_by?: string | null
-          evidence_id?: string | null
-          id?: string
-          person_id: string
-          source_drive_file_id?: string | null
-          source_sha256?: string | null
-          title: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          archived_at?: string | null
-          author_label?: string | null
-          content?: string
-          counsel_only?: boolean
-          created_at?: string
-          created_by?: string | null
-          evidence_id?: string | null
-          id?: string
-          person_id?: string
-          source_drive_file_id?: string | null
-          source_sha256?: string | null
-          title?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_documents_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_documents_evidence_id_fkey"
-            columns: ["evidence_id"]
-            isOneToOne: false
-            referencedRelation: "person_file_evidence"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_documents_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_documents_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -36655,6 +36770,7 @@ export type Database = {
           login_attached_at: string | null
           my_mail_hidden_labels: string[]
           my_mail_on: boolean
+          my_mail_sent_read_at: string | null
           name: string
           needs_supervision: boolean
           notes: string | null
@@ -36692,6 +36808,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name: string
           needs_supervision?: boolean
           notes?: string | null
@@ -36729,6 +36846,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name?: string
           needs_supervision?: boolean
           notes?: string | null
@@ -38068,6 +38186,181 @@ export type Database = {
           },
         ]
       }
+      person_document_revisions: {
+        Row: {
+          author_label: string | null
+          content: string | null
+          counsel_only: boolean | null
+          document_id: string | null
+          id: string | null
+          matter_id: string | null
+          person_id: string | null
+          replaced_at: string | null
+          replaced_by: string | null
+          replaced_by_label: string | null
+          title: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          document_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string | null
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          document_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          replaced_at?: string | null
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_revisions_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_documents: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          content: string | null
+          counsel_only: boolean | null
+          created_at: string | null
+          created_by: string | null
+          evidence_id: string | null
+          id: string | null
+          matter_id: string | null
+          person_id: string | null
+          source_drive_file_id: string | null
+          source_sha256: string | null
+          title: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string | null
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string | null
+          id?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_index: {
         Row: {
           author_label: string | null
@@ -38414,6 +38707,15 @@ export type Database = {
       answer_invitation: {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
+      }
+      answered_from_own_mailbox: {
+        Args: {
+          p_contact_id: string
+          p_job_id?: string
+          p_job_kind?: string
+          p_words?: string
+        }
+        Returns: string
       }
       app_today: { Args: never; Returns: string }
       apply_agreed_write_down_to_billed_invoice: {
@@ -39555,6 +39857,35 @@ export type Database = {
           text: string
         }[]
       }
+      file_index_records_drop_gone: { Args: never; Returns: number }
+      file_index_records_due: {
+        Args: {
+          max_rows?: number
+          p_matter_id?: string
+          p_person_id?: string
+          retry_after?: string
+        }
+        Returns: {
+          bucket: string
+          bytes: number
+          counsel_only: boolean
+          drive_file_id: string
+          held: boolean
+          matter_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          person_id: string
+          record_day: string
+          record_id: string
+          record_kind: string
+          record_title: string
+          source: string
+          source_id: string
+          storage_path: string
+        }[]
+      }
       file_license_expiry_notice: {
         Args: { p_from_user_id: string; p_license_id: string; p_link: string }
         Returns: string
@@ -39968,6 +40299,10 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      gc_remove_bench_company: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       gc_remove_punch_item: { Args: { p_item_id: string }; Returns: undefined }
       gc_retainage_held: { Args: { p_sow_id: string }; Returns: number }
@@ -41137,6 +41472,7 @@ export type Database = {
           p_line_id: string
           p_payer_key: string
           p_payer_name: string
+          p_settlement_only?: boolean
           p_title: string
         }
         Returns: Json

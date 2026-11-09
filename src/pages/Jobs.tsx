@@ -875,9 +875,9 @@ export default function Jobs() {
       landOn(roleGateBounce('team-labor', `/jobs?tab=${tab}`).toTab)
       return
     }
-    // Masters / assistants / controllers: no Crew P&L tab (owner only)
-    const isMasterOrAssistant = authRole === 'master_technician' || isAssistantLike(authRole) || myRole === 'master_technician' || isAssistantLike(myRole)
-    if (isMasterOrAssistant && tab === 'teams-summary') {
+    // Assistants and controllers: no Crew P&L tab (the owner's and a dev's since v2.6757, punch list #188 row 1)
+    const isAssistantLikeViewer = isAssistantLike(authRole) || isAssistantLike(myRole)
+    if (isAssistantLikeViewer && tab === 'teams-summary') {
       landOn(roleGateBounce('crew-pnl', `/jobs?tab=${tab}`).toTab)
       return
     }
@@ -1694,10 +1694,11 @@ export default function Jobs() {
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
   const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
   const showStagesAndBillingTabs = showPrimaryRestrictedTabs && !isSuperintendent
+  // Crew P&L (punch list #188 row 1, v2.6757): the owner's and a dev's; the toast already said *Crew P&L is for the owner*.
   const showTeamsTab = showPrimaryRestrictedTabs &&
-    authRole !== 'master_technician' && !isAssistantLike(authRole) &&
+    !isAssistantLike(authRole) &&
     authRole !== 'superintendent' && myRole !== 'superintendent' &&
-    myRole !== 'master_technician' && !isAssistantLike(myRole)
+    !isAssistantLike(myRole)
   const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
     authRole !== 'superintendent' && myRole !== 'superintendent'
   const showSuperintendentExtraTabs = !isSuperintendent
