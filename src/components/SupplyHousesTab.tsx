@@ -2091,7 +2091,7 @@ export function SupplyHousesTab({
                                                       w.tone === 'ok' || w.tone === 'accepted'
                                                         ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
                                                         : w.tone === 'off'
-                                                          ? { background: 'var(--bg-amber-50, var(--bg-subtle))', color: 'var(--text-amber-800, var(--text-base))', border: '1px solid var(--border-strong)' }
+                                                          ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)' }
                                                           : { color: 'var(--text-muted)' }
                                                     return (
                                                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>

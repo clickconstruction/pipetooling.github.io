@@ -115,7 +115,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
   const stripStyle: CSSProperties =
     gap.tone === 'ok'
       ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
-      : { background: 'var(--bg-amber-50, var(--bg-subtle))', color: 'var(--text-amber-800, var(--text-base))', border: '1px solid var(--border-strong)' }
+      : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)' }
 
   return (
     <div role="dialog" aria-modal="true" aria-label={`Look at the lines of ${invoice.invoice_number}`} data-testid="paper-look" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', zIndex: 1300 }}>
@@ -180,8 +180,8 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
                     const isAdd = i >= paper.lines.length
                     const bad = !isAdd && badLines.has(lines.find((l) => l.description === d.description.trim() && l.houseCode === d.houseCode.trim())?.lineNo ?? -1)
                     return (
-                      <tr key={d.lineNo} data-testid={isAdd ? 'paper-look-add' : `paper-look-line-${d.lineNo}`} style={{ background: bad ? 'var(--bg-amber-50, var(--bg-subtle))' : isAdd ? 'var(--bg-blue-50, var(--bg-subtle))' : undefined }}>
-                        <td style={{ ...cell, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{isAdd ? '+' : d.lineNo}{bad ? <span title="This line's own arithmetic fails" aria-label="This line's own arithmetic fails" style={{ marginLeft: 4, color: 'var(--text-amber-800, var(--text-base))' }}>!</span> : null}</td>
+                      <tr key={d.lineNo} data-testid={isAdd ? 'paper-look-add' : `paper-look-line-${d.lineNo}`} style={{ background: bad ? 'var(--bg-amber-100)' : isAdd ? 'var(--bg-blue-200)' : undefined }}>
+                        <td style={{ ...cell, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{isAdd ? '+' : d.lineNo}{bad ? <span title="This line's own arithmetic fails" aria-label="This line's own arithmetic fails" style={{ marginLeft: 4, color: 'var(--text-amber-800)' }}>!</span> : null}</td>
                         <td style={{ ...cell, width: 110 }}><input aria-label={`Line ${d.lineNo} code`} value={d.houseCode} onChange={(e) => setDraft(i, { houseCode: e.target.value })} disabled={accepted || busy} style={input} /></td>
                         <td style={{ ...cell, minWidth: 180 }}><input aria-label={`Line ${d.lineNo} description`} value={d.description} onChange={(e) => setDraft(i, { description: e.target.value })} disabled={accepted || busy} style={input} /></td>
                         <td style={{ ...cell, width: 70 }}><input aria-label={`Line ${d.lineNo} quantity shipped`} inputMode="decimal" value={d.qtyShipped} onChange={(e) => setDraft(i, { qtyShipped: e.target.value })} disabled={accepted || busy} style={num} /></td>
