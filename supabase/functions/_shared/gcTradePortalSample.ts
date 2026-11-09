@@ -5,8 +5,8 @@
  * `tradePortalSlice` like every real one, so the sample can never show what a trade may not see. Its own file, never
  * `customerSampleFixtures.ts`, which most functions import.
  */
-import type { PortalSchedule, PortalTodo } from './gcKernels/index.ts'
-import type { ScheduleWork } from './gcTradePortalSchedule.ts'
+import type { PortalTodo } from './gcKernels/index.ts'
+import type { ScheduleWork, TradePortalChart } from './gcTradePortalSchedule.ts'
 import { NO_FLOW_EXTRA, tradeFlowRowsOf, type TradeFlowRows } from './gcTradeFlow.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
@@ -113,7 +113,7 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       },
       {
         project: { id: ID.job, name: 'Sample Dental Office', address: '3 Sample Ln, Fair Oaks Ranch' },
-        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null, created_at: `${d(-70)}T15:00:00Z` },
+        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null, start_date: d(-30), started_on: d(-30), created_at: `${d(-70)}T15:00:00Z` },
         team: [{ role: 'superintendent', name: 'Jordan Reyes', phone: '(210) 555-0170', email: 'jordan@example.com' }],
       },
     ],
@@ -276,7 +276,7 @@ export function gcTradePortalSampleFlow(today: string): TradeFlowRows {
  * slice: its two lines, the framing before them and the paint after, by made-up companies. The answer's own shape,
  * with no row behind it, so it holds nothing a trade may not see.
  */
-export function gcTradePortalSampleSchedules(today: string): Record<string, PortalSchedule> {
+export function gcTradePortalSampleSchedules(today: string): Record<string, TradePortalChart> {
   const d = (n: number) => addDays(today, n)
   const bar = (lineId: string, label: string, company: string, start: number, finish: number, pct: number, mine: boolean) => ({ lineId, label, company, start: d(start), finish: d(finish), pct, slipDays: 0, mine })
   return {
@@ -296,6 +296,16 @@ export function gcTradePortalSampleSchedules(today: string): Record<string, Port
         { label: 'Roof on', on: d(-6), met: true },
         { label: 'Rough-in inspection', on: d(11), met: false },
         { label: 'Certificate of occupancy', on: d(40), met: false },
+      ],
+      // The day we plan to finish (punch list #205, PR 2), for the job head.
+      finish: d(40),
+      // The whole job's stages (punch list #205, PR 3): the sample's two bars sit in Rough-in and Finishes.
+      stages: [
+        { key: 'sitePrep', label: 'Site prep', start: d(-60), finish: d(-45), pct: 100, state: 'done', yours: [] },
+        { key: 'structure', label: 'Structure', start: d(-44), finish: d(-6), pct: 100, state: 'done', yours: [] },
+        { key: 'roughIn', label: 'Rough-in', start: d(-5), finish: d(11), pct: 70, state: 'underway', yours: ['Rough-in'] },
+        { key: 'finishes', label: 'Finishes', start: d(12), finish: d(33), pct: 0, state: 'notStarted', yours: ['Trim and fixtures'] },
+        { key: 'closeout', label: 'Closeout', start: d(34), finish: d(40), pct: 0, state: 'notStarted', yours: [] },
       ],
     },
   }

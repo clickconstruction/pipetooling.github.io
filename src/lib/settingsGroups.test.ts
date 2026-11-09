@@ -61,6 +61,18 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
+  it('the owner gets Emails & reports and What the team sees, not What everyone sees; nobody else gets the two (punch list #188, rows 4 and 5)', () => {
+    const owner = getZonedSettingsGroups('master_technician').map((g) => g.id)
+    expect(owner).toContain('settings-emails')
+    expect(owner).toContain('settings-what-the-team-sees')
+    expect(owner).not.toContain('settings-what-everyone-sees')
+    for (const role of ['assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      const ids = getZonedSettingsGroups(role).map((g) => g.id)
+      expect(ids, role).not.toContain('settings-emails')
+      expect(ids, role).not.toContain('settings-what-the-team-sees')
+    }
+  })
+
   it('the office team gets How fast a change ships, and nobody else does (v2.6399)', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) {
       const ids = getZonedSettingsGroups(role).map((g) => g.id)
@@ -110,6 +122,15 @@ describe('getZonedSettingsGroups', () => {
   it('assistants keep Jobs, bills and liens (Job Book kept its pre-reorg reach)', () => {
     for (const role of ['master_technician', 'assistant', 'controller'] as const) {
       expect(getZonedSettingsGroups(role).map((g) => g.id)).toContain('settings-jobs')
+    }
+  })
+
+  it('People & teams is the office’s: dev, owner, assistant and controller, nobody else (punch list #188, rows 12 and 22)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).toContain('settings-people')
+    }
+    for (const role of ['estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).not.toContain('settings-people')
     }
   })
 

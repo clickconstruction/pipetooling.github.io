@@ -27,6 +27,9 @@ function fill(s: MoneyBarSegment, i: number): CSSProperties {
       return { background: '#bfdbfe', color: 'var(--text-on-bright-solid)' }
     case 'typed':
       return { background: '#93c5fd', color: 'var(--text-on-bright-solid)' }
+    case 'settlement':
+      // v2.6697: the settlement-only lines, a paler blue than the typed block — in the claim's length, not in the demand.
+      return { background: 'var(--bg-blue-200)', color: 'var(--text)' }
     case 'beyond':
       return { background: HATCH_NEUTRAL, color: 'var(--text-700)' }
     case 'keep':

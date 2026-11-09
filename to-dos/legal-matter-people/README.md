@@ -2,7 +2,7 @@
 name: "Legal desk: the people on a matter, and the proceedings beside it"
 number: 174
 group: waiting
-status: BUILDING 2026-11-08 on the owner's Do and his calls (The owner's calls, below) — PR 1 v2.6705 (the people on the matter, seeded from the record, the use and its reason, the demand letter's To from the list; migration `20261108173417_legal_matter_people.sql`, both tables, pushed right after the merge); PR 2 v2.6726 (the proceedings beside the claim, the keep-out hold on Evidence and the claim's picker, the firm's read; `legal-portal` to redeploy after the merge); left: the letter's own copies line
+status: DONE 2026-11-08 — PR 1 v2.6705 (the people on the matter, seeded from the record, the use and its reason, the demand letter's To from the list; migration `20261108173417_legal_matter_people.sql`, both tables, pushed right after the merge); PR 2 v2.6726 (the proceedings beside the claim, the keep-out hold on Evidence and the claim's picker, the firm's read; `legal-portal` redeployed after the merge); v2.6741 (the letter's own Copies to line from the matter's people)
 summary: >
   A matter involves more people than the customer record holds: the GC's president and billing
   contact, the owner of record, a tenant, an inspector, a supplier's credit desk, counsel. The
@@ -11,13 +11,12 @@ summary: >
   recipients from it. Beside it, a short list of proceedings that run alongside the claim, such
   as an agency complaint or a records request, each kept out of settlement letters.
 next: >
-  The owner walks PR 2 on a ZZ TEST matter (How to verify). Then the letter's own copies line,
-  so the Copies chips travel with the letter instead of by hand.
-size: M (two small tables, the lists, the letters' recipients); left: the letter's copies line (S)
+  The owner walks PR 2 and the copies line on a ZZ TEST matter (How to verify). Nothing left to build.
+size: M (two small tables, the lists, the letters' recipients, the letter's copies line); nothing left
 blocker: none
 opinion: >
   built after #118 PR 1 in one session, so the To chip and the people list are one design
-ver: v2.6726
+ver: v2.6741
 ---
 
 # Legal desk: the people on a matter, and the proceedings beside it
@@ -69,7 +68,7 @@ are one design.
   a reason.
 - **Letters and packets pick their recipients from that list** through the same chip shape as
   #118's To chip. PR 1 puts the picker on the final demand letter's *Who owes it*: a To fills the
-  recipient; the copies are listed and go by hand until the letter carries a copies line of its own.
+  recipient; since v2.6741 the letter carries its own Copies to line from the copies.
 - **The proceedings sit beside the claim** with their agency, reference, contact, status and
   documents, and **the firm's portal sees the proceedings list** (PR 2).
 
@@ -86,6 +85,9 @@ are one design.
   documents are the office's record, the demand letter's exhibits never read matter documents); the
   firm's portal draws the list under Property record with the contact's name and role, the documents
   as links and the hold's line, never the note. `legal-portal` redeployed after the merge.
+- v2.6741: the final demand letter's own **Copies to** line, under the enclosures, *name, role* a
+  line, starting with everyone marked copies on the matter; the strip's Copies chips are presses that
+  take a person off this letter or put them back, and the recorded letter keeps the picks.
 
 ## Hand-over: PR 2, as built (v2.6726)
 
@@ -162,5 +164,5 @@ recipient picker's source.
 ## How to verify
 
 On a ZZ TEST matter, add a billing contact and a *never* address with its reason. A letter offers
-the contact and refuses the other, saying why. A proceeding's document stays out of the letter's
-attachments.
+the contact and refuses the other, saying why, and ends on *Copies to* with everyone marked copies. A
+proceeding's document stays out of the claim table's picker and wears *kept out* on Evidence.

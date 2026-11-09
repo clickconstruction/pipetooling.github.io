@@ -10,7 +10,8 @@
  * - `list` ({ view, q?, pageToken?, labels? }): one page of 50 of the Inbox and the Sent box, newest first (`myMailQuery`:
  *   never Drafts, Spam, Trash or Chats, never a label the person left out, their own search as one group), each mail read
  *   whole ten at a time into a row (`readMyMail`), then filled from the database: `tagged` (`email_tag_threads`, the
- *   job's chip), `inMessages` (a line already holding the mail's Message-ID) and the guess (`guessJob`, never acted on).
+ *   job's chip), `inMessages` (a line already holding the mail's Message-ID) and the guess (since v2.6747 the job another
+ *   mail of the conversation is held on, `conversationGuess`, else `guessJob`; never acted on).
  *   The view (`viewRows`) decides the rows answered: the ones it draws, then the ones behind its fold line, each
  *   flagged with its `folded` kind, so the tab draws its fold line; `folded` counts them. Nothing is kept.
  * - `open` ({ gmailId }): one mail whole, its row filled as above, its addresses, words, HTML and files, and the rest of
@@ -101,6 +102,7 @@ import { personEntryRow, planPersonTag, type MyMailPersonTagStep } from '../_sha
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
   MY_MAIL_GMAIL_LABEL,
+  MY_MAIL_NO_SUBJECT,
   MY_MAIL_PAGE,
   myMailRefusal,
   type MyMailJobChip,
@@ -136,6 +138,8 @@ import {
   columnNotPushed,
   contactJobsOf,
   contactsByAddress,
+  conversationGuess,
+  conversationJobs,
   customerOpenJobs,
   domainCustomers,
   domainFilter,
@@ -172,10 +176,15 @@ import {
   newestMailAt,
   orphanCopies,
   parseMyMailRequest,
+  placedByAppWords,
   tagPlanPreview,
   personTagPlanPreview,
   planFollow,
   planUntag,
+  SENT_FOLLOW_PAGE,
+  sentFollowQuery,
+  sentPlacement,
+  sentSince,
   stoppedRefusal,
   tagRowJob,
   tokenRefusal,
@@ -202,11 +211,11 @@ const USER_COLUMNS = 'id, name, email, role, archived_at, read_only, is_sample, 
 const LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id'
 const HELD_COLUMNS = 'id, contact_id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mailbox, mail_user_id, tied_by'
 /** A conversation's row as the tag and the untag read it: its job, who tagged it, and the lines its tag tied. */
-const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, tied_line_ids'
+const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, tied_line_ids, placed_by_app'
 /** A line the row records as the tag's own tie, as the untag reads it before it unties one. */
 const TIED_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by'
 const BID_COLUMNS = 'id, bid_number, project_name, service_type_id, outcome'
-const FOLLOW_USER_COLUMNS = 'id, name, email, role, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, archived_at, my_mail_hidden_labels'
+const FOLLOW_USER_COLUMNS = 'id, name, email, role, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, archived_at, my_mail_hidden_labels, my_mail_sent_read_at'
 const FOLLOW_TAG_COLUMNS = 'id, user_id, gmail_thread_id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, last_mail_at'
 /** An entry on a person's file as the person tag and its follow read one: the mail it came from (punch list #289). */
 const PERSON_ENTRY_COLUMNS = 'id, gmail_message_id'
@@ -459,12 +468,15 @@ async function fillRows(ctx: Ctx, box: Box, reads: readonly MyMailRead[], guessF
     const guess = (guessFor === 'all' || guessFor.has(read.row.gmailId)) && wantsGuess(read.row, { tagKey: key, line })
     return { read, line, tagKey: key, guess }
   })
-  const facts = await loadFacts(admin, box, held.filter((h) => h.guess).map((h) => h.read.row), unique(held.map((h) => h.tagKey)))
+  // The thread rule (v2.6747, punch list #263 PR C): a conversation another mail of which, on this page, a line holds on a
+  // job names that job outright, before the subject, the party and the domain are asked; its chip is loaded with the tags'.
+  const onJob = conversationJobs(held.map((h) => ({ threadId: h.read.row.threadId, jobKey: h.line ? jobKeyOfRow(h.line) : null })))
+  const facts = await loadFacts(admin, box, held.filter((h) => h.guess).map((h) => h.read.row), unique([...held.map((h) => h.tagKey), ...Object.values(onJob)]))
   return held.map((h) =>
     filledRow(h.read.row, {
       tagged: h.tagKey ? (facts.chips[h.tagKey] ?? null) : null,
       line: h.line,
-      guess: h.guess ? guessJob(h.read.row, myMailGuessFacts(h.read.row, facts)) : null,
+      guess: h.guess ? (conversationGuess(h.read.row.threadId, onJob, facts.chips) ?? guessJob(h.read.row, myMailGuessFacts(h.read.row, facts))) : null,
     }, me.id),
   )
 }
@@ -832,9 +844,9 @@ async function landMail(as: AsPerson, email: EmailIn, step: WriteStep, plan: Pic
  * `_shared/estimateThreadLine.ts` writes one, and moved onto the new job when a second tag moved the conversation. Best
  * effort: a miss is logged and the tag stands.
  */
-async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean }): Promise<boolean> {
+async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean; words?: string }): Promise<boolean> {
   try {
-    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns })
+    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns, words: input.words })
     const { error } = await ctx.admin.from('messages').upsert(row, { onConflict: 'quo_id', ignoreDuplicates: !input.moved })
     if (error) throw new Error(error.message)
     return true
@@ -900,13 +912,17 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   const saved = await admin
     .from('email_tag_threads')
     .upsert(
-      { ...plan.threadRow, tagged_at: taggedAt, last_mail_at: newestMailAt(emails) ?? taggedAt, last_read_at: null, last_error: null, untagging_at: null, tied_line_ids: withTies(record?.tied, ties) },
+      // A tag by hand is the person's (`placed_by_app` false), whatever the app placed before (punch list #263 PR B).
+      { ...plan.threadRow, tagged_at: taggedAt, last_mail_at: newestMailAt(emails) ?? taggedAt, last_read_at: null, last_error: null, untagging_at: null, placed_by_app: false, tied_line_ids: withTies(record?.tied, ties) },
       { onConflict: 'user_id,gmail_thread_id' },
     )
     .select('id')
     .single()
   if (saved.error) throw stopped('The tag stopped before it began.', saved.error.message)
   const tagRowId = (saved.data as { id?: string } | null)?.id ?? null
+  // A tag by hand lifts the tombstone (punch list #263 PR B): the app may place later mail of the conversation again.
+  const lifted = await admin.from('email_tag_threads_off').delete().eq('user_id', me.id).eq('gmail_thread_id', ask.threadId)
+  if (lifted.error) console.warn(JSON.stringify({ event: 'gmail_mine_tombstone_left', user: me.id, reason: String(lifted.error.message).slice(0, 300) }))
 
   for (const step of plan.steps) {
     if (step.kind === 'skip') {
@@ -1132,6 +1148,14 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
     const gone = await admin.from('email_tag_threads').delete().eq('id', tagRow.id)
     if (gone.error) throw stopped('The untag stopped before the tag came off.', gone.error.message)
   }
+  // A conversation the app placed from the person's Sent and the person took off stays off (punch list #263 PR B): the
+  // tombstone, which the Sent read asks before it places anything, and which a tag by hand lifts.
+  let tombstone = false
+  if ((tagRow as { placed_by_app?: boolean | null } | null)?.placed_by_app === true) {
+    const kept = await admin.from('email_tag_threads_off').upsert({ user_id: me.id, gmail_thread_id: ask.threadId, untagged_at: nowIso() }, { onConflict: 'user_id,gmail_thread_id' })
+    if (kept.error) console.warn(JSON.stringify({ event: 'gmail_mine_tombstone_missed', user: me.id, reason: String(kept.error.message).slice(0, 300) }))
+    else tombstone = true
+  }
   // The label comes off the mail that carries it. A box that never had it has nothing to take off, and nothing is made.
   // A mail it will not leave is counted in the answer (`labelLeft`), never swallowed; when the box's labels cannot be
   // read, every mail a tag could have labelled (never a draft, Spam, Trash or a chat) may still carry it.
@@ -1155,7 +1179,7 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   }
   if (labelLeft > 0) console.warn(JSON.stringify({ event: 'gmail_mine_label_left', user: me.id, left: labelLeft, mails: mails.length }))
   const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0, held, labelLeft }
-  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, unlabelled, label_left: labelLeft, kept_for_matter: kept, event_line: eventGone })
+  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, unlabelled, label_left: labelLeft, kept_for_matter: kept, event_line: eventGone, tombstone })
   return json(answer)
 }
 
@@ -1372,6 +1396,9 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
   }
   // Then the conversations on HR files (punch list #289), their own rows and their own tally.
   const onFiles = await followFiles(admin, saJson)
+  // Then the Sent side (punch list #263 PR B): each person's mail sent since the last run, landed where its party is on
+  // one open job, with no press. Its own tally, logged with the run's; the answer's counts stay the job rows'.
+  const sent = await followSent(admin, saJson, people, users, run)
   const answer: MyMailFollowOk = { ok: true, rows: tags.length + onFiles.rows, lines: done.lines, tied: done.tied, failed: failed + onFiles.failed, entries: onFiles.entries }
   log({
     event: 'gmail_mine_follow',
@@ -1397,6 +1424,7 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
     copies_removed: done.copiesRemoved,
     copies_left: done.copiesLeft,
     ...labels,
+    sent,
   })
   return json(answer)
 }
@@ -1495,6 +1523,169 @@ async function followFileOne(as: { admin: Admin; token: string }, tag: FollowTag
     out.already += done.already
   }
   return newestMailAt(mails, tag.last_mail_at)
+}
+
+// ---------- the Sent side with no press (punch list #263 PR B, call 2, v2.6751) ----------
+
+/** One run's tally of the Sent read, logged as counts alone. */
+interface SentTally {
+  people: number
+  cursorsSet: number
+  refusedPeople: number
+  read: number
+  placed: number
+  tied: number
+  skipped: number
+  nowhere: number
+  failed: number
+}
+
+/**
+ * The Sent side (punch list #263 PR B, the owner's call 2 of 2026-11-08): for each person whose switch is on, the mail
+ * they sent from their own box since the last run, at most `SENT_FOLLOW_PAGE` a run. A person never read before has
+ * their cursor (`users.my_mail_sent_read_at`) set to now and nothing read: no backfill, as `gmail-sync`'s first run reads
+ * nothing old. Else the page (`sentFollowQuery`: Sent after the cursor, never a draft, Spam, Trash or a chat, never the
+ * tag's label, never a label the person leaves out), each mail read whole, oldest first. A mail in a conversation this
+ * person has tagged (the follow's own row), or one they untagged after the app placed it (the tombstone
+ * `email_tag_threads_off`), is passed by. Else the party is the first To or Cc outside (`planTag`'s own rule for a sent
+ * mail), and the job the guess's steps 3 and 4 alone (`sentPlacement`: the party's address on exactly one open job, or
+ * its domain one customer's with one open job); none, and the mail lands nowhere. With one job: the `email_tag_threads`
+ * row is upserted first with `placed_by_app` true, as a tag keeps its row; a line a box already holds is tied as the
+ * follow ties a loose one (recorded on the row, never a line someone placed); any other lands through `landMail` exactly
+ * as a tag's write lands, then its line is marked `placed_by_app`; the grey line in the party's thread says the app put
+ * it there and why (`placedByAppWords`); the label goes on. Then the cursor moves to the newest mail read. A person
+ * whose token or box fails is counted and skipped for the run; a mail that fails is counted and the next still runs.
+ */
+async function followSent(admin: Admin, saJson: string, people: ReadonlyMap<string, MyMailFollowPerson>, users: readonly MyMailFollowUserRow[], run: Run): Promise<SentTally> {
+  const tally: SentTally = { people: people.size, cursorsSet: 0, refusedPeople: 0, read: 0, placed: 0, tied: 0, skipped: 0, nowhere: 0, failed: 0 }
+  if (people.size === 0) return tally
+  const userById = new Map(users.map((u) => [u.id, u]))
+  let shared: { team: NonNullable<MyMailKnown['team']>; box: Box } | null = null
+  for (const me of people.values()) {
+    const u = userById.get(me.id)
+    const since = typeof u?.my_mail_sent_read_at === 'string' && u.my_mail_sent_read_at ? u.my_mail_sent_read_at : null
+    if (!since) {
+      // The first run reads nothing: the cursor starts now, and only mail sent from here on lands by itself.
+      const set = await admin.from('users').update({ my_mail_sent_read_at: nowIso() }).eq('id', me.id).is('my_mail_sent_read_at', null)
+      if (set.error) console.warn(JSON.stringify({ event: 'gmail_mine_sent_cursor_unset', user: me.id, reason: String(set.error.message).slice(0, 300) }))
+      else tally.cursorsSet++
+      continue
+    }
+    let token: string
+    let hidden: string[]
+    let page: { messages?: { id: string }[] }
+    try {
+      token = await googleServiceToken(saJson, GMAIL_SCOPES, me.email)
+      const hiddenNames = myMailHiddenLabels(u?.my_mail_hidden_labels)
+      hidden = await hiddenLabelIds(token, hiddenNames)
+      page = await gmailMessagePage(token, sentFollowQuery(since, hiddenNames), SENT_FOLLOW_PAGE)
+    } catch (e) {
+      tally.refusedPeople++
+      console.warn(JSON.stringify({ event: 'gmail_mine_sent_refused', user: me.id, reason: (e instanceof Stop ? e.refusal.words : words(e)).slice(0, 300) }))
+      continue
+    }
+    const ids = unique((page.messages ?? []).map((m) => m.id))
+    if (ids.length === 0) continue
+    shared ??= { team: await loadTeam(admin), box: await loadBox(admin, { id: me.id, name: me.name, email: me.email, readOnly: false, hiddenLabels: [] }) }
+    const reader: MyMailReader = { ...shared.box.reader, address: me.email }
+    const as: AsPerson = { admin, token, me }
+    // Oldest first, so the cursor moves through the page in order and a stopped run picks up where it left.
+    const mails = (await readAll(token, ids))
+      .filter((m) => !leftOutOfTab(m.labelIds, hidden))
+      .sort((a, b) => Number(a.internalDate ?? 0) - Number(b.internalDate ?? 0))
+    let newest: string | null = null
+    for (const message of mails) {
+      const read = readMyMail(message, reader)
+      const email = readGmailMessage(message)
+      if (!sentSince(email, since)) continue
+      tally.read++
+      try {
+        const landed = await placeSentMail(as, email, read, { team: shared.team, boxes: shared.box.boxes, hidden }, run)
+        tally[landed]++
+        if (email.at && (!newest || email.at > newest)) newest = email.at
+      } catch (e) {
+        tally.failed++
+        console.warn(JSON.stringify({ event: 'gmail_mine_sent_failed', user: me.id, reason: (e instanceof Stop ? e.refusal.words : words(e)).slice(0, 300) }))
+        // The cursor stays before this mail, so the next run reads it again.
+        break
+      }
+    }
+    if (newest && newest > since) {
+      const moved = await admin.from('users').update({ my_mail_sent_read_at: newest }).eq('id', me.id)
+      if (moved.error) console.warn(JSON.stringify({ event: 'gmail_mine_sent_cursor_unmoved', user: me.id, reason: String(moved.error.message).slice(0, 300) }))
+    }
+  }
+  return tally
+}
+
+/**
+ * One sent mail: passed by when its conversation is tagged or tombstoned, landed nowhere when the guess names no job,
+ * else placed (its line written and marked) or tied (a box's loose line). What stopped it is thrown.
+ */
+async function placeSentMail(as: AsPerson, email: EmailIn, read: MyMailRead, known: Pick<MyMailKnown, 'team' | 'boxes' | 'hidden'>, run: Run): Promise<'placed' | 'tied' | 'skipped' | 'nowhere'> {
+  const { admin, me } = as
+  const threadId = email.threadId ?? read.row.threadId
+  const [tagRows, offRows] = await Promise.all([
+    rows<{ id: string }>(admin.from('email_tag_threads').select('id').eq('user_id', me.id).eq('gmail_thread_id', threadId), 'your tagged conversations'),
+    rows<{ gmail_thread_id: string }>(admin.from('email_tag_threads_off').select('gmail_thread_id').eq('user_id', me.id).eq('gmail_thread_id', threadId), 'the conversations you untagged'),
+  ])
+  if (tagRows.length > 0 || offRows.length > 0) return 'skipped'
+  // The party: the first To or Cc outside, as a tag plans a sent mail; a note to self or to the team lands nowhere.
+  const person = { userId: me.id, address: me.email, name: me.name }
+  const probe = planTag({ threadId, messages: [email] }, person, { kind: 'pipeline', id: '00000000-0000-0000-0000-000000000000', key: 'pipeline:probe', num: '', name: '' }, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden })
+  const write = probe.steps.find((s): s is WriteStep => s.kind === 'write')
+  if (!write || write.direction !== 'out') return 'nowhere'
+  const party = { name: (write.party.name ?? '').trim(), address: write.party.address }
+  // The job: steps 3 and 4 of the guess, over the facts the list reads for a page of one row.
+  const boxes = [...(known.boxes ?? [])]
+  const box: Box = { reader: { address: me.email, boxes }, boxes }
+  const facts = await loadFacts(admin, box, [{ ...read.row, who: party, subject: MY_MAIL_NO_SUBJECT }], [])
+  const guess = sentPlacement(party, myMailGuessFacts({ who: party }, facts))
+  if (!guess) return 'nowhere'
+  const chip: MyMailJobChip = { kind: guess.kind, id: guess.id, key: guess.key, num: guess.num, name: guess.name }
+  // The lines that already hold the mail, as the follow finds them.
+  const rfc = rfcMessageId(email)
+  const held = rfc
+    ? await rows<MyMailFollowLine>(admin.from('messages').select(FOLLOW_LINE_COLUMNS).eq('rfc_message_id', rfc), 'the lines')
+    : await rows<MyMailFollowLine>(admin.from('messages').select(FOLLOW_LINE_COLUMNS).eq('mail_user_id', me.id).eq('gmail_id', email.gmailId), 'the lines')
+  const line = held[0] ?? null
+  const loose = line ? !line.mail_user_id && jobKeyOfRow(line) === null && !line.tied_by : false
+  if (line && !loose) return 'skipped'
+  const plan = planTag({ threadId, messages: [email] }, person, chip, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden })
+  // The row first, as a tag keeps its own: the app's, so the thread line says so and an untag leaves the tombstone.
+  const taggedAt = nowIso()
+  const saved = await admin
+    .from('email_tag_threads')
+    .upsert(
+      { user_id: me.id, gmail_thread_id: threadId, ...plan.jobColumns, tagged_by: me.id, tagged_at: taggedAt, last_mail_at: email.at ?? taggedAt, last_read_at: null, last_error: null, untagging_at: null, placed_by_app: true, tied_line_ids: line ? [line.id] : [] },
+      { onConflict: 'user_id,gmail_thread_id' },
+    )
+    .select('id')
+    .single()
+  if (saved.error || !saved.data) throw stopped('The Sent read stopped before the conversation was kept.', saved.error?.message ?? 'no row')
+  const tagRowId = String(saved.data.id)
+  let contactId: string | null = null
+  if (line) {
+    await tieLine({ admin }, line.id, chip, me.id, {
+      tie: 'The Sent read stopped partway. A line could not be tied to the job.',
+      stamp: 'The Sent read stopped partway. A tied line could not name who tagged it.',
+    })
+    run.done.tied++
+    contactId = (await rows<{ contact_id: string | null }>(admin.from('messages').select('contact_id').eq('id', line.id), 'the line'))[0]?.contact_id ?? null
+  } else {
+    const step = plan.steps.find((s): s is WriteStep => s.kind === 'write')
+    if (!step) return 'nowhere'
+    const landed = await landMail(as, email, step, plan, run, 'The Sent read')
+    contactId = landed.contactId
+    if (landed.lineId && landed.written) {
+      const marked = await admin.from('messages').update({ placed_by_app: true }).eq('id', landed.lineId)
+      if (marked.error) console.warn(JSON.stringify({ event: 'gmail_mine_placed_unmarked', user: me.id, line: landed.lineId, reason: String(marked.error.message).slice(0, 300) }))
+    }
+  }
+  if (contactId) await writeTagEvent(as, { tagRowId, contactId, jobColumns: plan.jobColumns, moved: false, words: placedByAppWords(me, party, chip, guess.why) })
+  const label = await labelMails(as, [email.gmailId])
+  if (label.missed > 0) console.warn(JSON.stringify({ event: 'gmail_mine_sent_label_missed', user: me.id }))
+  return line ? 'tied' : 'placed'
 }
 
 // ---------- the door ----------

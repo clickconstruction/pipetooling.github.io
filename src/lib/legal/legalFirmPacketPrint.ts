@@ -19,7 +19,7 @@ import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
-import { claimEvidenceWords, claimTable, claimTotalWords } from './legalClaimLines'
+import { claimEvidenceWords, claimSettlementOnlyPrintWords, claimTable, claimTotalWords } from './legalClaimLines'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
@@ -72,7 +72,10 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const contingency = contingencyEntries(opts.matter.entries)
   // v2.6696 (punch list #171): the demand reads the claim, and Section A prints the claim's table as the office's packet does.
   const { feesTotal, demand } = firmDemand(packet.worth.claim, opts.matter.entries)
-  const claim = claimTable(packet.worth, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)
+  // v2.6697: the firm's print is the demand's paper too — a settlement-only line is left out and a sentence says how many were; the portal lists them.
+  const labelOf = (jobId: string) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId
+  const claim = claimTable(packet.worth, labelOf, { forDemand: true })
+  const settlementOnlyNote = claimSettlementOnlyPrintWords(claimTable(packet.worth, labelOf))
   const claimRows = [
     ...claim.rows.map((r) => row([`<b>${esc(r.part)}</b>${r.source === 'typed' ? '' : ' <span class="muted">fills in</span>'}`, esc(r.basis || '—'), esc(r.evidence.kind === 'ledger' ? 'the statement below' : claimEvidenceWords(r.evidence)), formatLegalMoney(r.amount)], [false, false, false, true])),
   ]
@@ -199,7 +202,7 @@ ${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No jobs.')}
 <h3>The claim</h3>
-${table(['Part of the claim', 'Grounds', 'Evidence', 'Amount'], claimRows, '', claimFoot)}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}
+${table(['Part of the claim', 'Grounds', 'Evidence', 'Amount'], claimRows, '', claimFoot)}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}${settlementOnlyNote ? `<p class="muted">${esc(settlementOnlyNote)}</p>` : ''}
 <h3>Statement of account</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.', ledgerFoot)}
 <h3>Where to file</h3>

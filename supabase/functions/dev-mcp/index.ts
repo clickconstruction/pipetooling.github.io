@@ -34,6 +34,7 @@ import type { MyMailPersonTagOk, MyMailPersonTagPlanOk, MyMailTagOk, MyMailTagPl
 import { GMAIL_READONLY_SCOPE, MAIL_HIT_HEADERS, MAIL_SEARCH_ACCOUNTS_CAP, MAIL_SEARCH_MAX_CAP, MAIL_SEARCH_MAX_DEFAULT, inBatches, mailDomain, mailHit, mailReadArgs, mailReadReply, mailRefusal, mailSearchArgs, mailSearchReply, type MailAccount, type MailAccountOutcome } from '../_shared/devMcpMailSearch.ts'
 import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
 import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { recordsPass } from '../_shared/fileIndexRecords.ts'
 import { SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
 import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob } from '../_shared/devMcpIndexBackfill.ts'
 
@@ -829,6 +830,22 @@ async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFil
 }
 
 /** Drive for one evidence record, as the panel asks it after the rows (personEvidenceIo.ts): fail-soft, the record stands either way. */
+/**
+ * #285 (v2.6714): the files a write just put on a person's file or a matter, into file_index through the records pass
+ * (`_shared/fileIndexRecords.ts`) as the service role — the staged copies from their bucket, a linked file from Drive —
+ * so search_case finds their words at once. Fail-soft: the sweep's records step takes what this missed within ten minutes.
+ */
+async function indexRecordsAfterWrite(scope: { personId?: string; matterId?: string }): Promise<Record<string, unknown>> {
+  try {
+    const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+    const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON') ?? null
+    const pass = await recordsPass(admin, { n: 20, personId: scope.personId ?? null, matterId: scope.matterId ?? null, dropGone: false, google: async () => (saJson ? await googleAccessToken(saJson) : null) })
+    return { indexed: pass.indexed, held: pass.held, remaining: pass.remaining }
+  } catch (e) {
+    return { indexed: 0, held: [], remaining: 0, why: `the index pass failed (${e instanceof Error ? e.message : String(e)}); the sweep takes the files within ten minutes` }
+  }
+}
+
 async function fileEvidenceToDrive(jwt: string, evidenceId: string): Promise<Record<string, unknown>> {
   try {
     const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/hr-evidence-drive`, {
@@ -1991,6 +2008,11 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         return fail(res.status, res.body)
       }
       let reply = redactSecrets(res.body)
+      if (isDocument && built.step === 'apply' && reply && typeof reply === 'object') {
+        // #285 (v2.6714): the document's words into the file index at once, so search_case finds them; fail-soft, the
+        // sweep's records step takes a document the pass missed within ten minutes.
+        reply = { ...(reply as Record<string, unknown>), index: await indexRecordsAfterWrite({ matterId: String(built.target) }) }
+      }
       if (name === 'apply_license' && reply && typeof reply === 'object') {
         // As the Licenses tab's Save: a license inside its last 30 days opened a dispatch request; the push goes now.
         const dispatchId = (reply as { dispatch_request_id?: unknown }).dispatch_request_id
@@ -2005,7 +2027,11 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         const evidenceId = (reply as { evidence_id?: unknown }).evidence_id
         // v2.6554: a counsel-only record never asks Drive, and this seat will not read it back: it is held from the header it sends.
         const counselOnly = (built.body as { p?: { counsel_only?: unknown } }).p?.counsel_only === true
-        if (counselOnly) return ok({ ...(reply as Record<string, unknown>), drive: { asked: false, ok: true, why: null, counsel_only: true }, next: 'Kept here only, counsel-only: never filed in Drive, never read by the agent or by this seat. get_person_file names it among the held; a dev reads it on People → HR.' }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
+        if (counselOnly) {
+          // #285: the Drive filer is never asked, so its index hook never runs; the files go through the records pass here, fail-soft.
+          const index = await indexRecordsAfterWrite({ personId: String(built.target) })
+          return ok({ ...(reply as Record<string, unknown>), drive: { asked: false, ok: true, why: null, counsel_only: true }, index, next: 'Kept here only, counsel-only: never filed in Drive, never read by the agent or by this seat. get_person_file names it among the held; a dev reads it on People → HR.' }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
+        }
         const drive = typeof evidenceId === 'string' ? await fileEvidenceToDrive(session, evidenceId) : { asked: false, ok: false, why: 'the RPC answered no evidence_id' }
         return ok({ ...(reply as Record<string, unknown>), drive, next: evidenceDriveNext(drive) }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
       }
