@@ -12,12 +12,17 @@ import type { Database } from '../../../types/database'
  * `bids_gc_builders`, the estimates sent inside the awaiting window, and
  * every estimate asked for in the decided span for the estimates' own pace
  * and the speed sentence. Read-only; nothing new on the server.
- * `salesDesk.ts` does the arithmetic and the words.
+ * `salesDesk.ts` does the arithmetic and the words. A ZZ test job is no job
+ * a bid became (v2.6813): it is no win in the span, and it takes no bid out
+ * of the open pile. The caller passes the ZZ ids, or null to keep them, and
+ * the job rows carry their names (`../zzTestJobs.ts`). The bids and the
+ * estimates themselves are not touched.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
 import { AWAITING_DAYS } from '../demandPace'
+import { withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
 import { SALES_DECIDED_DAYS, type SalesDecidedBid, type SalesEstimateHistory, type SalesOpenBid, type SalesOpenEstimate } from './salesDesk'
 
 export type SalesDeskReads = {
@@ -32,14 +37,14 @@ export type SalesDeskReads = {
 
 type OpenBidRow = { id: string; bid_number: string | null; project_name: string | null; gc_builder_id: string | null; customer_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null; created_at: string | null; next_followup_on: string | null; next_followup_reason: string | null; last_contact: string | null; outcome: string | null }
 type DecidedBidRow = { id: string; bid_number: string | null; project_name: string | null; gc_builder_id: string | null; customer_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null; outcome: string | null; outcome_at: string | null; loss_category: string | null; loss_reason: string | null }
-type JobRow = { id: string; bid_id: string | null; created_at: string | null; billing_only: boolean | null }
+type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; billing_only: boolean | null }
 type NameRow = { id: string; name: string }
 type EstimateRow = { id: string; title: string; sent_at: string | null; total_cents: number | null; doc_kind: string | null; customer_id: string | null }
 type EstimateHistoryRow = { id: string; created_at: string; sent_at: string | null; status: string; acceptor_consented_at: string | null; updated_at: string | null; total_cents: number | null; doc_kind: string | null }
 
 const OPEN_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, bid_value, agreed_value, bid_date_sent, created_at, next_followup_on, next_followup_reason, last_contact, outcome'
 const DECIDED_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, bid_value, agreed_value, bid_date_sent, outcome, outcome_at, loss_category, loss_reason'
-const JOB_SELECT = 'id, bid_id, created_at, billing_only'
+const JOB_SELECT = 'id, job_name, customer_name, bid_id, created_at, billing_only'
 const HISTORY_SELECT = 'id, created_at, sent_at, status, acceptor_consented_at, updated_at, total_cents, doc_kind'
 /** A bid with one of these outcomes is decided; anything else, or none, is open unless a job was made from it. */
 const DECIDED_OUTCOME_LIST = ['won', 'lost', 'started_or_complete'] as const
@@ -49,11 +54,11 @@ const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slic
 const usdOf = (r: { agreed_value: number | null; bid_value: number | null }): number => Number(r.agreed_value ?? r.bid_value ?? 0)
 const decidedOutcomeOf = (o: string | null): SalesDecidedBid['outcome'] => (o === 'won' || o === 'lost' || o === 'started_or_complete' ? o : null)
 
-export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string }): Promise<SalesDeskReads> {
+export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<SalesDeskReads> {
   const decidedSinceIso = `${ymdAddDays(opts.todayYmd, -SALES_DECIDED_DAYS)}T00:00:00Z`
   const awaitingSinceIso = `${ymdAddDays(opts.todayYmd, -AWAITING_DAYS)}T00:00:00Z`
   // Two reads make the open set exactly: an outcome of null, and an outcome outside the decided three (NOT IN drops nulls).
-  const [openNull, openOther, decidedRows, spanJobs, estimateRows, historyRows] = await Promise.all([
+  const [openNull, openOther, decidedRows, spanJobRead, estimateRows, historyRows] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(OPEN_SELECT).not('bid_date_sent', 'is', null).is('outcome', null).order('id').range(from, to), 'sales desk open bids')) as OpenBidRow[] | null, error: null }),
       'sales desk open bids',
@@ -80,16 +85,18 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
       'sales desk estimate history',
     ),
   ])
+  const spanJobs = withoutZzBridgeJobs(spanJobRead, opts.zzTestJobIds)
   const openById = new Map<string, OpenBidRow>()
   for (const r of [...openNull, ...openOther]) if (r.bid_date_sent) openById.set(r.id, r)
   const openIds = [...openById.keys()]
-  const jobs = openIds.length
+  const jobRead = openIds.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(
         openIds,
         async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_SELECT).in('bid_id', chunk).order('id').range(from, to), 'sales desk jobs from bids')) as JobRow[] | null, error: null }),
         'sales desk jobs from bids',
       )
     : []
+  const jobs = withoutZzBridgeJobs(jobRead, opts.zzTestJobIds)
   // A bid that became a job is not open, whatever its outcome says; a billing-only job is not the work.
   const becameJob = new Set<string>()
   for (const j of jobs) if (j.bid_id && !j.billing_only) becameJob.add(j.bid_id)

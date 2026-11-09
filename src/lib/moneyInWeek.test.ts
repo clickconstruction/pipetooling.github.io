@@ -367,6 +367,21 @@ describe('the drawer', () => {
     expect(allRows(v)).toHaveLength(0)
     expect(v.drawer.count).toBe(0)
   })
+  it('an in-kind payment is never landed, at the bank, in the drawer or a deposit match (v2.6816)', () => {
+    const v = buildMoneyInWeek(
+      input({
+        unlinked: [unlinked({ paymentId: 'rent', paymentType: 'In kind', usd: 1000, paidOnYmd: TODAY, referenceNumber: null })],
+        payments: [payment({ paymentId: 'rent-linked', paymentType: 'in-kind', usd: 1000, bankTransactionId: 'tx1' })],
+        linkedDeposits: new Map([['tx1', { postedYmd: TODAY, kind: 'checkDeposit' }]]),
+        deposits: [deposit({ mercuryTransactionId: 'd1', usd: 1000, state: 'posted', dayYmd: TODAY })],
+      }),
+    )
+    expect(v.cameIn.usd).toBe(1000)
+    expect(allRows(v).map((r) => r.key)).toEqual(['deposit:d1'])
+    expect(day(v, TODAY).rows[0]!.tag).toBe('Landed · not applied yet')
+    expect(v.drawer.count).toBe(0)
+    expect(v.expected.usd).toBe(0)
+  })
 })
 
 describe('their word and their pace', () => {

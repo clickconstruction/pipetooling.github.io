@@ -123,6 +123,7 @@ describe('(d) plain words on a ledger line', () => {
     expect(paymentHowWords('Cheque', '2291')).toBe('check no. 2291')
     expect(paymentHowWords('ACH', null)).toBe('ACH')
     expect(paymentHowWords('Card (external)', 'ch_1')).toBe('card · ref ch_1')
+    expect(paymentHowWords('In kind', null)).toBe('in kind')
     expect(paymentHowWords(null, null)).toBe('')
   })
 })

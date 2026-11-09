@@ -11,6 +11,7 @@
  */
 import { stripeCreditLineText } from './stripePartPayment'
 import { instrumentWord } from './billsAndPayments'
+import { IN_KIND_PAYMENT_TYPE, isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 
 export type ApplyToStripeInput = {
   /** The bill the line is drawn under; null in ③ (money on no bill). */
@@ -65,10 +66,12 @@ export function applyToStripeWords(input: {
 /**
  * The type word the customer reads on the credit line: a bank row's Mercury kind
  * ("checkDeposit", "incomingDomesticWire") and the office's spellings ("Cheque")
- * become Check · Wire · ACH · Card · Cash; anything else reads Payment. Mirrored
- * in the function's `customerPaymentTypeWord`.
+ * become Check · Wire · ACH · Card · Cash; an in-kind row (v2.6816) keeps its kind
+ * so the line reads "Credit applied"; anything else reads Payment. Mirrored in the
+ * function's `customerPaymentTypeWord`.
  */
 export function customerPaymentTypeWord(paymentType: string | null | undefined): string {
+  if (isInKindPaymentType(paymentType)) return IN_KIND_PAYMENT_TYPE
   const w = instrumentWord(paymentType)
   if (!w) return 'Payment'
   return w === 'ach' ? 'ACH' : w.charAt(0).toUpperCase() + w.slice(1)

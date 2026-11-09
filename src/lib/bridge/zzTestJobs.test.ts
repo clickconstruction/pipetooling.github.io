@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hidesZzTestJobs, withoutZzTestJobs } from '../jobs/zzTestJobVisibility'
-import { bridgeCollections, bridgeReadyToBill, withoutZzBillDeskRows, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions } from './zzTestJobs'
+import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, withoutZzBillDeskRows, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions, withoutZzJobKeyedRows } from './zzTestJobs'
 
 /**
  * v2.6807: the Bridge's own reads leave ZZ test jobs out by the Pipeline's rule. The office saw a count read one over
@@ -126,5 +126,56 @@ describe('the Bill desk\'s reads', () => {
     expect(kept.jobs).toBe(jobs)
     expect(kept.invoices).toBe(invoices)
     expect(kept.zzJobIds.size).toBe(0)
+  })
+})
+
+/**
+ * v2.6813: the Bridge's other loaders (the Build pace, the people's reads, the demand read, the Market and Sales desks,
+ * the Collect scorecard) take the same ids. Prod on 2026-11-09 held four open ZZ jobs, two of them at about $56,000,
+ * in the Build pile and the jobs sold.
+ */
+describe('the ZZ jobs a read knows', () => {
+  const rows = [
+    { id: 'real', job_name: 'Hill Street remodel', customer_name: 'Ann Lee' },
+    { id: 'zzNew', job_name: 'ZZ TEST seat walk', customer_name: 'Robert Test' },
+    { id: 'zzCustomerNew', job_name: 'Walk through', customer_name: 'zz test customer' },
+    { id: 'pizza', job_name: 'Marcos Pizza', customer_name: 'Jazz Hall' },
+  ]
+  it('adds the jobs the rows name as ZZ to the shared ids', () => {
+    expect([...(bridgeZzJobIds(rows, sharedIds) ?? [])].sort()).toEqual(['zzCustomer', 'zzCustomerNew', 'zzJob', 'zzNew', 'zzPaid'])
+  })
+  it('is the shared ids themselves when the rows name none', () => {
+    expect(bridgeZzJobIds(rows.slice(0, 1), sharedIds)).toBe(sharedIds)
+    expect(bridgeZzJobIds([], sharedIds)).toBe(sharedIds)
+  })
+  it('stays null for a dev who shows them, whatever the rows say', () => {
+    expect(bridgeZzJobIds(rows, null)).toBeNull()
+  })
+})
+
+describe('rows keyed to a job by an id alone', () => {
+  const points = [
+    { jobId: 'real', pct: 40 },
+    { jobId: 'zzJob', pct: 25 },
+    { jobId: 'zzPaid', pct: 100 },
+  ]
+  const events = [
+    { job_id: 'real', event_type: 'invoice_sent' },
+    { job_id: 'zzJob', event_type: 'payment_added' },
+    { job_id: null, event_type: 'payment_added' },
+  ]
+  it('a percent point, an event or a payment on a ZZ job leaves, and a row on no job stays', () => {
+    expect(withoutZzJobKeyedRows(points, (p) => p.jobId, sharedIds)).toEqual([{ jobId: 'real', pct: 40 }])
+    expect(withoutZzJobKeyedRows(events, (e) => e.job_id, sharedIds).map((e) => e.job_id)).toEqual(['real', null])
+  })
+  it('keeps every row for a dev who shows them, and the same array when none is dropped', () => {
+    expect(withoutZzJobKeyedRows(points, (p) => p.jobId, null)).toBe(points)
+    expect(withoutZzJobKeyedRows(points, (p) => p.jobId, new Set())).toBe(points)
+    const clean = points.filter((p) => p.jobId === 'real')
+    expect(withoutZzJobKeyedRows(clean, (p) => p.jobId, sharedIds)).toBe(clean)
+  })
+  it('takes the ids a read found by name', () => {
+    const seen = bridgeZzJobIds([{ id: 'zzNew', job_name: 'ZZ TEST seat walk', customer_name: 'Robert Test' }], new Set<string>())
+    expect(withoutZzJobKeyedRows([{ jobId: 'zzNew' }, { jobId: 'real' }], (p) => p.jobId, seen)).toEqual([{ jobId: 'real' }])
   })
 })

@@ -6,20 +6,23 @@ import type { Database } from '../../../../../../src/types/database.ts'
  * The reads behind Market and Sales (link PR 4): the bids created, sent or
  * answered since 90 days before the window (the awaiting window), the jobs
  * those bids became, and the estimates over the same span. `demandPace.ts`
- * shapes them.
+ * shapes them. A ZZ test job is no job a bid became (v2.6813): the caller
+ * passes the ZZ ids, or null to keep them, and the job rows carry their names
+ * (`zzTestJobs.ts`). The bids and the estimates themselves are not touched.
  */
 import { withSupabaseRetry } from '../../utils/errorHandling.ts'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging.ts'
 import { ymdAddDays, calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { AWAITING_DAYS, type DemandBid, type DemandEstimate, type DemandInput } from './demandPace.ts'
+import { withoutZzBridgeJobs, type BridgeZzTestJobIds } from './zzTestJobs.ts'
 
 type BidRow = { id: string; created_at: string | null; bid_date_sent: string | null; bid_value: number | null; agreed_value: number | null; outcome: string | null; outcome_at: string | null }
-type JobRow = { id: string; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
+type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
 type EstimateRow = { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
 
 const ymdOf = (iso: string | null | undefined): string | null => (iso ? calendarYmdInAppTzFromIso(iso) || null : null)
 
-export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string }): Promise<DemandInput> {
+export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<DemandInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -AWAITING_DAYS)
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const select = 'id, created_at, bid_date_sent, bid_value, agreed_value, outcome, outcome_at'
@@ -38,13 +41,14 @@ export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { win
   const bidById = new Map<string, BidRow>()
   for (const r of [...created, ...sent, ...answered]) bidById.set(r.id, r)
   const ids = [...bidById.keys()]
-  const jobs = ids.length
+  const jobRead = ids.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(
         ids,
-        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, bid_id, created_at, revenue, billing_only').in('bid_id', chunk).order('id').range(from, to), 'bridge demand jobs from bids')) as JobRow[] | null, error: null }),
+        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, job_name, customer_name, bid_id, created_at, revenue, billing_only').in('bid_id', chunk).order('id').range(from, to), 'bridge demand jobs from bids')) as JobRow[] | null, error: null }),
         'bridge demand jobs from bids',
       )
     : []
+  const jobs = withoutZzBridgeJobs(jobRead, opts.zzTestJobIds)
   const jobByBid = new Map<string, JobRow>()
   for (const j of jobs) if (j.bid_id && !j.billing_only && !jobByBid.has(j.bid_id)) jobByBid.set(j.bid_id, j)
 

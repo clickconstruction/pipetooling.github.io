@@ -10,6 +10,8 @@
  * means and what the window says about it. Pure.
  */
 
+import { IN_KIND_CUSTOMER_WORD, isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
+
 const CENT = 0.005
 
 function money(n: number): string {
@@ -31,8 +33,13 @@ export function stripePaymentPlan(amountRaw: string | number, remaining: number)
   return { kind: 'part', amount, staysDue: Math.round((remaining - amount) * 100) / 100 }
 }
 
-/** The line the customer will read on the pay link and the invoice PDF. */
+/**
+ * The line the customer will read on the pay link and the invoice PDF. An in-kind payment
+ * (v2.6816) is a credit applied, never money received. Mirrored in the function's
+ * `partPaymentCreditLine`.
+ */
 export function stripeCreditLineText(paymentType: string, paidOnYmd: string, amount: number, reference?: string | null): string {
+  if (isInKindPaymentType(paymentType)) return `${IN_KIND_CUSTOMER_WORD} applied ${shortDate(paidOnYmd)} · $${money(amount)}`
   const type = paymentType.trim() || 'Payment'
   const ref = (reference ?? '').trim()
   const who = type === 'Check' && ref ? `Check #${ref}` : type

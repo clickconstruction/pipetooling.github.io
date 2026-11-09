@@ -11,7 +11,13 @@
 
 import { titleCaseAddress } from './gcKernels/lib/addressTitleCase.ts'
 
-export const JOB_VERBS = ['plan_job', 'apply_job'] as const
+// v2.6793 / 0.50.0 (PR 2): plan_job_update → apply_job_update changes a job as Edit Job and the Pipeline change it — the
+// identity slice's columns (src/lib/jobs/jobFormAutosaveSlices.ts buildEditJobIdentityUpdatePayload), the price, the
+// percent and the kind as one PATCH under RLS, and the status through the Pipeline's own update_job_status, one step at
+// a time in the RPC's order. The plan shows every column before → after and the steps; it commits to the touched
+// columns' before values, the status and updated_at, so a change since refuses the apply.
+
+export const JOB_VERBS = ['plan_job', 'apply_job', 'plan_job_update', 'apply_job_update'] as const
 export type JobVerb = (typeof JOB_VERBS)[number]
 
 export function isJobVerb(name: string): name is JobVerb {
@@ -321,5 +327,248 @@ export function jobAppliedWords(job: { id: string; click_number?: string | null;
     label,
     kind: kind.asked ? (kind.saved ? kind.asked : `not saved: ${kind.why ?? 'the row refused the kind'}`) : null,
     next: `${label} is on the Pipeline at Working (a new job's default); get_job reads it. plan_job_update { job_id, status: "ready_to_bill" } when the work is done, then plan_bill bills it and hands the customer the link.`,
+  }
+}
+
+// ── the update ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+export const JOB_STATUSES = ['waiting', 'working', 'ready_to_bill', 'billed', 'paid'] as const
+export type JobStatus = (typeof JOB_STATUSES)[number]
+/** The Pipeline's words for a status (the board's columns). */
+export const STATUS_WORDS: Readonly<Record<JobStatus, string>> = { waiting: 'Waiting', working: 'Working', ready_to_bill: 'Ready to Bill', billed: 'Billed', paid: 'Paid' }
+
+/** The columns Edit Job writes (the identity slice, the price, the percent, the kind), each with its check. */
+export const UPDATE_COLUMNS = [
+  'job_name', 'job_address', 'hcp_number', 'click_number', 'customer_id', 'customer_name', 'customer_email', 'customer_phone', 'service_type_id',
+  'development_id', 'project_id', 'bid_id', 'bill_to_party', 'gc_customer_id', 'google_drive_link', 'job_pictures_link', 'job_plans_link',
+  'account_manager_user_id', 'revenue', 'pct_complete', 'kind',
+] as const
+export type UpdateColumn = (typeof UPDATE_COLUMNS)[number]
+const UPDATE_COLUMN_SET: ReadonlySet<string> = new Set(UPDATE_COLUMNS)
+/** The id columns, with the table each names, for the plan's read and words. */
+const ID_COLUMNS: Readonly<Record<string, { table: string; finder: string }>> = {
+  customer_id: { table: 'customers', finder: 'find_customer' },
+  gc_customer_id: { table: 'customers', finder: 'find_customer' },
+  service_type_id: { table: 'service_types', finder: 'read_rows on service_types' },
+  development_id: { table: 'developments', finder: 'read_rows on developments' },
+  project_id: { table: 'projects', finder: 'read_rows on projects' },
+  bid_id: { table: 'bids', finder: 'find_bid' },
+  account_manager_user_id: { table: 'users', finder: 'find_person' },
+}
+/** The columns a null clears; the rest need a value. */
+const NULLABLE: ReadonlySet<string> = new Set(['customer_name', 'customer_email', 'customer_phone', 'development_id', 'project_id', 'bid_id', 'gc_customer_id', 'google_drive_link', 'job_pictures_link', 'job_plans_link', 'account_manager_user_id', 'kind'])
+
+export type JobUpdatePayload = {
+  action: 'update'
+  job_id: string
+  set: Partial<Record<UpdateColumn, string | number | null>>
+  status?: JobStatus
+  reason?: string
+}
+
+const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason? }. One of set or status at least.`
+
+/** One column's value, checked as the form checks it; `undefined` means refused with the words. */
+function checkColumn(verb: string, column: UpdateColumn, raw: unknown): { ok: true; value: string | number | null } | { ok: false; error: string } {
+  if (raw === null) return NULLABLE.has(column) ? { ok: true, value: null } : { ok: false, error: `${verb}: ${column} cannot be cleared — give it a value.` }
+  if (column === 'revenue') {
+    const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d+(\.\d{1,2})?$/.test(raw.trim()) ? Number(raw.trim()) : NaN
+    if (!Number.isFinite(n) || n < 0 || n > 99_999_999) return { ok: false, error: `${verb}: revenue is the job's price in dollars, a number of 0 or more.` }
+    return { ok: true, value: Math.round(n * 100) / 100 }
+  }
+  if (column === 'pct_complete') {
+    const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN
+    if (!Number.isInteger(n) || n < 0 || n > 100) return { ok: false, error: `${verb}: pct_complete is a whole number from 0 to 100.` }
+    return { ok: true, value: n }
+  }
+  if (typeof raw !== 'string') return { ok: false, error: `${verb}: ${column} takes text.` }
+  const v = raw.trim()
+  if (column === 'kind') {
+    if (!(JOB_KINDS as readonly string[]).includes(v.toLowerCase())) return { ok: false, error: `${verb}: kind is service or project, or null to unset it.` }
+    return { ok: true, value: v.toLowerCase() }
+  }
+  if (column === 'bill_to_party') {
+    if (!(BILL_TO_PARTIES as readonly string[]).includes(v.toLowerCase())) return { ok: false, error: `${verb}: bill_to_party is customer or gc.` }
+    return { ok: true, value: v.toLowerCase() }
+  }
+  if (ID_COLUMNS[column]) {
+    if (!UUID_RE.test(v)) return { ok: false, error: `${verb}: ${column} is a ${ID_COLUMNS[column].table}.id — ${ID_COLUMNS[column].finder}.` }
+    return { ok: true, value: v.toLowerCase() }
+  }
+  if (column === 'google_drive_link' || column === 'job_pictures_link' || column === 'job_plans_link') {
+    if (!LINK_RE.test(v) || v.length > LINK_MAX) return { ok: false, error: `${verb}: ${column} starts with https://, or null to clear it.` }
+    return { ok: true, value: v }
+  }
+  if (column === 'customer_email') {
+    if (!EMAIL_RE.test(v) || v.length > NAME_MAX) return { ok: false, error: `${verb}: customer_email is not an email address.` }
+    return { ok: true, value: v }
+  }
+  if (column === 'job_name' || column === 'job_address') {
+    if (!v || v.length > NAME_MAX) return { ok: false, error: `${verb}: ${column} is required and under ${NAME_MAX} characters — the form will not save it blank.` }
+    return { ok: true, value: column === 'job_address' ? titleCaseAddress(v) : v }
+  }
+  if (column === 'hcp_number' || column === 'click_number' || column === 'customer_phone') {
+    if (v.length > NUMBER_MAX) return { ok: false, error: `${verb}: ${column} is under ${NUMBER_MAX} characters.` }
+    return { ok: true, value: column === 'customer_phone' && !v ? null : v }
+  }
+  if (v.length > NAME_MAX) return { ok: false, error: `${verb}: ${column} is under ${NAME_MAX} characters.` }
+  return { ok: true, value: v || null }
+}
+
+export type JobUpdateInput = { ok: true; p: JobUpdatePayload; target: string; planHash: string | null } | { ok: false; error: string }
+
+/** plan_job_update / apply_job_update's input, shaped: the job, the columns checked one by one, the status named. */
+export function jobUpdateInput(verb: JobVerb, input: Json): JobUpdateInput {
+  const shape = `${verb} ${UPDATE_SHAPE}`
+  const src = obj(input.update)
+  if (!src) return { ok: false, error: shape }
+  const jobId = typeof src.job_id === 'string' ? src.job_id.trim().toLowerCase() : ''
+  if (!UUID_RE.test(jobId)) return { ok: false, error: shape }
+  const set = obj(src.set) ?? {}
+  const p: JobUpdatePayload = { action: 'update', job_id: jobId, set: {} }
+  for (const [column, raw] of Object.entries(set)) {
+    if (!UPDATE_COLUMN_SET.has(column)) return { ok: false, error: `${verb}: ${column} is not a column this verb changes. The columns: ${UPDATE_COLUMNS.join(', ')}. A status is \`status\`, outside set.` }
+    if (raw === undefined) continue
+    const checked = checkColumn(verb, column as UpdateColumn, raw)
+    if (!checked.ok) return checked
+    p.set[column as UpdateColumn] = checked.value
+  }
+  const status = typeof src.status === 'string' ? src.status.trim().toLowerCase() : ''
+  if (status) {
+    if (!(JOB_STATUSES as readonly string[]).includes(status)) return { ok: false, error: `${verb}: status is one of ${JOB_STATUSES.join(', ')}.` }
+    p.status = status as JobStatus
+  }
+  if (!Object.keys(p.set).length && !p.status) return { ok: false, error: `${verb}: nothing to change — give set, status, or both. ${UPDATE_SHAPE}` }
+  const reason = typeof src.reason === 'string' ? src.reason.trim() : ''
+  if (reason) {
+    if (reason.length > 500) return { ok: false, error: `${verb}: reason is under 500 characters.` }
+    p.reason = reason
+  }
+  let planHash: string | null = null
+  if (verb === 'apply_job_update') {
+    const h = typeof input.plan_hash === 'string' ? input.plan_hash.trim().toLowerCase() : ''
+    if (!/^[0-9a-f]{64}$/.test(h)) return { ok: false, error: `${verb} needs plan_hash — the 64-hex value plan_job_update replied with.` }
+    planHash = h
+  }
+  return { ok: true, p, target: jobId, planHash }
+}
+
+export type JobRow = { id: string; status: string | null; updated_at: string | null; master_user_id: string | null } & Partial<Record<UpdateColumn, string | number | null>>
+export type JobUpdateWorld = {
+  job: JobRow | null
+  /** The rows the new ids name, by column: null when not visible. */
+  named: Partial<Record<UpdateColumn, NamedRow | null>>
+}
+
+const JOB_COLS = ['id', 'status', 'updated_at', 'master_user_id', ...UPDATE_COLUMNS].join(',')
+
+/** The reads the dry run needs: the job, and each row a new id names. */
+export async function readJobUpdateWorld(reads: JobReads, p: JobUpdatePayload): Promise<JobUpdateWorld> {
+  const one = async <T>(table: string, query: string): Promise<T | null> => ((await reads.rows(table, query))[0] as T | undefined) ?? null
+  const job = await one<JobRow>('jobs_ledger', `select=${JOB_COLS}&id=eq.${p.job_id}`)
+  const named: JobUpdateWorld['named'] = {}
+  await Promise.all(
+    Object.entries(p.set).map(async ([column, value]) => {
+      const spec = ID_COLUMNS[column]
+      if (!spec || typeof value !== 'string') return
+      const nameCol = spec.table === 'bids' ? 'project_name' : 'name'
+      const row = await one<Json>(spec.table, `select=id,${nameCol}&id=eq.${value}`)
+      named[column as UpdateColumn] = row ? { id: String(row.id), name: typeof row[nameCol] === 'string' ? (row[nameCol] as string) : null } : null
+    }),
+  )
+  return { job, named }
+}
+
+/**
+ * The steps update_job_status takes from one status to another, one at a time (the RPC allows a neighbour's move
+ * only: forward waiting → working → ready_to_bill → billed → paid, and each back-step). Empty when already there.
+ */
+export function statusSteps(from: JobStatus, to: JobStatus): JobStatus[] {
+  const a = JOB_STATUSES.indexOf(from)
+  const b = JOB_STATUSES.indexOf(to)
+  if (a < 0 || b < 0 || a === b) return []
+  const steps: JobStatus[] = []
+  if (a < b) for (let i = a + 1; i <= b; i++) steps.push(JOB_STATUSES[i] as JobStatus)
+  else for (let i = a - 1; i >= b; i--) steps.push(JOB_STATUSES[i] as JobStatus)
+  return steps
+}
+
+/** The job's label off a row whose columns are typed loosely. */
+const labelOf = (job: JobRow): string => jobShortLabel({ click_number: job.click_number == null ? null : String(job.click_number), hcp_number: job.hcp_number == null ? null : String(job.hcp_number), job_name: job.job_name == null ? null : String(job.job_name) })
+
+const same = (a: unknown, b: unknown): boolean => (a ?? null) === (b ?? null) || (typeof a === 'number' && typeof b === 'string' && Number(b) === a) || (typeof a === 'string' && typeof b === 'number' && Number(a) === b)
+
+/**
+ * What the plan says and what the hash commits to: the job as it stands (its label, status, updated_at), every column
+ * before → after with the no-ops dropped, the status steps in the RPC's order with the one that deletes Ready to Bill
+ * lines named, and what the verb does not do. Refuses a job not visible, an id whose row is not visible, and a plan
+ * that changes nothing.
+ */
+export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): DryRun {
+  const job = world.job
+  if (!job) return { ok: false, refused: `No job ${p.job_id} is visible to you — find_job resolves a number or a name.` }
+  for (const [column, value] of Object.entries(p.set)) {
+    const spec = ID_COLUMNS[column]
+    if (spec && typeof value === 'string' && !world.named[column as UpdateColumn]) return { ok: false, refused: `${column}: no ${spec.table} row ${value} is visible to you — ${spec.finder}.` }
+  }
+  if (p.set.bill_to_party === 'gc' && !(p.set.gc_customer_id ?? job.gc_customer_id)) return { ok: false, refused: 'bill_to_party gc needs a GC on the job: set gc_customer_id with it.' }
+  const changes: Array<{ column: string; before: unknown; after: unknown; named?: string | null }> = []
+  const patch: Json = {}
+  for (const [column, value] of Object.entries(p.set)) {
+    const before = (job as Json)[column] ?? null
+    if (same(before, value)) continue
+    patch[column] = value
+    const row = world.named[column as UpdateColumn]
+    changes.push({ column, before, after: value, ...(row ? { named: row.name } : {}) })
+  }
+  const from = (job.status ?? 'waiting') as JobStatus
+  const steps = p.status ? statusSteps(from, p.status) : []
+  if (!changes.length && !steps.length) {
+    return { ok: false, refused: p.status ? `${labelOf(job)} already reads that way: it is at ${STATUS_WORDS[from]} and every column in set already holds its value. Nothing to apply.` : `${labelOf(job)} already reads that way: every column in set already holds its value. Nothing to apply.` }
+  }
+  const stepWords = steps.map((to, i) => {
+    const prev: JobStatus = i === 0 ? from : (steps[i - 1] as JobStatus)
+    const deletes = prev === 'ready_to_bill' && to === 'working'
+    return { to, words: `${STATUS_WORDS[prev]} → ${STATUS_WORDS[to]}${deletes ? ' — deletes the job\'s Ready to Bill lines, as the Pipeline\'s send-back does' : ''}${to === 'billed' ? ' — the Pipeline\'s move alone; a Stripe bill is plan_bill' : ''}` }
+  })
+  return {
+    ok: true,
+    reply: {
+      action: 'update',
+      job: { id: job.id, label: labelOf(job), status: from, status_words: STATUS_WORDS[from], updated_at: job.updated_at },
+      changes,
+      patch,
+      status: p.status ? { from, to: p.status, steps: stepWords } : null,
+      reason: p.reason ?? null,
+      not_done: [
+        'the dispatch request the form closes when a phone or pictures link goes from blank to set',
+        'the bid outcome the database derives when bid_id changes is written by its trigger, not said here',
+      ],
+    },
+  }
+}
+
+/** The apply's reply: what landed, what the RPC answered step by step, where the job stands. */
+export function jobUpdateAppliedWords(
+  job: { id: string; click_number?: string | null; hcp_number?: string | null; job_name?: string | null },
+  landed: { changes: Array<{ column: string; before: unknown; after: unknown }>; held: string | null },
+  status: { from: JobStatus; steps: Array<{ to: JobStatus; ok: boolean; error?: string | null; deleted_ready_to_bill_invoices?: number }> } | null,
+): Json {
+  const label = jobShortLabel(job)
+  const lastOk = status ? [...status.steps].reverse().find((s) => s.ok)?.to ?? status.from : null
+  const stopped = status?.steps.find((s) => !s.ok) ?? null
+  const now = lastOk ?? null
+  const next = stopped
+    ? `${label} stopped at ${STATUS_WORDS[now as JobStatus]}: ${stopped.error ?? 'the move was refused'}. Plan again from there.`
+    : now === 'ready_to_bill'
+      ? `${label} is at Ready to Bill. plan_bill bills it and hands the customer the link.`
+      : `${label} reads as planned; get_job shows it.`
+  return {
+    job_id: job.id,
+    label,
+    changed: landed.changes,
+    held: landed.held,
+    status: status ? { from: status.from, now, steps: status.steps } : null,
+    next,
   }
 }

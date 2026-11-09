@@ -1,4 +1,4 @@
-// A note on a job's Activity or a bid's notes from the dev seat (v2.6822 / 0.53.0). The owner, 2026-11-09, on the
+// A note on a job's Activity or a bid's notes from the dev seat (v2.6822 / 0.54.0). The owner, 2026-11-09, on the
 // submittal verbs: an agent that loads submittal entries should be able to "let others know their status". The seat
 // reads status back in the conversation (get_submittals); this pair leaves the word where the team reads it in the
 // app — a line in a job's Job activity / notes (jobs_ledger_thread_notes, the row the Pipeline's Note press and
