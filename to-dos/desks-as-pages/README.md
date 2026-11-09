@@ -1,8 +1,8 @@
 ---
 name: "A desk is a page with a route: the Legal desk first"
 number: 182
-group: gated
-status: "the Legal desk built and live (v2.5894 · 5936 · 5941, #6240 · #6261 · #6265, merged 2026-10-27) and walked against the mock-up the same day, its fixes v2.5984 · 5990 · left: the owner's look after a week, then the rule's line and the Lien desk"
+group: ready
+status: "the Legal desk built and live (v2.5894 · 5936 · 5941, #6240 · #6261 · #6265, merged 2026-10-27) and walked against the mock-up the same day, its fixes v2.5984 · 5990 · left: the owner's look after a week, then the rule's line and the Lien desk · the owner's call of 2026-11-09: the Lien desk moves the same way; the CLAUDE.md rule line was not asked for"
 summary: >
   Four places where a person works for an hour are drawn as windows over a page: the Legal
   desk, the Lien desk, the bank payments window and the job window. Each window must pass four
@@ -14,9 +14,9 @@ summary: >
   right when it is one act and the page under it is where you go back to. The Legal desk moves
   first, to /legal-desk, behind redirects from every link in the wild, in three PRs. The Lien
   desk and the bank window follow. The job window stays a window and gains an address.
-next: From 2026-11-03, after a week of the Legal desk as a page, the owner looks at it and says yes or no to two things. The rule as a line in CLAUDE.md, with its table in APP_SHELL_ARCHITECTURE.md (Decisions, 1). The Lien desk moving the same way, in PRs of its own. Two noes close this folder.
+next: Build the Lien desk as a page on the Legal desk's pattern, in PRs of its own: the page and its route kernel, the doors, the redirect from the old address, the phone rail. Then close this folder.
 size: M, as three PRs, M M S
-blocker: the owner's week with the Legal desk as a page, from 2026-10-27.
+blocker: None. The owner's call of 2026-11-09.
 ver: v2.5894 · 5936 · 5941 · 5984 · 5990
 opinion: "later: the Lien desk is three times the Legal desk, so let a week of the page say whether the rule earns it"
 mockup: to-dos/desks-as-pages/mockup.html

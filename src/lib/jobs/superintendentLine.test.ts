@@ -179,6 +179,13 @@ describe('superintendentLine: the words', () => {
     expect(superintendentLine({ ...base, hoursUsed: null, pctDone: 10 }).hoursWords).toBe('200 h budget ◆ from the bid · — h in')
   })
 
+  it("says frozen at award when the budget is the award's hours, the number the score reads (the owner's call of 2026-11-09)", () => {
+    expect(superintendentLine({ ...base, budgetFrozen: true }).hoursWords).toBe('200 h budget ◆ from the bid, frozen at award · 100 h in')
+    expect(superintendentLine({ ...base, budgetFrozen: true, budgetSource: 'typed' }).hoursWords).toBe('200 h budget ✎ typed by the office, frozen at award · 100 h in')
+    // A target the leader set is not the award, whatever the read says.
+    expect(superintendentLine({ ...base, budgetFrozen: true, budgetSource: 'target' }).hoursWords).toBe('200 h budget 🎯 expected · 100 h in')
+  })
+
   it('reads the target line only when the budget is the target', () => {
     const target = { by: 'Robert', at: '2026-11-01T20:00:00Z', from: 138, why: 'the bid carried 138 h for a slab job that framed in a week' }
     const l = superintendentLine({ ...base, hoursBudget: 110, budgetSource: 'target', target })

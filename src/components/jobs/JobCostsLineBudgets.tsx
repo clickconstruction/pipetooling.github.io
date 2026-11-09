@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { calcLineBudget, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, LINE_BUDGET_GLYPH } from '../../lib/jobs/lineBudgets'
+import { calcLineBudget, laborHoursTailWords, lineBudgetEntryOf, lineBudgetFor, linesSumBesideAwardWords, sumLineBudgets, LINE_BUDGET_GLYPH, type AwardHoursBeside } from '../../lib/jobs/lineBudgets'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import type { Database } from '../../types/database'
 
@@ -40,9 +40,11 @@ type Props = {
   jobId?: string | null
   /** The job reads as a project (#238's kind); undefined = not known here, so an ordered stage stands in. */
   isProject?: boolean
+  /** The hours frozen at award, the number the score reads (the owner's call of 2026-11-09); the lines' sum shows beside them. Null with no award. */
+  award?: AwardHoursBeside | null
 }
 
-export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null, isProject }: Props) {
+export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null, isProject, award = null }: Props) {
   const { settings } = useLineBudgetSettings()
   const lines = useMemo(
     () =>
@@ -71,7 +73,7 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
   // Spend past the work's percent is money ahead of the work; ten points is the Costs verdict's own margin of noise.
   const ahead = spentPct != null && jobPct != null && spentPct - jobPct >= 10
   const ownPctLines = lines.filter((l) => l.pctDone != null).length
-  const hoursPct = teamHours != null && sums.laborHours > 0 ? Math.round((teamHours / sums.laborHours) * 100) : null
+  const besideAward = linesSumBesideAwardWords(award, sums.laborHours)
 
   const pace = (field: string, spentField: number | null, budget: number, color: string, tail?: string) => {
     const pct = spentField != null && budget > 0 ? (spentField / budget) * 100 : null
@@ -112,7 +114,7 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
         </div>
       </div>
       <div style={{ display: 'grid', gap: 6 }}>
-        {pace('Labor', laborSpent, sums.laborUsd, LABOR, teamHours != null ? `${h0(teamHours)} of ${h0(sums.laborHours)}${hoursPct != null ? ` (${hoursPct}%)` : ''}` : undefined)}
+        {pace('Labor', laborSpent, sums.laborUsd, LABOR, teamHours != null ? laborHoursTailWords(teamHours, award, sums.laborHours) : undefined)}
         {pace('Materials', materialsSpent, sums.materialsUsd, MATERIALS)}
       </div>
       <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', borderLeft: `3px solid ${ahead ? 'var(--border-red)' : 'var(--border-green, #16a34a)'}`, paddingLeft: 8 }}>
@@ -125,6 +127,7 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
           </span>
         )}
       </div>
+      {besideAward ? <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }} data-testid="job-costs-beside-award">{besideAward}</div> : null}
       <div data-testid="job-costs-line-rows">
         {lines.map((l) => {
           const pct = l.pctDone != null ? Math.max(0, Math.min(100, l.pctDone)) : null

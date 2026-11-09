@@ -33,7 +33,7 @@ The worst project comes first. A card with a red edge is behind. A green edge is
 - The thin line along the bottom is the money spent. It turns red when the money runs ten points ahead of the work.
 - The bars across the track are the stages. Hover a bar to read the stage's name and the budget to reach it.
 
-The small symbol at the end of the expected row says where the budget came from. ◆ is the bid. ✎ is a number the office typed. ≈ is assumed from the lines. 🎯 is a target someone set.
+The small symbol at the end of the expected row says where the budget came from. ◆ is the bid. ✎ is a number the office typed. ≈ is assumed from the lines. 🎯 is a target someone set. A project with an award says **frozen at award** after the symbol. Those are the hours the Scoreboard reads, so the card and the score agree.
 
 :::example A card that reads behind
 *J1050 · The Bunker* shows red pieces to 65% of the track, the blue mark at 30%, and the chip *money ahead*. The money line is red. The words under the slider say *Spending 15 points ahead of the work.* The leader opens the card large and reads the days to see where the hours went.

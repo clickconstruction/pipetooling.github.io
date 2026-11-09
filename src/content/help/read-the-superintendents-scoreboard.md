@@ -10,9 +10,9 @@ The scoreboard pays a superintendent for finishing under the hours his project w
 ## The rule in six lines
 
 - **Percent.** The office's own sign-off on the job's percent counts. The crew's percent is provisional and never scores.
-- **Baseline.** The hours and labor dollars frozen at award. Refresh from bid never moves the score.
+- **Baseline.** The hours frozen at award. Refresh from bid never moves the score. The line budgets' sum on the Costs tab is never scored.
 - **Hours.** The team's clock hours at the burden factor. A stage a sub performs counts on the sub's sheet hours.
-- **Kept.** The labor budget earned at the signed-off percent, minus the actual labor cost. The bonus is a share of it. A project over its baseline pays nothing and owes nothing back.
+- **Kept.** The hours earned at the signed-off percent, priced at the roster's loaded rate, minus the actual labor cost. The roster's rate is the last 90 days of field wages at the burden factor. The bonus is a share of what is kept. A project over its baseline pays nothing and owes nothing back.
 - **Days.** The planned finish frozen at award against the finish at this pace. Its own figure, never paid on.
 - **Not scored.** A project awarded on the book's hours is a guess. It waits for a bid or typed baseline.
 
@@ -49,4 +49,6 @@ The board reads the new share at once. The period is the month and the sign-off 
 
 - A superintendent is known from the project's assigned superintendents, or the GC project's superintendent.
 - A job with no hours baseline at award is not on the board. Give it one on the Costs tab first. See [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline).
+- A project priced under $2,500 is never on the board. The baseline deck leaves it out too.
+- The rule card names the roster's rate the month was priced at. With no field hours in the last 90 days, each job reads its award's own rate instead.
 - Every signed-off job also feeds the labor book, so the next baseline is sharper.
