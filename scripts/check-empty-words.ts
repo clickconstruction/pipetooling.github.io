@@ -64,10 +64,18 @@ function main(): number {
     console.log('check-empty-words: nothing to compare against (a push to main, or no base reachable).')
     return 0
   }
-  const changed = (tryGit(`diff --name-only --diff-filter=AMR ${base.ref} HEAD -- ${SOURCES}`) ?? '')
+  // A renamed file is read against its old name (`-M`), so a `git mv` with edits counts the edits alone, never the whole file
+  // (the Lien desk's `LienDeskModal.tsx` → `LienDesk.tsx`, punch list #182 PR 3, read as 3,800 new lines until this).
+  const entries = (tryGit(`diff --name-status -M --diff-filter=AMR ${base.ref} HEAD -- ${SOURCES}`) ?? '')
     .split('\n')
     .map((l) => l.trim())
-    .filter(isComponentSource)
+    .filter(Boolean)
+    .map((l) => {
+      const parts = l.split('\t')
+      return parts[0]!.startsWith('R') ? { file: parts[2]!, from: parts[1]! } : { file: parts[1]!, from: null }
+    })
+    .filter((e) => isComponentSource(e.file))
+  const changed = entries.map((e) => e.file)
   if (changed.length === 0) {
     console.log(`check-empty-words: no component changed against ${base.how}.`)
     return 0
@@ -77,9 +85,9 @@ function main(): number {
   let failing = 0
   let elsewhereTotal = 0
   let annotated = 0
-  for (const file of changed) {
+  for (const { file, from } of entries) {
     const everything = bareEmptySentences(readFileSync(resolve(ROOT, file), 'utf8'), file)
-    const split = bareEmptyOnChangedLines(everything, changedLinesFromDiff(tryGit(`diff -U0 ${base.ref} HEAD -- ${file}`) ?? ''))
+    const split = bareEmptyOnChangedLines(everything, changedLinesFromDiff(tryGit(`diff -U0 -M ${base.ref} HEAD -- ${from ? `${from} ${file}` : file}`) ?? ''))
     const listed = all ? everything : split.onChanged
     const elsewhere = all ? 0 : split.elsewhere
     elsewhereTotal += elsewhere
