@@ -132,6 +132,8 @@ type Props = {
   authUserId: string
   /** Devs manage the Hire tab's onboarding checklist items. */
   isDev: boolean
+  /** Punch list #188 row 61 (v2.6763): ⚙ Onboarding settings and the Team review weights — the owner or a dev (`canEditOnboarding`); the dev flag alone still picks sample accounts into the share list. */
+  canEditOnboarding?: boolean
   resolveMasterId: () => Promise<string | null>
   /** v2.3805: the viewer holds a column share, not the board — Screen / Interview / Try-out of their columns, no office powers (sharedHiringTab.ts). */
   shared?: boolean
@@ -780,7 +782,7 @@ function RoleColumn({
 }
 
 /** Prospects → Team: prospective hires on a board — one drag-ranked column per role being hired for. */
-export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, shared = false }: Props) {
+export default function TeamProspectsTab({ authUserId, isDev, canEditOnboarding = false, resolveMasterId, shared = false }: Props) {
   const { showToast } = useToastContext()
   const powers = hiringTabPowers(shared)
   const confirmDialog = useConfirmDialog()
@@ -1910,12 +1912,12 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       {stage === 'hire' && !loading && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-            {(onboardingItems.length > 0 || isDev) && (
+            {(onboardingItems.length > 0 || canEditOnboarding) && (
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 Onboarding: each box goes red → yellow (requested) → green (done). Tap a box to move it along; tap 🔗 to open that item&apos;s document.
               </p>
             )}
-            {isDev && (
+            {canEditOnboarding && (
               <button
                 type="button"
                 onClick={() => setOnboardingSettingsOpen(true)}
@@ -2035,7 +2037,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       {stage === 'review' && (
         <TeamReviewSection
           authUserId={authUserId}
-          isDev={isDev}
+          canSetWeights={canEditOnboarding}
           initialRateUserId={rateUserIdFromUrl}
           onOpenScreenBoard={() => setStage('screen')}
         />

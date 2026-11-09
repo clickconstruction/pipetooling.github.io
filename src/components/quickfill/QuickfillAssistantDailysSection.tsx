@@ -3,6 +3,7 @@ import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } f
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuickfillSectionMetricsSnapshot, useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
@@ -283,10 +284,11 @@ export function QuickfillAssistantDailysSection({
   const [newLabelDraft, setNewLabelDraft] = useState('')
   const [devEditMode, setDevEditMode] = useState(readDevEditFromStorage)
 
-  const isDev = role === 'dev'
+  // Punch list #188 row 67 (v2.6763): the assistants mark these stations every day, so the office edits the template with a dev.
+  const canEditTemplate = isOfficeRole(role)
   const canReadTimeOff = role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const sortable = isDev && devEditMode && items.length > 0
-  const showDevItemTools = isDev && devEditMode
+  const sortable = canEditTemplate && devEditMode && items.length > 0
+  const showDevItemTools = canEditTemplate && devEditMode
   const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const loadSection = useCallback(async () => {
@@ -533,9 +535,9 @@ export function QuickfillAssistantDailysSection({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : items.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          {isDev && !devEditMode
+          {canEditTemplate && !devEditMode
             ? 'No tasks yet. Turn on Edit checklist below to add items.'
-            : isDev
+            : canEditTemplate
               ? 'No tasks yet. Add checklist items below.'
               : 'No daily tasks configured yet. A dev can add checklist items in Quickfill.'}
         </p>
@@ -658,7 +660,7 @@ export function QuickfillAssistantDailysSection({
           </div>
         </div>
       ) : null}
-      {isDev ? (
+      {canEditTemplate ? (
         <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"

@@ -90,12 +90,12 @@ function dimensionComments(r: TeamMemberReviewRow): Array<{ short: string; text:
  */
 export default function TeamReviewSection({
   authUserId,
-  isDev,
+  canSetWeights,
   onOpenScreenBoard,
   initialRateUserId,
 }: {
   authUserId: string
-  isDev: boolean
+  canSetWeights: boolean
   /** Jump to the hiring board's Screen stage (the pipeline for roles the leaderboard flags). */
   onOpenScreenBoard?: () => void
   /** Deep link (v2.1564): open the Rate deck ON this person — the "Team reviews due" banner passes its first overdue subject. */
@@ -910,7 +910,7 @@ export default function TeamReviewSection({
         )
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 720, margin: '0 auto' }}>
-            {isDev && (
+            {canSetWeights && (
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 {weightsEditorOpen ? (
                   <div style={{ ...cardStyle, display: 'flex', alignItems: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>

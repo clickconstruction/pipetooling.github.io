@@ -103,6 +103,7 @@ import { BookOpen } from 'lucide-react'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
 import { isOwnerOrDev } from '../lib/doorRoles'
+import { canOpenMoneyfill } from '../lib/quickfill/closeWeekChip'
 import { MessagesBadge } from './MessagesBadge'
 import { SKY_UNDER_WORDS } from '../lib/skyUnderWords'
 import { DESK_MARKS } from '../lib/messages/deskMarks'
@@ -749,7 +750,7 @@ export default function Layout() {
             {quickfillIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && (role === 'dev' || role === 'controller') && (
+        {!excludeHeaderLinks && canOpenMoneyfill(role) && (
           <NavLink to="/moneyfill" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Moneyfill" aria-label="Moneyfill">
             {moneyfillIcon}
           </NavLink>
@@ -759,7 +760,7 @@ export default function Layout() {
             {reviewIcon}
           </NavLink>
         )}
-        {!excludeHeaderLinks && role === 'dev' && (
+        {!excludeHeaderLinks && isOwnerOrDev(role) && (
           <NavLink to="/bridge" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="The Bridge" aria-label="The Bridge">
             {bridgeIcon}
           </NavLink>
@@ -969,7 +970,7 @@ export default function Layout() {
                       Quickfill
                     </NavLink>
                   )}
-                  {(role === 'dev' || role === 'controller') && (
+                  {canOpenMoneyfill(role) && (
                     <NavLink
                       to="/moneyfill"
                       onClick={() => setMenuOpen(false)}
@@ -989,7 +990,7 @@ export default function Layout() {
                       Moneyfill
                     </NavLink>
                   )}
-                  {role === 'dev' && (
+                  {isOwnerOrDev(role) && (
                     <NavLink
                       to="/bridge"
                       onClick={() => setMenuOpen(false)}
