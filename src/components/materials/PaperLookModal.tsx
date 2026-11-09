@@ -149,7 +149,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
               ) : null}
             </div>
             {fileBytes ? (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: '#fff' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--surface)' }}>
                 <PdfPageCanvas bytes={fileBytes} page={page} scale={0.72} />
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', padding: '0.3rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
                   <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem' }}>‹ Page</button>
@@ -221,7 +221,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
               </table>
             </div>
 
-            {problem ? <div role="alert" style={{ fontSize: '0.8125rem', color: 'var(--text-red-700, #b91c1c)' }}>{problem}</div> : null}
+            {problem ? <div role="alert" style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{problem}</div> : null}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
