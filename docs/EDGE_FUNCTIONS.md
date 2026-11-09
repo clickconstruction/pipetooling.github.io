@@ -3,9 +3,9 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 182 Supabase Edge Functions
+purpose: Complete API documentation for all 183 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -186,6 +186,7 @@ when_to_read:
    - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
+   - [permit-pull](#permit-pull)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -3497,6 +3498,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose** (v2.4770, which court, step 4): put every property record (`customer_addresses`) in its justice precinct from the office's own court map (`court_areas`, migration `20261007110000`), using the point the geocode cache (`address_geocodes`) already holds for its address. One rule with the Map page: [`_shared/courtAreasClassify.ts`](../supabase/functions/_shared/courtAreasClassify.ts) over the dependency-free geometry in [`_shared/courtGeometry.ts`](../supabase/functions/_shared/courtGeometry.ts). A record typed by hand (`jp_precinct_source = 'hand'`) is never touched; every other record with a point is classified against the active areas of its own county and written only when the precinct or the on-the-line note changed (`jp_precinct`, `jp_precinct_note`, `jp_precinct_source = 'map'`, `jp_precinct_at`). Outside every area clears the precinct; no point in the cache is skipped (owner-confirm-nightly and the Map page fill the cache). Reads up to 5,000 records, 200 at a time.
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled, lookupsDeferred }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
+
+### permit-pull
+
+**Purpose** (v2.6782, punch list #292): pull a city's permits into `permits` for the Research tab under Prospects. San Antonio first: two CKAN datastores on the city's open-data portal (issued permits, submitted applications) read through the SQL door (`_shared/permitFeed.ts` writes the page query), the kept building types and every plumbing type filed since ten days before the newest row held (75 days back on a first run), paged oldest first, upserted on (city, source, number, type) so a re-read changes nothing; a State Plane point converted to degrees (`_shared/permitCoords.ts`). Each feed's run lands in `permit_pulls` with its counts or its error, and a stopped feed never stops the other.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, feeds: [{ source, since, seen, kept, pages, error }], ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
 
 ### owner-confirm-nightly
 
