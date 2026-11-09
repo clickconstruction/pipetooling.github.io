@@ -307,7 +307,7 @@ export function PersonDeskAccessSection({
       })
       if (outcome === 'deleted') {
         showToast(`${displayName} deleted. The roster row went with them.`, 'success')
-        personDesk?.close()
+        personDesk?.close({ forget: true })
         onChanged()
       }
     } catch (e) {
