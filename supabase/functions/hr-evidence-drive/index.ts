@@ -5,6 +5,8 @@ import { freeName } from '../_shared/driveJobFolder.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { NO_PEOPLE_FOLDER_WORDS, driveSafeName } from '../_shared/whereFilesGo.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { recordsPass } from '../_shared/fileIndexRecords.ts'
+import { EMPTY_RECORDS_PASS, type RecordsPassResult } from '../_shared/fileIndexRecordsKernel.ts'
 
 /**
  * The person file's evidence, into Drive (the People → Paperwork spike, 2026-11-02). A piece of evidence is a record on
@@ -18,8 +20,14 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * tables' RLS; Drive is where the office finds it. A refusal (no People folder set, Drive refusing, a file that did not
  * read) is written on the record as `fail_why` for the panel to show, and the same record can be asked for again.
  *
- *   POST { evidence_id } with a dev's session  → { filed: n, remaining: n, fail_why: string | null, folder_url }
+ *   POST { evidence_id } with a dev's session  → { filed: n, remaining: n, fail_why: string | null, folder_url, index }
  *   POST {} with X-Cron-Secret                  → every record with a file not yet filed, oldest first, twenty a run
+ *
+ * After one record is handled (the dev's call, not the cron's), its person's files with no index row go through the
+ * records pass (punch list #285, v2.6714, `_shared/fileIndexRecords.ts`): the staged copies read from the bucket, a
+ * linked file from Drive, each into `file_index` so the case search finds the words at once; `index` answers what it
+ * took. Fail-soft: a refusal there changes nothing about the filing, and the sweep's records step takes the files
+ * within ten minutes.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON,
  * DRIVE_IMPERSONATE_USER (optional). The folder setting: `drive_people_folder_id`.
@@ -155,9 +163,22 @@ serve(async (req) => {
     records.push(...((data ?? []) as EvidenceRow[]))
   }
 
+  // #285: one record's person, whose files with no index row the pass reads once the filing is done; never on the cron's sweep, which has the index's own sweep.
+  const indexPerson = body.evidence_id && records.length === 1 ? records[0].person_id : null
+  const indexFiles = async (google: () => Promise<string | null>): Promise<RecordsPassResult> => {
+    if (!indexPerson) return EMPTY_RECORDS_PASS
+    try {
+      return await recordsPass(admin, { n: 20, personId: indexPerson, google, dropGone: false })
+    } catch (e) {
+      console.warn('hr-evidence-drive index step failed', e)
+      return EMPTY_RECORDS_PASS
+    }
+  }
+
   if (!peopleRoot) {
     for (const r of records) await admin.from('person_file_evidence').update({ fail_why: NO_PEOPLE_FOLDER_WORDS }).eq('id', r.id)
-    return json({ filed: 0, remaining: records.length, fail_why: NO_PEOPLE_FOLDER_WORDS, folder_url: null })
+    const index = await indexFiles(async () => (saJson ? await googleAccessToken(saJson, Deno.env.get('DRIVE_IMPERSONATE_USER') || undefined) : null))
+    return json({ filed: 0, remaining: records.length, fail_why: NO_PEOPLE_FOLDER_WORDS, folder_url: null, index })
   }
   if (!saJson) return json({ error: 'Drive is not set up on this function (GOOGLE_SERVICE_ACCOUNT_JSON).' }, 500)
   const google = await googleAccessToken(saJson, Deno.env.get('DRIVE_IMPERSONATE_USER') || undefined)
@@ -177,5 +198,6 @@ serve(async (req) => {
     failWhy = out.failWhy ?? failWhy
     folder = out.folderUrl ?? folder
   }
-  return json({ filed, remaining, fail_why: failWhy, folder_url: folder, records: records.length })
+  const index = await indexFiles(async () => google)
+  return json({ filed, remaining, fail_why: failWhy, folder_url: folder, records: records.length, index })
 })

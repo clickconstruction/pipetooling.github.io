@@ -112,6 +112,7 @@ export function GcReviewWindow({ onClose, onChanged }: { onClose: () => void; on
       }}
       users={users}
       isDev={role === 'dev'}
+      canEditStandingCopies={office}
       canCertify={office}
       onOpenJob={(jobId) => jobFormModal?.openEditJob(jobId, { onSaved: () => void runFetchJobs(null) })}
       onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}

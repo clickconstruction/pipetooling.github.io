@@ -107,6 +107,18 @@ describe('buildDemandLetterModel', () => {
     expect(t).toContain("mechanic's lien under Chapter 53 of the Texas Property Code")
     expect(t).not.toContain('filing window')
   })
+  it('ends on Copies to when the office picked copies, after the enclosures and before the jurat; nothing when none (v2.6741)', () => {
+    const copies = [{ personId: 'p2', name: 'Pecan Hollow Holdings LLC', role: 'owner of record', address: 'PO Box 418, Brenham TX' }, { personId: 'p3', name: 'Pecan Hollow Holdings LLC', role: 'tenant', address: '' }, { personId: 'p4', name: ' ', role: 'tenant', address: '' }]
+    const withCopies = buildDemandLetterModel({ ...FIELDS, copies, includeNotarial: true }, '2026-09-02')
+    const kinds = withCopies.map((b) => b.kind)
+    expect(kinds.slice(-3)).toEqual(['signature', 'copies', 'notarial'])
+    expect(withCopies.find((b) => b.kind === 'copies')).toEqual({ kind: 'copies', lines: ['Pecan Hollow Holdings LLC, owner of record'] })
+    expect(buildDemandLetterText({ ...FIELDS, copies }, '2026-09-02')).toContain('cc:\n  Pecan Hollow Holdings LLC, owner of record')
+    expect(buildDemandLetterEmailHtml({ ...FIELDS, copies }, '2026-09-02')).toContain('data-demand-copies')
+    expect(buildDemandLetterModel({ ...FIELDS, copies: [] }, '2026-09-02').some((b) => b.kind === 'copies')).toBe(false)
+    expect(buildDemandLetterText(FIELDS, '2026-09-02')).not.toContain('cc:')
+  })
+
   it('model starts with the sender block and ends with signature', () => {
     expect(model[0]?.kind).toBe('senderBlock')
     expect(model[model.length - 1]?.kind).toBe('signature')
