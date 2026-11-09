@@ -10,6 +10,7 @@ import { loadEarnedJobs } from './loadBridgeData.ts'
 import { loadVectorSessions } from './loadBridgeVectors.ts'
 import { ratePerHourByJob, type VectorSession } from './vectors.ts'
 import { ymdAddDays } from './vectorDays.ts'
+import type { BridgeZzTestJobIds } from './zzTestJobs.ts'
 
 /**
  * Vectors by the day loader (v2.4217, punch list #69) — the sessions and the
@@ -30,6 +31,10 @@ import { ymdAddDays } from './vectorDays.ts'
  *   verdict differs between the two. The contract price and the status are
  *   read as they stand today — a price change or a finish inside the week
  *   is not replayed.
+ *
+ * A session clocked on a ZZ test job is left out for everyone but a dev who
+ * shows them (v2.6813, `zzTestJobIds`, null keeps them), so the job is never
+ * priced and no day on it is drawn.
  */
 
 export const VECTOR_REPRICE_LOOKBACK_DAYS = 7
@@ -47,10 +52,10 @@ export type VectorDaysInputs = {
 
 type PctRow = { job_id: string; pct: number | null; changed_at: string }
 
-export async function loadVectorDaysInputs(db: SupabaseClient<Database>, args: { start: string; end: string; todayYmd: string; officeJobLedgerId: string | null }): Promise<VectorDaysInputs> {
+export async function loadVectorDaysInputs(db: SupabaseClient<Database>, args: { start: string; end: string; todayYmd: string; officeJobLedgerId: string | null; zzTestJobIds: BridgeZzTestJobIds }): Promise<VectorDaysInputs> {
   const cutoffYmd = ymdAddDays(args.todayYmd, -VECTOR_REPRICE_LOOKBACK_DAYS)
   const cutoffEndIso = new Date(endOfYmdInAppTzMs(cutoffYmd)).toISOString()
-  const sessions = await loadVectorSessions(db, args.start, args.end, args.officeJobLedgerId)
+  const sessions = await loadVectorSessions(db, args.start, args.end, args.officeJobLedgerId, args.zzTestJobIds)
   const jobIds = [...new Set(sessions.map((s) => (s.officeJob || s.onBid ? null : s.jobId)).filter((v): v is string => !!v))]
   const [{ jobs, earnedJobs, lifetimeHoursAsOf }, pctRows] = await Promise.all([
     loadEarnedJobs(db, jobIds, { asOfYmd: cutoffYmd }),
