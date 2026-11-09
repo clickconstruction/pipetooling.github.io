@@ -408,7 +408,8 @@ export interface OcrQueueRow {
 export async function ocrPending(ctx: IndexContext, n: number, now: Date = new Date()): Promise<OcrQueueRow[]> {
   if (!ctx.ocr || n <= 0) return []
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
-  const { data } = await ctx.admin.from('file_index').select('drive_file_id, name, modified_at, indexed_at').eq('text_why', 'scan').or(ocrQueueFilter()).lte('bytes', OCR_MAX_BYTES).or(`ocr_tried_at.is.null,ocr_tried_at.lt.${cutoff}`).order('ocr_tried_at', { ascending: true, nullsFirst: true }).limit(n)
+  // Drive rows alone (#285): a record's scan has no Drive file to download; its OCR is a follow-up on the card.
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id, name, modified_at, indexed_at').eq('source', 'drive').eq('text_why', 'scan').or(ocrQueueFilter()).lte('bytes', OCR_MAX_BYTES).or(`ocr_tried_at.is.null,ocr_tried_at.lt.${cutoff}`).order('ocr_tried_at', { ascending: true, nullsFirst: true }).limit(n)
   return (data ?? []) as OcrQueueRow[]
 }
 
@@ -484,7 +485,8 @@ export async function retakePass(ctx: IndexContext, n: number, opts: { startedMs
   const out = { tried: 0, read: 0, held: [] as HeldFile[] }
   if (n <= 0) return out
   const cutoff = new Date(Date.now() - RETRY_HOLD_MS).toISOString()
-  const { data } = await ctx.admin.from('file_index').select('drive_file_id').in('text_why', [...RETAKE_WHYS]).lt('checked_at', cutoff).order('checked_at', { ascending: true }).limit(n)
+  // Drive rows alone (#285): a record's held row is taken again by the records queue (file_index_records_due), an hour on.
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id').eq('source', 'drive').in('text_why', [...RETAKE_WHYS]).lt('checked_at', cutoff).order('checked_at', { ascending: true }).limit(n)
   const started = opts.startedMs ?? Date.now()
   for (const { drive_file_id: id } of (data ?? []) as { drive_file_id: string }[]) {
     if (!budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
