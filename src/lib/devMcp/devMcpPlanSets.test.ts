@@ -146,12 +146,12 @@ describe('the plan-part verbs mirror the Plans section (v2.6317, punch list #239
     expect(alreadyApplied('apply_plan_set', { target: PART, at: '2026-11-02T06:00:00Z' })).toContain('on this plan part')
     expect(alreadyApplied('apply_paper', { target: PART, at: null })).toContain('action: came')
     // The server: its own read of the part is the dry run, its table writes go through restRows and nowhere else, 0.14.0 (0.23.0 with the file index, v2.6367, get_person_file, the evidence verbs, the clock session verbs, the hours statement, the report verbs, get_job's paged reads and its card rule behind it).
-    expect(SERVER).toContain("const SERVER_VERSION = '0.52.0'")
-    expect(SERVER).toContain('Writes are sixty-three verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.53.0'")
+    expect(SERVER).toContain('Writes are sixty-five verbs and nothing else')
     expect(SERVER).toContain('const world = await readPlanPartWorld(reads, p)')
     expect(SERVER).toContain('const dry = planPartDryRun(p, world, todayYmdInAppTz())')
     expect(SERVER).toContain('await planPartApply(writes, p, dry.reply, { userId: who.userId }, new Date().toISOString())')
-    expect(SERVER.match(/restRows\(/g)?.length).toBe(20) // declared once; insert + update in the plan-part branch; the part leg's insert + update in apply_file_plans; the revision, the rows, a log line and a patch in the submittal branch (v2.6804)
+    expect(SERVER.match(/restRows\(/g)?.length).toBe(21) // declared once; insert + update in the plan-part branch; the part leg's insert + update in apply_file_plans; the job's PATCH in apply_job_update (v2.6793); the revision, the rows, a log line and a patch in the submittal branch (v2.6804)
     expect(SERVER).toContain("Prefer: prefer ?? (method === 'POST' ? 'return=representation' : 'return=minimal')")
     // The one-apply rule and the mismatch refusal hold for these verbs as for every other.
     expect(SERVER).toContain('if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? \'\', fresh), { target: built.target })\n      const prior = await hooks.priorApply(name, fresh)\n      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })\n      const writes: PartWrites')
