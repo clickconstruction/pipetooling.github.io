@@ -19,7 +19,7 @@ import { hoursStatementLongDate } from '../_shared/hoursStatement.ts'
 import { TDLR_TIMEOUT_MS, TDLR_TIMEOUT_REASON, cleanLicenseNumber, isTimeoutError, tdlrAnswer, tdlrNumberFor, tdlrQueryUrl, tradeCheckedByTdlr, type LicenseLevel, type LicenseTrade, type TdlrRow } from '../_shared/gcKernels/lib/logbook/licenseText.ts'
 import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
-import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
+import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentIsText, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { GmailError, gmailAttachment, gmailMessage, gmailMessageHeaders, gmailMessagePage } from '../_shared/gmail.ts'
@@ -89,7 +89,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.43.0'
+const SERVER_VERSION = '0.44.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -362,8 +362,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_matter_document',
-    description: "Dry-run a document onto a legal matter's Evidence tab (v2.6004): what the office files for the firm on a Collections account — a sent letter, a received notice, a receipt, a scan. The file travels as content_base64 (a PDF, an image, an email as .eml or plain text, up to 10 MB); the server turns it into mime, size_bytes and sha256, which the plan hash commits to, and stores nothing. Replies with the matter, the row as it would be written, how many documents the matter holds, whether the firm reads it now, and a plan_hash.",
-    inputSchema: { type: 'object', properties: { document: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), sent_on? (YYYY-MM-DD, today when left out), sent_how? (email | certified_mail | mail | hand | other; needed when state is sent), sent_to? (who it went to; needed when state is sent) }" } }, required: ['document'] },
+    description: "Dry-run a document onto a legal matter's Evidence tab (v2.6004): what the office files for the firm on a Collections account — a sent letter, a received notice, a receipt, a scan, or a text written for the firm. The file travels as content_base64 (a PDF, an image, an email as .eml, plain text or markdown, up to 10 MB); the server turns it into mime, size_bytes and sha256, which the plan hash commits to, and stores nothing. A text document (v2.6716, punch list #288) travels as markdown instead: the server makes the .md file, and the words are kept in the documents table, rendered on the desk and the portal and searched by section (search_case); a .md or .txt sent as content_base64 is kept as text too. Replies with the matter, the row as it would be written (and the text's size and sections), how many documents the matter holds, whether the firm reads it now, and a plan_hash.",
+    inputSchema: { type: 'object', properties: { document: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), title, shows (one line on what it shows), original_name (the file name, with its extension; <title>.md when markdown is sent without one), content_base64 (the file) or markdown (a text document's words), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), sent_on? (YYYY-MM-DD, today when left out), sent_how? (email | certified_mail | mail | hand | other; needed when state is sent), sent_to? (who it went to; needed when state is sent) }" } }, required: ['document'] },
   },
   {
     name: 'apply_matter_document',
@@ -701,24 +701,44 @@ type DocumentFile = { args: Record<string, unknown>; bytes: Uint8Array; mime: st
 
 async function documentBytes(args: Record<string, unknown>): Promise<DocumentFile | { error: string }> {
   const d = args.document && typeof args.document === 'object' && !Array.isArray(args.document) ? (args.document as Record<string, unknown>) : null
-  if (!d) return { error: 'plan_matter_document needs document — { matter_id, title, shows, original_name, content_base64, dated_on?, state?, received_on?, sent_on?, sent_how?, sent_to? }.' }
-  const name = typeof d.original_name === 'string' ? d.original_name.trim() : ''
+  if (!d) return { error: 'plan_matter_document needs document — { matter_id, title, shows, original_name, content_base64 | markdown, dated_on?, state?, received_on?, sent_on?, sent_how?, sent_to? }.' }
+  // v2.6716 (punch list #288): a text document travels as markdown — the server makes the .md file, and the words ride on to the RPC,
+  // which keeps them in documents. A .md or .txt sent as content_base64 is decoded to markdown too, so the mail door's text files are kept as text.
+  const markdownIn = typeof d.markdown === 'string' ? d.markdown : null
+  const title = typeof d.title === 'string' ? d.title.trim() : ''
+  const name = typeof d.original_name === 'string' && d.original_name.trim() ? d.original_name.trim() : markdownIn !== null && title ? `${title.replace(/[^A-Za-z0-9._ -]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 100) || 'document'}.md` : ''
   const b64 = typeof d.content_base64 === 'string' ? d.content_base64.replace(/\s+/g, '') : ''
   if (!name) return { error: 'document.original_name is required: the file name, with its extension.' }
-  if (!b64) return { error: 'document.content_base64 is required: the file, base64-encoded.' }
+  if (!b64 && markdownIn === null) return { error: 'document.content_base64 is required: the file, base64-encoded — or markdown, a text document\'s words.' }
+  if (b64 && markdownIn !== null) return { error: 'Send content_base64 (a file) or markdown (a text document), not both.' }
   let bytes: Uint8Array
-  try {
-    bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
-  } catch {
-    return { error: 'document.content_base64 is not valid base64.' }
+  if (markdownIn !== null) {
+    if (markdownIn.trim() === '') return { error: 'document.markdown is empty: a text document needs words.' }
+    bytes = new TextEncoder().encode(markdownIn)
+  } else {
+    try {
+      bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    } catch {
+      return { error: 'document.content_base64 is not valid base64.' }
+    }
   }
   if (bytes.length < 1 || bytes.length > LEGAL_DOCUMENT_MAX_BYTES) return { error: `The file must be between 1 byte and ${LEGAL_DOCUMENT_MAX_BYTES / 1024 / 1024} MB; this one is ${bytes.length} bytes.` }
   const mime = legalDocumentMime({ type: typeof d.mime === 'string' ? d.mime : '', name })
-  if (!mime) return { error: `${name} is not a kind the Evidence tab takes: PDF, an image (jpg, png, webp, heic), an email as .eml, or plain text.` }
+  if (!mime) return { error: `${name} is not a kind the Evidence tab takes: PDF, an image (jpg, png, webp, heic), an email as .eml, plain text or markdown.` }
+  if (markdownIn !== null && !legalDocumentIsText(mime)) return { error: `markdown goes with a text file (.md or .txt); ${name} is ${mime}.` }
+  let markdown = markdownIn
+  if (markdown === null && legalDocumentIsText(mime)) {
+    try {
+      markdown = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    } catch {
+      markdown = null // not UTF-8 text: the file is kept as bytes alone
+    }
+    if (markdown !== null && markdown.trim() === '') markdown = null
+  }
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
-  const { content_base64: _content, ...rest } = d
-  return { args: { ...args, document: { ...rest, original_name: name, mime, size_bytes: bytes.length, sha256 } }, bytes, mime, name, sha256 }
+  const { content_base64: _content, markdown: _markdown, ...rest } = d
+  return { args: { ...args, document: { ...rest, original_name: name, mime, size_bytes: bytes.length, sha256, ...(markdown !== null ? { markdown } : {}) } }, bytes, mime, name, sha256 }
 }
 
 /** A file into a private bucket as the dev (the bucket's own storage policy applies): legal-matter-documents for a matter's document, hr-files for a person's evidence (v2.6426). */
@@ -853,8 +873,9 @@ function argsForLog(name: string, args: Record<string, unknown>): Record<string,
   }
   if (name !== 'plan_matter_document' && name !== 'apply_matter_document') return args
   const d = args.document && typeof args.document === 'object' && !Array.isArray(args.document) ? (args.document as Record<string, unknown>) : null
-  if (!d || typeof d.content_base64 !== 'string') return args
-  return { ...args, document: { ...d, content_base64: `(${d.content_base64.length} characters, not logged)` } }
+  if (!d || (typeof d.content_base64 !== 'string' && typeof d.markdown !== 'string')) return args
+  // v2.6716: a text document's words stay out of the log as the bytes do.
+  return { ...args, document: { ...d, ...(typeof d.content_base64 === 'string' ? { content_base64: `(${d.content_base64.length} characters, not logged)` } : {}), ...(typeof d.markdown === 'string' ? { markdown: `(${d.markdown.length} characters, not logged)` } : {}) } }
 }
 
 type CallLog = { verb: string; target?: string | null; args: Record<string, unknown>; status: 'ok' | 'error' | 'refused'; rowCount?: number | null; error?: string | null; asUserId?: string | null }
@@ -1362,7 +1383,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // over the tab's sources and keys, each read as `who` under RLS and fail-soft (devMcpPersonFile.ts). The HR
       // sources are dev-only by RLS and are not read for another role: a view_as of the office sees the papers.
       const out = await getPersonFile(readerAs(await jwt()), { person: String(args.person ?? ''), lane: args.lane, source: args.source, since: args.since, docs: args.docs }, { role: who.role, todayYmd: todayYmdInAppTz() })
-      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      // The refusal is a string on every path; the `??` only keeps deno check quiet where the inferred union widens it (v2.6716).
+      if ('refused' in out) return refused(out.refused ?? 'get_person_file was refused', { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.counts.shown })
     }
 
