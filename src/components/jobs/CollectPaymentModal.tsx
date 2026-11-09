@@ -23,6 +23,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { useToastContext } from '../../contexts/ToastContext'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { billTextLink } from '../../lib/billing/billTextLink'
 
 type CertifyFixture = {
   id: string
@@ -1192,7 +1193,8 @@ export default function CollectPaymentModal({
                 type="button"
                 onClick={() => {
                   const u = payload?.collect_invoice?.hosted_invoice_url?.trim() ?? ''
-                  if (u) void copyPaymentLink(u)
+                  // #290: the customer's copy is the short pay page, never Stripe's expiring link.
+                  if (u) void copyPaymentLink(billTextLink({ invoiceId: payload?.collect_invoice?.id, hostedInvoiceUrl: u }))
                 }}
                 disabled={!payload?.collect_invoice?.hosted_invoice_url?.trim()}
                 style={{
