@@ -5,6 +5,8 @@
 import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
+import type { UserRole } from '../../hooks/useAuth'
+import { isOwnerOrDev } from '../../lib/doorRoles'
 import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import QuickAddSettingsBlock from './QuickAddSettingsBlock'
 import TypedHoursSwitchBlock from './TypedHoursSwitchBlock'
@@ -68,6 +70,8 @@ type SettingsPeopleTabProps = {
   mergeDuplicatesLoading: boolean
   mergeDuplicates: Array<{ personName: string; userDisplayName: string; email: string }>
   mergingPersonName: string | null
+  /** Punch list #188 (v2.6755): the tab is the office's; each block reads its row's audience off this. */
+  myRole: UserRole | null
   handleMergeDuplicate: (dup: { personName: string; userDisplayName: string; email: string }) => void
   payApprovedError: string | null
   payApprovedMasterIds: Set<string>
@@ -122,6 +126,7 @@ export default function SettingsPeopleTab({
   mergeDuplicatesLoading,
   mergeDuplicates,
   mergingPersonName,
+  myRole,
   handleMergeDuplicate,
   payApprovedError,
   payApprovedMasterIds,
@@ -159,13 +164,18 @@ export default function SettingsPeopleTab({
               </Link>
 : roles, sign-ins, training mode and supervision on every row. <Link to="/people?tab=users" style={{ color: 'var(--text-link)' }}>+ Hire</Link> makes a login with the roster row. Name, email, password, merge and archive sit on a person&rsquo;s desk, and archived logins under Archived.
             </span>
-            <span style={{ display: 'inline-flex', gap: '0.4rem', marginLeft: 'auto' }}>
-              <button type="button" className="activeAccountsCard__btnSecondary" onClick={openFindDuplicatesModal} title="A roster row and an account that are the same person">
-                Find duplicates…
-              </button>
-            </span>
+            {/* Punch list #188 row 13 (v2.6755): finding is reading, the owner's with a dev; Merge stays a dev's on the desk (row 106). */}
+            {isOwnerOrDev(myRole) && (
+              <span style={{ display: 'inline-flex', gap: '0.4rem', marginLeft: 'auto' }}>
+                <button type="button" className="activeAccountsCard__btnSecondary" onClick={openFindDuplicatesModal} title="A roster row and an account that are the same person">
+                  Find duplicates…
+                </button>
+              </span>
+            )}
           </div>
 
+          {/* Punch list #188 row 87: the permission map itself stays a dev’s. */}
+          {myRole === 'dev' && (
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
@@ -231,7 +241,10 @@ export default function SettingsPeopleTab({
               </div>
             )}
           </div>
+          )}
 
+          {/* Punch list #188 row 10 (v2.6755): which assistants take dispatch asks is staffing, the owner’s with a dev. */}
+          {isOwnerOrDev(myRole) && (
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
@@ -303,7 +316,10 @@ export default function SettingsPeopleTab({
               </div>
             )}
           </div>
+          )}
 
+          {/* Punch list #188 row 10 (v2.6755): which assistants take estimating asks, the owner’s with a dev. */}
+          {isOwnerOrDev(myRole) && (
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
@@ -375,6 +391,9 @@ export default function SettingsPeopleTab({
               </div>
             )}
           </div>
+          )}
+          {/* Punch list #188 row 86: wage visibility, held by the check_show_in_hours_dev_only trigger; a dev’s. */}
+          {myRole === 'dev' && (
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
               <button
                 type="button"
@@ -454,16 +473,23 @@ export default function SettingsPeopleTab({
         </div>
       )}
           </div>
+          )}
 
-          <AssistantHoursWindowSettingsBlock />
+          {/* Punch list #188 rows 8, 9 and 11 (v2.6755): three switches about his people and the Quick time add built for him; the owner's with a dev. */}
+          {isOwnerOrDev(myRole) && (
+            <>
+              <AssistantHoursWindowSettingsBlock />
 
-          <QuickAddSettingsBlock />
+              <QuickAddSettingsBlock />
 
-          <TypedHoursSwitchBlock />
+              <TypedHoursSwitchBlock />
 
-          <BulkHoursAlertSettingsBlock />
+              <BulkHoursAlertSettingsBlock />
+            </>
+          )}
 
-          <TeamFeedbackDevSettingsBlock />
+          {/* Row 102: the crew's anonymity, a dev's. */}
+          {myRole === 'dev' && <TeamFeedbackDevSettingsBlock />}
 
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
               <button

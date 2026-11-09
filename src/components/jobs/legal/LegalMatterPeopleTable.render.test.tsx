@@ -65,6 +65,22 @@ describe('LegalLetterRecipients', () => {
     expect(within(strip).queryByRole('button', { name: /D\. Marsh/ })).toBeNull()
   })
 
+  it('with onToggleCopy, a copy chip is a press that reads on or off the letter’s Copies to line; a never stays struck (v2.6741)', () => {
+    const onToggleCopy = vi.fn()
+    render(<LegalLetterRecipients people={people} pickedName="" onPick={vi.fn()} copies={new Set(['p2'])} onToggleCopy={onToggleCopy} />)
+    const strip = document.querySelector('[data-legal-letter-recipients]') as HTMLElement
+    const copy = within(strip).getByRole('button', { name: 'Pecan Hollow Holdings LLC · owner of record' })
+    expect(copy.getAttribute('aria-pressed')).toBe('true')
+    expect(strip.querySelector('[data-legal-copies-count]')?.textContent).toBe('1 on the letter’s Copies to line')
+    fireEvent.click(copy)
+    expect(onToggleCopy).toHaveBeenCalledWith(expect.objectContaining({ id: 'p2' }))
+    expect(within(strip).queryByRole('button', { name: /D\. Marsh/ })).toBeNull()
+    document.body.innerHTML = ''
+    render(<LegalLetterRecipients people={people} pickedName="" onPick={vi.fn()} copies={new Set()} onToggleCopy={onToggleCopy} />)
+    expect(document.querySelector('[data-legal-recipient="p2"]')?.getAttribute('data-legal-copy-on')).toBe('no')
+    expect(document.querySelector('[data-legal-copies-count]')?.textContent).toBe('nobody on the letter’s Copies to line')
+  })
+
   it('draws nothing when the matter has no people', () => {
     render(<LegalLetterRecipients people={[]} pickedName="" onPick={vi.fn()} />)
     expect(document.querySelector('[data-legal-letter-recipients]')).toBeNull()

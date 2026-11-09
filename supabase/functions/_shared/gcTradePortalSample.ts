@@ -299,6 +299,14 @@ export function gcTradePortalSampleSchedules(today: string): Record<string, Trad
       ],
       // The day we plan to finish (punch list #205, PR 2), for the job head.
       finish: d(40),
+      // The whole job's stages (punch list #205, PR 3): the sample's two bars sit in Rough-in and Finishes.
+      stages: [
+        { key: 'sitePrep', label: 'Site prep', start: d(-60), finish: d(-45), pct: 100, state: 'done', yours: [] },
+        { key: 'structure', label: 'Structure', start: d(-44), finish: d(-6), pct: 100, state: 'done', yours: [] },
+        { key: 'roughIn', label: 'Rough-in', start: d(-5), finish: d(11), pct: 70, state: 'underway', yours: ['Rough-in'] },
+        { key: 'finishes', label: 'Finishes', start: d(12), finish: d(33), pct: 0, state: 'notStarted', yours: ['Trim and fixtures'] },
+        { key: 'closeout', label: 'Closeout', start: d(34), finish: d(40), pct: 0, state: 'notStarted', yours: [] },
+      ],
     },
   }
 }

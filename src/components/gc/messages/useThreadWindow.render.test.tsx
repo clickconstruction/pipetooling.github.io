@@ -29,6 +29,8 @@ vi.mock('../../messages/useMyMailJobLineThreadSlots', () => ({ useMyMailJobLineT
 vi.mock('../../followUp/useNewLaneThreadSlots', () => ({ useNewLaneThreadSlots: () => ({}) }))
 // v2.6509: the email viewer's row (Start a bid, Put it on a bid…, Open the bid) is its own smoke, `useEmailViewerThreadSlots.render.test.tsx`.
 vi.mock('../../messages/useEmailViewerThreadSlots', () => ({ useEmailViewerThreadSlots: () => ({}) }))
+// Punch list #263 PR B: the mark and Untag under a line the app placed, read through its own smoke.
+vi.mock('../../messages/useMyMailPlacedLineThreadSlots', () => ({ useMyMailPlacedLineThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {
