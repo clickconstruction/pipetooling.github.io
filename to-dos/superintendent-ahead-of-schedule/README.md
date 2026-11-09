@@ -1,7 +1,7 @@
 ---
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
-group: ready
+group: close
 status: the owner's four calls of 2026-11-09 built and merged as three PRs — v2.6776 (the score reads the hours frozen at award, the lines' sum beside them), v2.6778 (the book falls back by size band, never every size), v2.6779 (the roster's loaded rate prices the labor kept, a $2,500 floor on the deck and the board; its migration pushed, Applied on docs/migrations/20261109040000) — and walked on the dev server on the owner's ZZ Test rows (Where it stands); the train of six and the walks' fixes live since 2026-11-08 (v2.6300, 6646, 6656, 6662, 6665, 6666, 6737); left: the owner's live walk on the deployed site, and slip 9 shown again if it comes back
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
