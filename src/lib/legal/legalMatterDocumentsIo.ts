@@ -20,11 +20,11 @@ export type LegalMatterDocumentRow = Pick<
   Tables<'legal_matter_documents'>,
   | 'id' | 'matter_id' | 'title' | 'shows' | 'storage_path' | 'mime' | 'size_bytes' | 'original_name' | 'added_by' | 'added_at' | 'held_reason' | 'voided_at'
   | 'dated_on' | 'state' | 'sent_on' | 'sent_how' | 'sent_to' | 'proof_document_id' | 'received_on'
-> & { whose: string | null; source_message_id?: string | null; source_contact_id?: string | null; text_document_id?: string | null }
+> & { whose: string | null; source_message_id?: string | null; source_contact_id?: string | null; text_document_id?: string | null; counsel_only?: boolean | null }
 
 const COLUMNS_BEFORE_SOURCE = 'id, matter_id, title, shows, storage_path, mime, size_bytes, original_name, added_by, added_at, held_reason, voided_at, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on, whose'
 /** v2.6276: the Messages line an `.eml` was made from, and that line's person through its foreign key; v2.6716: the text document a `.md` or `.txt` points at. */
-const COLUMNS = `${COLUMNS_BEFORE_SOURCE}, source_message_id, text_document_id, source_line:messages(contact_id)`
+const COLUMNS = `${COLUMNS_BEFORE_SOURCE}, source_message_id, text_document_id, counsel_only, source_line:messages(contact_id)`
 
 /**
  * The column or its foreign key is not there yet: a client deployed before `supabase db push` reaches
@@ -40,7 +40,7 @@ function documentRowOf(raw: unknown): LegalMatterDocumentRow {
   const r = (raw ?? {}) as Record<string, unknown> & { source_line?: unknown }
   const line = r.source_line && typeof r.source_line === 'object' && !Array.isArray(r.source_line) ? (r.source_line as Record<string, unknown>) : null
   const { source_line: _line, ...rest } = r
-  return { ...(rest as unknown as LegalMatterDocumentRow), source_message_id: text(r.source_message_id), source_contact_id: text(line?.contact_id), text_document_id: text(r.text_document_id) }
+  return { ...(rest as unknown as LegalMatterDocumentRow), source_message_id: text(r.source_message_id), source_contact_id: text(line?.contact_id), text_document_id: text(r.text_document_id), counsel_only: r.counsel_only === true }
 }
 
 function table(db: SupabaseClient<Database>) {
@@ -94,7 +94,7 @@ export async function addLegalMatterDocument(db: SupabaseClient<Database>, matte
   // v2.6716: a text file's words go into documents first, so the desk and the portal render them and the search reads them by section.
   let textDocumentId: string | null = null
   if (draft.text !== undefined && legalDocumentIsText(mime) && draft.text.trim() !== '') {
-    const made = (await documentsTable(db).insert({ matter_id: matterId, title: draft.title.trim(), content: draft.text }).select('id').single()) as { data: { id: string } | null; error: { message: string } | null }
+    const made = (await documentsTable(db).insert({ matter_id: matterId, title: draft.title.trim(), content: draft.text, counsel_only: draft.counselOnly === true }).select('id').single()) as { data: { id: string } | null; error: { message: string } | null }
     if (made.error || !made.data) {
       await db.storage.from(LEGAL_MATTER_DOCUMENTS_BUCKET).remove([path])
       throw new Error(`Could not keep the text of ${file.name}: ${made.error?.message ?? 'no row came back'}`)
@@ -113,7 +113,9 @@ export async function addLegalMatterDocument(db: SupabaseClient<Database>, matte
     dated.sent_to = draft.sent.sentTo.trim()
   }
   // v2.6108: whose paper it is rides on the row when the draft says; null is our own record. v2.6276: the line it was made from.
-  const row: TablesInsert<'legal_matter_documents'> & { whose?: string | null; source_message_id?: string | null; text_document_id?: string | null } = { id, matter_id: matterId, title: draft.title.trim(), shows: draft.shows.trim(), storage_path: path, mime, size_bytes: file.size, original_name: file.name, ...dated }
+  const row: TablesInsert<'legal_matter_documents'> & { whose?: string | null; source_message_id?: string | null; text_document_id?: string | null; counsel_only?: boolean } = { id, matter_id: matterId, title: draft.title.trim(), shows: draft.shows.trim(), storage_path: path, mime, size_bytes: file.size, original_name: file.name, ...dated }
+  // v2.6720: for counsel alone, on the Evidence row and on its words.
+  if (draft.counselOnly) row.counsel_only = true
   if (draft.whose) row.whose = draft.whose
   if (draft.sourceMessageId) row.source_message_id = draft.sourceMessageId
   if (textDocumentId) row.text_document_id = textDocumentId
@@ -135,6 +137,17 @@ export async function updateLegalMatterDocument(db: SupabaseClient<Database>, id
   if (patch.held_reason != null) fields.held_reason = patch.held_reason.trim()
   const res = await table(db).update(fields).eq('id', id)
   checkSupabaseError(res, 'change the document')
+}
+
+/** *Counsel-only* / *Not counsel-only after all* (v2.6720, punch list #288): the mark on the Evidence row and, when the paper is text, on its words. */
+export async function setLegalMatterDocumentCounselOnly(db: SupabaseClient<Database>, id: string, textDocumentId: string | null, on: boolean): Promise<void> {
+  const fields: TablesUpdate<'legal_matter_documents'> & { counsel_only?: boolean } = { counsel_only: on }
+  const res = await table(db).update(fields).eq('id', id)
+  checkSupabaseError(res, 'change the document’s counsel-only mark')
+  if (textDocumentId) {
+    const words = (await documentsTable(db).update({ counsel_only: on }).eq('id', textDocumentId)) as { data: unknown; error: { message: string } | null }
+    checkSupabaseError(words, 'change the document’s counsel-only mark')
+  }
 }
 
 /** *Whose paper…* (v2.6108): the payer's, ours, the public record, a supplier's, or null for our own record. */

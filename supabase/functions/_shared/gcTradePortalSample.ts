@@ -56,6 +56,10 @@ export const SAMPLE_TRADE_IDS = {
   // The schedule's side (P5d-ii): a move it was told of, and its late notice.
   move1: '00000000-5a00-4000-8000-000000000039',
   notice1: '00000000-5a00-4000-8000-000000000040',
+  // Its files on the job (punch list #205, PR 4): a submittal's, a change's photo and a signed waiver.
+  file1: '00000000-5a00-4000-8000-000000000041',
+  file2: '00000000-5a00-4000-8000-000000000042',
+  file3: '00000000-5a00-4000-8000-000000000043',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -258,6 +262,12 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       { id: ID.rfi1, project_id: ID.job, package_id: ID.jobTrade, number: 1, question: 'Is the panel in operatory 2 recessed or surface mounted?', sheets: ['E-201'], asked_by_company_id: COMPANY, asked_on: d(-4), needed_days: 3, sent_to_architect_on: d(-4), answered_on: d(-2), answer_text: 'Recessed, as the elevation on E-201 shows.', answered_by: 'architect', impact: 'none', days: null },
     ],
     rfiHolds: [{ rfi_id: ID.rfi1, scope_item_id: ID.jobLine1 }],
+    // Its files on the job (punch list #205, PR 4). The Drive file's id, the record and the bytes are here only to show the slice drops them.
+    files: [
+      { id: ID.file1, company_id: COMPANY, project_id: ID.job, package_id: ID.jobTrade, purpose: 'submittal', paper: null, record_id: ID.submittal1, name: 'Panelboards cut sheet.pdf', mime: 'application/pdf', bytes: 48213, drive_file_id: 'never-passes-1', drive_url: 'https://drive.google.com/file/d/sample-submittal/view', uploaded_at: `${d(-5)}T15:00:00Z`, made_by: 'trade' },
+      { id: ID.file2, company_id: COMPANY, project_id: ID.job, package_id: ID.jobTrade, purpose: 'change', paper: null, record_id: ID.request, name: 'dental chairs.jpg', mime: 'image/jpeg', bytes: 912034, drive_file_id: 'never-passes-2', drive_url: 'https://drive.google.com/file/d/sample-change/view', uploaded_at: `${d(-10)}T15:00:00Z`, made_by: 'trade' },
+      { id: ID.file3, company_id: COMPANY, project_id: ID.job, package_id: ID.jobTrade, purpose: 'waiver', paper: 'conditional_progress', record_id: ID.draw1, name: 'Conditional waiver - Electrical - draw 1.pdf', mime: 'application/pdf', bytes: 60211, drive_file_id: 'never-passes-3', drive_url: 'https://drive.google.com/file/d/sample-waiver/view', uploaded_at: `${d(-14)}T15:00:00Z`, made_by: 'portal' },
+    ],
   }
 }
 
