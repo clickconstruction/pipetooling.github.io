@@ -44,7 +44,10 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * Submittals, any other into Team only → From trades → the company. The bytes go up with the service account the
  * intake already uses (`GOOGLE_SERVICE_ACCOUNT_JSON`, as `DRIVE_IMPERSONATE_USER` when set), under a name that never
  * meets another file's, and `gc_trade_files` keeps the link. The answer is `{ id, name, url }`, which the page sends
- * with the kind that stores it.
+ * with the kind that stores it. A note file (`for: 'note'`, punch list #205 PR 4) belongs to no record: its claim is a job
+ * with a trade awarded to the company and a signed statement of work, its one-line note is its name in Drive after the
+ * minute, it goes to Team only → From trades → the company, and no kind follows it (the row's purpose `note` is the
+ * record).
  *
  * A waiver signed (`unconditional_waiver`, `pay_app`, `final_pay_app`) is kept as a signed PDF too (P5a-2): after the verb
  * and the ledger row, the app's own form (`_shared/tradeWaiverPdf.ts`) filled from the draw, with the typed name, goes to
@@ -119,6 +122,22 @@ const no = (error: string, status: number): Refusal => ({ error, status })
 async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<{ projectId: string | null; packageId: string | null; submittal?: { number: string; round: number } } | Refusal> {
   // A certificate (P5b-2) is the link's company's own, on no job.
   if (f.for === 'coi') return { projectId: null, packageId: null }
+  // A note file (punch list #205, PR 4) is on a job: one with a trade awarded to the company through its own invite and a
+  // signed statement of work, as a change's claim reads it. Else notAwarded.
+  if (f.for === 'note') {
+    const { data: g } = await admin.from('gc_projects').select('project_id, stage').eq('project_id', f.recordId ?? '').maybeSingle()
+    if (!g) return no('notFound', 404)
+    if (g.stage === 'bidding') return no('notAwarded', 409)
+    const { data: packages } = await admin.from('gc_trade_packages').select('id, awarded_invite_id, ours').eq('project_id', g.project_id).not('awarded_invite_id', 'is', null)
+    const { data: invites } = await admin.from('gc_invites').select('id').eq('company_id', companyId)
+    const own = new Set(((invites ?? []) as { id: string }[]).map((i) => i.id))
+    const mine = ((packages ?? []) as { id: string; awarded_invite_id: string | null; ours: boolean | null }[]).filter((k) => !k.ours && k.awarded_invite_id && own.has(k.awarded_invite_id))
+    if (mine.length === 0) return no('notAwarded', 409)
+    const { data: sows } = await admin.from('gc_sows').select('package_id').eq('company_id', companyId).eq('status', 'signed').in('package_id', mine.map((k) => k.id))
+    const signed = ((sows ?? []) as { package_id: string }[])[0]
+    if (!signed) return no('notAwarded', 409)
+    return { projectId: g.project_id, packageId: signed.package_id }
+  }
   if (f.for === 'submittal') {
     const { data: s } = await admin.from('gc_submittals').select('id, project_id, package_id, number').eq('id', f.recordId ?? '').maybeSingle()
     if (!s) return no('notFound', 404)

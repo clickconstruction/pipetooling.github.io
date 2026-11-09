@@ -83,6 +83,8 @@ We look at a certificate before it counts. Until we do, its line says we are che
 
 It can pick its own quote file and a photo or a ticket for a change. Each goes into the job's folder in Drive. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal#its-files) shows where each thing lands.
 
+On a job it signed for, **Your files on this job** sits under the statement of work. It lists what the company sent us, by what each is, with the day and **Open**. It lists the plans we sent too. Under the list sits **Send Click a file**. It takes a photo or a PDF, with one line that says what it is. The file goes to the office with that line as its name.
+
 ## Make the link
 
 1. Open [GC projects](/gc).
