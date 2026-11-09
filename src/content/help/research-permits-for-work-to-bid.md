@@ -13,7 +13,7 @@ Every city publishes the permits it issues. A building permit says who is about 
 
 Open **Prospects** and press the **Research** tab. Estimators see the tab too, with or without the Prospects flag.
 
-The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. Tick **Include houses** to see single family permits too.
+The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. The **Declared value** pick keeps small permits off the list. It starts at $25k and up, or not declared. Tick **Include houses** to see single family permits too.
 
 The line under the filters says when the feed was last pulled and what is new since you last looked. The same line counts the rows on each lens.
 
@@ -30,6 +30,16 @@ Each row is one permit. The columns say when it was filed, where, what work, who
 The **Plumber** column is the signal. **none yet** means no plumbing permit sits on that number or address. A plumber's name means the job is taken.
 
 Press **map** beside an address to see the site in Google Maps.
+
+## Read the word under a name
+
+Under who pulled a permit sits one word from our own bid history with that name. **warm** means we have won with them. **cold** means three or more priced bids and nothing won. **new name** means we never bid to them. Hover the word for the reason. The word is a hint. You decide.
+
+## See the rows on a map
+
+Press **Map** beside **Ledger**. The same rows draw as pins, coloured by their lens. A number is a cluster. Click it to open it. The office is ringed at 25 and 50 miles.
+
+Click a pin to read the permit beside the map. Press {{button:blue|Decide…}} there the same as on the ledger.
 
 ## Decide on a row
 
@@ -73,6 +83,6 @@ After **Approach them**, the row reads **Approached** with a link to **the GC le
 
 The feed is read every morning before the office opens. Press **Pull now** to read it again. The city posts its permits a day or two after it issues them.
 
-## What the hints mean
+## See who wins what
 
-Under **Showing**, pick a lens to see the rows on it. **Everything** shows every permit in the window. **Already have a plumber** shows the jobs other plumbers hold. Over a season it tells you who wins what in each part of town.
+Under **Showing**, pick a lens to see the rows on it. **Everything** shows every permit in the window. **Already have a plumber** shows the jobs other plumbers hold. A strip above the rows counts the plumbers named in the window, most first. Over a season it tells you who wins what in each part of town.
