@@ -64,15 +64,15 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'submittal-sent-back' }, { ...base, submittalFirstBidId: { 'submittal-sent-back': 'b 2' } }, 'dashboard')).toEqual({ kind: 'href', href: '/bids?tab=submittals&bidId=b%202' })
     expect(needsYouDoor({ key: 'team-reviews' }, { ...base, teamReviewFirstId: 'u-1' }, 'dashboard')).toEqual({ kind: 'href', href: '/prospects?tab=team&stage=review&rate=u-1' })
     expect(needsYouDoor({ key: 'lien-notice-batch' }, { ...base, lienBatchGcId: 'gc-1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&gcnotice=gc-1' })
-    expect(needsYouDoor({ key: 'lien-notice-batch' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1' })
+    expect(needsYouDoor({ key: 'lien-notice-batch' }, base, 'quickfill')).toEqual({ kind: 'href', href: '/lien-desk' })
     expect(needsYouDoor({ key: 'bulk-hours' }, { ...base, bulkHoursTypist: { actorId: 'u-2', actorName: 'Rosa M' } }, 'dashboard')).toEqual({ kind: 'href', href: '/people?tab=hours&approvals=1&typed=1&typist=u-2&typistName=Rosa%20M' })
   })
 
   it('secondary links: snooze and dismiss go to the line’s nudge, the lien desk links to the pile', () => {
     expect(needsYouSecondaryDoor({ key: 'bulk-delete' }, 'snooze')).toEqual({ kind: 'nudge', nudge: 'bulk-delete', action: 'snooze' })
     expect(needsYouSecondaryDoor({ key: 'robot-asleep' }, 'dismiss')).toEqual({ kind: 'nudge', nudge: 'robot-asleep', action: 'dismiss' })
-    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'missed')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1&liendeskPile=missed' })
-    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'letter-two')).toEqual({ kind: 'href', href: '/jobs?tab=stages&liendesk=1&liendeskPile=sent' })
+    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'missed')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=missed' })
+    expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'letter-two')).toEqual({ kind: 'href', href: '/lien-desk?tab=notices&pile=sent' })
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'snooze')).toBeNull()
     expect(needsYouSecondaryDoor({ key: 'tally-self' }, 'snooze')).toBeNull()
   })

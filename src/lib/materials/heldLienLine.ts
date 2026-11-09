@@ -7,6 +7,7 @@
  */
 
 import { formatYmdMonthDay } from '../jobs/billedExpectedPay'
+import { lienDeskHref } from '../lien/lienDeskRoute'
 import { formatUsdNoCents } from '../jobs/jobFormatting'
 import { daysBetweenYmd } from '../jobs/lienPayRunway'
 
@@ -43,7 +44,7 @@ export function buildHeldLienLines(notices: ReadonlyArray<HeldLienNoticeRow>, af
     const money = balance > 0.005 ? ` · ${formatUsdNoCents(balance)} unpaid` : ''
     return {
       words: `On the Lien desk · our ${kind} is due by ${formatYmdMonthDay(ymd)}${money}`,
-      href: `/jobs?tab=stages&liendesk=1&liendeskJob=${encodeURIComponent(jobId)}${kind === 'lien' ? '&kind=affidavit' : ''}`,
+      href: lienDeskHref({ kind: kind === 'lien' ? 'affidavit' : 'notice', job: jobId }),
       kind,
       urgent: days <= 7,
     }

@@ -3,7 +3,7 @@ title: send a courtesy notice before a lien
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: courtesy notice, reminder, before the lien, lien desk, 53.056, the attorney’s letter, pay link, text, email, affidavit day, GC, owner of record
-where: /jobs?tab=stages&liendesk=1&liendeskPile=sent
+where: /lien-desk?tab=notices&pile=sent
 ---
 A courtesy notice is a plain reminder sent after the lien notice and before the lien itself. The reminder says the notice we mailed still stands. The reminder names the day the lien goes on unless the bill is paid. The reminder carries the pay link and the office's number.
 
