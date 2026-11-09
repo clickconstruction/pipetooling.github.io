@@ -189,7 +189,7 @@ describe('activityNoteDryRun — the plan', () => {
       lands: expect.stringContaining("JP1113's Job activity / notes"),
       writes: { table: 'jobs_ledger_thread_notes', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.' } },
     })
-    expect((dry.reply.latest as Array<{ text: string }>)[0].text).toHaveLength(161)
+    expect((dry.reply.latest as Array<{ text: string }>)[0]?.text).toHaveLength(161)
     expect(dry.reply.not_done).toEqual(expect.arrayContaining([expect.stringContaining('tells nobody')]))
     const h1 = await planHash('plan_activity_note', p(), dry.reply)
     const later = activityNoteDryRun(p(), jobWorld([{ id: 'n2', at: NOW, by: 'Taunya', text: 'Landed.' }, ...world.latest]), ME, TODAY, NOW)
