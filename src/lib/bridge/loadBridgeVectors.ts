@@ -4,7 +4,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { BridgeData } from './loadBridgeData'
-import { withoutZzFieldSessions, withoutZzJobKeyedRows, type BridgeZzTestJobIds } from './zzTestJobs'
+import { withoutZzBridgeBids, withoutZzFieldSessions, withoutZzJobKeyedRows, type BridgeZzTestJobIds } from './zzTestJobs'
 import { ratePerHourByJob, type VectorBid, type VectorCount, type VectorEvent, type VectorPerson, type VectorSession, type VectorWage } from './vectors'
 
 /**
@@ -26,8 +26,8 @@ import { ratePerHourByJob, type VectorBid, type VectorCount, type VectorEvent, t
  * - ZZ test jobs (v2.6813): a session clocked on one, a bill sent or a payment
  *   recorded on one, and a percent or a report filed on one are nobody's
  *   hours, dollars or reports, for everyone but a dev who shows them. The
- *   caller passes their ids, or null to keep them (`zzTestJobs.ts`). The bids
- *   are not jobs and are not touched.
+ *   caller passes their ids, or null to keep them (`zzTestJobs.ts`). Since
+ *   v2.6823 a ZZ bid (`isZzBidName`) is nobody's bid sent or won either.
  */
 
 export type BridgeVectorInputs = {
@@ -189,7 +189,7 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
 
   const wonAtByBid = new Map<string, string>()
   for (const v of versionRows ?? []) if (v.outcome_at) wonAtByBid.set(v.bid_id, ymdOf(v.outcome_at))
-  const wonBidRows = await fetchAllRowsChunkedIn(
+  const wonBidRead = await fetchAllRowsChunkedIn(
     [...wonAtByBid.keys()],
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
@@ -201,9 +201,10 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     'vectors won bids',
     { chunkSize: 200 },
   )
+  const wonBidRows = withoutZzBridgeBids(wonBidRead, zzTestJobIds)
   const bidLabel = (b: BidRow): string => `${b.bid_number ?? ''} ${b.project_name ?? ''}`.trim()
   const bidsWon: VectorBid[] = wonBidRows.map((b) => ({ userId: b.estimator_id, ymd: wonAtByBid.get(b.id) ?? '', usd: Number(b.agreed_value ?? b.bid_value ?? 0), label: bidLabel(b) }))
-  const bidsSent: VectorBid[] = (sentBidRows ?? []).filter((b) => b.bid_date_sent).map((b) => ({ userId: b.estimator_id, ymd: ymdOf(b.bid_date_sent as string), usd: Number(b.bid_value ?? 0), label: bidLabel(b) }))
+  const bidsSent: VectorBid[] = withoutZzBridgeBids(sentBidRows ?? [], zzTestJobIds).filter((b) => b.bid_date_sent).map((b) => ({ userId: b.estimator_id, ymd: ymdOf(b.bid_date_sent as string), usd: Number(b.bid_value ?? 0), label: bidLabel(b) }))
 
   return {
     people,

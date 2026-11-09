@@ -7,8 +7,12 @@
  * `loadBridgeData.ts` and `bill/loadBillDesk.ts` make the reads, and since v2.6813 so do the Build pace, the people's
  * reads (`loadBridgeVectors.ts`, `loadVectorDays.ts`), the demand read, the Market and Sales desks and the Collect
  * scorecard: `bridgeZzJobIds` names the ZZ jobs a read's rows show, and `withoutZzJobKeyedRows` drops the rows keyed to
- * one. A bid is not a job: the bids and estimates those reads count are not touched here.
+ * one. Since v2.6823 the bids follow their own rule for the same viewer (`withoutZzBridgeBids`, the bid picker's
+ * `isZzBidName`: a project name that starts with the word ZZ, the robots' shadow and backtest bids and the office's
+ * test bids), so a robot's bid is no ask on Market, no bid sent, won or awaiting on Sales, nobody's on Vectors and no
+ * bid due; the shared ids stand for the viewer's switch, null keeping them. Estimates have no ZZ rule anywhere.
  */
+import { isZzBidName } from '../bids/bidPickerRobots'
 import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility'
 
 /** The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). */
@@ -56,6 +60,18 @@ export function withoutZzJobKeyedRows<T>(rows: T[], jobIdOf: (row: T) => string 
     return id != null && zzTestJobIds.has(id)
   }
   return rows.some(isZz) ? rows.filter((r) => !isZz(r)) : rows
+}
+
+/**
+ * Bid rows without the ZZ bids (`isZzBidName` on the project name), for the viewer who leaves ZZ test jobs out:
+ * `zzTestJobIds` is that viewer's switch here, null keeping every bid for a dev who shows them. The picker keeps a ZZ
+ * bid marked by or for the person; the Bridge reads for no person, so every ZZ bid leaves. The same array when none
+ * is dropped.
+ */
+export function withoutZzBridgeBids<T extends { project_name?: string | null }>(rows: T[], zzTestJobIds: BridgeZzTestJobIds): T[] {
+  if (!zzTestJobIds) return rows
+  const isZz = (b: T) => isZzBidName(b.project_name)
+  return rows.some(isZz) ? rows.filter((b) => !isZz(b)) : rows
 }
 
 /** Field sessions without the ones clocked on a ZZ test job, so it is no job worked and earns nothing. */
