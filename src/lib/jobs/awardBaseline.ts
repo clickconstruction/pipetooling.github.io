@@ -11,7 +11,7 @@
  * *Not now* still writes the book's number, so nothing is ever blank. Pure; the window and the
  * Quickfill deck line both read this, and `award_job_baseline` writes it.
  */
-import { BASELINE_MIN_SAMPLE, type BaselineReading } from '../bids/bidBaselineRates'
+import { BASELINE_MIN_SAMPLE, baselineScopeWords, type BaselineReading } from '../bids/bidBaselineRates'
 import { LABOR_COMPLETENESS_HOURS_SHARE } from '../bids/bidLaborSummary'
 import type { LineBudgetWrite } from './lineBudgets'
 
@@ -119,13 +119,21 @@ export function bookBaselineUsable(book: BaselineReading | null, priceUsd: numbe
   return !!book && book.impliedHours != null && book.impliedHours > 0 && book.n >= BASELINE_MIN_SAMPLE && priceUsd != null && priceUsd > 0
 }
 
-/** "4.2 h per $1k × $112,000, from 12 similar projects" / "2 baselines so far · needs 3" / "Needs a price on the job." */
+/**
+ * "4.2 h per $1k × $112,000, from 12 similar projects" / "…, from 7 projects in the $100k–$1M band" / "2 baselines in the
+ * $100k–$1M band so far · needs 3" / "Needs a price on the job." The book never reads every size (the owner's call of
+ * 2026-11-09): a band with too few projects says so and the pick moves on.
+ */
 export function bookBaselineWhy(book: BaselineReading | null, priceUsd: number | null): string {
   if (priceUsd == null || priceUsd <= 0) return 'Needs a price on the job.'
   if (!book) return 'Reading the book…'
-  if (book.n === 0) return 'No baselines in the book yet — they are kept when jobs bill.'
-  if (book.n < BASELINE_MIN_SAMPLE) return `${book.n} baseline${book.n === 1 ? '' : 's'} in the book so far · needs ${BASELINE_MIN_SAMPLE}.`
-  return `${book.medianHoursPerThousand!.toFixed(1)} h per $1k × ${usd0(priceUsd)}, from ${book.n} ${book.scope === 'similar' ? 'similar projects' : 'projects of every size'}.`
+  if (book.total === 0) return 'No baselines in the book yet — they are kept when jobs bill.'
+  if (book.n < BASELINE_MIN_SAMPLE) {
+    const where = book.scope === 'band' && book.band ? ` in the ${book.band} band` : ' in the book'
+    const rest = book.scope === 'band' && book.total > book.n ? ` The other ${book.total - book.n} in the book are other sizes and are not read.` : ''
+    return `${book.n} baseline${book.n === 1 ? '' : 's'}${where} so far · needs ${BASELINE_MIN_SAMPLE}.${rest}`
+  }
+  return `${book.medianHoursPerThousand!.toFixed(1)} h per $1k × ${usd0(priceUsd)}, from ${book.n} ${baselineScopeWords(book, 'projects').replace('projects of similar size', 'similar projects')}.`
 }
 
 /** The three options in the order they are tried, each saying what it gives or what it needs. */
@@ -208,7 +216,7 @@ export function awardBaselineRpcArgs(i: AwardBaselineInput, options: readonly Aw
   if (pick === 'bid') return bidId ? { p_job_id: jobId, p_source: 'bid', p_bid_id: bidId, p_labor_hours: null, p_labor_rate: bidRateNeeded(i.breakdown) ? i.rateUsd : null, p_book: {}, p_note: null } : null
   if (pick === 'book') {
     const b = i.book!
-    return { p_job_id: jobId, p_source: 'book', p_bid_id: null, p_labor_hours: Math.round(o.hours! * 10) / 10, p_labor_rate: i.rateUsd, p_book: { hours_per_thousand: b.medianHoursPerThousand, n: b.n, price_usd: i.priceUsd, scope: b.scope, billed: b.billed }, p_note: null }
+    return { p_job_id: jobId, p_source: 'book', p_bid_id: null, p_labor_hours: Math.round(o.hours! * 10) / 10, p_labor_rate: i.rateUsd, p_book: { hours_per_thousand: b.medianHoursPerThousand, n: b.n, price_usd: i.priceUsd, scope: b.scope, band: b.band, billed: b.billed }, p_note: null }
   }
   return { p_job_id: jobId, p_source: 'typed', p_bid_id: null, p_labor_hours: Math.round(o.hours! * 10) / 10, p_labor_rate: i.rateUsd, p_book: {}, p_note: note && note.trim() ? note.trim() : null }
 }
