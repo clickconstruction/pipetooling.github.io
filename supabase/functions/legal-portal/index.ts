@@ -16,7 +16,7 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
 import { portalThemesForMatter, type LegalTheme, type LegalThemeMark } from '../_shared/legalThemes.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
-import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
+import { MATTER_CLAIM_LINE_PENDING_COLUMNS, MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
 import { proceedingForFirm, proceedingsFromRows, type LegalMatterProceedingRow } from '../_shared/legalProceedings.ts'
 import { LEGAL_MATTER_DOCUMENTS_BUCKET, legalPortalDocumentFromRow } from '../_shared/legalMatterDocuments.ts'
 import { legalNarrativeFromRow } from '../_shared/legalNarrative.ts'
@@ -470,7 +470,10 @@ serve(async (req) => {
     // The claim's typed lines (v2.6696, punch list #171, the owner's call of 2026-11-08): the firm reads each line,
     // not only the total, so its page draws the same table the desk keeps and its demand reads the claim. Live rows
     // only; the read fails soft. A line's document that the office held back travels with no document id.
-    const claimLineRead = await admin.from('legal_matter_claim_lines').select(MATTER_COUNSEL_SELECT.claimLines).in('matter_id', matterIds).is('removed_at', null).order('added_at')
+    // v2.6697: `settlement_only` travels; before migration 20261108123000 is pushed the read falls back to the old columns.
+    const claimLineSelect = (cols: string) => admin.from('legal_matter_claim_lines').select(cols).in('matter_id', matterIds).is('removed_at', null).order('added_at')
+    let claimLineRead = await claimLineSelect(MATTER_COUNSEL_SELECT.claimLines)
+    if (claimLineRead.error) claimLineRead = await claimLineSelect(MATTER_COUNSEL_SELECT.claimLines.split(', ').filter((c) => !MATTER_CLAIM_LINE_PENDING_COLUMNS.includes(c)).join(', '))
     const claimLineRows = claimLineRead.error ? [] : ((claimLineRead.data ?? []) as Row[])
 
     // The proceedings beside the claim (v2.6726, punch list #174, the owner's call: the firm sees the list). Live rows

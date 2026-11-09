@@ -38,6 +38,8 @@ export type LegalClaimLineRow = {
   basis: string
   document_id: string | null
   added_at: string
+  /** v2.6697: claimed in an offer, not in the demand. Absent on a row read before the column was pushed: false. */
+  settlement_only?: boolean | null
   document?: { title: string | null } | Array<{ title: string | null }> | null
 }
 
@@ -50,7 +52,15 @@ export type LegalClaimLineLike = {
   basis: string
   documentId: string | null
   documentTitle: string
+  /**
+   * Settlement only (v2.6697, punch list #171, the owner's call of 2026-11-08): the line is claimed in a settlement
+   * offer but not in the demand. Out of the demand's figures and the printed packet; inside the settlement figures.
+   */
+  settlementOnly: boolean
 }
+
+/** The chip's words on a line that is settlement only, on the desk and on the firm's portal. */
+export const CLAIM_SETTLEMENT_ONLY_CHIP = 'settlement only'
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -69,17 +79,25 @@ export function claimLinesFromRows(rows: ReadonlyArray<LegalClaimLineRow>): Lega
         basis: r.basis ?? '',
         documentId: r.document_id,
         documentTitle: (doc?.title ?? '').trim(),
+        settlementOnly: r.settlement_only === true,
       }
     })
 }
 
-/** What the typed lines add to the claim. */
-export function claimTyped(lines: ReadonlyArray<Pick<LegalClaimLineLike, 'amount'>>): number {
-  return round2(lines.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0))
+type ClaimLineAmount = Pick<LegalClaimLineLike, 'amount'> & { settlementOnly?: boolean }
+
+/** What the typed lines add to the claim as demanded: every line but the settlement-only ones (v2.6697). */
+export function claimTyped(lines: ReadonlyArray<ClaimLineAmount>): number {
+  return round2(lines.reduce((s, l) => s + (l.amount > 0 && !l.settlementOnly ? l.amount : 0), 0))
+}
+
+/** What the settlement-only lines come to (v2.6697): in an offer, never in the demand. */
+export function claimSettlementOnly(lines: ReadonlyArray<ClaimLineAmount>): number {
+  return round2(lines.reduce((s, l) => s + (l.amount > 0 && l.settlementOnly ? l.amount : 0), 0))
 }
 
 /** The Add form's fields as typed; `amount` is the box's text so the kernel can say what is wrong with it. */
-export type LegalClaimLineDraft = { kind: LegalClaimLineKind; title: string; amount: string; basis: string; documentId: string | null }
+export type LegalClaimLineDraft = { kind: LegalClaimLineKind; title: string; amount: string; basis: string; documentId: string | null; /** v2.6697: in an offer, not in the demand. */ settlementOnly: boolean }
 
 /** The amount box's text as a number of dollars, or null when it is not one. `$1,234.50` and `1234.5` both read. */
 export function claimAmountOf(text: string): number | null {
@@ -104,12 +122,12 @@ export function claimLineDraftProblem(draft: LegalClaimLineDraft): string | null
 
 /** An empty form for a new line of the given kind. */
 export function emptyClaimLineDraft(kind: LegalClaimLineKind = 'materials'): LegalClaimLineDraft {
-  return { kind, title: kind === 'other' ? '' : claimLineKindWords(kind), amount: '', basis: '', documentId: null }
+  return { kind, title: kind === 'other' ? '' : claimLineKindWords(kind), amount: '', basis: '', documentId: null, settlementOnly: false }
 }
 
 /** A typed line back into the form, to edit it. */
 export function claimLineDraftOf(line: LegalClaimLineLike): LegalClaimLineDraft {
-  return { kind: line.kind, title: line.title, amount: line.amount.toFixed(2), basis: line.basis, documentId: line.documentId }
+  return { kind: line.kind, title: line.title, amount: line.amount.toFixed(2), basis: line.basis, documentId: line.documentId, settlementOnly: line.settlementOnly }
 }
 
 // ---------------------------------------------------------------------------
@@ -145,23 +163,36 @@ export type ClaimTableRow = {
   amount: number
   /** The stored line behind a typed row. */
   line: LegalClaimLineLike | null
+  /** v2.6697: the row wears the *settlement only* chip and stays out of `total`. */
+  settlementOnly: boolean
 }
 
 export type ClaimTable = {
   rows: ClaimTableRow[]
-  /** The open bills + the retainage added + the typed lines. */
+  /** The claim as demanded: the open bills + the retainage added + the typed lines that are not settlement only. */
   total: number
+  /** The typed lines in the demand. */
   typed: number
+  /** The settlement-only lines (v2.6697): in an offer, not in `total`. 0 when none, or when the table was drawn for the demand alone. */
+  settlementOnly: number
+  /** How many settlement-only lines the table carries. */
+  settlementOnlyCount: number
   /** The sentence under the table when there is something to say about where the retainage sits. */
   note: string
+}
+
+export type ClaimTableOptions = {
+  /** Draw the claim as demanded: the settlement-only lines left out (the printed packet, v2.6697). */
+  forDemand?: boolean
 }
 
 /**
  * The claim as one table. The bills row is always there (a claim with nothing open still reads $0.00 so
  * the firm sees the row was looked at); the retainage row only when a job holds some; the typed rows as
- * stored; then the total. `jobLabelOf` names the jobs on the retainage row.
+ * stored; then the total. `jobLabelOf` names the jobs on the retainage row. A settlement-only line (v2.6697)
+ * draws with its chip and stays out of the total, or is left out when the table is drawn `forDemand`.
  */
-export function claimTable(worth: ClaimTableWorth, jobLabelOf: (jobId: string) => string): ClaimTable {
+export function claimTable(worth: ClaimTableWorth, jobLabelOf: (jobId: string) => string, options: ClaimTableOptions = {}): ClaimTable {
   const rows: ClaimTableRow[] = []
   const billCount = worth.openBills.length
   const balance = round2(worth.balance)
@@ -173,6 +204,7 @@ export function claimTable(worth: ClaimTableWorth, jobLabelOf: (jobId: string) =
     evidence: { kind: 'ledger' },
     amount: balance,
     line: null,
+    settlementOnly: false,
   })
   const heldJobs = Object.entries(worth.retainageHeldByJob).filter(([, held]) => held > 0.004).map(([jobId]) => jobId)
   const added = round2(Math.max(0, worth.retainageAdded))
@@ -187,11 +219,13 @@ export function claimTable(worth: ClaimTableWorth, jobLabelOf: (jobId: string) =
       evidence: { kind: 'job', jobIds: heldJobs },
       amount: added,
       line: null,
+      settlementOnly: false,
     })
     if (added <= 0.004 && onBills > 0.004) note = `The retainage held ${formatLegalMoney(onBills)} is already inside the open bills, so the row adds nothing.`
     else if (onBills > 0.004) note = `Another ${formatLegalMoney(onBills)} of the retainage held is already on a bill, inside the open bills.`
   }
-  for (const line of worth.claimLines) {
+  const lines = options.forDemand ? worth.claimLines.filter((l) => !l.settlementOnly) : worth.claimLines
+  for (const line of lines) {
     rows.push({
       key: `line:${line.id}`,
       source: 'typed',
@@ -200,10 +234,19 @@ export function claimTable(worth: ClaimTableWorth, jobLabelOf: (jobId: string) =
       evidence: line.documentId ? { kind: 'document', documentId: line.documentId, title: line.documentTitle || 'Evidence document' } : { kind: 'none' },
       amount: line.amount,
       line,
+      settlementOnly: line.settlementOnly,
     })
   }
-  const typed = claimTyped(worth.claimLines)
-  return { rows, total: round2(balance + added + typed), typed, note }
+  const typed = claimTyped(lines)
+  const settlementOnly = claimSettlementOnly(lines)
+  return { rows, total: round2(balance + added + typed), typed, settlementOnly, settlementOnlyCount: lines.filter((l) => l.settlementOnly).length, note }
+}
+
+/** The line under the table when a settlement-only line is on it (v2.6697); '' when none. Plain words. */
+export function claimSettlementOnlyWords(table: Pick<ClaimTable, 'settlementOnly' | 'settlementOnlyCount'>): string {
+  if (table.settlementOnlyCount === 0) return ''
+  const lines = table.settlementOnlyCount === 1 ? 'One line' : `${table.settlementOnlyCount} lines`
+  return `${lines}, ${formatLegalMoney(table.settlementOnly)}, ${table.settlementOnlyCount === 1 ? 'is' : 'are'} settlement only. That money is in an offer, not in the demand or the total.`
 }
 
 /** The evidence cell's words. */
@@ -219,8 +262,15 @@ export function claimEvidenceWords(e: ClaimTableEvidence): string {
 /** The line under the table when nothing is typed yet: what the office adds and why. */
 export const CLAIM_TYPED_EMPTY_WORDS = 'Nothing typed yet. Add a line for materials left on site, damages, interest or attorney fees. Each line carries its basis and the document that shows it.'
 
-/** The total's label: the claim, or what the bills alone come to when nothing reaches past them. */
+/** The sentence a print carries in place of the settlement-only lines it leaves out (v2.6697); '' when none. */
+export function claimSettlementOnlyPrintWords(table: Pick<ClaimTable, 'settlementOnly' | 'settlementOnlyCount'>): string {
+  if (table.settlementOnlyCount === 0) return ''
+  const lines = table.settlementOnlyCount === 1 ? 'One line' : `${table.settlementOnlyCount} lines`
+  return `${lines}, ${formatLegalMoney(table.settlementOnly)}, ${table.settlementOnlyCount === 1 ? 'is' : 'are'} marked settlement only and left off this table. That money is claimed in an offer, not in the demand.`
+}
+
+/** The total's label: the claim, or what the bills alone come to when nothing reaches past them. A settlement-only row does not reach (v2.6697). */
 export function claimTotalWords(table: Pick<ClaimTable, 'rows' | 'total'>): string {
-  const reaches = table.rows.some((r) => r.source !== 'bills' && r.amount > 0.004)
+  const reaches = table.rows.some((r) => r.source !== 'bills' && r.amount > 0.004 && !r.settlementOnly)
   return reaches ? 'The claim' : 'The claim, the open bills alone'
 }
