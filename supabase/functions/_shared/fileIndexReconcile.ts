@@ -20,7 +20,8 @@ const ROW_PAGE = 1000
 export async function allIndexRowIds(admin: SupabaseClient): Promise<Set<string>> {
   const ids = new Set<string>()
   for (let from = 0; ; from += ROW_PAGE) {
-    const { data, error } = await admin.from('file_index').select('drive_file_id').order('drive_file_id').range(from, from + ROW_PAGE - 1)
+    // Drive rows alone (#285): a record's row is keyed on its own id and is never in the drive's listing.
+    const { data, error } = await admin.from('file_index').select('drive_file_id').eq('source', 'drive').order('drive_file_id').range(from, from + ROW_PAGE - 1)
     if (error) throw new Error(`file_index did not read: ${error.message}`)
     const rows = (data ?? []) as { drive_file_id: string }[]
     for (const r of rows) ids.add(r.drive_file_id)
