@@ -117,7 +117,7 @@ Read as a dev through the seat (`read_rows` on the five tables, two pages of the
 From the card's Left list and this reading, each one small PR:
 
 - **Money**: the invoice price that stands in past the book's 90 days lives on the device that read it, not on the Delivered row, and an agent's `read_on_site` reads no price at all.
-- **Seeding**: *Mark delivered* on the Procure step writes no movement; *Start from the bid's parts* is not there. A running job starts from a first count, by hand or through `plan_count`.
+- **Seeding**: *Mark delivered* on the Procure step writes no movement (the dev seat's `get_submittals` sets the log's delivered count beside this ledger's rows, so the gap is read in one call, v2.6804); *Start from the bid's parts* is not there. A running job starts from a first count, by hand or through `plan_count`.
 - **A crew's tally request**: `jobs_tally_parts` lets the office set and a primary insert, so a helper's Short press (v2.6742) is refused with the words to say instead; opening the table to the job's team is a migration. **Reading an invoice** from the Drive folder with the model (the Deliveries panel's Drive-first path reads the folder but does not read the PDF).
 - **Scale**: past 5,000 ledger rows the summary is the database's (v2.6743) and the page says so, but a capped job's box lines, Missing table and History are still drawn from the newest 5,000 rows; drawing them from the function's `lines[]` is the next step, and `read_on_site` keeps its own cap and says so.
 - **Photos**: `fail_why` is on the row but the office page has no place to read and clear it; the Drive thumbnail waits on the bucket copy being gone.

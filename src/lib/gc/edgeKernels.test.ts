@@ -67,7 +67,8 @@ describe('the copy of the kernels', () => {
     expect(bundle.files.filter((f) => f.startsWith(`${g.OUT_DIR}/`))).toHaveLength(files.size - typeFiles.length)
     expect(bundle.files.some((f) => f === 'supabase/functions/_shared/billTruth.ts')).toBe(true)
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
-    expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts'])
+    // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
+    expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts'])
   })
 })
 
