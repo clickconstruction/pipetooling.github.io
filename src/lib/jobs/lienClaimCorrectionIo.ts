@@ -23,6 +23,12 @@ export function parseLienClaimCorrection(row: unknown): LienClaimCorrection | nu
   }
 }
 
+/** One job's correction, for the job's Lien window: null when none is set. Throws when the read fails, so the window can say it could not read it. */
+export async function readLienClaimCorrection(jobId: string): Promise<LienClaimCorrection | null> {
+  const row = await withSupabaseRetry(() => table().select('*').eq('job_id', jobId).maybeSingle(), 'lien window: claim correction')
+  return parseLienClaimCorrection(row)
+}
+
 /** Set or change the job's correction — one row per job. Clears any "still true" so the next notice asks again. */
 export async function saveLienClaimCorrection(input: { jobId: string; amountOff: number; perMonth: Record<string, number> | null; reason: string; carry: boolean; userId: string | null; userName: string }): Promise<void> {
   const now = new Date().toISOString()
