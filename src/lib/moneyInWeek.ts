@@ -33,6 +33,7 @@ import { arRowInvoiceId } from './bridge/collect/collectBills'
 import { MAILED_CHECK_DAYS, mailedCheckYmd } from './bridge/collect/collectOutcome'
 import type { CollectBillRead } from './bridge/collect/collectPile'
 import { AR_UNBANKED_CHECK_DAYS } from '../../supabase/functions/_shared/bankReturnedDeposits'
+import { isInKindPaymentType } from '../../supabase/functions/_shared/inKindPayment'
 import { ymdAddDays } from '../utils/dateUtils'
 
 /** Business days a pending Mercury deposit usually takes to post: Friday's deposit posts Tuesday. */
@@ -351,6 +352,11 @@ const byKindThenSize = (a: MoneyInRow, b: MoneyInRow): number => KIND_ORDER[a.ki
 
 export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
   const todayYmd = input.todayYmd
+  // v2.6816: an in-kind payment (the landlord's rent credit) pays its bill down but is not
+  // money — never landed, never at the bank, never a check in the drawer. It is also kept off
+  // `list_unlinked_payments_for_bank_payments`; this holds until that push lands, and after.
+  const payments = input.payments.filter((p) => !isInKindPaymentType(p.paymentType))
+  const unlinkedInput = input.unlinked.filter((u) => !isInKindPaymentType(u.paymentType))
   const weekMonday = weekMondayContaining(todayYmd) ?? todayYmd
   const weekSunday = ymdAddDays(weekMonday, 6)
   const lastMonday = ymdAddDays(weekMonday, -7)
@@ -403,7 +409,7 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
   }
 
   // ── Landed: Stripe payments, and payments matched to a deposit ──────────
-  for (const p of input.payments) {
+  for (const p of payments) {
     if (!(p.usd > 0) || returnedPaymentIds.has(p.paymentId)) continue
     let day: string | null
     let tag: string
@@ -430,7 +436,7 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
   }
 
   // ── Deposits meet what they pay ─────────────────────────────────────────
-  const unlinked = input.unlinked.filter((u) => u.usd > 0 && !returnedPaymentIds.has(u.paymentId))
+  const unlinked = unlinkedInput.filter((u) => u.usd > 0 && !returnedPaymentIds.has(u.paymentId))
   const usedPayments = new Set<string>()
   const matchedBillKeys = new Set<string>()
   const matchedBillJobs = new Set<string>()

@@ -130,6 +130,7 @@ import {
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { isInKindPaymentType } from '../../lib/jobs/inKindPayment'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -1273,7 +1274,9 @@ export default function BankPaymentsModal({
       try {
         const { data, error } = await supabase.rpc('list_unlinked_payments_for_bank_payments')
         if (cancelled || error || !Array.isArray(data)) return
-        setRecordedPayments(data as ArRecordedPaymentCandidate[])
+        // v2.6816: an in-kind payment is not money a deposit could carry; the RPC leaves it out once
+        // its push lands, and this holds in the meantime.
+        setRecordedPayments((data as ArRecordedPaymentCandidate[]).filter((r) => !isInKindPaymentType(r.payment_type)))
       } catch {
         /* fail-soft — billed-line allocations still work */
       }
