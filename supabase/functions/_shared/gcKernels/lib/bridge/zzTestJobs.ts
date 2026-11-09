@@ -11,10 +11,10 @@
  * scorecard: `bridgeZzJobIds` names the ZZ jobs a read's rows show, and `withoutZzJobKeyedRows` drops the rows keyed to
  * one. Since v2.6823 the bids follow their own rule for the same viewer (`withoutZzBridgeBids`, the bid picker's
  * `isZzBidName`: a project name that starts with the word ZZ, the robots' shadow and backtest bids and the office's
- * test bids), so a robot's bid is no ask on Market, no bid sent, won or awaiting on Sales, nobody's on Vectors and no
+ * test bids; the rule sits beside the jobs' in `_shared/zzTestJob.ts`), so a robot's bid is no ask on Market, no bid sent, won or awaiting on Sales, nobody's on Vectors and no
  * bid due; the shared ids stand for the viewer's switch, null keeping them. Estimates have no ZZ rule anywhere.
  */
-import { isZzBidName } from '../bids/bidPickerRobots.ts'
+import { isZzBidName } from '../jobs/zzTestJobSweep.ts'
 import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility.ts'
 
 /** The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). */
