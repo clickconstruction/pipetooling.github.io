@@ -17,6 +17,7 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import { useOwnMailboxThreadSlots } from '../../messages/useOwnMailboxThreadSlots'
 import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useEmailViewerThreadSlots } from '../../messages/useEmailViewerThreadSlots'
@@ -155,7 +156,9 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
  */
 export function useThreadSlots(): ThreadSlots {
   // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
-  const followUp = useFollowUpThreadSlots()
+  // #207 (v2.6745): *Answered them from your own mailbox?* above the box, folded into cut 2's slots so it draws right
+  // after the owed strip, while the court is ours by their last word alone (`useOwnMailboxThreadSlots`).
+  const followUp = mergeThreadSlots(useFollowUpThreadSlots(), useOwnMailboxThreadSlots())
   // Every slot keys on the person with its own prefix: the slots sit side by side in the thread column, and two bare
   // `c.id` keys there (the New lane card above the lines and the box) logged a duplicate-key warning on every open.
   // Cut 3: the reply box, one per person, so a draft never crosses to the next thread. It reads the open thread itself
