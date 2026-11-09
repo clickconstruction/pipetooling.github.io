@@ -202,7 +202,7 @@ describe('the migration, the server and the docs', () => {
   })
 
   it('the server reads the file as the dev before the grammar, names the source on the plan and the apply, says what changed, and is 0.43.0', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.44.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.45.0'")
     expect(SERVER).toContain("import { driveDocArgs, driveDocChangedWords, driveDocPlanExtra, driveDocSource, readDriveDoc, serviceAccountEmail, type DriveDocFacts } from '../_shared/devMcpDriveDoc.ts'")
     expect(SERVER).toContain("if (name === 'plan_person_doc' || name === 'apply_person_doc') {\n        const doc = args.doc")
     expect(SERVER).toContain("token = await googleAccessToken(saJson, Deno.env.get('DRIVE_IMPERSONATE_USER') || undefined)")

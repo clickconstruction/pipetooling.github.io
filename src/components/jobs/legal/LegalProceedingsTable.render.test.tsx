@@ -69,7 +69,7 @@ describe('FirmProceedingsTable', () => {
     const forFirm = [
       { id: 'pr1', kind: 'agency_complaint' as const, title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contactName: 'R. Calloway', contactRole: 'president', status: 'open' as const, statusOn: null, documentIds: ['d1', 'd-held'], keepOut: true },
     ]
-    render(<FirmProceedingsTable proceedings={forFirm} documents={[{ id: 'd1', title: 'Board complaint — filed copy.pdf', shows: 'the filed copy', mime: 'application/pdf', sizeBytes: 100, addedOn: '2026-10-28', addedByName: 'Taunya', url: 'https://signed.example/d1', datedOn: '', state: 'final', sentOn: '', sentHow: '', sentTo: '', proofDocumentId: '', receivedOn: '', text: '' }]} />)
+    render(<FirmProceedingsTable proceedings={forFirm} documents={[{ id: 'd1', title: 'Board complaint — filed copy.pdf', shows: 'the filed copy', mime: 'application/pdf', sizeBytes: 100, addedOn: '2026-10-28', addedByName: 'Taunya', url: 'https://signed.example/d1', datedOn: '', state: 'final', sentOn: '', sentHow: '', sentTo: '', proofDocumentId: '', receivedOn: '', text: '', counselOnly: false }]} />)
     const table = document.querySelector('[data-legal-firm-proceedings]') as HTMLElement
     expect(table.textContent).toContain('R. Calloway · their president')
     expect(table.textContent).toContain('State Plumbing Board · ref C-2026-0431')

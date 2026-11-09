@@ -71,7 +71,7 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
     shown: hits.length,
     by_source: bySource,
     hits,
-    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. A matter document kept as text (a .md or .txt) is searched by section like a named document; a PDF, an image or an .eml is found by its title and what it shows alone. Counsel-only items are marked, not hidden.',
+    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. A matter document kept as text (a .md or .txt) is searched by section like a named document; a PDF, an image or an .eml is found by its title and what it shows alone. Counsel-only items are marked, not hidden; a counsel-only matter document\'s row and words are refused to the seat when read on, so the hit is all a session sees of it.',
   }
 }
 
