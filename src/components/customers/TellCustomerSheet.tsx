@@ -14,6 +14,10 @@
  * anyone who edits flows: Settings → Flows, the residential flow, landed on the step with its Call script open; the
  * Call button draws a white phone glyph, the same on every device. The text's link is the short share link to the same
  * accept page (v2.6657, punch list #281), minted after the email goes; the email's own link fills in when the mint fails.
+ * **Text the bill** (v2.6771, punch list #291): the sheet opens on a bill from the share row with the bill's amount and
+ * its own pay page filled, names the number it goes from beside the To chip, and on the customer's first text from us
+ * (`lib/tellCustomer/firstTextIntro.ts`) wears the chip, previews the opt-out line, and holds Send while the words name
+ * neither the sender nor Click Plumbing, with **Put the opening back** to restore the line's opening.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
@@ -52,6 +56,7 @@ import {
   tellWords,
   TELL_WORDS,
   unfillLine,
+  type TellBillFacts,
   type TellBlock,
   type TellMoment,
   type TellProblem,
@@ -59,6 +64,9 @@ import {
 } from '../../lib/tellCustomer/tellCustomer'
 import { supabaseTellCustomerIo, type TellCallScript, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
 import { estimateTextLink } from '../../lib/tellCustomer/estimateTextLink'
+import { FIRST_TEXT_WORDS, firstTextReason, introHeld, quietDays, withOpeningBack } from '../../lib/tellCustomer/firstTextIntro'
+import { optoutBubble } from '../../lib/messages/compose'
+import { replyCompany } from '../../lib/messages/replyBox'
 import { PREVIEW_WORDS, type PreviewEmail, type PreviewKind } from '../../lib/tellCustomer/preview'
 
 /** The estimate the sheet sends (v2.5594): its facts, and the page's own email send, which answers the link the text carries. */
@@ -80,6 +88,12 @@ export interface TellEstimate {
   previewEmail?: PreviewEmail | null
 }
 
+/** The bill the sheet opens on (v2.6771, punch list #291): its row, its amount as words and its own pay page. */
+export interface TellBill extends TellBillFacts {
+  /** `jobs_ledger_invoices.id`. */
+  invoiceId: string
+}
+
 export interface TellCustomerSheetProps {
   moment: TellMoment
   /** The pipeline job; null on an estimate before a job exists. */
@@ -88,6 +102,8 @@ export interface TellCustomerSheetProps {
   jobLabel: string
   block?: TellBlock | null
   estimate?: TellEstimate | null
+  /** The bill (v2.6771), on the `billed` moment from the share row: its amount and link fill the line ahead of the job's newest bill. */
+  bill?: TellBill | null
   userId: string
   role: UserRole | null | undefined
   onClose: () => void
@@ -96,6 +112,8 @@ export interface TellCustomerSheetProps {
   /** For a smoke. */
   io?: TellCustomerIo
   now?: () => number
+  /** Over another window (the share row under a bill, v2.6771): the shell's layer; the preview sits 150 above it. */
+  zIndex?: number
 }
 
 const label: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.9rem 0 0.3rem' }
@@ -124,13 +142,20 @@ const bandSlow: CSSProperties = { ...band, borderColor: 'var(--border-amber)', b
 const bandTitle: CSSProperties = { fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-red-700)', margin: 0 }
 const bandTitleSlow: CSSProperties = { ...bandTitle, color: 'var(--text-amber-800)' }
 const bandDetail: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-strong)' }
+/** First text to this number (v2.6771): the amber chip and its hint over the box. */
+const firstBox: CSSProperties = { display: 'flex', gap: '0.6rem', alignItems: 'flex-start', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem', margin: '0.5rem 0' }
+const firstChip: CSSProperties = { background: '#92400e', color: '#fff', borderRadius: 999, padding: '0.1rem 0.55rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }
+const firstHint: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }
+/** The hold under the box when a first text's opening is gone (v2.6771). */
+const holdLine: CSSProperties = { margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)', fontWeight: 600, lineHeight: 1.45 }
+const putBackBtn: CSSProperties = { ...secondaryBtn, minHeight: 40, color: 'var(--text-link)', borderColor: 'var(--border-blue)', fontSize: '0.875rem' }
 
 type View =
   | { kind: 'tell' }
   | { kind: 'receipt'; text: string | null; email: string | null; emailed: boolean | null; note: string | null; atMs: number }
   | { kind: 'morning'; day: string }
 
-export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, userId, role, onClose, onSent, io: ioProp, now = Date.now }: TellCustomerSheetProps) {
+export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bill = null, userId, role, onClose, onSent, io: ioProp, now = Date.now, zIndex = 1100 }: TellCustomerSheetProps) {
   const { showToast } = useToastContext()
   const io = useMemo(() => ioProp ?? supabaseTellCustomerIo(), [ioProp])
   const office = Boolean(role) && GC_OFFICE_TEAM.includes(role!)
@@ -139,6 +164,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [lines, setLines] = useState<QuickReply[] | null>(null)
   const [textsOn, setTextsOn] = useState<boolean | null>(null)
   const [me, setMe] = useState<string | null>(null)
+  /** The number the text goes from (v2.6771): the team box's, read once; null while Settings holds none or the read fails. */
+  const [fromNumber, setFromNumber] = useState<string | null>(null)
   const [callScript, setCallScript] = useState<TellCallScript | null>(null)
   const [myWays, setMyWays] = useState<MyWays>(MY_WAY_DEFAULT)
   /** Make this the office's line (v2.5597): the words with their blanks back, open for a last look. */
@@ -161,7 +188,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     let live = true
     void (async () => {
       try {
-        const [j, l, on, name, cs, ways] = await Promise.all([
+        const [j, l, on, name, cs, ways, from] = await Promise.all([
           estimate ? io.loadCustomer(estimate.customerId).then((c) => ({ customerId: estimate.customerId, customerName: c.name, jobName: null, jobAddress: null, lang: c.lang }) as TellJob) : jobId ? io.loadJob(jobId) : Promise.reject(new Error('No job and no estimate.')),
           io.loadLines(),
           io.loadTextsOn(),
@@ -170,6 +197,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
           io.loadCallScript(MOMENT_STEP[moment]).catch(() => null),
           // My way (v2.5597): a read that fails asks first.
           io.loadMyWay(userId).catch(() => MY_WAY_DEFAULT),
+          // The number it goes from (v2.6771): a read that fails leaves the words alone.
+          io.loadFromNumber ? io.loadFromNumber().catch(() => null) : Promise.resolve(null),
         ])
         if (!live) return
         setJob(j)
@@ -178,6 +207,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         setMe(name)
         setCallScript(cs)
         setMyWays(ways)
+        setFromNumber(from)
         if (j.customerId && office) {
           try {
             const c = await io.loadContact(j.customerId)
@@ -200,9 +230,11 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
 
   const first = firstWord(job?.customerName ?? null)
   const lang = job?.lang ?? 'en'
+  // The bill's facts (v2.6771): the bill the sheet opened on, else on a Pipeline move to Billed the job's newest bill with its amount.
+  const billFacts: TellBillFacts | null = useMemo(() => (bill ? { amount: bill.amount, link: bill.link } : job?.billLink && job?.billAmount ? { amount: job.billAmount, link: job.billLink } : null), [bill, job])
   const fills = useMemo(
-    () => tellFills({ customerName: job?.customerName ?? null, me, jobName: job?.jobName ?? null, jobAddress: job?.jobAddress ?? null, billLink: job?.billLink ?? null, portalUrl: job?.portalUrl ?? null, block, estimate: estimate ? { amount: estimate.amount, title: estimate.title } : null }),
-    [job, me, block, estimate],
+    () => tellFills({ customerName: job?.customerName ?? null, me, jobName: job?.jobName ?? null, jobAddress: job?.jobAddress ?? null, billLink: job?.billLink ?? null, bill: billFacts, portalUrl: job?.portalUrl ?? null, block, estimate: estimate ? { amount: estimate.amount, title: estimate.title } : null }),
+    [job, me, block, estimate, billFacts],
   )
   const line = useMemo(() => (lines ? lineFor(moment, lines, userId) : null), [lines, moment, userId])
   const starting = useMemo(() => (line ? tellWords(line, fills, lang) : null), [line, fills, lang])
@@ -226,7 +258,16 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const left = blanksLeftIn(text, moment)
   const a = tellActs(moment, first, hold, contact?.prefers ?? null)
   const textCanGo = !hold && Boolean(contact) && Boolean(number)
-  const canSend = !loading && !busy && (moment === 'estimate' ? Boolean(estimate) && (!textCanGo || (text.trim().length > 0 && left.length === 0)) : textCanGo && text.trim().length > 0 && left.length === 0)
+  // A first text says who is writing (v2.6771, punch list #291): the box's own opt-out rule off the thread's texts to this
+  // number; unread lines (a smoke's bare contact) judge nothing. The chip and the preview's bubble show on every moment;
+  // the hold is the bill's (the owner's ask was the bill text), on a first text whose words name neither the sender nor
+  // the company. The office's own Booked line keeps its say on the other moments.
+  const linesRead = contact?.lines !== undefined
+  const optoutReason = linesRead && textCanGo ? firstTextReason(contact?.lines ?? [], toChannelId, now()) : null
+  const firstText = optoutReason === 'first'
+  const introHold = moment === 'billed' && firstText && introHeld(true, text, fills.me ?? null)
+  const companyName = useMemo(() => replyCompany(jobId ? jobKey({ kind: 'pipeline', id: jobId }) : null).name, [jobId])
+  const canSend = !loading && !busy && !introHold && (moment === 'estimate' ? Boolean(estimate) && (!textCanGo || (text.trim().length > 0 && left.length === 0)) : textCanGo && text.trim().length > 0 && left.length === 0)
 
   /** The tick first (punch list #118), so the thread's gray line sits above the text it explains; a refusal stops the send and is said. */
   const starUsual = async () => {
@@ -374,7 +415,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
       </div>
     )
     return (
-      <ResponsiveModalShell title={TELL_WORDS.morningTitle} onRequestClose={onClose} footer={footer}>
+      <ResponsiveModalShell title={TELL_WORDS.morningTitle} onRequestClose={onClose} footer={footer} zIndex={zIndex}>
         <div data-testid="tell-morning-receipt">
           <p style={bubble} data-testid="tell-receipt-words">
             {text.trim()}
@@ -407,7 +448,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
       </div>
     )
     return (
-      <ResponsiveModalShell title={TELL_WORDS.receiptTitle(first)} onRequestClose={onClose} footer={footer}>
+      <ResponsiveModalShell title={TELL_WORDS.receiptTitle(first)} onRequestClose={onClose} footer={footer} zIndex={zIndex}>
         <div data-testid="tell-receipt">
           {view.email ? (
             <p style={mail} data-testid="tell-receipt-email">
@@ -467,7 +508,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
       {a.primary}
     </button>
   ) : (
-    <button type="button" style={canSend ? primaryBtn : { ...primaryBtn, ...disabled }} disabled={!canSend} title={left.length ? TELL_WORDS.blanksLeft(left) : undefined} onClick={() => void go(true, again)} data-testid="tell-primary">
+    <button type="button" style={canSend ? primaryBtn : { ...primaryBtn, ...disabled }} disabled={!canSend} title={introHold ? FIRST_TEXT_WORDS.hold(first, fills.me ?? null) : left.length ? TELL_WORDS.blanksLeft(left) : undefined} onClick={() => void go(true, again)} data-testid="tell-primary">
       {busy ? TELL_WORDS.sending : again ? TELL_WORDS.sendAgain : sendProblem ? TELL_WORDS.tryAgain : a.primary}
     </button>
   )
@@ -492,7 +533,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     </div>
   )
 
-  const subline = estimate ? `${estimate.amount} · ${estimate.email}` : block ? `${fills.day ?? block.workDate} · ${fills.window ?? ''}${block.techName ? ` · ${block.techName}` : ''}` : ''
+  const subline = bill ? TELL_WORDS.billSubline(job?.jobName ?? null, bill.amount) : estimate ? `${estimate.amount} · ${estimate.email}` : block ? `${fills.day ?? block.workDate} · ${fills.window ?? ''}${block.techName ? ` · ${block.techName}` : ''}` : ''
 
   return (
     <ResponsiveModalShell
@@ -503,6 +544,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         else onClose()
       }}
       footer={footer}
+      zIndex={zIndex}
     >
       <div data-testid="tell-sheet">
         <div style={who}>
@@ -559,15 +601,38 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                   <div style={rowHead}>
                     <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }} data-testid="tell-text-to">
                       {TELL_WORDS.textWord} <ToChip choices={choices} pickedId={pickedNumberId} onPick={setPickedNumberId} tick={usualTick} onTick={setUsualTick} />
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)' }} data-testid="tell-from-number">
+                        {TELL_WORDS.fromNumber(fromNumber)}
+                      </span>
                       <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {first ?? 'They'} {TELL_WORDS.reads(lang)}</span>
                     </div>
                     <button type="button" style={previewBtn} title={PREVIEW_WORDS.pressTip('text')} onClick={() => setPreview('text')} data-testid="tell-preview-text-press">
                       {PREVIEW_WORDS.press}
                     </button>
                   </div>
-                  <textarea style={box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
+                  {firstText ? (
+                    <div style={firstBox} data-testid="tell-first-text">
+                      <span style={firstChip}>{FIRST_TEXT_WORDS.chip}</span>
+                      <p style={firstHint}>{FIRST_TEXT_WORDS.hint(first)}</p>
+                    </div>
+                  ) : null}
+                  <textarea style={introHold ? { ...box, borderColor: 'var(--border-red)', borderStyle: 'solid' } : box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
+                  {introHold ? (
+                    <div data-testid="tell-intro-hold">
+                      <p role="alert" style={holdLine}>
+                        {FIRST_TEXT_WORDS.hold(first, fills.me ?? null)}
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', margin: '0.4rem 0 0' }}>
+                        <button type="button" style={putBackBtn} disabled={busy} onClick={() => setBody(withOpeningBack(text, starting?.text ?? ''))} data-testid="tell-put-opening-back">
+                          {FIRST_TEXT_WORDS.putBack}
+                        </button>
+                        <span style={{ ...muted, margin: 0 }}>{FIRST_TEXT_WORDS.laterNote}</span>
+                      </div>
+                    </div>
+                  ) : null}
                   <p style={muted}>{left.length ? TELL_WORDS.blanksLeft(left) : TELL_WORDS.editHint(line?.office ?? false, moment)}</p>
                   {moment === 'estimate' ? <p style={muted}>{TELL_WORDS.linkHint}</p> : null}
+                  {moment === 'billed' && billFacts ? <p style={muted}>{TELL_WORDS.billLinkHint}</p> : null}
                   {edited && office && moment !== 'rescheduled' && officeLine === null ? (
                     <button type="button" style={quietBtn} disabled={busy} onClick={() => setOfficeLine(unfillLine(text.trim(), fills))} data-testid="tell-office-line">
                       {TELL_WORDS.officeLine}
@@ -618,6 +683,12 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
           emailTo={estimate?.email ?? null}
           textWords={textCanGo && number ? text : null}
           number={number?.value ?? null}
+          fromNumber={fromNumber}
+          optout={optoutReason ? optoutBubble(optoutReason, quietDays(contact?.lines ?? [], toChannelId, now()), { name: companyName }) : null}
+          firstText={firstText}
+          realLink={moment === 'billed' && billFacts !== null}
+          laterText={linesRead && textCanGo && optoutReason === null}
+          zIndex={zIndex + 150}
           onClose={() => setPreview(null)}
         />
       ) : null}

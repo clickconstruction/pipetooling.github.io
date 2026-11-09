@@ -57,9 +57,11 @@ export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: 
     text: '{first}, this is {me} with Click Plumbing. The work on {job} is done. Your bill follows by email. Text me here with any question.',
     textEs: '{first}, le habla {me} de Click Plumbing. El trabajo de {job} está terminado. Su factura llega por correo electrónico. Escríbame aquí si tiene alguna pregunta.',
   },
+  // Text the bill (v2.6771, punch list #291): the bill's pay link rides last, nothing after it, and the opening says who
+  // is writing, since a bill text is often the customer's first text from us.
   billed: {
-    text: '{first}, this is {me} with Click Plumbing. Your bill for {job} went to your email today. Text me here with any question.',
-    textEs: '{first}, le habla {me} de Click Plumbing. Hoy le enviamos la factura de {job} a su correo electrónico. Escríbame aquí si tiene alguna pregunta.',
+    text: 'Hi {first}, this is {me} with Click Plumbing. Your bill for {job} is ready, {amount}. Text me here with any question. Pay it here: {bill}',
+    textEs: 'Hola {first}, soy {me} de Click Plumbing. Su factura por {job} está lista, {amount}. Escríbame aquí con cualquier pregunta. Páguela aquí: {bill}',
   },
 }
 
@@ -105,6 +107,14 @@ export interface TellEstimateFacts {
   title: string
 }
 
+/** The bill the sheet reads (v2.6771, punch list #291): its amount as words and its own pay page, for `{amount}` and `{bill}`. */
+export interface TellBillFacts {
+  /** "$1,850.00" */
+  amount: string
+  /** The bill's pay page, `https://my.clickplumbing.com/pay/<id or code>` or `https://clicktooling.com/pay/<id>`. */
+  link: string
+}
+
 export interface TellFillInput {
   customerName: string | null
   /** The signed-in person's name. */
@@ -113,6 +123,8 @@ export interface TellFillInput {
   jobAddress: string | null
   block?: TellBlock | null
   estimate?: TellEstimateFacts | null
+  /** The bill the sheet opened on (v2.6771): its amount and its own pay page win over the job's newest bill. */
+  bill?: TellBillFacts | null
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628). */
   billLink?: string | null
   /** The customer's portal short address, for `{portal}` and the app's own lines' close (v2.5943, punch list #185). */
@@ -143,7 +155,8 @@ export function tellFills(input: TellFillInput): BlankFills {
     put('tech', firstWord(input.block.techName))
   }
   if (input.estimate) put('amount', input.estimate.amount)
-  put('bill', input.billLink)
+  if (input.bill) put('amount', input.bill.amount)
+  put('bill', input.bill?.link ?? input.billLink)
   put('portal', input.portalUrl)
   return fills
 }
@@ -259,7 +272,7 @@ export function prefersNote(moment: TellMoment, first: string | null, prefers: T
 }
 
 /** What a board's move texts, in the act's row (v2.5627). */
-const MOVE_WHAT: Readonly<Partial<Record<TellMoment, string>>> = { working: 'that the work has started', done: 'that the work is done', billed: 'that the bill went to their email' }
+const MOVE_WHAT: Readonly<Partial<Record<TellMoment, string>>> = { working: 'that the work has started', done: 'that the work is done', billed: 'the bill with its pay link' }
 
 export function tellActs(moment: TellMoment, first: string | null, hold: TellHold | null, prefers: TellPrefers = null): TellActs {
   const who = first ?? 'the customer'
@@ -399,10 +412,17 @@ export const TELL_WORDS = {
   editHint: (office: boolean, moment: TellMoment) => {
     if (moment === 'estimate') return office ? 'The office’s Estimate line, filled for this estimate. Change any word.' : 'The app’s own words, since the office has no Estimate line yet. Change any word.'
     if (moment === 'rescheduled') return 'The app’s own words for a moved visit. Change any word.'
+    if (moment === 'billed') return office ? 'The office’s Billed line, filled for this bill. Change any word.' : 'The app’s own Billed line, filled for this bill. Change any word.'
     if (isMoveMoment(moment)) return office ? `The office’s ${MOMENT_NAMES[moment]} line, filled for this job. Change any word.` : `The app’s own words, since the office has no ${MOMENT_NAMES[moment]} line yet. Change any word.`
     return office ? 'The office’s Booked line, filled from the block. Change any word.' : 'The app’s own words, since the office has no Booked line yet. Change any word.'
   },
   linkHint: 'The link fills in when it sends. Keep the word link in braces where you want it.',
+  /** Under the box on a bill (v2.6771): what the link is, and why it outlives Stripe's own. */
+  billLinkHint: 'The link is the bill’s own pay page on a Click Plumbing address. It keeps working after Stripe’s link changes.',
+  /** Beside the To chip (v2.6771): the number the text goes from, as the two boxes in Settings name it; the words alone while Settings holds none. */
+  fromNumber: (number: string | null) => (number?.trim() ? `from the company number ${number.trim()}` : 'from the company number'),
+  /** The sheet's subline on a bill (v2.6771): "The bill for the water heater · $1,850.00". */
+  billSubline: (job: string | null, amount: string) => `The bill${job?.trim() ? ` for ${job.trim()}` : ''} · ${amount}`,
   noEmail: (moment: TellMoment) => (isMoveMoment(moment) ? 'No email goes with this text.' : 'No email goes for a booking.'),
   blanksLeft: (left: readonly string[]) => `Fill ${blankNames(left)} before it sends.`,
   reading: 'Reading the job…',
