@@ -102,5 +102,7 @@ searches.
 
 **Left on prod.** The ZZ TEST matter on ZZ Test Hand with its three documents, the counsel-only memo on the ZZ TEST GC matter, and the ZZ TEST sink job flagged into Collections for the walk and back out.
 
+**The landing (the loving-dewdney session, 2026-11-09 03:00 to 05:30 UTC).** Each migration was pushed alone with `--include-all`, since both stamps sit below the ledger's newest; each dry run and push prompt listed exactly one file, so none of #188's `dev_gates_*` set rode along. After PR 2, `dev-mcp` 0.45.0 went out as main's code with prod's own `catalog.ts` kept: the deployed catalog was a regen off prod ahead of main (the `documents` table, `settlement_only`, the `file_index` columns), and a plain deploy would have taken them off. After PR 3, main's catalog was ahead (#7411's regen), so 0.46.0 deployed straight from main. PR 3 carried the same server pin as #285's #7344; the two conflicted in the queue, #285's session dequeued #7344 to let PR 3 go first, and PR 3 merged after one re-arm. The main checkout at the repo root sat on an old feature branch, so the pushes ran from a worktree fast-forwarded to `origin/main` with the Supabase link state copied in.
+
 **Watch.** #285's PR 2 (#7344) carries a `dev_case_search` body at `20261108220000`. It must drop that body or renumber after `20261108233000`, or a late push would wipe the counsel-only marks on matter-document hits.
 
