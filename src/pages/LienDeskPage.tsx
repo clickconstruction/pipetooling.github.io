@@ -11,7 +11,8 @@
  * Legal desk and Settings by their addresses, and the three windows the desk opens over itself — a job's Lien
  * window, Put a GC on notice and Records for an owner — mounted here as the Pipeline mounted them. The gate is
  * the office set the desk's doors had (`isStagesOfficeRole`); anyone else lands on the Dashboard once their role
- * is known.
+ * is known. On a phone (PR 3) the Notices list is the whole desk until a notice is open, and an open notice is the
+ * whole desk with ← Notices on top; the address says which.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -43,7 +44,7 @@ import { hasInAppHistory } from '../lib/inAppHistory'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { LEGAL_DESK_PATH, PIPELINE_HREF } from '../lib/legal/legalDeskRoute'
 import { LIEN_DESK_DEFAULT_KIND, lienDeskFromSearch, lienDeskHref, type LienDeskKind } from '../lib/lien/lienDeskRoute'
-import LienDeskModal from '../components/jobs/LienDeskModal'
+import LienDesk from '../components/jobs/LienDesk'
 import LienInstrumentsModal from '../components/jobs/LienInstrumentsModal'
 import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
@@ -163,7 +164,8 @@ export default function LienDeskPage() {
   )
 
   // The address is the truth: the desk opens on what it names and tells the page every change, which it writes with
-  // `replace`, so Back is one press to wherever you came from.
+  // `replace`, so Back is one press to wherever you came from. The entry's state rides along: on a phone it says the
+  // notice was opened from the list.
   const address = useMemo(() => lienDeskFromSearch(searchParams), [searchParams])
   const here = `${location.pathname}${location.search}`
   const onAddressChange = useCallback(
@@ -173,6 +175,15 @@ export default function LienDeskPage() {
     },
     [here, navigate, location.state],
   )
+
+  // A phone (punch list #182, PR 3): the Notices list, then one notice at a time. Opening a notice is a new entry, so Back
+  // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
+  const openedFromList = Boolean((location.state as { fromList?: boolean } | null)?.fromList)
+  const onOpenNotice = useCallback((jobId: string, pile: LienDeskPile | null) => navigate(lienDeskHref({ kind: 'notice', job: jobId, pile }), { state: { fromList: true } }), [navigate])
+  const onShowList = useCallback(() => {
+    if (openedFromList) navigate(-1)
+    else navigate(lienDeskHref({ kind: 'notice', pile: address.pile }), { replace: true })
+  }, [openedFromList, navigate, address.pile])
 
   // Records for an owner (v2.4544): a window over the desk. `?records=` is a door the page consumes once (the Dashboard's
   // "signed for the records" line, punch list #86), as the Pipeline consumed `?ownerrecords=`.
@@ -255,12 +266,12 @@ export default function LienDeskPage() {
 
   return (
     <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
-      <LienDeskModal
-        frame="page"
+      <LienDesk
+        layout={isMobile ? 'stacked' : 'columns'}
+        onOpenNotice={onOpenNotice}
+        onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}
-        open
-        onClose={goBack}
         data={data}
         loading={loading}
         todayYmd={todayYmd}

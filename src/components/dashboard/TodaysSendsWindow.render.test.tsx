@@ -114,7 +114,7 @@ describe('TodaysSendsWindow', { timeout: 15_000 }, () => {
     expect(within(lee).getByTestId('todays-send-held').textContent).toBe('Held: No phone number on file. Add one on the customer, or call instead.')
     expect(within(lee).queryByTestId('todays-send-send')).toBeNull()
     const morning = await rowOf('Luis is on the way')
-    expect(within(morning).getByText('Goes in the morning of 2026-10-18.')).toBeTruthy()
+    expect(within(morning).getByText('Goes in the morning of Sun Oct 18.')).toBeTruthy()
     expect(within(morning).queryByTestId('todays-send-send')).toBeNull()
     fireEvent.click(within(lee).getByTestId('todays-send-skip'))
     await waitFor(() => expect(io.dismiss).toHaveBeenCalledWith('o-held', 'not this one'))

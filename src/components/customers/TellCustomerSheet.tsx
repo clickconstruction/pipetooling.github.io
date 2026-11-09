@@ -33,10 +33,10 @@ import { CallButton } from '../messages/CallButton'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { MY_WAY_DEFAULT, MY_WAY_WORDS, myWayFor, type MyWays } from '../../lib/tellCustomer/myWay'
-import { weekdayDate } from '../../lib/gc/words'
 import { jobKey } from '../../lib/messages/jobKeys'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { morningSendOn, TODAYS_SENDS_WORDS } from '../../lib/offers/offers'
+import { defaultSendAt, SEND_LATER_WORDS } from '../../lib/offers/sendLater'
+import { SendLaterPicker } from './SendLaterPicker'
 import { fillLine } from '../../lib/quickReplies/blanks'
 import type { QuickReply } from '../../lib/quickReplies/kernel'
 import {
@@ -153,7 +153,8 @@ const putBackBtn: CSSProperties = { ...secondaryBtn, minHeight: 40, color: 'var(
 type View =
   | { kind: 'tell' }
   | { kind: 'receipt'; text: string | null; email: string | null; emailed: boolean | null; note: string | null; atMs: number }
-  | { kind: 'morning'; day: string }
+  /** Handed to a time (v2.6774, Send later; before it a morning alone). */
+  | { kind: 'later'; sendAtMs: number }
 
 export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bill = null, userId, role, onClose, onSent, io: ioProp, now = Date.now, zIndex = 1100 }: TellCustomerSheetProps) {
   const { showToast } = useToastContext()
@@ -183,6 +184,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
   const [usualTick, setUsualTick] = useState(true)
   /** Preview (v2.5794): the window over the sheet, on the email or the text; null while closed. */
   const [preview, setPreview] = useState<PreviewKind | null>(null)
+  /** Send later (v2.6774): the picker over the sheet. */
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -365,22 +368,27 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
   }
   const edited = body !== null && starting !== null && body.trim() !== starting.text.trim()
 
-  /** Send in the morning (v2.5595): the text waits on Today's sends, and the morning run sends it at 9 AM on its day. */
-  const morning = async () => {
+  /**
+   * Send later (v2.6774; v2.5595's Send in the morning before it): the text waits on Today's sends with its time, and
+   * the run sends it then. The day rides beside the instant, so a run or a reader behind the push still has the morning.
+   */
+  const later = async (sendAtMs: number) => {
     if (!canSend || !contact || !number || moment === 'estimate') return
     setBusy(true)
     try {
-      const day = morningSendOn(now())
+      const day = todayYmdInAppTz(new Date(sendAtMs))
       await starUsual()
-      await io.makeOffer({ contactId: contact.contactId, channelId: number.channelId, jobId, stepKey: MOMENT_STEP[moment], body: text.trim(), sendOn: day })
-      showToast(TODAYS_SENDS_WORDS.morningToast(weekdayDate(day)), 'success')
-      setView({ kind: 'morning', day })
+      await io.makeOffer({ contactId: contact.contactId, channelId: number.channelId, jobId, stepKey: MOMENT_STEP[moment], body: text.trim(), sendOn: day, sendAt: new Date(sendAtMs).toISOString() })
+      showToast(SEND_LATER_WORDS.toast(sendAtMs, now()), 'success')
+      setPickerOpen(false)
+      setView({ kind: 'later', sendAtMs })
     } catch (e) {
       showToast(formatErrorMessage(e, 'The text was not prepared.'), 'error')
     } finally {
       setBusy(false)
     }
   }
+  const laterDefaultMs = defaultSendAt(now())
 
   /** Add to my calls (v2.5596): a call task for tomorrow in Follow up's We owe them, with the script as filled. */
   const addCall = async () => {
@@ -405,7 +413,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
     }
   }
 
-  if (view.kind === 'morning') {
+  if (view.kind === 'later') {
     const footer = (
       <div style={footerRow}>
         <span />
@@ -421,7 +429,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
             {text.trim()}
           </p>
           <p style={muted} data-testid="tell-morning-line">
-            {TELL_WORDS.morningLine(weekdayDate(view.day))}
+            {TELL_WORDS.morningLine(view.sendAtMs)}
           </p>
           <p style={muted}>{TELL_WORDS.morningWhere}</p>
         </div>
@@ -524,8 +532,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
           </button>
         ) : null}
         {moment !== 'estimate' && textCanGo ? (
-          <button type="button" style={quietBtn} disabled={!canSend} onClick={() => void morning()} data-testid="tell-morning">
-            {TODAYS_SENDS_WORDS.sendInMorning}
+          <button type="button" style={quietBtn} disabled={!canSend} onClick={() => setPickerOpen(true)} data-testid="tell-morning">
+            {SEND_LATER_WORDS.press(laterDefaultMs, now())}
           </button>
         ) : null}
       </div>
@@ -690,6 +698,21 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
           laterText={linesRead && textCanGo && optoutReason === null}
           zIndex={zIndex + 150}
           onClose={() => setPreview(null)}
+        />
+      ) : null}
+      {pickerOpen ? (
+        <SendLaterPicker
+          first={first}
+          initialMs={laterDefaultMs}
+          now={now}
+          busy={busy}
+          onPick={(ms) => void later(ms)}
+          onNow={() => {
+            setPickerOpen(false)
+            void go(true)
+          }}
+          onClose={() => setPickerOpen(false)}
+          zIndex={zIndex + 150}
         />
       ) : null}
     </ResponsiveModalShell>
