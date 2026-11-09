@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Research · Decide on a permit (punch list #292)</title>
+<style>
+body{margin:0;padding:24px;background:#e5e7eb;font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;font-size:14px}
+.press{border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:8px;padding:10px 14px;font-size:14px;min-height:44px;font:inherit;text-align:left}
+.press.blue{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.press.on{border-color:#2563eb;box-shadow:inset 0 0 0 1px #2563eb;background:#eff6ff}
+.muted{color:#6b7280;font-size:12.5px}
+.chip{border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<div style="width:560px;box-sizing:border-box;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 12px 32px rgba(17,24,39,.12);padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+  <div style="display:flex;align-items:flex-start;gap:12px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h1 style="margin:0;font-size:18px;font-weight:600">100 Sample St · New commercial</h1>
+      <div class="muted">COM-BLG-PMT26-40200811 · issued Nov 8 · $1.4M declared · 6,200 sq ft retail shell</div>
+      <div>Pulled by <strong>Ridgeway Builders</strong> <span class="chip" style="background:#fef3c7;color:#92400e">warm · won 3 of 5</span> <span class="chip" style="background:#ecfdf5;color:#166534">no plumber yet</span></div>
+    </div>
+    <span style="flex:1 1 auto"></span>
+    <button type="button" aria-label="Close" style="background:transparent;border:0;color:#6b7280;width:36px;height:36px;border-radius:8px;font-size:20px;line-height:1">×</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button class="press on"><strong>Approach them</strong><br><span class="muted">call who pulled it; a GC lead is made</span></button>
+    <button class="press"><strong>Look into it</strong><br><span class="muted">worth a closer read; it waits on the list</span></button>
+    <button class="press"><strong>Not for us</strong><br><span class="muted">wrong trade, size or part of town</span></button>
+    <button class="press"><strong>Already taken</strong><br><span class="muted">a plumber has it; the row leaves the list</span></button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <label for="why" style="font-weight:600">Why</label>
+    <textarea id="why" rows="3" placeholder="One line the next estimator can read." style="border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;font:inherit;font-size:14px;resize:vertical">Shell retail, our size, and we have won with Ridgeway before. Call the PM this week.</textarea>
+    <div class="muted">A verdict with no reason is refused. Your name and today's date go on the row.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-weight:600">The lead</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="chip" style="background:#f3f4f6;color:#374151">Ridgeway Builders · GC lead · source: A permit</span>
+      <span class="muted">opens on the GCs deck with the permit's number and address in its notes</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;border-top:1px solid #e5e7eb;padding-top:14px">
+    <button class="press blue">Approach them · make the lead</button>
+    <button class="press">Cancel</button>
+    <span style="flex:1 1 auto"></span>
+    <span class="muted">Look into it adds a <em>look again on</em> day.</span>
+  </div>
+</div>
+</body>
+</html>
