@@ -2635,7 +2635,7 @@ export default function People() {
           archived={archivedRoster}
           canDeletePeopleContracts={canDeletePeopleContracts}
           currentUserId={authUser?.id ?? null}
-          isDev={isDev}
+          canUseFormStudio={isDev || authRole === 'controller'}
         />
       )}
 

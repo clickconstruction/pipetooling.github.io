@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isControllerOrDev } from '../lib/doorRoles'
 import { useAuth } from '../hooks/useAuth'
 import { canAccessBanking as canAccessBankingRole, isStaffBankingRole } from '../lib/bankingAccess'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
@@ -139,13 +140,14 @@ type BankingPageRole =
   | null
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
-  if (isStaffBankingRole(role)) {
+  // Punch list #188 rows 51 and 52 (v2.6761): the Stripe segment and the Ledger are the controller's with a dev; Cost batches
+  // stay a dev's. A master keeps the staff tabs.
+  if (role === 'master_technician') {
     const parsed = mercuryTabFromParam(params.get('tab'))
-    // Ledger and Cost batches are dev-only; everything else the strip shows is fair game for staff.
     const mercuryTab: MercuryBankingTab = parsed && parsed !== 'ledger' && parsed !== 'cost_batches' ? parsed : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
-  if (role !== 'dev') {
+  if (!isControllerOrDev(role)) {
     return { product: 'mercury', mercuryTab: 'ledger', stripeTab: 'invoices' }
   }
 
@@ -162,6 +164,7 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
 
   let mercuryTab: MercuryBankingTab = mercuryTabFromParam(tabRaw) ?? 'accounting'
   if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
+  if (role !== 'dev' && mercuryTab === 'cost_batches') mercuryTab = 'accounting'
 
   return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
 }
@@ -291,6 +294,9 @@ export default function Banking() {
   // appears. Defaults **off** (opt-in — committing assignments without
   // per-row review is the bigger trust step).
 
+  // Punch list #188 rows 51–53 (v2.6761): the Ledger, its configuration, the Stripe segment and the account nicknames are the
+  // controller's with a dev. Cost batches and Sync / Backfill from Mercury stay a dev's (rows 111 and the Cost batches tab).
+  const isBankingAdmin = isControllerOrDev(myRole)
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = canAccessBankingRole(myRole)
 
@@ -361,7 +367,7 @@ export default function Banking() {
 
   useEffect(() => {
     if (!user?.id || !myRole) return
-    if (myRole === 'dev') {
+    if (isControllerOrDev(myRole)) {
       setSortingConfig(loadBankingSortingConfig(user.id))
       return
     }
@@ -472,7 +478,8 @@ export default function Banking() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (!isStaffBankingRole(myRole)) return
+    // The owner keeps the staff tabs; the controller opens the Ledger and Stripe since v2.6761 (punch list #188 rows 51, 52).
+    if (myRole !== 'master_technician') return
     const product = searchParams.get('product')
     const tab = mercuryTabFromParam(searchParams.get('tab'))
     if (tab !== null && tab !== 'ledger' && product !== 'stripe' && (product === null || product === 'mercury')) {
@@ -996,7 +1003,7 @@ export default function Banking() {
     () => unnamedMercuryAccountIds(accountOptions, nicknameByAccount),
     [accountOptions, nicknameByAccount],
   )
-  const accountNicknameNudge = isDevBanking ? accountNicknameNudgeText(unnamedAccountIds.length) : null
+  const accountNicknameNudge = isBankingAdmin ? accountNicknameNudgeText(unnamedAccountIds.length) : null
 
   const searchQueryNorm = useMemo(() => bankingSearchText.trim(), [bankingSearchText])
 
@@ -1070,7 +1077,7 @@ export default function Banking() {
     bankingView.mercuryTab !== 'visuals' &&
     bankingView.mercuryTab !== 'cost_batches'
   useEffect(() => {
-    if (!nicknamesModalOpen || nicknameFactsRowsComplete || !isDevBanking) {
+    if (!nicknamesModalOpen || nicknameFactsRowsComplete || !isBankingAdmin) {
       setNicknameExactCounts(null)
       return
     }
@@ -1090,7 +1097,7 @@ export default function Banking() {
     return () => {
       cancelled = true
     }
-  }, [nicknamesModalOpen, nicknameFactsRowsComplete, isDevBanking, nicknameManageIds])
+  }, [nicknamesModalOpen, nicknameFactsRowsComplete, isBankingAdmin, nicknameManageIds])
 
   const debitCardIdsFromRows = useMemo(() => {
     const set = new Set<string>()
@@ -1191,7 +1198,7 @@ export default function Banking() {
 
   const handleSortingConfigSave = useCallback(
     (cfg: BankingSortingConfigV1) => {
-      if (myRole !== 'dev' || !user?.id) return
+      if (!isControllerOrDev(myRole) || !user?.id) return
       saveBankingSortingConfig(user.id, cfg)
       setSortingConfig(cfg)
     },
@@ -1407,7 +1414,7 @@ export default function Banking() {
           paddingBottom: '1rem',
         }}
       >
-        {isDevBanking ? (
+        {isBankingAdmin ? (
           <div
             style={{
               display: 'flex',
@@ -1484,7 +1491,7 @@ export default function Banking() {
               >
                 {bankingView.product === 'mercury' ? (
                   <>
-                    {isDevBanking ? (
+                    {isBankingAdmin ? (
                       <button
                         type="button"
                         role="tab"
@@ -1629,7 +1636,7 @@ export default function Banking() {
               </div>
             ) : null}
           </div>
-          {!isDevBanking ? (
+          {!isBankingAdmin ? (
             <h1
               style={{
                 flexShrink: 0,
@@ -1643,7 +1650,7 @@ export default function Banking() {
               Banking
             </h1>
           ) : null}
-          {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (isDevBanking || canAccessBanking) ? (
+          {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (isBankingAdmin || canAccessBanking) ? (
             <div
               role="region"
               aria-label="Banking User Sort tools"
@@ -1662,7 +1669,7 @@ export default function Banking() {
                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06)',
               }}
             >
-              {isDevBanking ? (
+              {isBankingAdmin ? (
                 <button
                   type="button"
                   onClick={() => setSortingConfigModalOpen(true)}
@@ -1686,7 +1693,7 @@ export default function Banking() {
                   <BankingNicknamesMenu
                     menuOpen={nicknamesMenuOpen}
                     onMenuOpenChange={setNicknamesMenuOpen}
-                    showAccount={isDevBanking}
+                    showAccount={isBankingAdmin}
                     showDebit
                     onOpenAccount={() => setNicknamesModalOpen(true)}
                     onOpenDebit={() => setDebitCardNicknamesModalOpen(true)}
@@ -1742,7 +1749,7 @@ export default function Banking() {
 
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
         <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
-          {!isDevBanking ? (
+          {!isBankingAdmin ? (
             <p
               style={{
                 margin: '0 0 0.85rem',
@@ -1794,7 +1801,7 @@ export default function Banking() {
                   flexShrink: 0,
                 }}
               >
-                {isDevBanking ? (
+                {isBankingAdmin ? (
                   <button
                     type="button"
                     onClick={() => void handleSync()}
@@ -1892,7 +1899,7 @@ export default function Banking() {
               empty={
                 rows.length > 0 && searchQueryNorm !== ''
                   ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: searchQueryNorm }), { onPress: () => setBankingSearchText('') })
-                  : isDevBanking
+                  : isBankingAdmin
                     ? { main: 'No rows match the sorting configuration.', next: { label: 'Configuration', onPress: () => setSortingConfigModalOpen(true) }, tail: 'changes the filters.' }
                     : { main: 'No rows match the default sorting slice. A developer changes the filters on Banking Ledger.' }
               }
@@ -2040,7 +2047,7 @@ export default function Banking() {
         </div>
       ) : null}
 
-      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'ledger' && isDevBanking && (
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'ledger' && isBankingAdmin && (
         <div role="tabpanel" id="banking-panel-mercury-ledger" aria-labelledby="banking-tab-ledger">
           <div
             style={{
@@ -2066,7 +2073,7 @@ export default function Banking() {
                 <BankingNicknamesMenu
                   menuOpen={nicknamesMenuOpen}
                   onMenuOpenChange={setNicknamesMenuOpen}
-                  showAccount={isDevBanking}
+                  showAccount={isBankingAdmin}
                   showDebit
                   onOpenAccount={() => setNicknamesModalOpen(true)}
                   onOpenDebit={() => setDebitCardNicknamesModalOpen(true)}
@@ -2081,12 +2088,12 @@ export default function Banking() {
                 onReloadTable={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
                 onBackfillFromMercury={isDevBanking ? () => setBackfillModalOpen(true) : undefined}
                 onImportCsv={
-                  myRole === 'dev' || myRole === 'master_technician'
+                  canAccessBanking
                     ? () => setImportCsvModalOpen(true)
                     : undefined
                 }
                 onManageManualAccounts={
-                  myRole === 'dev' || myRole === 'master_technician'
+                  canAccessBanking
                     ? () => setManualAccountsModalOpen(true)
                     : undefined
                 }
@@ -2209,19 +2216,19 @@ export default function Banking() {
         </div>
       )}
 
-      {bankingView.product === 'stripe' && isDevBanking && bankingView.stripeTab === 'invoices' && (
+      {bankingView.product === 'stripe' && isBankingAdmin && bankingView.stripeTab === 'invoices' && (
         <div role="tabpanel" id="banking-panel-stripe-invoices" aria-labelledby="banking-tab-stripe-invoices">
           <BankingStripeInvoicesPanel />
         </div>
       )}
 
-      {bankingView.product === 'stripe' && isDevBanking && bankingView.stripeTab === 'data' && (
+      {bankingView.product === 'stripe' && isBankingAdmin && bankingView.stripeTab === 'data' && (
         <div role="tabpanel" id="banking-panel-stripe-data" aria-labelledby="banking-tab-stripe-data">
           <BankingStripeWebhookEventsPanel />
         </div>
       )}
 
-      {isDevBanking ? (
+      {isBankingAdmin ? (
         <BankingAccountNicknamesModal
           open={nicknamesModalOpen}
           onClose={() => setNicknamesModalOpen(false)}
@@ -2278,7 +2285,7 @@ export default function Banking() {
         cap={DEBIT_CARD_RECENT_TX_CAP}
       />
 
-      {isDevBanking ? (
+      {isBankingAdmin ? (
         <MercuryBackfillModal
           open={backfillModalOpen}
           onClose={() => setBackfillModalOpen(false)}
@@ -2286,7 +2293,7 @@ export default function Banking() {
         />
       ) : null}
 
-      {(myRole === 'dev' || myRole === 'master_technician') && (
+      {(canAccessBanking) && (
         <MercuryImportCsvModal
           open={importCsvModalOpen}
           onClose={() => setImportCsvModalOpen(false)}
@@ -2294,7 +2301,7 @@ export default function Banking() {
         />
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician') && (
+      {(canAccessBanking) && (
         <ManualAccountsModal
           open={manualAccountsModalOpen}
           onClose={() => setManualAccountsModalOpen(false)}
@@ -2330,7 +2337,7 @@ export default function Banking() {
         />
       )}
 
-      {isDevBanking && (
+      {isBankingAdmin && (
         <BankingSortingConfigModal
           open={sortingConfigModalOpen}
           onClose={() => setSortingConfigModalOpen(false)}

@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { isControllerOrDev } from '../lib/doorRoles'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -247,15 +248,16 @@ export default function JobTally() {
   // On site is the tab the tally opens on (v2.6229, the owner's word): the crew's side of Materials on site, first in the row.
   const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')
   const [role, setRole] = useState<string | null>(null)
-  const isDevTally = role === 'dev'
+  // Punch list #188 row 62 (v2.6761): the rules decide what counts as payroll, her chore, so the controller holds them with a dev.
+  const canEditPayrollRules = isControllerOrDev(role)
   // #72 PR 2a: office roles land on the team's queue (Team); My card is their own card's table.
   const isTallyOffice = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const tallyTxView: 'team' | 'mine' = searchParams.get('view') === 'mine' ? 'mine' : 'team'
   const showTallyTeam = isTallyOffice && tallyTxView === 'team'
   // T5-03 (J7-9): "Mark payroll" follows payroll access (dev, controller, pay-approved master) —
-  // DB policy + RPC widened in 20260906130000. Payroll RULES stay dev-only (isDevTally).
+  // DB policy + RPC widened in 20260906130000. Payroll RULES are the controller's and a dev's (canEditPayrollRules, v2.6761).
   const { canAccessPay: tallyCanAccessPay } = usePeopleAccess(authUser?.id)
-  const canMarkPayroll = canMarkTallyPayroll({ isDev: isDevTally, canAccessPay: tallyCanAccessPay })
+  const canMarkPayroll = canMarkTallyPayroll({ isDev: role === 'dev', canAccessPay: tallyCanAccessPay })
   // "Mark as payroll": tx ids currently flagged payroll (merged onto rows for resolved-ness).
   const [payrollFlaggedIds, setPayrollFlaggedIds] = useState<Set<string>>(new Set())
   // Tx ids with any flag row (marked or tombstoned) — rules never re-touch these.
@@ -1153,7 +1155,7 @@ export default function JobTally() {
               >
                 Show unlinked
               </button>
-              {isDevTally ? (
+              {canEditPayrollRules ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -2385,7 +2387,7 @@ export default function JobTally() {
           void loadTallyTransactions()
         }}
       />
-      {isDevTally ? (
+      {canEditPayrollRules ? (
         <TallyPayrollRulesModal
           open={payrollRulesModalOpen}
           onClose={() => {
@@ -2429,9 +2431,9 @@ export default function JobTally() {
               setPendingPayrollTx(null)
             })
           }}
-          // Payroll RULES are dev-only (the rules modal mounts under isDevTally) — no door for the rest (v2.3837).
+          // Payroll RULES are the controller's and a dev's (the rules modal mounts under canEditPayrollRules) — no door for the rest (v2.3837, v2.6761).
           onCreateRule={
-            isDevTally
+            canEditPayrollRules
               ? () => {
                   const tx = pendingPayrollTx
                   if (!tx) return

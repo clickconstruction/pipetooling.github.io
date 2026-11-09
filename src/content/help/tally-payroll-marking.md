@@ -46,7 +46,7 @@ The bar marks the sends. It does not change a rule. Only people who can mark pay
 
 ## Turning one mark into a rule
 
-A counterparty is who the money went to or came from. This counterparty may be payroll every time. Then don't mark it by hand each run. A dev presses {{button:blue|Create rule…}} in the confirmation instead. For everyone else the confirmation has only {{button:red|Cancel}} and {{button:purple|Mark payroll}}. The **Payroll auto-mark rules** form opens filled in from the transaction. The form fills counterparty contains and description contains, with a suggested name. A live line shows *"Test: matches N of M loaded transactions"*. So you can see exactly what the rule would catch before saving. If the description carries run-specific numbers, clear that field so the rule stays broad.
+A counterparty is who the money went to or came from. This counterparty may be payroll every time. Then don't mark it by hand each run. A dev or the controller presses {{button:blue|Create rule…}} in the confirmation instead. For everyone else the confirmation has only {{button:red|Cancel}} and {{button:purple|Mark payroll}}. The **Payroll auto-mark rules** form opens filled in from the transaction. The form fills counterparty contains and description contains, with a suggested name. A live line shows *"Test: matches N of M loaded transactions"*. So you can see exactly what the rule would catch before saving. If the description carries run-specific numbers, clear that field so the rule stays broad.
 
 Press {{button:blue|Add rule}}. The rule saves and applies immediately. The rule marks this transaction as payroll, and any other loaded matches too.
 
