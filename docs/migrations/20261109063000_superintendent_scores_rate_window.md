@@ -10,4 +10,4 @@
 
 **Check**: the Scoreboard's rule card and Bids → Labor's company rate read the same figure on the same day, within a session's rounding.
 
-**Applied**: not yet.
+**Applied** to prod 2026-11-09 shortly after 07:20Z through `scripts/db-push.sh` from a worktree at `main`'s head, after #7437 merged; `check:migration-drift` read 1198 local files against 1198 remote versions, fully applied. The regenerated types were other sessions' (#7427's functions) and were not committed. The dev-server walk then read the Scoreboard's rule card and Bids → Labor's company rate on the same minute; the comparison is recorded on punch list #234's card.
