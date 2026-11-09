@@ -31,6 +31,7 @@
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
+import { isJobVerb, jobInput } from './devMcpJobs.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -139,6 +140,11 @@ export const WRITE_VERBS = {
   // read of the person and of any matter standing on them (devMcpPersonMatter.ts), refused when one already stands.
   plan_matter_open_person: { rpc: null, step: 'plan' },
   apply_matter_open_person: { rpc: null, step: 'apply' },
+  // v2.6790 / 0.49.0 (punch list #293): a job as the New Job form makes it — one jobs_ledger row under RLS as the dev,
+  // then the kind; no RPC exists for a job's birth, so rpc is null — the dry run is the server's read of the customer,
+  // the service type, the owner rule's settings and the live jobs wearing the name (devMcpJobs.ts).
+  plan_job: { rpc: null, step: 'plan' },
+  apply_job: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -245,6 +251,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isPersonMatterVerb(verb)) {
     // v2.6582: the shape check is devMcpPersonMatter's; the dry run is the server's read of the person and the standing matter.
     const built = personMatterInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobVerb(verb)) {
+    // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
+    const built = jobInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1039,6 +1051,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const themeMarks = verb === 'apply_theme_marks'
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
+  const job = verb === 'apply_job'
+  if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || event || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
