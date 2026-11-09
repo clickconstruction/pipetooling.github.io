@@ -26,7 +26,7 @@ import type { MondaySheetReads } from './sheetBuild.ts'
 export type MondaySheetReadOptions = {
   /** Cash on hand from the bank, read by the caller; null falls back to the typed figure. */
   bank: MercuryCash | null
-  /** ZZ test jobs to leave out of the Bill pile and the financials; null keeps them. */
+  /** ZZ test jobs to leave out of the Bridge data, the Bill pile and the financials; null keeps them. */
   zzTestJobIds: ReadonlySet<string> | null
   /** Whether the client may read the Payment Chase touches (a dev, or the service role). */
   canReadTouches: boolean
@@ -45,7 +45,7 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
       return null
     }
   }
-  const data = await loadBridgeData(db)
+  const data = await loadBridgeData(db, { zzTestJobIds: opts.zzTestJobIds })
   const weeksRange = vectorRangeFor('weeks', data.todayYmd)
   const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls] = await Promise.all([
     soft('the money owed and due', () => loadDashboardFinancials(db, { assistantAggregates: false, zzTestJobIds: opts.zzTestJobIds })),

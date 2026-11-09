@@ -8,7 +8,9 @@ import type { Database } from '../../../types/database'
  * day is the job's own record and not an owner call; the job labels the page
  * does not carry (the ready-to-bill jobs and the window's billed jobs); and
  * the senders' names. Read-only, nothing new on the server. `billDesk.ts`
- * does the crossing.
+ * does the crossing. ZZ test jobs stay out for everyone but a dev who shows
+ * them (v2.6807): the caller passes their ids, or null to keep them, and the
+ * label rows' own names catch one the ids miss (`../zzTestJobs.ts`).
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
@@ -16,6 +18,7 @@ import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../ledgerDisplayPrefixes'
 import { invoiceBilledYmd } from '../billedDay'
 import type { BillDeskInvoiceRow } from './billDesk'
+import { withoutZzBillDeskRows, type BridgeZzTestJobIds } from '../zzTestJobs'
 
 export type BillDeskReads = {
   /** Job id → "1024 · Lawver install", for every job the desk touches. */
@@ -28,14 +31,14 @@ export type BillDeskReads = {
 
 type InvoiceRow = { id: string; job_id: string; amount: number | null; billed_at: string | null; sent_to_customer_at: string | null; sent_by_user_id: string | null; status: string }
 type EventRow = { job_id: string; to_status: string; changed_at: string }
-type LabelRow = { id: string; job_name: string | null; hcp_number: string | null; click_number: string | null }
+type LabelRow = { id: string; job_name: string | null; customer_name: string | null; hcp_number: string | null; click_number: string | null }
 type UserRow = { id: string; name: string | null }
 
 const INVOICE_COLS = 'id, job_id, amount, billed_at, sent_to_customer_at, sent_by_user_id, status'
 /** The same bills the Bridge's billed-per-week counts: a Stripe test-mode bill is not a bill. */
 const LIVE_BILLS = 'stripe_mode.is.null,stripe_mode.neq.test'
 
-export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { sinceYmd: string; pileJobIds: ReadonlyArray<string> }): Promise<BillDeskReads> {
+export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { sinceYmd: string; pileJobIds: ReadonlyArray<string>; zzTestJobIds: BridgeZzTestJobIds }): Promise<BillDeskReads> {
   const pileIds = [...new Set(args.pileJobIds)]
   const sinceIso = `${args.sinceYmd}T00:00:00Z`
   const [windowRows, pileRows] = await Promise.all([
@@ -65,7 +68,7 @@ export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { si
   const jobIds = [...new Set([...pileIds, ...[...rowById.values()].map((r) => r.job_id)])]
   const senderIds = [...new Set([...rowById.values()].map((r) => r.sent_by_user_id).filter((id): id is string => !!id))]
 
-  const [eventRows, labelRows, userRows] = await Promise.all([
+  const [eventRead, labelRead, userRows] = await Promise.all([
     jobIds.length
       ? fetchAllRowsChunkedIn<EventRow, string>(
           jobIds,
@@ -80,7 +83,7 @@ export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { si
       ? fetchAllRowsChunkedIn<LabelRow, string>(
           jobIds,
           async (chunk, from, to) => ({
-            data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, job_name, hcp_number, click_number').in('id', chunk).order('id').range(from, to), 'bill desk job labels')) as LabelRow[] | null,
+            data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, job_name, customer_name, hcp_number, click_number').in('id', chunk).order('id').range(from, to), 'bill desk job labels')) as LabelRow[] | null,
             error: null,
           }),
           'bill desk job labels',
@@ -97,6 +100,10 @@ export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { si
         )
       : Promise.resolve([] as UserRow[]),
   ])
+
+  // A ZZ test job leaves with its bills, its label and its ready days.
+  const { jobs: labelRows, invoices: billRows, zzJobIds } = withoutZzBillDeskRows({ jobs: labelRead, invoices: [...rowById.values()] }, args.zzTestJobIds)
+  const eventRows = zzJobIds.size ? eventRead.filter((e) => !zzJobIds.has(e.job_id)) : eventRead
 
   const readyDaysByJob = new Map<string, string[]>()
   for (const e of eventRows) {
@@ -119,7 +126,7 @@ export async function loadBillDeskReads(db: SupabaseClient<Database>, args: { si
   for (const u of userRows) if (u.name?.trim()) nameById.set(u.id, u.name.trim())
 
   const invoices: BillDeskInvoiceRow[] = []
-  for (const r of rowById.values()) {
+  for (const r of billRows) {
     invoices.push({
       id: r.id,
       jobId: r.job_id,
