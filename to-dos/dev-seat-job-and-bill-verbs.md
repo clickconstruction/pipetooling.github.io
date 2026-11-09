@@ -49,7 +49,7 @@ Rejected: a `dev_job_write` definer wrapper (a migration for rows the app alread
 | PR | Verbs | Server | What it touches |
 |---|---|---|---|
 | 1 | `plan_job` / `apply_job` | 0.49.0 | `devMcpJobs.ts`, `devMcpWrites.ts`, `index.ts`, the address kernel into the copy, the docs, this card |
-| 2 | `plan_job_update` / `apply_job_update` | 0.50.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
+| 2 | `plan_job_update` / `apply_job_update` | 0.51.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
 | 3 | `plan_bill` / `apply_bill` | main's minor + 1 | `devMcpBill.ts`, the three kernels into the copy, `index.ts` |
 
 Each merges alone (`gh pr merge N --auto`); after each merge, `supabase functions download dev-mcp --use-api` into a scratch folder and hash-compare to main before `supabase functions deploy dev-mcp`. No migration, so no push and no calls-ahead hold.

@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55449}"
 NAME="pgtest-users-without-login"
 BED="supabase/tests/users_without_login"
-MIGRATIONS=(supabase/migrations/20261103030000_imported_clock_sessions.sql supabase/migrations/20261104190000_users_login_attached_at.sql supabase/migrations/20261104200000_add_worker.sql supabase/migrations/20261104210000_people_without_users_backfill.sql supabase/migrations/20261104220000_notification_recipient_is_a_user.sql supabase/migrations/20261104230000_people_have_a_users_row.sql supabase/migrations/20261109110000_delete_fresh_person.sql)
+MIGRATIONS=(supabase/migrations/20261103030000_imported_clock_sessions.sql supabase/migrations/20261104190000_users_login_attached_at.sql supabase/migrations/20261104200000_add_worker.sql supabase/migrations/20261104210000_people_without_users_backfill.sql supabase/migrations/20261104220000_notification_recipient_is_a_user.sql supabase/migrations/20261104230000_people_have_a_users_row.sql supabase/migrations/20261109110000_delete_fresh_person.sql supabase/migrations/20261109140000_delete_fresh_person_stints.sql)
 TMP="$(mktemp -d)"
 
 command -v psql >/dev/null || { echo "psql not on PATH"; exit 2; }

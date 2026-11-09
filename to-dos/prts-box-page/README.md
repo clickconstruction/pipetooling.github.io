@@ -1,8 +1,8 @@
 ---
 name: "prts.co: scan a box, see what is in it with no sign-in"
 number: 294
-group: waiting
-status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · nothing built · waiting on the owner's yes and his privacy call on the search
+group: close
+status: designed 2026-11-09 from the owner's ask of the same day · the tape labels for the two Brother P-touch printers and the dashed code (4F2A-9C18) added the same day · the owner's go the same afternoon (build it as drawn, the search keyed by a scanned code) · built 2026-11-09 as five stacked PRs, each armed as its base lands: PR 1 #7469 (the allow-lists and the dashed code), PR 2 #7473 (box-read and the public page), PR 3 #7474 (the site search and the bare /b page), PR 4 #7475 (the CSV and Copy the label code), PR 5 #7476 (the Tape format) · left: deploy box-read after PR 2 and again after PR 3, the owner's second Cloudflare rule, the ZZ walk of the public page, the tape walk on both printers
 mockup: to-dos/prts-box-page/scan.html
 summary: >
   Every cage and box on a job site already wears a printed label whose QR reads prts.co/b/<code>,
@@ -19,9 +19,9 @@ summary: >
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
   His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
   voice, while the bare code keeps working and the QR stays as small as it is.
-next: The owner reads the card and the four mock-ups and makes four calls (build it; the search's gate; who edits the Cloudflare rule; which tape width he will stock). Then PR 1, a one-line fix a crew hits today, goes first.
-size: M as a train of five (XS · S · S · XS · S)
-blocker: The owner's yes, and his call on the search's gate (the card's recommendation is a scanned code).
+next: See the five PRs through the queue in order (each retargets to main as its base lands and is then armed); `supabase functions deploy box-read` after PR 2 and again after PR 3; the owner makes the second Cloudflare rule from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in the PR 2 fragment; the tape walk on the PT-D610BT and the PT-E720BT, once on each width, before PR 5 is called done. Retire the card after the walks.
+size: M as a train of five (XS · S · S · XS · S), all five built and open; left: the deploy, the walks (S)
+blocker: None. The second Cloudflare rule is the owner's step and nothing waits on it; the tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
 ---
 
@@ -180,4 +180,14 @@ Every job, person, street, part and count in them is made up: Ridgeway Builders'
 
 ## Where it stands
 
-Designed 2026-11-09 from the owner's ask of that morning, as a reading of the code and the docs; the tape labels for the two Brother printers added the same day from his second ask, and the dashed code from his third. Nothing built, nothing on prod touched. The four mock-ups are beside this card. Waiting on the four calls above.
+Designed 2026-11-09 from the owner's ask of that morning; the tape labels and the dashed code added the same day from his second and third asks. **The go came the same afternoon: build it as drawn, here.** Built that day as five stacked PRs, each branched on the one before so the shared files (the box page, the guide) never conflict in the queue; GitHub retargets each to `main` as its base lands, and it is armed then.
+
+| PR | What | State |
+|---|---|---|
+| 1 · #7469 · v2.6796 | `/b` on the three field allow-lists; the code reads `7D75-9246` on the sheet label and the manifest | in the merge queue |
+| 2 · #7473 · v2.6797 | `box-read` (the code, the lines from `on_site_job_summary`, the newest photo streamed from Drive, the guess guard, the view row) and the public page; `/b/:code` out of the Layout; Sign in to change a count | open, stacked on 1; **deploy `box-read` after it lands** |
+| 3 · #7474 · v2.6799 | `?find=` on the function, scoped to the scanned box's job; Find a part on this site; `/b` Scan a label; the second Cloudflare rule mirrored | open, stacked on 2; redeploy `box-read` |
+| 4 · #7475 · v2.6800 | Export the labels as a CSV; Copy the label code on the phone | open, stacked on 3 |
+| 5 · #7476 · v2.6801 | The Labels window as `LabelsPrintModal.tsx`: Sheet · Tape, 18 or 24 mm, a chip per box, the counted press, the `@page` rule at the tape's size | open, stacked on 4; the tape walk before it is called done |
+
+What the owner does: one press on Auto-fix per PR so the app sees each through; the second Cloudflare rule from the note's table once PR 3 is live; the tape walk with the printers on the office Mac. What the next session does: deploy `box-read` after PR 2 and PR 3, the ZZ walk in v2.6797's fragment, then retire the card and let the release notes carry it.

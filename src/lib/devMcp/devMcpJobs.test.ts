@@ -84,7 +84,7 @@ describe('devMcpJobs — the verbs on the allowlist', () => {
     expect(planVerbFor('apply_job')).toBe('plan_job')
     expect(planVerbFor('apply_job_update')).toBe('plan_job_update')
     expect(isJobVerb('plan_bid')).toBe(false)
-    expect(SERVER).toContain('Writes are fifty-five verbs and nothing else:')
+    expect(SERVER).toContain('Writes are sixty-one verbs and nothing else:')
     expect(README).toContain('`plan_job(job)` · `apply_job(job, plan_hash)`')
     expect(README).toContain('`plan_job_update(update)` · `apply_job_update(update, plan_hash)`')
   })

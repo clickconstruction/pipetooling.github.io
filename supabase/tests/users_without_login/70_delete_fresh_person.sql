@@ -9,6 +9,13 @@ CREATE TABLE IF NOT EXISTS public.people_pay_config (
   person_id uuid REFERENCES public.people(id) ON DELETE RESTRICT,
   hourly_wage numeric
 );
+-- The stint table the people row's dates mirror into (20261103203000), keyed CASCADE: the record, not history (v2.6798).
+CREATE TABLE IF NOT EXISTS public.employment_stints (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
+  start_date date,
+  end_date date
+);
 DO $$
 DECLARE
   v_dev uuid := '11111111-1111-4111-8111-111111111111';
@@ -139,5 +146,20 @@ BEGIN
   SELECT count(*) INTO v_n FROM public.people WHERE id = v_person; PERFORM t_assert(v_n = 0, 'D7 record gone');
   SELECT count(*) INTO v_n FROM public.users WHERE id = v_user; PERFORM t_assert(v_n = 0, 'D7 row gone');
   RAISE NOTICE 'ok D7: the pay row the Hire form wrote goes with the person, named in the answer, never a hold';
+
+  -- D8 (v2.6798). The employment stint the record's dates mirror into is the record, not a hold; it goes with the record.
+  PERFORM t_as(v_dev);
+  v_json := public.add_worker('Dated Hire', 'helper', NULL, NULL, NULL, '2026-11-09');
+  v_user := (v_json->>'user_id')::uuid; v_person := (v_json->>'person_id')::uuid;
+  PERFORM t_as(NULL);
+  INSERT INTO public.employment_stints (person_id, start_date) VALUES (v_person, '2026-11-09');
+  PERFORM t_as(v_dev);
+  v_json := public.delete_fresh_person(v_user, true);
+  PERFORM t_assert(jsonb_array_length(v_json->'holds') = 0, 'D8 no holds ' || (v_json->'holds')::text);
+  PERFORM t_assert(v_json->'removed' = '[]'::jsonb, 'D8 nothing named ' || (v_json->'removed')::text);
+  v_json := public.delete_fresh_person(v_user);
+  PERFORM t_assert((v_json->>'deleted')::boolean = true, 'D8 deleted ' || v_json::text);
+  SELECT count(*) INTO v_n FROM public.employment_stints WHERE person_id = v_person; PERFORM t_assert(v_n = 0, 'D8 stint gone with the record');
+  RAISE NOTICE 'ok D8: the record''s own employment stint is not a hold and goes with the record';
 END $$;
 SELECT '70_delete_fresh_person PASSED' AS result;

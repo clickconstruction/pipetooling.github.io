@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxAddress, boxCode, boxUrl, labelRows, normalizeBoxCode } from './labels'
+import { boxAddress, boxAddressWords, boxCode, boxCodeWords, boxUrl, dashedCode, labelRows, normalizeBoxCode } from './labels'
 
 const ID = '7d759246-8476-4a37-884f-ed1562d5663f'
 
@@ -21,6 +21,17 @@ describe('the box code', () => {
     expect(normalizeBoxCode('7d759246')).toBe('7D759246')
     expect(normalizeBoxCode('7D75-9246')).toBe('7D759246')
     expect(normalizeBoxCode('7D75')).toBe('')
+  })
+
+  it('prints the code for a person with a dash in the middle, and the dashed address round-trips (v2.6796)', () => {
+    expect(boxCodeWords(ID)).toBe('7D75-9246')
+    expect(boxAddressWords(ID)).toBe('prts.co/b/7D75-9246')
+    expect(dashedCode('7d759246')).toBe('7D75-9246')
+    expect(dashedCode('7D75-9246')).toBe('7D75-9246')
+    expect(normalizeBoxCode(boxCodeWords(ID))).toBe(boxCode(ID))
+    // the QR keeps the bare address; the dashed one would still fit a 21-module code at level M (20 characters)
+    expect(boxUrl(ID)).not.toContain('-')
+    expect(boxAddressWords(ID).toUpperCase().length).toBeLessThanOrEqual(20)
   })
 })
 

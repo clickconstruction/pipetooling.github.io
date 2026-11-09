@@ -31,6 +31,8 @@
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
+import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
+import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
@@ -145,10 +147,22 @@ export const WRITE_VERBS = {
   // the service type, the owner rule's settings and the live jobs wearing the name (devMcpJobs.ts).
   plan_job: { rpc: null, step: 'plan' },
   apply_job: { rpc: null, step: 'apply' },
-  // v2.6793 / 0.50.0: a job changed as Edit Job and the Pipeline change it — the form's columns as one PATCH under RLS,
+  // v2.6793 / 0.51.0 (numbered behind v2.6792's 0.50.0, which merged first): a job changed as Edit Job and the Pipeline change it — the form's columns as one PATCH under RLS,
   // the status through the Pipeline's own update_job_status step by step; rpc is null, the dry run the server's read.
   plan_job_update: { rpc: null, step: 'plan' },
   apply_job_update: { rpc: null, step: 'apply' },
+  // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
+  // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
+  // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
+  // and the RPC the desk itself calls (add_worker, invite-user, create-user, send-sign-in-email, detach-login,
+  // change-user-email, set-user-password, resetPasswordForEmail); no wrapper, so rpc is null — the dry run is the server's
+  // read of the users row, the roster row and the auth stamps (devMcpAccount.ts).
+  plan_account: { rpc: null, step: 'plan' },
+  apply_account: { rpc: null, step: 'apply' },
+  plan_login: { rpc: null, step: 'plan' },
+  apply_login: { rpc: null, step: 'apply' },
+  plan_password_reset: { rpc: null, step: 'plan' },
+  apply_password_reset: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -261,6 +275,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isAccountVerb(verb)) {
+    // v2.6792: the shape check is devMcpAccount's; the dry run is the server's read of the account, its roster row and the auth stamps.
+    const built = verb === 'plan_account' || verb === 'apply_account' ? accountInput(verb, input, todayYmd()) : verb === 'plan_login' || verb === 'apply_login' ? loginInput(verb, input) : passwordResetInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1058,6 +1078,10 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
+  // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
+  if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
+  if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || event || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
