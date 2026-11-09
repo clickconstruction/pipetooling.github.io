@@ -70,6 +70,9 @@ export function demandPayCodeRows(statement: readonly DemandStatementInvoice[], 
   return out
 }
 
+/** One copy of the letter: the person on the matter it goes to, their role in the people list's words, and where. */
+export type DemandLetterCopy = { personId: string; name: string; role: string; address: string }
+
 export type DemandLetterFields = {
   businessName: string
   senderName: string
@@ -82,6 +85,8 @@ export type DemandLetterFields = {
   recipientName: string
   recipientEmail: string
   recipientAddress: string
+  /** Who gets a copy (v2.6741, punch list #174): picked from the matter's people where the letter is written; the letter ends on a *Copies to* line naming them. Absent on letters before, and on a job whose payer has no matter. */
+  copies?: DemandLetterCopy[]
   /** Who the bill was addressed to, from the invoice's own who-pays rule (v2.3425); absent on older snapshots. */
   debtorParty?: EffectiveBillParty
   /** The bill, invoice by invoice (v2.3425). Absent on snapshots recorded before it; the four fields below still render those. */
@@ -242,6 +247,8 @@ export type DemandLetterBlock =
   | { kind: 'signature'; lines: string[] }
   | { kind: 'statement'; invoices: DemandStatementInvoice[]; balance: string }
   | { kind: 'enclosures'; items: Array<{ label: string; text: string }>; line: string }
+  /** Who gets a copy (v2.6741): one line a person, *name, role*. */
+  | { kind: 'copies'; lines: string[] }
   | { kind: 'notarial' }
 
 /** "Invoice #A" / "Invoices #A and #B" / "Invoices #A, #B and #C". */
@@ -274,6 +281,19 @@ export function demandSubject(statement: DemandStatementInvoice[], serviceAddres
   const count = COUNT_WORDS[statement.length] ?? String(statement.length)
   const what = statement.length > 1 ? `${count.charAt(0).toUpperCase()}${count.slice(1)} unpaid invoices` : demandInvoicesPhrase(statement)
   return where ? { text: where, detail: what } : { text: what, detail: '' }
+}
+
+/** The *Copies to* lines: *Pecan Hollow Holdings LLC, owner of record*; a copy with no name is skipped, a name once. */
+export function copiesLines(copies: ReadonlyArray<DemandLetterCopy>): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const c of copies) {
+    const name = c.name.trim()
+    if (!name || seen.has(name.toLowerCase())) continue
+    seen.add(name.toLowerCase())
+    out.push(c.role.trim() ? `${name}, ${c.role.trim()}` : name)
+  }
+  return out
 }
 
 export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): DemandLetterBlock[] {
@@ -411,6 +431,9 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, 
   })
   const enclosures = enclosuresLine(f.enclosures ?? [])
   if (enclosures) blocks.push({ kind: 'enclosures', items: enclosureEntries(f.enclosures ?? []), line: enclosures })
+  // Copies to (v2.6741, punch list #174): after the enclosures, as a letter lists them; nothing when nobody gets a copy.
+  const copies = copiesLines(f.copies ?? [])
+  if (copies.length) blocks.push({ kind: 'copies', lines: copies })
   if (f.includeNotarial) blocks.push({ kind: 'notarial' })
   return blocks
 }
@@ -508,6 +531,12 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
         parts.push(
           `<div style="${LABEL_STYLE};color:${MUTED};margin:1.8em 0 0.3em 0">Enclosure${b.items.length > 1 ? 's' : ''}</div>` +
             `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};line-height:1.55">${b.items.map((e) => `<div style="display:flex;gap:1em"><span style="flex:0 0 6.5em;color:${INK}">${esc(e.label)}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`,
+        )
+        break
+      case 'copies':
+        parts.push(
+          `<div data-demand-copies style="${LABEL_STYLE};color:${MUTED};margin:1.4em 0 0.3em 0">Copies to</div>` +
+            `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};line-height:1.55">${b.lines.map(esc).join('<br/>')}</div>`,
         )
         break
       case 'notarial':
@@ -637,6 +666,9 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string, o
         break
       case 'enclosures':
         lines.push(b.line)
+        break
+      case 'copies':
+        lines.push(`cc:\n${b.lines.map((l) => `  ${l}`).join('\n')}`)
         break
       case 'notarial':
         lines.push(NOTARIAL_TEXT_LINES.join('\n'))
@@ -948,6 +980,20 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
           doc.text(item.label, PAGE_MARGIN, y)
           muted()
           writeWrapped(item.text, 4, { indent: 21 })
+        }
+        ink()
+        break
+      case 'copies':
+        ensureRoom(8 + b.lines.length * 4)
+        y += 6
+        label('Copies to', [95, 90, 82])
+        y += 4.4
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8.5)
+        muted()
+        for (const l of b.lines) {
+          ensureRoom(4)
+          writeWrapped(l, 4)
         }
         ink()
         break

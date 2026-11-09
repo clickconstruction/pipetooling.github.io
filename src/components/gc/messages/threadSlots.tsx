@@ -25,6 +25,7 @@ import { useMyMailJobLineThreadSlots } from '../../messages/useMyMailJobLineThre
 import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { NudgedReplyBox } from './reply/NudgedReplyBox'
+import { useMyMailPlacedLineThreadSlots } from '../../messages/useMyMailPlacedLineThreadSlots'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -178,6 +179,8 @@ export function useThreadSlots(): ThreadSlots {
   const estimateDoor = useEstimateDoorThreadSlots()
   // Residential R7: the sort card above the lines, while the person waits in Follow up's New lane.
   const newLane = useNewLaneThreadSlots()
+  // Punch list #263 PR B (v2.6751): under a line the app put on the job from a person's own Sent, the grey mark and Untag.
+  const placedLines = useMyMailPlacedLineThreadSlots()
   // #140 PR 8: a lead's doors above the lines, Book a visit and Start an estimate, once they are named a lead.
   const leadDoors = useLeadDoorThreadSlots()
   // Punch list #263 PR A (v2.6730): above the box of a thread narrowed to a job, the person's own mail with its person
@@ -185,5 +188,5 @@ export function useThreadSlots(): ThreadSlots {
   const myMailJobLine = useMyMailJobLineThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
   // #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane, myMailJobLine)
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, placedLines, leadDoors, newLane, myMailJobLine)
 }

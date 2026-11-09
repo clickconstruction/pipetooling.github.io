@@ -118,12 +118,13 @@ export interface DriveFileMeta {
 export type TextSource = 'export' | 'pdf_layer' | 'plain' | 'ocr'
 export type TextWhy = 'scan' | 'kind' | 'big' | 'slow' | 'error' | 'reading'
 
-/** How a file's text is read: a Google file exported, a PDF's layer, a text file's bytes, a picture (a scan, for OCR), or a kind we do not read. */
-export type TextKind = 'export' | 'pdf' | 'plain' | 'image' | 'kind'
+/** How a file's text is read: a Google file exported, a PDF's layer, a text file's bytes, an email's parts decoded (`eml`, #285), a picture (a scan, for OCR), or a kind we do not read. */
+export type TextKind = 'export' | 'pdf' | 'plain' | 'eml' | 'image' | 'kind'
 
 export function textKindOf(f: Pick<DriveFileMeta, 'name' | 'mimeType'>): TextKind {
   if (GOOGLE_TEXT_KINDS.has(f.mimeType)) return 'export'
   if (f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name)) return 'pdf'
+  if (f.mimeType === 'message/rfc822' || /\.eml$/i.test(f.name)) return 'eml'
   if (f.mimeType.startsWith('text/') || /\.(csv|md|txt)$/i.test(f.name)) return 'plain'
   if (f.mimeType.startsWith('image/') || /\.(jpe?g|png|heic|heif|gif|tiff?|webp)$/i.test(f.name)) return 'image'
   return 'kind'
@@ -237,9 +238,19 @@ export function folderKindOf(home: FileHome | null, via: string | null, names: r
   return 'other'
 }
 
+/** Where a row came from (#285): the jobs Shared Drive, a person_file_attachments row, a legal_matter_documents row. */
+export type IndexSource = 'drive' | 'hr_attachment' | 'matter_document'
+
 /** A `file_index` row as the functions write it. */
 export interface FileIndexRow {
+  /** Drive's id for a Drive file; a record's file carries its own row id here (a uuid passes the key's shape). */
   drive_file_id: string
+  /** The reach (#285): `drive` with no source_id, else the record's row and the person or matter it hangs on, and the evidence record's counsel-only mark. */
+  source: IndexSource
+  source_id: string | null
+  person_id: string | null
+  matter_id: string | null
+  counsel_only: boolean
   jobs_ledger_id: string | null
   bid_id: string | null
   customer_id: string | null
@@ -269,6 +280,9 @@ export interface FileIndexRow {
 /** What one file's OCR try left behind, for the row: nothing tried, read (the text is the read's), or refused with the reason. */
 export type OcrTry = { tried: false } | { tried: true; note: string | null }
 export const NO_OCR_TRY: OcrTry = { tried: false }
+
+/** The reach columns of a Drive row (#285): the source every row before v2.6714 was. */
+export const DRIVE_SOURCE_COLUMNS: Pick<FileIndexRow, 'source' | 'source_id' | 'person_id' | 'matter_id' | 'counsel_only'> = { source: 'drive', source_id: null, person_id: null, matter_id: null, counsel_only: false }
 
 /** The row's home columns from a walk. */
 export function homeColumns(home: FileHome | null): Pick<FileIndexRow, 'jobs_ledger_id' | 'bid_id' | 'customer_id'> {
@@ -317,6 +331,7 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
   const bytes = f.size == null || f.size === '' ? null : Number(f.size)
   return {
     drive_file_id: f.id,
+    ...DRIVE_SOURCE_COLUMNS,
     ...homeColumns(walk.home),
     folder_kind: folderKindOf(walk.home, walk.via, walk.names),
     path: walk.path.slice(0, 2000),

@@ -9,6 +9,7 @@ import {
   prospectsMarkNote,
   prospectsNextLine,
   prospectsSince,
+  prospectWaitDays,
   serializeProspectDays,
   type DueProspect,
 } from './prospectsDue'
@@ -55,9 +56,26 @@ describe('the owner\'s days', () => {
 describe('prospectDueRows', () => {
   const rows = prospectDueRows({ prospects: PROSPECTS, callbacks: CALLBACKS, nowIso: NOW, days: DAYS })
 
-  it('leaves out can\'t reach and converted, and sorts missed, past, on time, most over first', () => {
+  it('leaves out can\'t reach and converted, and sorts missed, past, on time, the prospect waiting longest first in each fold (v2.6754)', () => {
     expect(isActiveProspect({ prospect_fit_status: 'not_a_fit', converted_customer_id: null })).toBe(false)
-    expect(rows.map((r) => `${r.prospect.id}:${r.state}:${r.overDays}`)).toEqual(['a:missed:3', 'b:missed:1', 'f:past:60', 'c:past:31', 'd:past:19', 'e:past:12', 'g:ontime:0'])
+    // Past their days runs by the days since the last touch, not the days over: e (42d, warm 1) ahead of d (26d, warm 3).
+    expect(rows.map((r) => `${r.prospect.id}:${r.state}:${r.overDays}`)).toEqual(['a:missed:3', 'b:missed:1', 'f:past:60', 'c:past:31', 'e:past:12', 'd:past:19', 'g:ontime:0'])
+    expect(rows.map((r) => prospectWaitDays(r))).toEqual([3, 1, 120, 45, 42, 26, 20])
+  })
+
+  it('oldest first: the oldest promised day leads the missed, the longest since a touch leads the rest, a never-touched prospect counts from its arrival', () => {
+    const out = prospectDueRows({
+      prospects: [p('warm', 'Warm Lately', 3, 9), p('cold', 'Cold A While', 0, 70), p('fresh', 'Added Last Week', 0, null, { created_at: ago(6) }), p('x', 'Promised Long Ago', 2, 40), p('y', 'Promised Lately', 2, 40)],
+      callbacks: [
+        { prospect_id: 'x', callback_date: ago(20), title: null },
+        { prospect_id: 'y', callback_date: ago(2), title: null },
+      ],
+      nowIso: NOW,
+      days: DAYS,
+    })
+    // warm is 2 days over its 7 and cold 10 over its 60; cold has waited 70 days, warm 9, so cold leads. fresh is on time with 6 days.
+    expect(out.map((r) => `${r.prospect.id}:${r.state}`)).toEqual(['x:missed', 'y:missed', 'cold:past', 'warm:past', 'fresh:ontime'])
+    expect(prospectsNextLine(out)).toBe('Call Promised Long Ago · promised Tue, Oct 6 · 20 days over')
   })
 
   it('says the words', () => {
