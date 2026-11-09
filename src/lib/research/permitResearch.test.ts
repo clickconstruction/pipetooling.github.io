@@ -169,3 +169,15 @@ describe('the hint', () => {
     expect(pins[0]).toMatchObject({ id: 'p1', lat: 29.4, lng: -98.5, color: '#9ca3af' })
   })
 })
+
+describe('the value floor', () => {
+  it('keeps the big permits and the ones with no value, and drops the small', async () => {
+    const { rowsAboveFloor, valueFloorWords } = await import('./permitResearch')
+    const rows = [row({ declared_value: 1_500 }), row({ id: 'p2', declared_value: null }), row({ id: 'p3', declared_value: 80_000 })]
+    expect(rowsAboveFloor(rows, 25_000).map((r) => r.id)).toEqual(['p2', 'p3'])
+    expect(rowsAboveFloor(rows, 100_000).map((r) => r.id)).toEqual(['p2'])
+    expect(rowsAboveFloor(rows, 0)).toHaveLength(3)
+    expect(valueFloorWords(25_000)).toBe('$25k and up, or not declared')
+    expect(valueFloorWords(0)).toBe('Any value')
+  })
+})

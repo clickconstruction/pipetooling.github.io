@@ -13,7 +13,7 @@ Every city publishes the permits it issues. A building permit says who is about 
 
 Open **Prospects** and press the **Research** tab. Estimators see the tab too, with or without the Prospects flag.
 
-The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. Tick **Include houses** to see single family permits too.
+The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. The **Declared value** pick keeps small permits off the list. It starts at $25k and up, or not declared. Tick **Include houses** to see single family permits too.
 
 The line under the filters says when the feed was last pulled and what is new since you last looked. The same line counts the rows on each lens.
 

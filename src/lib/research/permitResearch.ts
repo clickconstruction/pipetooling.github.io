@@ -326,3 +326,16 @@ export function mapsDoor(row: Pick<ResearchPermitRow, 'address' | 'city' | 'zip'
   const q = [row.address, row.city, 'TX', row.zip].filter(Boolean).join(', ')
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
 }
+
+/** The declared-value floor: a small permit is noise on the estimator's list; one with no value declared stays, since remodels seldom declare one. */
+export type ValueFloor = 0 | 25_000 | 100_000 | 500_000
+export const VALUE_FLOORS: readonly ValueFloor[] = [0, 25_000, 100_000, 500_000]
+export const DEFAULT_VALUE_FLOOR: ValueFloor = 25_000
+export function valueFloorWords(floor: ValueFloor): string {
+  if (floor === 0) return 'Any value'
+  return `${shortMoney(floor)} and up, or not declared`
+}
+export function rowsAboveFloor(rows: readonly ResearchPermitRow[], floor: ValueFloor): ResearchPermitRow[] {
+  if (floor === 0) return [...rows]
+  return rows.filter((r) => r.declared_value == null || r.declared_value >= floor)
+}

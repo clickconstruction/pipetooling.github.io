@@ -8,9 +8,11 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   DEFAULT_RESEARCH_CITY,
+  DEFAULT_VALUE_FLOOR,
   RESEARCH_CITIES,
   RESEARCH_SHOWING_WORDS,
   RESEARCH_WINDOWS,
+  VALUE_FLOORS,
   VERDICT_WORDS,
   contactKeys,
   hintFor,
@@ -22,6 +24,7 @@ import {
   plumberTally,
   pulledWords,
   rowLens,
+  rowsAboveFloor,
   rowsShowing,
   shortDay,
   windowSinceYmd,
@@ -32,6 +35,8 @@ import {
   type ResearchPermitRow,
   type ResearchShowing,
   type ResearchWindow,
+  type ValueFloor,
+  valueFloorWords,
 } from '../../lib/research/permitResearch'
 import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, pullPermitsNow, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
@@ -95,6 +100,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [windowDays, setWindowDays] = useState<ResearchWindow>(30)
   const [residential, setResidential] = useState(false)
   const [showing, setShowing] = useState<ResearchShowing>('waiting')
+  const [floor, setFloor] = useState<ValueFloor>(DEFAULT_VALUE_FLOOR)
   const [rows, setRows] = useState<ResearchPermitRow[]>([])
   const [pull, setPull] = useState<LatestPull>({ ranAt: null, error: null })
   const [loading, setLoading] = useState(true)
@@ -130,10 +136,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     void load()
   }, [load])
 
-  const counts = useMemo(() => lensCounts(rows), [rows])
-  const visible = useMemo(() => rowsShowing(rows, showing), [rows, showing])
-  const line = pulledWords({ ranAt: pull.ranAt, error: pull.error, newCount: newSinceLooked(rows, lastLooked), lastLookedYmd: lastLooked, counts })
-  const tally = useMemo(() => (showing === 'taken' || showing === 'all' ? plumberTally(rows) : []), [rows, showing])
+  const sized = useMemo(() => rowsAboveFloor(rows, floor), [rows, floor])
+  const counts = useMemo(() => lensCounts(sized), [sized])
+  const visible = useMemo(() => rowsShowing(sized, showing), [sized, showing])
+  const line = pulledWords({ ranAt: pull.ranAt, error: pull.error, newCount: newSinceLooked(sized, lastLooked), lastLookedYmd: lastLooked, counts })
+  const tally = useMemo(() => (showing === 'taken' || showing === 'all' ? plumberTally(sized) : []), [sized, showing])
   const selected = useMemo(() => visible.find((r) => r.id === selectedId) ?? null, [visible, selectedId])
   const openDecide = (row: ResearchPermitRow) => {
     setDecideError(null)
@@ -178,7 +185,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const emptyState = () => {
     if (rows.length === 0) {
       if (!pull.ranAt) return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'permits', control: 'Pull now' }), { onPress: () => void pullNow() })} />
-      return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits', query: '' }), { onPress: () => { setWindowDays(90); setResidential(true) } })} />
+      return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits', query: '' }), { onPress: () => { setWindowDays(90); setResidential(true); setFloor(0) } })} />
     }
     if (showing === 'waiting') return <EmptyState main="Nothing waiting on a look." tail={`${counts.taken} already have a plumber, ${counts.approach} approached.`} />
     return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits', query: '' }), { onPress: () => setShowing('all') })} />
@@ -209,6 +216,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
           {(Object.keys(RESEARCH_SHOWING_WORDS) as ResearchShowing[]).map((s) => (
             <option key={s} value={s}>
               {RESEARCH_SHOWING_WORDS[s]}
+            </option>
+          ))}
+        </select>
+        <select aria-label="Declared value" value={floor} onChange={(e) => setFloor(Number(e.target.value) as ValueFloor)} style={selectStyle}>
+          {VALUE_FLOORS.map((f) => (
+            <option key={f} value={f}>
+              {valueFloorWords(f)}
             </option>
           ))}
         </select>
