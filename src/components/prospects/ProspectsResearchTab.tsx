@@ -22,6 +22,8 @@ import {
   mapsDoor,
   newSinceLooked,
   plumberTally,
+  plumberWords,
+  plumbingOnFile,
   pulledWords,
   rowLens,
   rowsAboveFloor,
@@ -261,7 +263,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
 
       {tally.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', background: 'var(--surface)' }}>
-          <strong>Who wins what in {city}, this window:</strong>
+          <strong>Who wins what in {city}, this window</strong> <span style={mutedStyle}>· the plumbers named on a permit, not the applicants who pulled their own:</span>
           {tally.map((t) => (
             <span key={t.plumber} style={chipStyle('grey')}>
               {t.plumber} · {t.jobs}
@@ -282,7 +284,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                 {selected.permit_number} · {selected.stage} {shortDay(selected.filed_on)} · {workWords(selected).detail}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {selected.plumber ? <span style={chipStyle('grey')}>{selected.plumber} · plumbing permit {shortDay(selected.plumber_permit_on)}</span> : <span style={chipStyle('green')}>no plumber yet</span>}
+                {plumbingOnFile(selected) ? <span style={chipStyle('grey')}>{plumberWords(selected).chip} · {plumberWords(selected).under}</span> : <span style={chipStyle('green')}>no plumber yet</span>}
                 <HintChip hint={hintFor(selected.contact, history)} />
               </div>
               <div>
@@ -359,15 +361,20 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                       <HintChip hint={hintFor(row.contact, history)} />
                     </td>
                     <td style={tdStyle}>
-                      {row.plumber ? (
-                        <>
-                          <span style={chipStyle('grey')}>{row.plumber}</span>
-                          <br />
-                          <span style={mutedStyle}>plumbing permit {shortDay(row.plumber_permit_on)}</span>
-                        </>
-                      ) : (
-                        <span style={chipStyle('green')}>none yet</span>
-                      )}
+                      {(() => {
+                        const pw = plumberWords(row)
+                        return (
+                          <>
+                            <span style={chipStyle(pw.kind === 'none' ? 'green' : 'grey')}>{pw.chip}</span>
+                            {pw.under && (
+                              <>
+                                <br />
+                                <span style={mutedStyle}>{pw.under}</span>
+                              </>
+                            )}
+                          </>
+                        )
+                      })()}
                     </td>
                     <td style={tdStyle}>
                       {row.verdict ? (
@@ -416,7 +423,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-        <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address already names them. The word under who pulled it reads our own bid history with that name and is never the verdict.
+        <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address names someone other than the applicant; <em>on file, no plumber named</em> means the applicant pulled it under their own name. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {deciding && <PermitDecideSheet row={deciding} todayYmd={todayYmd} saving={saving} error={decideError} onDecide={(d) => void decide(deciding, d)} onCancel={() => !saving && setDeciding(null)} />}
