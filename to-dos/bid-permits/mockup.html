@@ -7,7 +7,8 @@
 <style>
   /* Punch list #307. Every name, street, number, date and amount here is made up: Ridgeway Builders and Ridgeway Builders
      of Texas LLC, Dana Whitlow, Paula Kemp, Hartwell Interiors, Lone Oak Plumbing, Brazos Mechanical, Greenline Irrigation,
-     Mill Street Lofts, Pecan Grove Pharmacy, Harbor Street Offices, Larkspur Dental, Cedar Bend Clinic, Oak Hollow Retail.
+     Mill Street Lofts, Pecan Grove Pharmacy, Harbor Street Offices, Juniper Court Retail, Alder Row Dental, Larkspur Dental, Cedar Bend
+     Clinic, Oak Hollow Retail.
      Tokens are src/index.css's; saturated action colours stay literal as the app keeps them. Frames are fixed at 375 (the
      phone) and 1,248 (the desk). Green dashes mark what is new. */
   :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -122,6 +123,16 @@
   .bcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
   .bcard .h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .cards { display: grid; gap: 8px; }
+  .scope { display: flex; gap: 6px; flex-wrap: wrap; }
+  .w1248 .foldlink, .w375 .fold { display: none; }
+  .sub2 { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+  .was { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .was > div { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-700); }
+  .was > div:nth-child(-n+2) { border-top: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  .was > div:nth-child(odd) { border-right: 1px solid var(--border); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+  .was > div:nth-child(1) { text-decoration: none; }
+  .was > div:nth-child(even) { color: var(--text-strong); }
+  @media (max-width: 640px) { .was { grid-template-columns: 1fr; } .was > div:nth-child(odd) { border-right: 0; } .was > div:nth-child(2) { display: none; } }
   .w1248 .only-phone, .w375 .only-desk { display: none; }
   .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; margin-top: 14px; }
   .state { display: grid; gap: 6px; align-content: start; }
@@ -133,12 +144,13 @@
 <header class="top">
   <p class="eyebrow">Punch list #307 · mock-up · 2026-11-10 · every name and number made up</p>
   <h1>Bids and permits: what the city knows about this site and this GC, on the bid</h1>
-  <p>The ask: collect who pulls permits, match the names, and show a GC's other permits to a person bidding. Direction 1 draws it as asked. Then the second look, and direction 2, which is the pick.</p>
+  <p>The ask: collect who pulls permits, match the names, and show a GC's other permits to a person bidding. Direction 1 draws it as asked. Then the second look, and direction 2, which is the pick. Then the owner's word on the first panel, and a third look that redraws the pick to claim only what the records show.</p>
 </header>
 <div class="controls">
   <a href="#test">What the test found</a>
   <a href="#d1">1 · GC first, the ask as given</a>
   <a href="#look">Is this the best we can do?</a>
+  <a href="#look3">The third look: say what we can see</a>
   <a href="#d2" class="pick">2 · Site first, the pick</a>
   <a href="#states">The four honest states</a>
   <a href="#news">Permit news on the board</a>
@@ -155,7 +167,7 @@
   <div class="fact"><div class="n">3 <small>in 10</small></div><p>Bid sites that are in San Antonio, the one city read today.</p></div>
 </div>
 
-<h2 id="d1"><span class="num">1</span> GC first, the ask as given</h2>
+<h2 id="d1"><span class="num">1</span> GC first, the ask as given, as first drawn</h2>
 <p class="lede">The bid window's People section carries the GC's permits. A suggested match by name waits for Yes or No. Location says the address already has a permit.</p>
 <div class="row">
   <div class="col desk"><div class="cap">The bid window · Edit · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d1"></div></div></div>
@@ -165,6 +177,7 @@
 <div class="say">
   <p class="gain">It answers the question as he asked it: who is this GC, by the permits they pull.</p>
   <p class="lose">On real rows the GC panel is empty for most bids, and the match is a guess between two similar names.</p>
+  <p class="lose">The owner, on this panel: these are the permits we can see. Saying Ridgeway pulled them overstates it. The third look answers that.</p>
 </div>
 
 <div class="second" id="look">
@@ -178,16 +191,35 @@
   <p class="lede" style="margin-top:10px">So the same parts are turned around: the site leads, the question rides on the site, the GC's year says how much it knows, and news comes to the board.</p>
 </div>
 
-<h2 id="d2"><span class="num pick">2</span> Site first <span class="tag">the pick</span></h2>
-<p class="lede">Location leads with what the city holds on this address. The one question sits under the permit that raised it. The GC's year is under the GC card and grows with each Yes.</p>
+<div class="second" id="look3">
+  <h2>And again, on the owner's word: say what we can see</h2>
+  <p class="lede">He read <i>Permits Ridgeway Builders pulled</i> and said it overstates. It does, four ways. The records are one city. They start on one day. The name on a permit is the contact the city lists, not always the builder. And a total hides how many rows it stands on. The same fault ran through the pick, so every line was read again for what it claims.</p>
+  <div class="was">
+    <div>As first drawn</div><div>Now</div>
+    <div>Permits Ridgeway Builders pulled</div><div>What we can see about Ridgeway Builders, with the city, the first day of the records and how many of your bids with them it covers</div>
+    <div>9 permits · $17.0M declared</div><div>Of the 5 sites we can see, 4 have a permit. A count always says what it is out of</div>
+    <div>Who plumbs for them: Lone Oak Plumbing on 5</div><div>A general plumbing permit lists Lone Oak Plumbing on 1 site you priced</div>
+    <div>Asked us to price 2 of the 9. We won 1.</div><div>The jobs you priced for them, each with what the city shows on its address. No name has to match for this</div>
+    <div>Pulled by Dana Whitlow</div><div>The city lists Dana Whitlow</div>
+    <div>Yes, for Ridgeway. 7 other permits now count as Ridgeway's</div><div>The answer shows the 7 first, offers This permit only, and takes Not sure</div>
+    <div>No general plumbing permit on it</div><div>No general plumbing permit seen on it</div>
+    <div>A plumbing permit was issued on this site</div><div>On this address, with the name the city lists. A shared address can be another tenant's</div>
+  </div>
+  <p class="lede" style="margin-top:10px"><b>What it changed in the design, not only the words.</b> The GC's half now leads with the jobs you priced for them, which stands on addresses alone and works the day it ships. Permits under names tied to them come second and say how each name was tied. The live Permits tab has the same fault today: a builder reads <i>permits in the last year</i> on 75 days of records.</p>
+</div>
+
+<h2 id="d2"><span class="num pick">2</span> Site first <span class="tag">the pick, redrawn on the third look</span></h2>
+<p class="lede">Location leads with what the city holds on this address. The one question sits under the permit that raised it. Under the GC card: the jobs you priced for them and what the city shows on each, then the names tied to them.</p>
 <div class="row">
   <div class="col desk"><div class="cap">The bid window · Edit · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d2"></div></div></div>
   <div class="col p375"><div class="cap">The same · 375</div><div class="frame"><div class="screen w375" data-fill="d2"></div></div></div>
-  <div class="col p375"><div class="cap">After Yes · 375</div><div class="frame"><div class="screen w375" data-fill="d2yes"></div></div></div>
+  <div class="col p375"><div class="cap">The answer shows what it will do · 375</div><div class="frame"><div class="screen w375" data-fill="d2prev"></div></div></div>
+  <div class="col p375"><div class="cap">After the answer · 375</div><div class="frame"><div class="screen w375" data-fill="d2yes"></div></div></div>
 </div>
 <div class="say">
   <p class="gain">Works on the day it ships for every San Antonio bid with a street address, on tables #302 already filled.</p>
-  <p class="gain">Each Yes teaches the app a name for good. The GC's year fills in from the bids themselves.</p>
+  <p class="gain">The jobs you priced for a GC need no name to match: each is an address the bid already holds.</p>
+  <p class="gain">Each answer teaches the app a name for good, and shows what it will tie before it ties it. <i>Someone else…</i> asks which: the owner, an architect or engineer, files for others, another GC.</p>
   <p class="lose">A shared address can carry another tenant's permit. <i>Looks like this job</i> is a hint, and the list shows every permit so a person can tell.</p>
 </div>
 
@@ -195,9 +227,9 @@
 <p class="lede">Seven bid sites in ten have no records today. None of these lines reads as <i>No permits</i>.</p>
 <div class="states">
   <div class="state"><div class="cap">Records, and a match</div>
-    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot g"></span><span>A permit application is on this address. Filed 60 days ago, not issued yet.</span></div><div class="muted">Source: City of San Antonio. Records start Jan 2025.</div></div></div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot g"></span><span>The city has a permit application on this address. Filed 60 days ago, not issued yet.</span></div><div class="muted">Source: City of San Antonio. Records start Jan 2025.</div></div></div>
   <div class="state"><div class="cap">Records, and nothing here</div>
-    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot"></span><span>No permit on 2210 Larkspur Dr since Jan 2025.</span></div><div class="muted">The city's records run 2 to 3 days behind. A site outside the city limits files elsewhere.</div></div></div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot"></span><span>No permit seen on 2210 Larkspur Dr since Jan 2025.</span></div><div class="muted">The city's records run 2 to 3 days behind. A site outside the city limits files elsewhere.</div></div></div>
   <div class="state"><div class="cap">A town we do not read</div>
     <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot a"></span><span>No permit records for Kyle.</span></div><div class="muted">Permits are read for San Antonio only.</div><div class="btns"><span class="link">Open Kyle's permit search ›</span></div></div></div>
   <div class="state"><div class="cap">Not a street address</div>
@@ -205,7 +237,7 @@
 </div>
 
 <h3 id="news">Permit news on the board</h3>
-<p class="lede">One strip at the top of the Bid Board and a chip on the row. The plumbing line offers a press and never marks a bid by itself.</p>
+<p class="lede">One strip at the top of the Bid Board and a chip on the row. The plumbing line offers a press and never marks a bid by itself. Every line says <i>on this address</i> and the name the city lists.</p>
 <div class="row">
   <div class="col desk"><div class="cap">The Bid Board · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d2b"></div></div></div>
   <div class="col p375"><div class="cap">The same · 375</div><div class="frame"><div class="screen w375" data-fill="d2b"></div></div></div>
@@ -267,21 +299,21 @@
 
 <template id="t-site">
   <div class="blk new"><h5>This site <span class="chip b">San Antonio</span></h5>
-    <div class="verdict"><span class="dot g"></span><span>A permit application is on this address. Filed 60 days ago, not issued yet. No general plumbing permit on it.</span></div>
+    <div class="verdict"><span class="dot g"></span><span>The city has a permit application on this address. Filed 60 days ago, not issued yet. No general plumbing permit seen on it.</span></div>
     <div class="tiles">
-      <div class="tile"><div class="k">The city's declared value</div><div class="v">$6,400,000</div></div>
+      <div class="tile"><div class="k">Declared value, by the applicant</div><div class="v">$6,400,000</div></div>
       <div class="tile"><div class="k">Area on the permit</div><div class="v">38,000 sf</div></div>
       <div class="tile"><div class="k">Your bid</div><div class="v">$412,000</div><div class="k">6.4% of the declared value</div></div>
     </div>
-    <div class="muted" style="font-weight:600;color:var(--text-700)">3 permits on 4120 Mill St</div>
+    <div class="muted" style="font-weight:600;color:var(--text-700)">3 permits we can see on 4120 Mill St</div>
     <div class="plist">
       <div class="prow"><div class="h"><b>Commercial project application</b><span class="chip g">Looks like this job</span><span class="chip a">Applied Sep 11</span></div>
-        <div class="d">MILL STREET LOFTS BLDG C · $6,400,000 · 38,000 sf · pulled by Dana Whitlow</div>
+        <div class="d">MILL STREET LOFTS BLDG C · $6,400,000 · 38,000 sf · the city lists Dana Whitlow</div>
         <div data-part="ask"></div></div>
       <div class="prow"><div class="h"><b>Commercial remodel</b><span class="chip">Issued Jun 3</span></div>
-        <div class="d">MILL ST COFFEE TI · $180,000 · pulled by Hartwell Interiors · plumbing, general: Lone Oak Plumbing</div></div>
+        <div class="d">MILL ST COFFEE TI · $180,000 · lists Hartwell Interiors · its general plumbing permit lists Lone Oak Plumbing</div></div>
       <div class="prow"><div class="h"><b>Plumbing, irrigation</b><span class="chip">Issued Oct 2</span></div>
-        <div class="d">Pulled by Greenline Irrigation · not a general plumbing permit</div></div>
+        <div class="d">Lists Greenline Irrigation · not a general plumbing permit</div></div>
     </div>
     <div class="muted">Source: City of San Antonio building permits. Records start Jan 2025 and run 2 to 3 days behind.</div>
   </div>
@@ -289,13 +321,26 @@
 
 <template id="t-ask">
   <div class="q">
-    <div><b>Dana Whitlow pulled this permit.</b> Does Dana Whitlow file for Ridgeway Builders?</div>
-    <div class="btns"><span class="btn">Yes, for Ridgeway</span><span class="btn ghost">No, someone else</span></div>
-    <div class="why">Asked because this bid goes to Ridgeway on this address. Asked once.</div>
+    <div><b>The city lists Dana Whitlow on this permit.</b> Do you know who that is?</div>
+    <div class="btns"><span class="btn">Works for Ridgeway</span><span class="btn ghost">Someone else…</span><span class="btn ghost">Not sure</span></div>
+    <div class="why">Asked because you are bidding this address to Ridgeway. Asked once.</div>
   </div>
 </template>
 <template id="t-asked">
-  <div class="done"><span><b>Joined.</b> Dana Whitlow files for Ridgeway Builders. 7 other permits now count as Ridgeway's.</span><span class="link">Undo</span></div>
+  <div class="done"><span><b>Tied on your word, Nov 10.</b> Dana Whitlow works for Ridgeway Builders. 7 other permits now show under Ridgeway.</span><span class="link">Undo</span></div>
+</template>
+<template id="t-askprev">
+  <div class="q">
+    <div><b>Dana Whitlow works for Ridgeway Builders.</b> The city lists Dana Whitlow on 7 other permits we can see.</div>
+    <div class="plist">
+      <div class="prow"><div class="h"><b>Commercial remodel</b><span class="chip">Issued Aug 4</span></div><div class="d">HARBOR ST OFFICES STE 200 · 78209</div></div>
+      <div class="prow"><div class="h"><b>New commercial</b><span class="chip">Issued May 19</span></div><div class="d">ALDER ROW DENTAL · 78258</div></div>
+      <div class="prow"><div class="h"><b>Commercial remodel</b><span class="chip">Issued Mar 2</span></div><div class="d">PECAN GROVE PHARMACY · 78215</div></div>
+    </div>
+    <span class="link">and 4 more ›</span>
+    <div class="btns"><span class="btn">Show all 7 under Ridgeway</span><span class="btn ghost">This permit only</span></div>
+    <div class="why">Look at them first. One person can file for more than one builder.</div>
+  </div>
 </template>
 
 <template id="t-d2">
@@ -308,10 +353,38 @@
     </div>
     <div class="sec"><h4>People</h4>
       <div class="gc"><b>Ridgeway Builders</b><span>Paula Kemp · 210-555-0142</span></div>
-      <div class="blk new"><h5>Their permits <span class="chip b">San Antonio · since Jan 2025</span></h5>
-        <div class="verdict"><span class="dot"></span><span>No permits under the name Ridgeway Builders yet.</span></div>
-        <div class="muted">One name may be theirs: Dana Whitlow, from this bid's site. The question is beside that permit.</div>
-        <span class="link">Pick a name that is theirs ›</span>
+
+  <div class="blk new"><h5>What we can see about Ridgeway Builders</h5>
+    <div class="scope"><span class="chip b">San Antonio only</span><span class="chip b">since Jan 2025</span><span class="chip">5 of your 12 bids with them</span></div>
+    <div class="sub2">The jobs you priced for them</div>
+    <div class="verdict"><span class="dot g"></span><span>Of the 5 sites we can see, 4 have a permit. Another plumber is listed on 1. We are listed on 1.</span></div>
+    <span class="link foldlink">See the 5 jobs ›</span>
+    <div class="plist fold">
+      <div class="prow"><div class="h"><b>B512 · Mill Street Lofts, Building C</b><span class="chip a">Applied Sep 11</span></div><div class="d">This bid · no general plumbing permit seen</div></div>
+      <div class="prow"><div class="h"><b>B501 · Pecan Grove Pharmacy</b><span class="chip r">Another plumber</span></div><div class="d">Sent Oct 14 · a general plumbing permit, Nov 5, lists Lone Oak Plumbing</div></div>
+      <div class="prow"><div class="h"><b>B488 · Harbor Street Offices</b><span class="chip g">Issued Nov 3</span></div><div class="d">Sent Sep 30 · no general plumbing permit seen</div></div>
+      <div class="prow"><div class="h"><b>B470 · Juniper Court Retail</b><span class="chip">None seen</span></div><div class="d">Lost · no permit on the address since Jan 2025</div></div>
+      <div class="prow"><div class="h"><b>B455 · Alder Row Dental</b><span class="chip g">Ours</span></div><div class="d">Won · the general plumbing permit, Jun 2, lists us</div></div>
+    </div>
+    <div class="muted">7 more bids with them are in Kyle, Austin and New Braunfels. No permit records are read there.</div>
+    <div class="sub2">Other permits under names tied to them</div>
+
+    <div class="muted" style="color:var(--text-700)">None yet. The city lists no permit under the name Ridgeway Builders. One name waits on your word, beside this bid's permit.</div>
+
+    <div class="muted">A name on a permit is the contact the city lists. It is not always the builder.</div>
+  </div>
+
+    </div>
+  </div>
+</template>
+<template id="t-d2prev">
+  <div class="wbar"><span class="t">B512 · Mill Street Lofts, Building C</span><span class="sp"></span><span class="x">✕</span></div>
+  <div class="cols">
+    <div class="sec"><h4>Location</h4>
+      <div class="blk"><h5>This site</h5>
+        <div class="prow" style="border:0;padding:0"><div class="h"><b>Commercial project application</b><span class="chip g">Looks like this job</span></div>
+          <div class="d">MILL STREET LOFTS BLDG C · the city lists Dana Whitlow</div></div>
+        <div data-part="askprev"></div>
       </div>
     </div>
   </div>
@@ -323,21 +396,36 @@
     <div class="sec"><h4>Location</h4>
       <div class="blk"><h5>This site</h5>
         <div class="prow" style="border:0;padding:0"><div class="h"><b>Commercial project application</b><span class="chip g">Looks like this job</span></div>
-          <div class="d">MILL STREET LOFTS BLDG C · pulled by Dana Whitlow <span class="chip b">Files for Ridgeway</span></div></div>
+          <div class="d">MILL STREET LOFTS BLDG C · the city lists Dana Whitlow <span class="chip b">Works for Ridgeway</span></div></div>
         <div data-part="asked"></div>
       </div>
     </div>
     <div class="sec"><h4>People</h4>
       <div class="gc"><b>Ridgeway Builders</b><span>Paula Kemp · 210-555-0142</span></div>
-      <div class="blk new"><h5>Their permits <span class="chip b">San Antonio · since Jan 2025</span></h5>
-        <div class="verdict"><span class="dot g"></span><span>8 permits under 2 names · $15.2M declared</span></div>
-        <div class="kv">
-          <span>Names</span><span>Dana Whitlow (8) · Ridgeway Builders (0)</span>
-          <span>Who plumbs for them</span><span>Lone Oak Plumbing on 5 of 8</span>
-          <span>Asked us to price</span><span>2 of the 8</span>
-        </div>
-        <span class="link">See their year ›</span>
-      </div>
+
+  <div class="blk new"><h5>What we can see about Ridgeway Builders</h5>
+    <div class="scope"><span class="chip b">San Antonio only</span><span class="chip b">since Jan 2025</span><span class="chip">5 of your 12 bids with them</span></div>
+    <div class="sub2">The jobs you priced for them</div>
+    <div class="verdict"><span class="dot g"></span><span>Of the 5 sites we can see, 4 have a permit. Another plumber is listed on 1. We are listed on 1.</span></div>
+    <span class="link foldlink">See the 5 jobs ›</span>
+    <div class="plist fold">
+      <div class="prow"><div class="h"><b>B512 · Mill Street Lofts, Building C</b><span class="chip a">Applied Sep 11</span></div><div class="d">This bid · no general plumbing permit seen</div></div>
+      <div class="prow"><div class="h"><b>B501 · Pecan Grove Pharmacy</b><span class="chip r">Another plumber</span></div><div class="d">Sent Oct 14 · a general plumbing permit, Nov 5, lists Lone Oak Plumbing</div></div>
+      <div class="prow"><div class="h"><b>B488 · Harbor Street Offices</b><span class="chip g">Issued Nov 3</span></div><div class="d">Sent Sep 30 · no general plumbing permit seen</div></div>
+      <div class="prow"><div class="h"><b>B470 · Juniper Court Retail</b><span class="chip">None seen</span></div><div class="d">Lost · no permit on the address since Jan 2025</div></div>
+      <div class="prow"><div class="h"><b>B455 · Alder Row Dental</b><span class="chip g">Ours</span></div><div class="d">Won · the general plumbing permit, Jun 2, lists us</div></div>
+    </div>
+    <div class="muted">7 more bids with them are in Kyle, Austin and New Braunfels. No permit records are read there.</div>
+    <div class="sub2">Other permits under names tied to them</div>
+
+    <div class="plist">
+      <div class="prow"><div class="h"><b>Dana Whitlow</b><span class="chip b">Works for them · your word, Nov 10</span></div><div class="d">Listed on 7 other permits since Jan 2025 · <span class="link">See them ›</span></div></div>
+      <div class="prow"><div class="h"><b>Ridgeway Builders</b><span class="chip">Their own name</span></div><div class="d">Listed on no permit</div></div>
+    </div>
+
+    <div class="muted">A name on a permit is the contact the city lists. It is not always the builder.</div>
+  </div>
+
     </div>
   </div>
 </template>
@@ -346,9 +434,9 @@
   <div class="board">
     <div class="bh">Bid Board</div>
     <div class="news new"><h5>Permit news on your bids <span class="chip r">3</span></h5>
-      <div class="nrow"><div class="w"><b>B501 · Pecan Grove Pharmacy</b><span>A general plumbing permit was issued on this site Nov 5 to Lone Oak Plumbing. The bid is not yet won or lost.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Mark lost…</span></div></div>
-      <div class="nrow"><div class="w"><b>B488 · Harbor Street Offices</b><span>The building permit was issued Nov 3. The work can start. Last contact 19 days ago.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Log a call</span></div></div>
-      <div class="nrow"><div class="w"><b>B512 · Mill Street Lofts, Building C</b><span>A permit application is on this site: $6,400,000 declared, 38,000 sf. One name is waiting on a Yes or No.</span></div><div class="btns"><span class="btn ghost">Open the bid</span></div></div>
+      <div class="nrow"><div class="w"><b>B501 · Pecan Grove Pharmacy</b><span>A general plumbing permit was issued on this address Nov 5. It lists Lone Oak Plumbing. The bid is not yet won or lost.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Mark lost…</span></div></div>
+      <div class="nrow"><div class="w"><b>B488 · Harbor Street Offices</b><span>The building permit on this address was issued Nov 3. Last contact 19 days ago.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Log a call</span></div></div>
+      <div class="nrow"><div class="w"><b>B512 · Mill Street Lofts, Building C</b><span>A permit application is on this address: $6,400,000 declared, 38,000 sf. One name waits on your word.</span></div><div class="btns"><span class="btn ghost">Open the bid</span></div></div>
     </div>
     <table class="bt only-desk">
       <tr><th>Bid</th><th>Project</th><th>GC</th><th>Due</th><th>Value</th><th>Permit</th></tr>

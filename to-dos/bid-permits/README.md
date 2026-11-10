@@ -2,7 +2,7 @@
 name: "Bids and permits: what the city knows about this site and this GC, on the bid"
 number: 307
 group: gated
-status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · nothing built
+status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · nothing built
 mockup: to-dos/bid-permits/mockup.html
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
@@ -11,16 +11,17 @@ summary: >
   Antonio bid addresses, five have a permit on the address. The feed names one applicant, often a
   person, and Texas gives a general contractor no state license number to match on. So the pick
   starts from the site: the bid window says what the city holds on this address, how far along it
-  is, the declared value and area, and whether a plumbing permit is already on it. The name on
-  that permit is asked about once, Yes or No, and a Yes hands the GC every permit that name ever
-  pulled. A sent bid gets news when a permit lands on its site. Collecting needs no new table of
-  pullers: #302's builder is the home, plus one small table for the Yes and the No. San Antonio
-  covers about three bid sites in ten, so every screen says when it has no records instead of
-  reading as no permits.
-next: The owner's look at the mock-up and his word on the six calls. PR 1 is a kernel and a count, with no migration and nothing on a screen, and can start on his word.
-size: L as a train of seven (S · M · S · M · M · M · M); PR 1 and 2 alone answer whether this site has a permit
-blocker: The owner's go. Call 1 picks the direction; calls 2 to 6 each gate one later PR, none gates PR 1.
-opinion: build, site first — the site match works today on tables #302 already filled; hold the GC's profile until the Yes and No answers have taught the app whose names are whose
+  is, the declared value and area, and whether a plumbing permit is seen on it. Under the GC sit
+  the jobs we priced for them with what the city shows on each address, which needs no name to
+  match. The name the city lists on a permit is asked about once, and the answer shows which
+  other permits it would tie before it ties them. A sent bid gets news when a permit lands on
+  its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
+  small table of answers. San Antonio covers about three bid sites in ten, so every line says
+  what it can see: the city, the first day of the records, and what a count is out of.
+next: The owner's look at the redrawn pick and his word on the seven calls. PR 1 is a kernel and a count, with no migration and nothing on a screen, and can start on his word.
+size: L as a train of eight (S · M · M · S · M · M · S · M); PR 1 and 2 alone answer whether this site has a permit
+blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
+opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
 
 # Bids and permits (#307)
@@ -32,6 +33,12 @@ opinion: build, site first — the site match works today on tables #302 already
 > I would like to potentially enhance bids such that we start collecting who pulls permits and
 > look for matching names and with this tracking offer to users a way to see other permits someone
 > has pulled when bidding on things. Can you help me explore this idea?
+
+The same day, on the mock-up's first panel, headed *Permits Ridgeway Builders pulled*:
+
+> It is permits Ridgeway Builders pulled we can see, just saying they pulled would be an
+> overstatement. How could I improve this part of the app? Can you look at the mockups you've
+> made and ask ourselves is this the best we can do?
 
 He asked to explore, not to build. This card is the exploration: what exists, what a test on real
 rows showed, a mock-up of the ask as given, a second look, and a plan. No app code is in its PR.
@@ -135,12 +142,19 @@ bid's is marked *looks like this job*. Nothing fuzzier than that.
 There is no license number to lean on. Texas does not license general contractors at the state
 level, and neither city's feed carries a plumber's license number.
 
-**Yes and No, learned once.** A Yes joins the name to the customer, and every permit under that
-name becomes the GC's from then on. A No is kept for that pair so the question never comes back,
-and it may carry who the name is instead (the owner, an architect or engineer, files for others,
-another GC), which is #302's builder kind. A name whose kind is *files for others* is never
-joined to one GC: its permits reach a GC only through a site. Both answers keep who and when,
-and both can be taken back on the builder's sheet.
+**The answer, learned once.** The question is *The city lists this name on this permit. Do you
+know who that is?* with three answers.
+
+- **Works for the GC.** Before anything is tied, the answer lists the name's other permits and
+  offers two presses: *Show all 7 under Ridgeway* or *This permit only*. One person can file for
+  more than one builder, so the person answering looks first.
+- **Someone else…** asks which: the owner, an architect or engineer, files for others, another
+  GC. That is #302's builder kind. A name that files for others is never tied to one GC.
+- **Not sure.** An estimator often does not know. The question stays for the next person and is
+  not asked of this one again.
+
+Every answer keeps who and when, shows as *your word, Nov 10* beside the name, and can be taken
+back on the builder's sheet.
 
 ### Collecting
 
@@ -148,9 +162,10 @@ Not a new table of permit pullers. #302's builder already is one: the key is on 
 pull brings, and `builders` is where the office speaks about a name. What is missing is the
 answer to *is this name that customer*, in both directions.
 
-**One home:** an append-only table of answers, one row per name and customer with Yes or No, who
-and when, the newest winning, the way `builder_marks` and `permit_verdicts` work. The Yes is the
-link. `builders.customer_id` is dropped in the same migration, since nothing has ever written
+**One home:** an append-only table of answers, one row per name and customer with the answer
+(works for them, someone else, not sure), whether it ties every permit or the one it was asked
+on, who and when, the newest winning, the way `builder_marks` and `permit_verdicts` work. The
+*works for them* row is the link. `builders.customer_id` is dropped in the same migration, since nothing has ever written
 it, and `research_builders` keeps returning a customer from the answers so no caller changes.
 
 What the pull itself still needs:
@@ -177,10 +192,13 @@ In the order the test says it pays:
    worked in the building.
 6. **After the bid is sent: news.** A permit issued on the site is the day to call. A general
    plumbing permit under another name is the answer nobody phoned in.
-7. **The GC's year,** once names are joined: permits by kind and declared value, where they
-   build, which plumber is on their jobs and how often, and how many of those jobs they asked us
-   to price. *How often they pull plumbing permits themselves* reads better as *who plumbs for
-   them*, which `research_builders` already computes.
+7. **The jobs we priced for this GC, and what the city shows on each.** Of the sites we can
+   see, how many got a permit, how many list another plumber on a general plumbing permit, and
+   how many list us. It stands on the bids' own addresses, so no name has to match. It says
+   whether this GC's jobs go ahead and whether our price is the one they build on.
+8. **Other permits under names tied to them,** once people have answered: where else they
+   build and who is listed on the plumbing. *How often they pull plumbing permits themselves*
+   reads better as *which plumber is listed on their jobs*, which `research_builders` computes.
 
 ### Coverage and honesty
 
@@ -192,6 +210,16 @@ Four states, each with its own words, and none of them is *No permits*:
 | Records, and nothing on the address | *No permit on this address since Jan 2025. The city's records run 2 to 3 days behind.* |
 | A town we do not read | *No permit records for Kyle. Permits are read for San Antonio only.* with the town's own portal as a door when the Inspections tab has one |
 | An address that is not a street address | *This bid's address has no street number, so permits cannot be looked up.* with the press to fix it |
+
+**Say what we can see.** The owner's word on the first panel is a rule for every line here.
+
+- A heading names what the records show, never what a builder did: *What we can see about
+  Ridgeway Builders*, with the city, the first day of the records and how many of our bids with
+  them it covers.
+- The name on a permit is *the name the city lists*. The feed gives one contact, not the builder.
+- A count says what it is out of: *of the 5 sites we can see, 4 have a permit*.
+- Absence is *none seen*, with the day the records start.
+- A permit is *on this address*, since a shared address can carry another tenant's.
 
 A San Antonio mailing address can sit outside the city limits. The kernel treats a zip as read
 when the feed has rows in it, and says *none found* rather than *none* everywhere. A GC's count
@@ -233,37 +261,62 @@ Board row carries a chip.
 3. **It is only there when the bid is open.** The moment a permit changes what a person does is
    mostly after the bid is sent, and nobody opens a sent bid to look.
 
-**The pick (direction 2, site first).** The same parts, turned around.
+**The pick (direction 2, site first), as redrawn on the third look.** The same parts, turned
+around.
 
-- **This site** leads the Location section: one verdict line, then the permits on the address
-  with the city's value and area beside the bid's own, and the plumbing line by type.
-- **The question rides on the site.** Under the permit that looks like this job: *Dana Whitlow
-  pulled this permit. Does she file for Ridgeway Builders?* Yes · No. A Yes says what it just
-  did: *7 other permits now count as Ridgeway's*.
-- **The GC's year** sits under the GC card and says how much it knows: *9 permits in San Antonio
-  since Jan 2025, under 2 names*, or *No permits under this name yet*, with the door to match one.
+- **This site** leads the Location section: one verdict line, then the permits we can see on
+  the address with the declared value and area beside the bid's own, and the plumbing line by
+  type.
+- **The question rides on the site.** Under the permit that looks like this job: *The city
+  lists Dana Whitlow on this permit. Do you know who that is?* Works for Ridgeway · Someone
+  else… · Not sure. *Works for Ridgeway* lists the 7 other permits before it ties any.
+- **What we can see about the GC** sits under the GC card. First the jobs we priced for them,
+  each with what the city shows on its address. Then other permits under names tied to them,
+  each name saying how it was tied. On a phone the job list folds behind *See the 5 jobs*.
 - **Permit news** is a strip at the top of the Bid Board and a chip on the row: a permit issued
-  on a sent bid's site, a general plumbing permit under another name, an application on an unsent
-  one. The plumbing news offers *Mark lost…* and never marks anything by itself.
+  on a sent bid's address, a general plumbing permit listing another name, an application on an
+  unsent one. The plumbing news offers *Mark lost…* and never marks anything by itself.
 - **The four honest states** are drawn side by side.
+
+**The third look, on the owner's word.** He read the first panel's heading and said it
+overstates. It does, four ways: the records are one city, they start on one day, the name on a
+permit is a contact and not always the builder, and a total hides how many rows it stands on.
+The same fault ran through the pick, so every line was read for what it claims.
+
+| As first drawn | Now |
+|---|---|
+| Permits Ridgeway Builders pulled | What we can see about Ridgeway Builders, with its three limits beside it |
+| 9 permits · $17.0M declared | Of the 5 sites we can see, 4 have a permit |
+| Who plumbs for them: Lone Oak Plumbing on 5 | A general plumbing permit lists Lone Oak Plumbing on 1 site you priced |
+| Asked us to price 2 of the 9. We won 1. | The jobs you priced for them, each with what the city shows |
+| Pulled by Dana Whitlow | The city lists Dana Whitlow |
+| Yes, for Ridgeway. 7 other permits now count as Ridgeway's | The answer shows the 7 first, offers This permit only, and takes Not sure |
+| No general plumbing permit on it | No general plumbing permit seen on it |
+| A plumbing permit was issued on this site | On this address, with the name the city lists |
+
+It changed the design and not only the words. The GC's half used to open on permits tied by
+name, the part the test found empty. It now opens on the jobs we priced for them, which stands
+on addresses alone and works the day it ships. The live Permits tab has the same fault today
+and PR 4 fixes it: a builder reads *permits in the last year* on 75 days of records.
 
 Still weak in the pick: a permit on a shared address may be another tenant's, so *looks like
 this job* is a hint that can be wrong; seven sites in ten have no records until more cities are
-read; and the GC's year stays thin until people answer the question a few dozen times.
+read; knowing a plumbing permit is ours needs the office to say which names are us; and the
+names tied to a GC stay few until people have answered a few dozen times.
 
 ## The recommendation
 
-Worth building, in the order the evidence gives: the site first, the news second, the name
-answers third, the GC's year fourth. The first two stand on tables #302 already filled and need
-no new table. The owner's idea of collecting who pulls permits is right, and the bids are what
+Worth building, in the order the evidence gives: the site first, the jobs priced for the GC
+second, the news third, the answers on a name fourth. The first three stand on tables #302
+already filled and need no new table. The owner's idea of collecting who pulls permits is right, and the bids are what
 make it work: each bid's site names a puller, and one Yes turns that name into the GC's record.
 
 ## What the owner settles
 
 Each with the pick drawn.
 
-1. **Site first or GC first?** *Pick: site first (direction 2).* The GC's panel still ships, as
-   PR 6, after the names have been taught.
+1. **Site first or GC first?** *Pick: site first (direction 2).* The GC's half still ships: the
+   jobs priced for them as PR 3, the names tied to them as PR 7.
 2. **How far back to read San Antonio.** *Pick: January 2025,* the current datastore, about
    50,000 rows. The 2020 to 2024 file waits until a year proves too short.
 3. **Who may answer Yes or No on a name.** *Pick: the office and every estimator,* the people who
@@ -272,9 +325,11 @@ Each with the pick drawn.
    and a Mark lost… press.* It never changes the outcome by itself, since the type and the tenant
    can both mislead.
 5. **Austin next?** About 15% of recent bid sites are in Austin, and its feed names the
-   contractor and a phone. *Pick: yes, as PR 7,* moving #292's revision 4 up for that one city.
+   contractor and a phone. *Pick: yes, as PR 8,* moving #292's revision 4 up for that one city.
 6. **A bid on the invitation service's placeholder customer.** *Pick: the site half shows, the
    GC half says the bid names no builder* and offers the press to pick one.
+7. **What one answer ties.** *Pick: nothing until the list is shown.* Then *Show all 7 under
+   Ridgeway* or *This permit only*, the person's choice each time.
 
 ## The plan
 
@@ -287,26 +342,33 @@ fences when they make a table, and are pushed from a checkout of main after the 
 1. **The bid's site, as a kernel (S, no migration, no screen).** `src/lib/research/bidSite.ts`,
    pure, with tests on made-up addresses: read a bid's address into a city and a key that meets
    `address_key`, or the reason it cannot; which state of the four a bid is in; which permit on
-   an address looks like this job; the words for each. The PR reports one count through the dev
-   seat: how many open bids have a permit on their site today.
+   an address looks like this job; the words for each, and the scope line every later screen
+   uses (the city, the first day of the records, what a count is out of). The PR reports one
+   count through the dev seat: how many open bids have a permit on their site today.
 2. **This site's permits in the bid window (M, one read, no table).** A function that takes a
    city and a list of keys and returns the permits on them with the plumbing line by type. The
    Location section's verdict line and its list, opening `PermitBuildingSheet` for a permit. The
    four states. The robot copies left out. The city's value and area beside the bid's.
-3. **A year and more of history (S, the function redeployed).** `permit-pull` takes a first day
-   for a one-time run back to January 2025 and fills `builder_key` on the plumbing rows. Every
-   count on Permits and on the bid says the day the records start, read from `permit_pulls`.
-4. **Permit news on the Bid Board (M).** One read for every open and sent bid, never one per
+3. **The jobs we priced for this GC (M, PR 2's read, no table).** Under the GC card: the scope
+   line, the verdict with what it is out of, and each bid to that customer with what the city
+   shows on its address, folded behind a press on a phone. The bids in towns with no records
+   are counted and named. A setting holds the names that are us on a plumbing permit.
+4. **A year and more of history, and the live tab's words (S, the function redeployed).**
+   `permit-pull` takes a first day for a one-time run back to January 2025 and fills
+   `builder_key` on the plumbing rows. Every count on Permits says the day the records start,
+   read from `permit_pulls`: `builderWords`, `builderLine` and the two lines in `PermitBuilders`
+   that say *this year* and *in the last year*.
+5. **Permit news on the Bid Board (M).** One read for every open and sent bid, never one per
    row. The strip, the chips on the row and the phone card, the line on a follow-up, and
    *Mark lost…* opening the outcome the board already has.
-5. **Yes and No on a name (M, a migration).** The answers table, the read that folds a
-   customer's names, and `builderMatch.ts`, pure: the three grades and what each asks. The
-   question under a site's permit, the same question on a builder's sheet, the take-back, and
-   Builders' *our bids* column reading the answers.
-6. **The GC's year (M).** Under the GC card: the count with its city and first day, by kind and
-   declared value, where, who plumbs for them, how many they asked us to price. The detail is
-   #302's builder sheet, opened for every name the GC is known by.
-7. **Austin (M).** A second feed in `_shared/permitFeed.ts` with the contractor's company as the
+6. **The answer on a name (M, a migration).** The answers table, the read that folds a
+   customer's names, and `builderMatch.ts`, pure: the three grades, what each asks, and what an
+   answer would tie. The question under a site's permit with its list and two presses, the same
+   question on a builder's sheet, the take-back, and Builders' *our bids* column reading the
+   answers.
+7. **Other permits under names tied to them (S).** The second half of the GC's panel: each name
+   with how it was tied and its permits, opening #302's builder sheet.
+8. **Austin (M).** A second feed in `_shared/permitFeed.ts` with the contractor's company as the
    builder and the phone kept, which makes the phone a second way to grade a name.
 
 **Held:** the same phone or web domain as a grade (it needs Places lookups on hand); the suburbs'
@@ -315,30 +377,38 @@ weekly file (#292); a Permits tab on the customer's page; merging customer rows 
 ## How to verify
 
 Each PR on the dev server as the dev login; the preview reads prod, and nothing here writes
-until PR 5.
+until PR 6.
 
 1. PR 1: `npm test -- bidSite`. The count in the PR is a number, with no bid named.
 2. PR 2: open a bid on a San Antonio street with a permit: the line names the permit, its day,
    its value and area, and the list shows every permit on the address with the one that looks
    like this job marked. A bid in another town reads *No permit records for* the town. A bid with
    a crossing for an address says it cannot be looked up. A robot copy shows no line.
-3. PR 3: Builders and the Who card read *since Jan 2025*; a plumbing row from September has a key.
-4. PR 4: the strip's count equals the rows with a chip; *Mark lost…* opens the outcome and
+3. PR 3: a GC with bids in and out of San Antonio shows the count it is out of, each bid with
+   its line, and the towns with no records by name. A robot copy is not in the list.
+4. PR 4: Builders and the Who card read *since Jan 2025*; a plumbing row from September has a key.
+5. PR 5: the strip's count equals the rows with a chip; *Mark lost…* opens the outcome and
    writes nothing until it is saved.
-5. PR 5: on a `ZZ Test` customer and a made-up builder key on the local bed
-   (`npm run test:pg:permit-skim`), Yes joins, the question is gone, the builder's sheet shows
-   who answered, and the take-back brings the question back. No real name is answered in a walk.
-6. PR 6: a customer with one joined name shows that name's permits; one with none says so.
+6. PR 6: on a `ZZ Test` customer and a made-up builder key on the local bed
+   (`npm run test:pg:permit-skim`), *Works for* lists the other permits before it ties any,
+   *This permit only* ties one, *Not sure* leaves the question for the next person, the
+   builder's sheet shows who answered, and the take-back brings the question back. No real name
+   is answered in a walk.
+7. PR 7: a customer with one tied name shows that name's permits; one with none says so.
 
 ## Found in passing, not fixed
 
 - `research_permits` pairs any plumbing-kind permit on an address with a building permit, so an
   irrigation permit can close a building permit as *Has a plumber* on the skim. It belongs to
   #302.
-- The permits on hand start 2026-08-26, so *in the last year* on the Who card and on Builders
-  reads 75 days today.
+- The permits on hand start 2026-08-26, so the live tab overstates the way the first panel did:
+  the Who card says *This name pulled N other permits in the last 365 days*, and Builders says
+  *N permits this year* and *in the last year*, on 75 days of records. PR 4 here fixes the words.
 
 ## Where it stands
 
 2026-11-10: asked, read, tested on real rows through the dev seat, drawn and planned in one
-sitting. Nothing is built and nothing was written to prod. The six calls wait on the owner.
+sitting. The owner's word on the first panel the same day brought the third look: the pick
+redrawn to say what we can see, the GC's half re-aimed at the jobs priced for them, and the plan
+grown from seven PRs to eight. Nothing is built and nothing was written to prod. The seven calls
+wait on the owner.
