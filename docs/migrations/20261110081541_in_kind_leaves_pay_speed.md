@@ -7,3 +7,5 @@ Punch list #301: an In kind payment leaves pay speed. A credit given instead of 
 - **The backfill**: every In kind payment already recorded gets its row, once (`ON CONFLICT DO NOTHING`).
 - Additive and idempotent. No table is created, so no fence is called. The trigger takes a brief lock on `jobs_ledger_payments`; `lock_timeout` is 3 s.
 - **Bed**: `npm run test:pg:in-kind` (`supabase/tests/in_kind/30_pay_speed.sql`, 7 checks more).
+
+**Applied** to prod 2026-11-10, read the same day through `npm run check:migration-drift`: 1220 local files against 1220 remote versions, fully applied, this one among them. The backfill wrote 17 rows: every In kind payment then on the books.
