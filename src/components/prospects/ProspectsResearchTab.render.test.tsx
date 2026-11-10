@@ -18,6 +18,13 @@ const io = vi.hoisted(() => ({
   loadBuilderPermits: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
+const streetView = vi.hoisted(() => ({
+  fetchStreetViewMetaWithMonth: vi.fn(),
+  fetchStreetViewImageBlob: vi.fn(),
+  fetchStreetViewMeta: vi.fn(),
+  googleStreetViewPanoUrl: (lat: number, lng: number) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`,
+}))
+vi.mock('../../lib/fetchStreetViewPreview', () => streetView)
 vi.mock('../../hooks/useOfficeAnchor', () => ({ useOfficeAnchor: () => null }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 // The map canvases are lazy and heavy; a list of pin buttons drives the same callbacks (the Bid Board smoke's stand-in).
@@ -93,6 +100,10 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     const site = { permit_number: 'COM-BLG-PMT26-00000001', permit_type: 'Comm New Building Permit', kind: 'building', stage: 'issued', work_type: 'New commercial', submitted_on: '2026-10-02', issued_on: '2026-11-06', contact: 'Ridgeway Builders', address: '100 SAMPLE ST', declared_value: 1_400_000 }
     io.loadSitePermits.mockReset().mockResolvedValue([{ ...site, id: 'p1' }, { ...site, id: 's2', kind: 'other', work_type: 'Commercial site work', issued_on: '2026-10-21' }])
     io.loadBuilderPermits.mockReset().mockResolvedValue([{ ...site, id: 'p1' }, { ...site, id: 'b2', address: '77 KILN ST', issued_on: '2026-10-02' }, { ...site, id: 'b3', contact: 'Ridgeway Roofing', address: '5 ASTER RDG' }])
+    streetView.fetchStreetViewMetaWithMonth.mockReset().mockResolvedValue({ lat: 29.4, lng: -98.5, month: '2024-03' })
+    streetView.fetchStreetViewImageBlob.mockReset().mockResolvedValue(new Blob(['x'], { type: 'image/jpeg' }))
+    URL.createObjectURL = vi.fn(() => 'blob:street-view')
+    URL.revokeObjectURL = vi.fn()
     io.loadContactHistory.mockReset().mockResolvedValue(new Map([['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }]]))
   })
   afterEach(() => {
@@ -273,6 +284,27 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Keep' }))
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(screen.getByText('Kept for a closer look.')).toBeTruthy()
+    })
+
+    it('draws a street view with its month and a map with the miles across the top of the card', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('Street view · Mar 2024')).toBeTruthy())
+      expect(streetView.fetchStreetViewMetaWithMonth).toHaveBeenCalledWith('100 SAMPLE ST, San Antonio, TX, 78245')
+      const street = screen.getByRole('link', { name: 'Open Street View in Google, in a new tab' })
+      expect(street.getAttribute('href')).toContain('map_action=pano')
+      expect(street.querySelector('img')?.getAttribute('src')).toBe('blob:street-view')
+      // The map is a still of tiles with the permit in its middle, and a door to Google Maps.
+      const map = screen.getAllByRole('link', { name: 'Open the site in Google Maps, in a new tab' }).pop() as HTMLElement
+      expect(map.getAttribute('href')).toContain('google.com/maps/search')
+      expect(map.querySelector('img')?.getAttribute('src')).toMatch(/^https:\/\/tile\.openstreetmap\.org\/11\//)
+    })
+
+    it('shows satellite, and says so, where there is no street view', async () => {
+      streetView.fetchStreetViewMetaWithMonth.mockResolvedValue(null)
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('No street view · satellite')).toBeTruthy())
+      expect(streetView.fetchStreetViewImageBlob).not.toHaveBeenCalled()
+      expect(document.querySelector('img[src*="World_Imagery"]')).toBeTruthy()
     })
 
     it('a write that fails names the permit, says why, and puts the card back', async () => {

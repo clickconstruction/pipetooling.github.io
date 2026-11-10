@@ -10,6 +10,7 @@ type MetaBodyJson = MetaErrorJson & {
   googleStatus?: string
   lat?: number
   lng?: number
+  date?: string | null
 }
 
 function baseUrl(): string {
@@ -37,6 +38,15 @@ async function accessToken(): Promise<string> {
  * Throws on transport/auth/server errors.
  */
 export async function fetchStreetViewMeta(location: string): Promise<{ lat: number; lng: number } | null> {
+  const meta = await fetchStreetViewMetaWithMonth(location)
+  return meta ? { lat: meta.lat, lng: meta.lng } : null
+}
+
+/**
+ * The same metadata with the month the picture was taken ("2024-03"), which the function has
+ * sent since v2.6833; null from a function deployed before it, and when Google gives none.
+ */
+export async function fetchStreetViewMetaWithMonth(location: string): Promise<{ lat: number; lng: number; month: string | null } | null> {
   const trimmed = location.trim()
   if (!trimmed) {
     throw new Error('Missing location')
@@ -60,7 +70,7 @@ export async function fetchStreetViewMeta(location: string): Promise<{ lat: numb
     throw new Error(msg)
   }
   if (json.ok === true && typeof json.lat === 'number' && typeof json.lng === 'number') {
-    return { lat: json.lat, lng: json.lng }
+    return { lat: json.lat, lng: json.lng, month: typeof json.date === 'string' && json.date !== '' ? json.date : null }
   }
   return null
 }

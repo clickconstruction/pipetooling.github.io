@@ -12,6 +12,8 @@ const MAX_LOCATION_LEN = 500
 type StreetViewMetaJson = {
   status?: string
   location?: { lat?: number; lng?: number }
+  /** The month the picture was taken, as Google gives it: "2024-03". */
+  date?: string
   error_message?: string
 }
 
@@ -96,7 +98,8 @@ serve(async (req) => {
         )
       }
       return new Response(
-        JSON.stringify({ ok: true as const, lat, lng }),
+        // The month taken rides along since v2.6833 (the Permits skim reads it); older readers ignore it.
+        JSON.stringify({ ok: true as const, lat, lng, date: typeof meta.date === 'string' ? meta.date : null }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
