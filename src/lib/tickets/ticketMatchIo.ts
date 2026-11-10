@@ -110,18 +110,21 @@ export async function markTicketUsed(ticketId: string): Promise<void> {
   if (error) throw new Error(formatErrorMessage(error, 'That did not save.'))
 }
 
+/** A ticket's PO code and the house it names, read beside the ticket for the office (PR 4). */
+export type TicketPoFacts = { po_code: number | string | null; supply_house_id: string | null } | null
+
 /** Every live, saved ticket taken since a day, with its pages, for the office. Throws the app's error. */
-export async function listOfficeTickets(sinceIso: string, limit = 400): Promise<TicketWithPages[]> {
+export async function listOfficeTickets(sinceIso: string, limit = 400): Promise<(TicketWithPages & { po?: TicketPoFacts })[]> {
   const { data, error, status } = await db
     .from('counter_tickets')
-    .select(`${COUNTER_TICKET_COLUMNS}, counter_ticket_pages(${COUNTER_TICKET_PAGE_COLUMNS})`)
+    .select(`${COUNTER_TICKET_COLUMNS}, counter_ticket_pages(${COUNTER_TICKET_PAGE_COLUMNS}), po:material_po_generator_entries(po_code, supply_house_id)`)
     .is('removed_at', null)
     .not('added_at', 'is', null)
     .gte('taken_at', sinceIso)
     .order('taken_at', { ascending: false })
     .limit(limit)
   if (error) throw databaseErrorFromResult(error, 'read the tickets', status)
-  return ((data ?? []) as TicketWithPages[]).map((t) => ({ ...t, also_job_ids: t.also_job_ids ?? [], declined_transaction_ids: t.declined_transaction_ids ?? [], counter_ticket_pages: [...(t.counter_ticket_pages ?? [])].sort((a, b) => a.page_no - b.page_no) }))
+  return ((data ?? []) as unknown as (TicketWithPages & { po?: TicketPoFacts })[]).map((t) => ({ ...t, also_job_ids: t.also_job_ids ?? [], declined_transaction_ids: t.declined_transaction_ids ?? [], counter_ticket_pages: [...(t.counter_ticket_pages ?? [])].sort((a, b) => a.page_no - b.page_no) }))
 }
 
 /** The job a person's own matched tickets name, by charge: the purchase card's chip and the sort window's first job. */
@@ -130,4 +133,29 @@ export async function listMyTicketJobsByCharge(userId: string): Promise<Map<stri
   const out = new Map<string, { ticketId: string; jobId: string | null }>()
   for (const r of (data ?? []) as Array<{ id: string; mercury_transaction_id: string; job_id: string | null; also_job_ids: string[] | null }>) out.set(r.mercury_transaction_id, { ticketId: r.id, jobId: r.job_id ?? r.also_job_ids?.[0] ?? null })
   return out
+}
+
+/**
+ * The account tickets a supply house's Add invoice may start from (PR 4): bought on a PO code at this house, saved,
+ * live, and not yet a bill or a charge. Newest first. Throws the app's error.
+ */
+export async function listAccountTicketsForHouse(supplyHouseId: string, limit = 20): Promise<(TicketWithPages & { po: TicketPoFacts })[]> {
+  const { data, error, status } = await db
+    .from('counter_tickets')
+    .select(`${COUNTER_TICKET_COLUMNS}, counter_ticket_pages(${COUNTER_TICKET_PAGE_COLUMNS}), po:material_po_generator_entries!inner(po_code, supply_house_id)`)
+    .eq('po.supply_house_id', supplyHouseId)
+    .is('removed_at', null)
+    .not('added_at', 'is', null)
+    .is('supply_house_invoice_id', null)
+    .is('mercury_transaction_id', null)
+    .order('taken_at', { ascending: false })
+    .limit(limit)
+  if (error) throw databaseErrorFromResult(error, 'read the tickets on account', status)
+  return ((data ?? []) as unknown as (TicketWithPages & { po: TicketPoFacts })[]).map((t) => ({ ...t, also_job_ids: t.also_job_ids ?? [], declined_transaction_ids: t.declined_transaction_ids ?? [], counter_ticket_pages: [...(t.counter_ticket_pages ?? [])].sort((a, b) => a.page_no - b.page_no) }))
+}
+
+/** The bill a ticket became: the invoice on the ticket, and the ticket used. Best effort after the save; throws with the reason. */
+export async function linkTicketToInvoice(ticketId: string, invoiceId: string): Promise<void> {
+  const { error } = await db.from('counter_tickets').update({ supply_house_invoice_id: invoiceId, used_at: new Date().toISOString() }).eq('id', ticketId)
+  if (error) throw new Error(formatErrorMessage(error, 'The ticket did not take the bill.'))
 }

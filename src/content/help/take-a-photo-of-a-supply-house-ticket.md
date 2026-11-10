@@ -22,6 +22,10 @@ The save button names the job, like **Save the ticket to JP1042**. Read it befor
 
 You type nothing. The bank knows the minute your card was run. The app uses that minute to find the charge for you.
 
+## From the Job Mode card
+
+The Job Mode card has a **Ticket** line under **Photos**. Press it and the camera opens. That job is picked first on the sheet.
+
 ## Pick the job
 
 The sheet offers the jobs it thinks are likely, in this order.

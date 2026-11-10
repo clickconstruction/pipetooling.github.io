@@ -49,6 +49,8 @@ import type { TicketMatch } from '../../lib/tickets/ticketMatch'
 import { answerTicketNo, answerTicketYes, listOfficeTickets, markTicketUsed, markTicketsUsedByCharge, matchChargeFromStaffRow, matchChargeFromWindowRow, mergeMatchCharges, runTicketMatches, setTicketPaidOther } from '../../lib/tickets/ticketMatchIo'
 import { loadJobsForTicketPick, loadTicketJobFacts } from '../../lib/tickets/ticketSheetIo'
 import { ticketScreensIo } from '../../lib/tickets/ticketScreensIo'
+import { useTicketCapture } from '../../hooks/useTicketCapture'
+import { useNavigate } from 'react-router-dom'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
 import type { ChooseJobRow } from '../../lib/tally/chooseJobSearch'
 import { tallyDayKey } from '../../lib/tally/tallySortSuggestion'
@@ -113,6 +115,11 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const [ticketBusy, setTicketBusy] = useState<string | null>(null)
   const [pickJobFor, setPickJobFor] = useState<TicketWithPages | null>(null)
   const [pickJobs, setPickJobs] = useState<ChooseJobRow[] | null>(null)
+  /** + Ticket (PR 4): the desk's scan of a paper handed in, tied to the charge it was pressed on. */
+  const deskCapture = useTicketCapture()
+  const navigate = useNavigate()
+  const deskForRef = useRef<StaleStaffRow | null>(null)
+  const deskSending = useRef(false)
   const [person, setPerson] = useState<string | null>(null)
   const [selections, setSelections] = useState<Map<string, TallyLineSelection>>(() => new Map())
   const [lineErrors, setLineErrors] = useState<Map<string, string>>(() => new Map())
@@ -166,6 +173,37 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [load])
+
+  useEffect(() => {
+    const row = deskForRef.current
+    if (deskCapture.pages.length === 0 || !row || deskSending.current || !authUser?.id) return
+    deskSending.current = true
+    void (async () => {
+      try {
+        const out = await deskCapture.save({
+          userId: authUser.id,
+          byName: '',
+          takenBy: row.target_user_id ?? authUser.id,
+          takenByName: row.target_name ?? '',
+          source: 'office',
+          write: { job_id: null, also_job_ids: [], no_one_job: false, po_entry_id: null },
+          total: null,
+          note: '',
+          about: row.counterparty_name ?? 'a charge',
+        })
+        await answerTicketYes(out.ticketId, row.mercury_transaction_id, 'picked')
+        showToast(`The ticket is on ${formatTallyCurrency(Math.abs(Number(row.amount)))} at ${row.counterparty_name ?? 'the store'}.`, 'success')
+        void load()
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The ticket did not save.'), 'error')
+        deskCapture.discard()
+      } finally {
+        deskForRef.current = null
+        deskSending.current = false
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deskCapture.pages])
 
   const ticketJobByCharge = useMemo(() => ticketJobByChargeOf(tickets), [tickets])
   const queue = useMemo(
@@ -540,6 +578,11 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
             setPickJobFor(t)
             if (pickJobs === null) void loadJobsForTicketPick().then(setPickJobs)
           }}
+          onRecordBill={(t) => {
+            const houseId = (t as TicketWithPages & { po?: { supply_house_id: string | null } | null }).po?.supply_house_id
+            if (houseId) navigate(`/materials?tab=supply-houses&house=${encodeURIComponent(houseId)}&ticket=${encodeURIComponent(t.id)}`)
+            else showToast('That PO code names no supply house. Record the bill from Materials → Supply houses.', 'warning')
+          }}
         />
       ) : view === 'sorted' ? (
         <TeamPurchasesSortedList
@@ -623,6 +666,10 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
                   asksByCharge={asksByCharge}
                   onAnswerAsk={(t, chargeId, yes) => void ticketAct(t, () => (yes ? answerTicketYes(t.id, chargeId) : answerTicketNo(t, chargeId)), 'The answer did not save.')}
                   onOpenTicket={setOpenTicket}
+                  onAddTicket={(row) => {
+                    deskForRef.current = row
+                    deskCapture.openFiles()
+                  }}
                 />
               ))}
             </div>
@@ -664,6 +711,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         }}
       />
 
+      <input {...deskCapture.filesInput} />
       {openTicket ? <TicketWindow ticket={openTicket} jobs={ticketJobs} userId={authUser?.id ?? ''} io={ticketScreensIo} onClose={() => setOpenTicket(null)} onChanged={() => void load()} /> : null}
       {pickJobFor ? (
         <TallyChooseJobSheet
