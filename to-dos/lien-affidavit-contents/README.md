@@ -1,26 +1,26 @@
 ---
-name: "The lien affidavit says what § 53.054 asks: months, notices, addresses, one claim figure"
+name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · eight questions for counsel and the affidavit in redline drawn, nothing built
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions, nothing built
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
-  Materialman's Lien Affidavit. It is a reference line above the title, outside the sworn text,
-  and it names one month as a code. Reading the whole paper against Texas Property Code § 53.054
-  found more: paragraph 5 swears a date range and names no month, paragraph 9 swears that notices
-  went without saying when or how, paragraph 8 swears three figures that can disagree, paragraph 3
-  gives the hiring party no address, paragraph 1 gives the claimant one address, and a property
-  where nobody answered the homestead question passes as not a homestead. Each job at a property
-  also gets its own affidavit. The page is a redline for the lien attorney with eight numbered
-  questions. Sworn text changes only on counsel's word.
-next: The owner sends the redline to the lien attorney. Each answer is one small PR. The homestead hold (question 7's first half) changes no sworn text and can ship on the owner's word alone.
-size: M as a train of six (S · S · S · S · S · M); the one-affidavit-per-property PR is the M and waits on question 6
-blocker: Counsel's answers to the eight questions. The homestead hold needs only the owner's go.
-opinion: your call — send the redline to counsel; build the homestead hold now, since a house can reach Ready to file today with the question never asked
+  Materialman's Lien Affidavit, then asked for the whole paper to be read, then set the lens: the
+  minimum required by law, short and sweet. Read against Texas Property Code § 53.054(a), today's
+  ten paragraphs may be short on four of the statute's eight items on a job under a GC (no months,
+  no address for the hiring party, one address for the claimant, no date or method for the
+  notices) and carry six things the statute does not list. The page for the lien attorney maps the
+  eight items to a short form of seven paragraphs, four on a job contracted with the owner, and
+  asks five questions. A property where nobody answered the homestead question passes today as not
+  a homestead. Sworn text changes only on counsel's word.
+next: The owner sends the page to the lien attorney. The short form is one PR on counsel's yes. The homestead hold changes no sworn text and can ship on the owner's word alone.
+size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
+blocker: Counsel's answers to the five questions. The homestead hold needs only the owner's go.
+opinion: your call — send the page to counsel; build the homestead hold now, since a house can reach Ready to file today with the question never asked
 ---
 
-# The lien affidavit says what § 53.054 asks (#305)
+# The lien affidavit, cut to what § 53.054 lists (#305)
 
 ## The ask
 
@@ -28,7 +28,8 @@ The owner, 2026-11-10, looking at a Mechanic's and Materialman's Lien Affidavit 
 desk: *I am seeing "Work Month 2026-08", what are the pros and cons of keeping this on the
 liens?* Then: *before we move it can you look at it holistically and let me know if you have any
 other suggestions?* Then, on the suggestions, his go to draft the revised affidavit as a before
-and after page for his attorney.
+and after page for his attorney. Then the lens: *I want to do the minimum required by law, short
+and sweet.*
 
 Nothing is built. Every statute reference here is the app's reading, not a lawyer's.
 
@@ -56,40 +57,60 @@ desk reaches through `buildLienDeskAffidavitFields` (`src/lib/jobs/lienDeskAffid
 - **One paper per job.** Notices combine jobs at a property (`lienNoticeCombine.ts`). Affidavits do
   not.
 
-## The eight questions
+## The lens: the minimum the law requires
 
-The redline (`redline.html`) puts these to counsel, each tied to its paragraph.
+§ 53.054(a) lists eight things, as the app reads it. The page maps each to a paragraph.
 
-1. **Months of work**, paragraph 5, § 53.054(a)(3). Add a sentence naming each month on a job
-   under a GC. Drop the code from the top strip.
-2. **When and how each notice went**, paragraph 9, § 53.054(a)(8). List each notice with its
-   month, its day and its method. Leave the paragraph out on a job contracted with the owner.
-3. **Three figures that can disagree**, paragraph 8. Swear the claim amount alone.
-4. **Addresses**, paragraphs 3 and 7. Add the hiring party's last known address. Hold the paper
-   while either address is missing.
-5. **The claimant's mailing and physical address**, paragraph 1.
-6. **One affidavit for several jobs at one property.** Asked, not proposed.
-7. **Homesteads.** Hold a property with no answer. Ask what a homestead affidavit needs.
-8. **The top and the foot.** Drop the strip, add a return address, move the job number to the
-   foot, attach the notices.
+| § 53.054 | Must contain | Today | Short form |
+|---|---|---|---|
+| (a)(1) | the amount of the claim, sworn | ¶ 8 | ¶ 7 |
+| (a)(2) | the owner's name and last known address | ¶ 6 | ¶ 4 |
+| (a)(3) | the kind of work; for a sub, each month | ¶ 4, no months | ¶ 2 and ¶ 5 |
+| (a)(4) | the hiring party's name and last known address | ¶ 3, no address | ¶ 3 |
+| (a)(5) | the original contractor's name and last known address | ¶ 7 | ¶ 3 |
+| (a)(6) | the property, legally sufficient to identify it | ¶ 2 | ¶ 2 |
+| (a)(7) | the claimant's name, mailing address and, if different, physical address | ¶ 1, one address | ¶ 1 |
+| (a)(8) | for a sub, the date and method of each notice to the owner | ¶ 9, neither | ¶ 6 |
+
+Six things on today's paper are on no line of that list and go: the letterhead and the reference
+line, the *BEFORE ME* preamble, the first and last day of work, the contract amount and the amount
+paid, the general sentence about notices, and *together with all interest, costs, and attorney's
+fees allowed by law*. The jurat stays.
+
+The first draft of this page (eight questions, a redline that added to the paper) also proposed a
+return address, the job number at the foot, the notices as an exhibit and the certified mail
+numbers. None is required, so none is in the short form.
+
+## The short form
+
+On a job under a GC, seven paragraphs: the signer's authority and the claimant's addresses; the
+trade and the property; the GC as hiring party and original contractor, with its address; the
+owner; the months; the day and method of each notice to the owner; the claim and the lien. On a
+job contracted with the owner, four: the same first two, the owner as the hiring party with the
+claimant as original contractor, and the claim.
+
+## The five questions
+
+1. Is the short form complete against § 53.054(a)?
+2. Do you want any of the six cuts back?
+3. Is the day and method of each notice to the owner enough, and what does the paragraph say
+   when a notice went late?
+4. When a lien on a homestead is proper, does the § 53.254(f) notice go at the top?
+5. May one affidavit cover several jobs at one property under the same original contractor?
 
 ## The build, once counsel answers
-
-Each is one PR. None starts before its answer, except PR 1.
 
 1. **The homestead hold** (S). `affidavitGates` treats a null `homestead` as not answered and
    holds the paper, with a press that opens the property record. No sworn text changes. Needs the
    owner's go only.
-2. **Months in paragraph 5, the strip gone** (S). Questions 1 and 8.
-3. **Paragraph 9 lists the notices** (S). Question 2. The dates and methods are on
-   `job_lien_filings.sends`.
-4. **Paragraph 8 swears the claim alone** (S). Question 3.
-5. **Addresses in paragraphs 1, 3 and 7, and the gate for a missing one** (S). Questions 4 and 5.
-6. **One affidavit per property** (M). Question 6, only on a yes.
+2. **The short form** (M). `buildLienAffidavitBlocks` and its fields: the months, the notices from
+   `job_lien_filings.sends`, the addresses, the claim alone, the strip and the preamble gone. On
+   counsel's yes to questions 1 to 3.
+3. **A hold while an address is missing** (S), the hiring party's or the original contractor's.
+4. **One affidavit per property** (M). Question 5, only on a yes.
 
 ## Decisions that are the owner's
 
-- **Send the redline to counsel?** The pick: yes, as it stands.
+- **Send the page to counsel?** The pick: yes, as it stands.
 - **Build the homestead hold before counsel answers?** The pick: yes. It only makes the desk
   stricter.
-- **Keep the letterhead on a recorded paper?** Counsel's answer to question 8 decides.

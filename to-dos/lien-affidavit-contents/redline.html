@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Punch list #305. For counsel: the § 53.054 affidavit the app prints, in redline, with eight questions. Every field is a placeholder and every date and figure a sample; no job, owner or contractor is named. -->
+<!-- Punch list #305. For counsel: the § 53.054 affidavit the app prints, cut to what the statute lists, with five questions. Every field is a placeholder and every date a sample; no job, owner or contractor is named. -->
 <title>Lien Affidavit Redline</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
 <style>
@@ -101,6 +101,14 @@
   .sheet td.num, .sheet th.num { text-align: right; padding-right: 0; }
   .scroll { overflow-x: auto; }
 
+  .scroll table.law { border-collapse: collapse; width: 100%; min-width: 30rem; font-size: 0.92rem; }
+  table.law th, table.law td { text-align: left; vertical-align: top; padding: 0.55rem 0.9rem 0.55rem 0; border-bottom: 1px solid var(--rule); }
+  table.law th { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  table.law td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+  table.law td:last-child { white-space: nowrap; }
+  .sheet .ref { display: inline-block; font-family: var(--font-ui); font-size: 0.68rem; font-weight: 600; line-height: 1; color: var(--accent); background: var(--accent-tint); border-radius: 999px; padding: 0.18rem 0.45rem; margin-left: 0.3rem; vertical-align: 0.15em; white-space: nowrap; }
+  .pair { display: grid; gap: 1.25rem; }
+  .cap { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.4rem; }
   ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.45rem; max-width: 65ch; font-size: 0.95rem; }
   a { color: var(--accent); }
   @media print { body { background: #fff; } .wrap { padding-block: 0; } .sheet { box-shadow: none; break-inside: auto; } }
@@ -111,206 +119,162 @@
 <div class="wrap">
   <header>
     <div class="eyebrow">For counsel's review · drawn November 10, 2026</div>
-    <h1>Mechanic's and materialman's lien affidavit: proposed changes</h1>
-    <p class="lede">Our software prints this affidavit for each unpaid job. We compared its sworn text with Texas Property Code § 53.054 and found places where it may fall short. Eight questions follow, then the affidavit in redline, then a clean copy of the proposed text.</p>
+    <h1>Mechanic's and materialman's lien affidavit: the short form</h1>
+    <p class="lede">Our software prints this affidavit for each unpaid job. The owner's instruction is the minimum the law requires and nothing more. Below is what Texas Property Code § 53.054 lists, today's affidavit with what the statute does not ask for struck out, and the short form we propose. Five questions follow.</p>
     <p class="caveat">This was prepared by the company and its software, not by a lawyer. Every statute reference is our reading and may be wrong. Nothing in the software has changed. We will change only what you approve.</p>
   </header>
 
+  <section aria-labelledby="l-h">
+    <h2 id="l-h">What § 53.054(a) lists, and where each form says it</h2>
+    <p class="sub">On a job under a general contractor, today's affidavit may be short on four of the eight. The short form carries all eight and little else.</p>
+    <div class="scroll">
+      <table class="law">
+        <thead><tr><th>§ 53.054</th><th>What the affidavit must contain</th><th>Today</th><th>Short form</th></tr></thead>
+        <tbody>
+          <tr><td>(a)(1)</td><td>A sworn statement of the amount of the claim</td><td>¶ 8</td><td>¶ 7</td></tr>
+          <tr><td>(a)(2)</td><td>The owner's or reputed owner's name and last known address</td><td>¶ 6</td><td>¶ 4</td></tr>
+          <tr><td>(a)(3)</td><td>The kind of work and materials; for a claimant other than an original contractor, each month for which payment is requested</td><td>¶ 4; no months</td><td>¶ 2 and ¶ 5</td></tr>
+          <tr><td>(a)(4)</td><td>Name and last known address of whoever employed the claimant</td><td>¶ 3; no address</td><td>¶ 3</td></tr>
+          <tr><td>(a)(5)</td><td>The original contractor's name and last known address</td><td>¶ 7</td><td>¶ 3</td></tr>
+          <tr><td>(a)(6)</td><td>A description of the property, legally sufficient to identify it</td><td>¶ 2</td><td>¶ 2</td></tr>
+          <tr><td>(a)(7)</td><td>The claimant's name, mailing address and, if different, physical address</td><td>¶ 1; one address</td><td>¶ 1</td></tr>
+          <tr><td>(a)(8)</td><td>For a claimant other than an original contractor, the date each notice was sent to the owner and the method</td><td>¶ 9; no date or method</td><td>¶ 6</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section aria-labelledby="q-h">
-    <h2 id="q-h">Eight questions</h2>
-    <p class="sub">Each question names the paragraph it touches. The same number marks the change in the redline below. A reply by number is all we need.</p>
+    <h2 id="q-h">Five questions</h2>
+    <p class="sub">A reply by number is all we need.</p>
     <ol class="qs">
       <li>
         <div class="qn">1</div>
         <div class="qbody">
-          <div class="qhead"><strong>The months of work</strong><span class="tag">Paragraph 5</span><span class="tag">§ 53.054(a)(3)</span></div>
-          <p><span class="lbl">Today</span>Paragraph 5 swears a date range, first day through last day. No month is named in the sworn text. A reference line above the title shows one month as a code, such as 2026-08.</p>
-          <p><span class="lbl">Proposed</span>On a job under a general contractor, paragraph 5 adds a sentence naming each month for which payment is requested. The code above the title goes.</p>
-          <p class="ask">Is the added sentence what the statute asks of a claimant other than an original contractor?</p>
+          <div class="qhead"><strong>Is the short form complete?</strong><span class="tag">§ 53.054(a)</span></div>
+          <p>The table above maps each item the statute lists to a paragraph of the short form.</p>
+          <p class="ask">Is anything the law requires missing, or said in words that will not hold up?</p>
         </div>
       </li>
       <li>
         <div class="qn">2</div>
         <div class="qbody">
-          <div class="qhead"><strong>When and how each notice went</strong><span class="tag">Paragraph 9</span><span class="tag">§ 53.054(a)(8)</span></div>
-          <p><span class="lbl">Today</span>Paragraph 9 swears only that all statutory notices were sent in the time and manner required. It also prints on a job contracted directly with the owner, where no monthly notice is required.</p>
-          <p><span class="lbl">Proposed</span>Paragraph 9 lists each notice: the month it covers, the day it was sent and the method. The software holds each of these. On a job contracted with the owner the paragraph is left out.</p>
-          <p class="ask">Is a list in this form sufficient? Should the certified mail number be in it? What should the paragraph say when a notice went out after its deadline?</p>
+          <div class="qhead"><strong>Six things we cut</strong><span class="tag">Struck in today's affidavit</span></div>
+          <p>None of these is on the statute's list as we read it: the letterhead and the reference line above the title, the "BEFORE ME" preamble, the first and last day of work, the contract amount and the amount paid, the general sentence about notices, and "together with all interest, costs, and attorney's fees allowed by law". The jurat stays.</p>
+          <p class="ask">Do you want any of the six back, and why?</p>
         </div>
       </li>
       <li>
         <div class="qn">3</div>
         <div class="qbody">
-          <div class="qhead"><strong>Three figures that can disagree</strong><span class="tag">Paragraph 8</span><span class="tag">§ 53.054(a)(1)</span></div>
-          <p><span class="lbl">Today</span>Paragraph 8 swears the contract amount, the amount paid and the amount unpaid. The first two come from the job's price and its payments. The third comes from the bills sent and still unpaid. When part of a job is not yet billed, contract less paid does not equal unpaid on the face of the affidavit.</p>
-          <p><span class="lbl">Proposed</span>Paragraph 8 swears the claim amount alone, after all just credits, offsets and payments.</p>
-          <p class="ask">Do you want the contract and paid figures kept when they reconcile, or left out always?</p>
+          <div class="qhead"><strong>The notices</strong><span class="tag">Short form ¶ 6</span><span class="tag">§ 53.054(a)(8)</span></div>
+          <p>The short form gives the day each notice went to the owner and the method. It leaves out the certified mail number and the copy sent to the original contractor.</p>
+          <p class="ask">Is that enough? What should the paragraph say when a notice went out after its deadline?</p>
         </div>
       </li>
       <li>
         <div class="qn">4</div>
         <div class="qbody">
-          <div class="qhead"><strong>Addresses of the hiring party and the original contractor</strong><span class="tag">Paragraphs 3 and 7</span><span class="tag">§ 53.054(a)(4), (5)</span></div>
-          <p><span class="lbl">Today</span>Paragraph 3 names the party we contracted with and gives no address. Paragraph 7 prints the original contractor's address when one is on file and drops it without a mark when none is.</p>
-          <p><span class="lbl">Proposed</span>Paragraph 3 adds the last known address. The software will not mark an affidavit ready to file while either address is missing.</p>
-          <p class="ask">Is "last known address" the right phrase in both places?</p>
+          <div class="qhead"><strong>Homesteads</strong><span class="tag">§ 53.254</span></div>
+          <p>The software holds any property marked as a homestead and tells the office to call you. We will also hold a property where nobody has answered the question.</p>
+          <p class="ask">When a lien on a homestead is proper, does the § 53.254(f) notice go at the top of this form, and is anything else different?</p>
         </div>
       </li>
       <li>
         <div class="qn">5</div>
         <div class="qbody">
-          <div class="qhead"><strong>The claimant's mailing and physical address</strong><span class="tag">Paragraph 1</span><span class="tag">§ 53.054(a)(7)</span></div>
-          <p><span class="lbl">Today</span>Paragraph 1 says the claimant is "located at" one address, the one on the company's letterhead.</p>
-          <p><span class="lbl">Proposed</span>Paragraph 1 states the mailing address, and the physical address when the two differ.</p>
-          <p class="ask">Is that wording right, and should the physical address print even when it is the same?</p>
-        </div>
-      </li>
-      <li>
-        <div class="qn">6</div>
-        <div class="qbody">
-          <div class="qhead"><strong>One affidavit for several jobs at one property</strong><span class="tag">Whole affidavit</span></div>
-          <p><span class="lbl">Today</span>Each job gets its own affidavit. A property with five service tickets under one general contractor produces five affidavits, five notarizations, five recording fees and five copies to serve. Our § 53.056 notices already combine jobs at one property.</p>
-          <p><span class="lbl">Proposed</span>Nothing yet. If you approve, one affidavit would cover every unpaid job at a property under the same original contractor, with a schedule of the jobs. A sample schedule is under the redline.</p>
-          <p class="ask">May one affidavit cover them, or must each ticket stand alone as its own contract?</p>
-        </div>
-      </li>
-      <li>
-        <div class="qn">7</div>
-        <div class="qbody">
-          <div class="qhead"><strong>Homesteads</strong><span class="tag">Top of page</span><span class="tag">§ 53.254</span></div>
-          <p><span class="lbl">Today</span>The software holds any property marked as a homestead and tells the office to call you. A property where nobody answered the question is treated as not a homestead and can reach Ready to file.</p>
-          <p><span class="lbl">Proposed</span>A property with no answer is held too, until someone answers. No change to the affidavit's text until you say what a homestead affidavit needs.</p>
-          <p class="ask">When a lien on a homestead is proper, should the affidavit carry the § 53.254(f) notice at the top, and is anything else different?</p>
-        </div>
-      </li>
-      <li>
-        <div class="qn">8</div>
-        <div class="qbody">
-          <div class="qhead"><strong>What sits above the title, and what is attached</strong><span class="tag">Top and foot of page</span><span class="tag">§ 53.054(b)</span></div>
-          <p><span class="lbl">Today</span>The company's letterhead and a reference line sit above the title. The line carries the job number, the work month as a code and the day the paper was drawn, which is often not the day it is signed.</p>
-          <p><span class="lbl">Proposed</span>The reference line goes. A return address for the recorded original is added. The job number moves to the foot. A copy of each notice is attached as an exhibit.</p>
-          <p class="ask">Is a letterhead acceptable on a recorded instrument? Do you want the notices attached, and the contract when there is one?</p>
+          <div class="qhead"><strong>One affidavit for several jobs at one property</strong><span class="tag">Fewer papers</span></div>
+          <p>Today each job gets its own affidavit. A house with five service tickets under one general contractor means five affidavits, five notarizations and five recording fees.</p>
+          <p class="ask">May one affidavit claim the total for every unpaid job at a property under the same original contractor, or must each ticket stand alone?</p>
         </div>
       </li>
     </ol>
   </section>
 
-  <section aria-labelledby="r-h">
-    <h2 id="r-h">The affidavit in redline</h2>
+  <section aria-labelledby="t-h">
+    <h2 id="t-h">Today's affidavit, with what the statute does not list struck out</h2>
     <div class="legend">
-      <span><del>struck</del> leaves the affidavit</span>
-      <span><ins>underlined</ins> is added</span>
+      <span><del>struck</del> is not on the statute's list</span>
       <span><span class="f">a field</span> is filled from the job's record</span>
-      <span>a ringed number is the question it belongs to</span>
     </div>
-    <p class="sub">Dates and months in the fields are samples. The jurat is unchanged.</p>
-
     <div class="sheet">
       <div class="top">
-        <div><span class="f">Company letterhead</span><span class="mark">8</span></div>
-        <div><del>Job #<span class="f">job number</span> · Work month 2026-08 · <span class="f">day the paper was drawn</span></del><span class="mark">1</span><span class="mark">8</span></div>
-        <div><ins>After recording, return to: <span class="f">claimant</span>, <span class="f">claimant's mailing address</span></ins><span class="mark">8</span></div>
+        <div><del><span class="f">Company letterhead</span></del></div>
+        <div><del>Job #<span class="f">job number</span> · Work month 2026-08 · <span class="f">day the paper was drawn</span></del></div>
       </div>
-
       <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
       <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY</span></div>
-      <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
-
+      <p><del>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</del></p>
       <ol class="paras">
-        <li><span class="pn">1.</span><div>My name is <span class="f">signer</span>. I am authorized to make this affidavit on behalf of <span class="f">claimant</span> ("Claimant")<del>, located at <span class="f">claimant's address</span></del>. <ins>Claimant's mailing address is <span class="f">mailing address</span>. Claimant's physical address is <span class="f">physical address</span>.</ins><span class="mark">5</span>
-          <span class="when">The second new sentence prints when the two addresses differ.</span></div></li>
+        <li><span class="pn">1.</span><div>My name is <span class="f">signer</span>. I am authorized to make this affidavit on behalf of <span class="f">claimant</span> ("Claimant"), located at <span class="f">claimant's address</span>.</div></li>
         <li><span class="pn">2.</span><div>Claimant furnished labor and/or materials for the improvement of the following described property in <span class="f">county</span> County, Texas — Legal description: <span class="f">legal description</span>; Property address: <span class="f">property address</span>.</div></li>
-        <li><span class="pn">3.</span><div>The labor and/or materials were furnished under a contract with <span class="f">hiring party</span><ins>, whose last known address is <span class="f">hiring party's address</span></ins>.<span class="mark">4</span></div></li>
+        <li><span class="pn">3.</span><div>The labor and/or materials were furnished under a contract with <span class="f">hiring party</span>.</div></li>
         <li><span class="pn">4.</span><div>The kind of work and/or materials furnished by Claimant was: <span class="f">trade</span> labor and materials.</div></li>
-        <li><span class="pn">5.</span><div>The work was performed and/or materials delivered during the period from <span class="f">first day of work</span> through <span class="f">last day of work</span>. <ins>Payment is requested for work done and materials furnished in each of the following months: <span class="f">July 2026 and August 2026</span>.</ins><span class="mark">1</span>
-          <span class="when">The new sentence prints on a job under a general contractor.</span></div></li>
+        <li><span class="pn">5.</span><div><del>The work was performed and/or materials delivered during the period from <span class="f">first day of work</span> through <span class="f">last day of work</span>.</del></div></li>
         <li><span class="pn">6.</span><div>The name and last known address of the owner or reputed owner of the land and improvements is: <span class="f">owner</span>, <span class="f">owner's address</span>.</div></li>
-        <li><span class="pn">7.</span><div>The name and <ins>last known</ins> address of the original contractor is: <span class="f">original contractor</span>, <span class="f">original contractor's address</span>.<span class="mark">4</span></div></li>
-        <li><span class="pn">8.</span><div><del>The original contract amount was <span class="f">contract amount</span>. The amount paid to date is <span class="f">amount paid</span>. The amount currently due and unpaid is <span class="f">amount unpaid</span>.</del> <ins>After allowing all just credits, offsets and payments, the amount of <span class="f">claim amount</span> is due and unpaid to Claimant for that work and those materials.</ins><span class="mark">3</span></div></li>
-        <li><span class="pn">9.</span><div><del>All statutory notices required by the Texas Property Code have been sent to the owner and/or original contractor in the time and manner required.</del> <ins>Claimant sent notice of the claim to the owner and to the original contractor as follows: for work in <span class="f">July 2026</span>, on <span class="f">August 14, 2026</span>, by certified mail, return receipt requested; for work in <span class="f">August 2026</span>, on <span class="f">September 11, 2026</span>, by certified mail, return receipt requested.</ins><span class="mark">2</span>
-          <span class="when">Prints on a job under a general contractor, one clause per notice. Left out on a job contracted with the owner.</span></div></li>
-        <li><span class="pn"><ins>10.</ins></span><div><ins>A true copy of each notice is attached as Exhibit A.</ins><span class="mark">8</span>
-          <span class="when">Prints only if you want the notices attached.</span></div></li>
-        <li><span class="pn"><del>10.</del> <ins>11.</ins></span><div>Claimant claims a lien against all the above described property and improvements thereon in the amount of <span class="f">claim amount</span>, together with all interest, costs, and attorney's fees allowed by law.</div></li>
+        <li><span class="pn">7.</span><div>The name and address of the original contractor is: <span class="f">original contractor</span>, <span class="f">original contractor's address</span>.</div></li>
+        <li><span class="pn">8.</span><div><del>The original contract amount was <span class="f">contract amount</span>. The amount paid to date is <span class="f">amount paid</span>.</del> The amount currently due and unpaid is <span class="f">amount unpaid</span>.</div></li>
+        <li><span class="pn">9.</span><div><del>All statutory notices required by the Texas Property Code have been sent to the owner and/or original contractor in the time and manner required.</del></div></li>
+        <li><span class="pn">10.</span><div>Claimant claims a lien against all the above described property and improvements thereon in the amount of <span class="f">amount unpaid</span><del>, together with all interest, costs, and attorney's fees allowed by law</del>.</div></li>
       </ol>
-
-      <div class="sig">
-        <div class="line"></div>
-        <div><span class="f">signer</span></div>
-        <div><span class="f">claimant</span></div>
-      </div>
+      <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
       <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
-      <div class="sig">
-        <div class="line"></div>
-        <div>Notary Public, State of Texas</div>
-      </div>
-      <div class="foot"><ins>Job #<span class="f">job number</span></ins><span class="mark">8</span></div>
+      <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div></div>
     </div>
   </section>
 
   <section aria-labelledby="s-h">
-    <h2 id="s-h">If one affidavit may cover several jobs</h2>
-    <p class="sub">A sample of the schedule question 6 asks about. Paragraphs 5, 8 and 9 would then speak for all the jobs listed. The figures are made up.</p>
-    <div class="sheet">
-      <p><ins>The work and materials were furnished on the following jobs at the property, each under the contract named in paragraph 3:</ins><span class="mark">6</span></p>
-      <div class="scroll">
-        <table>
-          <thead><tr><th>Job</th><th>Months of work</th><th>Notice sent</th><th class="num">Unpaid</th></tr></thead>
-          <tbody>
-            <tr><td>Job #101</td><td>July and August 2026</td><td>Aug 14 and Sep 11, 2026</td><td class="num">$6,400.00</td></tr>
-            <tr><td>Job #117</td><td>August 2026</td><td>Sep 11, 2026</td><td class="num">$1,250.00</td></tr>
-            <tr><td>Job #123</td><td>August 2026</td><td>Sep 11, 2026</td><td class="num">$780.00</td></tr>
-            <tr><td><strong>Total claimed</strong></td><td></td><td></td><td class="num"><strong>$8,430.00</strong></td></tr>
-          </tbody>
-        </table>
+    <h2 id="s-h">The short form we propose</h2>
+    <p class="sub">The tag after each paragraph names the item of § 53.054(a) it answers. The tags are for this review and do not print. Dates and months are samples.</p>
+    <div class="pair">
+      <div>
+        <div class="cap">On a job under a general contractor</div>
+        <div class="sheet">
+          <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY</span></div>
+          <p><span class="f">signer</span>, being duly sworn, states:</p>
+          <ol class="paras">
+            <li><span class="pn">1.</span><div>I am authorized to make this affidavit for <span class="f">claimant</span> ("Claimant"). Claimant's mailing address is <span class="f">mailing address</span>. Its physical address is <span class="f">physical address</span>.<span class="ref">(a)(7)</span>
+              <span class="when">The last sentence prints when the two addresses differ.</span></div></li>
+            <li><span class="pn">2.</span><div>Claimant furnished <span class="f">trade</span> labor and materials to improve this property in <span class="f">county</span> County, Texas: <span class="f">legal description</span>, <span class="f">property address</span>.<span class="ref">(a)(3)</span><span class="ref">(a)(6)</span></div></li>
+            <li><span class="pn">3.</span><div>Claimant did so under a contract with <span class="f">general contractor</span>, <span class="f">its last known address</span>, the original contractor.<span class="ref">(a)(4)</span><span class="ref">(a)(5)</span>
+              <span class="when">When someone else hired us, the paragraph names that party and its address, then the original contractor and its address.</span></div></li>
+            <li><span class="pn">4.</span><div>The owner or reputed owner is <span class="f">owner</span>, <span class="f">owner's last known address</span>.<span class="ref">(a)(2)</span></div></li>
+            <li><span class="pn">5.</span><div>Payment is requested for work done and materials furnished in <span class="f">July 2026 and August 2026</span>.<span class="ref">(a)(3)</span></div></li>
+            <li><span class="pn">6.</span><div>Notice of the claim was sent to the owner by certified mail on <span class="f">August 14, 2026</span> and <span class="f">September 11, 2026</span>.<span class="ref">(a)(8)</span></div></li>
+            <li><span class="pn">7.</span><div>The amount of the claim is <span class="f">claim amount</span>. Claimant claims a lien on the property for that amount.<span class="ref">(a)(1)</span></div></li>
+          </ol>
+          <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
+          <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
+          <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div></div>
+        </div>
       </div>
-    </div>
-  </section>
-
-  <section aria-labelledby="c-h">
-    <h2 id="c-h">The proposed text, clean</h2>
-    <p class="sub">As it would print for a job under a general contractor, with every proposed change taken and the notices attached.</p>
-    <div class="sheet">
-      <div class="top">
-        <div><span class="f">Company letterhead</span></div>
-        <div>After recording, return to: <span class="f">claimant</span>, <span class="f">claimant's mailing address</span></div>
+      <div>
+        <div class="cap">On a job contracted with the owner</div>
+        <div class="sheet">
+          <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY</span></div>
+          <p><span class="f">signer</span>, being duly sworn, states:</p>
+          <ol class="paras">
+            <li><span class="pn">1.</span><div>I am authorized to make this affidavit for <span class="f">claimant</span> ("Claimant"). Claimant's mailing address is <span class="f">mailing address</span>. Its physical address is <span class="f">physical address</span>.<span class="ref">(a)(7)</span></div></li>
+            <li><span class="pn">2.</span><div>Claimant furnished <span class="f">trade</span> labor and materials to improve this property in <span class="f">county</span> County, Texas: <span class="f">legal description</span>, <span class="f">property address</span>.<span class="ref">(a)(3)</span><span class="ref">(a)(6)</span></div></li>
+            <li><span class="pn">3.</span><div>Claimant did so under a contract with the owner, <span class="f">owner</span>, <span class="f">owner's last known address</span>. Claimant is the original contractor.<span class="ref">(a)(2)</span><span class="ref">(a)(4)</span><span class="ref">(a)(5)</span></div></li>
+            <li><span class="pn">4.</span><div>The amount of the claim is <span class="f">claim amount</span>. Claimant claims a lien on the property for that amount.<span class="ref">(a)(1)</span></div></li>
+          </ol>
+          <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
+          <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
+          <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div></div>
+        </div>
       </div>
-      <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
-      <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY</span></div>
-      <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
-      <ol class="paras">
-        <li><span class="pn">1.</span><div>My name is <span class="f">signer</span>. I am authorized to make this affidavit on behalf of <span class="f">claimant</span> ("Claimant"). Claimant's mailing address is <span class="f">mailing address</span>. Claimant's physical address is <span class="f">physical address</span>.</div></li>
-        <li><span class="pn">2.</span><div>Claimant furnished labor and/or materials for the improvement of the following described property in <span class="f">county</span> County, Texas — Legal description: <span class="f">legal description</span>; Property address: <span class="f">property address</span>.</div></li>
-        <li><span class="pn">3.</span><div>The labor and/or materials were furnished under a contract with <span class="f">hiring party</span>, whose last known address is <span class="f">hiring party's address</span>.</div></li>
-        <li><span class="pn">4.</span><div>The kind of work and/or materials furnished by Claimant was: <span class="f">trade</span> labor and materials.</div></li>
-        <li><span class="pn">5.</span><div>The work was performed and/or materials delivered during the period from <span class="f">first day of work</span> through <span class="f">last day of work</span>. Payment is requested for work done and materials furnished in each of the following months: <span class="f">July 2026 and August 2026</span>.</div></li>
-        <li><span class="pn">6.</span><div>The name and last known address of the owner or reputed owner of the land and improvements is: <span class="f">owner</span>, <span class="f">owner's address</span>.</div></li>
-        <li><span class="pn">7.</span><div>The name and last known address of the original contractor is: <span class="f">original contractor</span>, <span class="f">original contractor's address</span>.</div></li>
-        <li><span class="pn">8.</span><div>After allowing all just credits, offsets and payments, the amount of <span class="f">claim amount</span> is due and unpaid to Claimant for that work and those materials.</div></li>
-        <li><span class="pn">9.</span><div>Claimant sent notice of the claim to the owner and to the original contractor as follows: for work in <span class="f">July 2026</span>, on <span class="f">August 14, 2026</span>, by certified mail, return receipt requested; for work in <span class="f">August 2026</span>, on <span class="f">September 11, 2026</span>, by certified mail, return receipt requested.</div></li>
-        <li><span class="pn">10.</span><div>A true copy of each notice is attached as Exhibit A.</div></li>
-        <li><span class="pn">11.</span><div>Claimant claims a lien against all the above described property and improvements thereon in the amount of <span class="f">claim amount</span>, together with all interest, costs, and attorney's fees allowed by law.</div></li>
-      </ol>
-      <div class="sig">
-        <div class="line"></div>
-        <div><span class="f">signer</span></div>
-        <div><span class="f">claimant</span></div>
-      </div>
-      <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
-      <div class="sig">
-        <div class="line"></div>
-        <div>Notary Public, State of Texas</div>
-      </div>
-      <div class="foot">Job #<span class="f">job number</span></div>
     </div>
   </section>
 
   <section aria-labelledby="k-h">
-    <h2 id="k-h">What stays as it is</h2>
+    <h2 id="k-h">What the software does around the form</h2>
     <ul class="plain">
-      <li>Paragraphs 2, 4 and 6, the lien claim itself, the signature block and the jurat.</li>
-      <li>The claim amount: what the sent bills still owe, less any correction the office wrote down with its reason.</li>
-      <li>The software does not mark an affidavit ready until the owner of record, the county and the legal description are on the property's record, and a § 53.056 notice is recorded on a job under a general contractor.</li>
+      <li>The claim amount is what the sent bills still owe, less any correction the office wrote down with its reason.</li>
+      <li>An affidavit is not marked ready until the owner of record, the county and the legal description are on the property's record. On a job under a general contractor a § 53.056 notice must be recorded too.</li>
+      <li>We will add two holds: one while the hiring party's or the original contractor's address is missing, and one while the homestead question has no answer.</li>
       <li>After filing, the software tracks the copy that goes to the owner and the original contractor under § 53.055.</li>
     </ul>
   </section>
