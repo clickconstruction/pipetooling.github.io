@@ -7,7 +7,7 @@
 <style>
   /* Punch list #302. Everything here is made up: Ridgeway Builders, Calloway and Finch, Tall Pine Development,
      Marlow Commercial, Juniper Hospitality, Permit Runners of Texas, Blue Heron Plumbing, Copperline Mechanical,
-     Voltline Electric, Dana, Marcus, Priya, Jordan and Sam, every street, permit number, amount, count and day. No live permit row,
+     Voltline Electric, Dana, Marcus, Priya, Jordan, Sam and Casey, every street, permit number, amount, count and day. No live permit row,
      address or applicant is on this page. The screens are drawn in the app's light theme values. The blue press
      is #2563eb under white words, the green one #16a34a. Phone frames are 375 wide, desk frames 920. */
   :root { color-scheme: light; --page: #eceae4; --strong: #111827; --ink: #1f2937; --muted: #6b7280; --slate: #64748b; --border: #e5e7eb; --surface: #ffffff; --bg: #f9fafb; --bg2: #f3f4f6; --blue: #2563eb; --blue-50: #eff6ff; --blue-800: #1e40af; --green: #16a34a; --green-100: #dcfce7; --green-700: #15803d; --amber-50: #fffbeb; --amber-700: #b45309; --amber-200: #fde68a; --red-50: #fef2f2; --red-200: #fecaca; --red-700: #b91c1c; --link: #2563eb; --copper: #9a5b2b; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
@@ -122,6 +122,12 @@
   .door:first-of-type { border-top: 0; }
   .door span { color: var(--muted); font-size: .75rem; display: block; }
   .sheet .answers { margin: 12px -14px 0; border-top: 1px solid var(--border); background: var(--surface); }
+  .why { margin: -6px 0 10px; font-size: .75rem; color: var(--green-700); }
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 8px 4px; text-align: center; }
+  .tile b { display: block; font-size: 1.25rem; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .tile span { font-size: .6875rem; color: var(--muted); }
+  .later { color: var(--muted); font-weight: 600; }
   .pcard .body { padding: 12px 14px 4px; }
   .pcard .kind { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pcard h3 { margin: 2px 0 0; font-size: 1.1875rem; line-height: 1.25; color: var(--strong); }
@@ -221,9 +227,9 @@
 <div class="wrap">
 
 <header class="top">
-  <p class="eyebrow">Punch list #302 · Prospects → Permits · plan and mock-up only, nothing built</p>
+  <p class="eyebrow">Punch list #302 · Prospects → Permits · drawn 2026-11-10, built the same night as v2.6828, v2.6830, v2.6833 and v2.6835</p>
   <h1>Permits: skim first, then dig in</h1>
-  <p>Today the tab is a ledger. It is good for finding a permit and slow for answering one. On the live tab on 2026-11-10, 163 permits wait on a look and none has a verdict. This page draws a first step that takes a few seconds a permit and a second step that takes as long as the permit deserves. Then it draws the builder behind the name, with a mark and our own contacts. Every name, street and number here is made up.</p>
+  <p>Today the tab is a ledger. It is good for finding a permit and slow for answering one. On the live tab on 2026-11-10, one day after the feed went live, 163 permits wait on a look and none has a verdict. These frames are the drawing the build followed; where the build differs, the card says so. This page draws a first step that takes a few seconds a permit and a second step that takes as long as the permit deserves. Then it draws the builder behind the name, with a mark and our own contacts. Every name, street and number here is made up.</p>
 </header>
 
 <h2>The two steps</h2>
@@ -236,8 +242,31 @@
   <tr><td><b>Closed</b></td><td>Passed on the skim, not pursued after a dig in, or the feed named a plumber.</td><td>Nothing. It can be put back.</td></tr>
 </table>
 
+<h2>One set of words</h2>
+<p class="lede">The ledger says one thing today and the first draft of the deck said another. After the holistic look there is one set, on the deck, the ledger, the lists and the sheet.</p>
+<table class="plain">
+  <tr><th>The word</th><th>The ledger's word today</th><th>What it means</th></tr>
+  <tr><td><b>Keep</b></td><td>Look into it</td><td>Worth a closer look. It goes to Kept, and can be handed to a person.</td></tr>
+  <tr><td><b>Pass</b></td><td>Not for us</td><td>Not ours. It goes to Closed with a reason if one was tapped.</td></tr>
+  <tr><td><b>Pursue</b></td><td>Approach them</td><td>We are going after it. A lead goes on the calling deck.</td></tr>
+  <tr><td><b>Has a plumber</b></td><td>Already taken</td><td>A plumbing permit is on it. The feed usually says so itself.</td></tr>
+</table>
+
+<h2>The first build, and what waits</h2>
+<p class="lede">The first draft was eleven PRs. The holistic look cut it to what answers the ask, then a stop to look at two weeks of real use before anything else is built.</p>
+<table class="plain">
+  <tr><th>In the first build</th><th>Frames</th><th>Held until use asks for it</th><th>Frames</th></tr>
+  <tr><td>The skim, best first, by button and key</td><td>A, B, F</td><td>The stack for one site</td><td>C</td></tr>
+  <tr><td>The street view and the map</td><td>A, B, F</td><td>The first-day card</td><td>E</td></tr>
+  <tr><td>Everything public, and the Google press. <b>Built, v2.6828.</b></td><td>L</td><td>Joining two names into one builder</td><td>I1</td></tr>
+  <tr><td>The swipe</td><td>A, B</td><td>People kept on a builder</td><td>I1</td></tr>
+  <tr><td>The four places, the hand-off and the nudge</td><td>D, G, H, M</td><td>Rules that pass a permit by themselves</td><td></td></tr>
+  <tr><td>Builders with a mark</td><td>I, J</td><td>More cities</td><td></td></tr>
+  <tr><td>The count that says it works</td><td>M</td><td></td><td></td></tr>
+</table>
+
 <h2>A · Try the skim</h2>
-<p class="lede">This frame works. Drag the card, press the two buttons, or click the card and use the arrow keys. Six made-up permits, then the caught-up state. The street views are drawings, not photos.</p>
+<p class="lede">This frame works. Drag the card, press the two buttons, or click the card and use the arrow keys. The deck is in best-first order: the green line on each card says why it sits where it does, and the two weakest come last. Six made-up permits, then the caught-up state. The street views are drawings, not photos.</p>
 <div class="row">
   <div class="col p375">
     <span class="cap"><b>A</b> · the skim on a phone, live</span>
@@ -260,8 +289,9 @@
       <li><b>The property.</b> The county's owner of record and what stands on the lot now. A tap opens everything public about the address (frame L2).</li>
     </ol>
     <p class="note"><b>The pictures are the app's own.</b> The job window already shows a street view of a job's address, read through the app's own function with the key kept on the server. The On site map already draws satellite. The card reuses both. The date on the street view matters: on a new build an old picture of an empty lot is the signal, and where the car never drove the tile shows satellite and says so.</p>
+    <p class="note"><b>Best first, not newest first.</b> A third of the applications are signs, parking and small repairs. The deck opens on the permits most likely to be ours: no plumber yet, a size we win, close to the office, a builder we know or marked Good. A builder marked Avoid and a name that only files for others sink to the end. The order is a hint, like the word under a name today. Every card is still seen and answered.</p>
     <p class="note"><b>Nothing is typed on the skim.</b> Today every verdict needs a typed reason, which is right for a decision and wrong for a glance. A pass offers four one-tap reasons in the dark bar after the card has gone. Tapping one is optional. The bar is also the undo.</p>
-    <p class="note"><b>A permit skimmed by one person is skimmed for everyone.</b> The queue is the company's, like the ledger's verdicts are today. Each answer keeps the name and the day.</p>
+    <p class="note"><b>One queue, and a hand-off.</b> A permit skimmed by one person is skimmed for everyone. The owner's answer on who skims: the Leader in time, the assistants and estimators more likely. So a Keep can be handed to a person in one tap, in the same dark bar. Each answer keeps the name and the day.</p>
   </div>
 </div>
 
@@ -271,7 +301,7 @@
   <div class="col p375">
     <span class="cap"><b>B1</b> · at rest</span>
     <div class="frame"><div class="screen"><div class="pad">
-      <div class="togo"><span><b>41</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="togo"><span><b>41</b> to skim</span><span>Best first · pulled 5:31 AM</span></div>
       <div class="bar"><i style="width:22%"></i></div>
       <div class="deck"><div class="under two"></div><div class="under"></div>
       <div class="pcard new">
@@ -281,6 +311,7 @@
           <h3>Retail shell, 6,200 sq ft</h3>
           <div class="money"><b>$1.4M</b> declared</div>
           <div class="where">2400 Lantern Creek Blvd, 78249</div>
+          <div class="why">Near the top: no plumber yet · a builder we won with · 14 miles</div>
           <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g solo" href="#l" title="Search Google for this name"><i>G</i></a><span class="sub">We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
           <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres</span></span></div>
@@ -294,7 +325,7 @@
   <div class="col p375">
     <span class="cap"><b>B2</b> · dragged right: keep</span>
     <div class="frame"><div class="screen ghost"><div class="pad">
-      <div class="togo"><span><b>41</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="togo"><span><b>41</b> to skim</span><span>Best first · pulled 5:31 AM</span></div>
       <div class="bar"><i style="width:22%"></i></div>
       <div class="deck"><div class="under"></div>
       <div class="pcard tilt-r">
@@ -308,14 +339,14 @@
           <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span></span></div>
         </div>
       </div></div>
-      <div class="undo"><span>Kept for a closer look.</span><span class="sp"></span><button class="u">Undo</button></div>
+      <div class="undo new"><span>Kept. For?</span><button>Anyone</button><button class="picked">Sam</button><button>Jordan</button><span class="sp"></span><button class="u">Undo</button></div>
     </div></div></div>
-    <p class="say">The word appears as the card passes a third of its width. Let go before that and it springs back.</p>
+    <p class="say">The word appears as the card passes a third of its width. Let go before that and it springs back. The bar after a keep hands it to a person. Tapping a name is optional.</p>
   </div>
   <div class="col p375">
     <span class="cap"><b>B3</b> · dragged left: pass, and the bar after it</span>
     <div class="frame"><div class="screen ghost"><div class="pad">
-      <div class="togo"><span><b>40</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="togo"><span><b>40</b> to skim</span><span>Best first · pulled 5:31 AM</span></div>
       <div class="bar"><i style="width:24%"></i></div>
       <div class="deck"><div class="under"></div>
       <div class="pcard tilt-l">
@@ -346,13 +377,13 @@
   </div>
 </div>
 
-<h2>C · One site, six permits: a stack</h2>
+<h2>C · One site, six permits: a stack <span class="later">· held for later</span></h2>
 <p class="lede">A site with six buildings files six applications. On the live tab, 26 names pulled 70 of the 163 waiting permits. A stack answers the same builder on the same street in one go, and its buttons say how many.</p>
 <div class="row">
   <div class="col p375">
-    <span class="cap"><b>C</b> · a stack card</span>
+    <span class="cap"><b>C</b> · a stack card · held for later</span>
     <div class="frame"><div class="screen"><div class="pad">
-      <div class="togo"><span><b>38</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="togo"><span><b>38</b> to skim</span><span>Best first · pulled 5:31 AM</span></div>
       <div class="bar"><i style="width:30%"></i></div>
       <div class="deck"><div class="under two"></div><div class="under"></div>
       <div class="pcard new">
@@ -388,7 +419,7 @@
     <p class="say">Empty is the good state, so the words say so and the one press is the next step.</p>
   </div>
   <div class="col p375">
-    <span class="cap"><b>E</b> · the first day: the backlog</span>
+    <span class="cap"><b>E</b> · the first day: the backlog · held for later</span>
     <div class="frame"><div class="screen"><div class="pad">
       <div class="pcard new"><div class="body" style="padding-bottom:14px">
         <div class="kind">Before you start</div>
@@ -401,7 +432,7 @@
         <p class="mut" style="margin:10px 0 0">The second press passes the 102 older ones as <b>Too old</b>. They stay under Closed and can be put back.</p>
       </div></div>
     </div></div></div>
-    <p class="say">Shown once, on the first open. At five seconds a card, all 163 is about a quarter of an hour.</p>
+    <p class="say">Held. With the deck in best-first order the first sitting can stop anywhere, and what is left is the weakest. At five seconds a card, all 163 is about a quarter of an hour.</p>
   </div>
 </div>
 
@@ -432,6 +463,7 @@
               <h3>Retail shell, 6,200 sq ft</h3>
               <div class="money"><b>$1.4M</b> declared</div>
               <div class="where">2400 Lantern Creek Blvd, 78249 <span class="mut">· permit COM-PRJ-APP26-00000001</span></div>
+              <div class="why">Near the top: no plumber yet · a builder we won with · 14 miles</div>
               <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a><span class="sub">Dana Whitlock filed it. We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
               <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
               <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres, appraised $610k</span></span></div>
@@ -459,14 +491,14 @@
     <div class="frame"><div class="screen">
       <div class="steps"><span>Skim <b>0</b></span><span class="on">Kept <b>14</b></span><span>Pursuing <b>3</b></span><span>Closed</span><span>Builders</span></div>
       <div class="flag new"><b>2 kept permits got a plumber since you kept them.</b> They moved to Closed. <a class="lnk" href="#g">See them</a></div>
-      <div class="chips"><span class="on">Everyone's 14</span><span>Mine 9</span><span>Look again today 2</span></div>
-      <div class="lrow"><div class="t"><b>Retail shell, 6,200 sq ft</b><span>$1.4M</span></div><div class="s">2400 Lantern Creek Blvd · Ridgeway Builders <span class="pill ok">Good</span></div><div class="m">Kept by Sam today · 14 mi · no plumber yet</div></div>
-      <div class="lrow"><div class="t"><b>Oak Hollow Apartments, 6 buildings</b><span>$19.2M</span></div><div class="s">815 Quarry Bend · Calloway and Finch</div><div class="m">Kept by Sam today · 22 mi · no plumber yet</div></div>
+      <div class="chips"><span class="on">Everyone's 14</span><span>Mine 5</span><span>Nobody's yet 3</span><span>Look again today 2</span></div>
+      <div class="lrow"><div class="t"><b>Retail shell, 6,200 sq ft</b><span>$1.4M</span></div><div class="s">2400 Lantern Creek Blvd · Ridgeway Builders <span class="pill ok">Good</span></div><div class="m">Kept by Casey for Sam, today · 14 mi · no plumber yet</div></div>
+      <div class="lrow"><div class="t"><b>Oak Hollow Apartments, 6 buildings</b><span>$19.2M</span></div><div class="s">815 Quarry Bend · Calloway and Finch</div><div class="m">Kept by Casey, for nobody yet · 22 mi · no plumber yet</div></div>
       <div class="lrow"><div class="t"><b>Hotel, 4 floors</b><span>$8.8M</span></div><div class="s">1200 Heron Landing · Juniper Hospitality <span class="pill blue">New name</span></div><div class="m">Kept by Jordan, Nov 6 · <span class="pill warm">Look again today</span></div></div>
       <div class="lrow"><div class="t"><b>Restaurant finish out, 3,100 sq ft</b><span>not declared</span></div><div class="s">44 Tannery Square · Marlow Commercial</div><div class="m">Kept by Jordan, Nov 5 · 6 mi · called once, no answer</div></div>
       <div class="lrow"><div class="mut">and 10 more</div></div>
     </div></div>
-    <p class="say">The oldest kept sits at the bottom of nobody's mind, so the list opens on Look again today, then the oldest.</p>
+    <p class="say">The list opens on Look again today, then the oldest. Nobody's yet is the pile a Leader's skim leaves for the team to pick up.</p>
   </div>
   <div class="col p375">
     <span class="cap"><b>G2</b> · Closed: found again, put back</span>
@@ -492,65 +524,60 @@
   </div>
 </div>
 
-<h2 id="h">H · Dig in: a page, not a sheet</h2>
-<p class="lede">A kept permit opens as its own page with its own link. It holds what the Who pulled it sheet finds today, the county's record, the other permits on the site, and what we did about it. It ends on one of two presses.</p>
+<h2 id="h">H · Dig in: the two sheets, and a close-out</h2>
+<p class="lede">The first draft drew the dig in as a page of its own. The two sheets in section L now hold what that page held, and they are built. So a kept permit opens on them, with what we did beside them and the close-out at the foot. No new page.</p>
 <div class="row">
-  <div class="col p920">
-    <span class="cap"><b>H</b> · the dig in, desk</span>
-    <div class="frame"><div class="screen w920">
+  <div class="col p375">
+    <span class="cap"><b>H1</b> · a kept permit, opened</span>
+    <div class="frame"><div class="screen">
       <div class="head"><a href="#g">← Kept · 3 of 14</a>
-        <h3>Retail shell, 6,200 sq ft · 2400 Lantern Creek Blvd</h3>
-        <div class="mut">New commercial · applied Nov 6 · $1.4M declared · COM-PRJ-APP26-00000001 · Kept by Sam today</div>
+        <h3 style="font-size:1.125rem">Retail shell, 6,200 sq ft</h3>
+        <div class="mut">2400 Lantern Creek Blvd · Kept by Casey for Sam, today</div>
       </div>
-      <div class="two">
-        <div>
-          <div class="sec"><h4>The site</h4>
-            <div class="pcard new" style="margin-bottom:8px"><div class="media" style="height:170px"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="tag">Map · Satellite</span><span class="miles">14 mi from the office</span></div></div></div>
-            <p><b>Owner of record:</b> Lantern Creek Retail LP <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></p>
-            <p class="mut">Mailing address 900 Sample Plaza, Suite 4 · vacant land, 2.1 acres · appraised $610k</p>
-            <div class="acts"><a class="lnk" href="#h">Walk the street in Google</a><a class="lnk" href="#h">Open in Google Maps</a><a class="lnk" href="#h">Open at the appraisal district</a></div>
-          </div>
-          <div class="sec"><h4>Every permit on this site</h4>
-            <table class="t"><tr><th>Permit</th><th>Filed</th><th>Who</th></tr>
-              <tr><td>Building, new commercial</td><td>Nov 6</td><td>Ridgeway Builders</td></tr>
-              <tr><td>Site work</td><td>Oct 21</td><td>Ridgeway Builders</td></tr>
-              <tr><td>Electrical</td><td>Nov 8</td><td>Voltline Electric</td></tr>
-              <tr><td>Plumbing</td><td colspan="2"><span class="pill ok">None yet</span></td></tr></table>
-            <div class="acts"><button class="press sm grey">Copy the permit number</button><a class="lnk" href="#h" style="align-self:center">Open the city's permit search</a></div>
-          </div>
-          <div class="sec"><h4>What we did</h4>
-            <ul class="log"><li><b>Sam</b> called Dana Whitlock. No answer. <span>Today 9:12 AM</span></li><li><b>Sam</b> kept it on the skim. <span>Today 8:40 AM</span></li></ul>
-            <div class="field"><div class="in" style="color:#9ca3af">Add a note</div></div>
-          </div>
-        </div>
-        <div>
-          <div class="sec new"><h4>Ridgeway Builders <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></h4>
-            <p class="mut">General contractor · a customer of ours since 2024</p>
-            <p>We bid 5 and won 3. Last bid in June.</p>
-            <p>4 permits this year. Blue Heron Plumbing on 2, nobody yet on 2.</p>
-            <div class="person"><b>Dana Whitlock <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></b><a class="lnk" href="#h">210 555 0142</a><span class="mut">Project manager · filed this permit · in our contacts</span></div>
-            <div class="person"><b>Marcus Oyelaran</b><a class="lnk" href="#h">210 555 0177</a><span class="mut">Estimating · added by Jordan in March</span></div>
-            <div class="acts"><button class="press sm line">Add a person</button><a class="lnk" href="#i" style="align-self:center">The builder's page</a></div>
-          </div>
-          <div class="sec"><h4>Next</h4>
-            <div class="acts"><button class="press sm grey">Call Dana</button><button class="press sm grey">Look again on a day</button></div>
-          </div>
-          <div class="sec new"><h4>Close it out</h4>
-            <div style="display:grid;gap:8px">
-              <button class="press blue">Pursue · put Ridgeway on the calling deck</button>
-              <button class="press grey">Not pursuing…</button>
-            </div>
-            <p class="mut" style="margin-top:8px">Pursue makes the lead the Approach press makes today, with the phone, the people and the owner of record carried. Not pursuing asks for one of five reasons.</p>
-          </div>
-        </div>
+      <div class="chips"><span class="on">The building</span><span>Who pulled it</span><span>What we did 2</span></div>
+      <div class="pad" style="padding-top:0">
+        <div class="pcard"><div class="media"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div></div>
+        <div class="src" style="border-top:0;padding-top:0"><div class="from"><b>The permit, as the city gave it</b><span>Nov 6</span></div>
+          <div class="kv"><span>Work</span><span>New commercial, $1.4M declared</span><span>Pulled by</span><span>Ridgeway Builders <span class="pill ok">Good</span></span><span>Plumber</span><span>none yet</span></div></div>
+        <div class="src"><div class="from"><b>At the county</b><span>read Nov 10</span></div>
+          <div class="kv"><span>Owner of record</span><span>Lantern Creek Retail LP</span><span>Lot</span><span>Vacant, 2.1 acres</span></div></div>
+        <div class="src"><div class="from"><b>What we did</b><span>newest first</span></div>
+          <ul class="log" style="margin:0"><li><b>Sam</b> called Dana Whitlock. No answer. <span>Today 9:12 AM</span></li><li><b>Casey</b> kept it for Sam. <span>Today 8:40 AM</span></li></ul></div>
       </div>
+      <div class="answers" style="border-top:1px solid var(--border);background:var(--surface)"><button class="press grey">Not pursuing…</button><button class="press blue">Pursue…</button></div>
     </div></div>
-    <p class="say">On a phone the two columns become one, in this order: the header, the builder, the site, the permits, what we did, close it out.</p>
+    <p class="say">The same sheets as section L, as three chips. The foot is the close-out, where the skim's foot is Keep and Pass.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>H2</b> · Pursue: two taps, nothing typed</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet new">
+      <div class="grab"></div>
+      <h3>Pursue Ridgeway Builders</h3>
+      <div class="h4" style="margin-top:12px">What for</div>
+      <div class="chips" style="padding:0"><span class="on">This job</span><span>Their next jobs</span><span>Both</span></div>
+      <div class="h4" style="margin-top:14px">Who follows up</div>
+      <div class="chips" style="padding:0"><span class="on">Sam</span><span>Jordan</span><span>Anyone</span></div>
+      <p class="mut" style="margin:12px 0">A lead goes on the calling deck with the phone, the people and the owner of record. Sam sees it under Mine.</p>
+      <button class="press blue" style="width:100%;margin-bottom:12px">Pursue · hand to Sam</button>
+    </div></div></div></div>
+    <p class="say">The owner's answer on timing: the plumber is sometimes chosen already, not always. So Pursue says which it is. Their next jobs is the relationship, and it counts as a win of its own.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>H3</b> · Not pursuing: one tap</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet">
+      <div class="grab"></div>
+      <h3>Not pursuing this one</h3>
+      <div class="h4" style="margin-top:12px">Why</div>
+      <div class="chips" style="padding:0"><span>They have a plumber</span><span class="on">Could not reach anyone</span><span>Too far along</span><span>Not our kind of work</span><span>Not this builder</span></div>
+      <p class="mut" style="margin:12px 0">It goes to Closed with the reason, your name and today. It can be put back.</p>
+      <button class="press grey" style="width:100%;margin-bottom:12px">Not pursuing · could not reach anyone</button>
+    </div></div></div></div>
+    <p class="say">A reason is asked here, where the first draft's skim did not ask. A permit that got a closer look deserves one line of why it was dropped.</p>
   </div>
 </div>
 
 <h2 id="i">I · The builder</h2>
-<p class="lede">The long view. A name on a permit becomes a builder the first time it is seen. Every later permit of that name joins it. The office gives it a mark, corrects what kind of company it is, adds people, and says when two names are one company.</p>
+<p class="lede">The long view. A name on a permit becomes a builder the first time it is seen. Every later permit of that name joins it. The office gives it a mark and corrects what kind of company it is. In the first build the builder is the name, the mark and its permits. The people and the calls are not copied onto it: they are shown from the company's own record on the calling deck or in Customers, once there is one. Joining two names waits.</p>
 <div class="row">
   <div class="col p920">
     <span class="cap"><b>I1</b> · a builder's page, desk</span>
@@ -580,7 +607,7 @@
           </div>
         </div>
         <div>
-          <div class="sec new"><h4>People</h4>
+          <div class="sec"><h4>People <span class="pill grey">from the customer's record</span></h4>
             <div class="person"><b>Dana Whitlock</b><a class="lnk" href="#i">210 555 0142</a><span class="mut">Project manager · named on 3 permits · from the customer's contacts</span></div>
             <div class="person"><b>Marcus Oyelaran</b><a class="lnk" href="#i">210 555 0177</a><span class="mut">Estimating · added by Jordan in March · "Ask for him on bid day."</span></div>
             <div class="person"><b>Priya Raman</b><span class="pill grey">no number yet</span><span class="mut">Named on the Nov 6 permit · <a class="lnk" href="#i">Add her number</a></span></div>
@@ -589,7 +616,7 @@
           <div class="sec"><h4>Calls and notes</h4>
             <ul class="log"><li><b>Sam</b> called Dana. No answer. <span>Today</span></li><li><b>Jordan</b> had lunch with Marcus. Two shells coming in spring. <span>Sep 18</span></li></ul>
           </div>
-          <div class="sec new"><h4>Also filed as</h4>
+          <div class="sec"><h4>Also filed as <span class="pill grey">the join is held for later</span></h4>
             <p>RIDGEWAY BUILDERS LLC · Ridgeway Bldrs · Dana Whitlock, Ridgeway Builders</p>
             <div class="acts"><button class="press sm grey">Same company as…</button><a class="lnk" href="#i" style="align-self:center">Split a name off</a></div>
             <p class="mut" style="margin-top:6px">Same company as joins another builder into this one. Its permits, people and notes come with it, and the join can be undone.</p>
@@ -736,6 +763,41 @@
   </div>
 </div>
 
+<h2 id="m">M · Who skims, and whether it works</h2>
+<p class="lede">Two things the first draft left out. A queue nobody owns fills up again. And nothing said whether any of this gets more work. The owner's answer on who skims is the Leader in time, and more likely the assistants and estimators, so the nudge starts with one and widens to the others.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>M1</b> · the nudge, on Needs you</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="h4">Needs you</div>
+      <div class="pcard new"><div class="body" style="padding-bottom:14px">
+        <div class="kind">Permits</div>
+        <h3 style="font-size:1.0625rem">14 permits wait on a skim</h3>
+        <p class="mut" style="margin:4px 0 10px">The oldest has waited 3 days. About a minute.</p>
+        <button class="press blue" style="width:100%">Skim them</button>
+      </div></div>
+      <p class="mut" style="margin:12px 2px 0">The Leader sees this line each morning there is something to skim. When a permit has waited two days, the assistants and estimators see it too.</p>
+    </div></div></div>
+    <p class="say">Nobody is blocked. Anyone who may skim can open the deck any day. The line only says who is asked first.</p>
+  </div>
+  <div class="col p560">
+    <span class="cap"><b>M2</b> · the count, on Permits</span>
+    <div class="frame"><div class="screen w560"><div class="pad">
+      <div class="h4">Permits, November so far</div>
+      <div class="tiles new">
+        <div class="tile"><b>212</b><span>arrived</span></div>
+        <div class="tile"><b>198</b><span>skimmed</span></div>
+        <div class="tile"><b>31</b><span>kept</span></div>
+        <div class="tile"><b>7</b><span>pursued</span></div>
+        <div class="tile"><b>3</b><span>bid</span></div>
+        <div class="tile"><b>1</b><span>won</span></div>
+      </div>
+      <div class="sec" style="margin-top:12px"><div class="kv"><span>Skimmed by</span><span>Sam 120 · Jordan 69 · Casey 9</span><span>Still waiting</span><span>14, the oldest for 3 days</span><span>Pursued for</span><span>this job 4 · their next jobs 3</span><span>Passed, why</span><span>not our work 88 · too small 41 · too far 22 · no reason 16</span></div></div>
+    </div></div></div>
+    <p class="say">Bid and won are read from the leads the permits made. If pursued stays at nothing after a month, the skim is busywork and the plan should change. The reasons row is what later rules would be written from.</p>
+  </div>
+</div>
+
 <h2>K · Two other ways to do step one</h2>
 <p class="lede">Both were drawn before choosing. Each one is better than the deck at something, and the plan takes that part of each.</p>
 <div class="row">
@@ -781,7 +843,8 @@
 </div>
 
 <h2>Is this the best we can do?</h2>
-<p class="lede">Asked twice. First of the plan while the frames were being drawn, which changed the six things below. Then of the page once it was rendered, which is the box after them.</p>
+<p class="lede">Asked three times. Of the plan while the frames were being drawn, which changed the six things below. Of the page once it was rendered. And of the whole of it on 2026-11-10, when the owner asked for a holistic look before the energy is spent building it. That last look is the first box.</p>
+<p class="note"><b>The holistic look, 2026-11-10.</b> The direction held. The plan was too big and one part was aimed wrong. Six changes. One: the evidence was thin, since the tab was a day old when it showed nothing answered, so the skim is built small and then measured (frame M2). Two: the builder may matter as much as the permit. The owner's answer is that the plumber is sometimes chosen by the time a permit is filed, so Pursue says whether it is for this job or their next ones (frame H2), and Builders moved up into the first build. Three: best first, not newest first (frame A). Four: fewer new parts. The dig-in page became the two sheets already built (frame H1), a builder's people are shown from the company's own record and not copied, and the stack, the first-day card and the join are held. Five: one set of words everywhere. Six: an owner and a count. The Leader is asked first and the team after two days (frame M1). Eleven PRs became eight, one of them built, and then a stop to look.</p>
 <ol class="calls">
   <li><b>The first draft had three answers.</b> Pass, Later and Pursue now. Pursue on a glance skips the dig in that makes a call worth making. The card has two answers and a small Open it now for the rare permit that cannot wait.</li>
   <li><b>The first draft kept the typed reason.</b> The ledger refuses a verdict with no reason. On 163 cards that is 163 sentences, and it is why nothing has been answered. The reason became four taps in the bar, optional, after the card is gone.</li>
@@ -796,15 +859,16 @@
 <p class="note"><b>Still weak, and said plainly.</b> The card can only show what the feed and the county give. On the live tab 137 of the 163 waiting permits are applications whose work reads only Commercial project, 70 declare no value, and the history word reads new name on 162. The first weeks of the skim will be made on the street, the size, the owner of record and the miles. The card gets better as builders collect permits, marks and people, which is the reason the builder work is in the same plan and not a later one. The other weak spot is the swipe itself: a drag that starts at the left edge of a phone is the browser's own Back. The drag starts on the card, the card sits inside the page's gutter, and the buttons never go away.</p>
 
 <h2>The owner's calls</h2>
+<p class="lede">Two are answered. Six are left, each with the pick drawn.</p>
 <ol class="calls">
-  <li><b>The two answers.</b> Right keeps for a closer look and left passes, under the words Keep and Pass. Or other words?</li>
-  <li><b>A reason on a pass.</b> Optional and one tap, as drawn. Or required, or none at all?</li>
-  <li><b>The backlog.</b> Skim all 163, or start from the last 14 days and pass the older ones in one press as Too old?</li>
-  <li><b>What reaches the deck.</b> Commercial only, $25k and up or not declared, no houses, nothing that already has a plumber. That is today's default list. Keep it?</li>
-  <li><b>One queue or one each.</b> As drawn, a permit skimmed by one person is done for everyone. Or does each estimator skim their own?</li>
-  <li><b>Where a pursued permit lands.</b> Today the lead goes on the Jobs to GC deck. A general contractor who needs a plumber reads more like the Customers deck. Which one, or by the builder's kind?</li>
-  <li><b>What Avoid does.</b> As drawn it is a red word on the card. Or should an Avoid builder's permits pass by themselves, counted and listed under Closed?</li>
-  <li><b>Who may mark a builder.</b> The office and every estimator, as with verdicts. Or the office alone?</li>
+  <li><b>Answered: is the plumber already chosen when a permit is filed?</b> It depends, not always. So both the job and the builder are worth a Keep, and Pursue says which.</li>
+  <li><b>Answered: who skims?</b> The Leader in time, who passes the kept ones to the team. More likely the assistants and estimators. So one shared queue, a hand-off on Keep, and a nudge that starts with the Leader.</li>
+  <li><b>The words.</b> Keep, Pass, Pursue and Has a plumber everywhere, in place of the ledger's four. Or keep the ledger's words?</li>
+  <li><b>A reason on a pass.</b> Optional and one tap on the skim, asked for on Not pursuing. Or required on both, or on neither?</li>
+  <li><b>What reaches the deck.</b> Commercial only, $25k and up or not declared, no houses, nothing that already has a plumber. Keep it?</li>
+  <li><b>Where a pursued permit lands.</b> As drawn, by the builder's kind: a general contractor on the Customers deck, an owner or developer on Jobs to GC. Today every one goes to Jobs to GC.</li>
+  <li><b>What Avoid does.</b> As drawn, a red word and a place at the end of the deck. Or should those permits pass by themselves?</li>
+  <li><b>Who may mark a builder, and when the nudge widens.</b> As drawn, the office and every estimator may mark, and the team is asked after two days. Or other answers?</li>
 </ol>
 
 </div>
@@ -818,17 +882,22 @@
     { kind: 'Commercial remodel · issued 2 days ago', title: 'Restaurant finish out, 3,100 sq ft', sv: ['strip', 'Street view · Jun 2024'], money: 'Value not declared', where: '44 Tannery Square, 78205', miles: '6 mi from the office', pin: [30, 48], who: 'Marlow Commercial', mark: ['grey', 'No mark'], hist: 'We bid 1 and did not win it.', perm: '2 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tannery Square Partners', lot: 'Retail strip, built 2009' },
     { kind: 'New commercial · applied 3 days ago', title: 'Hotel, 4 floors, 62,000 sq ft', sv: ['lot', 'Street view · Nov 2022'], money: '<b>$8.8M</b> declared', where: '1200 Heron Landing, 78230', miles: '9 mi from the office', pin: [44, 22], who: 'Juniper Hospitality Group', mark: ['blue', 'New name'], hist: 'No bid to this name yet.', perm: '3 permits this year. All 3 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Juniper Hospitality Group', lot: 'Vacant land, 3.4 acres' },
     { kind: 'Commercial project · applied 1 day ago', title: 'Sign and canopy', sv: ['office', 'Street view · Jan 2025'], money: '<b>$31k</b> declared', where: '9 Larkspur Court, 78213', miles: '11 mi from the office', pin: [55, 60], who: 'Permit Runners of Texas', mark: ['grey', 'Files for others'], hist: 'Not who builds it. Read the owner.', perm: '31 permits this year for 19 owners.', plumber: ['ok', 'None yet'], owner: 'Larkspur Dental PLLC', lot: 'Office, built 1998' },
-    { kind: 'Commercial remodel · issued 5 days ago', title: 'Medical office, 9,000 sq ft', sv: ['office', 'Street view · Sep 2024'], money: '<b>$2.2M</b> declared', where: '5 Aster Ridge, 78258', miles: '17 mi from the office', pin: [70, 20], who: 'Calloway and Finch', mark: ['grey', 'No mark'], hist: 'We bid 2 and won none. Last bid in 2025.', perm: '11 permits this year. 7 have no plumber yet.', plumber: ['grey', 'On file, no plumber named'], owner: 'Aster Ridge Medical LP', lot: 'Office, built 2016' }
+    { kind: 'Commercial remodel · issued 5 days ago', title: 'Medical office, 9,000 sq ft', sv: ['office', 'Street view · Sep 2024'], money: '<b>$2.2M</b> declared', where: '5 Aster Ridge, 78258', miles: '17 mi from the office', pin: [70, 20], who: 'Calloway and Finch', mark: ['grey', 'No mark'], hist: 'We bid 2 and won none. Last bid in 2025.', perm: '11 permits this year. 7 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Aster Ridge Medical LP', lot: 'Office, built 2016' }
   ];
+  // Best first: the order a score would give these six, and the line that says why.
+  var BEST = [['Retail shell', 'Near the top: no plumber yet · a builder we won with · 14 miles'], ['Hotel', 'Near the top: no plumber yet · $8.8M · 9 miles'], ['Restaurant', 'No plumber yet · 6 miles · value not declared'], ['Medical office', 'No plumber yet · 17 miles · we bid them twice and won none'], ['Sign and canopy', 'Near the end: small · the name only files for others'], ['Parking lot', 'Near the end: 41 miles · a builder marked Avoid']];
+  function best(p) { for (var k = 0; k < BEST.length; k++) if (p.title.indexOf(BEST[k][0]) === 0) return k; return BEST.length; }
+  all.sort(function (x, y) { return best(x) - best(y); });
   var stage = document.getElementById('d-stage'), demo = document.getElementById('demo');
   var elSkim = document.getElementById('d-skim'), elKept = document.getElementById('d-kept');
-  var i = 0, kept = 0, passed = 0, last = null, reason = null;
+  var i = 0, kept = 0, passed = 0, last = null, reason = null, forWho = null;
+  var TEAM = ['Anyone', 'Sam', 'Jordan'];
   var REASONS = ['Too small', 'Too far', 'Not our work', 'Not this builder'];
 
   function cardHtml(p) {
     return '<span class="stamp keep">KEEP</span><span class="stamp pass">PASS</span>' +
       '<div class="media"><div class="sv ' + p.sv[0] + '"><span class="tag">' + p.sv[1] + '</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:' + p.pin[0] + '%;top:' + p.pin[1] + '%"></span><span class="miles">' + p.miles + '</span></div></div>' +
-      '<div class="body"><div class="kind">' + p.kind + '</div><h3>' + p.title + '</h3><div class="money">' + p.money + '</div><div class="where">' + p.where + '</div>' +
+      '<div class="body"><div class="kind">' + p.kind + '</div><h3>' + p.title + '</h3><div class="money">' + p.money + '</div><div class="where">' + p.where + '</div><div class="why">' + (BEST[best(p)] ? BEST[best(p)][1] : '') + '</div>' +
       '<div class="fact tap"><span class="k">Who</span><span class="v"><b>' + p.who + '</b> <span class="pill ' + p.mark[0] + '">' + p.mark[1] + '</span> <a class="g solo" target="_blank" rel="noreferrer" title="Search Google for this name" href="https://www.google.com/search?q=' + encodeURIComponent('"' + p.who + '" San Antonio') + '"><i>G</i></a><span class="sub">' + p.hist + '</span><span class="sub">' + p.perm + '</span></span></div>' +
       '<div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ' + p.plumber[0] + '">' + p.plumber[1] + '</span></span></div>' +
       '<div class="fact tap"><span class="k">Property</span><span class="v">' + p.owner + '<span class="sub">' + p.lot + '</span></span></div></div>' +
@@ -836,7 +905,7 @@
   }
   function undoHtml() {
     if (!last) return '';
-    if (last === 'keep') return '<div class="undo"><span>Kept for a closer look.</span><span class="sp"></span><button class="u" data-a="undo">Undo</button></div>';
+    if (last === 'keep') return '<div class="undo"><span>Kept. For?</span>' + TEAM.map(function (t) { return '<button data-f="' + t + '"' + (forWho === t ? ' class="picked"' : '') + '>' + t + '</button>'; }).join('') + '<span class="sp"></span><button class="u" data-a="undo">Undo</button></div>';
     return '<div class="undo"><span>Passed. Why?</span>' + REASONS.map(function (r) { return '<button data-r="' + r + '"' + (reason === r ? ' class="picked"' : '') + '>' + r + '</button>'; }).join('') + '<span class="sp"></span><button class="u" data-a="undo">Undo</button></div>';
   }
   function draw() {
@@ -847,14 +916,14 @@
       return;
     }
     var left = all.length - i;
-    stage.innerHTML = '<div class="togo"><span><b>' + left + '</b> to skim</span><span>Pulled today 5:31 AM</span></div><div class="bar"><i style="width:' + Math.round((i / all.length) * 100) + '%"></i></div>' +
+    stage.innerHTML = '<div class="togo"><span><b>' + left + '</b> to skim</span><span>Best first · pulled 5:31 AM</span></div><div class="bar"><i style="width:' + Math.round((i / all.length) * 100) + '%"></i></div>' +
       '<div class="deck">' + (left > 2 ? '<div class="under two"></div>' : '') + (left > 1 ? '<div class="under"></div>' : '') + '<div class="pcard" id="d-card">' + cardHtml(all[i]) + '</div></div>' + undoHtml();
     bindDrag(document.getElementById('d-card'));
   }
   function answer(a) {
     if (i >= all.length) return;
     var card = document.getElementById('d-card');
-    last = a; reason = null;
+    last = a; reason = null; forWho = null;
     if (a === 'keep') kept++; else passed++;
     if (card) {
       card.style.transition = 'transform .18s ease-in, opacity .18s ease-in';
@@ -896,7 +965,8 @@
   }
   stage.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
-    var a = b.getAttribute('data-a'), r = b.getAttribute('data-r');
+    var a = b.getAttribute('data-a'), r = b.getAttribute('data-r'), f = b.getAttribute('data-f');
+    if (f) { forWho = forWho === f ? null : f; draw(); return; }
     if (a === 'keep' || a === 'pass') answer(a);
     else if (a === 'undo') undo();
     else if (a === 'reset') { i = 0; kept = 0; passed = 0; last = null; reason = null; draw(); }

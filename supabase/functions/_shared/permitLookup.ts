@@ -35,6 +35,16 @@ export function contactParts(contact: string | null | undefined): { person: stri
   return COMPANY_WORDS.test(raw) ? { person: null, company: raw } : { person: raw, company: null }
 }
 
+/**
+ * The key a builder's permits are matched on (punch list #302): the company when the contact line
+ * names one, else the person, as `research_name_key` keys a name. `permit-pull` writes it to
+ * `permits.builder_key`; the app reads its permits back by it.
+ */
+export function builderKeyOf(contact: string | null | undefined): string | null {
+  const { person, company } = contactParts(contact)
+  return nameKey(company ?? person)
+}
+
 /** What to ask Google Places for: the company when there is one, else the person, with the city. */
 export function placesQuery(contact: string | null | undefined, city: string): string | null {
   const { person, company } = contactParts(contact)

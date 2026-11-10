@@ -8,7 +8,8 @@
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { leadFromPermit, ymdPlusDays, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
+import { leadFromPermit, ymdPlusDays, type BuilderMarkValue, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type PursueFor, type ResearchPermitRow } from './permitResearch'
+import type { BuilderKind, BuilderRow, PermitFunnel } from './permitBuilders'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { BUILDER_PERMIT_DAYS, type SitePermit } from './permitPublic'
 
@@ -16,8 +17,18 @@ function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
 }
 
+/** PostgREST's "function not found": the window after the client deploys and before migration *_permit_skim is pushed. */
+function missingFunction(error: { message?: string; code?: string } | null): boolean {
+  return error != null && (error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? ''))
+}
+
 export async function loadResearchPermits(city: string, sinceYmd: string, residential: boolean): Promise<ResearchPermitRow[]> {
-  const { data, error } = await supabase.rpc('research_permits' as never, { p_city: city, p_since: sinceYmd, p_residential: residential } as never)
+  const args = { p_city: city, p_since: sinceYmd, p_residential: residential }
+  // The builder and the rest of the verdict ride on v2; the older read stands in until the migration is pushed.
+  const v2 = await supabase.rpc('research_permits_v2' as never, args as never)
+  if (!v2.error) return (v2.data ?? []) as ResearchPermitRow[]
+  if (!missingFunction(v2.error)) failed(v2.error, 'read the permits')
+  const { data, error } = await supabase.rpc('research_permits' as never, args as never)
   if (error) failed(error, 'read the permits')
   return (data ?? []) as ResearchPermitRow[]
 }
@@ -53,16 +64,102 @@ export async function recordVerdict(input: {
   lookAgainOn: string | null
   prospectId: string | null
   userId: string
+  /** The one-tap reason as a code, the person a keep or a pursue is handed to, and what a pursue is for (punch list #302). */
+  reasonCode?: string | null
+  forUserId?: string | null
+  pursueFor?: PursueFor | null
 }): Promise<void> {
-  const { error } = await supabase.from('permit_verdicts' as never).insert({
+  const row: Record<string, unknown> = {
     permit_id: input.permitId,
     verdict: input.verdict,
     reason: input.reason.trim(),
     look_again_on: input.verdict === 'look' ? input.lookAgainOn : null,
     prospect_id: input.prospectId,
     decided_by: input.userId,
-  } as never)
+  }
+  // The three newer columns are named only when they carry something, so a write still lands before the migration does.
+  if (input.reasonCode) row.reason_code = input.reasonCode
+  if (input.forUserId) row.for_user_id = input.forUserId
+  if (input.pursueFor) row.pursue_for = input.pursueFor
+  const { error } = await supabase.from('permit_verdicts' as never).insert(row as never)
   if (error) failed(error, 'keep the verdict')
+}
+
+/** Put back: the permit waits on the skim again. A fifth verdict, since the table only ever grows. */
+export async function putBackPermit(permitId: string, userId: string): Promise<void> {
+  const { error } = await supabase.from('permit_verdicts' as never).insert({ permit_id: permitId, verdict: 'back', reason: 'Put back on the skim.', decided_by: userId } as never)
+  if (error) failed(error, 'put the permit back')
+}
+
+/** One line of what was done on a permit, oldest first as stored; the screen turns it newest first. */
+export type PermitVerdictEvent = { id: string; verdict: string; reason: string; reason_code: string | null; decided_at: string; by_name: string | null; for_name: string | null; pursue_for: string | null }
+
+export async function loadPermitHistory(permitId: string): Promise<PermitVerdictEvent[]> {
+  const { data, error } = await supabase.from('permit_verdicts' as never).select('*').eq('permit_id', permitId).order('decided_at', { ascending: false }).limit(50)
+  if (error) failed(error, 'read what was done on this permit')
+  const rows = (data ?? []) as Array<{ id: string; verdict: string; reason: string; reason_code?: string | null; decided_at: string; decided_by: string; for_user_id?: string | null; pursue_for?: string | null }>
+  const ids = [...new Set(rows.flatMap((r) => [r.decided_by, r.for_user_id ?? null]).filter((v): v is string => Boolean(v)))]
+  const names = new Map<string, string>()
+  if (ids.length > 0) {
+    const { data: users } = await supabase.from('users').select('id, name').in('id', ids)
+    for (const u of users ?? []) names.set(u.id, u.name ?? '')
+  }
+  return rows.map((r) => ({ id: r.id, verdict: r.verdict, reason: r.reason, reason_code: r.reason_code ?? null, decided_at: r.decided_at, by_name: names.get(r.decided_by) || null, for_name: r.for_user_id ? names.get(r.for_user_id) || null : null, pursue_for: r.pursue_for ?? null }))
+}
+
+/** The people a keep can be handed to: the office and the estimators, by name. Empty when the list cannot be read. */
+export async function loadResearchers(): Promise<Array<{ id: string; name: string }>> {
+  const { data, error } = await supabase.from('users').select('id, name, role, archived_at').in('role', ['dev', 'master_technician', 'assistant', 'controller', 'estimator']).is('archived_at', null).order('name')
+  if (error) return []
+  return (data ?? []).filter((u) => (u.name ?? '').trim() !== '').map((u) => ({ id: u.id, name: u.name as string }))
+}
+
+/** Builders: every name that pulled a commercial building permit in the city in the last year. Null before the migration is pushed. */
+export async function loadBuilders(city: string): Promise<BuilderRow[] | null> {
+  const { data, error } = await supabase.rpc('research_builders' as never, { p_city: city } as never)
+  if (error) {
+    if (missingFunction(error)) return null
+    failed(error, 'read the builders')
+  }
+  return (data ?? []) as BuilderRow[]
+}
+
+/** Our mark on a builder: good or avoid with its reason, or none to clear it. Append-only; the newest wins. */
+export async function markBuilder(builderKey: string, mark: BuilderMarkValue | 'none', reason: string, userId: string): Promise<void> {
+  const { error } = await supabase.from('builder_marks' as never).insert({ builder_key: builderKey, mark, reason: reason.trim(), marked_by: userId } as never)
+  if (error) failed(error, 'keep the mark')
+}
+
+/** What the office says about a name: what to call it and what kind of company it is. */
+export async function saveBuilder(builderKey: string, name: string, kind: BuilderKind | null, userId: string): Promise<void> {
+  const { error } = await supabase.from('builders' as never).upsert({ key: builderKey, name: name.trim(), kind, updated_by: userId, updated_at: new Date().toISOString() } as never, { onConflict: 'key' })
+  if (error) failed(error, 'keep the builder')
+}
+
+/** A builder's building permits by its key, the last year, newest first. */
+export async function loadPermitsOfBuilder(city: string, builderKey: string, todayYmd: string): Promise<SitePermit[]> {
+  const since = ymdPlusDays(todayYmd, -BUILDER_PERMIT_DAYS)
+  const { data, error } = await supabase
+    .from('permits' as never)
+    .select(SITE_PERMIT_COLUMNS)
+    .eq('city', city)
+    .eq('kind', 'building')
+    .eq('builder_key', builderKey)
+    .or(`issued_on.gte.${since},submitted_on.gte.${since}`)
+    .order('submitted_on', { ascending: false, nullsFirst: false })
+    .limit(200)
+  if (error) failed(error, "read this builder's permits")
+  return (data ?? []) as SitePermit[]
+}
+
+/** The count since a day. Null before the migration is pushed. */
+export async function loadPermitFunnel(city: string, sinceYmd: string): Promise<PermitFunnel | null> {
+  const { data, error } = await supabase.rpc('permit_funnel' as never, { p_city: city, p_since: sinceYmd } as never)
+  if (error) {
+    if (missingFunction(error)) return null
+    failed(error, 'read the count')
+  }
+  return (data ?? null) as PermitFunnel | null
 }
 
 /**

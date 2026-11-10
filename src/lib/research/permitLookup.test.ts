@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   bcadDetailUrl,
+  builderKeyOf,
   companyFactsFromPlaces,
   companyLookupKey,
   contactParts,
@@ -72,5 +73,15 @@ describe('the parcel lookup', () => {
     const now = Date.parse('2026-11-09T12:00:00Z')
     expect(lookupIsFresh('2026-11-01T00:00:00Z', now)).toBe(true)
     expect(lookupIsFresh('2026-09-01T00:00:00Z', now)).toBe(false)
+  })
+})
+
+describe('builderKeyOf (punch list #302)', () => {
+  it('keys a contact line on its company, else on the person', () => {
+    expect(builderKeyOf('Dana Whitlock, Ridgeway Builders, LLC')).toBe('ridgewaybuilders')
+    expect(builderKeyOf('RIDGEWAY BUILDERS LLC')).toBe('ridgewaybuilders')
+    expect(builderKeyOf('Dana Whitlock')).toBe('danawhitlock')
+    expect(builderKeyOf('  ')).toBeNull()
+    expect(builderKeyOf(null)).toBeNull()
   })
 })

@@ -2,7 +2,8 @@
  * Research (punch list #292): the permit ledger's words and rules. A city's building permits come
  * from `research_permits` (migration 20261109070000) with the plumber pairing and the newest verdict
  * already on each row; this file reads them for the screen. Four verdicts, a reason on each, one
- * press per row. Pure: no React, no Supabase.
+ * press per row. Since punch list #302 the four read Keep, Pass, Pursue and Has a plumber on every
+ * screen (the stored values are unchanged). Pure: no React, no Supabase.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { isOfficeRole } from '../doorRoles'
@@ -17,13 +18,17 @@ export const DEFAULT_RESEARCH_CITY = 'San Antonio'
 export const RESEARCH_CITIES: readonly string[] = [DEFAULT_RESEARCH_CITY]
 
 export type PermitVerdict = 'look' | 'approach' | 'not_for_us' | 'taken'
+/** What a pursue is for (punch list #302): the plumber is sometimes chosen already, and then the relationship is the point. */
+export type PursueFor = 'this_job' | 'next_jobs' | 'both'
+/** Our mark on a builder. */
+export type BuilderMarkValue = 'good' | 'avoid'
 export const PERMIT_VERDICTS: readonly PermitVerdict[] = ['approach', 'look', 'not_for_us', 'taken']
 
 export const VERDICT_WORDS: Record<PermitVerdict, { press: string; chip: string; hint: string }> = {
-  approach: { press: 'Approach them', chip: 'Approached', hint: 'Call who pulled it. A GC lead is made on the GCs deck.' },
-  look: { press: 'Look into it', chip: 'Look into it', hint: 'Worth a closer read. It waits on the list with a day to look again.' },
-  not_for_us: { press: 'Not for us', chip: 'Not for us', hint: 'Wrong trade, wrong size or wrong part of town.' },
-  taken: { press: 'Already taken', chip: 'Already taken', hint: 'A plumber has it. The row leaves the list.' },
+  approach: { press: 'Pursue', chip: 'Pursuing', hint: 'Go after it. A GC lead is made on the GCs deck.' },
+  look: { press: 'Keep', chip: 'Kept', hint: 'Worth a closer look. It waits under Kept with a day to look again.' },
+  not_for_us: { press: 'Pass', chip: 'Passed', hint: 'Wrong trade, wrong size or wrong part of town.' },
+  taken: { press: 'Has a plumber', chip: 'Has a plumber', hint: 'A plumber has it. The row leaves the list.' },
 }
 
 export function isPermitVerdict(value: unknown): value is PermitVerdict {
@@ -60,16 +65,31 @@ export type ResearchPermitRow = {
   verdict_by: string | null
   verdict_by_name: string | null
   verdict_at: string | null
+  // From `research_permits_v2` (migration *_permit_skim); absent on a row the older read returned.
+  verdict_reason_code?: string | null
+  verdict_for_user?: string | null
+  verdict_for_name?: string | null
+  verdict_pursue_for?: PursueFor | null
+  builder_key?: string | null
+  builder_name?: string | null
+  builder_kind?: string | null
+  builder_mark?: BuilderMarkValue | null
+  builder_mark_reason?: string | null
+  builder_mark_by_name?: string | null
+  builder_mark_at?: string | null
+  /** The builder's commercial building permits in the last year, and how many have no plumbing permit. */
+  builder_permits?: number | null
+  builder_open?: number | null
 }
 
 /** What the list shows: the rows waiting on a look are the default; the rest are lenses on the same rows. */
 export type ResearchShowing = 'waiting' | 'look' | 'approach' | 'not_for_us' | 'taken' | 'all'
 export const RESEARCH_SHOWING_WORDS: Record<ResearchShowing, string> = {
-  waiting: 'Waiting on a look',
-  look: 'Look into it',
-  approach: 'Approached',
-  not_for_us: 'Not for us',
-  taken: 'Already have a plumber',
+  waiting: 'To skim',
+  look: 'Kept',
+  approach: 'Pursuing',
+  not_for_us: 'Passed',
+  taken: 'Has a plumber',
   all: 'Everything',
 }
 
@@ -158,8 +178,12 @@ export function shortDay(ymd: string | null): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
-/** The Pulled line: "Pulled 6:10 AM · 14 new since Thursday" and the lens counts. */
-export function pulledWords(input: { ranAt: string | null; error: string | null; newCount: number; lastLookedYmd: string | null; counts: ReturnType<typeof lensCounts> }): string {
+/** When the feed was last read, and what stopped it if anything did: the skim's whole Pulled line. */
+export function pulledAtWords(input: { ranAt: string | null; error: string | null }): string {
+  return pulledParts(input).join(' · ')
+}
+
+function pulledParts(input: { ranAt: string | null; error: string | null }): string[] {
   const parts: string[] = []
   if (input.ranAt) {
     const when = new Date(input.ranAt)
@@ -170,9 +194,15 @@ export function pulledWords(input: { ranAt: string | null; error: string | null;
   } else {
     parts.push('Not pulled yet')
   }
+  return parts
+}
+
+/** The Pulled line: "Pulled 6:10 AM · 14 new since Thursday" and the lens counts. */
+export function pulledWords(input: { ranAt: string | null; error: string | null; newCount: number; lastLookedYmd: string | null; counts: ReturnType<typeof lensCounts> }): string {
+  const parts = pulledParts(input)
   parts.push(input.lastLookedYmd ? `${input.newCount} new since you looked` : `${input.newCount} filed in the window`)
   const c = input.counts
-  parts.push(`${c.waiting} wait on a look`, `${c.approach} approached`, `${c.look} to look into`, `${c.not_for_us} not for us`, `${c.taken} already have a plumber`)
+  parts.push(`${c.waiting} to skim`, `${c.look} kept`, `${c.approach} pursuing`, `${c.not_for_us} passed`, `${c.taken} have a plumber`)
   return parts.join(' · ')
 }
 

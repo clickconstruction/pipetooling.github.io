@@ -16,8 +16,23 @@ const io = vi.hoisted(() => ({
   loadPermitFeedRow: vi.fn(),
   loadSitePermits: vi.fn(),
   loadBuilderPermits: vi.fn(),
+  loadResearchers: vi.fn(),
+  putBackPermit: vi.fn(),
+  loadPermitHistory: vi.fn(),
+  loadBuilders: vi.fn(),
+  markBuilder: vi.fn(),
+  saveBuilder: vi.fn(),
+  loadPermitsOfBuilder: vi.fn(),
+  loadPermitFunnel: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
+const streetView = vi.hoisted(() => ({
+  fetchStreetViewMetaWithMonth: vi.fn(),
+  fetchStreetViewImageBlob: vi.fn(),
+  fetchStreetViewMeta: vi.fn(),
+  googleStreetViewPanoUrl: (lat: number, lng: number) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`,
+}))
+vi.mock('../../lib/fetchStreetViewPreview', () => streetView)
 vi.mock('../../hooks/useOfficeAnchor', () => ({ useOfficeAnchor: () => null }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 // The map canvases are lazy and heavy; a list of pin buttons drives the same callbacks (the Bid Board smoke's stand-in).
@@ -35,6 +50,13 @@ vi.mock('../map/PinsMapCanvas', () => ({
 }))
 
 import { ProspectsResearchTab } from './ProspectsResearchTab'
+
+/** The tab opens on Skim since punch list #302; the ledger is one press away. */
+async function openLedger() {
+  renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Ledger' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: '100 SAMPLE ST' })).toBeTruthy())
+}
 
 function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
   return {
@@ -86,6 +108,18 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     const site = { permit_number: 'COM-BLG-PMT26-00000001', permit_type: 'Comm New Building Permit', kind: 'building', stage: 'issued', work_type: 'New commercial', submitted_on: '2026-10-02', issued_on: '2026-11-06', contact: 'Ridgeway Builders', address: '100 SAMPLE ST', declared_value: 1_400_000 }
     io.loadSitePermits.mockReset().mockResolvedValue([{ ...site, id: 'p1' }, { ...site, id: 's2', kind: 'other', work_type: 'Commercial site work', issued_on: '2026-10-21' }])
     io.loadBuilderPermits.mockReset().mockResolvedValue([{ ...site, id: 'p1' }, { ...site, id: 'b2', address: '77 KILN ST', issued_on: '2026-10-02' }, { ...site, id: 'b3', contact: 'Ridgeway Roofing', address: '5 ASTER RDG' }])
+    streetView.fetchStreetViewMetaWithMonth.mockReset().mockResolvedValue({ lat: 29.4, lng: -98.5, month: '2024-03' })
+    streetView.fetchStreetViewImageBlob.mockReset().mockResolvedValue(new Blob(['x'], { type: 'image/jpeg' }))
+    URL.createObjectURL = vi.fn(() => 'blob:street-view')
+    URL.revokeObjectURL = vi.fn()
+    io.loadResearchers.mockReset().mockResolvedValue([])
+    io.putBackPermit.mockReset().mockResolvedValue(undefined)
+    io.loadPermitHistory.mockReset().mockResolvedValue([])
+    io.loadBuilders.mockReset().mockResolvedValue([])
+    io.markBuilder.mockReset().mockResolvedValue(undefined)
+    io.saveBuilder.mockReset().mockResolvedValue(undefined)
+    io.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
+    io.loadPermitFunnel.mockReset().mockResolvedValue(null)
     io.loadContactHistory.mockReset().mockResolvedValue(new Map([['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }]]))
   })
   afterEach(() => {
@@ -94,12 +128,11 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   })
 
   it('draws the waiting rows with the plumber signal, and counts the taken row on its lens', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    await openLedger()
     expect(screen.getByText('none yet')).toBeTruthy()
     expect(screen.queryByText('300 HOPKINS ST')).toBeNull()
-    expect(screen.getByText(/1 wait on a look/)).toBeTruthy()
-    expect(screen.getByText(/1 already have a plumber/)).toBeTruthy()
+    expect(screen.getByText(/1 to skim · 0 kept/)).toBeTruthy()
+    expect(screen.getByText(/1 have a plumber/)).toBeTruthy()
     expect(io.loadResearchPermits).toHaveBeenCalledWith('San Antonio', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), false)
     // The hint under who pulled it, from our bid history with the name.
     await waitFor(() => expect(screen.getByText('warm')).toBeTruthy())
@@ -107,8 +140,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   })
 
   it("Map draws the lens as pins; a pin opens the row's card with its Decide press", async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    await openLedger()
     fireEvent.click(screen.getByRole('button', { name: 'Map' }))
     await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
     const pin = screen.getByRole('button', { name: /pin 100 SAMPLE ST/ })
@@ -118,33 +150,30 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     expect(screen.getByRole('button', { name: 'Decide…' })).toBeTruthy()
   })
 
-  it('Already have a plumber shows who wins what in the window', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+  it('Has a plumber shows who wins what in the window', async () => {
+    await openLedger()
     fireEvent.change(screen.getByLabelText('Showing'), { target: { value: 'taken' } })
     expect(screen.getByText(/Who wins what in San Antonio/)).toBeTruthy()
     expect(screen.getByText('Lone Star Plumbing Co. · 1')).toBeTruthy()
   })
 
-  it('opens the sheet on Decide…, refuses an empty reason, then keeps an Approach with the lead it made', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+  it('opens the sheet on Decide…, refuses an empty reason, then keeps a Pursue with the lead it made', async () => {
+    await openLedger()
     fireEvent.click(screen.getByRole('button', { name: 'Decide…' }))
     const dialog = screen.getByRole('dialog')
     expect(dialog).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Approach them · make the lead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pursue · make the lead' }))
     expect(io.recordVerdict).not.toHaveBeenCalled()
     expect(screen.getByText('Say why in a line. The next estimator reads it.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Why'), { target: { value: 'Our size, and we have won with them.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Approach them · make the lead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pursue · make the lead' }))
     await waitFor(() => expect(io.recordVerdict).toHaveBeenCalled())
     expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1', {})
     expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'approach', prospectId: 'lead-1', userId: 'u1' }))
   })
 
-  it('shows the Already have a plumber lens with the feed-read row and its Decide anyway', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+  it('shows the Has a plumber lens with the feed-read row and its Decide anyway', async () => {
+    await openLedger()
     fireEvent.change(screen.getByLabelText('Showing'), { target: { value: 'taken' } })
     expect(screen.getByText('300 HOPKINS ST')).toBeTruthy()
     expect(screen.getByText('Lone Star Plumbing Co.')).toBeTruthy()
@@ -152,40 +181,39 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   })
 
   it('Pull now runs the feed and reads again', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    await openLedger()
+    const before = io.loadResearchPermits.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'Pull now' }))
     await waitFor(() => expect(io.pullPermitsNow).toHaveBeenCalled())
-    await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(io.loadResearchPermits.mock.calls.length).toBeGreaterThan(before))
   })
 
   it('says what fills an empty ledger before the first pull', async () => {
     io.loadResearchPermits.mockResolvedValue([])
     io.loadLatestPull.mockResolvedValue({ ranAt: null, error: null })
     renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ledger' }))
     await waitFor(() => expect(screen.getByText('No permits yet.')).toBeTruthy())
     expect(screen.getByText(/Not pulled yet/)).toBeTruthy()
   })
 
-  it("the name opens the card with Google's facts and the county's owner, and Approach them carries them onto the lead", async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+  it("the name opens the card with Google's facts and the county's owner, and Pursue carries them onto the lead", async () => {
+    await openLedger()
     fireEvent.click(screen.getByRole('button', { name: 'Ridgeway Builders' }))
     await waitFor(() => expect(screen.getByText('(210) 555-0199')).toBeTruthy())
     expect(screen.getByText('SAMPLE HOLDINGS LLC')).toBeTruthy()
     expect(io.lookupCompany).toHaveBeenCalledWith('Ridgeway Builders', 'San Antonio', false)
     expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false)
-    fireEvent.click(screen.getByRole('button', { name: 'Approach them with these facts…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pursue with these facts…' }))
     expect(screen.getByText(/The lead carries the phone, the website, the office address, the owner of record/)).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Why'), { target: { value: 'Found the phone; calling Monday.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Approach them · make the lead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pursue · make the lead' }))
     await waitFor(() => expect(io.approachFromPermit).toHaveBeenCalled())
     expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1', expect.objectContaining({ phone: '(210) 555-0199', website: 'https://example.com', ownerOfRecord: 'SAMPLE HOLDINGS LLC' }))
   })
 
   it('the address opens The building: the county, every field the city sent, the permits on the address, and a Google search', async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    await openLedger()
     fireEvent.click(screen.getByRole('button', { name: '100 SAMPLE ST' }))
     await waitFor(() => expect(screen.getByText('SAMPLE HOLDINGS LLC')).toBeTruthy())
     expect(screen.getByRole('dialog').textContent).toContain('The building')
@@ -211,8 +239,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   })
 
   it("the Who card lists the name's other permits and searches Google for the company; the ledger carries the same press", async () => {
-    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    await openLedger()
     expect(screen.getByRole('link', { name: 'Search Google for Ridgeway Builders' }).getAttribute('href')).toBe('https://www.google.com/search?q=%22Ridgeway%20Builders%22%20San%20Antonio%20TX')
     fireEvent.click(screen.getByRole('button', { name: 'Ridgeway Builders' }))
     await waitFor(() => expect(screen.getByText('This name pulled 1 other permit in the last 365 days.')).toBeTruthy())
@@ -221,5 +248,196 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     expect(screen.queryByText(/5 ASTER RDG/)).toBeNull()
     expect(screen.getByText('Google the company')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Open the state’s search' }).getAttribute('href')).toBe('https://comptroller.texas.gov/taxes/franchise/account-status/search')
+  })
+
+  describe('the skim (punch list #302)', () => {
+    it('opens on one card, best first, and holds an answer until the next one so Undo can take it back', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      // The row with a plumbing permit never enters the deck; the one that waits says why it leads.
+      expect(screen.getByText('No plumber yet · a builder we won with · $1.4M')).toBeTruthy()
+      expect(screen.queryByText('300 HOPKINS ST')).toBeNull()
+      expect(io.loadResearchPermits).toHaveBeenCalledWith('San Antonio', '2000-01-01', false)
+      // The county's owner of record fills the Property line for the top card.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' })).toBeTruthy())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+      expect(screen.getByText('Nothing waiting on a skim.')).toBeTruthy()
+      expect(screen.getByText('Kept for a closer look.')).toBeTruthy()
+      expect(io.recordVerdict).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(screen.getByText('1 to skim')).toBeTruthy()
+      expect(io.recordVerdict).not.toHaveBeenCalled()
+
+      // A pass offers its reasons in the bar; the answer is written when the deck is left.
+      fireEvent.click(screen.getByRole('button', { name: 'Pass' }))
+      expect(screen.getByText('Passed. Why?')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Too far' }))
+      expect(io.recordVerdict).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Ledger' }))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledTimes(1))
+      expect(io.recordVerdict).toHaveBeenCalledWith({ permitId: 'p1', verdict: 'not_for_us', reason: 'Passed on the skim: too far.', lookAgainOn: null, prospectId: null, userId: 'u1', reasonCode: 'too_far', forUserId: null })
+    })
+
+    it('answers by arrow key on a desk, and Dig in opens the kept ones', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+      expect(screen.getByText('Nothing waiting on a skim.')).toBeTruthy()
+      expect(screen.getByText('You answered 1 just now: 1 kept, 0 passed. The next pull is tomorrow at 5:30 AM.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Dig in · 1 kept' }))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'look', reason: 'Kept on the skim.' })))
+      // The kept permit is on the Kept list at once, and the strip counts it.
+      await waitFor(() => expect(screen.getByText(/^Kept by /)).toBeTruthy())
+      expect(screen.getByRole('button', { name: 'Kept 1' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Skim 0' })).toBeTruthy()
+    })
+
+    it('the Property line opens The building with Keep and Pass at its foot', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' })).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(dialog.textContent).toContain('The building')
+      expect(within(dialog).queryByRole('button', { name: 'Decide…' })).toBeNull()
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Keep' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getByText('Kept for a closer look.')).toBeTruthy()
+    })
+
+    it('draws a street view with its month and a map with the miles across the top of the card', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('Street view · Mar 2024')).toBeTruthy())
+      expect(streetView.fetchStreetViewMetaWithMonth).toHaveBeenCalledWith('100 SAMPLE ST, San Antonio, TX, 78245')
+      const street = screen.getByRole('link', { name: 'Open Street View in Google, in a new tab' })
+      expect(street.getAttribute('href')).toContain('map_action=pano')
+      expect(street.querySelector('img')?.getAttribute('src')).toBe('blob:street-view')
+      // The map is a still of tiles with the permit in its middle, and a door to Google Maps.
+      const map = screen.getAllByRole('link', { name: 'Open the site in Google Maps, in a new tab' }).pop() as HTMLElement
+      expect(map.getAttribute('href')).toContain('google.com/maps/search')
+      expect(map.querySelector('img')?.getAttribute('src')).toMatch(/^https:\/\/tile\.openstreetmap\.org\/11\//)
+    })
+
+    it('shows satellite, and says so, where there is no street view', async () => {
+      streetView.fetchStreetViewMetaWithMonth.mockResolvedValue(null)
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('No street view · satellite')).toBeTruthy())
+      expect(streetView.fetchStreetViewImageBlob).not.toHaveBeenCalled()
+      expect(document.querySelector('img[src*="World_Imagery"]')).toBeTruthy()
+    })
+
+    it('a write that fails names the permit, says why, and puts the card back', async () => {
+      io.recordVerdict.mockRejectedValueOnce({ message: 'new row violates row-level security policy' })
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: 'Pass' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Map' }))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledTimes(1))
+      fireEvent.click(screen.getByRole('button', { name: /^Skim/ }))
+      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+    })
+  })
+
+  describe('the four places, builders and the count (punch list #302, PR 6 to 8)', () => {
+    const kept = () => row({ id: 'k1', address: '77 KILN ST', permit_number: 'COM-2', verdict: 'look', verdict_reason: 'Kept on the skim.', verdict_by: 'u1', verdict_by_name: 'Eve', verdict_at: '2026-11-08T15:00:00Z', builder_key: 'ridgewaybuilders', builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 })
+    const passed = () => row({ id: 'c1', address: '60 MILLRACE ROW', permit_number: 'COM-3', contact: 'Tall Pine Development', verdict: 'not_for_us', verdict_reason: 'Passed on the skim: too far.', verdict_reason_code: 'too_far', verdict_by_name: 'Eve', verdict_at: '2026-11-09T15:00:00Z' })
+
+    it('the strip counts the four places, and the deck shows a mark and hands a keep to a person', async () => {
+      io.loadResearchPermits.mockResolvedValue([row({ builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 }), kept(), passed()])
+      io.loadResearchers.mockResolvedValue([{ id: 'u1', name: 'Eve' }, { id: 'u2', name: 'Sam' }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
+      expect(screen.getByRole('button', { name: 'Kept 1' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
+      expect(screen.getByText('Good')).toBeTruthy()
+      expect(screen.getByText('4 permits this year. 2 have no plumber yet.')).toBeTruthy()
+      // The mark lifts the card and says so.
+      expect(screen.getByText('No plumber yet · a builder marked Good · a builder we won with')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+      await waitFor(() => expect(screen.getByText('Kept. For?')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: 'Sam' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Kept 1' }))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'look', forUserId: 'u2' })))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Kept 2' })).toBeTruthy())
+      expect(screen.getByText(/Kept by Eve for Sam/)).toBeTruthy()
+    })
+
+    it('a kept permit opens with the close-out: Not pursuing takes one tap of why', async () => {
+      io.loadResearchPermits.mockResolvedValue([kept()])
+      io.loadPermitHistory.mockResolvedValue([{ id: 'e1', verdict: 'look', reason: 'Kept on the skim.', reason_code: null, decided_at: '2026-11-08T15:00:00Z', by_name: 'Eve', for_name: null, pursue_for: null }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Kept 1' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'New commercial, 6,200 sq ft' }))
+      const sheet = await screen.findByRole('dialog')
+      await waitFor(() => expect(within(sheet).getByText('What we did')).toBeTruthy())
+      await waitFor(() => expect(within(sheet).getByText('Kept on the skim.')).toBeTruthy())
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Not pursuing…' }))
+      // The press says what it will do, and rests until a reason is picked.
+      const rest = screen.getByRole('button', { name: 'Pick a reason' })
+      fireEvent.click(rest)
+      expect(io.recordVerdict).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Could not reach anyone' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Not pursuing · could not reach anyone' }))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'k1', verdict: 'not_for_us', reason: 'Not pursuing: could not reach anyone.', reasonCode: 'np_no_answer' })))
+    })
+
+    it('Pursue says what it is for and who follows up, and makes the lead', async () => {
+      io.loadResearchPermits.mockResolvedValue([kept()])
+      io.loadResearchers.mockResolvedValue([{ id: 'u1', name: 'Eve' }, { id: 'u2', name: 'Sam' }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Kept 1' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'New commercial, 6,200 sq ft' }))
+      fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pursue…' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Their next jobs' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Sam' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pursue · hand to Sam' }))
+      await waitFor(() => expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'k1' }), 'gc', 'u1', {}))
+      await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'k1', verdict: 'approach', reason: 'Pursued for their next jobs.', prospectId: 'lead-1', pursueFor: 'next_jobs', forUserId: 'u2' })))
+    })
+
+    it('Closed finds a passed permit by its street and puts it back', async () => {
+      io.loadResearchPermits.mockResolvedValue([kept(), passed()])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Closed 1' }))
+      await waitFor(() => expect(screen.getByText('Passed on the skim: too far.')).toBeTruthy())
+      fireEvent.change(screen.getByLabelText('Search closed permits'), { target: { value: 'kiln' } })
+      expect(screen.getByText('No closed permits match ‘kiln’.')).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('Search closed permits'), { target: { value: 'millrace' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
+      await waitFor(() => expect(io.putBackPermit).toHaveBeenCalledWith('c1', 'u1'))
+    })
+
+    it('Builders lists who is building, and a mark needs its reason', async () => {
+      io.loadBuilders.mockResolvedValue([
+        { key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: 'Copperline Mechanical', plumber_jobs: 4, bids: 0, won: 0, last_bid_on: null },
+        { key: 'ridgewaybuilders', name: null, sample_contact: 'Dana Whitlock, Ridgeway Builders', kind: 'gc', customer_id: null, mark: 'good', mark_reason: 'Pays on time.', mark_by_name: 'Eve', mark_at: '2026-03-03T15:00:00Z', permits: 4, open: 2, last_permit_on: '2026-11-06', plumber: 'Blue Heron Plumbing', plumber_jobs: 2, bids: 5, won: 3, last_bid_on: '2026-06-01' },
+      ])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Tall Pine Development' })).toBeTruthy())
+      expect(screen.getByRole('button', { name: '3 or more permits and never bid 1' })).toBeTruthy()
+      expect(screen.getByText('5 priced, 3 won')).toBeTruthy()
+      expect(screen.getByText('Copperline Mechanical on 4')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Tall Pine Development' }))
+      const sheet = await screen.findByRole('dialog')
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Avoid' }))
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
+      expect(io.markBuilder).not.toHaveBeenCalled()
+      expect(within(sheet).getByText('Say why in a line. Every estimator reads it on the card.')).toBeTruthy()
+      fireEvent.change(within(sheet).getByLabelText('Why, in a line'), { target: { value: 'Slow pay on the Millrace job.' } })
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
+      await waitFor(() => expect(io.markBuilder).toHaveBeenCalledWith('tallpinedevelopment', 'avoid', 'Slow pay on the Millrace job.', 'u1'))
+    })
+
+    it('says Builders is not open yet before the database change is in, and shows the count once it answers', async () => {
+      io.loadBuilders.mockResolvedValue(null)
+      io.loadPermitFunnel.mockResolvedValue({ since: '2026-11-01', arrived: 212, skimmed: 198, kept: 31, passed: 160, pursuing: 7, has_plumber: 0, bid: 3, won: 1, by_person: [{ name: 'Sam', n: 120 }], pass_reasons: [{ code: 'too_far', n: 22 }], pursue_for: [{ code: 'next_jobs', n: 3 }] })
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('198')).toBeTruthy())
+      expect(screen.getByText('Sam 120')).toBeTruthy()
+      expect(screen.getByText('their next jobs 3')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Builders' }))
+      await waitFor(() => expect(screen.getByText(/Builders opens once tonight’s database change is in/)).toBeTruthy())
+    })
   })
 })

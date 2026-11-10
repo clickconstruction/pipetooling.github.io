@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { feedPageSql, permitRowFromSanAntonio, pullSinceDay, SAN_ANTONIO_CKAN, SAN_ANTONIO_FEEDS, type PermitFeed, type PermitRow } from '../_shared/permitFeed.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { builderKeyOf } from '../_shared/permitLookup.ts'
 
 /**
  * Research (punch list #292, v2.6782): pull a city's permits into `permits`. San Antonio first:
@@ -26,6 +27,9 @@ const PAGE = 2000
 const MAX_PAGES_PER_FEED = 12
 const UPSERT_BATCH = 500
 const BUDGET_MS = 110_000
+// The builder-key pass over rows already held: this many rows a round, this many rounds a run.
+const KEY_BATCH = 500
+const KEY_ROUNDS = 12
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -117,7 +121,12 @@ serve(async (req) => {
         if (!dryRun) {
           for (let i = 0; i < unique.length; i += UPSERT_BATCH) {
             const slice = unique.slice(i, i + UPSERT_BATCH).map((row) => ({ ...row, pulled_at: new Date().toISOString() }))
-            const { error } = await admin.from('permits').upsert(slice, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: false })
+            let { error } = await admin.from('permits').upsert(slice, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: false })
+            // Deployed ahead of migration *_permit_skim, the column is not there yet: the rows still land, without their key.
+            if (error && /builder_key/.test(error.message)) {
+              const bare = slice.map(({ builder_key: _dropped, ...rest }) => rest)
+              ;({ error } = await admin.from('permits').upsert(bare, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: false }))
+            }
             if (error) throw new Error(`the upsert failed: ${error.message}`)
           }
         }
@@ -141,6 +150,34 @@ serve(async (req) => {
     console.log(JSON.stringify({ fn: 'permit-pull', ...outcome }))
   }
 
+  // The builder's key on the rows the table already held (punch list #302): building permits with a
+  // contact and no key yet, read by id so a row whose name keys to nothing is passed once, not forever.
+  const keys = { looked: 0, set: 0, error: null as string | null }
+  if (!dryRun) {
+    try {
+      let after = '00000000-0000-0000-0000-000000000000'
+      for (let round = 0; round < KEY_ROUNDS && Date.now() - started < BUDGET_MS; round++) {
+        const { data, error } = await admin.from('permits').select('id, contact').eq('kind', 'building').is('builder_key', null).not('contact', 'is', null).gt('id', after).order('id').limit(KEY_BATCH)
+        if (error) throw new Error(error.message)
+        const batch = (data ?? []) as Array<{ id: string; contact: string | null }>
+        if (batch.length === 0) break
+        after = batch[batch.length - 1]!.id
+        keys.looked += batch.length
+        const pairs = batch.map((r) => ({ id: r.id, key: builderKeyOf(r.contact) })).filter((p) => p.key)
+        if (pairs.length > 0) {
+          const { data: n, error: setError } = await admin.rpc('permit_set_builder_keys', { p_pairs: pairs })
+          if (setError) throw new Error(setError.message)
+          keys.set += typeof n === 'number' ? n : 0
+        }
+        if (batch.length < KEY_BATCH) break
+      }
+    } catch (e) {
+      // Before the migration is pushed there is no column to fill; the pull itself stands.
+      keys.error = e instanceof Error ? e.message : String(e)
+    }
+    console.log(JSON.stringify({ fn: 'permit-pull', builder_keys: keys }))
+  }
+
   const failed = outcomes.filter((o) => o.error)
-  return jsonResponse({ ok: failed.length === 0, dryRun, feeds: outcomes, ms: Date.now() - started })
+  return jsonResponse({ ok: failed.length === 0, dryRun, feeds: outcomes, builderKeys: keys, ms: Date.now() - started })
 })

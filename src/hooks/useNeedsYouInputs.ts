@@ -40,6 +40,7 @@ import { useVehicleRecordGapsNudge } from './useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from './usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from './usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from './useGcFollowUpNeeds'
+import { usePermitSkimNudge } from './usePermitSkimNudge'
 import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
 import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
@@ -192,6 +193,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
   const gcFollowUpEnabled = on('gcFollowUp')
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
+  const permitSkimEnabled = on('permitSkim')
+  const permitSkim = usePermitSkimNudge(permitSkimEnabled, role)
   // Since v2.6098 (punch list #178) the two lines are sources of their own, carried by Quickfill's Messages station.
   const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && on('customerMessages')
   // On Quickfill the Texts station holds the texts (v2.5823), so the Customers line there leaves them out.
@@ -295,6 +298,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     myMoney: myMoneyInput,
     gcFollowUpEnabled,
     gcFollowUp,
+    permitSkimEnabled,
+    permitSkim,
     customerMessagesEnabled,
     customerMessages,
     todaysSendsEnabled,
