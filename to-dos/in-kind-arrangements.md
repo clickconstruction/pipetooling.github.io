@@ -1,8 +1,8 @@
 ---
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
-group: gated
-status: mock-up drawn 2026-11-10 · the owner picked the card on the customer and the Needs you line first, the list second, and a ledger of lines entered as needed (amount, date, memo; overhead unless put on a job) · nothing built · the first arrangement is already recorded in the app
+group: close
+status: building 2026-11-10 on the owner's word · PR 1 (the tables and the verbs) built · left: PR 2 the card, the ledger and Add a line · PR 3 the monthly press and the Needs you line · PR 4 the cost side and the list
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -10,9 +10,10 @@ summary: >
   fourteen payment rows on fifteen bills and a memo on each. Nothing in the app says "this customer pays in
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. This card holds the ask and that first ledger until the owner wants the page.
-next: the owner's word to start PR 1; the four small calls still open can be answered along the way
-size: L as a train of four (S · M · S · M)
-blocker: the owner's word to start
+next: PR 2, the card on the customer's page, the ledger and Add a line; the four small calls still open can be answered along the way
+size: L as a train of four (S · M · S · M); left: PRs 2 to 4 (M · S · M)
+ver: v2.6827
+blocker: none; the owner said build it on 2026-11-10
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
 
