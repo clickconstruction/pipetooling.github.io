@@ -83,9 +83,12 @@ export interface InKindTotals {
   jobCount: number
   /** In kind payments on those jobs, by a line or by hand. */
   paidInKind: number
-  /** Still open on those jobs. */
+  /** Still open on the bills of those jobs: the jobs that are billed. */
   left: number
   openJobCount: number
+  /** What the deal's jobs that are not billed yet come to: work on no bill, so nothing a line can pay. */
+  unbilled: number
+  unbilledJobCount: number
   /** What the live lines say was given. */
   given: number
   /** Given, but on no bill yet: the partner is ahead of our work by this much. */
@@ -102,13 +105,20 @@ export function inKindTotals(jobs: readonly InKindJob[], lines: readonly InKindL
   let work = 0
   let left = 0
   let openJobCount = 0
+  let unbilled = 0
+  let unbilledJobCount = 0
   for (const j of jobs) {
     const rev = Number(j.revenue ?? 0)
     work += rev
     const open = Math.max(0, rev - Number(j.payments_made ?? 0))
-    if (open > CENT && j.status !== 'paid') {
+    if (open <= CENT || j.status === 'paid') continue
+    // Only a billed job has a bill a line can pay. A job still working is counted apart, so nothing calls it a bill.
+    if (j.status === 'billed') {
       left += open
       openJobCount += 1
+    } else {
+      unbilled += open
+      unbilledJobCount += 1
     }
   }
   const live = liveLines(lines)
@@ -140,6 +150,8 @@ export function inKindTotals(jobs: readonly InKindJob[], lines: readonly InKindL
     paidInKind: money2(paidInKind),
     left: money2(left),
     openJobCount,
+    unbilled: money2(unbilled),
+    unbilledJobCount,
     given: money2(given),
     ahead: money2(Math.max(0, given - byLine)),
     byHand: money2(byHand),
