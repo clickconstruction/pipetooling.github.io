@@ -11,7 +11,7 @@ summary: >
   get two lenses: a building permit with no plumbing permit yet is work we can still bid, and a
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
-next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 (Austin's feed, the suburbs' weekly file, the digest) when he wants it. The types regen #7479 is armed.
+next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 (Austin's feed, the suburbs' weekly file, the digest) when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
 size: L as a train of four (M · S · M · S); shipped: revisions 1 to 3 (M · S · S); left: revision 4 (S)
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
