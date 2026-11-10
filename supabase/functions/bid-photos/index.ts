@@ -27,7 +27,8 @@ import { bidPhotosAskWrites, parseBidPhotosAsk, strayPhotoRows, type ListedBidPh
  *                                                 adopted, capped }
  *                                                 the bid's added photos that stand, newest first. A picture in the
  *                                                 photo folder with no row and none of the app's marks (dragged in
- *                                                 through Drive, saved from a text) is adopted as a row first, up to
+ *                                                 through Drive, saved from a text) is adopted as a row first, by
+ *                                                 whoever Drive names (nobody, when the app filed it itself), up to
  *                                                 500 a call; `adopted` counts them. `hold` says why photos are not
  *                                                 filing (a folder in a personal Drive, one the app cannot open).
  *                                                 Nothing is made in Drive by a list.
@@ -65,7 +66,7 @@ interface DriveListed {
   mimeType: string
   size?: string
   createdTime?: string
-  lastModifyingUser?: { displayName?: string }
+  lastModifyingUser?: { displayName?: string; me?: boolean }
   appProperties?: Record<string, string>
 }
 
@@ -77,14 +78,16 @@ async function unmarkedPictures(token: string, folderId: string): Promise<{ file
     const q = encodeURIComponent(`'${folderId}' in parents and trashed = false and mimeType contains 'image/'`)
     const page = await driveGet<{ files?: DriveListed[]; nextPageToken?: string }>(
       token,
-      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=createdTime desc&fields=nextPageToken,files(id,name,mimeType,size,createdTime,lastModifyingUser(displayName),appProperties)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=createdTime desc&fields=nextPageToken,files(id,name,mimeType,size,createdTime,lastModifyingUser(displayName,me),appProperties)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
     )
     for (const f of page.files ?? []) {
       if (f.mimeType === DRIVE_FOLDER_MIME) continue
       // A file the sweep put there carries its row's id: it has a row, or is about to, and is never adopted.
       if (f.appProperties?.bid_photo_id) continue
       if (files.length >= ADOPT_MAX) return { files, capped: true }
-      files.push({ id: f.id, name: f.name, mime: f.mimeType ?? null, bytes: f.size == null ? null : Number(f.size), created: f.createdTime ?? null, by: f.lastModifyingUser?.displayName ?? null })
+      // A picture the app itself put there (a text's photo, a job's) names its sender in its file name, not here.
+      const by = f.lastModifyingUser?.me ? null : (f.lastModifyingUser?.displayName ?? null)
+      files.push({ id: f.id, name: f.name, mime: f.mimeType ?? null, bytes: f.size == null ? null : Number(f.size), created: f.createdTime ?? null, by })
     }
     pageToken = page.nextPageToken ?? ''
   } while (pageToken)

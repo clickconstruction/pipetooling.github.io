@@ -19,6 +19,7 @@ import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { useBidBoardBudgetChips } from './useBidBoardBudgetChips'
 import { useBidCountSourcesByBid } from './useBidCountSourcesByBid'
 import { useBidPlanSetsByBid } from './useBidPlanSetsByBid'
+import { useBidPhotoCountsByBid } from './useBidPhotoCountsByBid'
 import { useBidBoardJobAccountStrips } from './useBidBoardJobAccountStrips'
 import { useBidBoardMoneyStrips } from './useBidBoardMoneyStrips'
 import type { useBidGcPackets } from './useBidGcPackets'
@@ -70,6 +71,11 @@ export function useBidBoardScope(input: {
   const bidBoardCountSources = useBidCountSourcesByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
   // The plan sets on each bid (v2.6169): the board's plans icon opens one directly and offers two or more in a picker.
   const bidBoardPlanSets = useBidPlanSetsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
+  // How many photos each bid has (punch list #306): the board's photos icon is grey at none and blue with the count.
+  // The photos window bumps the read after it adds one.
+  const [bidPhotoCountsGen, setBidPhotoCountsGen] = useState(0)
+  const bidBoardPhotoCounts = useBidPhotoCountsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true, bidPhotoCountsGen)
+  const refreshBidPhotoCounts = useCallback(() => setBidPhotoCountsGen((g) => g + 1), [])
   // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
   // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
   // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)
@@ -140,6 +146,8 @@ export function useBidBoardScope(input: {
     bidBoardBudgetChips,
     bidBoardCountSources,
     bidBoardPlanSets,
+    bidBoardPhotoCounts,
+    refreshBidPhotoCounts,
     jobAccountStrips,
     jobAccountsMissingCount,
     moneyStrips,
