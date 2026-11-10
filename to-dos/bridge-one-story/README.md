@@ -1,8 +1,8 @@
 ---
 name: "The Bridge under one story"
-number: 0
-group: gated
-status: asked 2026-11-10 · the October design recovered from history, the page walked at desk and phone width, its loop read through the dev seat · three stories and a pick drawn as thirteen frames the same day · nothing built · the pick is the owner's
+number: 303
+group: ready
+status: asked 2026-11-10 · the October design recovered from history, the page walked at desk and phone width, its loop read through the dev seat · three stories and a pick drawn as thirteen frames the same day · the owner chose the pick the same day and said build it · nothing built yet
 mockup: to-dos/bridge-one-story/mockup.html
 summary: >
   The Bridge has been drawn three times, each on top of the last: a chart table in September,
@@ -13,13 +13,13 @@ summary: >
   week, cash first, and the flow as one picture. The pick is the first, with the picture as one
   strip and one rule from the second: when cash goes under the floor, cash leads. Nothing built
   is deleted. It moves behind three doors.
-next: The owner picks a story and answers the calls under § The calls that are the owner's. A yes on the pick starts PR 1, the first screen drawn above the page as it is.
+next: PR 1, the first screen drawn above the page as it is. The owner's other six calls can be answered alongside; the bank question decides whether the cash tile may lead.
 size: L as a train of five (M · M · S · M · S); PR 1 alone is the first screen and stands by itself
-blocker: The owner's pick. The cash tile can lead only once he says whether the bank the page reads is the whole bank, a question open since 2026-10-10.
+blocker: None for PR 1. The cash tile can lead only once the owner says whether the bank the page reads is the whole bank, a question open since 2026-10-10.
 opinion: build the pick, PR 1 first, and give it four Mondays. If the call is still unpressed on the first screen with the moves reaching people, the ritual is the problem and the page falls back to three numbers and one list.
 ---
 
-# The Bridge under one story
+# The Bridge under one story (#303)
 
 ## The ask
 
@@ -161,6 +161,9 @@ tap opens the section's desk.
 
 ## The pick (frames P1 to P3)
 
+The owner, 2026-11-10, on the frames: *"this is the right way to look at it. Please help me build
+it."* The pick is the direction.
+
 **A is the story, with two borrowings.**
 
 - **From C, one strip.** The pipe as a single line in place of five cards of about seventy words
@@ -244,7 +247,7 @@ PR 1 ships by itself and is the cheapest way to learn whether the bet is right.
 
 ## The calls that are the owner's
 
-1. **The story.** The pick, or A, B or C alone.
+1. **The story.** Answered 2026-11-10: the pick.
 2. **Is the bank the page reads the whole bank?** If not, the cash tile cannot lead in any of them.
 3. **The first number.** Earned last week, the last full pay week. Or this week so far, as today.
 4. **Who a move reaches.** Each named person gets the move in their *Needs you*. Or the call
@@ -255,5 +258,5 @@ PR 1 ships by itself and is the cheapest way to learn whether the bet is right.
 
 ## Where it stands
 
-Drawn 2026-11-10. Nothing built. #192's two yes-or-no writes are untouched by this card: its desks
+Drawn 2026-11-10 and chosen the same day. Nothing built yet; PR 1 is next. #192's two yes-or-no writes are untouched by this card: its desks
 sit behind *The flow* in every story.
