@@ -45,7 +45,7 @@ describe('splitAwayFromArchived', () => {
     })
     expect(split.away).toHaveLength(1)
     const row = split.away[0]!
-    expect(row).toMatchObject({ userId: 'u-nadia', personId: 'p-nadia', displayName: 'Nadia', role: 'helpers', leftYmd: '2026-11-03', backYmd: '2029-11-08', due: false, alertOn: true, door: 'bring_back', hasLogin: true })
+    expect(row).toMatchObject({ userId: 'u-nadia', personId: 'p-nadia', displayName: 'Nadia', loginName: 'Nadia', role: 'helpers', leftYmd: '2026-11-03', backYmd: '2029-11-08', due: false, alertOn: true, door: 'bring_back', hasLogin: true })
     expect(row.leftWords).toBe('Left Nov 3, 2026')
     expect(row.backWords).toBe('Back on Thursday, Nov 8, 2029 · 1,096 days')
     expect(split.logins.map((u) => u.id)).toEqual(['u-gone'])

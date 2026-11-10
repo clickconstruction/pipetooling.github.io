@@ -39,6 +39,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { canArchiveAccount } from '../../lib/people/personDeskGates'
 import { PersonDeskAwayNoteModal } from '../personDesk/PersonDeskAwayNoteModal'
 import { AWAY_SECTION_WORDS, awaySectionTitle, splitAwayFromArchived, type AwayRow, type AwaySectionNote } from '../../lib/people/awaySection'
+import { AWAY_PREVIEW_WORDS } from '../../lib/people/awayPreview'
+import { AwayPreviewModal } from '../away/AwayPreviewModal'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { supabase } from '../../lib/supabase'
 import { humanRoleLabel } from '../../lib/roleLabels'
@@ -180,6 +182,8 @@ export function PeopleUsersTab({
   // The Away section (v2.6723, punch list #256 PR 10): the notes on the archived logins, and the row whose note is open.
   const [awayNotes, setAwayNotes] = useState<AwaySectionNote[]>([])
   const [awayNoteFor, setAwayNoteFor] = useState<AwayRow | null>(null)
+  // See what they see (v2.6846): the row whose sign-in screen is up as a preview. A look, with no sign-in as them.
+  const [awayPreviewFor, setAwayPreviewFor] = useState<AwayRow | null>(null)
   const [restoringLoginId, setRestoringLoginId] = useState<string | null>(null)
   const loadArchivedLogins = useCallback(async () => {
     if (!canRestoreLogins) return
@@ -950,6 +954,9 @@ export function PeopleUsersTab({
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => setAwayPreviewFor(r)} className="activeAccountsCard__btnSecondary" style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title={AWAY_PREVIEW_WORDS.pressTitle}>
+                          {AWAY_PREVIEW_WORDS.press}
+                        </button>
                         <button type="button" onClick={() => setAwayNoteFor(r)} className="activeAccountsCard__btnSecondary" style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title={AWAY_SECTION_WORDS.editNoteTitle}>
                           {AWAY_SECTION_WORDS.editNote}
                         </button>
@@ -1097,6 +1104,7 @@ export function PeopleUsersTab({
           </div>
         )}
       </div>
+      {awayPreviewFor ? <AwayPreviewModal userId={awayPreviewFor.userId} displayName={awayPreviewFor.displayName} loginName={awayPreviewFor.loginName} leftYmd={awayPreviewFor.leftYmd} hasLogin={awayPreviewFor.hasLogin} onClose={() => setAwayPreviewFor(null)} /> : null}
       {awayNoteFor ? (
         <PersonDeskAwayNoteModal
           userId={awayNoteFor.userId}

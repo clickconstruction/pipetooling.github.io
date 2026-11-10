@@ -249,6 +249,13 @@ describe('PeopleUsersTab', () => {
       expect(within(away).getByText('· alert on')).toBeTruthy()
       expect(within(away).getByRole('button', { name: 'Edit the note…' })).toBeTruthy()
       expect(within(away).getByRole('button', { name: 'Bring back…' })).toBeTruthy()
+      // v2.6846: See what they see opens their sign-in screen as a preview, named for whose it is, and closes again.
+      fireEvent.click(within(away).getByRole('button', { name: 'See what they see' }))
+      const preview = await screen.findByRole('dialog', { name: "Preview of Nadia Test's sign-in screen" })
+      expect(within(preview).getByText(/Nadia Test meets this screen at sign-in/)).toBeTruthy()
+      await within(preview).findByText('See you soon, Nadia.')
+      fireEvent.click(within(preview).getByRole('button', { name: 'Close the preview' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: "Preview of Nadia Test's sign-in screen" })).toBeNull())
       fireEvent.click(screen.getAllByRole('button', { name: /^Archived \(/ })[0]!)
       const archived = await screen.findByRole('table', { name: 'Archived logins' })
       expect(within(archived).queryByText('Nadia Test')).toBeNull()

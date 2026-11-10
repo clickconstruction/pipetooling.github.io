@@ -16,6 +16,8 @@ You open Settings. **View as…** is the first chip under the search box at the 
 - **Roles** has one line per role. Each is backed by its **sample account**, such as *Sample assistant* or *Sample estimator*. The chips beside a role are the switches its sample carries: {{chip:gray|training mode}} {{chip:gray|Hiring}} {{chip:gray|estimator prospects}}. You pick a role and you are that sample.
 - **People** has every active person. You search by name, email or role. You pick one and you are them. Never a dev, because the login door refuses.
 
+A teammate who is away is not on either list. That teammate's sign-in opens to one screen. Press **See what they see** on their Away row to look at it. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away#see-what-they-see).
+
 Then you go to the page you wanted to check. That role may not be able to open it. Then the app sends them where it always sends them. That is itself the answer to "can they see this?".
 
 ## Come back

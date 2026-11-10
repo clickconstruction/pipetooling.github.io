@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { AWAY_NO_NOTE_WORDS, AWAY_WORDS, awayMiles, buildAwayScreen, type AwayMiles, type MyAwayNote } from '../lib/people/awayNote'
+import { awayMiles, type AwayMiles, type MyAwayNote } from '../lib/people/awayNote'
 import { loadMyAwayNote } from '../lib/people/awayNoteIo'
-import { AwayScreen } from '../components/away/AwayScreen'
-import OfflineRetryPanel from '../components/OfflineRetryPanel'
+import { AwayPageView } from '../components/away/AwayPageView'
 import { recoveryFailureFromError } from '../lib/offlineRecoveryState'
 import type { OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
-import { todayYmdInAppTz } from '../utils/dateUtils'
 
 /**
  * The Away page (punch list #256 PR 8, v2.6587): the only page the app draws for a signed-in archived account. The
  * seal (migration *_archived_seal) refuses every other read, so this page reads `my_away_note()` alone and draws the
- * note over `buildAwayScreen`, the model the office's preview draws too. The countdown re-reads the clock every
- * minute. *Use my location* asks the browser only after the press, works the miles out here with the office's pin,
- * and sends nothing. With no note (the session outlived the note, or the ban), the resting words and Sign out.
+ * note on `AwayPageView`, the page the office's See what they see window draws too (v2.6846), over `buildAwayScreen`.
+ * The countdown re-reads the clock every minute. *Use my location* asks the browser only after the press, works the
+ * miles out here with the office's pin, and sends nothing. With no note (the session outlived the note, or the ban), the resting words and Sign out.
  */
 
 const MINUTE = 60_000
@@ -42,8 +40,6 @@ export default function Away() {
     return () => clearInterval(t)
   }, [])
 
-  const screen = note ? buildAwayScreen({ draft: note.draft, firstName: note.firstName, now, leftYmd: note.leftYmd, updatedYmd: note.updatedYmd, todayYmd: todayYmdInAppTz(now), office: note.office }) : null
-
   function locate() {
     const office = note?.office.latLng
     if (!office) return
@@ -66,25 +62,5 @@ export default function Away() {
     )
   }
 
-  return (
-    <div data-page-scroll="allow" style={{ minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }}>
-      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800 }}>
-        <span>ClickTooling</span>
-        <button type="button" onClick={() => void supabase.auth.signOut()} style={{ font: 'inherit', fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          {AWAY_WORDS.signOut}
-        </button>
-      </header>
-      <main style={{ maxWidth: 420, margin: '0 auto', padding: '16px 14px 24px' }}>
-        {failure ? <OfflineRetryPanel failure={failure} onRetry={load} surface="away-note" idempotent /> : null}
-        {note === undefined && !failure ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
-        {note === null ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, textAlign: 'center' }}>
-            <div style={{ fontSize: '1.125rem', fontWeight: 800 }}>{AWAY_NO_NOTE_WORDS.title}</div>
-            <div style={{ marginTop: 4, color: 'var(--text-base)' }}>{AWAY_NO_NOTE_WORDS.sub}</div>
-          </div>
-        ) : null}
-        {screen ? <AwayScreen screen={screen} miles={miles} locating={locating} locateError={locateError} onLocate={locate} /> : null}
-      </main>
-    </div>
-  )
+  return <AwayPageView note={note} now={now} failure={failure} onRetry={load} onSignOut={() => void supabase.auth.signOut()} miles={miles} locating={locating} locateError={locateError} onLocate={locate} />
 }

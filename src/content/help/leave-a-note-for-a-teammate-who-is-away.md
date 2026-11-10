@@ -2,7 +2,7 @@
 title: leave a note for a teammate who is away
 category: Office
 roles: dev, master_technician, controller
-keywords: away note, away, left, note, countdown, day back, sealed, archived, sign in, bring back, one screen, away section, users
+keywords: away note, away, left, note, countdown, day back, sealed, archived, sign in, bring back, one screen, away section, users, see what they see, preview, their screen, imitate
 order: 43
 ---
 A teammate who left can keep their login. While they are away, the app shows them one screen you wrote for them. Nothing else opens. You write the note person by person from their desk.
@@ -48,6 +48,18 @@ Off by default. When on, the office gets a Needs you item on the day, with Bring
 Open People → Users. A teammate with a note on lists under **Away**, above **Archived**. The row shows the day they left and the day back with the days left. On the day it reads *Back today* in amber. After the day it reads *Due back* with the day. A note with no day back reads *No day back set*.
 
 Press {{button:outline|Edit the note…}} on the row to change the note. Press {{button:blue|Bring back…}} on the row when they return. Archived holds only the people who cannot sign in.
+
+## See what they see
+
+Press {{button:outline|See what they see}} on their Away row. A window opens on the screen their sign-in opens to. The window draws that screen from the note you saved.
+
+The amber bar at the top says it is a preview. The bar names whose screen it is. You stay signed in as yourself. Nothing is saved.
+
+Press **On the day** to see the screen the countdown ends on. Press **Today** to go back. The buttons on their screen do nothing in the preview. Theirs work.
+
+Press {{button:outline|Close the preview}} when you are done.
+
+The preview leaves three things out. The preview skips the sign-in page where they type their password. The miles never show, because **Use my location** does nothing here. The countdown runs on your clock, and theirs runs on their phone.
 
 ## From End employment
 
