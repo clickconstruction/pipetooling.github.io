@@ -25,6 +25,7 @@ import {
   leftWords,
   lineWentWords,
   linesWord,
+  monthEarlyPress,
   monthOpenPress,
   monthStateWords,
   takeBackWords,
@@ -219,6 +220,11 @@ export default function InKindLedgerWindow({
                   {m.state === 'due' && onEnterMonth && !ended ? (
                     <button type="button" onClick={() => onEnterMonth(m.month)} style={bluePress()}>
                       {monthOpenPress(m.month)}
+                    </button>
+                  ) : null}
+                  {m.state === 'waiting' && onEnterMonth && !ended ? (
+                    <button type="button" onClick={() => onEnterMonth(m.month)} style={quietPress} data-testid="in-kind-month-early-press">
+                      {monthEarlyPress}
                     </button>
                   ) : null}
                 </span>

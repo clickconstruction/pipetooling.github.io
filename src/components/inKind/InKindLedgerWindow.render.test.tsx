@@ -89,6 +89,30 @@ describe('InKindLedgerWindow', () => {
     expect(await screen.findByText('The line was not taken back. Stripe shows this bill as paid.')).toBeTruthy()
   })
 
+  it('lets a month that is not due yet be entered early, and offers no press on a month already entered', async () => {
+    const onEnterMonth = vi.fn()
+    const data = rentDeal()
+    renderWithProviders(
+      <InKindLedgerWindow
+        data={data}
+        months={[
+          { month: '2026-11-01', state: 'waiting', line: null, bankPaid: 0 },
+          { month: '2026-10-01', state: 'due', line: null, bankPaid: 1500 },
+        ]}
+        onEnterMonth={onEnterMonth}
+        onClose={noop}
+        onChanged={noop}
+        onAddLine={noop}
+        onChangeTerms={noop}
+      />,
+    )
+    await settle()
+    expect(screen.getByText('Not due yet.')).toBeTruthy()
+    expect(screen.getAllByTestId('in-kind-month-early-press')).toHaveLength(1)
+    fireEvent.click(screen.getByText('Enter it early'))
+    expect(onEnterMonth).toHaveBeenCalledWith('2026-11-01')
+  })
+
   it('offers no write on an ended deal', async () => {
     const d = concreteDeal()
     d.arrangement.ended_at = '2026-11-09T00:00:00Z'
