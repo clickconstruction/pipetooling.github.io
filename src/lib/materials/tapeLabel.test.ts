@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TAPE_WIDTH_DEFAULT, isTapeWidth, sheetPressLabel, tapeHintWords, tapeLayout, tapePressLabel, tapePrintCss } from './tapeLabel'
+import { LABEL_OUTPUTS, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeReadyWords, tapeSetupSteps } from './tapeLabel'
 
 describe('the tape label (v2.6801)', () => {
   it('lays the strip out inside the tape with a QR that leaves its quiet zone', () => {
@@ -28,6 +28,22 @@ describe('the tape label (v2.6801)', () => {
     expect(tapePressLabel(1)).toBe('Print 1 tape label')
     expect(tapePressLabel(0)).toBe('Print tape labels')
     expect(sheetPressLabel(2)).toBe('Print 2 labels')
-    expect(tapeHintWords(24)).toContain('24 mm wide')
+  })
+
+  it('names the two outputs, the first-time steps and the line once a computer has printed tape (punch list #304)', () => {
+    expect(LABEL_OUTPUTS.sheet.name).toBe('Paper sheet')
+    expect(LABEL_OUTPUTS.tape.name).toBe('Brother tape')
+    expect(LABEL_OUTPUTS.tape.words).toContain('P-touch')
+    const steps = tapeSetupSteps(18)
+    expect(steps).toHaveLength(3)
+    expect(steps[0]).toContain('USB cable')
+    expect(steps[1]).toContain('driver')
+    expect(steps[2]).toContain('18 mm paper')
+    expect(TAPE_TEST_STRIP_LABEL).toBe('Print 1 test strip')
+    expect(tapeReadyWords(24, 'Nov 10')).toEqual({ head: 'Brother tape \u00b7 24 mm.', tail: 'This computer printed tape last on Nov 10.' })
+    expect(labelCountWords('tape', 6, false)).toBe('6 boxes, one strip each.')
+    expect(labelCountWords('tape', 1, false)).toBe('1 box, one strip each.')
+    expect(labelCountWords('tape', 1, true)).toBe('One strip: the QR, the stencil and the code.')
+    expect(labelCountWords('sheet', 2, false)).toBe('2 labels, one a sheet. The camera opens the box from the code.')
   })
 })

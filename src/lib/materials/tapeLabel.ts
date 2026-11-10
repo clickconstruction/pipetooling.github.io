@@ -67,7 +67,38 @@ export function sheetPressLabel(n: number): string {
   return countedLabel('Print', n, 'label')
 }
 
-/** The line under the chips when Tape is on. */
-export function tapeHintWords(widthMm: TapeWidthMm): string {
-  return `Tape prints one strip per box on your P-touch, ${widthMm} mm wide. The first time, pick the printer and the ${widthMm} mm paper in the print window. After that it is remembered.`
+/**
+ * The window's first choice (punch list #304): what the labels print on, each named with what it is and what it
+ * needs. Tape is named for the printer on the desk, since a chip that read *Tape* told nobody it meant the P-touch.
+ */
+export const LABEL_OUTPUTS: Record<LabelFormat, { name: string; words: string }> = {
+  sheet: { name: 'Paper sheet', words: 'One Letter page a box, with lines to write on. Any printer.' },
+  tape: { name: 'Brother tape', words: 'One strip a box for the P-touch, for boxes that sit in the sun.' },
 }
+
+/** The three things to do the first time a computer prints tape, in order. */
+export function tapeSetupSteps(widthMm: TapeWidthMm): string[] {
+  return [
+    'Plug the P-touch in with its USB cable and switch it on.',
+    'Add it as a printer with Brother\u2019s driver.',
+    `In the print window, pick the P-touch and the ${widthMm} mm paper. The browser remembers both.`,
+  ]
+}
+
+/** The press that prints the first ticked box alone, so a wrong paper size costs one strip and not a run. */
+export const TAPE_TEST_STRIP_LABEL = 'Print 1 test strip'
+
+/** The line once this computer has printed tape: what it prints on, and the day it last did. `day` is that day as words. */
+export function tapeReadyWords(widthMm: TapeWidthMm, day: string): { head: string; tail: string } {
+  return { head: `Brother tape \u00b7 ${widthMm} mm.`, tail: `This computer printed tape last on ${day}.` }
+}
+
+/** The line under the window's title: what the press will print. */
+export function labelCountWords(format: LabelFormat, n: number, one: boolean): string {
+  if (format === 'tape') return one ? 'One strip: the QR, the stencil and the code.' : `${n} ${n === 1 ? 'box' : 'boxes'}, one strip each.`
+  return one ? 'One sheet: the stencil, the code, and the lines to write on.' : `${n} ${n === 1 ? 'label' : 'labels'}, one a sheet. The camera opens the box from the code.`
+}
+
+/** The guide that holds the tape printer's setup, and the heading the window's link opens on. */
+export const TAPE_LABEL_GUIDE = 'keep-track-of-the-material-in-the-cages-and-boxes-on-site'
+export const TAPE_LABEL_GUIDE_HEADING = 'Print a tape label'

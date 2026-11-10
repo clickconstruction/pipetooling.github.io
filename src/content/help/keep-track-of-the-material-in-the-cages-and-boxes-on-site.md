@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: tape label, brother tape, p-touch, test strip, printer setup, paper sheet, materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -64,9 +64,19 @@ A printed label carries a code. Point your camera at it and the box opens. The o
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
-Printing a tape label at the cage? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window on Jobs → Materials. That file has one row per box for a label editor.
+## Print a tape label
 
-The office can print tape labels straight from the app. In the Labels window press **Tape**. Each box becomes one strip with the QR, the stencil and the code. Untick a box to leave it out. Press **Print 3 tape labels**. The first time, pick the P-touch printer and the 24 mm paper in the print window. The browser remembers both, so the next print is two presses.
+The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code.
+
+The first time on a computer, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Add it as a printer with Brother's driver. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm. The browser remembers both.
+
+Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**.
+
+Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip.
+
+After the first print the window opens on tape on that computer. Press **Change** to pick paper again. Press **Printer setup** to read the three steps again.
+
+Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
 Signed out, the scan still opens a page. The page shows what is in the box, the newest photo and the day of the last count. The page never names the job. To record a part used, moved or counted, press **Sign in to change a count**. After you sign in you land on that box.
 
