@@ -201,7 +201,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Amounts formatted with commas: `$1,234.56`
 - Projections table and Ledger table shown in a single panel
 - Summary bar shows `Projections: $…`, `Ledger: $…`, and **`Left: $…`** (Projections minus Ledger)
-- **Visibility**: `Ledger:` total shows for all `canManageStages` roles (dev, master, assistant-like, superintendent); `Projections:` and `Left:` are dev/master-only
+- **Visibility**: `Ledger:` total shows for all `canManageStages` roles (dev, master, assistant-like, superintendent); `Projections:` and `Left:` follow `canSeeProjections` (dev, master_technician and the controller)
 - Visual distinction: Light blue tinted background for the entire financial panel
 
 **Database**:
@@ -214,7 +214,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 ### Role-Based Visibility
 
-The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAndApprove`, `canEditProjections`, `canAssignSuperintendents`) drive this. `canManageStages` and `canSeePrivateNotesAndApprove` both cover dev, master_technician, assistant-like roles (assistant, controller — `isAssistantLike`), and superintendent; Projections and the `Left:` total follow `canEditProjections` (dev, master_technician and, since v2.6760, the controller).
+The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAndApprove`, `canEditProjections`, `canAssignSuperintendents`) drive this. `canManageStages` and `canSeePrivateNotesAndApprove` both cover dev, master_technician, assistant-like roles (assistant, controller — `isAssistantLike`), and superintendent; Projections and the `Left:` total follow `canEditProjections` (dev, master_technician and, since v2.6760, the controller; since v2.6803 it is `canSeeProjections` in `projectionEdit.ts`, the gate the read behind the bar and the delete policy hold too).
 
 **Owners (dev) and Master Technicians**:
 - See all stages in all workflows
@@ -226,7 +226,7 @@ The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAnd
 **Assistants (and Controllers — assistant-like)**:
 - Can manage stages (`canManageStages`): add, edit, delete stages on workflows for projects they can access (via adopted masters)
 - Can see private notes and line items (`canSeePrivateNotesAndApprove`), and the `Ledger:` total in the financial summary bar
-- Cannot see `Projections:` or `Left:` (dev/master-only)
+- An assistant cannot see `Projections:` or `Left:`; the controller sees and edits both (`canSeeProjections`)
 - Can approve stages and send back previous work
 - Can assign superintendents
 
