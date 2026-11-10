@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS public.builder_customer_answers (
   name text NOT NULL DEFAULT '',
   answered_by uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   answered_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT builder_customer_answers_scope_check CHECK ((answer = 'works_for') = (scope IS NOT NULL)),
-  CONSTRAINT builder_customer_answers_permit_check CHECK (scope IS DISTINCT FROM 'this_permit' OR permit_id IS NOT NULL)
+  -- Named apart from the checks Postgres names for a column by itself (<table>_<column>_check).
+  CONSTRAINT builder_customer_answers_works_for_has_scope CHECK ((answer = 'works_for') = (scope IS NOT NULL)),
+  CONSTRAINT builder_customer_answers_one_permit_has_permit CHECK (scope IS DISTINCT FROM 'this_permit' OR permit_id IS NOT NULL)
 );
 CREATE INDEX IF NOT EXISTS builder_customer_answers_customer_idx ON public.builder_customer_answers (customer_id, builder_key, answered_at);
 CREATE INDEX IF NOT EXISTS builder_customer_answers_key_idx ON public.builder_customer_answers (builder_key, answered_at);
