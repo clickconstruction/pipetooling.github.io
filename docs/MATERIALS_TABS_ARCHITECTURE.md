@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-11-10
 ---
 
 ## Overview
@@ -29,7 +29,7 @@ This map is coupling/refactor-oriented and follows [`PAGE_DECOMPOSITION_PLAYBOOK
 | `Materials.tsx` | 2,012 | 69 | 0 | 11 | 0 | 0 | 4 | 8 | 35 | 23 |
 | `SupplyHousesTab.tsx` | 1,898 | 44 | 0 | 11 | 3 | 0 | 1 | 9 | 20 | 30 |
 
-**Data, parent:** `users`, `service_types`, `purchase_orders`, `material_templates`, `material_template_items`, `purchase_order_items`, `material_part_prices`; RPC `get_supply_house_stats_by_service_type` (called `as any` at 331 — the fact sheet's RPC column misses it). **Data, SupplyHousesTab:** `supply_houses`, `supply_house_contacts`, `job_supply_house_accounts`, `service_types`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_po_generator_entries`; RPCs `search_jobs_ledger`, `get_jobs_ledger_by_ids`. No realtime subscriptions, no edge functions in either file.
+**Data, parent:** `users`, `service_types`, `purchase_orders`, `material_templates`, `material_template_items`, `purchase_order_items`, `material_part_prices`; RPC `get_supply_house_stats_by_service_type` (called `as any` at 331 — the fact sheet's RPC column misses it). **Data, SupplyHousesTab:** `supply_houses`, `supply_house_contacts`, `job_supply_house_accounts`, `service_types`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_po_generator_entries`, and since v2.6819 `supply_papers` and `supply_paper_lines` through `lib/materials/lines/paperIo.ts` (each bill's **Lines** cell and `materials/PaperLookModal.tsx`; writes through the RPCs `supply_paper_save` and `supply_paper_accept`), since v2.6821 `counter_tickets` through `lib/tickets/ticketMatchIo.ts` (Add invoice's *Start from* a ticket); RPCs `search_jobs_ledger`, `get_jobs_ledger_by_ids`. No realtime subscriptions, no edge functions in either file.
 
 The page is tab-switched on one `activeTab` state (63–65, the seven keys spelled literally rather than as the kernel's `MaterialsTab` type); the canonical list is `MATERIALS_TABS` in [`lib/materials/materialsTabs.ts`](../src/lib/materials/materialsTabs.ts):
 
