@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes in work on `claude/bid-photos-second-look`: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -360,7 +360,7 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
 - *Docs*: `docs/EDGE_FUNCTIONS.md` (the section amended); `docs/ACCESS_CONTROL.md` (who may
   remove); the guide.
 
-**PR 5 · the column (M).** Gated by call 1.
+**PR 5 · the column (M).** Gated by call 1. The second look gave every link its fixed place already, so what is left here is the grey icon for a missing link and the Files window it opens.
 - *Client*: the kernel returns all five slots in order; the table and the phone's card draw them,
   grey where missing; the photos window becomes the first row of `BidFilesModal`; a grey icon
   opens the window on its row, each row reading its state with **Open ↗**.
@@ -423,6 +423,32 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
   Photos inside the job's folder.
 - **The column** (PR 5): at 1,400 wide and at 375, in both themes, a bid with nothing shows five
   grey icons and every row's icons line up.
+
+## The second look at what shipped (2026-11-10)
+
+The owner asked *have you tested it live and do you think it is the best we can do?* The live walk was on
+clicktooling.com as the dev login, on the ZZ Test bid, at desk and phone width: the camera on all 85 rows, the
+window reading the bid's Drive folder, a photo added and filed by the sweep five minutes later. It was not the
+best we could do. What the walk showed, and what was done:
+
+- **The camera was always there and not always in the same place.** Measured on the live board, its left edge sat
+  at seven positions in the first twenty rows, because the column centred whatever icons a row had. Fixed: every
+  link kind has its own slot, so each icon lines up down the column on every row.
+- **Five photos read the same**, *2026-11-01 Robert …*, since a picture the app filed is named by day and sender
+  first and the tile cut off the caption. Fixed: such a name reads as its caption, with its sender as who.
+- **The board's count stayed behind** after the window took on pictures from the Drive folder. Fixed.
+- **A drop on a full window showed its target at the bottom of the grid.** Fixed: the whole window is the target.
+- **The words when Drive is silent named an Edge Function.** Fixed: plain words.
+
+What it did not fix, and is the owner's:
+
+- **`DRIVE_IMPERSONATE_USER` is not set on prod** (read from the secrets' names, 2026-11-10). So a bid whose
+  project folder sits in a personal Drive keeps its photos in the app: they show, they count, and they do not
+  reach Drive until the folder moves into the shared Drive or the secret is set (`docs/DRIVE_INTAKE_SETUP.md`).
+  Most hand-made plumbing bid folders are such folders (card #240, call 4). This state has not been walked live:
+  no ZZ Test folder sits in a personal Drive.
+- **A grey camera on 84 of 85 rows is a lot of grey.** It is what was asked, and it reads as a to-do on every bid.
+  Once the fixed column lands with grey for every missing link (PR 5) the owner may want the grey fainter.
 
 ## Found in passing, not fixed
 
