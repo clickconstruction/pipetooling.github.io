@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bids and permits: this site and this GC, on the bid</title>
+<style>
+  /* Punch list #307. Every name, street, number, date and amount here is made up: Ridgeway Builders and Ridgeway Builders
+     of Texas LLC, Dana Whitlow, Paula Kemp, Hartwell Interiors, Lone Oak Plumbing, Brazos Mechanical, Greenline Irrigation,
+     Mill Street Lofts, Pecan Grove Pharmacy, Harbor Street Offices, Larkspur Dental, Cedar Bend Clinic, Oak Hollow Retail.
+     Tokens are src/index.css's; saturated action colours stay literal as the app keeps them. Frames are fixed at 375 (the
+     phone) and 1,248 (the desk). Green dashes mark what is new. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b, strong { color: var(--text-strong); }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; position: sticky; top: 0; z-index: 20; background: var(--bg-page); padding: 8px 0; }
+  .controls a, .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; cursor: pointer; }
+  .controls a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  .controls .sp { flex: 1; }
+  h2 { font-size: 20px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 56px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 0; max-width: 1100px; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .fact .n { font-size: 26px; font-weight: 700; color: var(--text-strong); line-height: 1.1; }
+  .fact .n small { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .fact p { margin: 4px 0 0; color: var(--text-700); font-size: 13px; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 377px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .screen { font-size: 14.5px; line-height: 1.45; color: var(--text-base); padding: 0 0 16px; }
+  .screen.w375 { width: 375px; }
+  .screen.w1248 { width: 1248px; }
+  .new { outline: 2px dashed var(--text-green-700); outline-offset: 3px; border-radius: 8px; }
+  .second { margin: 40px 0 0; background: var(--surface); border: 2px solid var(--text-strong); border-radius: 12px; padding: 16px 18px; max-width: 1100px; }
+  .second h2 { margin: 0 0 8px; }
+  .second ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-700); }
+  /* the app, simplified */
+  .wbar { display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .wbar .t { font-size: 16px; font-weight: 700; color: var(--text-strong); }
+  .wbar .sp { flex: 1; }
+  .wbar .x { color: var(--text-muted); font-size: 18px; }
+  .tabs { display: flex; gap: 18px; padding: 0 18px; background: var(--surface); border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+  .tabs span { padding: 8px 2px; color: var(--text-700); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--text-blue-700); border-color: #2563eb; font-weight: 600; }
+  .cols { display: grid; gap: 14px; padding: 14px 18px 0; align-items: start; }
+  .w1248 .cols { grid-template-columns: 1fr 1fr; }
+  .w375 .cols, .w375 .wbar, .w375 .tabs { padding-left: 12px; padding-right: 12px; }
+  .sec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+  .sec > h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .field { display: grid; gap: 2px; }
+  .field label { font-size: 12px; color: var(--text-muted); }
+  .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 10px; background: var(--surface); color: var(--text-strong); }
+  .field .sub { font-size: 12px; color: var(--text-muted); }
+  .gc { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--bg-subtle); display: grid; gap: 2px; }
+  .gc b { font-size: 15px; }
+  .gc span { color: var(--text-700); font-size: 13px; }
+  .blk { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+  .blk > h5 { margin: 0; font-size: 13.5px; color: var(--text-strong); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .verdict { display: flex; gap: 8px; align-items: flex-start; color: var(--text-strong); font-weight: 600; }
+  .dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--text-muted); }
+  .dot.g { background: #059669; } .dot.a { background: #d97706; } .dot.r { background: #dc2626; }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .tile { background: var(--bg-muted); border-radius: 8px; padding: 8px 10px; }
+  .tile .k { font-size: 11.5px; color: var(--text-muted); }
+  .tile .v { font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .plist { display: grid; gap: 0; border-top: 1px solid var(--border); }
+  .prow { padding: 9px 0; border-bottom: 1px solid var(--border); display: grid; gap: 3px; min-width: 0; }
+  .prow .h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .prow .h b { font-size: 14px; }
+  .prow .d { color: var(--text-700); font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; white-space: nowrap; background: var(--bg-muted); color: var(--text-700); }
+  .chip.g { background: var(--bg-green-100); color: var(--text-green-700); }
+  .chip.a { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .chip.r { background: var(--bg-red-100); color: var(--text-red-700); }
+  .chip.b { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .q { background: var(--bg-amber-100); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; color: var(--text-strong); }
+  .q .why { font-size: 12.5px; color: var(--text-amber-800); }
+  .done { background: var(--bg-green-100); border-radius: 8px; padding: 10px 12px; color: var(--text-strong); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn { border: 1px solid #2563eb; background: #2563eb; color: #fff; font: 600 13px var(--font); border-radius: 6px; padding: 6px 12px; white-space: nowrap; }
+  .btn.ghost { background: var(--surface); color: var(--text-strong); border-color: var(--border-strong); }
+  .link { color: var(--text-blue-700); font-weight: 600; font-size: 13px; }
+  .bars { display: grid; gap: 6px; }
+  .bar { display: grid; grid-template-columns: 132px 1fr 92px; gap: 8px; align-items: center; font-size: 13px; }
+  .bar i { display: block; height: 10px; border-radius: 5px; background: #2563eb; }
+  .bar .r { text-align: right; color: var(--text-700); }
+  .w375 .bar { grid-template-columns: 112px 1fr 78px; }
+  .kv { display: grid; grid-template-columns: 118px 1fr; gap: 4px 10px; font-size: 13px; }
+  .kv span:nth-child(odd) { color: var(--text-muted); }
+  /* the board */
+  .board { padding: 14px 18px 0; display: grid; gap: 12px; }
+  .w375 .board { padding: 12px 12px 0; }
+  .bh { font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .news { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: grid; gap: 0; }
+  .news > h5 { margin: 0 0 4px; font-size: 13.5px; color: var(--text-strong); display: flex; gap: 8px; align-items: center; }
+  .nrow { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .nrow .w { flex: 1 1 260px; min-width: 0; }
+  .nrow .w span { color: var(--text-700); font-size: 13px; display: block; }
+  table.bt { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.bt th { text-align: left; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+  table.bt td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 13.5px; }
+  table.bt tr:last-child td { border-bottom: 0; }
+  .bcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
+  .bcard .h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .cards { display: grid; gap: 8px; }
+  .w1248 .only-phone, .w375 .only-desk { display: none; }
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; margin-top: 14px; }
+  .state { display: grid; gap: 6px; align-content: start; }
+  .state .sec { box-shadow: var(--shadow); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #307 · mock-up · 2026-11-10 · every name and number made up</p>
+  <h1>Bids and permits: what the city knows about this site and this GC, on the bid</h1>
+  <p>The ask: collect who pulls permits, match the names, and show a GC's other permits to a person bidding. Direction 1 draws it as asked. Then the second look, and direction 2, which is the pick.</p>
+</header>
+<div class="controls">
+  <a href="#test">What the test found</a>
+  <a href="#d1">1 · GC first, the ask as given</a>
+  <a href="#look">Is this the best we can do?</a>
+  <a href="#d2" class="pick">2 · Site first, the pick</a>
+  <a href="#states">The four honest states</a>
+  <a href="#news">Permit news on the board</a>
+  <span class="sp"></span>
+  <button type="button" id="theme">Dark</button>
+</div>
+
+<h2 id="test">What the test found</h2>
+<p class="lede">The latest 120 bids against the permits on hand (San Antonio, 75 days), run through the dev seat on 2026-11-10. Counts only.</p>
+<div class="facts">
+  <div class="fact"><div class="n">1 <small>of 27</small></div><p>GC names on the bids that have a permit under their own name.</p></div>
+  <div class="fact"><div class="n">5 <small>of 11</small></div><p>San Antonio bid addresses that have a permit on the address.</p></div>
+  <div class="fact"><div class="n">1 <small>of 4</small></div><p>Of those sites' building permits, the ones pulled under the bid's own GC. Two were under a person.</p></div>
+  <div class="fact"><div class="n">3 <small>in 10</small></div><p>Bid sites that are in San Antonio, the one city read today.</p></div>
+</div>
+
+<h2 id="d1"><span class="num">1</span> GC first, the ask as given</h2>
+<p class="lede">The bid window's People section carries the GC's permits. A suggested match by name waits for Yes or No. Location says the address already has a permit.</p>
+<div class="row">
+  <div class="col desk"><div class="cap">The bid window · Edit · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d1"></div></div></div>
+  <div class="col p375"><div class="cap">The same · 375</div><div class="frame"><div class="screen w375" data-fill="d1"></div></div></div>
+  <div class="col p375"><div class="cap">The Bid Board's row and phone card</div><div class="frame"><div class="screen w375" data-fill="d1b"></div></div></div>
+</div>
+<div class="say">
+  <p class="gain">It answers the question as he asked it: who is this GC, by the permits they pull.</p>
+  <p class="lose">On real rows the GC panel is empty for most bids, and the match is a guess between two similar names.</p>
+</div>
+
+<div class="second" id="look">
+  <h2>Is this the best we can do?</h2>
+  <p class="lede">No, on three counts. Each comes from the test, not from taste.</p>
+  <ol>
+    <li><b>It leads with the part that is empty.</b> One GC name in 27 has a permit under it. The feed names one applicant, often a person, and Texas gives a general contractor no license number to match on.</li>
+    <li><b>It asks the match question without evidence.</b> <i>Same company?</i> on two similar names is a guess. <i>This name pulled the permit on the site you are bidding to them</i> is a reason, and five sites in eleven have one.</li>
+    <li><b>It is only there when the bid is open.</b> A permit changes what a person does mostly after the bid is sent: the permit issues, or another plumber's permit lands. Nobody opens a sent bid to look.</li>
+  </ol>
+  <p class="lede" style="margin-top:10px">So the same parts are turned around: the site leads, the question rides on the site, the GC's year says how much it knows, and news comes to the board.</p>
+</div>
+
+<h2 id="d2"><span class="num pick">2</span> Site first <span class="tag">the pick</span></h2>
+<p class="lede">Location leads with what the city holds on this address. The one question sits under the permit that raised it. The GC's year is under the GC card and grows with each Yes.</p>
+<div class="row">
+  <div class="col desk"><div class="cap">The bid window · Edit · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d2"></div></div></div>
+  <div class="col p375"><div class="cap">The same · 375</div><div class="frame"><div class="screen w375" data-fill="d2"></div></div></div>
+  <div class="col p375"><div class="cap">After Yes · 375</div><div class="frame"><div class="screen w375" data-fill="d2yes"></div></div></div>
+</div>
+<div class="say">
+  <p class="gain">Works on the day it ships for every San Antonio bid with a street address, on tables #302 already filled.</p>
+  <p class="gain">Each Yes teaches the app a name for good. The GC's year fills in from the bids themselves.</p>
+  <p class="lose">A shared address can carry another tenant's permit. <i>Looks like this job</i> is a hint, and the list shows every permit so a person can tell.</p>
+</div>
+
+<h3 id="states">The four honest states</h3>
+<p class="lede">Seven bid sites in ten have no records today. None of these lines reads as <i>No permits</i>.</p>
+<div class="states">
+  <div class="state"><div class="cap">Records, and a match</div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot g"></span><span>A permit application is on this address. Filed 60 days ago, not issued yet.</span></div><div class="muted">Source: City of San Antonio. Records start Jan 2025.</div></div></div>
+  <div class="state"><div class="cap">Records, and nothing here</div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot"></span><span>No permit on 2210 Larkspur Dr since Jan 2025.</span></div><div class="muted">The city's records run 2 to 3 days behind. A site outside the city limits files elsewhere.</div></div></div>
+  <div class="state"><div class="cap">A town we do not read</div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot a"></span><span>No permit records for Kyle.</span></div><div class="muted">Permits are read for San Antonio only.</div><div class="btns"><span class="link">Open Kyle's permit search ›</span></div></div></div>
+  <div class="state"><div class="cap">Not a street address</div>
+    <div class="sec"><h4>This site</h4><div class="verdict"><span class="dot a"></span><span>This bid's address has no street number, so permits cannot be looked up.</span></div><div class="muted">It reads: Loop 1604 at Oak Hollow.</div><div class="btns"><span class="btn ghost">Fix the address</span></div></div></div>
+</div>
+
+<h3 id="news">Permit news on the board</h3>
+<p class="lede">One strip at the top of the Bid Board and a chip on the row. The plumbing line offers a press and never marks a bid by itself.</p>
+<div class="row">
+  <div class="col desk"><div class="cap">The Bid Board · 1,248</div><div class="frame"><div class="screen w1248" data-fill="d2b"></div></div></div>
+  <div class="col p375"><div class="cap">The same · 375</div><div class="frame"><div class="screen w375" data-fill="d2b"></div></div></div>
+</div>
+</div>
+
+<!-- the parts, each drawn once and filled into its frames -->
+<template id="t-gcyear">
+  <div class="blk new"><h5>Permits Ridgeway Builders pulled <span class="chip b">San Antonio · 12 months</span></h5>
+    <div class="verdict"><span>9 permits · $17.0M declared</span></div>
+    <div class="bars">
+      <div class="bar"><span>New commercial</span><i style="width:100%"></i><span class="r">3 · $14.1M</span></div>
+      <div class="bar"><span>Remodel</span><i style="width:16%"></i><span class="r">5 · $2.3M</span></div>
+      <div class="bar"><span>Addition</span><i style="width:5%"></i><span class="r">1 · $0.6M</span></div>
+    </div>
+    <div class="kv">
+      <span>Where</span><span>78215 (4) · 78209 (2) · 78258 (2) · 78245 (1)</span>
+      <span>Who plumbs for them</span><span>Lone Oak Plumbing on 5 · Brazos Mechanical on 1 · no plumbing permit yet on 3</span>
+      <span>Asked us to price</span><span>2 of the 9. We won 1.</span>
+    </div>
+    <span class="link">See all 9 ›</span>
+  </div>
+</template>
+
+<template id="t-d1">
+  <div class="wbar"><span class="t">B512 · Mill Street Lofts, Building C</span><span class="chip">Unsent</span><span class="chip a">Due Nov 18</span><span class="sp"></span><span class="x">✕</span></div>
+  <div class="tabs"><span class="on">Edit</span><span>Counts</span><span>Pricing</span><span>Letter</span></div>
+  <div class="cols">
+    <div class="sec"><h4>People</h4>
+      <div class="gc"><b>Ridgeway Builders</b><span>Paula Kemp · 210-555-0142</span></div>
+      <div data-part="gcyear"></div>
+      <div class="q new">
+        <div><b>Is this the same company?</b> Ridgeway Builders of Texas LLC pulled 7 permits in San Antonio. Your customer is Ridgeway Builders.</div>
+        <div class="btns"><span class="btn">Yes, the same</span><span class="btn ghost">No, a different company</span></div>
+        <div class="why">Asked once. The answer is kept either way.</div>
+      </div>
+    </div>
+    <div class="sec"><h4>Location</h4>
+      <div class="field"><label>Address</label><div class="in">4120 Mill Street, San Antonio, TX 78215</div><div class="sub">6.2 miles from the office</div></div>
+      <div class="blk new"><h5>This address already has a permit</h5>
+        <div class="prow" style="border:0;padding:0"><div class="h"><b>Commercial project application</b><span class="chip a">Applied Sep 11</span></div>
+          <div class="d">$6,400,000 declared · 38,000 sf · pulled by Dana Whitlow</div></div>
+        <span class="link">Open the permit ›</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-d1b">
+  <div class="board">
+    <div class="bcard"><div class="h"><b>B512</b><span>Mill Street Lofts, Building C</span></div>
+      <div class="muted">Ridgeway Builders · due Nov 18 · $412,000</div>
+      <div class="btns"><span class="chip a new">Permit on site</span><span class="chip b new">GC: 9 permits</span></div></div>
+    <div class="bcard"><div class="h"><b>B505</b><span>Larkspur Dental</span></div>
+      <div class="muted">Hartwell Interiors · due Nov 21 · $64,000</div>
+      <div class="btns"><span class="chip new">GC: no match yet</span></div></div>
+  </div>
+</template>
+
+<template id="t-site">
+  <div class="blk new"><h5>This site <span class="chip b">San Antonio</span></h5>
+    <div class="verdict"><span class="dot g"></span><span>A permit application is on this address. Filed 60 days ago, not issued yet. No general plumbing permit on it.</span></div>
+    <div class="tiles">
+      <div class="tile"><div class="k">The city's declared value</div><div class="v">$6,400,000</div></div>
+      <div class="tile"><div class="k">Area on the permit</div><div class="v">38,000 sf</div></div>
+      <div class="tile"><div class="k">Your bid</div><div class="v">$412,000</div><div class="k">6.4% of the declared value</div></div>
+    </div>
+    <div class="muted" style="font-weight:600;color:var(--text-700)">3 permits on 4120 Mill St</div>
+    <div class="plist">
+      <div class="prow"><div class="h"><b>Commercial project application</b><span class="chip g">Looks like this job</span><span class="chip a">Applied Sep 11</span></div>
+        <div class="d">MILL STREET LOFTS BLDG C · $6,400,000 · 38,000 sf · pulled by Dana Whitlow</div>
+        <div data-part="ask"></div></div>
+      <div class="prow"><div class="h"><b>Commercial remodel</b><span class="chip">Issued Jun 3</span></div>
+        <div class="d">MILL ST COFFEE TI · $180,000 · pulled by Hartwell Interiors · plumbing, general: Lone Oak Plumbing</div></div>
+      <div class="prow"><div class="h"><b>Plumbing, irrigation</b><span class="chip">Issued Oct 2</span></div>
+        <div class="d">Pulled by Greenline Irrigation · not a general plumbing permit</div></div>
+    </div>
+    <div class="muted">Source: City of San Antonio building permits. Records start Jan 2025 and run 2 to 3 days behind.</div>
+  </div>
+</template>
+
+<template id="t-ask">
+  <div class="q">
+    <div><b>Dana Whitlow pulled this permit.</b> Does Dana Whitlow file for Ridgeway Builders?</div>
+    <div class="btns"><span class="btn">Yes, for Ridgeway</span><span class="btn ghost">No, someone else</span></div>
+    <div class="why">Asked because this bid goes to Ridgeway on this address. Asked once.</div>
+  </div>
+</template>
+<template id="t-asked">
+  <div class="done"><span><b>Joined.</b> Dana Whitlow files for Ridgeway Builders. 7 other permits now count as Ridgeway's.</span><span class="link">Undo</span></div>
+</template>
+
+<template id="t-d2">
+  <div class="wbar"><span class="t">B512 · Mill Street Lofts, Building C</span><span class="chip">Unsent</span><span class="chip a">Due Nov 18</span><span class="sp"></span><span class="x">✕</span></div>
+  <div class="tabs"><span class="on">Edit</span><span>Counts</span><span>Pricing</span><span>Letter</span></div>
+  <div class="cols">
+    <div class="sec"><h4>Location</h4>
+      <div class="field"><label>Address</label><div class="in">4120 Mill Street, San Antonio, TX 78215</div><div class="sub">6.2 miles from the office</div></div>
+      <div data-part="site"></div>
+    </div>
+    <div class="sec"><h4>People</h4>
+      <div class="gc"><b>Ridgeway Builders</b><span>Paula Kemp · 210-555-0142</span></div>
+      <div class="blk new"><h5>Their permits <span class="chip b">San Antonio · since Jan 2025</span></h5>
+        <div class="verdict"><span class="dot"></span><span>No permits under the name Ridgeway Builders yet.</span></div>
+        <div class="muted">One name may be theirs: Dana Whitlow, from this bid's site. The question is beside that permit.</div>
+        <span class="link">Pick a name that is theirs ›</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-d2yes">
+  <div class="wbar"><span class="t">B512 · Mill Street Lofts, Building C</span><span class="sp"></span><span class="x">✕</span></div>
+  <div class="cols">
+    <div class="sec"><h4>Location</h4>
+      <div class="blk"><h5>This site</h5>
+        <div class="prow" style="border:0;padding:0"><div class="h"><b>Commercial project application</b><span class="chip g">Looks like this job</span></div>
+          <div class="d">MILL STREET LOFTS BLDG C · pulled by Dana Whitlow <span class="chip b">Files for Ridgeway</span></div></div>
+        <div data-part="asked"></div>
+      </div>
+    </div>
+    <div class="sec"><h4>People</h4>
+      <div class="gc"><b>Ridgeway Builders</b><span>Paula Kemp · 210-555-0142</span></div>
+      <div class="blk new"><h5>Their permits <span class="chip b">San Antonio · since Jan 2025</span></h5>
+        <div class="verdict"><span class="dot g"></span><span>8 permits under 2 names · $15.2M declared</span></div>
+        <div class="kv">
+          <span>Names</span><span>Dana Whitlow (8) · Ridgeway Builders (0)</span>
+          <span>Who plumbs for them</span><span>Lone Oak Plumbing on 5 of 8</span>
+          <span>Asked us to price</span><span>2 of the 8</span>
+        </div>
+        <span class="link">See their year ›</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-d2b">
+  <div class="board">
+    <div class="bh">Bid Board</div>
+    <div class="news new"><h5>Permit news on your bids <span class="chip r">3</span></h5>
+      <div class="nrow"><div class="w"><b>B501 · Pecan Grove Pharmacy</b><span>A general plumbing permit was issued on this site Nov 5 to Lone Oak Plumbing. The bid is not yet won or lost.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Mark lost…</span></div></div>
+      <div class="nrow"><div class="w"><b>B488 · Harbor Street Offices</b><span>The building permit was issued Nov 3. The work can start. Last contact 19 days ago.</span></div><div class="btns"><span class="btn ghost">Open the bid</span><span class="btn">Log a call</span></div></div>
+      <div class="nrow"><div class="w"><b>B512 · Mill Street Lofts, Building C</b><span>A permit application is on this site: $6,400,000 declared, 38,000 sf. One name is waiting on a Yes or No.</span></div><div class="btns"><span class="btn ghost">Open the bid</span></div></div>
+    </div>
+    <table class="bt only-desk">
+      <tr><th>Bid</th><th>Project</th><th>GC</th><th>Due</th><th>Value</th><th>Permit</th></tr>
+      <tr><td><b>B512</b></td><td>Mill Street Lofts, Building C</td><td>Ridgeway Builders</td><td>Nov 18</td><td>$412,000</td><td><span class="chip a new">Applied Sep 11</span></td></tr>
+      <tr><td><b>B505</b></td><td>Larkspur Dental</td><td>Hartwell Interiors</td><td>Nov 21</td><td>$64,000</td><td><span class="muted">none found</span></td></tr>
+      <tr><td><b>B501</b></td><td>Pecan Grove Pharmacy</td><td>Ridgeway Builders</td><td>sent Oct 14</td><td>$88,500</td><td><span class="chip r new">Plumbing permit · another name</span></td></tr>
+      <tr><td><b>B498</b></td><td>Cedar Bend Clinic</td><td>Hartwell Interiors</td><td>sent Oct 9</td><td>$131,000</td><td><span class="muted">no records for Kyle</span></td></tr>
+      <tr><td><b>B488</b></td><td>Harbor Street Offices</td><td>Ridgeway Builders</td><td>sent Sep 30</td><td>$203,000</td><td><span class="chip g new">Issued Nov 3</span></td></tr>
+    </table>
+    <div class="only-phone cards">
+      <div class="bcard"><div class="h"><b>B512</b><span>Mill Street Lofts, Building C</span></div><div class="muted">Ridgeway Builders · due Nov 18 · $412,000</div><div class="btns"><span class="chip a new">Applied Sep 11</span></div></div>
+      <div class="bcard"><div class="h"><b>B501</b><span>Pecan Grove Pharmacy</span></div><div class="muted">Ridgeway Builders · sent Oct 14 · $88,500</div><div class="btns"><span class="chip r new">Plumbing permit · another name</span></div></div>
+      <div class="bcard"><div class="h"><b>B498</b><span>Cedar Bend Clinic</span></div><div class="muted">Hartwell Interiors · sent Oct 9 · $131,000 · no records for Kyle</div></div>
+      <div class="bcard"><div class="h"><b>B488</b><span>Harbor Street Offices</span></div><div class="muted">Ridgeway Builders · sent Sep 30 · $203,000</div><div class="btns"><span class="chip g new">Issued Nov 3</span></div></div>
+    </div>
+  </div>
+</template>
+
+<script>
+  // Each part is drawn once in a <template> and filled into every frame that names it.
+  function fill(root) {
+    root.querySelectorAll('[data-fill], [data-part]').forEach(function (slot) {
+      var id = slot.getAttribute('data-fill') || slot.getAttribute('data-part');
+      var t = document.getElementById("t-" + id);
+      if (!t || slot.childNodes.length) return;
+      slot.appendChild(t.content.cloneNode(true));
+      fill(slot);
+    });
+  }
+  fill(document);
+  var btn = document.getElementById('theme');
+  btn.addEventListener('click', function () {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.textContent = dark ? 'Dark' : 'Light';
+  });
+</script>
+</body>
+</html>
