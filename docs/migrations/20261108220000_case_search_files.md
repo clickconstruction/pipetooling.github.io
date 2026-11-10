@@ -10,3 +10,5 @@ No table, so no fence appliers. Idempotent (`CREATE INDEX IF NOT EXISTS`, `CREAT
 ## Order
 
 After `20261108200000` **and after #288's `20261108210000` and `20261108230000` are on main** — this body names `public.documents`, `text_document_id` and `legal_matter_documents.counsel_only`, which a plpgsql function compiles without and fails on at every call. #288 PR 2's `20261108230000` (v2.6720) merged first and replaces `dev_case_search` with the file source carried, so this file's body is word for word that stamp's final body: pushed after it (this stamp sits below applied versions, so `supabase db push --include-all`), it adds the GIN index and leaves prod's function as it is.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

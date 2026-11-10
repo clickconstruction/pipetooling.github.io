@@ -59,5 +59,5 @@ Nobody can remove their own login. A sample account or a digital twin keeps its 
 
 - The invite link is for setting a password once. If they open it again while already signed in, the page says **You're already set up** and offers Sign in. It never resets a password.
 - If a link expired, open their desk and press {{button:outline|Send sign-in email}}. It sends a fresh link that signs them in.
-- People → Users → **Add to roster** with *Also invite them to sign in* is the other door. It picks the role from the roster kind. A Subcontractor row invites a Subcontractor. It does not offer training mode.
+- People → Users → **Add to roster** with *Also attach a login* ticked is the other door. It makes the person, then attaches the login and sends the sign-in email. The role comes from the roster kind. It does not offer training mode.
 - The invitation wording, including the company name at the top, is editable at Settings → **Templates** → *Invitation Email*.

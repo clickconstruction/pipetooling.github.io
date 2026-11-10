@@ -10,3 +10,5 @@ Punch list #188, PR 10 of the dev gates: the pages and the Quickfill edit modes,
 Rows 68 (Moneyfill) and 71 (a course that is off) read what their audiences read already: client lines alone. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge. Until the push the owner's onboarding, weight, template and Bridge saves and the office's Quickfill template edits come back as refusals in words.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

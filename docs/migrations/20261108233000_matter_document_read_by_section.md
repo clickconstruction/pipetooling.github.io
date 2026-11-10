@@ -13,3 +13,5 @@ No table, no column: no fence is owed. Idempotent (`CREATE OR REPLACE`).
 ## Order
 
 After `20261108230000` (v2.6720, `counsel_only`, which `dev_matter_doc_read` reads). Push, then `supabase functions deploy dev-mcp`; regenerate the catalog so `find_rpc` lists the two functions (`get_matter_document` names the RPC itself).
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

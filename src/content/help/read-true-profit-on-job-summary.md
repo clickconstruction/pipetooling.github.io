@@ -88,7 +88,7 @@ The same arithmetic runs on each job window's **Costs** tab. See *read the cost 
 
 ## How day-share works
 
-Every calendar day has an overhead pool: office labor, bid labor, and office parts. It is the same pool People → Overhead reports. Day-share hands each day's pool to jobs in two slices. It runs on three constants a dev sets for the whole app:
+Every calendar day has an overhead pool: office labor, bid labor, and office parts. It is the same pool People → Overhead reports. Day-share hands each day's pool to jobs in two slices. It runs on three constants the owner or a dev sets for the whole app:
 
 - **Smoothing window**: each day's pool is shared by the field hours worked over the following N days. It is not just that day. N is 30 by default. A one-hour Saturday no longer receives a whole day's office cost. A lumpy office day is spread across the month's work. It no longer lands on whoever happened to be in the field.
 - **Carry share**: a slice of the pool that every **open** job carries equally per day, just for being open. It is 20% by default. Being open means scheduling, GC calls, billing. The rest follows field hours. A job is open from its Working move, or its first field day, to its Billed move.
@@ -103,9 +103,9 @@ You add up a job's days and that is its overhead. You expand a row and open ***O
 
 At ***1 day · no carry*** this is exactly the original day-share. Each day's pool goes to the jobs worked that day, by hours. A day with pool $ but no field hours is charged to nobody.
 
-## Turn the dials (devs)
+## Turn the dials (the owner and devs)
 
-Devs see {{icon:gear}} on the chip beside the Overhead control. It opens the dials. There are sliders for the smoothing window and carry share, the idle cap and what open means. A live strip shows the window's pool tying to the dollar. Moving a dial changes **this device only**. The chip turns red and says *exploring on this device*. So you can watch a job's share move before deciding. {{button:blue|Use for everyone}} writes the app default. It asks once, since true profit changes on every Job Summary. {{button:outline|Back to the app default}} stops exploring. {{button:outline|Recommended}} sets 30 days, 20% and a 14-day cap, the constants the 2026-09-10 study landed on. {{button:outline|Original day-share}} sets 1 day and no carry.
+The owner and devs see {{icon:gear}} on the chip beside the Overhead control. It opens the dials. There are sliders for the smoothing window and carry share, the idle cap and what open means. A live strip shows the window's pool tying to the dollar. Moving a dial changes **this device only**. The chip turns red and says *exploring on this device*. So you can watch a job's share move before deciding. {{button:blue|Use for everyone}} writes the app default. It asks once, since true profit changes on every Job Summary. {{button:outline|Back to the app default}} stops exploring. {{button:outline|Recommended}} sets 30 days, 20% and a 14-day cap, the constants the 2026-09-10 study landed on. {{button:outline|Original day-share}} sets 1 day and no carry.
 
 ## Why the method matters
 

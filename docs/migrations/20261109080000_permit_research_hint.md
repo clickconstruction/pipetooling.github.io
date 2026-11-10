@@ -12,3 +12,5 @@ No CREATE TABLE, so the four fence appliers are not run.
 ## Release order
 
 Merge the PR, `supabase db push`. Nothing to deploy. The client calls the RPC untyped until the next `chore(types)` PR.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

@@ -10,3 +10,5 @@ The columns and the one table behind the owner's call 2 of 2026-11-08: a mail a 
 Idempotent and additive. The hot tables are altered last, `messages` then `users`, each lock held for the shortest stretch.
 
 **Deploy order**: the client's thread read selects `messages.placed_by_app` (`messagesIo.ts`), so `check:calls-ahead` labels the PR *push right after the merge*: `supabase db push` from a clean checkout of `main` right after the merge, before the Pages deploy finishes; then `supabase functions deploy gmail-mine --no-verify-jwt`. The push before the redeploy is harmless (the old function reads none of the columns); the redeploy before the push would stop every tag at its first read of the row (`placed_by_app` in `TAG_ROW_COLUMNS`) and read no Sent, so push first. Then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

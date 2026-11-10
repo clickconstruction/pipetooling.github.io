@@ -45,7 +45,7 @@ Jobs created from a won bid or an accepted estimate are already covered and neve
 
 Two things keep the count honest. Both show on the card's third line. It reads {{chip:gray|Floor $2,500 · 9 small jobs not counted · 3 marked not needed}}:
 
-- **The floor.** A dev sets a dollar amount on the card. Press {{button:outline|change}}, type the amount, and press Enter. 0 removes it. A job whose amount is under the floor leaves the count, the **No contract** filter and the sweep. A job with **no amount** always stays in. Unknown is not small.
+- **The floor.** The owner or a dev sets a dollar amount on the card. Press {{button:outline|change}}, type the amount, and press Enter. 0 removes it. A job whose amount is under the floor leaves the count, the **No contract** filter and the sweep. A job with **no amount** always stays in. Unknown is not small.
 - **Not needed.** Open the job's Contract window. Under the rail, press **Not needed…**. Pick why: {{chip:blue|GC job — their subcontract}}, {{chip:gray|Service call}} or {{chip:gray|Warranty / no charge}}. Or say it in your own words. Then press {{button:blue|Mark not needed}}. The row reads {{chip:gray|No contract · not needed}}. The job leaves the count, and nothing goes to the customer. Changed your mind? The window shows the answer with {{button:outline|Needed after all}}.
 
 :::example A builder's job

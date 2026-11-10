@@ -22,8 +22,8 @@ Have these from the sub, or know you will be asking for them:
 
 There are two doors, depending on where the person came from:
 
-- **From the hiring board**. You go to Prospects → **Hiring** → the **Hire** stage. Advancing a candidate offers *Add to the People roster?*. You pick **Subcontractor**. Their name, phone, and email carry over. The Hire stage also has the company **onboarding checklist**. Each item's box goes red, then yellow, then green. Devs edit the items under {{icon:gear}} **Onboarding settings**. So you can track the documents you are still waiting on right there.
-- **Straight to People**. You go to People → **Users** → {{button:blue|+ Add to roster}}. You pick **Subcontractor** and save. That is a roster row with no login. It is all the portal, paperwork and sub sheets need. You tick *Also invite them to sign in* on the same dialog if they should have a login. Will they not click an invite? Then {{button:outline|Accounts · dev}} → {{button:outline|Manually add user}} creates the login now, with a password you hand them. The invite link is single-use for setting a password. Re-opening it while signed in shows *You're already set up* and a Sign in button, nothing else.
+- **From the hiring board**. You go to Prospects → **Hiring** → the **Hire** stage. Advancing a candidate offers *Add to the People roster?*. You pick **Subcontractor**. Their name, phone, and email carry over. The Hire stage also has the company **onboarding checklist**. Each item's box goes red, then yellow, then green. The owner or a dev edits the items under {{icon:gear}} **Onboarding settings**. So you can track the documents you are still waiting on right there.
+- **Straight to People**. You go to People → **Users** → {{button:blue|+ Add to roster}}. You pick **Subcontractor** and save. That is a roster row with no login. It is all the portal, paperwork and sub sheets need. A dev ticks *Also attach a login* on the same dialog if they should have a login. Will they not click an invite? Then {{button:outline|Accounts · dev}} → {{button:outline|Manually add user}} creates the login now, with a password you hand them. The invite link is single-use for setting a password. Re-opening it while signed in shows *You're already set up* and a Sign in button, nothing else.
 
 :::example External vs. account
 A sub added from the hiring board or from **Add to roster** is a roster row with no login — it wears a {{chip:gray|no login}} chip on People → Users. That's enough for contracts, sub labor sheets, work orders and the portal. When they get an account later, use **Link account** in the row's ⋯ menu so the two rows fold into one — see [link an external subcontractor to their new account](?g=link-external-person-to-account).
@@ -77,7 +77,7 @@ Point them at [get started as a sub or helper](?g=start-here-as-a-sub). It is wr
 | What | Where |
 |---|---|
 | Hiring board and onboarding checklist | Prospects → Hiring → Hire |
-| Create a login / invite | People → Users → Add to roster with *Also invite* ticked, or *Accounts · dev* |
+| Create a login / invite | People → Users → Add to roster with *Also attach a login* ticked, or *Accounts · dev* |
 | Link a roster-only sub to their login | People → Users → the row's ⋯ → Link account |
 | Assign packets, send for signature, signed copies | People → Contracts |
 | Contract text, packets, version dates | People → Contracts → Contract library |

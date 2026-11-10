@@ -28,7 +28,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 5. **Check before pushing** (the same checks CI runs)
    ```bash
-   npm run typecheck   # tsc -b
+   npm run typecheck   # tsc -p tsconfig.json, one at a time per machine (docs/SESSIONS.md)
    npm run lint        # eslint src (warnings allowed for now)
    npm test            # vitest run
    npm run build

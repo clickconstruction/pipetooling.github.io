@@ -9,3 +9,5 @@ Punch list #188, PR 7 of the dev gates: the billing notification windows and the
 Rows 46, 48 and 49 need nothing here: the Stripe Dashboard links read what the window has, `workflow_projections` admitted `is_office_staff()` since the one-company sweep, and the paid-in-full email's gate is in the edge function `paid-job-email` (`SENDER_ROLES`), redeployed with this PR. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge, and `supabase functions deploy paid-job-email`. Until the push the controller's recipient saves come back as refusals in words; until the deploy an assistant's paid-in-full send answers *Forbidden*.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

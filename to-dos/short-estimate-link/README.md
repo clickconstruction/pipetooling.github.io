@@ -2,7 +2,7 @@
 name: "The estimate text's link: short, and on a Click Plumbing address"
 number: 281
 group: waiting
-status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters) · the owner's three calls made 2026-11-07/08 · PR 2 (v2.6677, #7282: the ten-letter code and the guess guard, its migration pushed and the three functions deployed 2026-11-08) and PR 3 (v2.6678: the link on my.clickplumbing.com/e/<code>, the Worker edit live 2026-11-08 and answering 301) built 2026-11-08, both armed · walked 2026-11-08 in the owner's Chrome on a ZZ Test estimate: the ten-letter link on my.clickplumbing.com/e/, the accept page, an approval and a resend all as planned; the one slip, the What went card's text line, fixed 2026-11-08 as v2.6725 (PR 4, armed); call 3 stays *not yet*
+status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters) · the owner's three calls made 2026-11-07/08 · PR 2 (v2.6677, #7282: the ten-letter code and the guess guard, its migration pushed and the three functions deployed 2026-11-08) and PR 3 (v2.6678: the link on my.clickplumbing.com/e/<code>, the Worker edit live 2026-11-08 and answering 301) built 2026-11-08, both merged that day (#7282, #7287) · walked 2026-11-08 in the owner's Chrome on a ZZ Test estimate: the ten-letter link on my.clickplumbing.com/e/, the accept page, an approval and a resend all as planned; the one slip, the What went card's text line, fixed 2026-11-08 as v2.6725 (PR 4, #7352, merged the same day); call 3 stays *not yet*
 summary: >
   The text the Tell the customer sheet sends with an estimate ended in a 107-character link, a
   64-hex token on clicktooling.com, and the owner wants it much shorter and looking like it came
@@ -14,7 +14,7 @@ summary: >
   locks a source after N misses. PR 3 (the owner's Cloudflare rule): the text's link on
   clickplumbing.com/e/<code> or my.clickplumbing.com/e/<code>, a 301 to the app, the app emitting
   that host through one constant beside PORTAL_SHORT_ORIGIN once the owner says the rule is live.
-next: Nothing to build. The walk of 2026-11-08 proved the link, the page, the approval and the resend, and PR 4 (v2.6725) fixed the one slip it found: the What went card names the text that went on the short link, and the job tie moves it onto the job. Call 3 stays *not yet* (the email's link is long until the owner reads the plain-text link and wants it short). Retire the card once PR 4 lands. A sibling slip, not on this card: the Messages thread's text door (`estimateDoorIo.ts`) does not open an estimate from a text carrying the short link.
+next: Nothing to build. The walk of 2026-11-08 proved the link, the page, the approval and the resend, and PR 4 (v2.6725) fixed the one slip it found: the What went card names the text that went on the short link, and the job tie moves it onto the job. Call 3 stays *not yet* (the email's link is long until the owner reads the plain-text link and wants it short). PR 4 landed 2026-11-08 (#7352), so the card can retire. A sibling slip, not on this card: the Messages thread's text door (`estimateDoorIo.ts`) does not open an estimate from a text carrying the short link.
 size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the Worker edit) + S (PR 4, the What went card's text line), all shipped and walked
 blocker: none
 ver: v2.6657 (PR 1) · v2.6677 (PR 2) · v2.6678 (PR 3) · v2.6725 (PR 4)

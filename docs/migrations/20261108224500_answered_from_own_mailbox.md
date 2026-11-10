@@ -9,3 +9,5 @@ No table is created, so the four `apply_*` fence calls are not needed; the fence
 **Client**: the strip above the reply box (`src/components/messages/useOwnMailboxThreadSlots.tsx` over `src/lib/messages/ownMailboxAnswer.ts` and `ownMailboxAnswerIo.ts`) calls it from **I answered, write it down**; **Find my sent mail** and **Tag it** go through `gmail-mine` as before and need nothing here.
 
 **Apply**: `supabase db push` from a main checkout right after the PR merges, before the Pages deploy finishes (`check:calls-ahead` labels the PR *push right after the merge*): deployed first, a press on **Write it down** answers PostgREST's *Could not find the function* in the strip's status line and writes nothing; the two other doors work either way.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

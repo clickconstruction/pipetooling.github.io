@@ -44,7 +44,7 @@ To take a clause off the next paper, press {{button:outline|Retire}} on it. A re
 
 ## Approve or decline a change
 
-This part is for a controller or a dev.
+This part is for the owner, a controller or a dev.
 
 1. Press {{button:outline|Review}} on the **Contracts** line of your Needs you card. It opens the paper's card.
 2. Read the change under the clause.

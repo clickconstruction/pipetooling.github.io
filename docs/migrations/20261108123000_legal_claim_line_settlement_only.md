@@ -6,3 +6,5 @@ A claim line marked *settlement only* (punch list #171, `to-dos/legal-desk-claim
 - **`legal_claim_line_save(…, p_settlement_only boolean DEFAULT false)`**: the save takes the flag on add and edit. The ten-argument signature is dropped first so PostgREST resolves one candidate; the default keeps the deployed client (which sends ten arguments) working until the new one arrives.
 
 The client reads the column and sends the argument by name, so `check:calls-ahead` labels the PR *push right after the merge*: push this file right after #171's PR 2 merges, before the Pages deploy finishes. `legal-portal` reads the column with a fallback to the old select until then. Then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

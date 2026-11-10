@@ -51,7 +51,7 @@ The sheet that opens before a booking text or an estimate text shows the same ch
 1. Book a visit, or send an estimate. The Tell the customer sheet opens.
 2. Read the chip beside **Text**. It names the number the text goes to.
 3. With two numbers or more, press the chip and pick one.
-4. Press {{button:blue|Send text to Dana}}, or **Send in the morning**.
+4. Press {{button:blue|Send text to Dana}}, or **Send later**.
 
 The text goes to the number you picked. The call on the receipt dials that number too. The tick works as it does on the send window.
 

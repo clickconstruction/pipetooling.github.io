@@ -88,7 +88,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | `SendRecordInvoiceModal` ("Bill Customer", three billing channels) |
 | [`AR_PAYMENT_MODALS_ARCHITECTURE.md`](./AR_PAYMENT_MODALS_ARCHITECTURE.md) | `BankPaymentsModal` + `CollectPaymentModal` (money-in modals) |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | `src/pages/People.tsx` |
-| [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | `PeopleReviewTab` (dev-only Review analytics) + the Team Summary drilldowns and popup builder |
+| [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | `PeopleReviewTab` (the owner's and a dev's Review analytics) + the Team Summary drilldowns and popup builder |
 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | `PeopleContractsTab` + `PeopleOverheadTab` |
 | [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md) | `PeopleVehiclesTab` (the fleet board) |
 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | `src/pages/Dashboard.tsx` (section-based) + `DashboardFinancialsSection` + the Needs You builder `dashboardNeedsYou.ts` |

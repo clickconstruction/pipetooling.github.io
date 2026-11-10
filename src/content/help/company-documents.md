@@ -35,6 +35,6 @@ Open **Documents → Company**, next to Where files go at the end of the tab row
 {{button:outline|📄 W-9}} updated Jan 5
 :::
 
-## Keeping them current (devs)
+## Keeping them current (the owner and devs)
 
-On **Documents → Company**, devs see a {{icon:gear}} gear at the top right of the tab. It opens the manager. There you change a link when a new version exists, and the "updated" date refreshes automatically. You can rename, reorder with ↑ ↓, delete, or add a new one. A name plus a link is all it takes. Everyone in the office sees the change immediately. There is nothing to send around.
+On **Documents → Company**, the owner and devs see a {{icon:gear}} gear at the top right of the tab. It opens the manager. There you change a link when a new version exists, and the "updated" date refreshes automatically. You can rename, reorder with ↑ ↓, delete, or add a new one. A name plus a link is all it takes. Everyone in the office sees the change immediately. There is nothing to send around.

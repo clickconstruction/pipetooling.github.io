@@ -17,3 +17,5 @@ Idempotent: the rename is guarded, everything else `IF NOT EXISTS` / `OR REPLACE
 ## Order
 
 After `20261108193000` (#287) and `20261108190000` (#286), which `ALTER TABLE person_documents` — on a database where this migration ran first that name is a view and theirs would fail, so this file is pushed only once theirs are on `main`. Push, then `supabase functions deploy legal-portal` and `supabase functions deploy dev-mcp`; then `npm run gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs`, since `read_rows` on `documents` and `document_revisions` waits on the catalog. The client reads `documents` directly (`readLegalMatterDocumentText`, the Evidence tab's save) and `legal_matter_documents.text_document_id` with a fallback, so the push comes right after the merge (`check:calls-ahead` labels the PR).
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

@@ -49,7 +49,7 @@ Open each card wearing a {{chip:yellow|needs a reading}} chip, ask the holder fo
 
 You often will not need to ask. Everyone holding a vehicle has a **My Vehicle** card on their own Dashboard. There they send readings and report problems themselves. See the guide *report a problem with my truck or send an odometer reading*.
 
-The office side of this is the **Vehicle check-ins** station on Quickfill. Assigned trucks come due for a reading weekly and motor-pool trucks monthly. Your check-in questions, like "Any lights on the dash?", are asked at every capture. A dev sets the cadence, how often they come due, and the questions. That happens from the **⚙ Check-ins ›** link beside **Insurance plans ›** above the board. Each saved check-in, flagged or all clear, shows on the vehicle's ledger under the **Check-ins** filter. Every checked box files a Monitor problem report automatically. See the *use Quickfill* guide.
+The office side of this is the **Vehicle check-ins** station on Quickfill. Assigned trucks come due for a reading weekly and motor-pool trucks monthly. Your check-in questions, like "Any lights on the dash?", are asked at every capture. The owner or a dev sets the cadence, how often they come due, and the questions. That happens from the **⚙ Check-ins ›** link beside **Insurance plans ›** above the board. Each saved check-in, flagged or all clear, shows on the vehicle's ledger under the **Check-ins** filter. Every checked box files a Monitor problem report automatically. See the *use Quickfill* guide.
 
 ## Oil changes and services
 

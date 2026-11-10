@@ -70,7 +70,7 @@ The same people who can record a decline. A declined, accepted or replaced estim
 
 ## Change the wording
 
-The words come from the **Email body template**. A dev sets it under Settings → Estimate customer experience defaults. Or the estimate's own **Customer experience → Email** override sets it:
+The words come from the **Email body template**. The owner or a dev sets it under Settings → Estimate customer experience defaults. Or the estimate's own **Customer experience → Email** override sets it:
 
 - The **first paragraph** opens the email, above the total.
 - **Every paragraph after it** becomes the sign-off below the button. Blank lines separate paragraphs.

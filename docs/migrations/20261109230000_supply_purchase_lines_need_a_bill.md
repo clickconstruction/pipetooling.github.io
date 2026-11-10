@@ -18,3 +18,5 @@ A cascade would delete the paper and its lines with the bill, and the lines are 
 ## Deploy
 
 `supabase db push` after the merge; no client calls ahead of it (the view's shape is unchanged), so the order against the Pages deploy does not matter.
+
+**Applied** to prod by 2026-11-10, read the same day through `npm run check:migration-drift`: 1216 local files against 1216 remote versions, fully applied, this one among them.
