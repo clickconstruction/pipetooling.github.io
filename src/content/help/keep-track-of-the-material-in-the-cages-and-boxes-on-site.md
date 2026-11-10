@@ -23,7 +23,7 @@ Under the search, **Recent** lists the last three jobs you clocked in on, newest
 
 The row under the job reads your day left to right: {{chip:blue|Unsorted 2}} → {{chip:gray|Used 6}} → {{chip:green|Count 25}}. A dot marks the one that needs you now.
 
-A job with no cage or box names the other jobs that hold one. Tap a job in that list and its boxes open. Tap **Add a container** to start one on this job.
+A job with no cage or box offers **Add a container** to start one. Under it the screen names your other jobs that hold a box. Tap a job in that list and its boxes open.
 
 ## Find a part on any job
 
