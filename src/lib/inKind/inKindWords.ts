@@ -8,10 +8,13 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import {
   isMonthlyArrangement,
   money2,
+  monthName,
   monthYear,
   type InKindAddResult,
   type InKindArrangement,
   type InKindHeldBill,
+  type InKindMonthState,
+  type InKindSuggestion,
   type InKindPlacedBill,
   type InKindTotals,
 } from './inKindLedger'
@@ -175,4 +178,75 @@ export function lineWentWords(amount: number, went: ReadonlyArray<{ label: strin
   if (went.length === 0) return amount > 0.005 ? 'It is on no bill yet.' : 'The whole bill was paid, so this month has no credit.'
   const head = `Went to ${went.map((w) => `${w.label} ${usd(w.amount)}`).join(', ')}.`
   return onNoBill > 0.005 ? `${head} ${usd(onNoBill)} of it is on no bill.` : head
+}
+
+// ---------- a monthly deal's months (PR 3) ----------
+
+/** "Nov 3" from a YYYY-MM-DD day. */
+export function dayShort(ymd: string): string {
+  const d = new Date(`${ymd.slice(0, 10)}T12:00:00Z`)
+  if (Number.isNaN(d.getTime())) return ymd
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** What the bank said about a month, in a sentence. `bankPaid` is null when the bank was not read. */
+export function bankSaysWords(bankPaid: number | null, lastBankDay: string | null): string | null {
+  if (bankPaid == null) return null
+  if (bankPaid <= 0.005) return 'Nothing left the bank that month.'
+  return lastBankDay ? `${usd(bankPaid)} left the bank on ${dayShort(lastBankDay)}.` : `${usd(bankPaid)} left the bank that month.`
+}
+
+/** The amber line on the card and the ledger for months with no line. */
+export function dueStripWords(dueMonthsOldestFirst: readonly string[], bankPaid: number | null, lastBankDay: string | null): string {
+  const first = dueMonthsOldestFirst[0]
+  if (!first) return ''
+  const n = dueMonthsOldestFirst.length
+  const head = n === 1 ? `${monthName(first)}’s credit is not entered.` : `${n} months of credit are not entered. ${monthName(first)} is the oldest.`
+  const bank = bankSaysWords(bankPaid, lastBankDay)
+  return bank ? `${head} ${bank}` : head
+}
+
+/** The press that opens a month. */
+export const monthOpenPress = (month: string): string => `Enter ${monthName(month)}’s credit`
+
+/** The press that saves a month. It names the month and the amount, or says the month has none. */
+export const monthSavePress = (month: string, amount: number): string => (amount > 0.005 ? `Record ${monthName(month)}’s credit of ${usd(amount)}` : `Settle ${monthName(month)} with no credit`)
+
+/** Why the suggested amount is what it is. */
+export function suggestionWhyWords(why: InKindSuggestion['why'], bankPaid: number | null, monthlyDue: number | null): string {
+  if (why === 'bank_part' && bankPaid != null && monthlyDue != null) return `We paid ${usd(bankPaid)} of the ${usd(monthlyDue)} bill.`
+  if (why === 'bank_none') return 'We paid nothing that month.'
+  if (why === 'bank_all') return 'We paid the whole bill.'
+  return 'The usual credit.'
+}
+
+/** The toast after a month is saved. */
+export function monthSavedWords(month: string, amount: number, r: InKindAddResult): string {
+  if (amount <= 0.005) return `${monthName(month)} is settled with no credit.`
+  const paidOff = r.applied.filter((a) => a.pays_off)
+  const head = `${monthName(month)}’s credit of ${usd(amount)} is recorded.`
+  if (paidOff.length === 1) return `${head} ${jobLabel(paidOff[0]!)} is Paid.`
+  if (paidOff.length > 1) return `${head} ${paidOff.length} bills are Paid.`
+  return head
+}
+
+/** A month's row in the ledger, by its state. */
+export function monthStateWords(state: InKindMonthState, amount: number): string {
+  if (state === 'entered') return usd(amount)
+  if (state === 'no_credit') return 'No credit, the whole bill was paid.'
+  if (state === 'due') return 'Not entered.'
+  return 'Not due yet.'
+}
+
+/** The Needs you line for months with no credit entered. */
+export function needsYouInKindWords(due: ReadonlyArray<{ partner: string; month: string }>): { title: string; detail: string } {
+  const n = due.length
+  const first = due[0]
+  if (!first) return { title: '', detail: '' }
+  const partners = [...new Set(due.map((d) => d.partner))]
+  if (n === 1) return { title: `${monthName(first.month)}’s in kind credit is not entered`, detail: first.partner }
+  return {
+    title: `${n} months of in kind credit are not entered`,
+    detail: partners.length === 1 ? `${first.partner}, from ${monthName(first.month)}` : `${partners.length} customers, the oldest is ${first.partner}`,
+  }
 }

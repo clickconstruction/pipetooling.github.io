@@ -1,5 +1,7 @@
 import type { UserRole } from '../hooks/useAuth'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
+import type { InKindCreditsDue } from './inKind/inKindCreditsDue'
+import { needsYouInKindWords } from './inKind/inKindWords'
 import { isOfficeRole } from './doorRoles'
 import { lowRatingsWords } from './ratings/ratingsOffice'
 import { describeBacklogAge } from './bids/robotBacklog'
@@ -144,6 +146,7 @@ export type NeedsYouItem = {
     | 'contract-stale'
     | 'work-orders-unpriced'
     | 'jobs-no-kind'
+    | 'in-kind-credit-due'
     | 'projects-no-baseline'
     | 'line-budgets-review'
     | 'materials-count-due'
@@ -263,6 +266,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'work-orders-unpriced': 40,
   // Hygiene tier: a fact to settle, and the readers that gate on a project wait on it (punch list #238, PR 2).
   'jobs-no-kind': 60,
+  // Billing tier: a month of in-kind credit nobody has entered (punch list #301, PR 3). Its bills stay open until it is.
+  'in-kind-credit-due': 30,
   // A project with no hours baseline: the Costs tab, the Projects board and the superintendent's line read nothing (punch list #234, PR 1a).
   'projects-no-baseline': 60,
   // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
@@ -452,6 +457,9 @@ export type NeedsYouInputs = {
   /** Working jobs `jobKind` reads as not set (punch list #238, PR 2). */
   jobKindGapsEnabled?: boolean
   jobKindGaps?: { count: number } | null
+  /** Months of in-kind credit with no line, across the open monthly deals (punch list #301, PR 3). */
+  inKindCreditsEnabled?: boolean
+  inKindCredits?: InKindCreditsDue | null
   /** Working projects with no hours baseline (punch list #234, PR 1a). */
   baselineGapsEnabled?: boolean
   baselineGaps?: { count: number } | null
@@ -1025,6 +1033,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Next: price it and send.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
+    })
+  }
+
+  if (inputs.inKindCreditsEnabled && (inputs.inKindCredits?.due.length ?? 0) > 0) {
+    const credits = inputs.inKindCredits!
+    const n = credits.due.length
+    const words = needsYouInKindWords(credits.due)
+    items.push({
+      key: 'in-kind-credit-due',
+      severity: 'amber',
+      kicker: 'In kind',
+      title: words.title,
+      detail: words.detail,
+      figure: credits.total > 0 ? credits.total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }) : String(n),
+      actionLabel: n === 1 ? 'Enter it' : 'Enter the oldest',
     })
   }
 

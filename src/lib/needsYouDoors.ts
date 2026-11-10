@@ -68,6 +68,8 @@ export type NeedsYouDoorData = {
   /** Materials on site (punch list #209, v2.6728): the one job holding every box due, or every shortfall, when there is one. */
   materialsStaleJobId?: string | null
   materialsMissingJobId?: string | null
+  /** In kind (punch list #301, PR 3): the oldest month with no credit, whose window the line opens on the customer's page. */
+  inKindCreditFirst?: { customerId: string | null; arrangementId: string; month: string } | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -108,6 +110,10 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href('/jobs?tab=stages&contract=sent')
     case 'work-orders-unpriced':
       return href('/jobs?tab=subs&wof=drafts')
+    case 'in-kind-credit-due': {
+      const first = d.inKindCreditFirst
+      return href(first?.customerId ? `/customers/${first.customerId}?inKind=${first.arrangementId}&month=${first.month}` : '/customers')
+    }
     case 'jobs-no-kind':
       return href('/jobs?tab=stages&kind=unset')
     case 'projects-no-baseline':

@@ -76,4 +76,11 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouSecondaryDoor({ key: 'lien-notice-draft' }, 'snooze')).toBeNull()
     expect(needsYouSecondaryDoor({ key: 'tally-self' }, 'snooze')).toBeNull()
   })
+
+  it('in-kind-credit-due opens the oldest month on the customer’s page, and the customers list when the customer is gone (punch list #301)', () => {
+    const first = { customerId: 'c1', arrangementId: 'a1', month: '2026-11-01' }
+    expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev', inKindCreditFirst: first }, 'dashboard')).toEqual({ kind: 'href', href: '/customers/c1?inKind=a1&month=2026-11-01' })
+    expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev', inKindCreditFirst: { ...first, customerId: null } }, 'dashboard')).toEqual({ kind: 'href', href: '/customers' })
+    expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev' }, 'dashboard')).toEqual({ kind: 'href', href: '/customers' })
+  })
 })

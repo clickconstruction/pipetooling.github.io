@@ -30,6 +30,7 @@ import { useDemandDeadlinesNudge } from './useDemandDeadlinesNudge'
 import { useJobContractsNudge } from './useJobContractsNudge'
 import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
 import { useJobKindGaps } from './useJobKindGaps'
+import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
 import { useMaterialsOnSiteNeeds } from './useMaterialsOnSiteNeeds'
@@ -168,6 +169,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   const jobKindGapsEnabled = on('jobKindGaps')
   const { gaps: jobKindGaps } = useJobKindGaps(jobKindGapsEnabled)
+  const inKindCreditsEnabled = on('inKindCredits')
+  const { credits: inKindCredits } = useInKindCreditsDue(inKindCreditsEnabled)
   const baselineGapsEnabled = on('baselineGaps')
   const { gaps: baselineGaps } = useBaselineGaps(baselineGapsEnabled)
   const lineBudgetsReviewEnabled = on('lineBudgetsReview')
@@ -272,6 +275,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     unpricedWorkOrders,
     jobKindGapsEnabled,
     jobKindGaps,
+    inKindCreditsEnabled,
+    inKindCredits,
     baselineGapsEnabled,
     baselineGaps,
     lineBudgetsReviewEnabled,
@@ -397,6 +402,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
     materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
+    inKindCreditFirst: inKindCredits?.due[0] ? { customerId: inKindCredits.due[0].customerId, arrangementId: inKindCredits.due[0].arrangementId, month: inKindCredits.due[0].month } : null,
   }
 
   return {

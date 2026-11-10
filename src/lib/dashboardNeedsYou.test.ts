@@ -245,6 +245,24 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 0, staleJobs: 0, missingLines: 0, missingMoneyWeek: 0, missingJobs: 0 } }))).toEqual([])
   })
 
+  it('a month of in-kind credit nobody has entered (punch list #301): one amber billing line, gated by the flag', () => {
+    const due = (month: string, amount: number, partner = 'Calloway Holdings') => ({ arrangementId: 'a1', customerId: 'c1', partner, month, amount })
+    const one = buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: { due: [due('2026-11-01', 1500)], total: 1500 } }))
+    expect(one.map((i) => i.key)).toEqual(['in-kind-credit-due'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'In kind', title: 'November’s in kind credit is not entered', detail: 'Calloway Holdings', figure: '$1,500', actionLabel: 'Enter it' })
+    const two = buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: { due: [due('2026-10-01', 3000), due('2026-11-01', 1500)], total: 4500 } }))
+    expect(two[0]).toMatchObject({ title: '2 months of in kind credit are not entered', detail: 'Calloway Holdings, from October', figure: '$4,500', actionLabel: 'Enter the oldest' })
+    const twoCustomers = buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: { due: [due('2026-10-01', 500, 'Able Shop'), due('2026-11-01', 1500)], total: 2000 } }))
+    expect(twoCustomers[0]).toMatchObject({ detail: '2 customers, the oldest is Able Shop' })
+    // A month settled with no credit suggests $0: the line counts the month instead of showing $0.
+    const zero = buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: { due: [due('2026-10-01', 0)], total: 0 } }))
+    expect(zero[0]).toMatchObject({ figure: '1' })
+    expect(NEEDS_YOU_RANK['in-kind-credit-due']).toBe(30)
+    expect(buildNeedsYouItems(inputs({ inKindCreditsEnabled: false, inKindCredits: { due: [due('2026-11-01', 1500)], total: 1500 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: { due: [], total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: null }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])
