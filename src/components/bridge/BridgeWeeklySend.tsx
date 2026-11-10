@@ -18,7 +18,11 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }
 
-export function BridgeWeeklySend({ io = DEFAULT_IO }: { io?: WeeklySendIo }) {
+/** The words for what goes out and for the switch's state; the page passes its own since the sheet stopped being a view (v2.6840). */
+export type WeeklySendWords = { what: string; state: (on: boolean) => string }
+const SHEET_WORDS: WeeklySendWords = { what: WEEKLY_SEND_WHAT, state: weeklySendStateWords }
+
+export function BridgeWeeklySend({ io = DEFAULT_IO, words = SHEET_WORDS }: { io?: WeeklySendIo; words?: WeeklySendWords }) {
   const confirm = useConfirmDialog()
   const { showToast } = useToastContext()
   const [on, setOn] = useState<boolean | null>(null)
@@ -91,10 +95,10 @@ export function BridgeWeeklySend({ io = DEFAULT_IO }: { io?: WeeklySendIo }) {
           </button>
         )}
       </div>
-      <p style={{ margin: 0, fontSize: '0.85rem' }}>{WEEKLY_SEND_WHAT}</p>
+      <p style={{ margin: 0, fontSize: '0.85rem' }}>{words.what}</p>
       {on !== null ? (
         <p data-testid="bridge-weekly-send-state" style={det}>
-          {weeklySendStateWords(on)} {lastRunWords(lastRun, md)}
+          {words.state(on)} {lastRunWords(lastRun, md)}
         </p>
       ) : (
         !problem && <p style={det}>Loading the switch…</p>

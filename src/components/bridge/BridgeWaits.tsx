@@ -1,17 +1,21 @@
 import { useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
+import type { FixSizes } from '../../lib/bridge/fixSizes'
 import type { Reflex, ReflexId, ReflexLine } from '../../lib/bridge/waits'
 
 /**
  * Everything else waits (link PR 7): the four usual fixes as presses, one per
  * row, each setting the dial to what the fix would do; the pressed one shows
  * its result line. A "?" in the corner keeps the old list of the other
- * links' levers. The footer says when they come back.
+ * links' levers. The footer says when they come back. Since v2.6840 the two
+ * fixes the app can size carry their dollars a day, and the bids due sit
+ * under them with their door: what *This week* said, on rows already here.
  */
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 
-export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset }: { reflexes: Reflex[]; activeId: ReflexId | null; line: ReflexLine | null; levers: Array<{ id: string; name: string; lever: string }>; onPress: (id: ReflexId) => void; onReset: () => void }) {
+export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset, sizes }: { reflexes: Reflex[]; activeId: ReflexId | null; line: ReflexLine | null; levers: Array<{ id: string; name: string; lever: string }>; onPress: (id: ReflexId) => void; onReset: () => void; sizes?: FixSizes | null }) {
   const [leversOpen, setLeversOpen] = useState(false)
   return (
     <div style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="bridge-waits">
@@ -42,8 +46,15 @@ export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset
       <div style={{ ...det, marginBottom: 4 }}>the usual fixes. Press one; the cards and the dial above show what it does.</div>
       {reflexes.map((r) => {
         const on = r.id === activeId
+        const size = sizes?.rows[r.id]
         return (
           <div key={r.id} style={{ padding: '0.4rem 0', borderTop: '1px solid var(--border)' }}>
+            {size && (
+              <span style={{ float: 'right', textAlign: 'right', marginLeft: 8 }} data-testid={`bridge-waits-size-${r.id}`}>
+                <b style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{size.size}</b>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{size.why}</span>
+              </span>
+            )}
             <button
               type="button"
               onClick={() => onPress(r.id)}
@@ -62,7 +73,25 @@ export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset
           </div>
         )
       })}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', ...det }}>
+      {sizes && sizes.bids.length > 0 && (
+        <div style={{ padding: '0.4rem 0', borderTop: '1px solid var(--border)', clear: 'both' }} data-testid="bridge-waits-bids-due">
+          <div style={label}>Bids due</div>
+          {sizes.bids.map((b) => (
+            <div key={b.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', padding: '0.3rem 0', minHeight: 40, fontSize: '0.84rem' }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ color: 'var(--text-strong)' }}>{b.label}</b>
+                <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)' }}>{b.sub}</span>
+              </span>
+              {b.size && <b style={{ fontSize: '0.82rem', color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{b.size}</b>}
+              <Link to={b.door.to} style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                {b.door.label} ›
+              </Link>
+            </div>
+          ))}
+          <div style={det}>{sizes.bidsNote}</div>
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', clear: 'both', ...det }}>
         <span>They come back when the link moves. Friday asks whether it did.</span>
         {activeId && (
           <button type="button" onClick={onReset} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }} data-testid="bridge-waits-reset">

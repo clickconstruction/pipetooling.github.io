@@ -24,4 +24,14 @@ describe('BridgePeople', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hide the rows' }))
     expect(screen.queryByText('the rows')).toBeNull()
   })
+
+  it('is open with no button behind the People door', () => {
+    renderWithProviders(
+      <BridgePeople summary="pay week Oct 4–10" open>
+        <div>the rows</div>
+      </BridgePeople>,
+    )
+    expect(screen.getByText('the rows')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
 })

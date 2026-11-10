@@ -604,7 +604,7 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     }
     case 'bridge_monday_sheet':
     case 'bridge_weekly_sheet': {
-      // The Bridge's Monday sheet (v2.5224) on made-up numbers, the weekly send's (v2.5883) being the same sheet; the real one is built on /bridge?view=monday from the live reading.
+      // The Bridge's Monday sheet (v2.5224) on made-up numbers, the weekly send's (v2.5883) being the same sheet; the real one was built on /bridge?view=monday, until v2.6840 retired that view, from the live reading.
       const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
       const weekStartLabel = md(ymdAddDays(ctx.todayYmd, -6))
       const weekEndLabel = md(ctx.todayYmd)

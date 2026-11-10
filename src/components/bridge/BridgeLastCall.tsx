@@ -23,7 +23,7 @@ export function BridgeLastCall({ card, answering, onAnswer }: { card: Scorecard 
     return (
       <div id="bridge-last-call" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-last-call">
         <div style={label}>Last week's call, against what moved</div>
-        <div style={{ ...det, marginTop: '0.3rem' }}>No call yet. Press a stage, name the moves and their owners, and record the link for this week. Friday asks whether it moved.</div>
+        <div style={{ ...det, marginTop: '0.3rem' }}>No call yet. The card at the top makes this week’s call. Friday asks whether it moved.</div>
       </div>
     )
   }

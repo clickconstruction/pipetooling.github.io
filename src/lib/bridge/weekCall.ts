@@ -39,7 +39,10 @@ import { LINK_DESK, type DeskMovePreset } from './linkDesk'
 import type { StageFlow, StageReading } from './stageFlow'
 import { THIS_WEEK_DOORS } from './thisWeek'
 
-/** Moves on the card at a desk, and on a phone. A fourth is a list again. */
+/**
+ * Moves on the card at a desk, and on a phone. A fourth is a list again. A step's proposal carries every move it has
+ * (v2.6840), and the card shows this many of the ones still on: take one off and the next comes on (`movesShown`).
+ */
 export const WEEK_CALL_MOVES = 3
 export const WEEK_CALL_MOVES_PHONE = 2
 
@@ -122,6 +125,8 @@ export type WeekCallModel = {
     press: string | null
     foot: string
     tone: 'lit' | 'ask' | 'plain'
+    /** The note typed when the call was made, shown under it once it stands. */
+    note?: string | null
   }
   last: WeekLast | null
 }
@@ -263,6 +268,32 @@ export function proposedMoves(link: CallLink, input: WeekCallInput, kind: WeekMo
   return [...keyed, ...words].map((p) => concreteMove(p, input, kind)).filter((m): m is WeekMove => m !== null)
 }
 
+export type DeskMove = {
+  title: string
+  /** Today's number behind it: "$142k today", "4 today"; null for a move the app cannot read. */
+  today: string | null
+  onCall: boolean
+}
+
+/**
+ * Every move a step would ask for, for its desk to list (v2.6840): the card shows the first three, two on a phone, and
+ * a step can have more. `onCard` is what the card holds: the rows it shows while proposing, or the recorded call's moves.
+ * A move with a number matches by its kind, since its sentence changes with the number; the rest match by their words.
+ */
+export function deskMoves(link: CallLink, input: WeekCallInput, onCard: ReadonlyArray<Pick<WeekMove, 'key' | 'title'>>): DeskMove[] {
+  return proposedMoves(link, input).map((m) => ({
+    title: m.title,
+    today: m.key !== 'other' && m.then != null ? `${numberWords(m.key, m.then)} today` : null,
+    onCall: onCard.some((c) => (m.key === 'other' ? c.title === m.title : c.key === m.key)),
+  }))
+}
+
+/** The line under the desk's list: how many the card shows, and how the next gets on. Empty when the card shows them all. */
+export function deskMovesFoot(total: number, shown: number): string {
+  if (total <= shown) return ''
+  return `The card at the top shows the first ${shown === 2 ? 'two' : 'three'}. Take one off there and the next comes on.`
+}
+
 function cashMoves(input: WeekCallInput, step: StageReading | null): WeekMove[] {
   const out: WeekMove[] = []
   const chase = concreteMove({ key: 'chase', title: '' }, input, 'cash')
@@ -345,14 +376,14 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
     const by = call.calledByName ? ` by ${call.calledByName}` : ''
     if (call.outcome) {
       const card = buildScorecard({ call, calls: input.calls, now: input.now, todayYmd: input.todayYmd, dayLabel: input.dayLabel })
-      return { state: 'answered', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.outcome === 'moved' ? `${name} moved.` : `${name} did not move.`, line, moves, press: null, foot: card.consequence, tone: 'plain' } }
+      return { state: 'answered', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.outcome === 'moved' ? `${name} moved.` : `${name} did not move.`, line, moves, press: null, foot: card.consequence, tone: 'plain', note: call.note } }
     }
     if (asking) {
       const verdict = callVerdict(call, input.now)
       const foot = verdict === 'moved' ? 'The numbers say it moved. Your answer is the one kept.' : verdict === 'did_not_move' ? 'The numbers say it did not move. Your answer is the one kept.' : 'The app cannot read this one. Your answer is the one kept.'
-      return { state: 'friday', link: call.link, cashLeads, tiles, last, card: { label: 'Friday’s question', lead: `Did ${name} move?`, line, moves, press: null, foot, tone: 'ask' } }
+      return { state: 'friday', link: call.link, cashLeads, tiles, last, card: { label: 'Friday’s question', lead: `Did ${name} move?`, line, moves, press: null, foot, tone: 'ask', note: call.note } }
     }
-    return { state: 'standing', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.link === 'capital' ? 'Keep cash above the floor.' : `${name} is this week’s call.`, line, moves, press: null, foot: `Called ${input.dayLabel(call.calledOn)}${by}. Friday asks if it moved.`, tone: 'lit' } }
+    return { state: 'standing', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.link === 'capital' ? 'Keep cash above the floor.' : `${name} is this week’s call.`, line, moves, press: null, foot: `Called ${input.dayLabel(call.calledOn)}${by}. Friday asks if it moved.`, tone: 'lit', note: call.note } }
   }
 
   if (cashLeads && input.forecast) {
@@ -379,7 +410,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
     cashLeads,
     tiles,
     last,
-    card: { label: 'This week’s call', lead: isReading ? `${name} is the slowest step.` : `${name} is your pick.`, line, moves: proposedMoves(link, input).slice(0, WEEK_CALL_MOVES), press: `Make ${name} this week’s call`, foot: 'Friday asks if it moved.', tone: 'lit' },
+    card: { label: 'This week’s call', lead: isReading ? `${name} is the slowest step.` : `${name} is your pick.`, line, moves: proposedMoves(link, input), press: `Make ${name} this week’s call`, foot: 'Friday asks if it moved.', tone: 'lit' },
   }
 }
 
@@ -403,6 +434,20 @@ const NUMBER = /\$?\d[\d,.]*\s?(k|M|h|%)?/g
 export function weekCallBudget(model: WeekCallModel): { words: number; numbers: number } {
   const text = weekCallWords(model).join(' ')
   return { words: text.trim().split(/\s+/).filter(Boolean).length, numbers: (text.match(NUMBER) ?? []).length }
+}
+
+/**
+ * The rows the card draws while it proposes: in order, until `cap` of them are still on the call. A move taken off
+ * stays on the card, greyed with its way back, and the next one comes on in its place.
+ */
+export function movesShown<T>(moves: ReadonlyArray<T>, off: ReadonlySet<number>, cap: number): T[] {
+  const out: T[] = []
+  let on = 0
+  for (let i = 0; i < moves.length && on < cap; i++) {
+    out.push(moves[i] as T)
+    if (!off.has(i)) on++
+  }
+  return out
 }
 
 /** The moves the record press writes: the ones left on, with the person on each. */
