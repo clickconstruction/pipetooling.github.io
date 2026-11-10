@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-role="office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Materials: the whole life of a part on one page</title>
+<style>
+  /* Punch list #304. Every job, person, street, part, count and price here is made up: Ridgeway Builders, Oak Hollow
+     Apartments Building C (JP1042), Mill Street Lofts (JP1063), Cedar Bend Clinic (JP1057), Larkspur Dental (JP1071),
+     the crew's Mateo Ruiz, Pecan Supply the supply house. Tokens are src/index.css's (light values and the
+     [data-theme="dark"] block); the saturated action colours stay literal as the app keeps them. Frames are fixed at
+     375 (the phone) and 1,248 (the desk). Green dashes mark what a direction adds. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-700: #b45309; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; --green: #059669; --amber: #d97706; --red: #dc2626; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); position: relative; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 96ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; position: sticky; top: 0; z-index: 20; background: var(--bg-page); padding: 8px 0; }
+  .controls .grp { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 60px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 377px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { font-size: 15px; line-height: 1.45; font-family: var(--font); color: var(--text-base); padding: 0 0 16px; }
+  .screen.w375 { width: 375px; }
+  .screen.w1248 { width: 1248px; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; max-width: 104ch; }
+  .new { outline: 2px dashed var(--text-green-700); outline-offset: 3px; border-radius: 6px; }
+  /* role switch: an element with data-show draws only for the roles it names */
+  html[data-role="office"] [data-show]:not([data-show~="office"]),
+  html[data-role="estimator"] [data-show]:not([data-show~="estimator"]),
+  html[data-role="reader"] [data-show]:not([data-show~="reader"]) { display: none !important; }
+  /* the app's chrome, simplified */
+  .appbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-700); white-space: nowrap; }
+  .appbar b { font-size: 15px; }
+  .appbar .sp { flex: 1; }
+  .appbar .url { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--text-muted); }
+  .appbar .here { color: var(--text-blue-700); font-weight: 700; }
+  .page { padding: 14px 20px 0; display: grid; gap: 14px; }
+  .w375 .appbar { padding: 10px 14px; gap: 8px; }
+  .w375 .page { padding: 12px 14px 0; gap: 12px; }
+  .svc { display: flex; gap: 8px; }
+  .svc span { padding: 7px 14px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font-size: 14px; }
+  .svc span.on { border: 2px solid #3b82f6; background: var(--bg-blue-tint); color: var(--text-blue-700); font-weight: 600; }
+  .tabs { display: flex; gap: 18px; align-items: flex-end; border-bottom: 2px solid var(--border); white-space: nowrap; overflow-x: auto; scrollbar-width: none; position: relative; }
+  .tab { padding: 8px 2px 9px; color: var(--text-700); border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 14.5px; flex: 0 0 auto; display: inline-flex; gap: 5px; align-items: center; }
+  .tab.on { color: var(--text-blue-700); border-color: var(--blue); font-weight: 600; }
+  .tab .go { font-size: 11px; color: var(--text-muted); }
+  .tab .ct { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 0 6px; background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .sep { color: var(--text-faint); padding-bottom: 9px; flex: 0 0 auto; }
+  .grp { display: inline-grid; gap: 1px; flex: 0 0 auto; }
+  .grp .gc { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .grp .gt { display: flex; gap: 16px; align-items: flex-end; }
+  .hole { flex: 1 1 auto; min-width: 220px; align-self: stretch; margin-bottom: 4px; border: 2px dashed var(--red); border-radius: 999px; color: var(--text-red-700); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .card h4 { margin: 0; padding: 9px 14px; font-size: 14px; color: var(--text-strong); border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .card h4 .r { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .card .pad { padding: 10px 14px; }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: 600 13px var(--font); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.sm { min-height: 28px; font-size: 12px; padding: 0 9px; font-weight: 500; }
+  .btn.big { min-height: 48px; font-size: 15px; border-radius: 10px; }
+  .btn.block { width: 100%; }
+  .chip { display: inline-flex; align-items: center; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); color: var(--text-muted); white-space: nowrap; }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: var(--text-amber-800); }
+  .chip.red { background: var(--bg-red-100); color: var(--text-red-700); border-color: var(--text-red-700); }
+  .chip.green { background: var(--bg-green-100); color: var(--text-green-700); border-color: var(--text-green-700); }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: var(--text-blue-700); }
+  table.t { border-collapse: collapse; width: 100%; }
+  table.t th { text-align: left; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t td { padding: 7px 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.t tr:last-child td { border-bottom: 0; }
+  table.t .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t a, .lnk { color: var(--text-link); font-weight: 700; text-decoration: none; }
+  table.t tr.warn td { background: var(--bg-amber-100); }
+  html:not([data-role="office"]) table.t tr.warn td { background: transparent; }
+  .find { display: flex; align-items: center; gap: 8px; min-height: 40px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--bg-subtle); padding: 0 14px; color: var(--text-muted); font-size: 14px; flex: 1 1 260px; min-width: 0; }
+  .find b { font-weight: 500; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .lands { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .lands .card .pad { display: grid; gap: 4px; font-size: 13px; }
+  .lands .to { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--text-muted); }
+  /* the story strip (C) */
+  .stages { display: flex; gap: 10px; }
+  .stage { flex: 1 1 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: grid; gap: 2px; align-content: start; position: relative; min-width: 0; }
+  .stage.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
+  .stage .w { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+  .stage.on .w { color: var(--text-blue-700); }
+  .stage .f { font-size: 20px; font-weight: 800; color: var(--text-strong); line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stage .f small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .stage .b { display: flex; gap: 5px; flex-wrap: wrap; min-height: 20px; }
+  .stage:not(:last-child)::after { content: "›"; position: absolute; right: -9px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-faint); z-index: 1; }
+  .w375 .stages { flex-wrap: wrap; gap: 8px; }
+  .w375 .stage { padding: 8px 10px; flex: 1 1 calc(50% - 4px); }
+  .w375 .stage .f { font-size: 16px; }
+  .w375 .stage::after { display: none; }
+  .sub { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .sub span { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; color: var(--text-700); font-weight: 600; }
+  .sub span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  /* three places */
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .three .card .pad { display: grid; gap: 6px; font-size: 13px; }
+  .three .who { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  @media (max-width: 860px) { .three, .lands { grid-template-columns: 1fr; } }
+  .scrollx { overflow-x: auto; max-width: 100%; }
+  table.doors { border-collapse: collapse; width: 100%; min-width: 760px; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); }
+  table.doors th, table.doors td { border: 1px solid var(--border); padding: 7px 10px; font-size: 13px; text-align: left; vertical-align: top; }
+  table.doors th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  table.doors td.no { color: var(--text-red-700); }
+  table.doors td.yes { color: var(--text-green-700); font-weight: 600; }
+  /* the phone */
+  .ph { padding: 12px 14px 0; display: grid; gap: 10px; }
+  .ptabs { display: flex; gap: 6px; }
+  .ptabs span { flex: 1; text-align: center; padding: 9px 4px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--bg-muted); color: var(--text-700); }
+  .ptabs span.on { background: #2563eb; color: #fff; }
+  .jobpill { display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-700); padding: 0 14px; font-weight: 600; font-size: 14px; }
+  .jobpill small { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; margin-right: 8px; }
+  .scope { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; flex: 0 0 auto; }
+  .scope span { padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--text-700); background: var(--surface); }
+  .scope span.on { background: var(--text-strong); color: var(--bg-page); }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; min-height: 60px; }
+  .box .st { font-size: 22px; font-weight: 800; color: var(--text-strong); min-width: 44px; }
+  .box .q { margin-left: auto; font-size: 22px; font-weight: 800; color: var(--text-strong); }
+  .box .d { display: grid; font-size: 13px; color: var(--text-muted); min-width: 0; }
+  .box .d b { font-size: 14px; }
+  .jobhead { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+  .empty { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+  .sheet { background: var(--surface); border-top-left-radius: 16px; border-top-right-radius: 16px; border: 1px solid var(--border); padding: 14px; display: grid; gap: 10px; margin-top: 8px; }
+  .code { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 12px; display: flex; align-items: center; padding: 0 14px; font-family: ui-monospace, Menlo, monospace; font-size: 20px; letter-spacing: .12em; color: var(--text-muted); background: var(--surface); }
+  .verdict { border-collapse: collapse; width: 100%; min-width: 820px; margin-top: 12px; background: var(--surface); }
+  .verdict th, .verdict td { border: 1px solid var(--border); padding: 8px 10px; font-size: 13px; text-align: left; vertical-align: top; }
+  .verdict th { background: var(--bg-subtle); font-size: 12px; }
+  .verdict td.pick, .verdict th.pick { background: var(--bg-green-100); }
+  ol.calls { margin: 10px 0 0; padding-left: 22px; max-width: 104ch; display: grid; gap: 8px; }
+  ol.calls li { color: var(--text-700); }
+  ol.calls .mine { color: var(--text-green-700); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #304 · mock-up · nothing here is built</p>
+  <h1>Materials: the whole life of a part on one page</h1>
+  <p>The word <b>Materials</b> names three places today. The Materials page prices, buys and pays. Jobs → Materials is the office's desk for cages and boxes. The Tally's On site tab is the crew's phone. No press on the Materials page leads to the other two, and label printing lives only on the desk. Three directions follow, each at desktop and phone width, then the phone's On site tab, then a second look.</p>
+  <div class="stamp">Drawn 2026-11-10 from main at v2.6842. Every job, name, count and price is made up. Green dashes mark what a direction adds. The role switch below redraws every Materials page frame for that role.</div>
+</header>
+
+<div class="controls">
+  <span class="grp"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+  <span class="grp"><span class="lbl">Viewing as</span><button type="button" data-role-pick="office" aria-pressed="true">Office</button><button type="button" data-role-pick="estimator" aria-pressed="false">Estimator</button><button type="button" data-role-pick="reader" aria-pressed="false">Primary or superintendent</button></span>
+</div>
+<nav class="jump">
+  <a href="#today">Today</a><a href="#a">A · doors only</a><a href="#b">B · in the order a part lives</a><a href="#c" class="pick">C · the story strip</a><a href="#phone">The phone's On site tab</a><a href="#second">Is this the best we can do?</a><a href="#calls">The owner's calls</a>
+</nav>
+
+<!-- ───────────────────────────── TODAY ───────────────────────────── -->
+<h2 id="today"><span class="num today">0</span>Today</h2>
+<p class="lede">The strip is ordered by who may open a tab. The office's three sit left of a divider, then the books, then the buyer's two. The right end is empty, and nothing on the page names a cage, a box or a label.</p>
+
+<div class="row"><div class="col desk">
+  <div class="cap">Materials page · desktop · today<span class="m">label printing from here: no door</span></div>
+  <div class="frame now"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=parts-book</span></div>
+    <div class="page">
+      <div class="svc"><span class="on">Plumbing</span><span>Electrical</span></div>
+      <div class="tabs">
+        <span class="tab" data-show="office estimator">Supply houses</span>
+        <span class="tab" data-show="office">Held for suppliers</span>
+        <span class="tab" data-show="office">PO Generator</span>
+        <span class="sep" data-show="office estimator">|</span>
+        <span class="tab on">Parts Book</span>
+        <span class="tab">Assembly Book</span>
+        <span class="tab" data-show="office estimator">PO Builder</span>
+        <span class="tab" data-show="office estimator">Purchase Orders</span>
+        <span class="hole">nothing here: no door to On site, to labels or to a scan</span>
+      </div>
+      <div class="card"><h4>What your materials cost<span class="r"><span class="chip amber">212 prices checked over 90 days ago</span></span></h4>
+        <table class="t"><thead><tr><th>Part</th><th>Manufacturer</th><th class="n">Best price</th><th>Checked</th></tr></thead><tbody>
+          <tr><td>3/4" copper 90</td><td>Mueller</td><td class="n">$4.70 · Pecan Supply</td><td>12 days ago</td></tr>
+          <tr><td>3/4" ball valve</td><td>Apollo</td><td class="n">$18.60 · Pecan Supply</td><td><span class="chip amber">104 days ago</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+
+<div class="three">
+  <div class="card"><h4>1 · The Materials page</h4><div class="pad"><span class="who">Office · estimator · primary · superintendent</span><span>Price a part, build an order, pay the supply house. Seven tabs.</span><span class="muted">Doors to anything on site: <b>none</b>.</span></div></div>
+  <div class="card"><h4>2 · Jobs → Materials, the Materials desk</h4><div class="pad"><span class="who">Office only</span><span>Every job with a container. A job's boxes, deliveries, what was used, what is missing.</span><span class="muted">The only place Print labels and Print the manifest open.</span></div></div>
+  <div class="card"><h4>3 · Tally → On site</h4><div class="pad"><span class="who">Every role, one job at a time</span><span>The crew's phone: Used, Move, Can't find, Short, Count this box.</span><span class="muted">Its search reads Find a part on this job. No scan press. No way to every job.</span></div></div>
+</div>
+
+<div class="scrollx"><table class="doors">
+  <thead><tr><th>The tool</th><th>Office (dev, master, assistant, controller)</th><th>Estimator</th><th>Primary · superintendent</th><th>Helper · subcontractor</th></tr></thead>
+  <tbody>
+    <tr><td><b>Materials page</b></td><td class="yes">all seven tabs</td><td class="yes">the books, the two PO tabs, the Supply houses directory</td><td class="yes">the two books</td><td class="no">not theirs</td></tr>
+    <tr><td><b>Materials desk</b><br><span class="muted">Jobs → Materials</span></td><td class="yes">six doors lead here</td><td class="no">the Jobs page is not theirs</td><td class="no">landed on Reports</td><td class="no">not theirs</td></tr>
+    <tr><td><b>On site tab</b><br><span class="muted">Tally → On site</span></td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes, the jobs they can see</td><td class="yes">yes, the jobs they are on</td></tr>
+    <tr><td><b>Print labels</b></td><td class="yes">on a job's desk page only</td><td class="no">no door</td><td class="no">no door</td><td class="no">no door</td></tr>
+    <tr><td><b>Scan a label</b></td><td colspan="4">The phone's camera app reads the label and the box opens on the On site tab. No press inside the app says so.</td></tr>
+  </tbody>
+</table></div>
+<div class="say"><p class="lose">The phone's box screen offers <b>Print the label</b> and <b>Print the manifest</b> to everyone. Both open the desk, so anyone outside the office is sent away without a print. Read in the code, not walked live.</p></div>
+
+<!-- ───────────────────────────── A ───────────────────────────── -->
+<h2 id="a"><span class="num">A</span>Doors only</h2>
+<p class="lede">Today's strip, untouched, with a third group at its right end. Each press leaves the page for the side that role may open. The smallest change that answers "where is label printing?".</p>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">A · Materials page · desktop<span class="m">label printing from here: 3 presses</span></div>
+  <div class="frame"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=parts-book</span></div>
+    <div class="page">
+      <div class="svc"><span class="on">Plumbing</span><span>Electrical</span></div>
+      <div class="tabs" style="padding-top:6px">
+        <span class="tab" data-show="office estimator">Supply houses</span>
+        <span class="tab" data-show="office">Held for suppliers</span>
+        <span class="tab" data-show="office">PO Generator</span>
+        <span class="sep" data-show="office estimator">|</span>
+        <span class="tab on">Parts Book</span>
+        <span class="tab">Assembly Book</span>
+        <span class="tab" data-show="office estimator">PO Builder</span>
+        <span class="tab" data-show="office estimator">Purchase Orders</span>
+        <span class="sep">|</span>
+        <span class="tab new">On site <span class="go">↗</span></span>
+        <span class="tab new" data-show="office">Print labels <span class="go">↗</span></span>
+        <span class="tab new">Scan a label <span class="go">↗</span></span>
+      </div>
+      <div class="lands">
+        <div class="card"><h4>On site ↗</h4><div class="pad">
+          <span data-show="office">Opens the <b>Materials desk</b>: every job with a container.</span><span class="to" data-show="office">/jobs?tab=materials</span>
+          <span data-show="estimator reader">Opens the Tally's <b>On site</b> tab on your last job.</span><span class="to" data-show="estimator reader">/tally?tab=on-site</span>
+        </div></div>
+        <div class="card" data-show="office"><h4>Print labels ↗</h4><div class="pad"><span>Asks <b>Which job?</b> with the jobs that hold a box, then opens that job's labels window.</span><span class="to">/jobs?tab=materials&amp;job=…&amp;labels=1</span></div></div>
+        <div class="card" data-show="estimator reader"><h4>Print labels</h4><div class="pad"><span class="muted">Not drawn for this role in A. The desk is the office's, and labels print only there.</span></div></div>
+        <div class="card"><h4>Scan a label ↗</h4><div class="pad"><span>Opens a small window: <b>Point your phone's camera at the label</b>, or type the code under the QR.</span><span class="to">the code opens the box</span></div></div>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">A · Materials page · phone</div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><b>Materials</b><span class="sp"></span><span class="url">☰</span></div>
+      <div class="page">
+        <div class="tabs">
+          <span class="tab" data-show="office estimator">Supply houses</span><span class="tab" data-show="office">Held for suppliers</span><span class="tab" data-show="office">PO Generator</span><span class="sep" data-show="office estimator">|</span><span class="tab on">Parts Book</span><span class="tab">Assembly Book</span><span class="tab" data-show="office estimator">PO Builder</span><span class="tab" data-show="office estimator">Purchase Orders</span><span class="sep">|</span><span class="tab new">On site <span class="go">↗</span></span><span class="tab new" data-show="office">Print labels <span class="go">↗</span></span><span class="tab new">Scan a label <span class="go">↗</span></span>
+        </div>
+        <p class="muted" style="margin:0">On a phone the strip scrolls sideways. The new doors sit at its far end, off the first screen for the office and the estimator.</p>
+      </div>
+    </div></div>
+  </div>
+  <div class="col" style="flex:1 1 320px"><div class="say">
+    <p class="gain">One small PR. No tab moves, no address changes, no guide goes stale.</p>
+    <p class="gain">Each role lands on the side it may open, so no press ends in a bounce.</p>
+    <p class="lose">A tab that leaves the page looks like a tab that stays. The ↗ carries the whole difference.</p>
+    <p class="lose">The strip still reads in the order of who may open it. Nothing says a part is priced, then bought, then paid for, then tracked.</p>
+    <p class="lose">Print labels needs a job, so its door opens a question before it opens a window.</p>
+    <p class="lose">On a phone the doors sit past the scroll, where the owner did not look.</p>
+  </div></div>
+</div>
+
+<!-- ───────────────────────────── B ───────────────────────────── -->
+<h2 id="b"><span class="num">B</span>The strip in the order a part lives</h2>
+<p class="lede">The same tabs regrouped by what a person is doing: price it, buy it, pay for it, track it. A role sees the groups it may open. The desk is mounted in the page as the On site tab, so the page holds all four stages.</p>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">B · Materials page · desktop · On site open<span class="m">label printing from here: 3 presses</span></div>
+  <div class="frame"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=on-site</span></div>
+    <div class="page">
+      <div class="tabs" style="gap:26px">
+        <span class="grp"><span class="gc">Price it</span><span class="gt"><span class="tab">Parts Book</span><span class="tab">Assembly Book</span></span></span>
+        <span class="grp" data-show="office estimator"><span class="gc">Buy it</span><span class="gt"><span class="tab">PO Builder</span><span class="tab">Purchase Orders</span><span class="tab" data-show="office">PO Generator</span></span></span>
+        <span class="grp" data-show="office estimator"><span class="gc">Pay for it</span><span class="gt"><span class="tab">Supply houses</span><span class="tab" data-show="office">Held for suppliers</span></span></span>
+        <span class="grp new"><span class="gc">Track it</span><span class="gt"><span class="tab on">On site</span><span class="tab" data-show="office">Labels</span><span class="tab">Scan a label</span></span></span>
+      </div>
+      <div class="card" data-show="office"><h4>Materials desk<span class="muted" style="font-weight:400">3 jobs with containers</span><span class="r"><span class="btn sm">Print the material location report</span></span></h4>
+        <table class="t"><thead><tr><th>Job</th><th class="n">Containers</th><th class="n">On site, lines</th><th class="n">Missing this week</th><th>Counts</th></tr></thead><tbody>
+          <tr class="warn"><td><a>JP1042 · Oak Hollow Apartments Building C</a></td><td class="n">6</td><td class="n">41</td><td class="n"><b>$444.95</b></td><td><span class="chip amber">2 due a count</span></td></tr>
+          <tr><td><a>JP1063 · Mill Street Lofts</a></td><td class="n">2</td><td class="n">14</td><td class="n">$0.00</td><td><span class="chip amber">1 due a count</span></td></tr>
+          <tr><td><a>JP1057 · Cedar Bend Clinic</a></td><td class="n">1</td><td class="n">5</td><td class="n">$0.00</td><td><span class="chip green">all this fortnight</span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="card" data-show="estimator reader"><h4>Your jobs with boxes</h4>
+        <table class="t"><tbody>
+          <tr><td><a>JP1042 · Oak Hollow Apartments Building C</a></td><td class="n">6 containers</td><td class="n"><span class="btn sm">Open on the phone screen</span></td></tr>
+          <tr><td><a>JP1063 · Mill Street Lofts</a></td><td class="n">2 containers</td><td class="n"><span class="btn sm">Open on the phone screen</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">B · Materials page · phone</div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><b>Materials</b><span class="sp"></span><span class="url">☰</span></div>
+      <div class="page">
+        <div class="sub"><span>Price it</span><span data-show="office estimator">Buy it</span><span data-show="office estimator">Pay for it</span><span class="on new">Track it</span></div>
+        <div class="tabs"><span class="tab on">On site</span><span class="tab" data-show="office">Labels</span><span class="tab">Scan a label</span></div>
+        <div class="box"><span class="d"><b>JP1042 · Oak Hollow Bldg C</b><span>6 containers · 2 due a count</span></span><span class="q" style="font-size:14px;color:var(--text-red-700)">$444.95</span></div>
+        <div class="box"><span class="d"><b>JP1063 · Mill Street Lofts</b><span>2 containers · 1 due a count</span></span></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col" style="flex:1 1 320px"><div class="say">
+    <p class="gain">The strip reads as a sentence. A new hire can guess where a thing is before pressing.</p>
+    <p class="gain">On a phone the four stage chips fit one row, so Track it is on the first screen.</p>
+    <p class="lose">Ten tabs and four captions. The strip runs about 1,050 px for the office, most of the page's width.</p>
+    <p class="lose">Labels and Scan a label are not places. They are things done to a box, drawn as tabs beside the tab that holds the boxes.</p>
+    <p class="lose">Supply houses is filed under Pay for it, yet an estimator opens it for a rep's phone number before buying.</p>
+    <p class="lose">The desk gets a second home. Six doors and a guide point at Jobs → Materials today.</p>
+    <p class="rule">The captions say what each stage is. They do not say which stage needs a hand.</p>
+  </div></div>
+</div>
+
+<!-- ───────────────────────────── C ───────────────────────────── -->
+<h2 id="c"><span class="num pick">C</span>The story strip <span class="tag">the pick</span></h2>
+<p class="lede">Four stages across the top, each with its one live figure and a badge where a hand is needed. Press a stage and its tabs sit under it. <b>On site</b> is the fourth stage and it is one page: the boxes on every job, one search across them, and the two things done to a box as presses in its head. The app already draws this row on the desk and the phone for one job (came in, on site, used, missing). This is the same row, one level up.</p>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">C · Materials page · desktop · On site open<span class="m">label printing from here: 3 presses, 2 when On site is already open</span></div>
+  <div class="frame"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=on-site</span></div>
+    <div class="page">
+      <div class="stages new">
+        <div class="stage"><span class="w">Price</span><span class="f">1,284 <small>parts in the book</small></span><span class="b"><span class="chip amber">212 prices over 90 days</span></span></div>
+        <div class="stage" data-show="office estimator"><span class="w">Buy</span><span class="f">3 <small>orders open</small></span><span class="b"><span class="chip amber">1 late</span></span></div>
+        <div class="stage" data-show="office estimator"><span class="w">Pay</span><span class="f" data-show="office">$18,420 <small>held for suppliers</small></span><span class="f" data-show="estimator">14 <small>supply houses</small></span><span class="b"><span class="chip blue" data-show="office">2 to move onto a job account</span></span></div>
+        <div class="stage on"><span class="w">On site</span><span class="f">412 <small>pieces on 3 jobs</small></span><span class="b"><span class="chip red" data-show="office">$444.95 walked away</span><span class="chip amber">3 boxes due a count</span></span></div>
+      </div>
+      <div class="bar">
+        <span class="find new">⌕ <b>Find a part or a box on any job</b></span>
+        <span class="btn new" data-show="office">Print labels</span>
+        <span class="btn new">Scan a label</span>
+        <span class="btn sm" data-show="office">Print the material location report</span>
+      </div>
+      <div class="card"><h4><span data-show="office">Every job with a container</span><span data-show="estimator reader">Your jobs with boxes</span><span class="muted" style="font-weight:400">sorted by what walked away, then by boxes due a count</span></h4>
+        <table class="t"><thead><tr><th>Job</th><th class="n">Containers</th><th class="n">On site, lines</th><th class="n" data-show="office">Missing this week</th><th>Counts</th><th></th></tr></thead><tbody>
+          <tr class="warn"><td><a>JP1042 · Oak Hollow Apartments Building C</a></td><td class="n">6</td><td class="n">41</td><td class="n" data-show="office"><b>$444.95</b></td><td><span class="chip amber">2 due a count</span></td><td class="n"><span class="btn sm new" data-show="office">Labels</span> <span class="btn sm" data-show="office">Open on the phone screen</span><span class="btn sm" data-show="estimator reader">Open the boxes</span></td></tr>
+          <tr><td><a>JP1063 · Mill Street Lofts</a></td><td class="n">2</td><td class="n">14</td><td class="n" data-show="office">$0.00</td><td><span class="chip amber">1 due a count</span></td><td class="n"><span class="btn sm" data-show="office">Labels</span> <span class="btn sm" data-show="office">Open on the phone screen</span><span class="btn sm" data-show="estimator reader">Open the boxes</span></td></tr>
+          <tr data-show="office"><td><a>JP1057 · Cedar Bend Clinic</a></td><td class="n">1</td><td class="n">5</td><td class="n">$0.00</td><td><span class="chip green">all this fortnight</span></td><td class="n"><span class="btn sm">Labels</span> <span class="btn sm">Open on the phone screen</span></td></tr>
+        </tbody></table>
+      </div>
+      <p class="muted" style="margin:0" data-show="office">A job's name opens its desk page here, with its four sections as they are today.</p>
+      <p class="muted" style="margin:0" data-show="estimator reader">For this role the page is a list of doors. A job opens its boxes on the Tally's On site tab, where the presses are. No money is drawn.</p>
+    </div>
+  </div></div>
+</div></div>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">C · the search, typed · desktop</div>
+  <div class="frame"><div class="screen w1248"><div class="page" style="padding-top:14px">
+    <div class="bar"><span class="find" style="color:var(--text-strong)">⌕ <b>copper 90</b></span><span class="muted">2 parts in 3 boxes on 2 jobs</span></div>
+    <div class="card"><table class="t"><thead><tr><th>Part</th><th>Box</th><th>Job</th><th class="n">On hand</th><th>Last counted</th><th></th></tr></thead><tbody>
+      <tr><td>3/4" copper 90 <span class="muted">· Mueller</span></td><td><b>A2</b> <span class="muted">cage · Building C · level 2</span></td><td>JP1042 · Oak Hollow</td><td class="n"><b>18</b></td><td>3 days ago</td><td class="n"><span class="btn sm">Open the box</span></td></tr>
+      <tr><td>3/4" copper 90 <span class="muted">· Mueller</span></td><td><b>B1</b> <span class="muted">box · laydown yard</span></td><td>JP1063 · Mill Street</td><td class="n"><b>6</b></td><td><span class="chip amber">16 days ago</span></td><td class="n"><span class="btn sm">Open the box</span></td></tr>
+      <tr><td>1/2" copper 90 <span class="muted">· Mueller</span></td><td><b>A1</b> <span class="muted">cage · Building C · level 1</span></td><td>JP1042 · Oak Hollow</td><td class="n"><b>40</b></td><td>3 days ago</td><td class="n"><span class="btn sm">Open the box</span></td></tr>
+    </tbody></table></div>
+  </div></div></div>
+</div></div>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">C · Price open · the part carries its own life · desktop · the last PR</div>
+  <div class="frame"><div class="screen w1248"><div class="page" style="padding-top:14px">
+    <div class="stages">
+      <div class="stage on"><span class="w">Price</span><span class="f">1,284 <small>parts in the book</small></span><span class="b"><span class="chip amber">212 prices over 90 days</span></span></div>
+      <div class="stage" data-show="office estimator"><span class="w">Buy</span><span class="f">3 <small>orders open</small></span><span class="b"><span class="chip amber">1 late</span></span></div>
+      <div class="stage" data-show="office estimator"><span class="w">Pay</span><span class="f" data-show="office">$18,420 <small>held for suppliers</small></span><span class="f" data-show="estimator">14 <small>supply houses</small></span><span class="b"></span></div>
+      <div class="stage"><span class="w">On site</span><span class="f">412 <small>pieces on 3 jobs</small></span><span class="b"><span class="chip amber">3 boxes due a count</span></span></div>
+    </div>
+    <div class="sub"><span class="on">Parts Book</span><span>Assembly Book</span></div>
+    <div class="card"><table class="t"><thead><tr><th>Part</th><th class="n">Best price</th><th>Checked</th><th class="new">Where it is now</th></tr></thead><tbody>
+      <tr><td>3/4" copper 90 <span class="muted">· Mueller</span></td><td class="n">$4.70 · Pecan Supply</td><td>12 days ago</td><td><span class="chip blue" data-show="office estimator">25 on order · PO 1183</span> <span class="chip green">24 on site · 2 boxes</span> <span class="chip red" data-show="office">3 missing this week</span></td></tr>
+      <tr><td>3/4" ball valve <span class="muted">· Apollo</span></td><td class="n">$18.60 · Pecan Supply</td><td><span class="chip amber">104 days ago</span></td><td><span class="chip green">9 on site · 1 box</span></td></tr>
+      <tr><td>2" PVC coupling <span class="muted">· Charlotte</span></td><td class="n">$1.15 · Pecan Supply</td><td>30 days ago</td><td><span class="muted">not on order, not on a site</span></td></tr>
+    </tbody></table></div>
+    <p class="muted" style="margin:0">Each chip is a door: the order, the boxes, the job's missing list. A part that was landed from an invoice with no link to the book shows nothing here until it is linked.</p>
+  </div></div></div>
+</div></div>
+
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">C · Materials page · phone</div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><b>Materials</b><span class="sp"></span><span class="url">☰</span></div>
+      <div class="page">
+        <div class="stages new">
+          <div class="stage"><span class="w">Price</span><span class="f">1,284 <small>parts</small></span><span class="b"><span class="chip amber">212 old</span></span></div>
+          <div class="stage" data-show="office estimator"><span class="w">Buy</span><span class="f">3 <small>open</small></span><span class="b"><span class="chip amber">1 late</span></span></div>
+          <div class="stage" data-show="office estimator"><span class="w">Pay</span><span class="f" data-show="office">$18,420</span><span class="f" data-show="estimator">14 <small>houses</small></span><span class="b"><span class="chip blue" data-show="office">2 to move</span></span></div>
+          <div class="stage on"><span class="w">On site</span><span class="f">412 <small>pieces</small></span><span class="b"><span class="chip amber">3 due</span></span></div>
+        </div>
+        <span class="find">⌕ <b>Find a part or a box on any job</b></span>
+        <div class="bar"><span class="btn" style="flex:1">Scan a label</span><span class="btn" style="flex:1" data-show="office">Print labels</span></div>
+        <div class="box"><span class="d"><b>JP1042 · Oak Hollow Bldg C</b><span>6 containers · 2 due a count</span></span><span class="q" style="font-size:14px;color:var(--text-red-700)" data-show="office">$444.95</span></div>
+        <div class="box"><span class="d"><b>JP1063 · Mill Street Lofts</b><span>2 containers · 1 due a count</span></span></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col" style="flex:1 1 320px"><div class="say">
+    <p class="gain">The page answers two questions at once: where a thing is, and which stage needs a hand today.</p>
+    <p class="gain">On site is one place with one name. Labels and the scan are presses on it, where the boxes are.</p>
+    <p class="gain">One search finds a part across every job. That is the question the owner could not answer from here.</p>
+    <p class="gain">A primary or a superintendent sees two stages and reaches the boxes in one press, with no money drawn.</p>
+    <p class="gain">Four stages fit a phone as a two by two grid. Nothing sits past a scroll.</p>
+    <p class="lose">Four figures need a read each when the page opens. One read for the office, no more for a reader than today.</p>
+    <p class="lose">The strip moves. The tab addresses stay, but the guides that say "the third tab" are rewritten.</p>
+    <p class="rule">The desk keeps its home on Jobs until the owner says otherwise. Both mounts draw the same component.</p>
+  </div></div>
+</div>
+
+<!-- ───────────────────────────── THE PHONE ───────────────────────────── -->
+<h2 id="phone"><span class="num">P</span>The phone's On site tab</h2>
+<p class="lede">The crew never opens the Materials page, so their side gets the same three answers where they already are: a press to scan, a way from this job to every job, and an empty job that says where the boxes are. These frames stand under any of A, B or C.</p>
+
+<div class="row">
+  <div class="col p375">
+    <div class="cap">Today · a job with boxes</div>
+    <div class="frame now"><div class="screen w375"><div class="ph">
+      <div class="ptabs"><span>Transactions</span><span>Materials Estimate</span><span class="on">On site</span></div>
+      <div class="jobpill"><span><small>Job</small>JP1042 · Oak Hollow Bldg C</span><span>▾</span></div>
+      <div class="bar"><span class="find">⌕ <b>Find a part on this job</b></span><span class="btn" style="border-radius:999px;min-height:40px">◎ Map</span></div>
+      <div class="jobhead">Building C · level 2 · 2</div>
+      <div class="box"><span class="st">A1</span><span class="d"><b>cage</b><span>counted 3 days ago</span></span><span class="q">12</span></div>
+      <div class="box"><span class="st">A2</span><span class="d"><b>cage</b><span>counted 3 days ago</span></span><span class="q">9</span></div>
+    </div></div></div>
+    <div class="foot">The search stops at this job. A part in a cage across town reads as not found.</div>
+  </div>
+
+  <div class="col p375">
+    <div class="cap opt">Proposed · the search reaches every job</div>
+    <div class="frame"><div class="screen w375"><div class="ph">
+      <div class="ptabs"><span>Transactions</span><span>Materials Estimate</span><span class="on">On site</span></div>
+      <div class="jobpill"><span><small>Job</small>JP1042 · Oak Hollow Bldg C</span><span>▾</span></div>
+      <span class="find" style="color:var(--text-strong)">⌕ <b>copper 90</b></span>
+      <div class="bar"><span class="scope new"><span>This job</span><span class="on">Every job</span></span><span class="sp" style="flex:1"></span><span class="btn new" style="min-height:40px;border-radius:999px">Scan a label</span><span class="btn" style="border-radius:999px;min-height:40px">◎</span></div>
+      <div class="jobhead">JP1042 · Oak Hollow Bldg C · this job</div>
+      <div class="box"><span class="st">A2</span><span class="d"><b>3/4" copper 90</b><span>cage · level 2</span></span><span class="q">18</span></div>
+      <div class="jobhead">JP1063 · Mill Street Lofts · another job</div>
+      <div class="box"><span class="st">B1</span><span class="d"><b>3/4" copper 90</b><span>box · laydown yard</span></span><span class="q">6</span></div>
+    </div></div></div>
+    <div class="foot">This job's boxes come first. Every job means every job this person may open, the same gate the boxes already use.</div>
+  </div>
+
+  <div class="col p375">
+    <div class="cap opt">Proposed · a job with no boxes</div>
+    <div class="frame"><div class="screen w375"><div class="ph">
+      <div class="ptabs"><span>Transactions</span><span>Materials Estimate</span><span class="on">On site</span></div>
+      <div class="jobpill"><span><small>Job</small>JP1071 · Larkspur Dental</span><span>▾</span></div>
+      <div class="bar"><span class="find">⌕ <b>Find a part on any job</b></span><span class="btn new" style="min-height:40px;border-radius:999px">Scan a label</span></div>
+      <div class="empty new">
+        <span><b>No containers on JP1071 yet.</b> Your boxes are on 2 other jobs.</span>
+        <div class="box" style="min-height:52px"><span class="d"><b>JP1042 · Oak Hollow Bldg C</b><span>6 containers</span></span><span class="q" style="font-size:16px">›</span></div>
+        <div class="box" style="min-height:52px"><span class="d"><b>JP1063 · Mill Street Lofts</b><span>2 containers</span></span><span class="q" style="font-size:16px">›</span></div>
+        <span class="btn big block">Add a container to JP1071</span>
+        <span class="muted">It adds the first with its stencil. A delivery the office lands shows here as Unsorted.</span>
+      </div>
+    </div></div></div>
+    <div class="foot">Today this screen reads <i>No containers on this site yet</i> and stops, as if no box existed anywhere.</div>
+  </div>
+
+  <div class="col p375">
+    <div class="cap opt">Proposed · Scan a label, pressed</div>
+    <div class="frame"><div class="screen w375"><div class="ph">
+      <div class="jobpill"><span><small>Job</small>JP1042 · Oak Hollow Bldg C</span><span>▾</span></div>
+      <div class="sheet new">
+        <b style="font-size:17px">Scan a label</b>
+        <span>Open your phone's camera and point it at the label on a cage or box. The box opens here.</span>
+        <span class="muted">Or type the code under the QR code</span>
+        <div class="code">4F2A-9C18</div>
+        <span class="btn big block pri">Open the box</span>
+        <span class="muted">A box on another job opens on that job.</span>
+      </div>
+    </div></div></div>
+    <div class="foot">First PR: the words and the typed code, which need no camera permission. A camera inside the app is the owner's call 4.</div>
+  </div>
+</div>
+
+<!-- ───────────────────────────── SECOND LOOK ───────────────────────────── -->
+<h2 id="second"><span class="num">?</span>Is this the best we can do?</h2>
+<p class="lede">A answers the question the owner asked. B answers the one under it. Neither answers the one he did not ask: which part of this page needs me today. C is B with that answer, and with two of B's tabs folded back into the place they act on.</p>
+
+<div class="scrollx"><table class="verdict">
+  <thead><tr><th></th><th>Today</th><th>A · doors only</th><th>B · in life order</th><th class="pick">C · the story strip</th></tr></thead>
+  <tbody>
+    <tr><th>Presses to Print labels from the Materials page</th><td>No door. Five after leaving: Jobs, Materials, the job, Print labels, Print 6 labels.</td><td>3: Print labels, the job, Print 6 labels.</td><td>3: Labels, the job, Print 6 labels.</td><td class="pick">3: On site, the job's Labels, Print 6 labels. 2 when On site is open.</td></tr>
+    <tr><th>What the strip's order says</th><td>Who may open a tab.</td><td>The same, plus three ways out.</td><td>The order a part lives.</td><td class="pick">The order a part lives, and where a hand is needed.</td></tr>
+    <tr><th>Names for the on-site tool</th><td>Three: Materials, Materials desk, On site.</td><td>Three.</td><td>One, with two homes.</td><td class="pick">One: On site. The Jobs tab stays as a door until the owner retires it.</td></tr>
+    <tr><th>A primary or a superintendent</th><td>Two books. The Tally for boxes, found by memory.</td><td>Two books and two doors to the Tally.</td><td>Price it and Track it.</td><td class="pick">Price and On site. Their jobs' boxes in one press, no money.</td></tr>
+    <tr><th>Find one part across every job</th><td>Go anywhere, for a part the store has read.</td><td>The same.</td><td>The same.</td><td class="pick">The page's own search, and the phone's Every job.</td></tr>
+    <tr><th>On a phone</th><td>A strip that scrolls.</td><td>The doors sit past the scroll.</td><td>Four chips, then a row of tabs.</td><td class="pick">Four stages, two by two, on the first screen.</td></tr>
+    <tr><th>What it costs</th><td></td><td>S. One PR.</td><td>M. The strip, the desk's second mount.</td><td class="pick">M as a train. The doors PR first, so A ships inside C.</td></tr>
+    <tr><th>What can go wrong</th><td></td><td>It papers over the order. The page grows a second kind of tab.</td><td>Ten tabs. Two homes for the desk.</td><td class="pick">Four figures to read at page open. Each has one existing source.</td></tr>
+  </tbody>
+</table></div>
+<div class="say">
+  <p class="rule"><b>What the second look changed.</b> My first C was B with figures on the captions. Asking again took Labels and Scan a label out of the strip, since neither is a place. It also added the search, because "where is this part" was the owner's real trouble, and the row for a primary, who had no way in at all.</p>
+  <p class="rule"><b>What I did not draw.</b> A single Materials page that swallows the Tally's On site tab. The crew's phone screen is one column with 48 px presses for a reason, and it stays where the crew already is.</p>
+  <p class="rule"><b>The first PR is A either way.</b> The three doors go on today's strip so the owner can find label printing this week. The strip is redrawn around them after his pick.</p>
+</div>
+
+<!-- ───────────────────────────── CALLS ───────────────────────────── -->
+<h2 id="calls"><span class="num">!</span>The owner's calls</h2>
+<ol class="calls">
+  <li><b>Which direction?</b> <span class="mine">My pick: C, with A's doors shipped first.</span></li>
+  <li><b>Does the desk move to the Materials page, or live in both places?</b> <span class="mine">My pick: both for one release, then Jobs → Materials becomes a door to the Materials page.</span></li>
+  <li><b>May anyone who can open a job's boxes print its labels?</b> Today only the office can, and the phone's Print the label press sends everyone else away. <span class="mine">My pick: yes. A label shows a stencil and a code, no money.</span></li>
+  <li><b>Is Scan a label the camera app plus a typed code, or a camera inside the app?</b> <span class="mine">My pick: the camera app and the typed code first. A camera inside the app only if the crew asks.</span></li>
+  <li><b>Does Every job on the phone mean every job the person may open, or only jobs they are on?</b> <span class="mine">My pick: every job they may open, the gate the boxes already use.</span></li>
+  <li><b>Do the stage words read Price · Buy · Pay · On site, or Price it · Buy it · Pay for it · Track it?</b> <span class="mine">My pick: the short four. On site is the name the crew already knows.</span></li>
+  <li><b>Does the missing money show on the On site stage for the office only?</b> <span class="mine">My pick: yes, office only, as the desk does today.</span></li>
+  <li><b>Where it is now on a Parts Book row: build it, or stop at the search?</b> <span class="mine">My pick: build it last, after a week with the search.</span></li>
+</ol>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  function press(attr, value) {
+    document.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === value)); });
+  }
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () { var t = b.getAttribute('data-theme-pick'); root.setAttribute('data-theme', t); press('data-theme-pick', t); });
+  });
+  document.querySelectorAll('[data-role-pick]').forEach(function (b) {
+    b.addEventListener('click', function () { var r = b.getAttribute('data-role-pick'); root.setAttribute('data-role', r); press('data-role-pick', r); });
+  });
+})();
+</script>
+</body>
+</html>
