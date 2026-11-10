@@ -1823,6 +1823,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "auto-send-test-reports",
   "away-note",
   "bid-basis-grant",
+  "bid-photos",
   "bill-read",
   "billed-report-email",
   "box-read",
