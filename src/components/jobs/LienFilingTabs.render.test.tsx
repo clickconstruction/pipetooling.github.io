@@ -119,7 +119,7 @@ describe('LienFilingTabs · record steps', () => {
   it('a job contracted with the owner names our own company as the original contractor, at its own address', () => {
     // The window always named the company here; it now gives the address too, as the desk's draft does (`lienOriginalContractor`).
     const issuer = { companyName: 'Sample Plumbing LLC', addressText: '1 Shop Rd\nSan Antonio, TX 78201' } as never
-    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, issuer, originalContractorName: 'Sample Plumbing LLC' })} />)
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, issuer, originalContractorName: 'Sample Plumbing LLC', affidavitForm: 'long' })} />)
     expect(document.body.textContent).toContain('The name and address of the original contractor is: Sample Plumbing LLC, 1 Shop Rd, San Antonio, TX 78201.')
   })
 
@@ -232,9 +232,15 @@ describe('LienFilingTabs · the kind of work is the trade (v2.6118)', () => {
   const paper = () => document.body.textContent ?? ''
 
   it('the affidavit’s ¶4 swears the trade’s labor and materials, not the job’s name', () => {
-    renderWithProviders(<LienFilingTabs {...props({ job: electrical, activeTab: 'affidavit', isSub: false })} />)
+    renderWithProviders(<LienFilingTabs {...props({ job: electrical, activeTab: 'affidavit', isSub: false, affidavitForm: 'long' })} />)
     expect(paper()).toContain('The kind of work and/or materials furnished by Claimant was: Electrical labor and materials.')
     expect(paper()).not.toContain('was: Bruce Hall')
+  })
+
+  it('the short form names the trade inside its sentence (punch list #305)', () => {
+    renderWithProviders(<LienFilingTabs {...props({ job: electrical, activeTab: 'affidavit', isSub: false })} />)
+    expect(paper()).toContain('Claimant furnished electrical labor and materials to improve this property in')
+    expect(paper()).not.toContain('furnished Bruce Hall')
   })
 
   it('the § 53.056 notice’s type of labor reads the same trade', () => {
@@ -243,7 +249,7 @@ describe('LienFilingTabs · the kind of work is the trade (v2.6118)', () => {
   })
 
   it('a job with no trade on its row reads plumbing, as before', () => {
-    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false })} />)
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, affidavitForm: 'long' })} />)
     expect(paper()).toContain('was: Plumbing labor and materials.')
     expect(paper()).not.toContain('was: ATI Schertz')
   })
@@ -257,14 +263,52 @@ describe('LienFilingTabs · the affidavit is the desk’s paper (v2.6809)', () =
   const paper = () => document.body.textContent ?? ''
 
   it('paragraph 5 swears the creation month, and the original contractor line carries the address on file', () => {
-    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' })} />)
+    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016', affidavitForm: 'long' })} />)
     expect(paper()).toContain('The work was performed and/or materials delivered during the period from August 1, 2026 through August 31, 2026.')
     expect(paper()).not.toContain('from — through —')
     expect(paper()).toContain('The name and address of the original contractor is: Harborline Builders, 9 Yard St, Devine TX 78016.')
   })
 
   it('the window’s fresh last-day read reaches the paper: the first of that month through the day set by hand', () => {
-    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], workDays: { lien_last_work_on: '2026-08-15' } })} />)
+    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], workDays: { lien_last_work_on: '2026-08-15' }, affidavitForm: 'long' })} />)
     expect(paper()).toContain('during the period from August 1, 2026 through August 15, 2026.')
+  })
+})
+
+describe('LienFilingTabs · the affidavit prints on the short form (punch list #305)', () => {
+  const sub = makeJob({ id: 'job-853', click_number: '853', job_name: 'Service Visit', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 595, payments_made: 0, created_at: '2026-08-18T05:40:28Z', first_work_date: null, last_work_date: null, lien_last_work_on: null })
+  // The notice on record: August named, mailed to the owner and the GC on October 14.
+  const notice = { id: 'f-n', job_id: 'job-853', kind: 'notice_53_056', filed_at: null, serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-14' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-10-14' }], fields: {}, created_at: '2026-10-14T15:00:00Z' }
+  const paper = () => document.body.textContent ?? ''
+  const gcProps = { job: sub, activeTab: 'affidavit' as const, isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' }
+
+  it('a job under a GC: the months and the notice come from the record, and nothing prints above the title', () => {
+    renderWithProviders(<LienFilingTabs {...props(gcProps)} />)
+    expect(paper()).toContain('Claimant did so under a contract with Harborline Builders, 9 Yard St, Devine TX 78016, the original contractor.')
+    expect(paper()).toContain('Payment is requested for work done and materials furnished in August 2026.')
+    expect(paper()).toContain('Notice of the claim was sent to the owner by certified mail on October 14, 2026.')
+    expect(paper()).toContain('The amount of the claim is $595.00. Claimant claims a lien on the property for that amount.')
+    expect(paper()).toContain('Printed name: ')
+    // Gone from the paper: the period, the contract and paid amounts, the general notices sentence, the fees.
+    expect(paper()).not.toContain('during the period from')
+    expect(paper()).not.toContain('The original contract amount was')
+    expect(paper()).not.toContain('All statutory notices')
+    expect(paper()).not.toContain("attorney's fees")
+    // The county above the opening is the notary's to fill; the property's county is in paragraph 2.
+    expect(paper()).not.toContain('COUNTY OF GUADALUPE')
+    expect(paper()).toContain('The claim it swears:')
+    expect(document.querySelector('[data-lien-window-form-note]')).toBeNull()
+  })
+
+  it('a paper drafted on the earlier form prints on it, and the tab says so', () => {
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, affidavitForm: 'long' })} />)
+    expect(paper()).toContain('The work was performed and/or materials delivered during the period from')
+    expect(paper()).toContain('Sworn amounts (¶8):')
+    expect(document.querySelector('[data-lien-window-form-note="long"]')?.textContent).toContain('earlier form')
+  })
+
+  it('a form that could not be read draws the earlier form and says to check the desk', () => {
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, affidavitForm: 'long', affidavitFormUnread: true })} />)
+    expect(document.querySelector('[data-lien-window-form-note="unread"]')?.textContent).toContain('Check the job on the Lien desk before you print.')
   })
 })

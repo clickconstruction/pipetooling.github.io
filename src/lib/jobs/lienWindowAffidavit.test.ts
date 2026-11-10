@@ -33,6 +33,8 @@ const shared = {
   noticesRecorded: true,
   contactPerson: 'Rey Master, Master Plumber',
   issuer: null,
+  // These read the earlier form's ten paragraphs, the form a paper drafted before the short one keeps (punch list #305); the short form's parity is at the foot.
+  form: 'long' as const,
 }
 const jobRow = { created_at: '2026-08-18T05:40:28.750883+00:00', first_work_date: null, last_work_date: null, lien_last_work_on: null }
 
@@ -139,6 +141,7 @@ const deskFor = (over: { isSub?: boolean; gc?: { name: string; address: string }
     contactPerson: shared.contactPerson,
     issuer: over.issuer ?? null,
     todayYmd: shared.todayYmd,
+    form: 'long',
   })
 // The window, as its Mechanic's lien tab fills it: the claim from the job's own bills and payments, the correction read for the job.
 const winFor = (over: { isSub?: boolean; gcName?: string; gcAddress?: string; correction?: LienClaimCorrection | null; issuer?: never } = {}) =>
@@ -242,5 +245,72 @@ describe('a job contracted with the owner: the original contractor is our own co
     expect(lienPaperGaps('affidavit', { ...facts, gcName: named }).map((g) => g.key)).not.toContain('gc')
     // A sub's job with no GC name is still a blank the desk asks for.
     expect(lienPaperGaps('affidavit', { ...facts, gcName: '' }).map((g) => g.key)).toContain('gc')
+  })
+})
+
+describe('the short form is one paper on the desk and in the window (punch list #305)', () => {
+  // The notices on record: July and August named, mailed to the owner twice.
+  const filings = [
+    { kind: 'notice_53_056', months_covered: ['2026-07'], voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-08-14' }] },
+    { kind: 'notice_53_056', months_covered: ['2026-07', '2026-08'], voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-09-11' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 3', sent_on: '2026-09-11' }] },
+  ]
+  // Clocked July 22 through August 11: both noticed months are the job's own.
+  const worked = { ...jobRow, first_work_date: '2026-07-22', last_work_date: '2026-08-11' }
+  const shortDesk = (over: { isSub?: boolean } = {}) =>
+    buildLienDeskAffidavitFields({
+      job: { ...worked, job_name: shared.jobName, job_address: shared.jobAddress, customer_name: shared.customerName, revenue: 595, payments_made: 0, service_type: { name: 'Plumbing' } },
+      entry: { isSub: over.isSub ?? true, openBalance: 595, lastMonth: '2026-08', gates },
+      gc: over.isSub === false ? null : { name: shared.originalContractorName, address: shared.originalContractorAddress },
+      ...property,
+      correction: null,
+      contactPerson: shared.contactPerson,
+      issuer,
+      todayYmd: shared.todayYmd,
+      filings,
+    })
+  const shortWin = (over: { isSub?: boolean } = {}) => buildLienWindowAffidavitFields({ ...shared, form: undefined, isSub: over.isSub ?? true, openBalance: 595, issuer, job: worked, workMonths: null, filings })
+
+  it('a job under a GC: the same seven paragraphs on both, with nobody asking for the form', () => {
+    expect(shortWin()).toEqual(shortDesk())
+    expect(shortDesk().form).toBe('short')
+    expect(numbered(shortDesk())).toEqual([
+      '1. I am authorized to make this affidavit for Sample Plumbing LLC ("Claimant"). Claimant\'s mailing address is 1 Shop Rd, San Antonio, TX 78201.',
+      '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: CB 1 BLK B LOT 7, 12 Sample Rd, San Antonio, TX 78209.',
+      '3. Claimant did so under a contract with Harborline Builders, 9 Yard St, Devine TX 78016, the original contractor.',
+      '4. The owner or reputed owner is Pat Owner, 4 Owner Ct, San Antonio, TX 78209.',
+      '5. Payment is requested for work done and materials furnished in July and August 2026.',
+      '6. Notice of the claim was sent to the owner by certified mail on August 14, 2026 and September 11, 2026.',
+      '7. The amount of the claim is $595.00. Claimant claims a lien on the property for that amount.',
+    ])
+  })
+
+  it('a job contracted with the owner: four paragraphs, no months and no notices', () => {
+    // The window hands over its own company as the original contractor; the recipe names it the same way on both.
+    expect(buildLienWindowAffidavitFields({ ...shared, form: undefined, isSub: false, originalContractorName: 'Sample Plumbing LLC', originalContractorAddress: '', openBalance: 595, issuer, job: worked, workMonths: null, filings })).toEqual(shortDesk({ isSub: false }))
+    expect(numbered(shortDesk({ isSub: false }))).toEqual([
+      '1. I am authorized to make this affidavit for Sample Plumbing LLC ("Claimant"). Claimant\'s mailing address is 1 Shop Rd, San Antonio, TX 78201.',
+      '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: CB 1 BLK B LOT 7, 12 Sample Rd, San Antonio, TX 78209.',
+      '3. Claimant did so under a contract with the owner, Pat Owner, 4 Owner Ct, San Antonio, TX 78209. Claimant is the original contractor.',
+      '4. The amount of the claim is $595.00. Claimant claims a lien on the property for that amount.',
+    ])
+  })
+
+  it('a notice mailed for several jobs at the property: the ticket names its own month, never the whole paper’s (the two August tickets of 2026-11-10)', () => {
+    // The paper named April, June, July and August for the property; this job was created in August and never clocked.
+    const packet = [{ kind: 'notice_53_056', months_covered: ['2026-04', '2026-06', '2026-07', '2026-08'], voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 1', sent_on: '2026-09-22' }] }]
+    const ticket = buildLienDeskAffidavitFields({ job: { ...jobRow, revenue: 595, payments_made: 0 }, entry: { isSub: true, openBalance: 595, lastMonth: '2026-08', gates }, gc: null, ...property, correction: null, contactPerson: 'Rey', issuer, todayYmd: shared.todayYmd, filings: packet })
+    expect(ticket.workMonthsWords).toBe('August 2026')
+    expect(ticket.noticesSentWords).toBe('certified mail on September 22, 2026')
+    expect(buildLienWindowAffidavitFields({ ...shared, form: undefined, openBalance: 595, issuer, job: jobRow, workMonths: null, filings: packet }).workMonthsWords).toBe('August 2026')
+    // A job clocked April through August on the same paper keeps all four.
+    const clocked = { ...jobRow, first_work_date: '2026-04-02', last_work_date: '2026-08-11' }
+    expect(buildLienDeskAffidavitFields({ job: { ...clocked, revenue: 595, payments_made: 0 }, entry: { isSub: true, openBalance: 595, lastMonth: '2026-08', gates }, gc: null, ...property, correction: null, contactPerson: 'Rey', issuer, todayYmd: shared.todayYmd, filings: packet }).workMonthsWords).toBe('April, June, July and August 2026')
+  })
+
+  it('a paper asked for on the earlier form carries no short-form mark, so its stored copy draws as the ten paragraphs', () => {
+    const long = buildLienDeskAffidavitFields({ job: { ...jobRow, revenue: 595, payments_made: 0 }, entry: { isSub: true, openBalance: 595, lastMonth: '2026-08', gates }, gc: null, ...property, correction: null, contactPerson: 'Rey', issuer, todayYmd: shared.todayYmd, form: 'long', filings })
+    expect(long.form).toBeUndefined()
+    expect(long.workMonthsWords).toBeUndefined()
+    expect(numbered(long)).toHaveLength(10)
   })
 })

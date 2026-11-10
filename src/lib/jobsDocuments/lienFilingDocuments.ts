@@ -1,7 +1,7 @@
 import { WINDOW_QR_MM, WINDOW_ZONE_MM } from '../mail/windowEnvelope'
 import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
-import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
+import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_PRINTED_NAME_LINE, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -70,8 +70,8 @@ export type FilingDocBlock =
   | { kind: 'numbered'; n: number; text: string }
   /** `signed` (v2.5077): the leader's signature; without it the block is the rule and the names. */
   | { kind: 'signature'; lines: string[]; signed?: FilingSignature | null }
-  /** The jurat (`src/lib/legal/juratWords.ts`, punch list #220): `county` names the venue (blank for the notary's hand when absent); `courtesy` adds the seal's place and the printed-name and commission lines a Legal desk affidavit carries. */
-  | { kind: 'notarial'; who: string; county?: string; courtesy?: boolean }
+  /** The jurat (`src/lib/legal/juratWords.ts`, punch list #220): `county` names the venue (blank for the notary's hand when absent); `courtesy` adds the seal's place and the printed-name and commission lines a Legal desk affidavit carries; `printedName` (punch list #305) adds the printed-name line alone, as the short lien affidavit carries it. */
+  | { kind: 'notarial'; who: string; county?: string; courtesy?: boolean; printedName?: boolean }
   | { kind: 'deliveryRecord'; lines: string[] }
   /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
   | { kind: 'callout'; text: string }
@@ -294,7 +294,7 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
             `<p style="margin:0.8em 0 0">${esc(juratSentence(b.who))}</p>` +
             // The desk's affidavit leaves blank room for the seal above the signature (v2.6249: no caption, a notary knows where it goes).
             `<p style="margin:${b.courtesy ? '3.6em' : '1.6em'} 0 0">${JURAT_SIGNATURE_RULE}<br/>${esc(JURAT_NOTARY_TITLE)}</p>` +
-            (b.courtesy ? `<p style="margin:0.8em 0 0">${JURAT_COURTESY_LINES.map(esc).join('<br/>')}</p>` : ''),
+            (b.courtesy ? `<p style="margin:0.8em 0 0">${JURAT_COURTESY_LINES.map(esc).join('<br/>')}</p>` : b.printedName ? `<p style="margin:0.8em 0 0">${esc(JURAT_PRINTED_NAME_LINE)}</p>` : ''),
         )
         break
       case 'deliveryRecord':
@@ -357,7 +357,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         break
       case 'notarial':
         out.push(
-          [`${JURAT_STATE_LINE}\n${juratCountyLine(b.county ?? '')}`, juratSentence(b.who), `${JURAT_SIGNATURE_RULE}\n${JURAT_NOTARY_TITLE}`, ...(b.courtesy ? [JURAT_COURTESY_LINES.join('\n')] : [])].join('\n\n'),
+          [`${JURAT_STATE_LINE}\n${juratCountyLine(b.county ?? '')}`, juratSentence(b.who), `${JURAT_SIGNATURE_RULE}\n${JURAT_NOTARY_TITLE}`, ...(b.courtesy ? [JURAT_COURTESY_LINES.join('\n')] : b.printedName ? [JURAT_PRINTED_NAME_LINE] : [])].join('\n\n'),
         )
         break
       case 'deliveryRecord':
@@ -806,6 +806,9 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         if (b.courtesy) {
           y += 3
           for (const l of JURAT_COURTESY_LINES) write(l, 6)
+        } else if (b.printedName) {
+          y += 3
+          write(JURAT_PRINTED_NAME_LINE, 6)
         }
         break
       case 'deliveryRecord': {
@@ -966,9 +969,90 @@ export type LienAffidavitFields = {
   unpaidAmount: string
   /** ¶9 — sworn only when notices are recorded (subs) or not required (originals). */
   includeNoticesSworn: boolean
+  /**
+   * Which paper these fields print (punch list #305). `'short'` is the short form: what § 53.054(a) lists and
+   * little else. Absent is the ten-paragraph form every affidavit carried before it, so a filing's stored
+   * snapshot (`job_lien_filings.fields`) draws as it was filed and a paper drafted on the earlier form keeps it.
+   */
+  form?: 'short'
+  /** Short form: the job is under an original contractor (a GC). False is a job contracted with the owner, where the paper names no months and no notices. */
+  isSub?: boolean
+  /** Short form ¶1: the claimant's physical address, printed only when it differs from `claimantAddress` (the mailing address), § 53.054(a)(7). */
+  claimantPhysicalAddress?: string
+  /** Short form ¶3: the hiring party's last known address, read only when `contractedWithName` is someone other than the original contractor, § 53.054(a)(4). */
+  contractedWithAddress?: string
+  /** Short form ¶5: each month payment is requested for, in words ("July and August 2026"), § 53.054(a)(3). */
+  workMonthsWords?: string
+  /** Short form ¶6: the method and day of each notice sent to the owner ("certified mail on August 14, 2026"), § 53.054(a)(8). */
+  noticesSentWords?: string
 }
 
+/** The blank a fact not yet on the record prints as, so the office sees what the paper still needs. */
+const AFFIDAVIT_BLANK = '_______________'
+
+/** A line-start phrase as a sentence carries it: "Plumbing labor and materials" → "plumbing labor and materials"; an acronym stays (HVAC). */
+function midSentence(s: string): string {
+  const t = s.trim()
+  const first = t.split(/\s+/)[0] ?? ''
+  return /^[A-Z0-9&/]{2,}$/.test(first) ? t : t.charAt(0).toLowerCase() + t.slice(1)
+}
+
+/** One party as the short form names it: the name, then its last known address. */
+function partyWithAddress(name: string, address: string): string {
+  return `${name.trim() || AFFIDAVIT_BLANK}, ${address.trim() || AFFIDAVIT_BLANK}`
+}
+
+const sameParty = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * The short form (punch list #305, the owner's lens of 2026-11-10: the minimum the law requires, short and sweet).
+ * Each paragraph answers an item of Tex. Prop. Code § 53.054(a), as the app reads it; counsel has not answered yet,
+ * so the wording is kept in this one function, one sentence per fact. Seven paragraphs on a job under a general
+ * contractor, four on a job contracted with the owner. No letterhead and no reference strip: the title is the
+ * heading the clerk asks for (Local Government Code § 191.007). The county above the opening is left for the
+ * notary, as the jurat's is: the paper is sworn where it is signed, not where the property is.
+ */
+function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDocExtras): FilingDocBlock[] {
+  const signer = f.claimantPersonName.trim()
+  const company = f.claimantCompany.trim() || AFFIDAVIT_BLANK
+  const mailing = f.claimantAddress.trim()
+  const physical = (f.claimantPhysicalAddress ?? '').trim()
+  const claim = demandMoney(f.unpaidAmount)
+  const isSub = f.isSub !== false
+  const texts: string[] = [
+    `I am authorized to make this affidavit for ${company} ("Claimant"). Claimant's mailing address is ${mailing || AFFIDAVIT_BLANK}.${physical && !sameParty(physical, mailing) ? ` Its physical address is ${physical}.` : ''}`,
+    `Claimant furnished ${midSentence(f.workDescription) || AFFIDAVIT_BLANK} to improve this property in ${f.county.trim() || '_______'} County, Texas: ${f.legalDescription.trim() || AFFIDAVIT_BLANK}, ${f.propertyAddress.trim() || AFFIDAVIT_BLANK}.`,
+  ]
+  if (isSub) {
+    const hirer = f.contractedWithName.trim()
+    const original = partyWithAddress(f.originalContractorName, f.originalContractorAddress)
+    texts.push(
+      !hirer || sameParty(hirer, f.originalContractorName)
+        ? `Claimant did so under a contract with ${original}, the original contractor.`
+        : `Claimant did so under a contract with ${partyWithAddress(hirer, f.contractedWithAddress ?? '')}. The original contractor is ${original}.`,
+    )
+    texts.push(`The owner or reputed owner is ${partyWithAddress(f.ownerName, f.ownerAddress)}.`)
+    texts.push(`Payment is requested for work done and materials furnished in ${(f.workMonthsWords ?? '').trim() || AFFIDAVIT_BLANK}.`)
+    texts.push(`Notice of the claim was sent to the owner by ${(f.noticesSentWords ?? '').trim() || AFFIDAVIT_BLANK}.`)
+  } else {
+    texts.push(`Claimant did so under a contract with the owner, ${partyWithAddress(f.ownerName, f.ownerAddress)}. Claimant is the original contractor.`)
+  }
+  texts.push(`The amount of the claim is ${claim}. Claimant claims a lien on the property for that amount.`)
+  const blocks: FilingDocBlock[] = [
+    { kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] },
+    { kind: 'jurisdiction', county: '' },
+    { kind: 'paragraph', text: `BEFORE ME, the undersigned authority, on this day personally appeared ${signer || AFFIDAVIT_BLANK}, who being by me duly sworn, upon oath states the following:` },
+    ...texts.map((text, i): FilingDocBlock => ({ kind: 'numbered', n: i + 1, text })),
+    { kind: 'signature', lines: [signer, f.claimantCompany.trim()].filter((l) => l) },
+    { kind: 'notarial', who: signer, printedName: true },
+  ]
+  // Nothing above the title: the recorded sends, if a caller hands any, still close the page.
+  return prependExtras(blocks, extras?.deliveryLines ? { deliveryLines: extras.deliveryLines } : undefined)
+}
+
+/** The affidavit in the form its fields name: the short form, or the ten paragraphs every paper carried before it. */
 export function buildLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDocExtras): FilingDocBlock[] {
+  if (f.form === 'short') return buildShortLienAffidavitBlocks(f, extras)
   const unpaid = demandMoney(f.unpaidAmount)
   const blocks: FilingDocBlock[] = [
     { kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] },

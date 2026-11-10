@@ -5,6 +5,7 @@ import { cleanStoredAddress } from '../displayAddress'
 import { lienTradeWords } from './lienTradeWords'
 import type { CoverLetterKind } from './gcOnNotice'
 import { lienWorkSpan, type LienWorkSpanJob } from './lienWorkSpan'
+import { lienAffidavitMonthsInSpan, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends, type LienAffidavitNoticeRow } from './lienAffidavitNotices'
 
 /**
  * The § 53.056 notice, filled from the job (pure). The Lien window's notice
@@ -221,6 +222,8 @@ export type LienDeskDraftFields = {
   gcAuthorizedDirectPay?: { at: string; name: string; note: string }
   /** The owner's call (v2.3767): the three questions the letter asks, answered — on the first packet's item; a later call overwrites. */
   ownerCall?: { at: string; name: string; owesGc: 'yes' | 'no' | 'unknown'; owesAmount: number | null; reserved: 'held' | 'released' | 'never' | 'unknown'; originalContractCompletedOn: string | null; note: string }
+  /** An affidavit item drafted on the short form (punch list #305, `lienAffidavitForm.ts`); absent on a paper drafted on the earlier form, which keeps it. */
+  affidavitForm?: 'short'
 }
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
@@ -264,6 +267,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       ? { payLines: Object.fromEntries(Object.entries(o.payLines as Record<string, unknown>).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k, v as string])) }
       : {}),
     ...(o.monthsDatedFromCreation === true ? { monthsDatedFromCreation: true as const } : {}),
+    ...((o as { affidavitForm?: unknown }).affidavitForm === 'short' ? { affidavitForm: 'short' as const } : {}),
     ...parseLienNoticeSentFacts(o),
   }
 }
@@ -341,6 +345,13 @@ export type LienAffidavitJobFacts = {
   issuer: PhysicalInvoiceIssuer | null
   /** The job's service type name (v2.3849) — the affidavit's kind of work. */
   serviceTypeName?: string | null
+  /**
+   * Which paper to fill (punch list #305): the short form unless the caller says `'long'`, the ten-paragraph form a
+   * paper drafted before the short form keeps (`lienAffidavitFormForItem`).
+   */
+  form?: 'short' | 'long'
+  /** The job's recorded filings (`job_lien_filings`): the short form reads the § 53.056 notices among them for the months it names (those inside the job's own work span) and the day and method each went to the owner. */
+  filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
 }
 
 /**
@@ -381,5 +392,14 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     paidAmount: f.paymentsMade.toFixed(2),
     unpaidAmount: unpaid.toFixed(2),
     includeNoticesSworn: !f.isSub || f.noticesRecorded,
+    ...(f.form === 'long'
+      ? {}
+      : {
+          form: 'short' as const,
+          isSub: f.isSub,
+          // A job contracted with the owner names no months and no notices: neither is asked of an original contractor.
+          // The months are the noticed ones inside this job's own span: a notice mailed for several jobs stores the whole paper's months on each.
+          ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),
+        }),
   }
 }

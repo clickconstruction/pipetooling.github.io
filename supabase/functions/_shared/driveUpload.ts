@@ -112,9 +112,13 @@ export async function uploadFromUrl(token: string, folderId: string, url: string
   return { id, name, reused: false }
 }
 
-/** Upload bytes as a new file in the folder: one multipart upload, never a reuse by name. Throws with Drive's reason. */
-export async function uploadBytes(token: string, folderId: string, bytes: Uint8Array, name: string, mime: string): Promise<{ id: string }> {
-  const meta = { name, parents: [folderId] }
+/**
+ * Upload bytes as a new file in the folder: one multipart upload, never a reuse by name. Throws with Drive's reason.
+ * `appProperties` are the app's own marks on the file, read back only by the app (a bid photo carries its row's id, so
+ * the folder's listing knows the file already has a row).
+ */
+export async function uploadBytes(token: string, folderId: string, bytes: Uint8Array, name: string, mime: string, appProperties?: Record<string, string>): Promise<{ id: string }> {
+  const meta = appProperties ? { name, parents: [folderId], appProperties } : { name, parents: [folderId] }
   const boundary = 'drive-upload-' + crypto.randomUUID()
   const pre = new TextEncoder().encode(
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`,

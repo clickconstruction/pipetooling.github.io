@@ -183,6 +183,8 @@ A skipped or missed month stays as a row in the **Months** grid. A month skipped
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
+The pane draws the affidavit under that card. A new draft is on the short form. The short form names the months and the notices from the record. An affidavit drafted before the short form keeps the earlier form, so an approved paper never changes by itself. A line above that paper says so. Press **Redraw on the short form…** there to move it. The affidavit goes back to **To draft** and needs approval again.
+
 :::example One call, one rule
 Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. Each one is marked as sent by Loberg Contracting's rule. A live promise always comes back to him.
 :::

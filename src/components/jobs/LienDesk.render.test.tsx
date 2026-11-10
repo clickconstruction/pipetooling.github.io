@@ -940,6 +940,63 @@ describe('LienDesk affidavits (v2.3412)', () => {
   })
 })
 
+describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch list #305)', () => {
+  // A GC job with every gate clear, and the notice on record: July named, mailed to the owner on August 14.
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-07', deadline: '2026-11-16', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+  const notice = { id: 'f-n', job_id: 'j650', kind: 'notice_53_056', months_covered: ['2026-07'], voided_at: null, filed_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-08-14' }], fields: {}, created_at: '2026-08-14T15:00:00Z' }
+  const draft = (fields: Record<string, unknown>) =>
+    ({ id: 'aff1', job_id: 'j650', kind: 'affidavit', months: ['2026-07'], status: 'approved', fields, cover_note: false, drafted_by: 'u-taunya', drafted_at: '2026-09-10T14:00:00Z', submitted_at: '2026-09-10T14:12:00Z', approved_by: null, approved_at: '2026-09-10T14:12:00Z', approval_mode: 'rule', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-10T14:00:00Z', updated_at: '2026-09-10T14:12:00Z', voided_at: null }) as unknown as LienDeskItemRow
+  const desk = (items: LienDeskItemRow[]) => {
+    const d = data([], items, true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], items, TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    return d
+  }
+  const paper = () => (document.querySelector('[data-lien-affidavit-paper]') as HTMLElement)
+
+  it('a job with no draft is drawn on the short form: seven paragraphs, the months and the notice from the record, nothing above the title', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([])} initialKind="affidavit" />)
+    await settle()
+    expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
+    expect(paper().textContent).toContain('Claimant did so under a contract with Loberg Contracting, 2904 Corporate Cr, Flower Mound, TX, the original contractor.')
+    expect(paper().textContent).toContain('Payment is requested for work done and materials furnished in July 2026.')
+    expect(paper().textContent).toContain('Notice of the claim was sent to the owner by certified mail on August 14, 2026.')
+    expect(paper().textContent).toContain('The amount of the claim is $33,500.00. Claimant claims a lien on the property for that amount.')
+    expect(paper().textContent).not.toContain('Job #650')
+    expect(paper().textContent).not.toContain('Last work month')
+    expect(paper().textContent).not.toContain('COUNTY OF GUADALUPE')
+    expect(document.querySelector('[data-lien-affidavit-form]')).toBeNull()
+  })
+
+  it('an affidavit approved before the short form keeps its ten paragraphs, and Redraw on the short form takes it back to a marked draft', async () => {
+    saveDraftMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {}, gcEmail: '' })])} initialKind="affidavit" />)
+    await settle()
+    expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('long')
+    expect(paper().textContent).toContain('All statutory notices required by the Texas Property Code have been sent')
+    expect(paper().textContent).toContain('Job #650')
+    const note = document.querySelector('[data-lien-affidavit-form="long"]') as HTMLElement
+    expect(note.textContent).toContain('This affidavit is on the earlier form, as it was drafted.')
+    // The press asks once, in words that say what happens to the approval.
+    fireEvent.click(screen.getByRole('button', { name: 'Redraw on the short form…' }))
+    expect(note.textContent).toContain('It needs approval again before it is filed.')
+    expect(saveDraftMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Redraw on the short form' }))
+    await waitFor(() => expect(saveDraftMock).toHaveBeenCalledTimes(1))
+    const saved = (saveDraftMock.mock.calls[0] as unknown as [{ itemId: string; kind: string; fields: { affidavitForm?: string } }])[0]
+    expect(saved).toMatchObject({ itemId: 'aff1', kind: 'affidavit' })
+    expect(saved.fields.affidavitForm).toBe('short')
+  })
+
+  it('a draft that carries the mark is drawn on the short form, with no redraw press', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {}, gcEmail: '', affidavitForm: 'short' })])} initialKind="affidavit" />)
+    await settle()
+    expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
+    expect(document.querySelector('[data-lien-affidavit-form]')).toBeNull()
+  })
+})
+
 // ---------- v2.3522: the paper is the pane; wording; the preview window ----------
 
 describe('LienDesk · wording and the preview (v2.3522)', () => {

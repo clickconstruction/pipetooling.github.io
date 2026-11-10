@@ -2,8 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared/driveUpload.ts'
 import { NO_ROOT_WORDS, readDriveSettings } from '../_shared/driveSettings.ts'
-import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { bidFolderName } from '../_shared/whereFilesGo.ts'
+import { bidFolderNameFor, type BidFolderRow } from '../_shared/bidFolder.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // drive-intake — estimator-twin pipeline Wave 4.4 (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md).
@@ -90,20 +89,8 @@ serve(async (req) => {
       return json({ error: 'Not your bid (assignment is the grant)' }, 403)
     }
 
-    // The folder's name by the office's pattern; the customer's name is read only when the pattern asks for it.
-    let customerName: string | null = null
-    if (settings.bidPattern.includes('customer') && bid.customer_id) {
-      const { data: c } = await admin.from('customers').select('name').eq('id', bid.customer_id).maybeSingle()
-      customerName = (c as { name?: string | null } | null)?.name ?? null
-    }
-    const folderName = bidFolderName(settings.bidPattern, {
-      id: bid.id,
-      project: bid.project_name,
-      number: bid.bid_number,
-      customer: customerName,
-      address: bid.address,
-      year: bid.created_at ? todayYmdInAppTz(new Date(bid.created_at)).slice(0, 4) : null,
-    })
+    // The folder's name by the office's pattern (`bidFolderNameFor`, the rule the bid photos share).
+    const folderName = await bidFolderNameFor(admin, settings, bid as BidFolderRow)
     const token = await googleAccessToken(saJson)
     // A bid whose link is already a folder keeps it; otherwise the folder is found or made under the root by its name.
     const ownFolderId = driveFolderIdFromUrl(bid.drive_link)

@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, your jobs with boxes, find a part on any job, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, materials page, track, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -22,6 +22,14 @@ Under the search, **Recent** lists the last three jobs you clocked in on, newest
 **All jobs** follows under its own heading with its count. The same sheet opens from the Materials Estimate tab.
 
 The row under the job reads your day left to right: {{chip:blue|Unsorted 2}} → {{chip:gray|Used 6}} → {{chip:green|Count 25}}. A dot marks the one that needs you now.
+
+A job with no cage or box offers **Add a container** to start one. Under it the screen names your other jobs that hold a box. Tap a job in that list and its boxes open.
+
+## Find a part on any job
+
+Type a part, its maker or a stencil in the search under the job. It looks on this job first. Tap **Every job** and the same words are searched on your other jobs too. A match on another job sits under that job's name. Tap it and that job opens on the box.
+
+When nothing on this job matches, the screen offers **Look on every job**.
 
 ## Put away a delivery
 
@@ -60,19 +68,33 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 
 ## Scan a label
 
-A printed label carries a code. Point your camera at it and the box opens. The office prints labels from Jobs → Materials. Each label prints on its own sheet.
+A printed label carries a code. Point your camera at it and the box opens. Each label prints on its own sheet.
+
+A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job.
+
+To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. The office can print a whole job's labels from Materials, with **Print labels** beside On site.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
-Printing a tape label at the cage? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window on Jobs → Materials. That file has one row per box for a label editor.
+## Print a tape label
 
-The office can print tape labels straight from the app. In the Labels window press **Tape**. Each box becomes one strip with the QR, the stencil and the code. Untick a box to leave it out. Press **Print 3 tape labels**. The first time, pick the P-touch printer and the 24 mm paper in the print window. The browser remembers both, so the next print is two presses.
+The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code.
+
+The first time on a computer, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Add it as a printer with Brother's driver. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm. The browser remembers both.
+
+Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**.
+
+Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip.
+
+After the first print the window opens on tape on that computer. Press **Change** to pick paper again. Press **Printer setup** to read the three steps again.
+
+Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
 Signed out, the scan still opens a page. The page shows what is in the box, the newest photo and the day of the last count. The page never names the job. To record a part used, moved or counted, press **Sign in to change a count**. After you sign in you land on that box.
 
 Looking for a part that is not in that box? Press **Find a part on this site**. Type the part, the maker or a stencil and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
 
-A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
+A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 
 ## Retire a box
 

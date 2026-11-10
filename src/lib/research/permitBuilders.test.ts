@@ -145,11 +145,14 @@ describe('builders', () => {
   })
 
   it("says how busy a builder is under the card's Who line", () => {
-    expect(builderLine(row({ builder_permits: 4, builder_open: 2 }))).toBe('4 permits this year. 2 have no plumber yet.')
-    expect(builderLine(row({ builder_permits: 4, builder_open: 1 }))).toBe('4 permits this year. 1 has no plumber yet.')
-    expect(builderLine(row({ builder_permits: 4, builder_open: 0 }))).toBe('4 permits this year. A plumber is on every one.')
-    expect(builderLine(row({ builder_permits: 1, builder_open: 1 }))).toBe('Their one permit this year.')
-    expect(builderLine(row())).toBeNull()
+    expect(builderLine(row({ builder_permits: 4, builder_open: 2 }), 'since Aug 26')).toBe('4 permits since Aug 26. 2 have no plumber yet.')
+    expect(builderLine(row({ builder_permits: 4, builder_open: 1 }), 'since Aug 26')).toBe('4 permits since Aug 26. 1 has no plumber yet.')
+    expect(builderLine(row({ builder_permits: 4, builder_open: 0 }), 'in the last year')).toBe('4 permits in the last year. A plumber is on every one.')
+    expect(builderLine(row({ builder_permits: 1, builder_open: 1 }), 'since Aug 26')).toBe('Their one permit since Aug 26.')
+    // The start of the records not known: no span is claimed.
+    expect(builderLine(row({ builder_permits: 4, builder_open: 2 }), null)).toBe('4 permits we can see. 2 have no plumber yet.')
+    expect(builderLine(row({ builder_permits: 1, builder_open: 1 }), null)).toBe('Their one permit we can see.')
+    expect(builderLine(row(), 'since Aug 26')).toBeNull()
   })
 
   it('holds a good and an avoid with no reason, and lets a mark be cleared with none', () => {

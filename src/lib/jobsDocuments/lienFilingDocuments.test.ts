@@ -98,6 +98,117 @@ describe('§ 53.054 affidavit', () => {
   })
 })
 
+describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
+  // The same facts as a filing stores them, marked for the short form, with the months and the notices the record holds.
+  const short: LienAffidavitFields = {
+    county: 'Bexar',
+    claimantPersonName: 'Malachi Whites',
+    claimantCompany: 'Click Plumbing and Electrical',
+    claimantAddress: '5501 Balcones Dr, Austin, TX',
+    legalDescription: 'Lot 3, Block A, Sonterra Commercial Park',
+    propertyAddress: '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+    contractedWithName: 'Knight Contracting',
+    workDescription: 'Plumbing labor and materials',
+    workStart: '2026-06-03',
+    workEnd: '2026-07-28',
+    ownerName: 'Sonterra Holdings LLC',
+    ownerAddress: 'PO Box 1420, San Antonio, TX',
+    originalContractorName: 'Knight Contracting',
+    originalContractorAddress: '2904 Corporate CR, Flower Mound, TX',
+    contractAmount: '3850',
+    paidAmount: '1138.50',
+    unpaidAmount: '2711.50',
+    includeNoticesSworn: true,
+    form: 'short',
+    isSub: true,
+    workMonthsWords: 'July and August 2026',
+    noticesSentWords: 'certified mail on August 14, 2026 and September 11, 2026',
+  }
+  const text = (f: LienAffidavitFields, extras?: Parameters<typeof buildLienAffidavitBlocks>[1]) => filingDocText(buildLienAffidavitBlocks(f, extras))
+  const numbered = (f: LienAffidavitFields) => text(f).split('\n').filter((l) => /^\d+\. /.test(l))
+
+  it('a job under a general contractor: the title, a blank county for the notary, the opening, seven paragraphs, the signature and the jurat', () => {
+    expect(text(short)).toBe(
+      [
+        "MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT",
+        'STATE OF TEXAS\nCOUNTY OF ___________',
+        'BEFORE ME, the undersigned authority, on this day personally appeared Malachi Whites, who being by me duly sworn, upon oath states the following:',
+        '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
+        '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
+        '3. Claimant did so under a contract with Knight Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.',
+        '4. The owner or reputed owner is Sonterra Holdings LLC, PO Box 1420, San Antonio, TX.',
+        '5. Payment is requested for work done and materials furnished in July and August 2026.',
+        '6. Notice of the claim was sent to the owner by certified mail on August 14, 2026 and September 11, 2026.',
+        '7. The amount of the claim is $2,711.50. Claimant claims a lien on the property for that amount.',
+        '______________________________\nMalachi Whites\nClick Plumbing and Electrical',
+        'STATE OF TEXAS\nCOUNTY OF ___________\n\nSWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by Malachi Whites.\n\n________________________________\nNotary Public, State of Texas\n\nPrinted name: ______________________________',
+      ].join('\n\n'),
+    )
+  })
+
+  it('a job contracted with the owner: four paragraphs, no months and no notices', () => {
+    const owner = { ...short, isSub: false, contractedWithName: 'Sonterra Holdings LLC', originalContractorName: 'Click Plumbing and Electrical', originalContractorAddress: '5501 Balcones Dr, Austin, TX' }
+    expect(numbered(owner)).toEqual([
+      '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
+      '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
+      '3. Claimant did so under a contract with the owner, Sonterra Holdings LLC, PO Box 1420, San Antonio, TX. Claimant is the original contractor.',
+      '4. The amount of the claim is $2,711.50. Claimant claims a lien on the property for that amount.',
+    ])
+    expect(text(owner)).not.toContain('Payment is requested')
+    expect(text(owner)).not.toContain('Notice of the claim')
+  })
+
+  it('the physical address prints only when it is held and differs from the mailing address', () => {
+    expect(numbered({ ...short, claimantPhysicalAddress: '12 Shop Rd, San Antonio, TX' })[0]).toBe('1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX. Its physical address is 12 Shop Rd, San Antonio, TX.')
+    expect(numbered({ ...short, claimantPhysicalAddress: ' 5501 balcones dr, austin, tx ' })[0]).not.toContain('physical address')
+    expect(numbered({ ...short, claimantPhysicalAddress: '' })[0]).not.toContain('physical address')
+  })
+
+  it('someone other than the original contractor hired us: that party and its address, then the original contractor and its address', () => {
+    expect(numbered({ ...short, contractedWithName: 'Alamo Mechanical', contractedWithAddress: '9 Yard St, Devine TX 78016' })[2]).toBe('3. Claimant did so under a contract with Alamo Mechanical, 9 Yard St, Devine TX 78016. The original contractor is Knight Contracting, 2904 Corporate CR, Flower Mound, TX.')
+    // The hiring party named with no address on file is a blank the office sees.
+    expect(numbered({ ...short, contractedWithName: 'Alamo Mechanical' })[2]).toContain('Alamo Mechanical, _______________.')
+    // The same party named twice, in another case, is one party.
+    expect(numbered({ ...short, contractedWithName: 'KNIGHT CONTRACTING ' })[2]).toBe('3. Claimant did so under a contract with Knight Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.')
+  })
+
+  it('what the earlier form carried and the statute does not list is gone', () => {
+    const t = text(short, { letterhead: { company: 'Click Plumbing and Electrical', licenseLine: 'M-12345', contactLines: ['(512) 360-0599'] }, refItems: ['Job #650', 'Work month 2026-08', 'November 10, 2026'] })
+    for (const gone of ['Job #650', 'Work month', '(512) 360-0599', 'M-12345', 'My name is', 'during the period from', 'The original contract amount', 'The amount paid to date', 'All statutory notices', "attorney's fees", 'COUNTY OF BEXAR']) expect(t).not.toContain(gone)
+    expect(buildLienAffidavitBlocks(short, { refItems: ['Job #650'] })[0]).toEqual({ kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] })
+  })
+
+  it('a fact not on the record prints a blank, never a guess', () => {
+    const bare = numbered({ ...short, claimantAddress: '', legalDescription: '', originalContractorName: '', originalContractorAddress: '', contractedWithName: '', ownerAddress: '', workMonthsWords: '', noticesSentWords: undefined })
+    expect(bare[0]).toContain("Claimant's mailing address is _______________.")
+    expect(bare[1]).toContain('Texas: _______________, 150 E Sonterra Blvd')
+    expect(bare[2]).toBe('3. Claimant did so under a contract with _______________, _______________, the original contractor.')
+    expect(bare[3]).toBe('4. The owner or reputed owner is Sonterra Holdings LLC, _______________.')
+    expect(bare[4]).toBe('5. Payment is requested for work done and materials furnished in _______________.')
+    expect(bare[5]).toBe('6. Notice of the claim was sent to the owner by _______________.')
+  })
+
+  it('an acronym trade keeps its capitals inside the sentence', () => {
+    expect(numbered({ ...short, workDescription: 'HVAC labor and materials' })[1]).toContain('Claimant furnished HVAC labor and materials to improve')
+    expect(numbered({ ...short, workDescription: 'Electrical labor and materials' })[1]).toContain('Claimant furnished electrical labor and materials to improve')
+  })
+
+  it('the jurat carries the printed-name line in the HTML and keeps the signature with its notary on one page', () => {
+    const blocks = buildLienAffidavitBlocks(short)
+    expect(filingDocHtml(blocks)).toContain('Printed name: ______________________________')
+    expect(filingDocHtml(blocks)).not.toContain('My commission expires')
+    const last = blocks.length - 1
+    expect(filingKeepTogetherRuns(blocks)).toEqual([[last - 2, last]])
+  })
+
+  it('a stored copy with no form mark draws as the ten paragraphs it was filed with', () => {
+    const { form: _form, ...asFiledBefore } = short
+    expect(numbered(asFiledBefore)).toHaveLength(10)
+    expect(text(asFiledBefore)).toContain('COUNTY OF BEXAR')
+    expect(text(asFiledBefore)).toContain("together with all interest, costs, and attorney's fees allowed by law")
+  })
+})
+
 describe('release of recorded lien', () => {
   it('names the recorded instrument and fully releases it', () => {
     const text = filingDocText(

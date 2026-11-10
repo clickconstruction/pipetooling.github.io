@@ -38,8 +38,15 @@ export function juratSentence(who: string): string {
 /** Under the notary's signature line. */
 export const JURAT_NOTARY_TITLE = 'Notary Public, State of Texas'
 
+/**
+ * The notary's printed name, alone (punch list #305): Local Government Code § 191.007 asks for a name
+ * printed under each signature on a paper the county clerk records, so the lien affidavit carries this
+ * line and not the commission line.
+ */
+export const JURAT_PRINTED_NAME_LINE = 'Printed name: ______________________________'
+
 /** The two courtesy lines a notary fills under the title; the seal already carries both. */
-export const JURAT_COURTESY_LINES: ReadonlyArray<string> = ['Printed name: ______________________________', 'My commission expires: ______________________']
+export const JURAT_COURTESY_LINES: ReadonlyArray<string> = [JURAT_PRINTED_NAME_LINE, 'My commission expires: ______________________']
 
 /** The signature rule's length in the text renderer, so every paper's jurat draws the same rule. */
 export const JURAT_SIGNATURE_RULE = '________________________________'

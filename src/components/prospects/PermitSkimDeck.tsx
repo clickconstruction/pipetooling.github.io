@@ -33,6 +33,8 @@ import { GoogleSearchPress } from './GoogleSearchPress'
 import { PermitSkimLook } from './PermitSkimLook'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
+import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
+import { reachWords, recordsReach } from '../../lib/research/permitReach'
 
 /**
  * Permits, the skim (punch list #302): step one. One permit on one card, best first, with two
@@ -152,6 +154,9 @@ export function PermitSkimDeck({
     const ctx = { todayYmd, office, history, scoreMiles: scoresMiles(city, office), ...skimBuilderContext(rows) }
     return (mode === 'second' ? secondLookDeck(rows, ctx, floor, authUserId) : skimDeck(rows, ctx, floor)).filter((c) => !done.has(c.row.id))
   }, [rows, todayYmd, office, history, floor, done, mode, authUserId, city])
+  // How far back the builder's count can see (punch list #307): the day the records start, or a year.
+  const recordsStart = usePermitRecordsStart(city)
+  const reach = reachWords(recordsReach(recordsStart, todayYmd), todayYmd)
   const top = deck[0] ?? null
   // A kept permit the tab has not yet been told about is still held here, so the press counts it.
   const keptCount = useMemo(() => placeCounts(rows, floor).kept + (pending?.answer === 'keep' ? 1 : 0), [rows, floor, pending])
@@ -480,7 +485,7 @@ export function PermitSkimDeck({
               </span>
             ) : null}
             <span style={{ ...muted, display: 'block', marginTop: 2 }}>{row.builder_kind === 'files_for_others' ? 'Not who builds it. Read the owner under Property.' : top.hint.detail}</span>
-            {builderLine(row) && <span style={{ ...muted, display: 'block', marginTop: 2 }}>{builderLine(row)}</span>}
+            {builderLine(row, reach) && <span style={{ ...muted, display: 'block', marginTop: 2 }}>{builderLine(row, reach)}</span>}
           </span>
           <GoogleSearchPress ask={asks.company ?? asks.person} />
         </div>

@@ -29,6 +29,7 @@ import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChann
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
+import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
 import type { LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
@@ -134,6 +135,8 @@ export default function LienDeskAffidavitPane({
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   // A stop's paper (v2.4793): the timeline stop whose window is open; null when closed.
   const [stopOpen, setStopOpen] = useState<number | null>(null)
+  // Redraw on the short form (punch list #305): the press asks once before it takes the paper back to a draft.
+  const [redrawOpen, setRedrawOpen] = useState(false)
 
   const job = data.jobsById[entry.jobId]
   const gc = entry.gcCustomerId ? data.gcsById[entry.gcCustomerId] : undefined
@@ -164,6 +167,8 @@ export default function LienDeskAffidavitPane({
   // The claim set by hand (v2.3682) carries to the affidavit: it swears to the app's balance less the correction.
   const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
   const claimed = correctedClaim(entry.openBalance, correction)
+  // A paper keeps the form it was drafted on (punch list #305): an affidavit drafted before the short form stays on the earlier one until someone redraws it.
+  const form = lienAffidavitFormForItem(entry.item)
 
   // The desk's one recipe: the same call the paper preview and a stop's window make, so the three cannot drift.
   const fields = useMemo(
@@ -180,8 +185,10 @@ export default function LienDeskAffidavitPane({
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
         todayYmd,
+        form,
+        filings: data.filingsByJob[entry.jobId] ?? [],
       }),
-    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd],
+    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob],
   )
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
@@ -251,7 +258,7 @@ export default function LienDeskAffidavitPane({
       setBusy(false)
     }
   }
-  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd, serviceTypeName: job?.service_type?.name }), gcEmail: gc?.email ?? '', ...(entry.lastMonthFromCreation ? { monthsDatedFromCreation: true as const } : {}) })
+  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd, serviceTypeName: job?.service_type?.name }), gcEmail: gc?.email ?? '', ...(entry.lastMonthFromCreation ? { monthsDatedFromCreation: true as const } : {}), ...(form === 'short' ? LIEN_AFFIDAVIT_SHORT_FORM_MARK : {}) })
   const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
   const policy = gc?.policy ?? 'ask'
   const submit = () =>
@@ -267,6 +274,18 @@ export default function LienDeskAffidavitPane({
   const approve = () => run('Approve', async () => void (await approveLienDeskItem(item ? item.id : await ensureDraft())), 'Approved — ready to file.')
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
+  // The earlier form to the short one, on purpose: back to a draft that carries the short form's mark, so whoever approves it reads the paper that will be filed.
+  const redrawShort = () =>
+    run(
+      'Redraw on the short form',
+      async () => {
+        if (!item) return
+        await pullBackLienDeskItem(item.id, authUserId)
+        await saveLienDeskDraft({ itemId: item.id, jobId: entry.jobId, months: [entry.lastMonth], fields: { ...draftFields(), ...LIEN_AFFIDAVIT_SHORT_FORM_MARK }, coverNote: false, userId: authUserId, kind: 'affidavit' })
+        setRedrawOpen(false)
+      },
+      'Redrawn on the short form. It is back in To draft and needs approval again.',
+    )
 
   // ---------- footer ----------
   let footer: React.ReactNode = null
@@ -489,7 +508,25 @@ export default function LienDeskAffidavitPane({
           </div>
         )
       })() : null}
-      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+      {form === 'long' && item ? (
+        <div data-lien-affidavit-form="long" style={{ ...boxStyle, fontSize: '0.8125rem' }}>
+          {redrawOpen ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>The affidavit goes back to To draft on the short form. It needs approval again before it is filed.</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" onClick={redrawShort} disabled={busy} style={btn('amber', busy)}>Redraw on the short form</button>
+              <button type="button" onClick={() => setRedrawOpen(false)} style={btn('plain')}>Cancel</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>{LIEN_AFFIDAVIT_LONG_FORM_WORDS}</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" onClick={() => setRedrawOpen(true)} disabled={busy || !office} style={btn('plain', busy || !office)}>Redraw on the short form…</button>
+            </div>
+          )}
+        </div>
+      ) : null}
+      <div data-theme="light" data-lien-affidavit-paper={form} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
     </div>

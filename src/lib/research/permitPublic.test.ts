@@ -168,9 +168,12 @@ describe("a name's other permits", () => {
       ['p2', '77 KILN ST'],
       ['p4', '120 SAMPLE ST'],
     ])
-    expect(builderWords(lines, 365)).toBe('This name pulled 2 other permits in the last 365 days.')
-    expect(builderWords(lines.slice(0, 1), 365)).toBe('This name pulled 1 other permit in the last 365 days.')
-    expect(builderWords([], 365)).toBe('This is the one permit this name pulled in the last 365 days.')
+    expect(builderWords(lines, 'since Aug 26')).toBe('This name is on 2 other permits we can see since Aug 26.')
+    expect(builderWords(lines.slice(0, 1), 'in the last year')).toBe('This name is on 1 other permit we can see in the last year.')
+    expect(builderWords([], 'since Aug 26')).toBe('This is the one permit we can see under this name since Aug 26.')
+    // The start of the records not known: the line still claims only what is seen.
+    expect(builderWords(lines, null)).toBe('This name is on 2 other permits we can see.')
+    expect(builderWords([], null)).toBe('This is the one permit we can see under this name.')
     expect(builderPermitLines([permit()], null, null)).toEqual([])
   })
 })

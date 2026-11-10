@@ -1,8 +1,8 @@
 ---
 name: "Materials under one story: the whole life of a part on the Materials page"
 number: 304
-group: gated
-status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · the three places named Materials read on main the same day, every door to the on-site tools listed by role · three directions drawn at desktop and phone width with the phone's On site tab, a second look and a pick · the owner's own idea the same day, three named groups (Purchase, Plan, Sort), drawn as direction D and taken as the pick · nothing built
+group: close
+status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · four directions drawn the same day, D being the owner's own idea (three named groups) · the owner's go the same day (good enough for a pass with live users, build it all) · built the same day as two client-only PRs on the card's picks, v2.6851 the Materials page (the three groups, On site as a tab with one search across jobs, Print labels, Scan a label) and v2.6852 the phone (This job · Every job, an empty job naming the other jobs, Scan a label, the prints in place) · the labels window's tape choice drawn and built the same day on his yes · left: the owner's word on the third word and the order after his pass with live users, the badges on Plan and Purchase, Jobs → Materials as a door, Where it is now on a Parts Book row
 mockup: to-dos/materials-one-story/mockup.html
 summary: >
   The word Materials names three places: the Materials page (price, buy, pay), Jobs → Materials
@@ -16,10 +16,11 @@ summary: >
   page: every job's boxes, one search across them, and Print labels and Scan a label as presses.
   The phone's On site tab gets a Scan a label press, a search that reaches every job and an
   empty job that says where the boxes are. A's doors ship first.
-next: The owner's word on the third word (call 6) and the groups' order (call 9), which PR 2 draws. PR 1, the three doors on today's strip, is the same under every direction and can start on his word.
-size: L as a train of eight (S · S · S · S · M · M · S · M); PR 1 alone is S and answers the ask
-blocker: The owner's go. Calls 6 and 9 gate PR 2, the other calls each gate one later PR, none gates PR 1.
-opinion: build — PR 1 this week so label printing is on the page he looked on; then his three groups as PR 2
+next: The owner's pass with live users. The third word reads Track and Plan comes first, both the card's picks and each one line to change. Then the leftovers under Where it stands, one small PR each.
+size: L, shipped as two PRs (M · M); each leftover is S or M
+blocker: none. The owner's pass with live users.
+ver: v2.6851 · 6852
+opinion: your call — the build is live on the card's picks; say the word on Track against Sort and on the order
 ---
 
 # Materials under one story (#304)
@@ -33,6 +34,62 @@ printing lives, and found Materials on site harder to navigate than he expected.
 
 His standing habit applies: a mock-up first, then *is this the best we can do?* and the
 alternative drawn. Nothing is built in this card's first PR.
+
+## Where it stands
+
+The owner, 2026-11-10, after direction D was drawn: *I think this is good enough for a pass with
+live users, please build it all and let me know when live.* He did not answer the calls, so the
+build takes the card's picks. Two client-only PRs, no migration and no edge function:
+
+- **v2.6851, the Materials page.** The strip in three named groups (Plan · Purchase · Track), On
+  site as a tab for every role that opens the page, one search across every job, the office's
+  desk mounted there with a row's **Labels** and **Open on the phone screen**, the other roles'
+  jobs with boxes as doors to the Tally, and **Print labels** and **Scan a label** as presses.
+  This is the plan's PRs 1, 2 and 6 as one change, since a door built in the morning and replaced
+  by a tab in the afternoon is waste.
+- **v2.6852, the phone.** **This job · Every job** under the search, an empty job naming the
+  other jobs that hold a box, **Scan a label**, and a box's label and manifest printing in the
+  tab for every role. This is the plan's PRs 3, 4 and 5.
+
+**The search needed no new read on the server.** The plan's PR 5 named an RPC; the build reads
+the on-site store's desk load instead (`lib/materials/onSiteFind.ts`), the read the header's
+Boxes on site already makes, loaded on the phone only when Every job is pressed or a job is empty.
+
+**The calls as built** (each the card's pick): 1, D. 3, yes: whoever opens a job's boxes prints
+its labels and its manifest. 4, the camera app and the typed code. 5, every job the person may
+open. 6, **Track** (`MATERIALS_GROUP_WORDS.track` in `src/lib/materials/materialsGroups.ts`;
+the owner wrote Sort). 7, the money for the office alone. 9, **Plan first**, Purchase Orders
+under Purchase (the order of `MATERIALS_TABS`).
+
+**Fixed on the way**, of the four found in passing: the phone's two print presses no longer send
+anyone away, and the desk's words left from the spike are gone. Still open: the Procure step's
+press points an estimator at `/jobs` (it lands once Jobs → Materials is a door).
+
+**Left**, each a small PR on the owner's word after his pass with live users:
+
+1. The third word and the order, if he wants Sort or today's order.
+2. Badges on Plan (prices checked over 90 days ago) and Purchase (invoices to move onto a job
+   account). Only the third group wears one today.
+3. Jobs → Materials becomes a door to `/materials?tab=on-site` (call 2, after a release; the
+   plan's PR 7).
+4. *Where it is now* on a Parts Book row (call 8; the plan's PR 8).
+5. A camera inside the app, only if the crew asks (call 4).
+
+**Asked next, drawn, then built on his yes** (the owner, 2026-11-10, with the Brother PT-D610BT
+and tape in hand: should the new view make label printing more apparent).
+`tape-labels-before-after.html` drew it and PR #7566 builds it: *Paper sheet* and *Brother tape*
+are the labels window's first choice, the three first-time steps sit in the window, **Print 1
+test strip** and **None · Every box** are new, and a computer that printed tape opens on tape.
+Client only; its release note and fragment carry the detail. Still his: three strips off the
+real printer (the tape format, #294, has never been printed on it), and the tape width in the
+box, since the app lays out 18 and 24 mm only.
+
+**Walked** on localhost against prod as the dev login, read only, at 1,400 wide and at 375: the
+strip, On site with the three real jobs, the search, Print labels through *Which job?* to a ZZ
+Test job's labels, Scan a label; on the phone an empty job naming three others, Every job finding
+a part on another job, and a box's label and manifest opening in the tab. Nothing was written.
+An estimator's, a primary's, a superintendent's and a helper's views were not walked; the render
+smokes hold them.
 
 ## What is there today (read on main at v2.6842, 2026-11-10)
 

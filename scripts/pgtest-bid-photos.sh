@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/bid_photos against a throwaway copy of the WHOLE schema (bid photos, punch list #306 PR 1,
-# migration *_bid_photos).
+# Runs supabase/tests/bid_photos against a throwaway copy of the WHOLE schema (bid photos, punch list #306 PRs 1 and 2,
+# migrations *_bid_photos and *_photo_save_bid_photos).
 #
 #   npm run test:pg:bid-photos
 #
 # The same bed as scripts/pgtest-plan-sets-author.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then the bid photos migration a second time, which must change nothing. The scenario, inside one
+# applied in order, then the two bid photos migrations a second time, which must change nothing (one photo-save cron
+# row, not two). The scenario, inside one
 # transaction that rolls back: whoever can read a bid reads its photos and adds one as themselves; a primary only on a
 # bid of their own; a subcontractor, a superintendent and a primary on no bid read nothing and add nothing; the adder
 # and the office change a photo and nobody else does; only an un-added shot of one's own is deleted; a training account
 # writes nothing; a twin writes only on its own bid; one Drive file makes one row; and the bucket's objects follow the
-# same gate from the path's first folder, with a path that is not a bid's refused and never an error. It raises on its
+# same gate from the path's first folder, with a path that is not a bid's refused and never an error; and the photo-save
+# cron is one row that names every source, a bid photo due a try among them. It raises on its
 # first failed assertion and ends with "bid_photos PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL
 # beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -19,7 +21,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55606}"
 NAME="pgtest-bid-photos"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-MIGRATION="$(ls supabase/migrations/*_bid_photos.sql)"
+TABLE="$(ls supabase/migrations/*_bid_photos.sql | grep -v photo_save)"
+CRON="$(ls supabase/migrations/*_photo_save_bid_photos.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -36,8 +39,11 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 pgtest_migrate
-# A second run must change nothing: the table and indexes are IF NOT EXISTS, the policies dropped and remade by name.
-psql_as postgres -f - < "$MIGRATION" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $MIGRATION"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# A second run must change nothing: the table and indexes are IF NOT EXISTS, the policies dropped and remade by name,
+# the cron unscheduled before it is scheduled.
+for again in "$TABLE" "$CRON"; do
+  psql_as postgres -f - < "$again" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $again"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/bid_photos/20_scenario.sql 2>&1 || true)"
 if ! grep -q "bid_photos PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

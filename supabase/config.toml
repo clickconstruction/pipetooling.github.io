@@ -700,6 +700,10 @@ verify_jwt = false
 [functions.job-photos]
 verify_jwt = false
 
+# Bid photos (punch list #306): the JWT is checked in the function, so the refusal has words (as job-photos).
+[functions.bid-photos]
+verify_jwt = false
+
 # CT↔PT user bridge proxy (v2.2435): JWT validated in-function (dev-only), forwards to
 # CountTooling's manage-user with the bridge secret.
 [functions.ct-bridge]
