@@ -1,20 +1,23 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { feedPageSql, permitRowFromSanAntonio, pullSinceDay, SAN_ANTONIO_CKAN, SAN_ANTONIO_FEEDS, type PermitFeed, type PermitRow } from '../_shared/permitFeed.ts'
+import { pullSinceDay, type PermitRow } from '../_shared/permitFeed.ts'
+import { feedsToPull, permitCity, PERMIT_CITY_NAMES, type FeedReader } from '../_shared/permitCities.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { builderKeyOf } from '../_shared/permitLookup.ts'
 
 /**
- * Research (punch list #292, v2.6782): pull a city's permits into `permits`. San Antonio first:
- * two CKAN datastores (issued permits, submitted applications) read through the SQL door, the
- * kept building types and every plumbing type since ten days before the newest row held (75
- * days back on the first run), paged oldest first, upserted on (city, source, number, type) so
- * a re-read changes nothing. Each feed's run lands in `permit_pulls`, error and all. Runs
- * nightly from pg_cron (migration 20261109070000, 11:30 UTC) and on demand from the ledger's
- * Pull now, as a signed-in researcher.
+ * Research (punch list #292, v2.6782): pull a city's permits into `permits`. Each city's feeds
+ * are readers in `_shared/permitCities.ts` (San Antonio's two CKAN datastores, Austin's Socrata
+ * dataset, a map layer each for New Braunfels, San Marcos and Seguin): the kept building kinds and the plumbing permits since ten days before the newest row
+ * held (75 days back on a feed's first run), paged oldest first, upserted on (city, source,
+ * number, type) so a re-read changes nothing. Each feed's run lands in `permit_pulls`, error and
+ * all. Runs nightly from pg_cron (migration 20261109070000, 11:30 UTC) over every city, and on
+ * demand from Pull now for the city on screen, as a signed-in researcher.
  *
  * Auth: `X-Cron-Secret` = CRON_SECRET, or a bearer JWT whose user passes
- * `user_can_research_permits()`. Body: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`.
+ * `user_can_research_permits()`. Body: `{ city?: string, since?: 'YYYY-MM-DD', dry_run?: boolean }`.
+ * With no city every city is pulled in the list's order; a feed the time budget cuts short says so
+ * and the next run carries on.
  */
 
 const corsHeaders = {
@@ -37,13 +40,12 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 type FeedOutcome = { source: string; since: string; seen: number; kept: number; pages: number; error: string | null }
 
-async function readPage(feed: PermitFeed, since: string, offset: number): Promise<Record<string, unknown>[]> {
-  const url = `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, since, PAGE, offset))}`
-  const res = await fetch(url, { headers: { Accept: 'application/json' } })
-  if (!res.ok) throw new Error(`the feed answered ${res.status}`)
-  const body = (await res.json()) as { success?: boolean; result?: { records?: Record<string, unknown>[] }; error?: unknown }
-  if (!body.success) throw new Error(`the feed refused the read: ${JSON.stringify(body.error ?? {}).slice(0, 300)}`)
-  return body.result?.records ?? []
+async function readPage(feed: FeedReader, since: string, size: number, offset: number): Promise<Record<string, unknown>[]> {
+  const res = await fetch(feed.pageUrl(since, size, offset), { headers: { Accept: 'application/json' } })
+  const body = await res.json().catch(() => null)
+  // A door that refuses a read says why in its body; its words beat the bare status.
+  if (!res.ok && body == null) throw new Error(`the feed answered ${res.status}`)
+  return feed.recordsOf(body)
 }
 
 serve(async (req) => {
@@ -55,7 +57,7 @@ serve(async (req) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
   const cronSecret = Deno.env.get('CRON_SECRET')
 
-  let body: { since?: unknown; dry_run?: unknown } = {}
+  let body: { city?: unknown; since?: unknown; dry_run?: unknown } = {}
   try {
     body = (await req.json()) ?? {}
   } catch {
@@ -74,6 +76,9 @@ serve(async (req) => {
   }
   if (!allowed) return jsonResponse({ error: 'Unauthorized' }, 401)
 
+  const askedCity = typeof body.city === 'string' && body.city.trim() ? body.city.trim() : null
+  if (askedCity && !permitCity(askedCity)) return jsonResponse({ error: `No feed is set up for ${askedCity}. The cities are ${PERMIT_CITY_NAMES.join(', ')}.` }, 400)
+
   const admin = createClient(supabaseUrl, serviceKey)
   const dryRun = body.dry_run === true
   const sinceOverride = typeof body.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.since) ? body.since : null
@@ -81,7 +86,7 @@ serve(async (req) => {
   const started = Date.now()
   const outcomes: FeedOutcome[] = []
 
-  for (const feed of SAN_ANTONIO_FEEDS) {
+  for (const feed of feedsToPull(askedCity)) {
     const outcome: FeedOutcome = { source: feed.source, since: '', seen: 0, kept: 0, pages: 0, error: null }
     outcomes.push(outcome)
     try {
@@ -101,17 +106,19 @@ serve(async (req) => {
       }
       outcome.since = since
       let offset = 0
+      // A door that hands over fewer rows a page than the pull asks for sets the page.
+      const size = Math.min(PAGE, feed.pageSize ?? PAGE)
       for (let page = 0; page < MAX_PAGES_PER_FEED; page++) {
         if (Date.now() - started > BUDGET_MS) {
           outcome.error = 'stopped on the time budget; the next run carries on'
           break
         }
-        const records = await readPage(feed, since, offset)
+        const records = await readPage(feed, since, size, offset)
         outcome.pages++
         outcome.seen += records.length
         const rows: PermitRow[] = []
         for (const r of records) {
-          const row = permitRowFromSanAntonio(r, feed)
+          const row = feed.rowOf(r)
           if (row) rows.push(row)
         }
         // One row per key inside the page too: the door can hand the same permit and type twice.
@@ -131,8 +138,8 @@ serve(async (req) => {
           }
         }
         outcome.kept += unique.length
-        if (records.length < PAGE) break
-        offset += PAGE
+        if (records.length < size) break
+        offset += size
       }
     } catch (e) {
       outcome.error = e instanceof Error ? e.message : String(e)
@@ -179,5 +186,5 @@ serve(async (req) => {
   }
 
   const failed = outcomes.filter((o) => o.error)
-  return jsonResponse({ ok: failed.length === 0, dryRun, feeds: outcomes, builderKeys: keys, ms: Date.now() - started })
+  return jsonResponse({ ok: failed.length === 0, dryRun, city: askedCity, feeds: outcomes, builderKeys: keys, ms: Date.now() - started })
 })

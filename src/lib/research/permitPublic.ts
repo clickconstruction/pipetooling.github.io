@@ -4,6 +4,7 @@
  * can read, the other permits on one address, the other permits one name pulled, and the public
  * doors a county and the state keep. No React, no Supabase.
  */
+import { cityDeedsDoor } from './permitCityDoors'
 import { builderKeyOf, contactParts } from '../../../supabase/functions/_shared/permitLookup'
 
 /** A Google search opened in a new tab: what is asked, and the words a screen reader and a hover say. */
@@ -129,6 +130,21 @@ export function feedRowFields(raw: unknown): FeedField[] {
   return out
 }
 
+/**
+ * The city's own page for this one permit, when the feed's row carries its address: Seguin sends
+ * one on every row and Austin sends one as a link. Only an https address is offered.
+ */
+export function permitOwnPage(raw: unknown): string | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const record = raw as Record<string, unknown>
+  const link = record['link']
+  const candidates = [record['USER_URL'], typeof link === 'object' && link !== null ? (link as Record<string, unknown>)['url'] : link]
+  for (const c of candidates) {
+    if (typeof c === 'string' && /^https:\/\/[^\s]+$/.test(c.trim())) return c.trim()
+  }
+  return null
+}
+
 /** A permit as the two lists read it off `permits`. */
 export type SitePermit = {
   id: string
@@ -239,5 +255,5 @@ export const TEXAS_FRANCHISE_SEARCH = 'https://comptroller.texas.gov/taxes/franc
 
 /** The county clerk's deed search for a city the county serves, or null where no door is known. */
 export function deedsDoor(city: string | null | undefined): string | null {
-  return clean(city)?.toLowerCase() === 'san antonio' ? BEXAR_CLERK_RECORDS : null
+  return cityDeedsDoor(city)
 }

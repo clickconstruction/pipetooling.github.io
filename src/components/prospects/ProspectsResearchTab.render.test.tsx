@@ -374,6 +374,26 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByText(/Kept by Eve for Sam/)).toBeTruthy()
     })
 
+    describe('more than one city (punch list #292, revision 4)', () => {
+      it('the picker lists Austin, reads its permits, pulls it by name, and says whose county keeps the record', async () => {
+        window.localStorage.removeItem('permits.lastCity')
+        io.loadResearchPermits.mockImplementation(async (city: string) => (city === 'Austin' ? [row({ id: 'a1', city: 'Austin', address: '100 SAMPLE LN', permit_number: '2026-000001 BP' })] : []))
+        io.lookupParcel.mockResolvedValue({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
+        expect([...picker.options].map((o) => o.value)).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
+        fireEvent.change(picker, { target: { value: 'Austin' } })
+        await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledWith('Austin', '2000-01-01', false))
+        expect(await screen.findByText('100 SAMPLE LN, 78245')).toBeTruthy()
+        await waitFor(() => expect(screen.getByText('Travis County’s record is not read here yet. Its appraisal district has it.')).toBeTruthy())
+        // The browser remembers the city, and Pull now pulls the one on screen.
+        expect(window.localStorage.getItem('permits.lastCity')).toBe('Austin')
+        fireEvent.click(screen.getByRole('button', { name: 'Pull now' }))
+        await waitFor(() => expect(io.pullPermitsNow).toHaveBeenCalledWith('Austin'))
+        window.localStorage.removeItem('permits.lastCity')
+      })
+    })
+
     describe('the second look at what someone else passed', () => {
       const samPassed = () => passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })
 

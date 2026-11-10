@@ -92,6 +92,16 @@ describe('best first', () => {
     expect(runner.why).toContain('the name only files for others')
   })
 
+  it('in a city that is all a long drive, the miles stay on the card and off the score', () => {
+    const far = row({ lat: 30.27, lng: -97.74 })
+    const counted = skimScore(far, ctx())
+    const left = skimScore(far, ctx({ scoreMiles: false }))
+    expect(counted.why).toMatch(/miles away/)
+    expect(left.why).toBe('No plumber yet')
+    expect(left.miles).toBe(counted.miles)
+    expect(left.score).toBeGreaterThan(counted.score)
+  })
+
   it('a plain card with nothing known still reads no plumber yet', () => {
     expect(skimScore(row({ lat: null, lng: null }), ctx()).why).toBe('No plumber yet')
   })

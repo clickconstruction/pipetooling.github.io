@@ -2,12 +2,34 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, second look, history, who moved, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
 
 Every city publishes the permits it issues. A building permit says who is about to build what and where. The Permits tab under Prospects pulls those permits in. You skim each one and keep the few worth a closer look. Then you say what we do about them.
+
+## Pick a city
+
+The city box sits at the top, beside the value pick. The box lists the cities the app reads. They are San Antonio, Austin, New Braunfels, San Marcos and Seguin. The app remembers the city you pick.
+
+On a phone, Skim hides the box to make room for the card. Press **Ledger** to reach the box.
+
+Austin posts a permit once the city issues it. San Antonio also posts applications, so its permits show earlier.
+
+Outside San Antonio the Property line names the county. That county's record is not read here yet. Open the building and press **Open the appraisal district** to look the owner up.
+
+The cities do not all publish the same facts.
+
+| City | Who pulled it | Declared value | Shows applications |
+|---|---|---|---|
+| San Antonio | Yes | Yes | Yes |
+| Austin | Yes | Yes | No |
+| New Braunfels | Yes | No | Yes |
+| San Marcos | No | No | Yes |
+| Seguin | No | No | Yes |
+
+San Marcos and Seguin name no one on a permit. Open the building there and press **Open this permit at the city** when the press shows. The city's own page names the contractor.
 
 ## Skim the permits
 
