@@ -1,7 +1,7 @@
 ---
 title: see the money flow on a workflow
 category: Office
-roles: dev, master_technician
+roles: dev, master_technician, controller
 keywords: projections, money flow, workflow, steps, before, after, running total, projected, spent, line items
 order: 76
 ---
@@ -45,4 +45,4 @@ A dip below the dashed $0 line means spending has landed before the money that c
 
 On wide screens, a running ledger appears down the **left side**. A ledger is a running list of money in and out. Every card and marker row shows the balance at that point. The balance is projected-to-here minus spent-to-here. It is green when ahead and red when spending has outrun the plan. A small card with the **project margin** and current balance stays pinned while you scroll. The rail hides on narrow screens. The marker pills carry the same numbers there.
 
-Anchored money markers follow the same visibility as Projections. Devs and Leaders only see them. Deleting a step does not delete its projections. They simply return to the top panel as unattached.
+Anchored money markers follow the same visibility as Projections. Only devs, Leaders and the controller see them. Deleting a step does not delete its projections. They simply return to the top panel as unattached.

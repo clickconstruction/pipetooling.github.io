@@ -1,7 +1,20 @@
 /**
- * The Workflow page's Add / Edit Projection window: what it opens with, what
- * it refuses, the fields a save writes, and what a refused write says.
+ * The Workflow page's Add / Edit Projection window: who reads and writes
+ * projections, what the window opens with, what it refuses, the fields a save
+ * writes, and what a refused write says.
  */
+import type { UserRole } from '../../hooks/useAuth'
+import { isControllerOrDev, isOwnerOrDev } from '../doorRoles'
+
+/**
+ * Projections are the books' (punch list #188 row 48): the owner, a dev and the controller. One predicate for the
+ * Workflow page's bar, the read behind it (`useWorkflowProjections`) and the Forecast's money column, so a role that
+ * is shown the bar is read its rows. The database's side is `workflow_projections`: the office's select, insert and
+ * update, and a delete for `is_master_or_dev() OR is_controller()` (`20261109150000_workflow_projections_controller_delete.sql`).
+ */
+export function canSeeProjections(role: UserRole | string | null | undefined): boolean {
+  return isOwnerOrDev(role as UserRole | null | undefined) || isControllerOrDev(role)
+}
 
 export type ProjectionPlacement = 'before' | 'after'
 

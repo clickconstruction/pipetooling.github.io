@@ -6,11 +6,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import type { UserRole } from '../../hooks/useAuth'
 import { customerJourneys } from '../customerJourneys'
 import { CUSTOMER_SURFACES } from '../customerSurfaceRegistry'
 import { getZonedSettingsGroups } from '../settingsGroups'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
-import { jobsBillingAnchorToTab } from '../settings/jobsBillingGroups'
+import { JOBS_BILLING_CARDS, jobsBillingAnchorToTab, jobsBillingCardVisible } from '../settings/jobsBillingGroups'
+import { isEstimatorOrDev, isOwnerOrDev } from '../doorRoles'
 import { DEFAULT_TERMS_AND_WARRANTY } from '../bidDocuments/coverLetter'
 import { DEFAULT_JOB_CONTRACT_TERMS_PLAIN } from '../jobs/jobContractDocument'
 import {
@@ -31,6 +33,7 @@ import {
   contractSourceLine,
   parseStepParam,
   resolveContractTexts,
+  settingsDoorOpens,
   stepParam,
   toggleCompare,
   type ContractBookDoc,
@@ -246,10 +249,57 @@ describe('contractEditAction', () => {
     expect(a.kind === 'note' ? a.text : '').toContain('Contract library')
   })
 
-  it('a dev-only Settings text opens for a dev and says who edits it to everyone else', () => {
+  const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'primary', 'helpers', 'subcontractor']
+  const settingsDoor = (id: string) => {
+    const d = entry(id).edit
+    if (d.kind !== 'settings') throw new Error(`${id} has no Settings door`)
+    return d
+  }
+  const doorOpensFor = (id: string) => ROLES.filter((role) => contractEditAction(entry(id), resolveContractTexts(entry(id), EMPTY)[0]!, role).kind === 'settings')
+
+  it('a Settings text opens for the audience its editor is mounted for and says who edits it to everyone else (punch list #188)', () => {
+    // Row 27: the cover letter's words are the estimators'.
     expect(contractEditAction(entry('bid-terms'), bidText, 'dev')).toMatchObject({ kind: 'settings', tabId: 'settings-catalogs', anchorId: 'settings-bid-cover-letter-defaults' })
-    const a = contractEditAction(entry('bid-terms'), bidText, 'master_technician')
-    expect(a.kind === 'note' ? a.text : '').toContain('A dev edits this')
+    for (const id of ['bid-terms', 'bid-exclusions', 'bid-closing']) expect(doorOpensFor(id)).toEqual(['dev', 'estimator'])
+    const owner = contractEditAction(entry('bid-terms'), bidText, 'master_technician')
+    expect(owner.kind === 'note' ? owner.text : '').toBe('The estimators edit this: Settings → Bids & materials → Bid Cover Letter Defaults.')
+    // Rows 28 and 29: the wording a customer meets on an estimate is the owner's.
+    for (const id of ['estimate-terms', 'estimate-agree-sentence', 'hazmat-notice']) expect(doorOpensFor(id)).toEqual(['dev', 'master_technician'])
+    const office = contractEditAction(entry('estimate-terms'), resolveContractTexts(entry('estimate-terms'), EMPTY)[0]!, 'assistant')
+    expect(office.kind === 'note' ? office.text : '').toContain('The owner edits this')
+  })
+
+  it('a door to Jobs, bills and liens opens for exactly the roles its card is mounted for', () => {
+    const jobsDoors = CUSTOMER_CONTRACT_CATALOG.filter((e) => e.edit.kind === 'settings' && e.edit.tabId === 'settings-jobs')
+    expect(jobsDoors.map((e) => e.id).sort()).toEqual(['invoice-footers', 'test-report-certification'])
+    for (const e of jobsDoors) {
+      const d = settingsDoor(e.id)
+      const card = JOBS_BILLING_CARDS.find((c) => c.anchor === d.anchorId)
+      expect(card, `${d.anchorId} is a card of the tab`).toBeTruthy()
+      for (const role of ROLES) expect(settingsDoorOpens(d.editors, role), `${e.id} for ${role}`).toBe(jobsBillingCardVisible(card!, role))
+    }
+    expect(doorOpensFor('invoice-footers')).toEqual(['dev', 'controller'])
+    expect(doorOpensFor('test-report-certification')).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
+  })
+
+  it('a door to Bids & materials names the audience the page mounts its block for', () => {
+    const settings = readFileSync(resolve(process.cwd(), 'src/pages/Settings.tsx'), 'utf8')
+    const prospects = readFileSync(resolve(process.cwd(), 'src/components/settings/SettingsCatalogsProspectsTab.tsx'), 'utf8')
+    const gateBefore = (src: string, mark: string) => {
+      const at = src.indexOf(mark)
+      expect(at, mark).toBeGreaterThan(-1)
+      return /is(OwnerOrDev|EstimatorOrDev)\(myRole\) && [(<]?\s*$/.exec(src.slice(0, at))?.[1] ?? null
+    }
+    expect(gateBefore(settings, '<BidCoverLetterDefaultsSettingsBlock')).toBe('EstimatorOrDev')
+    expect(gateBefore(prospects, '<div id="settings-estimate-cx-defaults"')).toBe('OwnerOrDev')
+    expect(gateBefore(prospects, '<div id="settings-estimate-public-terms"')).toBe('OwnerOrDev')
+    expect(settingsDoor('bid-terms').editors).toBe('estimator')
+    expect(settingsDoor('estimate-agree-sentence').editors).toBe('owner')
+    expect(settingsDoor('estimate-terms').editors).toBe('owner')
+    for (const role of ROLES) {
+      expect(settingsDoorOpens('estimator', role)).toBe(isEstimatorOrDev(role))
+      expect(settingsDoorOpens('owner', role)).toBe(isOwnerOrDev(role))
+    }
   })
 
   it('a page door and a fixed text', () => {

@@ -16,6 +16,9 @@ import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
 import { paperSaveFromBillRead, rowLinesWords, type PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
+import { linkTicketToInvoice, listAccountTicketsForHouse, type TicketPoFacts } from '../lib/tickets/ticketMatchIo'
+import { ticketPageUrl, type TicketWithPages } from '../lib/tickets/ticketsIo'
+import { ticketStartChipWords } from '../lib/tickets/ticketRowWords'
 import { LEGEND, NO_PDF_LINE, PDF_PANE_NOTE, START_WORDS, STATUS_YOURS, billsToRecordWords, countLine, dueWords, duplicateWords, houseWords, jobAccountGuessWords, jobFromPairWords, jobGuessWords, jobSettledWords, pairGuessWords, pairMissingWords, paperworkWords, statementWords, sumWords } from '../lib/materials/bills/billWords'
 import { PdfPageCanvas } from './contracts/formStudio/PdfPageCanvas'
 import { useAuth } from '../hooks/useAuth'
@@ -332,7 +335,12 @@ export function SupplyHousesTab({
   }
   const [billCandidates, setBillCandidates] = useState<BillCandidate[]>([])
   const billCounts = useMemo(() => billCountsByHouse(billCandidates), [billCandidates])
-  const [billPick, setBillPick] = useState<{ source: 'thread'; attachmentId: string } | { source: 'upload'; name: string } | 'none' | null>(null)
+  const [billPick, setBillPick] = useState<{ source: 'thread'; attachmentId: string } | { source: 'upload'; name: string } | { source: 'ticket'; ticketId: string } | 'none' | null>(null)
+  /** A tech's account tickets at the open house (punch list #295, PR 4): the form's Start from offers them beside the thread's files. */
+  const [ticketBills, setTicketBills] = useState<(TicketWithPages & { po: TicketPoFacts })[]>([])
+  const billTicketRef = useRef<string | null>(null)
+  /** `/materials?tab=supply-houses&house=<id>&ticket=<id>`: the Tickets tab's Record as a bill lands here. */
+  const pendingTicketRef = useRef<string | null>(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('ticket'))
   const [billBusy, setBillBusy] = useState(false)
   const [billRefusal, setBillRefusal] = useState<string | null>(null)
   const [billRead, setBillRead] = useState<{ read: BillRead; file: Extract<BillReadAnswer, { ok: true }>['file']; model: string; readId: string | null; readAt: string } | null>(null)
@@ -686,6 +694,38 @@ export function SupplyHousesTab({
     void reloadBillCandidates()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [billFillOn, supplyHouseSummary])
+
+  // A tech's account tickets at the house (punch list #295, PR 4), read as the house opens; a read that fails offers none.
+  useEffect(() => {
+    const houseId = selectedSupplyHouseForDetail?.id
+    if (!billFillOn || !houseId) {
+      setTicketBills([])
+      return
+    }
+    let live = true
+    void listAccountTicketsForHouse(houseId)
+      .then((rows) => {
+        if (live) setTicketBills(rows)
+      })
+      .catch(() => {
+        if (live) setTicketBills([])
+      })
+    return () => {
+      live = false
+    }
+  }, [billFillOn, selectedSupplyHouseForDetail?.id])
+
+  // The Tickets tab's Record as a bill: the house opens through ?house=; the form opens on the ticket once its tickets have read.
+  useEffect(() => {
+    const ticketId = pendingTicketRef.current
+    if (!ticketId || !billFillOn || !selectedSupplyHouseForDetail) return
+    const t = ticketBills.find((x) => x.id === ticketId)
+    if (!t) return
+    pendingTicketRef.current = null
+    openAddInvoice()
+    setTimeout(() => void pickTicketBill(t), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketBills, billFillOn, selectedSupplyHouseForDetail])
 
   // The thread's Record this bill: the house opens through autoOpenHouseId; the form opens on the file once it has.
   useEffect(() => {
@@ -1232,6 +1272,28 @@ export function SupplyHousesTab({
     void fillFromBill({ supply_house_id: selectedSupplyHouseForDetail.id, file: upload })
   }
 
+  /** A tech's ticket (punch list #295, PR 4): its first page, read as a dropped-in file; the ticket takes the bill at Save. */
+  async function pickTicketBill(t: TicketWithPages) {
+    if (!selectedSupplyHouseForDetail) return
+    const page = t.counter_ticket_pages[0]
+    if (!page?.storage_path) {
+      setError('That ticket has no page to read.')
+      return
+    }
+    setBillPick({ source: 'ticket', ticketId: t.id })
+    billTicketRef.current = t.id
+    try {
+      const url = await ticketPageUrl(page.storage_path)
+      if (!url) throw new Error('The ticket’s page did not open.')
+      const blob = await (await fetch(url)).blob()
+      const ext = page.mime === 'application/pdf' ? 'pdf' : 'jpg'
+      const upload = await fileToUpload(new File([blob], `${t.taken_by_name || 'ticket'} ticket.${ext}`, { type: page.mime }))
+      void fillFromBill({ supply_house_id: selectedSupplyHouseForDetail.id, file: upload })
+    } catch (e) {
+      setError(formatErrorMessage(e, 'The ticket’s page did not read.'))
+    }
+  }
+
   /** No PDF, I will type it: the fields the fill wrote go back to blank; the ones the person typed stay. */
   function pickNoPdf() {
     const typed = billTypedRef.current
@@ -1372,6 +1434,13 @@ export function SupplyHousesTab({
       const amount = Number(invoiceAmount.replace(/[^0-9.]/g, ''))
       const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: Number.isFinite(amount) ? Math.round(amount * 100) : 0, filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
       await paperIo.save(saved.id, out.paper, out.lines).catch((e) => showToast(formatErrorMessage(e, 'The bill saved, but its lines were not kept.'), 'error'))
+    }
+    if (billTicketRef.current) {
+      // The ticket became this bill (punch list #295, PR 4): a refusal here never undoes the save.
+      const ticketId = billTicketRef.current
+      billTicketRef.current = null
+      await linkTicketToInvoice(ticketId, saved.id).catch(() => undefined)
+      setTicketBills((cur) => cur.filter((t) => t.id !== ticketId))
     }
     if (billRead?.file.attachmentId) {
       // The thread file is on a row now: the offer and the count let it go. A refusal here never undoes the save.
@@ -2816,6 +2885,14 @@ export function SupplyHousesTab({
                       return (
                         <button key={c.attachmentId} type="button" data-bill-chip={c.attachmentId} disabled={billBusy} onClick={() => pickThreadBill(c)} style={billChipStyle(on)}>
                           {c.chip}
+                        </button>
+                      )
+                    })}
+                    {ticketBills.map((t) => {
+                      const on = billPick !== null && billPick !== 'none' && billPick.source === 'ticket' && billPick.ticketId === t.id
+                      return (
+                        <button key={t.id} type="button" data-ticket-chip={t.id} disabled={billBusy} onClick={() => void pickTicketBill(t)} style={billChipStyle(on)}>
+                          {ticketStartChipWords(t, t.po?.po_code ?? null)}
                         </button>
                       )
                     })}

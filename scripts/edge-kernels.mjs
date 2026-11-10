@@ -41,6 +41,7 @@ export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
  */
 export const IMPORTERS = [
   'ar-returned-checks',
+  'bridge-sheet-email',
   'bridge-weekly-sheet',
   'customer-portal',
   'dev-mcp',

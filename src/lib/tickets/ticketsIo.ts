@@ -129,10 +129,14 @@ export async function landTicket(ticketId: string): Promise<{ landed: number }> 
   return { landed: ((data ?? []) as unknown[]).length }
 }
 
-/** The whole ticket with the signal up: the row, every page in order, then the landing. The first failure throws. */
-export async function sendTicket(t: TicketDraft, pages: readonly TicketPageDraft[]): Promise<void> {
+/**
+ * The whole ticket with the signal up: the row, every page in order, then the landing. The first failure throws.
+ * `uploaderId` is whose folder the bytes go under: the taker's, or the office's when the office scans a paper handed in
+ * for someone else's charge (PR 4).
+ */
+export async function sendTicket(t: TicketDraft, pages: readonly TicketPageDraft[], uploaderId: string = t.takenBy): Promise<void> {
   await sendTicketRow(t)
-  for (const p of pages) await sendTicketPage({ id: t.id, uploaderId: t.takenBy }, p)
+  for (const p of pages) await sendTicketPage({ id: t.id, uploaderId }, p)
   try {
     await landTicket(t.id)
   } catch (e) {

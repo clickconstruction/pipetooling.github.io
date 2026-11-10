@@ -1,7 +1,8 @@
 /**
  * bridge-weekly-sheet (v2.5883): the weekly send of the Bridge's Monday sheet. On Monday at 6 AM Central the run
  * builds the sheet the page shows (`buildSheetFromReads` over `loadMondaySheetReads`, the copy of the kernels, the
- * same reads the page makes, as the service role) and mails it to every dev with a real account, each to their own
+ * same reads the page makes, as the service role) and mails it to the owner and every dev with a real account (the
+ * Bridge's own audience since v2.6763, `BRIDGE_ROLES`), each to their own
  * address, and never to anyone else (`weeklySendRecipients`). The bank is read from Mercury with the API key
  * (`_shared/mercuryAccounts.ts`), as `get-mercury-account-balances` reads it; ZZ test jobs stay out, as they do for
  * a dev who has not chosen to show them.
@@ -11,7 +12,7 @@
  *   the switch `app_settings` `bridge_weekly_sheet_on_v1` reads 'true'; the function checks the switch again, runs only
  *   the tick that is 6 AM Central (`weeklySendTickNow`), and sends nothing twice on one day (`alreadySentToday`, from
  *   the last run it keeps in `bridge_weekly_sheet_last_run_v1`).
- * - `{ "dry": true }`: the cron secret, or a signed-in dev on a real account. Any hour, switch on or off. Builds the
+ * - `{ "dry": true }`: the cron secret, or the owner or a dev signed in on a real account. Any hour, switch on or off. Builds the
  *   sheet and answers the recipients, the subject, the text and the html, what could not be read, and each read's
  *   error; sends nothing and writes nothing.
  *
@@ -31,7 +32,7 @@ import { buildSheetFromReads } from '../_shared/gcKernels/lib/bridge/sheetBuild.
 import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../_shared/gcKernels/lib/bridge/mondaySheet.ts'
 import { parseMercuryCash, type MercuryCash } from '../_shared/gcKernels/lib/bridge/mercuryCash.ts'
 import { readZzTestJobRows } from '../_shared/gcKernels/lib/jobs/zzTestJobReads.ts'
-import { WEEKLY_SHEET_LAST_RUN_KEY, WEEKLY_SHEET_ON_KEY, alreadySentToday, parseWeeklySendRun, weeklySendRecipients, weeklySendTickNow, weeklySheetIsOn, type WeeklySendRun } from '../_shared/gcKernels/lib/bridge/weeklySend.ts'
+import { BRIDGE_ROLES, WEEKLY_SHEET_LAST_RUN_KEY, WEEKLY_SHEET_ON_KEY, alreadySentToday, isBridgeRole, parseWeeklySendRun, weeklySendRecipients, weeklySendTickNow, weeklySheetIsOn, type WeeklySendRun } from '../_shared/gcKernels/lib/bridge/weeklySend.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
 import { isArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
@@ -47,7 +48,7 @@ const json = (body: Record<string, unknown>, status = 200) =>
 
 type Admin = SupabaseClient<Database>
 
-/** Who may ask for a dry run: the cron, or a signed-in dev on a real account. */
+/** Who may ask for a dry run: the cron, or whoever the Bridge is for (the owner or a dev), signed in on a real account. */
 async function mayDryRun(req: Request, admin: Admin, supabaseUrl: string, cronOk: boolean): Promise<boolean> {
   if (cronOk) return true
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -58,7 +59,7 @@ async function mayDryRun(req: Request, admin: Admin, supabaseUrl: string, cronOk
   if (!u?.user) return false
   if (await isArchivedCaller(admin, u.user.id)) return false
   const { data: who } = await admin.from('users').select('role, archived_at').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
-  return who?.role === 'dev' && !who.archived_at
+  return isBridgeRole(who?.role) && !who?.archived_at
 }
 
 /** The bank through Mercury's API, or null with the reason when it cannot be read. */
@@ -103,8 +104,8 @@ serve(async (req) => {
       if (alreadySentToday(lastRun, today)) return json({ ok: true, ran: false, why: `The sheet went today already, to ${lastRun?.sent.length ?? 0}.` })
     }
 
-    // Who hears it: every dev with a real account and an address, nobody else.
-    const { data: userRows, error: usersError } = await admin.from('users').select('role, email, archived_at, is_sample, is_digital_twin, is_walk_tester').eq('role', 'dev')
+    // Who hears it: the owner and every dev with a real account and an address, nobody else.
+    const { data: userRows, error: usersError } = await admin.from('users').select('role, email, archived_at, is_sample, is_digital_twin, is_walk_tester').in('role', [...BRIDGE_ROLES])
     if (usersError) throw new Error(`users: ${usersError.message}`)
     const to = weeklySendRecipients(userRows ?? [])
 

@@ -168,7 +168,7 @@ describe('SettingsContractsTab', () => {
     expect(job.getByRole('button', { name: 'Edit the wording' })).toBeTruthy()
   })
 
-  it('a dev opens the editor; the office is told who edits it', async () => {
+  it('a dev opens the editor; the office is told who edits it; the owner opens the estimate’s own wording (punch list #188 rows 27–28)', async () => {
     const dev = mount('dev')
     await dev.view
     fireEvent.click(within(screen.getByTestId('contract-card-bid-terms')).getByRole('button', { name: /Open where it is edited/ }))
@@ -177,7 +177,14 @@ describe('SettingsContractsTab', () => {
     await mount('assistant').view
     const bid = within(screen.getByTestId('contract-card-bid-terms'))
     expect(bid.queryByRole('button', { name: /Open where it is edited/ })).toBeNull()
-    expect(bid.getByText(/A dev edits this/)).toBeTruthy()
+    expect(bid.getByText(/The estimators edit this/)).toBeTruthy()
+    cleanup()
+    // The owner: the estimate's wording is his, so its door opens; the cover letter is the estimators'.
+    const owner = mount('master_technician')
+    await owner.view
+    fireEvent.click(within(screen.getByTestId('contract-card-estimate-terms')).getByRole('button', { name: /Open where it is edited/ }))
+    expect(owner.onOpenEditor).toHaveBeenCalledWith('settings-catalogs', 'settings-estimate-public-terms')
+    expect(within(screen.getByTestId('contract-card-bid-terms')).getByText(/The estimators edit this/)).toBeTruthy()
   })
 
   it('the office edits a Book document on its card', async () => {

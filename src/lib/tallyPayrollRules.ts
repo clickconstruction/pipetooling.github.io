@@ -8,11 +8,22 @@
  */
 
 import type { Json } from '../types/database'
+import { isControllerOrDev } from './doorRoles'
 import {
   matchAccountingLabelRuleCriteria,
   parseAccountingLabelRuleCriteria,
   type AccountingLabelRuleMatchTx,
 } from './accountingLabelRuleMatch'
+
+/**
+ * Who holds the payroll rules: the controller and a dev (punch list #188 row 62, v2.6761). One gate for the Payroll
+ * rules chip, the window, Create a rule, **Apply now** and the auto-apply switch inside it, so a role that is shown
+ * the press runs it; `mercury_tally_payroll_rules` and `bulk_apply_tally_payroll_rule_flags` admit the same two
+ * (`20261109005000_dev_gates_banking_tally_forms.sql`). Marking one transaction is `canMarkTallyPayroll`'s.
+ */
+export function canEditTallyPayrollRules(role: string | null | undefined): boolean {
+  return isControllerOrDev(role)
+}
 
 export type TallyPayrollRuleForMatch = {
   id: string
