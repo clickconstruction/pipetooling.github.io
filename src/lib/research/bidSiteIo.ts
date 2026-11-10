@@ -6,6 +6,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { GcBid, SitePermitRow } from './bidSitePanel'
+import type { AnswerScope, NameAnswer, NameAnswerRow } from './nameAnswers'
 
 /** PostgREST's "function not found": the window after the client deploys and before the migration is pushed. */
 function missingFunction(error: unknown): boolean {
@@ -63,4 +64,67 @@ export async function loadBidsOfCustomers(customerIds: readonly string[]): Promi
     for (const b of (more ?? []) as GcBid[]) byId.set(b.id, b)
   }
   return [...byId.values()]
+}
+
+// --- The answer on a name (punch list #307, PR 6 and 7) --------------------------------------
+
+
+/** PostgREST's "table not found": the window before migration *_builder_customer_answers is pushed. */
+function missingTable(error: unknown): boolean {
+  const e = error as { message?: string; code?: string } | null
+  return e != null && (e.code === '42P01' || e.code === 'PGRST205' || /could not find the table|relation .* does not exist/i.test(e.message ?? ''))
+}
+
+const ANSWER_COLUMNS = 'id, builder_key, customer_id, answer, scope, permit_id, name, answered_by, answered_at'
+
+/** The answers on names for one GC's customer rows, and who is asking. Null before the table is on the database. */
+export async function loadNameAnswers(customerIds: readonly string[]): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {
+  const { data: session } = await supabase.auth.getSession()
+  const me = session.session?.user.id ?? null
+  if (customerIds.length === 0) return { rows: [], me }
+  const res = await supabase.from('builder_customer_answers' as never).select(ANSWER_COLUMNS).in('customer_id', [...customerIds]).order('answered_at', { ascending: true }).limit(2000)
+  if (res.error) {
+    if (missingTable(res.error)) return null
+    throw res.error
+  }
+  return { rows: ((res.data ?? []) as unknown) as NameAnswerRow[], me }
+}
+
+/** One answer, appended. The newest decisive row per name and customer stands. */
+export async function recordNameAnswer(input: { builderKey: string; customerId: string; answer: NameAnswer; scope: AnswerScope | null; permitId: string | null; name: string }): Promise<void> {
+  const { data: session } = await supabase.auth.getSession()
+  const me = session.session?.user.id
+  if (!me) throw new Error('Sign in again to answer.')
+  await withSupabaseRetry(
+    async () =>
+      await supabase.from('builder_customer_answers' as never).insert({
+        builder_key: input.builderKey,
+        customer_id: input.customerId,
+        answer: input.answer,
+        scope: input.answer === 'works_for' ? (input.scope ?? 'all') : null,
+        permit_id: input.permitId,
+        name: input.name,
+        answered_by: me,
+      } as never),
+    'save the answer',
+  )
+  for (const fn of answerListeners) fn()
+}
+
+/** What the office said each name is, off `builders`: the key to its kind. A name with no row is not in the map. */
+export async function loadBuilderKinds(keys: readonly string[]): Promise<Map<string, string | null>> {
+  if (keys.length === 0) return new Map()
+  const res = await supabase.from('builders' as never).select('key, kind').in('key', [...keys])
+  if (res.error) return new Map()
+  return new Map((((res.data ?? []) as unknown) as Array<{ key: string; kind: string | null }>).map((r) => [r.key, r.kind]))
+}
+
+const answerListeners = new Set<() => void>()
+
+/** Run `fn` whenever an answer on a name is saved, so both panels in a bid's window agree. Returns the unsubscribe. */
+export function onNameAnswered(fn: () => void): () => void {
+  answerListeners.add(fn)
+  return () => {
+    answerListeners.delete(fn)
+  }
 }

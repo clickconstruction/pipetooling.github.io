@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -23,6 +23,18 @@ Each row says the name the city lists on the permit. That name is the contact th
 
 The last line says where the records come from and the day they start.
 
+## Say who the city lists on a permit
+
+A permit lists one contact. It is often a person, and it is not always the builder.
+
+Under the permit that looks like your job, the block asks once. It reads **Do you know who that is?** Pick one of three answers.
+
+- {{button:blue|Works for the GC}} shows the other permits that name is on. Then press **Show all under the GC**, or **This permit only**. One person can file for more than one builder, so look first.
+- **Someone else…** asks who it is. Pick the owner, an architect or engineer, a name that files for others, or another GC.
+- **Not sure** hides the question from you alone. The rest of the team still sees it.
+
+Every answer keeps your name and the day. Press **Undo** to take one back.
+
 ## When there is nothing to show
 
 The block never says a site has no permits. It says one of three things.
@@ -42,6 +54,8 @@ One line counts the sites. It says how many have a permit, out of how many we ca
 Another line names the towns where the GC's other bids are. No permit records are read there.
 
 On a phone the jobs fold behind **See the jobs**.
+
+Below the jobs sits **Other permits under names tied to them**. It lists the GC's own name and each name someone tied to the GC. Each row says whose word it is and how many permits the city lists that name on. Press **See them** to read the list. Press **Take back** to undo a tie.
 
 ## See permit news on the Bid Board
 

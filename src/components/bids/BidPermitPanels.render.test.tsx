@@ -4,8 +4,8 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { GcBid, SitePermitRow } from '../../lib/research/bidSitePanel'
 
-const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn() }))
-const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn() }))
+const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), recordNameAnswer: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn() }))
+const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn(), loadPermitsOfBuilder: vi.fn(), loadResearchers: vi.fn(), saveBuilder: vi.fn() }))
 const mobile = vi.hoisted(() => ({ value: false }))
 vi.mock('../../lib/research/bidSiteIo', () => io)
 vi.mock('../../lib/research/permitResearchIo', () => research)
@@ -13,6 +13,7 @@ vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => mobile.value }))
 
 import { BidSitePermits } from './BidSitePermits'
 import { BidGcPermits } from './BidGcPermits'
+import type { NameAnswerRow } from '../../lib/research/nameAnswers'
 
 // Every name, address and number here is made up.
 function permit(over: Partial<SitePermitRow> = {}): SitePermitRow {
@@ -33,6 +34,14 @@ beforeEach(() => {
   io.loadPermitsByHouseNumber.mockReset().mockResolvedValue([permit(), irrigation, neighbour])
   io.loadBidsOfCustomers.mockReset().mockResolvedValue([bid()])
   research.loadRecordsStart.mockReset().mockResolvedValue(null)
+  // The answers table is not on the database unless a test says so: nothing is asked.
+  io.loadNameAnswers.mockReset().mockResolvedValue(null)
+  io.recordNameAnswer.mockReset().mockResolvedValue(undefined)
+  io.loadBuilderKinds.mockReset().mockResolvedValue(new Map())
+  io.onNameAnswered.mockReset().mockReturnValue(() => {})
+  research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
+  research.loadResearchers.mockReset().mockResolvedValue([{ id: 'u1', name: 'Eve' }, { id: 'u2', name: 'Sam' }])
+  research.saveBuilder.mockReset().mockResolvedValue(undefined)
 })
 afterEach(() => cleanup())
 
@@ -135,5 +144,95 @@ describe('BidGcPermits', () => {
     io.loadBidsOfCustomers.mockRejectedValueOnce(new Error('The network dropped.'))
     renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId={null} />)
     expect(await screen.findByText(/The network dropped\./)).toBeTruthy()
+  })
+})
+
+describe('the answer on a name', () => {
+  const SITE = { address: '4120 Mill Street, San Antonio, TX 78215', projectName: 'Mill Street Lofts, Building C', bidValue: '' }
+  const other = (id: string, address: string) => ({ id, permit_number: id, permit_type: 'Comm Remodel Permit', kind: 'building', stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: '2026-08-04', contact: 'Dana Whitlow', address, declared_value: null })
+  const tie = (over: Partial<NameAnswerRow> = {}): NameAnswerRow => ({ id: 'a1', builder_key: 'danawhitlow', customer_id: 'c1', answer: 'works_for', scope: 'all', permit_id: 'p1', name: 'Dana Whitlow', answered_by: 'u2', answered_at: '2026-11-09T18:00:00Z', ...over })
+
+  it('asks once under the permit that looks like this job, and shows the other permits before it ties any', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    research.loadPermitsOfBuilder.mockResolvedValue([other('p1', '4120 MILL ST'), other('p7', '310 ALDER ROW'), other('p8', '88 HARBOR ST')])
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1', 'c2']} customerName="Ridgeway Builders" />)
+    expect(await screen.findByText('The city lists Dana Whitlow on this permit.')).toBeTruthy()
+    expect(io.loadNameAnswers).toHaveBeenCalledWith(['c1', 'c2'])
+    fireEvent.click(screen.getByRole('button', { name: 'Works for Ridgeway Builders' }))
+    expect(await screen.findByText('Dana Whitlow works for Ridgeway Builders. The city lists Dana Whitlow on 2 other permits we can see.')).toBeTruthy()
+    expect(screen.getByText('Commercial remodel · 310 ALDER ROW')).toBeTruthy()
+    expect(io.recordNameAnswer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 2 under Ridgeway Builders' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'danawhitlow', customerId: 'c1', answer: 'works_for', scope: 'all', permitId: 'p1', name: 'Dana Whitlow' }))
+  })
+
+  it('ties this permit only, on the second press', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    research.loadPermitsOfBuilder.mockResolvedValue([other('p7', '310 ALDER ROW')])
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Works for Ridgeway Builders' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'This permit only' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith(expect.objectContaining({ answer: 'works_for', scope: 'this_permit', permitId: 'p1' })))
+  })
+
+  it('takes someone else with what they are, and not sure with nothing more', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    const first = renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Someone else…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'The owner' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith(expect.objectContaining({ answer: 'someone_else', scope: null })))
+    await waitFor(() => expect(research.saveBuilder).toHaveBeenCalledWith('danawhitlow', 'Dana Whitlow', 'owner', 'u1'))
+    first.unmount()
+    io.recordNameAnswer.mockClear()
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Not sure' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith(expect.objectContaining({ answer: 'not_sure', scope: null })))
+    expect(research.saveBuilder).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a settled answer with whose word it is, and takes it back on Undo', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [tie()], me: 'u1' })
+    research.loadPermitsOfBuilder.mockResolvedValue([other('p7', '310 ALDER ROW')])
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    expect(await screen.findByText('Works for Ridgeway Builders')).toBeTruthy()
+    expect(await screen.findByText('Tied on Sam’s word, Nov 9. Dana Whitlow works for Ridgeway Builders. 1 other permit now shows under Ridgeway Builders.')).toBeTruthy()
+    expect(screen.queryByText('The city lists Dana Whitlow on this permit.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith(expect.objectContaining({ answer: 'taken_back', builderKey: 'danawhitlow' })))
+  })
+
+  it('asks nothing with no GC on the bid, before the table is on the database, or of the GC’s own name', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    const noGc = renderWithProviders(<BidSitePermits {...SITE} />)
+    await screen.findByText('Looks like this job')
+    expect(screen.queryByTestId('bid-name-question')).toBeNull()
+    noGc.unmount()
+    io.loadNameAnswers.mockResolvedValue(null)
+    const absent = renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    await screen.findByText('Looks like this job')
+    await waitFor(() => expect(io.loadNameAnswers).toHaveBeenCalled())
+    expect(screen.queryByTestId('bid-name-question')).toBeNull()
+    absent.unmount()
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Dana Whitlow" />)
+    expect(await screen.findByText('Their own name')).toBeTruthy()
+    expect(screen.queryByText('Do you know who that is?')).toBeNull()
+  })
+
+  it('lists the names tied to the GC under its jobs, with what each is listed on, and takes one back', async () => {
+    io.loadBidsOfCustomers.mockResolvedValue([bid()])
+    io.loadNameAnswers.mockResolvedValue({ rows: [tie({ answered_by: 'u1' })], me: 'u1' })
+    research.loadPermitsOfBuilder.mockImplementation(async (_city: string, key: string) => (key === 'danawhitlow' ? [other('p7', '310 ALDER ROW'), other('p8', '88 HARBOR ST')] : []))
+    renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId="b1" />)
+    expect(await screen.findByText('Other permits under names tied to them')).toBeTruthy()
+    expect(await screen.findByText('Works for them · your word, Nov 9')).toBeTruthy()
+    expect(screen.getByText('Their own name')).toBeTruthy()
+    expect(screen.getByText('Listed on no permit we can see')).toBeTruthy()
+    expect(screen.getByText('Listed on 2 permits we can see')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'See them ›' }))
+    expect(screen.getByText('Commercial remodel · 88 HARBOR ST')).toBeTruthy()
+    expect(screen.getByText('A name on a permit is the contact the city lists. It is not always the builder.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'danawhitlow', customerId: 'c1', answer: 'taken_back', scope: null, permitId: null, name: 'Dana Whitlow' }))
   })
 })
