@@ -75,6 +75,16 @@ press points an estimator at `/jobs` (it lands once Jobs → Materials is a door
 4. *Where it is now* on a Parts Book row (call 8; the plan's PR 8).
 5. A camera inside the app, only if the crew asks (call 4).
 
+**Asked next, drawn, not built** (the owner, 2026-11-10, with the Brother PT-D610BT and tape in
+hand: should the new view make label printing more apparent). `tape-labels-before-after.html`:
+the labels window today opens on paper sheets with Tape as a small chip; the after makes
+*Paper sheet* and *Brother tape* the window's first choice, lists the three first-time steps in
+the window, adds **Print 1 test strip** and **None · Every box**, and opens on tape on a
+computer that printed tape last. One small client-only PR on his word. First, though, three
+strips off the real printer from today's window: the tape format (#294, v2.6801) has never been
+printed on it. His calls there: the tape width in the box (the app lays out 18 and 24 mm), what
+the test strip prints, whether a box remembers it has a label, and the name *Brother tape*.
+
 **Walked** on localhost against prod as the dev login, read only, at 1,400 wide and at 375: the
 strip, On site with the three real jobs, the search, Print labels through *Which job?* to a ZZ
 Test job's labels, Scan a label; on the phone an empty job naming three others, Every job finding
