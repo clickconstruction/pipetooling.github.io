@@ -141,11 +141,11 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Entry | dev | master | assistant | controller | estimator | primary | super | sub / helpers | Anchor |
 |---|---|---|---|---|---|---|---|---|---|
 | Dashboard icon | ✓ | ✓ | ✓ | ✓ | ✓ (phone: dropdown row) | ✓ | ✓ | ✓ | 623, 653–691, 716, 757 |
-| Quickfill · Bridge · Moneyfill icons | Q·B·M | Q | Q | Q·M | — | — | — | — | 737–756, 932–991 |
-| Review (`/people?tab=review`) | ✓ | **phone only** | — | — | — | — | — | — | 747 vs 992 |
+| Quickfill · Bridge · Moneyfill icons | Q·B·M | Q·B·M (Bridge and Moneyfill since v2.6763) | Q | Q·M | — | — | — | — | 737–756, 932–991 |
+| Review (`/people?tab=review`) | ✓ | ✓ (the header icon too since v2.6757) | — | — | — | — | — | — | 747 vs 992 |
 | Estimates · Jobs · Schedule | ✓ | ✓ | ✓ (Schedule bold) | ✓ (bold) | Estimates | Estimates · Jobs | ✓ | — | 702, 728–729, 782–801 |
 | Projects · Bids | ✓ | ✓ | ✓ | ✓ | Bids | Bids | ✓ | — | 703, 730, 802–817 |
-| Prospects | ✓ | ✓ | ✓ | ✓ | if `estimatorProspectsAccess` | — | — | — | 705, 806 |
+| Prospects | ✓ | ✓ | ✓ | ✓ | if `estimatorProspectsAccess`, else **Permits** (`/prospects?tab=permits`, v2.6782) | — | — | — | 705, 806 |
 | Partner Statement (`useIsPartner`) | — | — | — | — | if partner | **phone only** | if partner (**route refuses**) | if partner | 635, 692, 770 |
 | Map icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | 523–528, 1195–1211, 1731 |
 | Materials icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 496–505, 1212–1228, 1687 |
@@ -256,7 +256,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### I. Mobile menu + phone dock + mode footers
 
-- **Hamburger** (889–1035, hidden for sub-like and while the dock is up): Quickfill (dev/master/assistant-like), Moneyfill (dev/controller), Bridge (dev), Review (master/dev), then `renderNavLinks(close, true)`, then Customers (dev). `renderMobileHeaderLinks` 611–639: Dashboard icon (not estimator), partner Statement, search button.
+- **Hamburger** (889–1035, hidden for sub-like and while the dock is up): Quickfill (dev/master/assistant-like), Moneyfill (`canOpenMoneyfill`: dev/master/controller since v2.6763), Bridge (dev/master since v2.6763), Review (master/dev), then `renderNavLinks(close, true)`, then Customers (dev). `renderMobileHeaderLinks` 611–639: Dashboard icon (not estimator), partner Statement, search button.
 - **Dock:** `phoneDockRaw` 258 + effect 259–268 (`PHONE_DOCK_CHANGED_EVENT` + `storage`), `phoneDockSlots` memo 269, `phoneDockActive` 270, `phoneDockSheet` 271 + `closePhoneDockSheet` 272 + close effect 273–275. `DispatchModeFooterLive` 2268–2274 (`showPoTab`, `slots`, `onOpenMore`), `PhoneDockMoreSheet` 2275–2290 (`modes={phoneDockModes}`, `onSwap`/`onReset` → `writePhoneDockSlots`, `onSignOut`), Job footer `DispatchModeFooter variant="job"` 2291.
 - **Owned state:** `menuOpen` 207, `menuRef` 208, `phoneDockRaw`, `phoneDockSheet`.
 - **Tests:** `phoneDock.test.ts` (16). `DispatchModeFooter` (417 lines) and `PhoneDockMoreSheet` (323) have **no tests**.
@@ -391,8 +391,8 @@ One PR per step. Each runs `npm run typecheck && npm run lint && npm test`, pres
 
 ## Hazards
 
-- **Money paths.** The shell computes no money but gates it. `/banking` is refused by the guard unless `canAccessBanking` (dev/master/controller; `BANKING_ONLY_PATHS`). The Moneyfill link is dev|controller (742, 952). AR is dev/master/assistant-like (1775). `BillCustomerModalProvider` mounts `SendRecordInvoiceModal` app-wide (App 262). `AssistantReadyToBillBanner` polls `jobs_ledger`. A nav move must keep each gate literally equivalent, because RLS is the backstop but a visible link to a refused page bounces to `/dashboard`.
-- **Role gates.** Keep both sources of truth (fact 1) in step until `appNav.ts` pins them. Moneyfill's gate is `role === 'controller'`, **not** `isAssistantLike`. The PO tab is dev/master/`isAssistantLike`, the controller included since v2.5011 (`dispatchModePoRoleAllowed`). `readOnly` (training mode) only shows the banner, and the DB enforces it.
+- **Money paths.** The shell computes no money but gates it. `/banking` is refused by the guard unless `canAccessBanking` (dev/master/controller; `BANKING_ONLY_PATHS`). The Moneyfill link is dev|master|controller (`canOpenMoneyfill`, the owner since v2.6763; 742, 952). AR is dev/master/assistant-like (1775). `BillCustomerModalProvider` mounts `SendRecordInvoiceModal` app-wide (App 262). `AssistantReadyToBillBanner` polls `jobs_ledger`. A nav move must keep each gate literally equivalent, because RLS is the backstop but a visible link to a refused page bounces to `/dashboard`.
+- **Role gates.** Keep both sources of truth (fact 1) in step until `appNav.ts` pins them. Moneyfill's gate is `canOpenMoneyfill` (dev, master, `role === 'controller'`), **not** `isAssistantLike`. The PO tab is dev/master/`isAssistantLike`, the controller included since v2.5011 (`dispatchModePoRoleAllowed`). `readOnly` (training mode) only shows the banner, and the DB enforces it.
 - **Realtime / subscriptions.** `force-reload` broadcast (App `ForceReloadProvider`; the dev Global Reload reloads **every** signed-in client). `RealtimeLifecycleProvider` must stay the outermost authed provider, because it drops all channels after 5 min hidden. `CustomerWaitingProvider` (Layout 834) holds 2 channels for the whole session, and moving it inside a conditional subtree would resubscribe on every toggle. `DispatchModeFooterLive` uses `useDispatchInbox`/`useEstimatorInbox`.
 - **URL deep links consumed app-wide:** `?addTask=1` (327, stripped), `?person=&section=` and since v2.6590 `&flow=bring_back` (`PersonDeskDeepLinkHandler`; the flow opens the desk with the Bring back window up), `?userReview=&userReviewYmd=` (`UserReviewDeepLinkHandler`), `?bidId=` on `/bids` (pin scope, 214–215), `#access_token…type=magiclink` (`AuthHandler`), `#…type=invite` (main.tsx), router state `openNewCustomer`/`openEditCustomer` (App 315, 188). The deep-link handlers mount inside the inert div (2296, 2298).
 - **Effects whose deps make moves risky:** the guard (399–404) runs on every pathname change, so a move that re-creates `navigate` or delays `role` can flash-bounce. Farm bounce (347–351). The add-task effect (323–337) is one-shot per mount (`addTaskOpenHandledRef`), consumes the localStorage intent flag and strips `?addTask`, so keep it in an always-mounted owner that sees the `checklistAddModal` context. Click-outside (381–397) closes three menus from one listener, so split it when you split the menus. Popstate (442–449) and bfcache (431–439) must stay mounted for the whole impersonated session.

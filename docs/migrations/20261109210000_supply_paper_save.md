@@ -8,3 +8,5 @@ Supply house bill lines, the office's two presses (punch list #298 PR 1b). [`202
 - **Gates**, said in each body because a definer passes the policies: signed in; `is_office_staff()`; not `is_read_only()`; not `is_digital_twin()`; not `caller_is_archived()`. The invoice must exist. `REVOKE` from `PUBLIC, anon`; `GRANT EXECUTE` to `authenticated, service_role`.
 
 **Order**: the client of v2.6819 calls both RPCs, so `check:calls-ahead` labels its PR *push right after the merge*: push before the Pages deploy finishes. No function deploy. Regenerate the types afterwards with the `chore(types)` PR that also picks up `20261109170000`'s tables.
+
+**Applied** to prod by 2026-11-10, read the same day through `npm run check:migration-drift`: 1216 local files against 1216 remote versions, fully applied, this one among them.

@@ -36,9 +36,9 @@ You turned down a project four hours from the office and the wording was right. 
 
 ## Change or delete a reply
 
-{{button:outline|Edit}} and {{button:outline|Delete}} show on the replies **you** posted. Your replies carry a blue edge and read *You*. A dev sees them on every reply. Delete asks first. A deleted reply is gone for everyone and cannot be brought back.
+{{button:outline|Edit}} and {{button:outline|Delete}} show on the replies **you** posted. Your replies carry a blue edge and read *You*. The owner or a dev sees them on every reply. Delete asks first. A deleted reply is gone for everyone and cannot be brought back.
 
-If someone else's reply needs a fix, you ask them or a dev. A reply whose author no longer has an account stays in the book under their name. A dev can change it.
+If someone else's reply needs a fix, you ask them, the owner or a dev. A reply whose author no longer has an account stays in the book under their name. The owner or a dev can change it.
 
 ## On a phone
 

@@ -101,7 +101,7 @@ Every hire shows a row of red, yellow and green boxes for the company's checklis
 
 A {{chip:gray|🔗}} next to a box opens that item's document. That is the thing to share, or where the person finds their copy. Each hire has an **n/N done** counter.
 
-Devs manage the checklist itself under **⚙ Onboarding settings** on this tab. A dev sets the questions, the links and the order. Until a dev adds items, the hire list shows without boxes. Only the dev sees the *No onboarding items yet* note, because only the dev can add them.
+The owner or a dev manages the checklist itself under **⚙ Onboarding settings** on this tab. They set the questions, the links and the order. Until they add items, the hire list shows without boxes. Only a dev sees the *No onboarding items yet* note.
 
 ## Interview calls
 
@@ -223,4 +223,4 @@ Each person also gets a **composite**. That is the three corrected ratings blend
 
 **Leaderboard** turns the composites into the hiring signal. Every role is ranked from best to worst, with the role's average. A red **weakest** chip shows once a role has at least two members who can be ranked. A **Replace-priority focus** strip at the top lists the lowest composites company-wide. It has a button straight to the hiring board. A weak spot on the leaderboard is a role to start sourcing for.
 
-Devs can tune how much each dimension counts with the {{icon:gear}} gear. There they can also tick **Crew lane counts as a reviewer**. That lets each person's crew average join the composite as one more reviewer. It stays off until someone switches it on.
+The owner or a dev can tune how much each dimension counts with the {{icon:gear}} gear. There they can also tick **Crew lane counts as a reviewer**. That lets each person's crew average join the composite as one more reviewer. It stays off until someone switches it on.

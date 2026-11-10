@@ -1,3 +1,5 @@
 # 20261109140000_delete_fresh_person_stints.sql (2026-11-09, v2.6798)
 
 `delete_fresh_person(p_user_id, p_dry_run)` (`20261109110000`, v2.6789) replaced in place: the key scan passes over `employment_stints.person_id`. `people_stints_follow_dates` writes that row from the People record's own dates, so a hire with a start date carried one from birth and the first prod press was refused with "a row in employment stints". The stint is the record, not history, its key is `ON DELETE CASCADE`, and it goes with the record unnamed. Same signature, grants and answer shape; every other key into `users(id)` or `people(id)` is counted as before. Idempotent; no table created. Push right after the merge. Bed: `supabase/tests/users_without_login/70_delete_fresh_person.sql` D8.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift`: 1209 local files against 1209 remote versions, fully applied, this one among them.

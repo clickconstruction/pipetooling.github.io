@@ -34,7 +34,7 @@ Every report for this period is generated. Next: mark the payroll transactions o
 
 ## 3. Mark the payroll transactions
 
-You open **Job Parts Tally → Transactions**. The payroll run shows up as a bank transaction like any other purchase. On each one with no jobs assigned, you press {{button:outline|Mark payroll}} and confirm. It resolves without a job split, so job spend is not double-counted. Anyone with payroll access can do this: a dev, a controller, or a pay-approved leader. The auto-mark **rules** stay a dev tool. See [mark payroll transactions in the tally](?g=tally-payroll-marking).
+You open **Job Parts Tally → Transactions**. The payroll run shows up as a bank transaction like any other purchase. On each one with no jobs assigned, you press {{button:outline|Mark payroll}} and confirm. It resolves without a job split, so job spend is not double-counted. Anyone with payroll access can do this: a dev, a controller, or a pay-approved leader. The auto-mark **rules** are for a dev or the controller. See [mark payroll transactions in the tally](?g=tally-payroll-marking).
 
 ## Reading the Pay run table
 

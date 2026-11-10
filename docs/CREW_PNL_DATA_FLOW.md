@@ -3,12 +3,12 @@
 ---
 file: docs/CREW_PNL_DATA_FLOW.md
 type: Engineering / Data-flow reference
-purpose: Every input, transform, and output behind Jobs → Crew P&L (dev-only in practice), with the known weaknesses — written after the v2.976/v2.978 partial-data incidents so the next debugging session starts from a map instead of archaeology.
+purpose: Every input, transform, and output behind Jobs → Crew P&L (the owner's and a dev's since v2.6757), with the known weaknesses — written after the v2.976/v2.978 partial-data incidents so the next debugging session starts from a map instead of archaeology.
 audience: Developers, AI Agents
 last_updated: 2026-11-07
 ---
 
-Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent; estimators have no `/jobs` route at all (`estimatorAllowedPaths`), so **dev is the only role that both reaches `/jobs` and passes the gate** — J8-D1, corrected v2.2912). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, vehicle (v2.5039), billing (revenue credit — column header **Billed (gross)** since v2.2852: it splits the job's gross total bill by hours, not cash collected and not revenue before overhead), profit, billing/hr** + per-job drilldown.
+Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/assistant-like/superintendent; estimators have no `/jobs` route at all (`estimatorAllowedPaths`), so **the owner and a dev are the roles that both reach `/jobs` and pass the gate** — J8-D1, corrected v2.2912; the owner since v2.6757, punch list #188 row 1). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, vehicle (v2.5039), billing (revenue credit — column header **Billed (gross)** since v2.2852: it splits the job's gross total bill by hours, not cash collected and not revenue before overhead), profit, billing/hr** + per-job drilldown.
 
 ## 1. Inputs (seven sources)
 

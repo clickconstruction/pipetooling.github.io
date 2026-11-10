@@ -11,3 +11,5 @@ Punch list #188, PR 9 of the dev gates: the Settings doors that a policy or an R
 No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, every function `CREATE OR REPLACE`: idempotent, additive.
 
 **Order**: push right after the merge. Until the push the owner's Training and Usage tabs read refusals in words, his company document and clause saves are refused, and the email log reads empty for him.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

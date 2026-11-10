@@ -9,3 +9,5 @@ Punch list #188, PR 4 of the dev gates: the People page, rows 1 to 3 and 55 to 5
 Rows 1 (Crew P&L), 2 (Review), 3 (Scoreboard) and 55 (the Balances and Payments views) read what their audiences read already: client lines alone. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge. The old client never showed these doors to the owner; the new client shows them, and until the push a save would come back as a refusal in words and the Activity tab would draw empty for him.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

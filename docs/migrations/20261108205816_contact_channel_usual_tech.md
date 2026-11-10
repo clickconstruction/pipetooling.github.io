@@ -8,3 +8,5 @@ Punch list #118, PR 2 (`docs/recent-features/v2.6732.md`): the tech's door on th
 Additive and idempotent; no CREATE TABLE, so no new fences. `supabase/tests/messages_tech_send/20_scenario.sql` § 8 holds the door.
 
 **Order:** the client reads the policy's rows and calls a function that already exists, so it deploys either side of the push; until the push a tech's On my way sheet reads no numbers and draws no chip, and `quo-send` picks as before. Push, then `supabase functions deploy quo-send` (the tech path takes `channelId` and reads `usual_at`) and `supabase functions deploy messages-nudge-dispatch` (a held row's words name the number).
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

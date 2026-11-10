@@ -33,7 +33,7 @@ Tap {{button:blue|+ Add to roster}} in the toolbar, or **Add** on a group. Pick 
 Closed the desk and want it back? The toolbar shows {{button:outline|Back to Rio's desk}} until you open it again.
 
 :::example A new external sub
-Add to roster → **Subcontractor** → name and phone → leave *invite* unticked → Add. Their desk opens; tap the globe on the Portal row, copy the link, text it. Assign the Subs packet on the Paperwork row. Done. No login was needed, and one can be attached later.
+Add to roster → **Subcontractor** → name and phone → leave *Also attach a login* unticked → Add. Their desk opens; tap the globe on the Portal row, copy the link, text it. Assign the Subs packet on the Paperwork row. Done. No login was needed, and one can be attached later.
 :::
 
 ## Find people fast

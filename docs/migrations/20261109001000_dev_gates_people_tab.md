@@ -10,3 +10,5 @@ Punch list #188, PR 2 of the dev gates: Settings → People & teams becomes the 
 Pay Approved Leaders (row 86, held by the `check_show_in_hours_dev_only` trigger) and Role visibility (row 87) stay a dev's; nothing here touches them. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`: idempotent, additive.
 
 **Order**: push right after the merge. The old client never showed these blocks to anyone but a dev; the new client shows them, and until the push a save would come back as a refusal in words.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

@@ -11,3 +11,5 @@ Punch list #188, PR 8 of the dev gates: the controller's doors on Banking, the C
 Row 52 (the Ledger and its sorting configuration) reads `mercury_transactions`, which the controller reads already. No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, the function `CREATE OR REPLACE`: idempotent, additive.
 
 **Order**: push right after the merge, then `supabase functions deploy manage-manual-account` and `supabase functions deploy import-manual-transactions`. Until the push the controller's Stripe Data tab reads empty and her nickname, switch, form and rule saves come back as refusals in words; until the deploys her CSV import and manual accounts answer *Forbidden*.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

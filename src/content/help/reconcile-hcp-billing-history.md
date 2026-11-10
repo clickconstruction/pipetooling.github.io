@@ -1,7 +1,7 @@
 ---
 title: reconcile HCP billing history
 category: Office
-roles: dev
+roles: dev, controller
 keywords: housecall pro, hcp, import, reconcile, backfill, bill dates, payment dates, pay speed, invoices export, payments report
 ---
 Jobs that came over from HouseCall Pro often have payments with no bill and dates that mean the wrong thing. The HCP reconcile tool fixes that from HCP's own exports.

@@ -1,3 +1,5 @@
 # 20261109180000_unlinked_payments_skip_in_kind.sql (2026-11-09, v2.6816)
 
 `list_unlinked_payments_for_bank_payments()` (last `20260927230000`) replaced in place: a row whose `payment_type` carries the word *In kind* is left off the list. An in-kind payment (v2.6816 — the landlord's rent credit, a payment that pays a bill down but is not money) sat on Accounts Receivable's recorded-payment candidates and the Dashboard's money-in week waiting for a deposit that never comes. The word is read the way `supabase/functions/_shared/inKindPayment.ts` reads it (`in kind`, `in-kind`, `inkind`, anywhere in the type, never the `kind` in another word). Same signature, grants and answer shape; the client also filters the rows it reads (`moneyInWeek.ts`, `BankPaymentsModal`), so nothing depends on the push landing first. Idempotent; no table created. Push after the merge.
+
+**Applied** to prod by 2026-11-10, read the same day through `npm run check:migration-drift`: 1216 local files against 1216 remote versions, fully applied, this one among them.

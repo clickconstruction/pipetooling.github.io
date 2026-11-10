@@ -2,7 +2,7 @@
 name: "Development page: two reads the Gun Dog spike left for later"
 number: 280
 group: residual
-status: built and measured 2026-11-08 — PR 1 the heads view (v2.6735, #7357) and PR 2 the payers' pace (v2.6739, #7363) on main, both migrations on prod, the after under the before below; the types PR #7395 armed; nothing left to build
+status: built and measured 2026-11-08 — PR 1 the heads view (v2.6735, #7357) and PR 2 the payers' pace (v2.6739, #7363) on main, both migrations on prod, the after under the before below; the types PR #7395 on main; nothing left to build
 summary: >
   The Gun Dog spike (punch list #208, 2026-11-02) cut the Development page's read from seven
   round trips to four and left two reads as they were. The pay-speed read for the Money look's
@@ -11,7 +11,7 @@ summary: >
   read takes every column of `development_history_entries` for the site, up to 500 rows, and on
   the real site that is about 279 KB of kept mail bodies the page shows folded. Neither is wrong,
   both are weight the page carries on every open.
-next: Nothing to build. Once the types PR #7395 is on main, delete this file and write its Closed line in `to-dos/README.md` (the owner's call, as with #257).
+next: Nothing to build. The types PR #7395 is on main: delete this file and write its Closed line in `to-dos/README.md` (the owner's call, as with #257).
 size: S (PR 1 the entries read) + S (PR 2 the pay-speed RPC, a migration)
 blocker: None. A measured open of the real site's page, before and after, is the proof either PR needs.
 mockup: not required — reads only, no screen changes

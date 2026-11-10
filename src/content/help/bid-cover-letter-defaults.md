@@ -1,7 +1,7 @@
 ---
 title: change the default bid cover letter text
 category: Office
-roles: dev
+roles: dev, estimator
 keywords: cover letter, bids, terms, exclusions, closing, defaults, wording
 order: 70
 ---

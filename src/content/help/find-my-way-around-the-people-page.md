@@ -24,7 +24,7 @@ Nothing moved off the page. The old tabs are the views in that row.
 - **Pay** is the money side of people. **Hours** is the timesheet grid and clock sessions. **Payroll** is the pay reports and ledger. **Offsets** is deductions and balances. **Employment** is start and end dates and time off. **Overhead** is office labor on the overhead job.
 - **Paperwork** is what people sign and hold. **Contracts** is the Contract library, packets, and signing status. **Licenses** lists the expired licenses first with the days since, then the ones expiring in the next 30 days. Every morning Dispatch hears of each license expiring within 30 days, whether or not anyone saved it. **Writeups** and the dev-only **HR** files sit beside it. Writeups also draws one person's attendance as a strip of days. See [see a person's lates and start a write-up](/help/see-a-persons-lates-and-start-a-write-up).
 - **Fleet & Housing** holds **Vehicles**, the fleet board, and **Housing**.
-- **Review** and **Feedback** appear for devs only.
+- **Review** appears for the owner and devs. **Feedback** appears for devs only.
 
 You only see the tabs and views your role could open before. A tab with a single view for you skips the row and opens that view directly.
 

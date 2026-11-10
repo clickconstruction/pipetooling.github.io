@@ -11,3 +11,5 @@ No table, no fences, no function to deploy.
 ## Release order
 
 Merge the PR, `supabase db push`. The next `chore(types)` regen also picks up 20261109080000's two functions, which the regen in #7446 predated.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

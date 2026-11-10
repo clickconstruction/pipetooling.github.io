@@ -18,7 +18,7 @@ The scoreboard pays a superintendent for finishing under the hours his project w
 
 ## Read the board
 
-1. Open People → **Review** → **Scoreboard**. A dev and a pay-approved master see it.
+1. Open People → **Review** → **Scoreboard**. The owner, a dev and anyone with payroll access see it.
 2. Pick the month with the arrows.
 3. Read each row. It shows the jobs signed off, hours used of hours earned, days against the plan, labor kept and the bonus.
 4. Press a name to open the jobs under it. A job that could not score says why.

@@ -55,10 +55,10 @@ The job itself is untouched. The job stays in its normal pipeline and gets resch
 
 ## Setting the default amounts
 
-Devs set the per-reason default amounts in **Settings → Jobs, bills and liens → Turnaway Trip Charges**:
+The owner or a dev sets the default amounts in **Settings → Jobs, bills and liens → Turnaway Trip Charges**:
 
-:::example Settings → Turnaway Trip Charges (dev)
+:::example Settings → Turnaway Trip Charges
 Client not home ($): `95` &nbsp;&nbsp; Site not ready ($): `95` &nbsp;&nbsp; {{button:blue|Save}}
 :::
 
-A dev can leave an amount blank. Then the office types it each time instead.
+The owner or a dev can leave an amount blank. Then the office types it each time instead.

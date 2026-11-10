@@ -13,3 +13,5 @@ Additive and idempotent; no `CREATE TABLE`, so no fence is owed.
 ## Order
 
 After `20261108210000` (v2.6716, the rename and `text_document_id`) and `20261108220000` (#285 PR 2, `file_index.source` from its PR 1 `20261108200000`): the search body names their columns. Push, then `supabase functions deploy legal-portal` and `supabase functions deploy dev-mcp`.
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

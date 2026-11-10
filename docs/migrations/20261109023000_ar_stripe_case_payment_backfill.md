@@ -6,3 +6,5 @@ Punch list #76 (`to-dos/ar-returned-checks.md`), the defect the 2026-11-09 Strip
 - No table, so no fence calls; the grants and the comment are restated.
 
 Deploy order: nothing in the client reads the new key, so push any time after the merge. The back-fill runs only on a new dispute event for the case: for a case already open, resend one of its dispute events from the Stripe Dashboard's Workbench (Webhooks → the endpoint → Event deliveries → Resend).
+
+**Applied** to prod by 2026-11-09, read the same day through `npm run check:migration-drift` and the dev seat's `check_migration_ledger`: 1207 local files against 1207 remote versions, fully applied, this one among them.

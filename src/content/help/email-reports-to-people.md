@@ -56,4 +56,4 @@ Reports are never sent twice to the same person. Auto-send and **Send now** shar
 
 - Signature fields in a report show as **[signature captured]** in the email. The signature image itself isn't attached.
 - Report emails are separate from the in-app push notifications people already get. Turning one on doesn't change the other.
-- A recipient who is an app user sees this on their own settings. It is the **Field reports** row on {{icon:gear}} **Settings → Your account → My email schedule**. It reads like "reports from Darren and Paige". That is also so when you typed their address instead of picking them. Devs see every recipient on **Settings → Email streams** under **Field report emails**.
+- A recipient who is an app user sees this on their own settings. It is the **Field reports** row on {{icon:gear}} **Settings → Your account → My email schedule**. It reads like "reports from Darren and Paige". That is also so when you typed their address instead of picking them. The owner and devs see every recipient on **Settings → Email streams** under **Field report emails**.

@@ -1,13 +1,13 @@
 ---
 title: read the Usage dashboard
 category: Getting Started
-roles: dev
+roles: dev, master_technician
 keywords: usage, analytics, measurement, clicks, time on page, portal opens, estimate opens, quiet pages, settings
 order: 81
 ---
 **Settings → Usage** shows how the company actually uses the app. Design and cleanup decisions then follow evidence instead of hunches.
 
-Usage sits in the System zone, for devs only.
+Usage sits in the System zone, for the owner and devs.
 
 ## The two views
 

@@ -38,3 +38,5 @@ PR 2 reads the PDF a bill's row links and writes these rows: the service account
 ## Deploy
 
 `supabase db push` after the merge. Nothing calls the tables before PR 2, so the order against the Pages deploy does not matter. The widened reader schema takes `bash scripts/deploy-functions.sh bill-read` (and `dev-mcp`, whose catalog names it) when it is next deployed; the old client reads the new answer's extra fields without harm.
+
+**Applied** to prod by 2026-11-10, read the same day through `npm run check:migration-drift`: 1216 local files against 1216 remote versions, fully applied, this one among them.

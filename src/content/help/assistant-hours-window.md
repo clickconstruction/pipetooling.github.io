@@ -39,6 +39,6 @@ A day audit and the Team board add a session onto one day. There the day is in t
 
 The database holds the same rule. A session typed onto an earlier day is refused with the earliest day named, whatever screen it came from.
 
-## Changing the window (dev)
+## Changing the window (owner or dev)
 
 Go to **Settings → People & teams → Assistant hours visibility**. Set **Weeks visible** to any number. The current week counts as one. Or check **No limit** to give assistants the full history and any day. {{button:blue|Save}} applies org-wide the next time each assistant loads the Hours tab.

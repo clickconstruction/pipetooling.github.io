@@ -11,7 +11,7 @@ The **Form Studio** lets you upload that PDF once. You place the entry boxes whe
 
 ## Create a form
 
-1. Open **People → Contracts → {{button:blue|Contract library}} → Forms**. This is for devs only.
+1. Open **People → Contracts → {{button:blue|Contract library}} → Forms**. This is for a dev or the controller.
 2. Tap {{button:outline|+ New form from a PDF}}. Pick the PDF. Give it a name and the issuer's revision label, for example *Rev. March 2024*. Choose the **paperwork type**. A W-9 form makes its copies count under the {{chip:green|W-9}} pill on its own.
 3. Leave **Import its fillable fields as boxes** ticked when the PDF has them. The IRS W-9 has 23. Tap {{button:blue|Create and open}}.
 

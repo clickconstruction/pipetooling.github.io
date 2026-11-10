@@ -31,7 +31,7 @@ Prospects.tsx has 9 custom hooks (plus, since v2.5582 and v2.5583, `useLeaveGuar
 The page switches on **three levels of tab state**:
 
 ```
-topTab:    'customers' | 'team'                                   (ProspectsTopTab 96)
+topTab:    'customers' | 'team' | 'research'                      (ProspectsTopTab 96; 'research' is the Permits tab, ?tab=permits, v2.6782)
 activeTab: 'follow-up' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 98, PROSPECTS_TABS 128; only under 'customers')
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review' (TeamProspectsTab 803; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
@@ -39,7 +39,7 @@ stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review' (TeamProspectsT
 One `?tab=` param selects both upper levels: `team` selects the Hiring tab (its label changed from Team to Hiring in v2.1253, and the key stayed `team`), and the four `PROSPECTS_TABS` values select the Customers sub-tabs. `?stage=` (+ `?rate=`) is applied once inside TeamProspectsTab and then stripped.
 
 Access gates:
-- **`canAccessFollowUp`** (1983): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates Follow Up, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (1993–2001).
+- **`canAccessFollowUp`** (1983): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates Follow Up, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (1993–2001), except on the Permits tab since v2.6782 (`canResearchPermits`: the office and every estimator), where they land with no calling-deck tabs.
 - **`canAccessActivityTab`** (416): `authRole === 'dev' || isAssistantLike(authRole)`.
 - **`canOpenHiring`** (270): `teamProspectsAccess || myHiringShares.length > 0`. Since v2.3805, `useMyHiringShares` reads the viewer's own `team_prospect_role_shares` rows. A share holder without the switch gets the trimmed board, because the page passes `shared={!teamProspectsAccess}`.
 
@@ -299,7 +299,7 @@ Access gates:
   - Owned state: `onboardingItems`, `onboardingStatuses` (a Map keyed `` `${prospectId}:${itemId}` ``; a missing key means pending), `onboardingSettingsOpen`, `newItemLabel`, `newItemLink`, `itemDrafts`.
   - Handlers: `cycleOnboardingStatus` 1302–1316 (optimistic upsert, `ONBOARDING_STATUS_META` 120–124), `addOnboardingItem` 1318–1335, `saveOnboardingItem` 1337–1356, `moveOnboardingItem` 1358–1373 (index-based two-row position swap), `deleteOnboardingItem` 1375–1385.
   - Settings modal 2276–2368. The roster hand-off (`hireTarget`, `hireKind`; `openRosterHandoff` 1232–1236 pre-selects `suggestRosterKind(roleName)`; `addHireToRoster` 1280–1299; modal 2228–2274) is opened from `setStatus('hired')` too, so it **stays at TPT level**.
-  - The onboarding legend renders only when items exist or `isDev`. The ⚙ Onboarding settings button and the "no items yet" pointer are dev-only.
+  - The onboarding legend renders only when items exist or `canEditOnboarding`. The ⚙ Onboarding settings button is the owner's and a dev's since v2.6763 (`canEditOnboarding`, with the Team review weights as `canSetWeights`); the "no items yet" pointer is dev-only.
 - **Review** (2044–2051): `<TeamReviewSection authUserId isDev initialRateUserId={rateUserIdFromUrl} onOpenScreenBoard={() => setStage('screen')} />`. Done.
 - **Cross-stage modals:** Add 2103–2128 (`addOpen`/`addDraft`); Edit 2130–2177 (`editTarget`/`editDraft`/`confirmingDelete`; delete gated by `powers.canDelete`, opened from Screen cards, Try-out, Hire rows and the Passed bucket); My review; Hire-to-roster; Onboarding settings; Share (`ShareColumnDialog` 2369–2380).
 

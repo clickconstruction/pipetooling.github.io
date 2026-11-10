@@ -107,7 +107,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 
 | Tab | dev | master_technician | assistant | controller | estimator | primary | superintendent |
 |---|---|---|---|---|---|---|---|
-| Crew P&L (`showTeamsTab`) | ✓ | — | — | — | ✓ | — | — |
+| Crew P&L (`showTeamsTab`; the owner since v2.6757) | ✓ | ✓ | — | — | ✓ | — | — |
 | Reports | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Pipeline, Billing (`showStagesAndBillingTabs`) | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
 | Team (`showTeamLaborTab`) | ✓ | ✓ | — | ✓ (quirk #5) | ✓ | — | — |
@@ -116,7 +116,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 
 `null`+`null` roles count as primary-restricted (`isPrimaryOrUnknown`, 1687) so the bar never flashes wrong tabs.
 
-**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for master/assistant-like on `teams-summary`, both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
+**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for assistant-like on `teams-summary` (the owner is let in since v2.6757), both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
 
 ### Page-side gates (in `Jobs.tsx`)
 
@@ -124,13 +124,13 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 |---|---|---|
 | Parts / Job Summary banking + mercury quick-add (`canAccessBankingForParts`) | dev / master / assistant-like on `authRole` **or** `myRole` | 335–344 |
 | Pipeline burn card (`pipelineBurnWanted`) | `activeTab === 'stages' && showJobCostBreakdownTeamLabor(authRole)` (dev / master / controller) | 162 |
-| `?stagesMoney=` | `authRole ?? myRole` ∈ dev / controller; master + assistant-like get a `pipeline-money` bounce | 1062–1070 |
+| `?stagesMoney=` | `canSeeStagesMoneyCharts(authRole ?? myRole)`: dev / master / controller (the owner since v2.6759); an assistant gets a `pipeline-money` bounce | 1062–1070 |
 | `?openBankPayments=` | `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (dev / master / assistant-like); waits while `authRole == null` | 1126 |
 | `?legal=` (+ `&legalTab=`) | no gate here since v2.5894 (punch list #182): `legalDeskRedirect` sends the link to `/legal-desk` with `replace`, and the page gates the roles | 1157 |
 | `?liendesk=` (+ `&kind=`, `&liendeskJob=`, `&liendeskPile=`) and `?ownerrecords=` | no gate here since v2.6777 (punch list #182): `lienDeskRedirect` sends the link to `/lien-desk` with `replace`, and the page gates the roles; the board's deep-link hook no longer answers either | 1167 |
 | Job Summary Session notes (`canOpenSessionNotes`) | `['dev','master_technician','assistant','controller'].some(r => r === authRole \|\| r === myRole)` | 2126 |
 | Job Summary Team Labor + Profit columns (`showTeamLaborAndProfit`) | `authRole` ∈ dev / master / **controller** (not assistant) | 2151 |
-| Job Summary overhead dials (`canEditOverheadDials`) | `authRole === 'dev'` | 2152 |
+| Job Summary overhead dials (`canEditOverheadDials`) | `isOwnerOrDev(authRole)` (the owner since v2.6759) | 2152 |
 | Subs Work view (`canSeeWork`) | `showSuperintendentExtraTabs` | 1981 |
 
 ### Pipeline in-tab gates
@@ -174,9 +174,9 @@ The whole tab is [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) —
 | `openWeeklyMoney(weekMonday)` | `?stagesMoney=` + `&stagesMoneyWeek=` via `parseStagesMoneyWeekParam` (v2.1443) | 1048–1078 |
 | `showBilledTotalByName()` | `?showBilledTotalByName=true` | 1328–1340 |
 | `openMoneyMove(key)` | `?stagesMove=` via `parseStagesMoneyMoveKey` (v2.2145, Quickfill → Jobs Cleanup) | 1084–1104 |
-| `openLienDesk(jobId)` | **no caller anywhere** (defined in the tab's `useImperativeHandle` only) | — |
+| ~~`openLienDesk(jobId)`~~ | gone with v2.6780 (punch list #182: the Lien desk is a page, `/lien-desk`) | — |
 
-**Props (60, `JobsStagesTabProps`):** `active` · page `error`/`setError` (2) · jobs cache (13: `jobs`, loading/refreshing/`jobsListSnapshotAt`/`jobsListError`/`paidJobsLoading`/`jobsListDataKey`/`paidJobsMergedForKey`, `loadJobs`, `runFetchJobs`, `fetchPaidJobsIfNeeded`, `customerFilterForFetch`, `scheduleLoadJobsAfterMutation`) · identity/roster (8: `authUser`, `authRole`, `authProfileName`, `myRole`, `users`, `customers`, `showToast`, `shortNewJobButtonLabel`) · page callbacks (9: `openNew`, `openEdit`, `openEditJobAndCreateCustomerFlow`, `tryOpenEditJob`, `pipelineBurnAlert`, `onShowBurnList`, `openStagesDetailJobModal`, `refreshCustomersAfterJobFormSave`, `billCustomer`) · the 12 `useJobsStagesMutations` values · 15 `useJobThreadNotes` values. The tab reads `searchParams` itself and consumes eight one-shot params of its own (`followups`, `gcReview`, `gcnotice`, `liendesk`, `round`, `chase`, `forecast`, `rtb` — stripped via `navigate`, listed in [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md)); it also calls `useArBankUnallocatedCount` / `useSendBackCollectPaymentFlowNotice` internally.
+**Props (60, `JobsStagesTabProps`):** `active` · page `error`/`setError` (2) · jobs cache (13: `jobs`, loading/refreshing/`jobsListSnapshotAt`/`jobsListError`/`paidJobsLoading`/`jobsListDataKey`/`paidJobsMergedForKey`, `loadJobs`, `runFetchJobs`, `fetchPaidJobsIfNeeded`, `customerFilterForFetch`, `scheduleLoadJobsAfterMutation`) · identity/roster (8: `authUser`, `authRole`, `authProfileName`, `myRole`, `users`, `customers`, `showToast`, `shortNewJobButtonLabel`) · page callbacks (9: `openNew`, `openEdit`, `openEditJobAndCreateCustomerFlow`, `tryOpenEditJob`, `pipelineBurnAlert`, `onShowBurnList`, `openStagesDetailJobModal`, `refreshCustomersAfterJobFormSave`, `billCustomer`) · the 12 `useJobsStagesMutations` values · 15 `useJobThreadNotes` values. The tab reads `searchParams` itself and consumes eight one-shot params of its own (`followups`, `gcReview`, `gcnotice`, `lienwindow`, `round`, `chase`, `forecast`, `rtb` — stripped via `navigate`, listed in [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md)); it also calls `useArBankUnallocatedCount` / `useSendBackCollectPaymentFlowNotice` internally.
 
 #### The burn card cluster (page-side, v2.3191; footing v2.3300)
 
@@ -369,7 +369,7 @@ Behavior-preserving decomposition only — note these, don't "clean them up" mid
 17. **Two % complete commit paths** — `updateJobPctComplete` (bare write) and `commitStagesPctWithNote` (thread note first), sharing `pctCompleteSavingId` in the mutation hook. Since v2.5765 a wheel over the Pipeline's focused `% done` box (`StagesProgressPaymentCell.tsx`) blurs it, so the page scrolls, the number stays as typed and the blur commits only a changed value; Edit Job's box does the same since v2.5768 ([JOB_FORM_MODAL_ARCHITECTURE.md](./JOB_FORM_MODAL_ARCHITECTURE.md)).
 18. **The burn card arms once and stays armed** (163–168): after 2.5 s on Pipeline for dev / master / controller, the Job Summary cost loads (parts ledger, sheets, team labor, report-% for open jobs, budget footings) run on the Pipeline and keep running on every later tab for the session. Intended ("the loads are the same caches Job Summary reads"); keep the 2.5 s delay and the stickiness.
 19. **Sub-labor cost joins on the sheet's link (fixed v2.3838)** — `jobSummaryData` and `subLaborJobIds` (Billing's needs-attention flag, was `laborJobHcps`) group sheets by `job_ledger_id` via `subLaborSheetsByJobId` (`lib/jobs/subLaborByJobId.ts`, tested). They joined on the sheet's `job_number` text, so a click-number-only job, a renumbered job or a hand-linked sheet added $0 and two jobs sharing a number shared its cost. The `?editLabor=` fallback (1190) is id-first and stays.
-20. **Unused handle methods:** `JobsStagesTabHandle.openLienDesk` has no caller; `JobsSubLaborFormModalHandle.openWithBillingPrefill` has had none since v2.1623 (only its render test). Remove in a cleanup PR, not mid-move.
+20. **Unused handle methods:** `JobsStagesTabHandle.openLienDesk` had no caller and left with v2.6780; `JobsSubLaborFormModalHandle.openWithBillingPrefill` has had none since v2.1623 (only its render test). Remove in a cleanup PR, not mid-move.
 21. **Labor and team-labor loaders fire on Team** (1344, 1351) though `JobsTeamTab` self-loads and reads neither (its four props are the focus params). Dropping `combined-labor` from those two conditions is a (safe) behavior change; separate PR.
 
 ---
