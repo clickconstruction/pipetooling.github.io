@@ -25,6 +25,7 @@ import {
   type SkimCard,
 } from '../../lib/research/permitSkim'
 import { loadContactHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
+import { passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from '../../lib/research/permitSecondLook'
 import { swipeAnswer, swipeIsScroll, swipeMayStart, swipeProgress } from '../../lib/research/permitLook'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { PermitSkimLook } from './PermitSkimLook'
@@ -39,6 +40,9 @@ import { WhoPulledItSheet } from './WhoPulledItSheet'
  * a permit stays until it is answered. The Who line and the Property line open the two sheets.
  * Two pictures sit across the top (PermitSkimLook), and on a phone a drag answers: right keeps,
  * left passes, with the word showing as the card passes a third of its width.
+ *
+ * In `second` mode the same deck deals what someone else passed (permitSecondLook): the card says
+ * who passed and why, Keep sends it to Kept under this person's name, and Pass closes it for good.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const cardStyle: CSSProperties = { position: 'relative', touchAction: 'pan-y', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
@@ -86,6 +90,8 @@ export function PermitSkimDeck({
   onAnswered,
   onDigIn,
   onLive,
+  mode = 'skim',
+  onSecondLook,
 }: {
   authUserId: string
   city: string
@@ -105,6 +111,10 @@ export function PermitSkimDeck({
   onDigIn: () => void
   /** The deck's own count and the answer it holds, for the strip above it. Null while it reads, when it fails and when it closes. */
   onLive?: (live: SkimLive | null) => void
+  /** `second` deals what someone else passed, for a second look. */
+  mode?: 'skim' | 'second'
+  /** Opens the second look, offered once the skim is caught up. */
+  onSecondLook?: () => void
 }) {
   const { showToast } = useToastContext()
   const office = useOfficeAnchor(true)
@@ -120,7 +130,7 @@ export function PermitSkimDeck({
   const [dx, setDx] = useState(0)
 
   // Our history with the names in the deck alone, one read, fail-soft: the deck stands without it.
-  const waitingKeys = useMemo(() => [...new Set(rowsAboveFloor(rows, floor).filter((r) => placeOf(r).place === 'skim').flatMap((r) => contactKeys(r.contact)))].sort().join('|'), [rows, floor])
+  const waitingKeys = useMemo(() => [...new Set(rowsAboveFloor(rows, floor).filter((r) => (mode === 'second' ? waitsOnSecondLook(r, authUserId) : placeOf(r).place === 'skim')).flatMap((r) => contactKeys(r.contact)))].sort().join('|'), [rows, floor, mode, authUserId])
   useEffect(() => {
     if (waitingKeys === '') {
       setHistory(new Map())
@@ -135,7 +145,10 @@ export function PermitSkimDeck({
     }
   }, [waitingKeys])
 
-  const deck = useMemo(() => skimDeck(rows, { todayYmd, office, history, ...skimBuilderContext(rows) }, floor).filter((c) => !done.has(c.row.id)), [rows, todayYmd, office, history, floor, done])
+  const deck = useMemo(() => {
+    const ctx = { todayYmd, office, history, ...skimBuilderContext(rows) }
+    return (mode === 'second' ? secondLookDeck(rows, ctx, floor, authUserId) : skimDeck(rows, ctx, floor)).filter((c) => !done.has(c.row.id))
+  }, [rows, todayYmd, office, history, floor, done, mode, authUserId])
   const top = deck[0] ?? null
   // A kept permit the tab has not yet been told about is still held here, so the press counts it.
   const keptCount = useMemo(() => placeCounts(rows, floor).kept + (pending?.answer === 'keep' ? 1 : 0), [rows, floor, pending])
@@ -145,20 +158,21 @@ export function PermitSkimDeck({
   const heldAnswer = pending?.answer ?? null
   const deckReady = !loading && !error
   useEffect(() => {
-    onLive?.(deckReady ? { left, held: heldAnswer } : null)
-  }, [onLive, deckReady, left, heldAnswer])
+    onLive?.(deckReady ? { mode, left, held: heldAnswer } : null)
+  }, [onLive, deckReady, mode, left, heldAnswer])
   useEffect(() => () => onLive?.(null), [onLive])
 
   /** Write one held answer. A failure names the permit, says why, and puts the card back. */
   const write = useCallback(
     async (p: Pending) => {
-      const v = skimVerdict(p.answer, p.reasonCode)
+      // A second look writes its own words and an sl_ code; the skim writes the tapped reason, if any.
+      const v = mode === 'second' ? secondLookVerdict(p.answer, p.reasonCode, p.card.row.verdict_by_name) : { ...skimVerdict(p.answer, p.reasonCode), reasonCode: p.answer === 'pass' ? p.reasonCode : null }
       try {
-        await recordVerdict({ permitId: p.card.row.id, verdict: v.verdict, reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId, reasonCode: p.answer === 'pass' ? p.reasonCode : null, forUserId: p.answer === 'keep' ? p.forUserId : null })
+        await recordVerdict({ permitId: p.card.row.id, verdict: v.verdict, reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId, reasonCode: v.reasonCode, forUserId: p.answer === 'keep' ? p.forUserId : null })
         onAnswered(p.card.row.id, {
           verdict: v.verdict,
           verdict_reason: v.reason,
-          verdict_reason_code: p.answer === 'pass' ? p.reasonCode : null,
+          verdict_reason_code: v.reasonCode,
           verdict_for_user: p.answer === 'keep' ? p.forUserId : null,
           verdict_for_name: p.answer === 'keep' ? (researchers.find((r) => r.id === p.forUserId)?.name ?? null) : null,
           verdict_at: new Date().toISOString(),
@@ -174,7 +188,7 @@ export function PermitSkimDeck({
         setTally((t) => (p.answer === 'keep' ? { ...t, kept: Math.max(0, t.kept - 1) } : { ...t, passed: Math.max(0, t.passed - 1) }))
       }
     },
-    [authUserId, showToast, onAnswered, researchers],
+    [authUserId, showToast, onAnswered, researchers, mode],
   )
 
   const flush = useCallback(() => {
@@ -328,7 +342,7 @@ export function PermitSkimDeck({
 
   const bar = pending && (
     <div role="status" style={{ margin: isMobile ? '0 0 10px' : '14px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-      <span>{pending.answer === 'keep' && researchers.length > 0 ? 'Kept. For?' : answeredWords(pending.answer)}</span>
+      <span>{pending.answer === 'keep' && researchers.length > 0 ? 'Kept. For?' : mode === 'second' ? secondLookAnsweredWords(pending.answer) : answeredWords(pending.answer)}</span>
       {pending.answer === 'keep' &&
         researchers.length > 0 &&
         [{ id: null as string | null, name: 'Anyone' }, ...researchers.slice(0, 8)].map((r) => {
@@ -369,13 +383,19 @@ export function PermitSkimDeck({
 
   if (!top) {
     const dig = digInWords(keptCount)
+    const again = mode === 'skim' && onSecondLook ? secondLookCount(rows, floor, authUserId) : 0
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
         <div style={{ ...cardStyle, padding: '1.5rem 1rem', textAlign: 'center' }}>
-          <EmptyState main="Nothing waiting on a skim." tail={caughtUpWords(tally.kept, tally.passed)} compact />
+          {mode === 'second' ? <EmptyState main="Nothing waiting on a second look." tail={secondLookCaughtUpWords(tally.kept, tally.passed)} compact /> : <EmptyState main="Nothing waiting on a skim." tail={caughtUpWords(tally.kept, tally.passed)} compact />}
           {dig && (
             <button type="button" onClick={onDigIn} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 10, padding: '12px 18px', fontSize: '0.9375rem', fontWeight: 700, minHeight: 48, cursor: 'pointer', width: '100%', maxWidth: 360 }}>
               {dig}
+            </button>
+          )}
+          {again > 0 && (
+            <button type="button" onClick={onSecondLook} style={{ background: 'var(--surface)', color: 'var(--text-link)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 18px', fontSize: '0.9375rem', fontWeight: 700, minHeight: 48, cursor: 'pointer', width: '100%', maxWidth: 360, marginTop: dig ? 8 : 0 }}>
+              Second look · {again} someone else passed
             </button>
           )}
         </div>
@@ -413,6 +433,7 @@ export function PermitSkimDeck({
         </>
       )}
       <PermitSkimLook row={row} milesWords={far} compact={isMobile} />
+      {mode === 'second' && <div style={{ padding: '7px 16px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', fontWeight: 600 }}>{passedByWords(row, todayYmd)}</div>}
       <div style={{ padding: '14px 16px 4px' }}>
         <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {row.work_type ?? 'Permit'} · {filedWords(row, todayYmd)}

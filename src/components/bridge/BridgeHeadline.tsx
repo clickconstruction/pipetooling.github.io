@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { WeekCard } from '../../lib/bridge/weekCard'
 import type { Headline, HeadlineWeek, Light } from '../../lib/bridge/headline'
 import { shortK } from '../../lib/bridge/headline'
@@ -108,7 +108,7 @@ function LightRow({ light }: { light: Light }) {
   )
 }
 
-export function BridgeHeadline(props: { headline: Headline | null; loading: boolean; error: string | null; net: Light; cash: Light; cards?: WeekCard[] }) {
+export function BridgeHeadline(props: { headline: Headline | null; loading: boolean; error: string | null; net: Light; cash: Light; cards?: WeekCard[]; /** Drawn under the lights: the press that opens what is left after overhead (v2.6840). */ children?: ReactNode }) {
   const { headline: h } = props
   const tw = h?.thisWeek ?? null
   const bigUsd = tw?.recordedUsd ?? null
@@ -153,6 +153,7 @@ export function BridgeHeadline(props: { headline: Headline | null; loading: bool
         <LightRow light={props.net} />
         <LightRow light={props.cash} />
       </div>
+      {props.children}
     </div>
   )
 }

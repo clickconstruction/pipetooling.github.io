@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import { buildProfitPanel, type ProfitPanelInput } from './profitPanel'
 
 const day = (entries: Array<[string, number]>): Map<string, number> => new Map(entries)
@@ -69,5 +70,15 @@ describe('buildProfitPanel', () => {
     expect(p.noteTone).toBe('green')
     expect(p.sources[0]!.risk).toBe('read in full')
     expect(p.sources[2]!.risk).toBe('every purchase is sorted')
+  })
+  it('puts the warning first while hours wait, with about what the day reads once they are in (v2.6840)', () => {
+    const p = buildProfitPanel(base)
+    expect(p.left).toEqual({ usd: -2033, days: 14 })
+    expect(p.warn).toBe('Reads low for now. 585 hours still wait on approval. With them it reads about $2,981 a day.')
+    expect(plainWordsFailures(p.warn ?? '')).toEqual([])
+    // One hour, and no rate to price it with.
+    expect(buildProfitPanel({ ...base, pendingClosedHours: 1, fieldEarnedPerHour: null }).warn).toBe('Reads low for now. 1 hour still waits on approval.')
+    // Nothing waiting: no warning at all.
+    expect(buildProfitPanel({ ...base, pendingClosedHours: 0 }).warn).toBeNull()
   })
 })

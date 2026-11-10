@@ -4,22 +4,7 @@ import { buildCashForecast } from './cashForecast'
 import type { BridgeCall } from './calls'
 import type { Headline, HeadlineWeek } from './headline'
 import type { StageFlow, StageReading } from './stageFlow'
-import {
-  WEEK_CALL_MOVES,
-  WEEK_FIRST_SCREEN_NUMBERS,
-  WEEK_HOW,
-  WEEK_FIRST_SCREEN_WORDS,
-  buildWeekCall,
-  firstDayUnderFloor,
-  firstName,
-  movesToRecord,
-  proposedMoves,
-  topPerson,
-  weekCallBudget,
-  weekCallWords,
-  whenWords,
-  type WeekCallInput,
-} from './weekCall'
+import { WEEK_CALL_MOVES, WEEK_FIRST_SCREEN_NUMBERS, WEEK_HOW, WEEK_FIRST_SCREEN_WORDS, buildWeekCall, firstDayUnderFloor, firstName, movesToRecord, proposedMoves, topPerson, weekCallBudget, weekCallWords, whenWords, type WeekCallInput, deskMoves, deskMovesFoot, movesShown } from './weekCall'
 
 // Made-up numbers throughout: a company whose finished work waits on the bill.
 
@@ -119,19 +104,26 @@ describe('buildWeekCall, before the call', () => {
     // The pile and the two paces. The weeks are the step tile's, said once.
     expect(m.card.line).toBe('$142k finished, not yet billed. The field finishes $33k a week. The office bills $19k a week.')
     expect(m.card.press).toBe('Make Bill this week’s call')
-    expect(m.card.moves.map((x) => x.title)).toEqual(['Bill the 11 finished jobs.', 'Price the 4 jobs with no price.', 'Take bank sorting off whoever bills, so billing is never idle.'])
-    expect(m.card.moves.map((x) => x.who)).toEqual(['Dana', 'Sam', ''])
+    // The first three are the ones the card shows; the step's other moves ride behind them.
+    expect(m.card.moves.slice(0, WEEK_CALL_MOVES).map((x) => x.title)).toEqual(['Bill the 11 finished jobs.', 'Price the 4 jobs with no price.', 'Take bank sorting off whoever bills, so billing is never idle.'])
+    expect(m.card.moves.slice(0, WEEK_CALL_MOVES).map((x) => x.who)).toEqual(['Dana', 'Sam', ''])
     expect(m.card.moves[0]).toMatchObject({ key: 'bill', kind: 'step', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages' }, then: 142_000 })
     expect(m.card.moves[2]?.door).toBeNull()
     expect(m.last).toBeNull()
   })
 
-  it('drops a keyed move with nothing to do, and never lists more than three', () => {
+  it('drops a keyed move with nothing to do, and never shows more than three still on the call', () => {
     const build = proposedMoves('build', base)
     // pct is 0 today, so "set a percent" has nothing to do.
     expect(build.map((x) => x.key)).toEqual(['price', 'other'])
-    const sales = buildWeekCall({ ...base, flow: { ...flow, linkId: 'sales' } })
-    expect(sales.card.moves.length).toBe(WEEK_CALL_MOVES)
+    // The proposal carries every move the step has; the card shows three of the ones still on.
+    const sales = buildWeekCall({ ...base, flow: { ...flow, linkId: 'sales' } }).card.moves
+    expect(sales.length).toBeGreaterThan(WEEK_CALL_MOVES)
+    expect(movesShown(sales, new Set(), WEEK_CALL_MOVES).length).toBe(WEEK_CALL_MOVES)
+    // Take the second off and the fourth comes on; the one taken off stays, with its way back.
+    expect(movesShown(sales, new Set([1]), WEEK_CALL_MOVES)).toEqual(sales.slice(0, 4))
+    expect(movesShown(['a', 'b'], new Set([0, 1]), 3)).toEqual(['a', 'b'])
+    expect(movesShown([], new Set(), 3)).toEqual([])
   })
 
   it('says so when the pick is not the page’s reading', () => {
@@ -280,9 +272,45 @@ describe('the first screen’s words', () => {
   })
 })
 
+describe('the desk’s list of a step’s moves', () => {
+  it('lists every move with today’s number, and marks the ones the card holds', () => {
+    const card = buildWeekCall(base).card.moves
+    expect(card.length).toBeGreaterThan(WEEK_CALL_MOVES)
+    // At a desk the card shows the first three.
+    const list = deskMoves('bill', base, card.slice(0, WEEK_CALL_MOVES))
+    expect(list.length).toBe(card.length)
+    expect(list[0]).toEqual({ title: 'Bill the 11 finished jobs.', today: '$142k today', onCall: true })
+    expect(list.map((m) => m.onCall)).toEqual(card.map((_, i) => i < WEEK_CALL_MOVES))
+    // A move the app cannot read has no number.
+    expect(list.find((m) => m.today == null)).toBeTruthy()
+    // On a phone the card shows two.
+    expect(deskMoves('bill', base, card.slice(0, 2)).filter((m) => m.onCall).length).toBe(2)
+  })
+
+  it('matches a recorded call’s moves by their kind, since the number in the sentence moves', () => {
+    const list = deskMoves('bill', base, [{ key: 'bill', title: 'Bill the 9 finished jobs.' }])
+    expect(list.filter((m) => m.onCall).map((m) => m.title)).toEqual(['Bill the 11 finished jobs.'])
+    // Another step's desk: nothing of it is on a Bill call.
+    expect(deskMoves('collect', base, [{ key: 'bill', title: 'Bill the 9 finished jobs.' }]).some((m) => m.onCall)).toBe(false)
+  })
+
+  it('says how the next move gets on, only when the card does not show them all', () => {
+    expect(deskMovesFoot(4, 3)).toBe('The card at the top shows the first three. Take one off there and the next comes on.')
+    expect(deskMovesFoot(4, 2)).toBe('The card at the top shows the first two. Take one off there and the next comes on.')
+    expect(deskMovesFoot(3, 3)).toBe('')
+    expect(plainWordsFailures(deskMovesFoot(4, 3))).toEqual([])
+  })
+
+  it('keeps the note typed with a call on the card once it stands', () => {
+    const noted = buildWeekCall({ ...base, todayYmd: '2026-11-10', calls: [{ ...billCall, note: 'Ridgeway pays on the 20th if billed by Friday.' }] })
+    expect(noted.card.note).toBe('Ridgeway pays on the 20th if billed by Friday.')
+    expect(buildWeekCall(base).card.note).toBeUndefined()
+  })
+})
+
 describe('the record press', () => {
   it('writes the moves left on, with the person on each', () => {
-    const moves = buildWeekCall(base).card.moves
+    const moves = movesShown(buildWeekCall(base).card.moves, new Set(), WEEK_CALL_MOVES)
     expect(movesToRecord(moves, new Set([2]), new Map([[1, ' Jorge ']]))).toEqual([
       { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', then: 142_000 },
       { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', then: 4 },

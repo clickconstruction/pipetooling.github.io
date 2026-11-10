@@ -72,9 +72,12 @@ describe('the four places (punch list #302)', () => {
     // The strip is the one count while the skim is open: the deck's number, and a held answer already counted.
     const places = { skim: 10, kept: 2, pursuing: 1, closed: 4 }
     expect(stripCounts(places, null)).toBe(places)
-    expect(stripCounts(places, { left: 10, held: null })).toEqual(places)
-    expect(stripCounts(places, { left: 9, held: 'keep' })).toEqual({ skim: 9, kept: 3, pursuing: 1, closed: 4 })
-    expect(stripCounts(places, { left: 9, held: 'pass' })).toEqual({ skim: 9, kept: 2, pursuing: 1, closed: 5 })
+    expect(stripCounts(places, { mode: 'skim', left: 10, held: null })).toEqual(places)
+    expect(stripCounts(places, { mode: 'skim', left: 9, held: 'keep' })).toEqual({ skim: 9, kept: 3, pursuing: 1, closed: 4 })
+    expect(stripCounts(places, { mode: 'skim', left: 9, held: 'pass' })).toEqual({ skim: 9, kept: 2, pursuing: 1, closed: 5 })
+    // A second look deals from Closed: a held keep leaves Closed for Kept, a held pass moves nothing.
+    expect(stripCounts(places, { mode: 'second', left: 3, held: 'keep' })).toEqual({ skim: 10, kept: 3, pursuing: 1, closed: 3 })
+    expect(stripCounts(places, { mode: 'second', left: 3, held: 'pass' })).toBe(places)
   })
 
   it('Kept opens on the ones to look at again today, then the longest kept, and sorts by whose they are', () => {
@@ -194,5 +197,7 @@ describe('the nudge and the count', () => {
     expect(funnelVerdict({ ...f, pursuing: 0 })).toBe('Nothing skimmed has been pursued yet.')
     expect(funnelVerdict({ ...f, skimmed: 0 })).toBe('Nothing has been skimmed since then.')
     expect(funnelLines({ ...f, by_person: [], pass_reasons: [], pursue_for: [] })).toEqual([])
+    // A second look's passes read as such on the count.
+    expect(funnelLines({ ...f, by_person: [], pursue_for: [], pass_reasons: [{ code: 'sl_too_far', n: 2 }, { code: 'sl_none', n: 1 }] })).toEqual([{ label: 'Passed, why', words: 'too far, on a second look 2 · passed twice, no reason given 1' }])
   })
 })

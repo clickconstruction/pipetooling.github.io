@@ -41,21 +41,37 @@ describe('BridgeLastCall', () => {
 })
 
 describe('BridgeLinkDesk', () => {
-  it('lists the moves with an owner each and records the ones left on', () => {
-    const onRecord = vi.fn()
-    renderWithProviders(<BridgeLinkDesk link="bill" status="nominated by the page" todayReading="$233k finished and not yet billed." moveNumbers={{ bill: 233_000, price: 6 }} thisWeekCall={null} recording={false} onRecord={onRecord} dayLabel={(y) => y} />)
+  it('says what the step is and today’s reading, and sends the reader up to the call', () => {
+    const onGoToCall = vi.fn()
+    renderWithProviders(<BridgeLinkDesk link="bill" status="nominated by the page" todayReading="$233k finished and not yet billed." thisWeekCall={null} dayLabel={(y) => y} onGoToCall={onGoToCall} />)
     expect(screen.getByTestId('bridge-link-desk-today').textContent).toBe('$233k finished and not yet billed.')
-    fireEvent.change(screen.getByLabelText('Owner of: Bill the finished work.'), { target: { value: 'Taunya' } })
-    fireEvent.click(screen.getByTestId('bridge-link-desk-record'))
-    expect(onRecord).toHaveBeenCalledTimes(1)
-    const [moves, note] = onRecord.mock.calls[0]!
-    expect(note).toBeNull()
-    expect(moves[0]).toEqual({ key: 'bill', title: 'Bill the finished work.', who: 'Taunya', then: 233_000 })
-    expect(moves.length).toBe(4)
-  })
-  it('shows the recorded call instead of the button', () => {
-    renderWithProviders(<BridgeLinkDesk link="decision" status="recorded as the link this week" todayReading="Four piles." moveNumbers={{}} thisWeekCall={call} recording={false} onRecord={() => {}} dayLabel={(y) => y} />)
-    expect(screen.getByTestId('bridge-link-desk-recorded').textContent).toContain('This week\'s call: Decision, recorded 2026-10-03 by Todd')
+    expect(screen.getByTestId('bridge-link-desk-call').textContent).toBe('The card at the top proposes the call on Bill, with a person on each move.')
+    // The moves, the owner box on each and the record press left for the first screen's card (punch list #303, cut 5).
+    expect(screen.queryByLabelText('Owner of: Bill the finished work.')).toBeNull()
     expect(screen.queryByTestId('bridge-link-desk-record')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Go to this week’s call ↑' }))
+    expect(onGoToCall).toHaveBeenCalledTimes(1)
+  })
+  it('lists every move for the step behind one press, each marked on the call or not (v2.6840)', () => {
+    const moves = [
+      { title: 'Bill the 11 finished jobs.', today: '$142k today', onCall: true },
+      { title: 'Mark a job ready to bill the day it finishes.', today: null, onCall: false },
+    ]
+    renderWithProviders(<BridgeLinkDesk link="bill" status="nominated by the page" todayReading="x" thisWeekCall={null} dayLabel={(y) => y} onGoToCall={() => {}} moves={moves} movesFoot="The card at the top shows the first three. Take one off there and the next comes on." />)
+    expect(screen.queryByTestId('bridge-link-desk-moves')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Every move for Bill, 2 ▾' }))
+    const list = screen.getByTestId('bridge-link-desk-moves')
+    expect(list.textContent).toContain('Bill the 11 finished jobs.$142k todayon the call')
+    expect(list.textContent).toContain('Mark a job ready to bill the day it finishes.not on it')
+    expect(list.textContent).toContain('Take one off there and the next comes on.')
+    // A list to read: nothing in it records or changes the call.
+    expect(list.querySelectorAll('button, input').length).toBe(0)
+  })
+
+  it('says which step this week’s call is on', () => {
+    renderWithProviders(<BridgeLinkDesk link="decision" status="recorded as the link this week" todayReading="Four piles." thisWeekCall={call} dayLabel={(y) => y} onGoToCall={() => {}} />)
+    expect(screen.getByTestId('bridge-link-desk-recorded').textContent).toContain('This week\'s call: Decision, recorded 2026-10-03 by Todd')
+    renderWithProviders(<BridgeLinkDesk link="bill" status="picked" todayReading="x" thisWeekCall={call} dayLabel={(y) => y} onGoToCall={() => {}} />)
+    expect(screen.getAllByTestId('bridge-link-desk-call')[0]?.textContent).toBe('This week’s call is Decision.')
   })
 })

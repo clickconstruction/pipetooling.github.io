@@ -18,7 +18,7 @@ import {
   type LienCalendarMark,
 } from '../../lib/jobs/lienCalendar'
 import { LienJobNumber } from './LienJobNumber'
-import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
+import { buildLienCalendarBoard, LIEN_WORKED_LATER, LIEN_WORKED_LATER_TITLE, lienGroupRows, lienNextDateCounts, lienPhoneLine, lienWorkedLaterLabel, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount, type LienPropertyTally } from '../../lib/jobs/lienCalendarBuckets'
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 import { formatMoneyShortK } from '../../lib/formatMoneyShortK'
 import { payDateShortcuts } from '../../lib/jobs/gcWordPromise'
@@ -347,6 +347,12 @@ function Track({ marks, j, todayYmd, onOpen, onPen, onLastWork, onRecord, onKind
           <span style={{ position: 'absolute', left: 8, top: LINE_Y + 3, fontSize: 10, fontWeight: 600, color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>{gone.label}</span>
         </div>
       ) : null}
+      {/* v2.6849: a day of work set too early is the usual way a lien reads gone by mistake; one press opens the day to change. */}
+      {gone && onLastWork ? (
+        <button type="button" data-testid="lien-cal-worked-later" aria-label={lienWorkedLaterLabel(j.number)} title={LIEN_WORKED_LATER_TITLE} onClick={onLastWork} style={{ position: 'absolute', left: `calc(${gone.pct}% + 16px)`, top: 3, zIndex: 2, border: 'none', padding: '2px 0', backgroundColor: 'transparent', fontFamily: 'inherit', fontSize: 10, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', color: 'var(--text-link)', cursor: 'pointer' }}>
+          {LIEN_WORKED_LATER}
+        </button>
+      ) : null}
       {marks.map((m, i) => {
         const title = markTitle(m, j, todayYmd)
         if (m.kind === 'gone') return null
@@ -642,10 +648,15 @@ function GroupHeader({ g, open, onToggle, axis, onPen, onDraft, onRecord }: { g:
 }
 
 /** A property's heading inside a group that lists overdue jobs with their property (v2.4526). */
-function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
+function PropertyLabel({ label, tally, phone }: { label: string; /** Both piles and their sum, when a job here closed its window (v2.6849). */ tally?: LienPropertyTally | null; phone?: boolean }) {
   return (
-    <div data-testid="lien-cal-property" style={{ padding: phone ? '6px 12px 2px' : '5px 10px 1px 30px', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-      {label}
+    <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: phone ? 'wrap' : 'nowrap', columnGap: 12, minWidth: 0, padding: phone ? '6px 12px 2px' : '5px 14px 1px 30px', fontSize: '0.6875rem', background: 'var(--surface)' }}>
+      <span data-testid="lien-cal-property" style={{ minWidth: 0, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      {tally ? (
+        <span data-testid="lien-cal-property-tally" title={tally.title} style={{ flex: 'none', marginLeft: phone ? undefined : 'auto', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {phone ? tally.short : tally.words}
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -915,7 +926,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, onClearQuery, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; onClearQuery: () => void; marks?: ReadonlyMap<string, LienSupplierMark> }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, onOpenLastWork, query, onClearQuery, marks }: { /** A lien-gone row's Worked later? press (v2.6849); left out, the row has none. */ onOpenLastWork?: (jobId: string) => void; shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; onClearQuery: () => void; marks?: ReadonlyMap<string, LienSupplierMark> }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
@@ -934,7 +945,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
                       </div>
                     ) : null}
                     {lienGroupRows(g).map((row) => {
-                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} phone />
+                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} tally={row.tally} phone />
                       const j = row.job
                       return (
                       <div key={j.jobId} role="row" data-closed-here={row.closed ? 'true' : undefined} onClick={() => onOpenJob(j.jobId)} style={{ boxSizing: 'border-box', width: '100%', minHeight: 44, textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer' }}>
@@ -948,6 +959,20 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
                         </span>
                         <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.6875rem', marginTop: 1, position: 'relative' }}>
                           <span title={j.runway.lines.join(' · ')} style={{ color: TONE[j.runway.tone], fontWeight: 600, minWidth: 0 }}>{lienPhoneLine(j)}</span>
+                          {j.runway.state === 'closed' && onOpenLastWork ? (
+                            <button
+                              type="button"
+                              data-testid="lien-cal-worked-later"
+                              aria-label={lienWorkedLaterLabel(j.number)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onOpenLastWork(j.jobId)
+                              }}
+                              style={{ flex: 'none', minHeight: 28, border: 'none', padding: '0 2px', backgroundColor: 'transparent', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--text-link)', cursor: 'pointer' }}
+                            >
+                              {LIEN_WORKED_LATER}
+                            </button>
+                          ) : null}
                           <LienSupplierMarkLine mark={marks?.get(j.jobId)} short />
                         </span>
                       </div>
@@ -1080,7 +1105,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
           board.count === 0 ? (
             <EmptyState compact {...searchEmpty} />
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} onClearQuery={clearQuery} marks={supplierMarks} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} onOpenLastWork={onOpenLastWork} query={query} onClearQuery={clearQuery} marks={supplierMarks} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -1121,7 +1146,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                                 ) : null}
                                 {groupOpen
                                   ? lienGroupRows(g).map((row, index) => {
-                                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} />
+                                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} tally={row.tally} />
                                       const j = row.job
                                       return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>

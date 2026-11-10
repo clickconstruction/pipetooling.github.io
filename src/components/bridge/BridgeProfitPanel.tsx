@@ -1,16 +1,18 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { ProfitPanel } from '../../lib/bridge/profitPanel'
 import { Link } from 'react-router-dom'
 
 /**
- * The Daily profit rate panel (link PR 9): opens under the three cards when
- * the profit card is pressed. Four parts: the trend by pay week, where a
- * day's money goes, where each number comes from, and break-even.
+ * Profit after overhead (v2.6840, punch list #303): the breakdown under the
+ * eight week chart behind Money, opened by *What is left after overhead*. It
+ * is the Daily profit rate panel (link PR 9) without its card: the warning
+ * first while hours wait, what a day keeps, where a day's money goes,
+ * break-even, the pay weeks, and where each number comes from behind one
+ * more press.
  */
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-const cap: CSSProperties = { fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const shortK = (n: number): string => `${n < 0 ? '−' : ''}$${(Math.abs(n) / 1000).toFixed(Math.abs(n) >= 100_000 ? 0 : 1)}k`
 const money = (n: number): string => `${n < 0 ? '−' : ''}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
 
@@ -104,65 +106,63 @@ function Waterfall({ bars }: { bars: ProfitPanel['waterfall'] }) {
   )
 }
 
-export function BridgeProfitPanel({ panel, onClose }: { panel: ProfitPanel; onClose: () => void }) {
+export function BridgeProfitPanel({ panel }: { panel: ProfitPanel }) {
+  const [sourcesOpen, setSourcesOpen] = useState(false)
+  const made = panel.left.usd >= 0
   return (
-    <section style={{ background: 'var(--surface)', border: '2px solid #2563eb', borderRadius: 10, padding: '0.8rem 1rem', marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: '0.6rem 1.4rem', alignItems: 'start' }} data-testid="bridge-profit-panel">
-      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
-        <span style={label}>Earned against costs, by pay week</span>
-        <span style={det}>the net is the bar; a hatched week is missing hours that wait for approval</span>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, flex: '0 0 auto' }}>
-          ×
-        </button>
-      </div>
-      <Trend weeks={panel.weeks} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', ...det }}>
-          <span>
-            <span style={{ display: 'inline-block', width: 18, height: 3, background: 'var(--text-green-700)', verticalAlign: 'middle' }} /> earned
-          </span>
-          <span>
-            <span style={{ display: 'inline-block', width: 18, height: 0, borderTop: '2px dashed var(--text-muted)', verticalAlign: 'middle' }} /> costs, jobs + overhead
-          </span>
-          <span>
-            <span style={{ display: 'inline-block', width: 12, height: 12, background: '#86efac', verticalAlign: 'middle', borderRadius: 2 }} /> net, the week made money
-          </span>
-          <span>
-            <span style={{ display: 'inline-block', width: 12, height: 12, background: '#fca5a5', verticalAlign: 'middle', borderRadius: 2 }} /> net, it lost
-          </span>
+    <section style={{ border: '1px solid var(--border-strong)', borderRadius: 10, padding: '0.7rem 0.9rem', marginTop: '0.5rem', display: 'grid', gap: '0.55rem', minWidth: 0 }} data-testid="bridge-profit-panel">
+      <div style={label}>Profit after overhead · last {panel.left.days} days</div>
+      {panel.warn && (
+        <div style={{ fontSize: '0.84rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }} data-testid="bridge-profit-warn">
+          {panel.warn}
         </div>
-        <div data-testid="bridge-profit-eight">{panel.eightWeeks}</div>
-        <div style={{ padding: '0.45rem 0.6rem', borderRadius: 6, border: `1px solid ${panel.noteTone === 'green' ? 'var(--text-green-700)' : panel.noteTone === 'amber' ? 'var(--text-amber-800)' : 'var(--border)'}`, color: panel.noteTone === 'green' ? 'var(--text-green-700)' : panel.noteTone === 'amber' ? 'var(--text-amber-800)' : 'var(--text)' }} data-testid="bridge-profit-note">
-          {panel.note}
-        </div>
+      )}
+      <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.15, color: made ? 'var(--text-green-700)' : 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }} data-testid="bridge-profit-left">
+        {money(panel.left.usd)} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>a day {made ? 'left after every cost' : 'short after every cost'}</span>
       </div>
-      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)', gap: '0.6rem 1.4rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
-        <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem 1.4rem', alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
           <div style={label}>Where a day's money goes</div>
-          <div style={{ ...det, marginBottom: 4 }}>the 14-day average, per day: what the field earned, less what it cost, is the number on the card</div>
           <Waterfall bars={panel.waterfall} />
-        </div>
-        <div>
-          <div style={label}>Where each number comes from, and what can make it wrong</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '76px minmax(0, 1.1fr) minmax(0, 1fr) auto', gap: '0.2rem 0.6rem', fontSize: '0.78rem', alignItems: 'baseline', marginTop: 4 }}>
-            <span style={cap}>input</span>
-            <span style={cap}>read from</span>
-            <span style={cap}>what can be wrong</span>
-            <span />
-            {panel.sources.map((r) => (
-              <span key={r.input} style={{ display: 'contents' }}>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, fontWeight: 700 }}>{r.input}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>{r.from}</span>
-                <span style={{ borderTop: '1px solid var(--border)', paddingTop: 4, color: r.tone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>{r.risk}</span>
-                <Link to={r.door.to} style={{ borderTop: '1px solid var(--border)', paddingTop: 4, whiteSpace: 'nowrap' }}>
-                  {r.door.label}
-                </Link>
-              </span>
-            ))}
+          <div style={{ fontSize: '0.84rem', marginTop: 4 }} data-testid="bridge-profit-breakeven">
+            {panel.breakEven}
           </div>
         </div>
-        <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)' }} data-testid="bridge-profit-breakeven">
-          {panel.breakEven}
+        <div style={{ minWidth: 0 }}>
+          <div style={label}>Earned against costs, by pay week</div>
+          <Trend weeks={panel.weeks} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', ...det }}>
+            <span>
+              <span style={{ display: 'inline-block', width: 18, height: 3, background: 'var(--text-green-700)', verticalAlign: 'middle' }} /> earned
+            </span>
+            <span>
+              <span style={{ display: 'inline-block', width: 18, height: 0, borderTop: '2px dashed var(--text-muted)', verticalAlign: 'middle' }} /> costs
+            </span>
+            <span>the bar is what was left; a hatched week still has hours waiting</span>
+          </div>
+          <div style={{ fontSize: '0.84rem', marginTop: 4 }} data-testid="bridge-profit-eight">
+            {panel.eightWeeks}
+          </div>
         </div>
+      </div>
+      <div>
+        <button type="button" onClick={() => setSourcesOpen((o) => !o)} aria-expanded={sourcesOpen} data-testid="bridge-profit-sources-toggle" style={{ font: 'inherit', fontSize: '0.8rem', padding: 0, minHeight: 32, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}>
+          Where each number comes from {sourcesOpen ? '▴' : '›'}
+        </button>
+        {sourcesOpen && (
+          <ul style={{ listStyle: 'none', margin: '0.2rem 0 0', padding: 0, fontSize: '0.8rem' }} data-testid="bridge-profit-sources">
+            {panel.sources.map((r) => (
+              <li key={r.input} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.8rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)' }}>
+                <b style={{ flex: '0 0 5.5rem' }}>{r.input}</b>
+                <span style={{ flex: '1 1 14rem', minWidth: 0, color: 'var(--text-muted)' }}>{r.from}</span>
+                <span style={{ flex: '1 1 12rem', minWidth: 0, color: r.tone === 'green' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>{r.risk}</span>
+                <Link to={r.door.to} style={{ whiteSpace: 'nowrap' }}>
+                  {r.door.label} ›
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   )

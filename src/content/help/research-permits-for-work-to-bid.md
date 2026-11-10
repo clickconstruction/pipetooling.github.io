@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, second look, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -40,6 +40,18 @@ Press **Put back** on a kept row to send it to the skim again.
 Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has a plumber** holds the ones a plumber took. **Not pursuing** holds the ones dropped after a look.
 
 Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
+
+## Take a second look at what someone else passed
+
+A grey count sits beside **Skim** when someone else has passed permits. It reads like *12 passed*. Press it. It deals those permits one card at a time, best first. The number is how many wait on you.
+
+The amber line on the card says who passed and when. It gives their reason when they tapped one.
+
+Press **Keep** to move the permit to **Kept** under your name. Press **Pass** to agree with the first pass. Undo works the same as on the skim.
+
+Each permit gets one second look. After two people pass it, it leaves the deck for everyone. Your own passes never show here.
+
+When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
