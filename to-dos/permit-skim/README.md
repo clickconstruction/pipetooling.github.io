@@ -2,9 +2,9 @@
 name: "Permits: skim every one in a few seconds, dig into the few, and know the builders"
 number: 302
 group: gated
-status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · the skim itself not built · waiting on his six calls and his word to build
+status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830
 mockup: to-dos/permit-skim/mockup.html
-ver: v2.6828 (PR 4, on today's ledger and map)
+ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim)
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one. The
   owner asked for two steps. Skim: one permit on one screen with everything needed to decide, a
@@ -17,9 +17,9 @@ summary: >
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
   and one count says whether any of it turns into bids. The first build is eight small PRs, one
   built, then two weeks of use before more.
-next: The owner's six calls under What the owner settles, and his word to build. Then PR 1 (the kernel, best first), PR 2 (the skim on today's tables, no migration) and PR 3 (the street view and the map).
-size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 4 (M); left: seven
-blocker: The owner's word to build. The six calls stand on the picks drawn if he says build as drawn.
+next: PR 3 and 5 (the street view, the map and the swipe), then the migration with builders, the four places and the hand-off, the nudge and the count. The six calls stand on the picks drawn until the owner overturns one.
+size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1, 2 and 4; left: five (S · S · M · M · S)
+blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork
 ---
 
@@ -248,11 +248,11 @@ lint, a narrow typecheck, a release note and a fragment, the guide
 `origin/main`, open with the lock timeout, close with the four fences, and are pushed after the
 merge.
 
-1. **The skim's kernel (S).** `src/lib/research/permitSkim.ts`, pure, with tests: which rows are
+1. **The skim's kernel (S). Built 2026-11-10 with PR 2 as v2.6830.** `src/lib/research/permitSkim.ts`, pure, with tests: which rows are
    in the deck, the best-first score with the words that say why, the four counts, the card's
    lines (the days-ago words, the miles), the pass reasons, the answer a key makes, the undo, and
    the one set of words.
-2. **The skim (M, no migration).** `PermitSkimDeck` as the first view on Permits behind a
+2. **The skim (M, no migration). Built 2026-11-10 as v2.6830** (`docs/recent-features/v2.6830.md`). `PermitSkimDeck` as the first view on Permits behind a
    Skim · All permits switch. Buttons and keys, the undo bar, the reason taps, the caught-up
    state. Keep writes `look` and Pass writes `not_for_us` to `permit_verdicts`. Undo holds the
    write until the next answer or the page hides. The Who and Property lines open the two sheets
@@ -329,5 +329,6 @@ are made up; the counts under What is there today are counts only.
 2026-11-10: asked, walked, planned and drawn in one day, with three looks from the owner between.
 PR 4 was built first, on today's ledger and map, as v2.6828, and walked live read-only at desk and
 phone width. His holistic look cut the plan to eight PRs and re-aimed it, and his two answers are
-drawn in (frames A, B2, G1, H and M). The skim itself is not built. Waiting on his six calls and
-his word to build.
+drawn in (frames A, B2, G1, H and M). The same night he said build it all on the picks drawn, to
+be live by morning. PR 1 and 2 were built together as v2.6830 and walked live with Undo, so
+nothing was written: the deck opened on 340 permits, every one the feed has brought.

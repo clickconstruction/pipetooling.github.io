@@ -18,7 +18,7 @@ import {
 
 /**
  * Research (punch list #292): the one sheet behind a row's Decide press. Four verdicts, a reason
- * that cannot be empty, a look-again day on Look into it, and on Approach them the part the
+ * that cannot be empty, a look-again day on Keep, and on Pursue the part the
  * company on the permit plays, since the lead it makes carries it. The press names the verdict.
  */
 export type PermitDecision = { verdict: PermitVerdict; reason: string; lookAgainOn: string | null; role: PermitLeadRole }
@@ -39,7 +39,7 @@ export function PermitDecideSheet({
   error: string | null
   onDecide: (decision: PermitDecision) => void
   onCancel: () => void
-  /** The verdict to open on, when a door chose one (Who pulled it's Approach them). */
+  /** The verdict to open on, when a door chose one (Who pulled it's Pursue). */
   initialVerdict?: PermitVerdict
   /** What the Who pulled it card found; the lead carries it. */
   facts?: LeadFacts
@@ -53,7 +53,7 @@ export function PermitDecideSheet({
   const hold = verdictHold(reason)
   const dead = saving || hold != null
   const work = workWords(row)
-  const pressWords = verdict === 'approach' ? 'Approach them · make the lead' : VERDICT_WORDS[verdict].press
+  const pressWords = verdict === 'approach' ? 'Pursue · make the lead' : VERDICT_WORDS[verdict].press
 
   const submit = () => {
     setTried(true)

@@ -29,11 +29,14 @@ export function WhoPulledItSheet({
   hint,
   onClose,
   onApproach,
+  answers,
 }: {
   row: ResearchPermitRow
   hint: Hint
   onClose: () => void
   onApproach: (facts: LeadFacts) => void
+  /** Opened from the skim: the two answers take the foot in place of Pursue. */
+  answers?: { onPass: () => void; onKeep: () => void }
 }) {
   const parts = contactParts(row.contact)
   const [company, setCompany] = useState<Loadable<CompanyFacts>>({ state: 'loading' })
@@ -286,9 +289,20 @@ export function WhoPulledItSheet({
         </section>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 12, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => onApproach(facts)} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
-            Approach them with these facts…
-          </button>
+          {answers ? (
+            <>
+              <button type="button" onClick={answers.onPass} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
+                Pass
+              </button>
+              <button type="button" onClick={answers.onKeep} style={{ background: '#16a34a', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
+                Keep
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => onApproach(facts)} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
+              Pursue with these facts…
+            </button>
+          )}
           <button type="button" onClick={() => void load(true)} style={smallPress}>
             Look again
           </button>
