@@ -21,6 +21,8 @@ export type AwayRow = {
   /** The folded roster row, when the login has one. */
   personId: string | null
   displayName: string
+  /** The login's own name, which `my_away_note()` greets by its first word. The roster name never stands in there. */
+  loginName: string | null
   email: string | null
   role: string
   /** The roster row's end date (End employment), else the day the account was archived, in the app's zone. */
@@ -131,6 +133,7 @@ export function splitAwayFromArchived<L extends AwaySectionLogin, R extends Away
       userId: u.id,
       personId: row?.id ?? null,
       displayName: u.name?.trim() || row?.name?.trim() || u.email || 'A teammate',
+      loginName: u.name ?? null,
       email: u.email ?? row?.email ?? null,
       role: u.role,
       leftYmd: endYmd ?? archivedYmd,
