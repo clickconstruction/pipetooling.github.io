@@ -8,6 +8,7 @@ import {
   billAppliedWords,
   billDryRun,
   billInput,
+  billNumberRefusal,
   billedLineFor,
   fullyInvoiced,
   isBillVerb,
@@ -18,6 +19,7 @@ import {
   readBillWorld,
   remainderCents,
   signatureFor,
+  stripeJobNumber,
   withBillLink,
   type BillPayload,
   type BillReads,
@@ -31,6 +33,7 @@ import { buildStripeInvoiceEmailBody, buildStripeInvoiceEmailSubject } from '../
 import { signatureLines } from '../messages/compose'
 import { billEmailChannel } from '../jobs/billShareDoors'
 import { numberOrder as appNumberOrder } from '../messages/compose'
+import { PIPETOOLING_STRIPE_INVOICE_NUMBER_HCP_ERROR } from '../../../supabase/functions/_shared/pipetoolingStripeInvoiceNumber'
 import { letterheadFor } from '../../../supabase/functions/_shared/messagesEmail'
 import { customerLang } from '../messages/customerLang'
 
@@ -59,7 +62,7 @@ const make = (over: Record<string, unknown> = {}): BillPayload => {
 const channel = (over: Partial<ChannelRow> & Pick<ChannelRow, 'id' | 'kind' | 'value'>): ChannelRow => ({ opted_out_at: null, usual_at: null, created_at: '2026-10-01T00:00:00+00:00', ...over })
 const world = (over: Partial<BillWorld> = {}): BillWorld => ({
   me: ME,
-  job: { id: JOB, job_name: 'ZZ TEST seat walk', job_address: '123 Main St', status: 'ready_to_bill', revenue: 1, payments_made: 0, customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', bill_to_party: 'customer', click_number: '', hcp_number: '' },
+  job: { id: JOB, job_name: 'ZZ TEST seat walk', job_address: '123 Main St', status: 'ready_to_bill', revenue: 1, payments_made: 0, customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', bill_to_party: 'customer', click_number: '', hcp_number: '4411' },
   invoice: null,
   invoices: [{ id: INV, job_id: JOB, status: 'ready_to_bill', amount: 1, is_primary_rtb_bundle: true, stripe_invoice_id: null, hosted_invoice_url: null, pay_code: null, stripe_mode: null, billed_at: null, created_at: '2026-11-09T00:00:00+00:00' }],
   payments: [],
@@ -86,7 +89,7 @@ describe('devMcpBill — the verbs on the allowlist', () => {
     expect(planVerbFor('apply_bill')).toBe('plan_bill')
     expect(writeRpcBody('plan_bill', { bill: { job_id: JOB } })).toMatchObject({ ok: true, rpc: null, body: { p: { bill: { job_id: JOB } } } })
     expect(writeRpcBody('apply_bill', { bill: {} })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
-    expect(SERVER).toContain('Writes are seventy-three verbs and nothing else:')
+    expect(SERVER).toContain('Writes are seventy-five verbs and nothing else:')
     expect(SERVER).toContain("const shaped = billInput(name, args, todayYmdInAppTz())")
     expect(README).toContain('`plan_bill(bill)` · `apply_bill(bill, plan_hash)`')
     expect([...STRIPE_MODES]).toEqual(['test', 'live'])
@@ -273,7 +276,7 @@ describe('billDryRun — the plan', () => {
     if (!dry.ok) throw new Error(dry.refused)
     expect(dry.reply).toMatchObject({
       action: 'make',
-      job: { id: JOB, label: 'ZZ TEST seat walk', status: 'ready_to_bill' },
+      job: { id: JOB, label: 'JP4411', status: 'ready_to_bill' },
       customer: { id: CUSTOMER, name: 'ZZ Test Customer', email: 'zz@example.com', lang: 'en', contact: 'on file' },
       bill: { amount: '$1.00', amount_cents: 100, stripe_mode: 'test', due_date: TODAY, memo: null, link: BILL_LINK_PLACEHOLDER },
       text: { channel_id: PHONE1, to: '(512) 555-0100', first_text: true, line: 'app', lang: 'en' },
@@ -285,7 +288,7 @@ describe('billDryRun — the plan', () => {
     expect(text.words).toBe(sheet.text)
     expect(text.words).toBe(`Hi ZZ, this is Dev with Click Plumbing. Your bill for ZZ TEST seat walk is ready, $1.00. Text me here with any question. Pay it here: ${BILL_LINK_PLACEHOLDER}`)
     const email = dry.reply.email as { body: string; signature: string[] }
-    expect(email.body).toBe(buildStripeInvoiceEmailBody({ customerName: 'ZZ Test Customer', payUrl: BILL_LINK_PLACEHOLDER, amountLabel: '$1.00', jobName: 'ZZ TEST seat walk', hcpNumber: '' }))
+    expect(email.body).toBe(buildStripeInvoiceEmailBody({ customerName: 'ZZ Test Customer', payUrl: BILL_LINK_PLACEHOLDER, amountLabel: '$1.00', jobName: 'ZZ TEST seat walk', hcpNumber: '4411' }))
     expect(email.signature[0]).toBe('Dev One')
     const after = dry.reply.after as string[]
     expect(after.join(' ')).toContain('moves to Billed')
@@ -362,5 +365,34 @@ describe('the words after', () => {
     expect(String(held.next)).toContain(`action: "send", invoice_id: "${INV}"`)
     const alone = billAppliedWords(make({ send: undefined }), 'ZZ TEST seat walk', bill, { text: null, email: null }, { moved: false, now: 'ready_to_bill', why: 'another Ready to Bill line remains' })
     expect(String(alone.next)).toContain('hands it to the customer')
+  })
+})
+
+describe('the bill’s number (v2.6826, found on the first seat walk)', () => {
+  const CSI = readFileSync('supabase/functions/create-stripe-invoice/index.ts', 'utf8')
+  it('reads the number create-stripe-invoice reads: the HCP number, else the Click number', () => {
+    expect(CSI).toContain("((jobRow.hcp_number ?? '').trim() || (jobRow.click_number ?? '').trim()) || null")
+    expect(CSI).toContain('buildPipetoolingStripeInvoiceNumber(effectiveJobNumber, due_date.trim(), issuedAtMs)')
+    expect(stripeJobNumber({ hcp_number: ' 4411 ', click_number: '972' })).toBe('4411')
+    expect(stripeJobNumber({ hcp_number: '', click_number: '972' })).toBe('972')
+    expect(stripeJobNumber({ hcp_number: null, click_number: null })).toBeNull()
+  })
+  it('refuses in the plan a job with no number in digits, naming the press that fixes it', () => {
+    const none = billDryRun(make(), world({ job: { ...world().job!, hcp_number: '', click_number: '' } }))
+    expect(none).toMatchObject({ ok: false, refused: expect.stringContaining('has no HCP or Click number with digits') })
+    expect(none).toMatchObject({ ok: false, refused: expect.stringContaining('plan_job_update { job_id, set: { click_number } }') })
+    expect(none).toMatchObject({ ok: false, refused: expect.stringContaining(PIPETOOLING_STRIPE_INVOICE_NUMBER_HCP_ERROR) })
+    // An HCP number with no digits wins over a Click number that has some, as the function reads it.
+    expect(billDryRun(make(), world({ job: { ...world().job!, hcp_number: 'TBD', click_number: '972' } }))).toMatchObject({ ok: false })
+    expect(billDryRun(make(), world({ job: { ...world().job!, hcp_number: '', click_number: '9293' } }))).toMatchObject({ ok: true, reply: { job: { label: 'JP9293' } } })
+  })
+  it('says another numbering refusal in the function’s words', () => {
+    expect(billNumberRefusal('JP1', 'Invalid due date; not a real calendar day.')).toBe('The Stripe bill could not be numbered: Invalid due date; not a real calendar day.')
+  })
+  it('action send never asks for a number: the bill already has one', () => {
+    const p = billInput('plan_bill', { bill: { action: 'send', invoice_id: INV, send: { text: true } } }, TODAY)
+    if (!p.ok) throw new Error(p.error)
+    const billed = { ...world().invoices[0]!, status: 'billed', stripe_invoice_id: 'in_test_1', hosted_invoice_url: 'https://invoice.stripe.com/i/x', pay_code: 'a2fvn3pqgq', stripe_mode: 'test' }
+    expect(billDryRun(p.p, world({ invoice: billed, invoices: [], job: { ...world().job!, hcp_number: '', click_number: '' } }))).toMatchObject({ ok: true })
   })
 })
