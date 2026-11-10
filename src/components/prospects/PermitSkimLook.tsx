@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { fetchStreetViewImageBlob, fetchStreetViewMetaWithMonth, googleStreetViewPanoUrl } from '../../lib/fetchStreetViewPreview'
 import { mapsDoor, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { NO_STREET_VIEW_WORDS, TILE_PX, satelliteTileUrl, streetTileUrl, streetViewLocation, streetViewWords, tilesAround } from '../../lib/research/permitLook'
@@ -6,7 +7,8 @@ import { NO_STREET_VIEW_WORDS, TILE_PX, satelliteTileUrl, streetTileUrl, streetV
 /**
  * Permits, the look (punch list #302, PR 3): the two pictures across the top of a skim card. A
  * street view of the address with the month it was taken, and a map with the permit in its
- * middle and the miles from the office. Where the car never drove, the first tile is satellite
+ * middle and the miles from the office. The map is Google's where the app has a browser key
+ * (`PermitSkimGoogleStill`), and map tiles where it has none or Google fails. Where the car never drove, the first tile is satellite
  * and says so. A press on either opens it in Google in a new tab. Drawn for the top card only,
  * so one street view is asked for per card that is actually read.
  */
@@ -17,6 +19,11 @@ const tile: CSSProperties = { position: 'relative', overflow: 'hidden', display:
 const tag: CSSProperties = { position: 'absolute', bottom: 6, borderRadius: 6, padding: '1px 7px', fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1.5 }
 const darkTag: CSSProperties = { ...tag, left: 6, background: 'rgba(17,24,39,0.72)', color: '#ffffff' }
 const lightTag: CSSProperties = { ...tag, right: 6, background: 'rgba(255,255,255,0.92)', color: 'var(--text-strong)' }
+// Over a Google map the miles sit at the top: Google's mark and its terms keep the bottom edge.
+const lightTagTop: CSSProperties = { ...lightTag, bottom: undefined, top: 6 }
+
+// The Google map pulls in the Maps library, so it loads only where a key is set and a card is drawn.
+const PermitSkimGoogleStill = lazy(() => import('./PermitSkimGoogleStill'))
 
 type Street = { state: 'loading' } | { state: 'image'; url: string; month: string | null; lat: number; lng: number } | { state: 'none' }
 
@@ -37,6 +44,11 @@ const pin: CSSProperties = { position: 'absolute', left: '50%', top: '50%', widt
 export function PermitSkimLook({ row, milesWords, compact = false }: { row: ResearchPermitRow; milesWords: string | null; /** A phone: a shorter strip, so more of the card is above the answers. */ compact?: boolean }) {
   const [street, setStreet] = useState<Street>({ state: 'loading' })
   const location = streetViewLocation(row)
+  // The map tile is Google's when the app has a browser key and Google has not failed this sitting; else map tiles.
+  const [googleFailed, setGoogleFailed] = useState(false)
+  const mapsKey = googleMapsBrowserKey()
+  const mapProvider = resolveDashboardMapProvider({ key: mapsKey, googleFailed })
+  const onGoogleUnavailable = useCallback(() => setGoogleFailed(true), [])
 
   useEffect(() => {
     if (!location) {
@@ -81,11 +93,17 @@ export function PermitSkimLook({ row, milesWords, compact = false }: { row: Rese
       <a href={maps ?? undefined} target="_blank" rel="noreferrer" aria-label="Open the site in Google Maps, in a new tab" style={tile}>
         {hasPoint && (
           <>
-            <TileStill lat={row.lat as number} lng={row.lng as number} zoom={11} kind="street" />
+            {mapProvider === 'google' ? (
+              <Suspense fallback={null}>
+                <PermitSkimGoogleStill apiKey={mapsKey} lat={row.lat as number} lng={row.lng as number} zoom={11} onUnavailable={onGoogleUnavailable} />
+              </Suspense>
+            ) : (
+              <TileStill lat={row.lat as number} lng={row.lng as number} zoom={11} kind="street" />
+            )}
             <span aria-hidden="true" style={pin} />
           </>
         )}
-        <span style={lightTag}>{milesWords ?? (hasPoint ? 'Map' : 'No point on this permit')}</span>
+        <span style={hasPoint && mapProvider === 'google' ? lightTagTop : lightTag}>{milesWords ?? (hasPoint ? 'Map' : 'No point on this permit')}</span>
       </a>
     </div>
   )
