@@ -45,6 +45,13 @@ async function takeShot() {
   await screen.findByText('Which job is this ticket for?')
 }
 
+/**
+ * The sheet draws its chips on its first paint and picks the first job in an effect, one paint later; the day's jobs
+ * may land later still. So a test waits for the pick itself, which Save names, before it reads a chip or taps one. A
+ * read on the line after `takeShot()` raced that effect, and lost on a loaded runner (the CI flake of 2026-11-10).
+ */
+const pickedFirst = (saveWords: string) => screen.findByText(saveWords)
+
 describe('TicketPress', () => {
   it('draws the press and the link for a file already on the phone', async () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={makeIo()} captureIo={{ shrink }} />)
@@ -58,11 +65,10 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={makeIo()} captureIo={{ shrink }} />)
     await settle()
     await takeShot()
-    // The day's jobs are read as the press is drawn; on a slow runner they land after the sheet opens.
-    const clocked = (await screen.findByText('JP1042, Oak Hollow Bldg C')).closest('button')!
+    expect(await pickedFirst('Save the ticket to JP1042')).toBeTruthy()
+    const clocked = screen.getByText('JP1042, Oak Hollow Bldg C').closest('button')!
     expect(clocked.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText('Clocked in now')).toBeTruthy()
-    expect(screen.getByText('Save the ticket to JP1042')).toBeTruthy()
     expect(screen.getByText('For two jobs? Tap the second one too.')).toBeTruthy()
   })
 
@@ -70,7 +76,9 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={makeIo()} captureIo={{ shrink }} />)
     await settle()
     await takeShot()
-    fireEvent.click(await screen.findByText('JP1038, Cedar Bend water heater'))
+    // A tap before the first pick lands would be the only job picked: the sheet stops picking once a person taps.
+    await pickedFirst('Save the ticket to JP1042')
+    fireEvent.click(screen.getByText('JP1038, Cedar Bend water heater'))
     expect(screen.getByText('Save the ticket to JP1042 and JP1038')).toBeTruthy()
     fireEvent.click(screen.getByText('Not for one job'))
     expect(screen.getByText('Save the ticket for no one job')).toBeTruthy()
@@ -81,6 +89,10 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={io} captureIo={{ shrink }} />)
     await settle()
     await takeShot()
+    // Nothing is picked here, so the day's job on the sheet is the sign that the read landed.
+    const dayJob = (await screen.findByText('JP1038, Cedar Bend water heater')).closest('button')!
+    await settle()
+    expect(dayJob.getAttribute('aria-pressed')).toBe('false')
     const save = screen.getByText('Pick a job to save the ticket').closest('button') as HTMLButtonElement
     expect(save.disabled).toBe(true)
     fireEvent.click(screen.getByText('Pick the job later'))
@@ -92,9 +104,9 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={io} captureIo={{ shrink }} />)
     await settle()
     await takeShot()
-    expect(await screen.findByText('PO 41207, JP1038, Cedar Bend water heater')).toBeTruthy()
+    expect(await pickedFirst('Save the ticket to JP1038')).toBeTruthy()
+    expect(screen.getByText('PO 41207, JP1038, Cedar Bend water heater')).toBeTruthy()
     expect(screen.getByText('Your PO code at Ridgeway Supply')).toBeTruthy()
-    expect(screen.getByText('Save the ticket to JP1038')).toBeTruthy()
   })
 
   it('saves the ticket with its job and its page, closes the sheet and says where it went', async () => {
@@ -103,7 +115,7 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={makeIo()} captureIo={{ shrink, send, now: () => Date.parse('2026-11-04T16:02:00Z') }} />)
     await settle()
     await takeShot()
-    fireEvent.click(await screen.findByText('Save the ticket to JP1042'))
+    fireEvent.click(await pickedFirst('Save the ticket to JP1042'))
     await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
     expect(sent[0]!.draft).toMatchObject({ takenBy: 'u1', takenByName: 'Jordan', takenAt: '2026-11-04T16:02:00.000Z', takenAtFrom: 'press', source: 'camera', jobId: 'oak', alsoJobIds: [], noOneJob: false, poEntryId: null, total: null, note: '' })
     expect(sent[0]!.pages.map((p) => `${p.pageNo}/${p.mime}/${p.width}`)).toEqual(['1/image/jpeg/2400'])
@@ -116,7 +128,7 @@ describe('TicketPress', () => {
     renderWithProviders(<TicketPress userId="u1" byName="Jordan" io={makeIo()} captureIo={{ shrink, send }} />)
     await settle()
     await takeShot()
-    fireEvent.click(await screen.findByText('Save the ticket to JP1042'))
+    fireEvent.click(await pickedFirst('Save the ticket to JP1042'))
     expect(await screen.findByText('Your account is in training mode.')).toBeTruthy()
     expect(screen.getByText('Which job is this ticket for?')).toBeTruthy()
   })
@@ -134,7 +146,8 @@ describe('TicketPress', () => {
     fireEvent.click(screen.getByText('Ticket · take its photo ▸'))
     await settle()
     await takeShot()
-    expect(screen.getByText('Save the ticket to JP1050')).toBeTruthy()
-    expect(screen.getByText('JP1042, Oak Hollow Bldg C')).toBeTruthy()
+    expect(await pickedFirst('Save the ticket to JP1050')).toBeTruthy()
+    // The clock's guess comes with the day's jobs, a read of its own: it may land after the card's job is picked.
+    expect(await screen.findByText('JP1042, Oak Hollow Bldg C')).toBeTruthy()
   })
 })
