@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bid photos and a Links column that is always there</title>
+<style>
+  /* Punch list #306. Every bid, builder, person, street, count and file name here is made up: Ridgeway Builders,
+     Tallgrass Solutions, Northgate Construction, Lantern Construction; the estimators Marisol, Owen, Dana and Priya.
+     Tokens are src/index.css's (light values and the [data-theme="dark"] block); the saturated action colours stay
+     literal as the app keeps them. Frames are fixed at 375 (the phone) and 1,248 (the desk). Green dashes mark what
+     is new. The photos are drawn tiles, not pictures. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-700: #b45309; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --text-blue-500: #3b82f6; --ghost: #c3c9d2; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; --green: #059669; --amber: #d97706; --red: #dc2626; --scrim: rgba(15, 23, 42, .38); }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --text-blue-500: #60a5fa; --ghost: #56607080; --shadow: 0 8px 24px rgba(0, 0, 0, .45); --scrim: rgba(0, 0, 0, .55); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 96ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; position: sticky; top: 0; z-index: 20; background: var(--bg-page); padding: 8px 0; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 60px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 377px; }
+  .col.desk { flex: 1 1 100%; }
+  .col.win { flex: 0 1 602px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { font-size: 15px; line-height: 1.45; font-family: var(--font); color: var(--text-base); }
+  .screen.w375 { width: 375px; }
+  .screen.w600 { width: 600px; }
+  .screen.w1248 { width: 1248px; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; max-width: 104ch; }
+  .new { outline: 2px dashed var(--text-green-700); outline-offset: 3px; border-radius: 6px; }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+
+  /* the board */
+  .sect { padding: 12px 18px 4px; font-size: 19px; color: var(--text-strong); font-weight: 500; }
+  .board { margin: 0 18px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  table.bb { width: 100%; border-collapse: collapse; }
+  table.bb th { font-size: 12px; font-weight: 700; color: var(--text-strong); padding: 5px 8px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); text-align: center; line-height: 1.25; }
+  table.bb th.l { text-align: left; }
+  table.bb td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; text-align: center; }
+  table.bb tr:last-child td { border-bottom: 0; }
+  table.bb tr:nth-child(odd) td { background: var(--bg-subtle); }
+  td.id { white-space: nowrap; text-align: right !important; width: 330px; }
+  .jumps { display: inline-flex; gap: 14px; color: var(--text-600); vertical-align: middle; margin-right: 10px; }
+  .jumps i { display: inline-block; width: 18px; height: 14px; border-radius: 3px; background: currentColor; opacity: .55; position: relative; }
+  .jumps i::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 3px; border-radius: 2px; background: var(--border-strong); }
+  .jumps i.d::after { background: #15803d; }
+  .jumps i.b::after { background: #2563eb; }
+  .bidno { color: var(--text-link); text-decoration: underline; font-size: 18px; }
+  .gear { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 4px dotted var(--text-muted); vertical-align: middle; margin-left: 6px; }
+  td.nm { text-align: left !important; }
+  td.nm b { font-size: 17px; font-weight: 600; display: block; line-height: 1.25; }
+  td.nm span { color: var(--text-link); font-size: 14px; }
+  .due { display: inline-block; border-radius: 8px; padding: 2px 10px; font-size: 12.5px; font-weight: 700; line-height: 1.2; border: 1px solid; }
+  .due small { display: block; font-weight: 600; font-size: 11px; }
+  .due.r { background: var(--bg-red-100); color: var(--text-red-700); border-color: #fca5a5; }
+  .due.a { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: #fcd34d; }
+  .est { font-size: 16px; font-weight: 600; color: var(--text-strong); }
+  .est.me { background: #facc15; color: #111827; border-radius: 5px; padding: 1px 8px; }
+  .plus { color: var(--text-blue-500); font-size: 13px; }
+  td.lk { width: 190px; }
+  /* the link icons */
+  .lks { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+  .lks.today { justify-content: flex-end; min-width: 108px; }
+  .lk1 { display: inline-flex; align-items: center; gap: 1px; color: var(--text-blue-500); position: relative; min-width: 22px; height: 24px; justify-content: center; cursor: pointer; border-radius: 5px; }
+  .lk1 svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .lk1 em { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--text-blue-700); line-height: 1; position: absolute; left: 100%; margin-left: -3px; top: 1px; }
+  .lk1.off { color: var(--ghost); }
+  .lk1.hot { background: var(--bg-blue-tint); box-shadow: 0 0 0 2px var(--text-blue-500); }
+  .lks.fix { gap: 0; }
+  .lks.fix .lk1 { width: 36px; }
+  .lks.fix .lk1 em { left: 50%; margin-left: 10px; top: 0; }
+  .dash { color: var(--text-muted); }
+  .hole { display: inline-block; width: 26px; height: 26px; border: 2px solid var(--red); border-radius: 3px; vertical-align: middle; }
+  .tip { position: absolute; z-index: 5; background: var(--text-strong); color: var(--bg-page); font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 6px; white-space: nowrap; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 18px 16px; font-size: 13px; color: var(--text-700); align-items: center; }
+  .legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+  /* phone cards */
+  .pcard { margin: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .pcard .t { display: flex; gap: 8px; align-items: baseline; }
+  .pcard .t b { font-size: 15.5px; flex: 1; min-width: 0; }
+  .pcard .g { color: var(--text-link); font-size: 13.5px; }
+  .pcard .m { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 13px; color: var(--text-700); flex-wrap: wrap; }
+  .pcard .lks { margin-top: 8px; gap: 0; justify-content: flex-start; }
+  .pcard .lks .lk1 { width: 46px; height: 40px; }
+  .pcard .lks .lk1 svg { width: 24px; height: 24px; }
+  .pcard .lks .lk1 em { left: 50%; margin-left: 11px; top: 6px; }
+  .phead { padding: 12px 14px 2px; font-size: 16px; font-weight: 600; color: var(--text-strong); }
+
+  /* windows */
+  .stage { background: var(--scrim); padding: 22px; }
+  .w375 .stage { padding: 0; background: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .w375 .modal { border-radius: 0; border: 0; box-shadow: none; min-height: 560px; }
+  .mh { display: flex; gap: 10px; align-items: flex-start; padding: 13px 16px 10px; border-bottom: 1px solid var(--border); }
+  .mh .ti { flex: 1; min-width: 0; }
+  .mh .ti b { display: block; font-size: 16.5px; line-height: 1.25; }
+  .mh .ti span { font-size: 12.5px; color: var(--text-muted); }
+  .mh .x { color: var(--text-muted); font-size: 20px; line-height: 1; padding: 2px 4px; }
+  .mb { padding: 14px 16px; display: grid; gap: 12px; }
+  .mf { display: flex; gap: 8px; justify-content: flex-end; padding: 11px 16px; border-top: 1px solid var(--border); background: var(--bg-subtle); flex-wrap: wrap; }
+  .w375 .mf { flex-direction: column-reverse; }
+  .w375 .mf .btn { width: 100%; min-height: 46px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); font: 600 14px var(--font); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12.5px; }
+  .btn.big { min-height: 48px; font-size: 15px; }
+  .btn.dead { background: var(--bg-muted); color: var(--text-muted); border-color: var(--border); }
+  .btn.red { color: var(--text-red-700); border-color: var(--text-red-700); }
+  .where { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; display: grid; gap: 4px; }
+  .where .path { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--text-strong); overflow-wrap: anywhere; }
+  .where .path b { background: var(--bg-green-100); color: var(--text-green-700); border-radius: 4px; padding: 0 4px; }
+  .drop { border: 2px dashed var(--border-strong); border-radius: 10px; padding: 18px 12px; text-align: center; color: var(--text-700); display: grid; gap: 8px; justify-items: center; background: var(--bg-subtle); }
+  .drop.over { border-color: var(--text-blue-500); background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .drop .bs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .ups { display: grid; gap: 6px; }
+  .up { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+  .up .th { width: 34px; height: 34px; border-radius: 5px; }
+  .up .bar { height: 5px; border-radius: 3px; background: var(--bg-200); overflow: hidden; margin-top: 3px; }
+  .up .bar i { display: block; height: 100%; background: #2563eb; }
+  .up.ok .st { color: var(--text-green-700); font-weight: 600; }
+  .up.bad .st { color: var(--text-red-700); font-weight: 600; }
+  .bar2 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .bar2 .sp { flex: 1; }
+  .bar2 .n { font-weight: 700; color: var(--text-strong); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .w375 .grid { grid-template-columns: repeat(2, 1fr); }
+  .ph { position: relative; }
+  .ph .th { aspect-ratio: 4 / 3; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .ph .th::after { content: ""; position: absolute; inset: auto 0 0 0; height: 45%; background: linear-gradient(to top, rgba(0,0,0,.28), transparent); }
+  .ph .nm { font-size: 12.5px; font-weight: 600; color: var(--text-strong); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ph .by { font-size: 11.5px; color: var(--text-muted); }
+  .ph .more { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 50%; background: rgba(17,24,39,.6); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 2; }
+  .ph .tick { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 5px; border: 2px solid #fff; background: rgba(17,24,39,.35); z-index: 2; }
+  .ph.sel .th { outline: 3px solid #2563eb; outline-offset: 1px; }
+  .ph.sel .tick { background: #2563eb; }
+  .ph.sel .tick::after { content: "✓"; color: #fff; font-size: 13px; font-weight: 700; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .ph input { width: 100%; font: 600 12.5px var(--font); padding: 3px 6px; border: 2px solid #2563eb; border-radius: 5px; background: var(--surface); color: var(--text-strong); margin-top: 3px; }
+  .menu { position: absolute; top: 34px; right: 5px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); z-index: 3; font-size: 13.5px; min-width: 150px; overflow: hidden; }
+  .menu span { display: block; padding: 7px 12px; }
+  .menu span.r { color: var(--text-red-700); border-top: 1px solid var(--border); }
+  .t1 { background: linear-gradient(135deg, #8a9bb0, #c9b79c 55%, #6f7d6b); }
+  .t2 { background: linear-gradient(160deg, #b9a48a, #7c8794 60%, #4e5a66); }
+  .t3 { background: linear-gradient(120deg, #7e8f7a, #b4bfae 50%, #8f7f6a); }
+  .t4 { background: linear-gradient(200deg, #9aa7b8, #d5c8b1 55%, #7a6c5c); }
+  .t5 { background: linear-gradient(150deg, #6b7885, #a59a88 60%, #c7c0b2); }
+  .t6 { background: linear-gradient(110deg, #a8957c, #6f7f8f 55%, #9fb0a0); }
+  .t7 { background: linear-gradient(170deg, #5f6b62, #a3ad9c 50%, #cdbfa6); }
+  .t8 { background: linear-gradient(140deg, #c2b39b, #8794a3 55%, #5d6873); }
+  .toast { display: flex; gap: 10px; align-items: center; background: var(--text-strong); color: var(--bg-page); border-radius: 8px; padding: 8px 12px; font-size: 13.5px; }
+  .toast u { margin-left: auto; font-weight: 700; text-decoration: underline; }
+  .fld { display: grid; gap: 4px; }
+  .fld label { font-size: 12.5px; font-weight: 600; color: var(--text-700); }
+  .inp { display: flex; gap: 6px; }
+  .inp > span:first-child { flex: 1; min-width: 0; border: 1px solid var(--border-strong); border-radius: 7px; padding: 7px 10px; background: var(--surface); color: var(--text-faint); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .or { text-align: center; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+  .four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 900px) { .four { grid-template-columns: minmax(0, 1fr); } }
+  .mini { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; min-width: 0; }
+  .mini .mh b { font-size: 15px; }
+  .mini .ic { color: var(--ghost); }
+  .mini .ic svg, .rw .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .then { font-size: 12.5px; color: var(--text-700); border-top: 1px dashed var(--border); padding: 8px 16px; background: var(--bg-subtle); }
+  /* one window per bid */
+  .rw { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .rw .ic { color: var(--text-blue-500); display: inline-flex; }
+  .rw.off .ic { color: var(--ghost); }
+  .rw .w b { display: block; font-size: 14.5px; }
+  .rw .w span { font-size: 12.5px; color: var(--text-muted); }
+  .rw .a { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .rw.open { background: var(--bg-blue-tint); border-bottom: 0; }
+  .rwbody { padding: 4px 16px 14px; border-bottom: 1px solid var(--border); background: var(--bg-blue-tint); display: grid; gap: 10px; }
+  .w375 .rw { padding: 10px 12px; }
+  .w375 .rwbody { padding: 4px 12px 12px; }
+  table.cmp { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); }
+  table.cmp th, table.cmp td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+  table.cmp th { background: var(--bg-subtle); color: var(--text-strong); }
+  table.cmp td.pk, table.cmp th.pk { background: var(--bg-green-100); }
+  .scroll { overflow-x: auto; max-width: 100%; }
+  .scroll table.cmp { min-width: 760px; }
+  ol.calls { max-width: 104ch; padding-left: 22px; display: grid; gap: 8px; color: var(--text-700); }
+  ol.calls b.q { color: var(--text-strong); }
+  ol.calls i { font-style: normal; color: var(--text-green-700); font-weight: 600; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2.2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.2" r="3.3"/></symbol>
+    <symbol id="i-fold" viewBox="0 0 24 24"><path d="M3 18.5V6.5a1 1 0 0 1 1-1h4.6l2 2H18a1 1 0 0 1 1 1V10"/><path d="M3 18.5l2.3-7a1 1 0 0 1 .95-.7H21.2l-2.4 7.1a1 1 0 0 1-.95.6H3z"/></symbol>
+    <symbol id="i-plan" viewBox="0 0 24 24"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8.8 17.5l2.6-3.3 1.9 2 1.4-1.4 2.2 2.7"/></symbol>
+    <symbol id="i-ct" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v4M12 17.4v4M2.6 12h4M17.4 12h4"/><circle cx="12" cy="12" r="1.3"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M11 21H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h7l5 5v4.5"/><path d="M13 3v5h5"/><path d="M12.5 17.5h8M17.6 14.6l2.9 2.9-2.9 2.9"/></symbol>
+  </defs>
+</svg>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #306 · mock-up · nothing built</p>
+  <h1>Bid photos, and a Links column that is always there</h1>
+  <p>The Bid Board's Links column draws an icon only when a link exists, so the icons do not line up and a bid with nothing shows a dash. The ask: a photos icon that is always in its place, grey until a photo folder holds photos, and maybe the same rule for the other links. Three directions are drawn. Each keeps the same column and differs in what a press opens.</p>
+  <p class="stamp">Every bid, builder, person, count and file name on this page is made up. The photos are drawn tiles. Frames are 1,248 wide for the desk and 375 for the phone. Green dashes mark what is new.</p>
+  <div class="controls">
+    <span><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button> <button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+  </div>
+  <nav class="jump">
+    <a href="#today">Today</a>
+    <a href="#column">1 · The column</a>
+    <a href="#grey">2 · A grey photos icon</a>
+    <a href="#blue">3 · Photos are there</a>
+    <a href="#others">4 · The other four links</a>
+    <a href="#best">Is this the best we can do?</a>
+    <a href="#b">B · One window per bid</a>
+    <a href="#c" class="pick">C · The pick</a>
+    <a href="#calls">The owner's calls</a>
+  </nav>
+</header>
+
+<!-- ───────────────────────── TODAY ───────────────────────── -->
+<h2 id="today"><span class="num today">0</span> Today</h2>
+<p class="lede">An icon is drawn only for a link the bid has. The row with nothing shows a dash. The red box is where the owner asked for the photos icon.</p>
+<div class="row">
+  <div class="col desk">
+    <div class="cap">Bid Board · desk · today</div>
+    <div class="frame now"><div class="screen w1248">
+      <div class="sect">▼ Unsent / Working Bids (5)</div>
+      <div class="board"><table class="bb">
+        <tr><th></th><th class="l">Project Name<br>GC/Builder</th><th>Due<br>Date</th><th>Estimator<br>Account Man</th><th>Last<br>Contact</th><th>Links</th></tr>
+        <tr><td class="id"><span class="jumps"><i></i><i></i><i></i><i></i><i></i></span><span class="bidno">b612</span><span class="gear"></span></td><td class="nm"><b>Harbor Street Chapel Addition</b><span>Ridgeway Builders</span></td><td><span class="due r">Mon 11/2<small>(+8)</small></span></td><td><span class="est">Marisol</span></td><td><span class="plus">+</span></td><td class="lk"><span class="dash">—</span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b598</span><span class="gear"></span></td><td class="nm"><b>Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></td><td><span class="due r">Mon 11/2<small>(+8)</small></span></td><td><span class="est me">Owen</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks today"><span class="hole"></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg><em>3</em></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b603</span><span class="gear"></span></td><td class="nm"><b>Copper Kettle Café</b><span>Northgate Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Dana</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks today"><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b604</span><span class="gear"></span></td><td class="nm"><b>Dawnlight Yoga Studio</b><span>Northgate Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Dana</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks today"><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b615</span><span class="gear"></span></td><td class="nm"><b>Stillwater Pilates at Elm Crossing</b><span>Lantern Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Priya</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks today"><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span></span></td></tr>
+      </table></div>
+    </div></div>
+    <div class="foot">Today's icons, left to right when a bid has them: Project folder, Job plans (with a count when the bid has two or more sets), CountTooling plans, Bid submission. A won bid also shows its job's chip in this cell.</div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 1 · THE COLUMN ───────────────────────── -->
+<h2 id="column"><span class="num">1</span> The column, always there</h2>
+<p class="lede">Five slots in one fixed order: <b>Photos</b>, <b>Project folder</b>, <b>Plans</b>, <b>CountTooling</b>, <b>Bid submission</b>. Blue means it is there. Grey means it is not yet, and a press starts it. A count rides on Photos and on Plans. The column is the same under all three directions.</p>
+<div class="row">
+  <div class="col desk">
+    <div class="cap opt">Bid Board · desk · proposed</div>
+    <div class="frame"><div class="screen w1248">
+      <div class="sect">▼ Unsent / Working Bids (5)</div>
+      <div class="board"><table class="bb">
+        <tr><th></th><th class="l">Project Name<br>GC/Builder</th><th>Due<br>Date</th><th>Estimator<br>Account Man</th><th>Last<br>Contact</th><th>Links</th></tr>
+        <tr><td class="id"><span class="jumps"><i></i><i></i><i></i><i></i><i></i></span><span class="bidno">b612</span><span class="gear"></span></td><td class="nm"><b>Harbor Street Chapel Addition</b><span>Ridgeway Builders</span></td><td><span class="due r">Mon 11/2<small>(+8)</small></span></td><td><span class="est">Marisol</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks fix new"><span class="lk1 off"><svg><use href="#i-cam"/></svg></span><span class="lk1 off"><svg><use href="#i-fold"/></svg></span><span class="lk1 off"><svg><use href="#i-plan"/></svg></span><span class="lk1 off"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b598</span><span class="gear"></span></td><td class="nm"><b>Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></td><td><span class="due r">Mon 11/2<small>(+8)</small></span></td><td><span class="est me">Owen</span></td><td><span class="plus">+</span></td><td class="lk" style="position:relative"><span class="lks fix"><span class="lk1 off hot"><svg><use href="#i-cam"/></svg></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg><em>3</em></span><span class="lk1 off"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></span><span class="tip" style="left: 6px; top: -14px;">No photos yet · Add photos</span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b603</span><span class="gear"></span></td><td class="nm"><b>Copper Kettle Café</b><span>Northgate Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Dana</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks fix"><span class="lk1"><svg><use href="#i-cam"/></svg><em>12</em></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b604</span><span class="gear"></span></td><td class="nm"><b>Dawnlight Yoga Studio</b><span>Northgate Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Dana</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks fix"><span class="lk1 off"><svg><use href="#i-cam"/></svg></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></span></td></tr>
+        <tr><td class="id"><span class="jumps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="b"></i><i></i></span><span class="bidno">b615</span><span class="gear"></span></td><td class="nm"><b>Stillwater Pilates at Elm Crossing</b><span>Lantern Construction</span></td><td><span class="due a">Tue 11/10<small>(+0)</small></span></td><td><span class="est">Priya</span></td><td><span class="plus">+</span></td><td class="lk"><span class="lks fix"><span class="lk1"><svg><use href="#i-cam"/></svg><em>4</em></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg><em>2</em></span><span class="lk1"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></span></td></tr>
+      </table></div>
+      <div class="legend">
+        <span><span class="lk1"><svg><use href="#i-cam"/></svg></span> Photos</span>
+        <span><span class="lk1"><svg><use href="#i-fold"/></svg></span> Project folder</span>
+        <span><span class="lk1"><svg><use href="#i-plan"/></svg></span> Plans</span>
+        <span><span class="lk1"><svg><use href="#i-ct"/></svg></span> CountTooling</span>
+        <span><span class="lk1"><svg><use href="#i-send"/></svg></span> Bid submission</span>
+        <span><span class="lk1 off"><svg><use href="#i-cam"/></svg></span> grey: not there yet, a press starts it</span>
+      </div>
+    </div></div>
+    <div class="foot">The legend is for this page. In the app each icon's name shows on hover and is read to a screen reader, as today. A second CountTooling project still draws one more crosshair after the first, so that slot can grow. A won bid's job chip sits on its own line above the icons.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · the same five on every card</div>
+    <div class="frame"><div class="screen w375">
+      <div class="phead">▼ Unsent / Working Bids (5)</div>
+      <div class="pcard"><div class="t"><span class="bidno" style="font-size:15px">b612</span><b>Harbor Street Chapel Addition</b></div><div class="g">Ridgeway Builders</div><div class="m"><span class="due r">Mon 11/2 (+8)</span> Marisol</div>
+        <div class="lks"><span class="lk1 off"><svg><use href="#i-cam"/></svg></span><span class="lk1 off"><svg><use href="#i-fold"/></svg></span><span class="lk1 off"><svg><use href="#i-plan"/></svg></span><span class="lk1 off"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></div></div>
+      <div class="pcard"><div class="t"><span class="bidno" style="font-size:15px">b598</span><b>Quarry Road Storage Bunker</b></div><div class="g">Tallgrass Solutions</div><div class="m"><span class="due r">Mon 11/2 (+8)</span> <span class="est me" style="font-size:13px">Owen</span></div>
+        <div class="lks"><span class="lk1 off"><svg><use href="#i-cam"/></svg></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg><em>3</em></span><span class="lk1 off"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></div></div>
+      <div class="pcard"><div class="t"><span class="bidno" style="font-size:15px">b603</span><b>Copper Kettle Café</b></div><div class="g">Northgate Construction</div><div class="m"><span class="due a">Tue 11/10 (+0)</span> Dana</div>
+        <div class="lks"><span class="lk1"><svg><use href="#i-cam"/></svg><em>12</em></span><span class="lk1"><svg><use href="#i-fold"/></svg></span><span class="lk1"><svg><use href="#i-plan"/></svg></span><span class="lk1"><svg><use href="#i-ct"/></svg></span><span class="lk1 off"><svg><use href="#i-send"/></svg></span></div></div>
+    </div></div>
+    <div class="foot">Today a card with no links draws no icon row. Each slot is 46 by 40 so a thumb can hit it.</div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">A missing link reads as a gap in a column of blue, where today it reads as nothing.</p>
+  <p class="gain">Every icon keeps its place, so the eye finds Plans in the same spot on every row.</p>
+  <p class="lose">A row with nothing shows five grey icons where a dash stood. The grey is faint on purpose.</p>
+  <p class="lose">The column grows from about 110 px to about 190 px. The project name gives up the width.</p>
+</div>
+
+<!-- ───────────────────────── 2 · GREY PHOTOS ───────────────────────── -->
+<h2 id="grey"><span class="num">2</span> A grey photos icon is pressed <span class="tag">as asked</span></h2>
+<p class="lede">The window says what will be made and where. Its button names the act. Once the folder is made, the same window shows the upload tools.</p>
+<div class="row">
+  <div class="col win">
+    <div class="cap opt">Desk · step 1 · no folder yet</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b598 Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div>This bid has no photo folder yet.</div>
+        <div class="where"><span>Making one adds a folder named <b>Photos</b> to the bid's project folder in Google Drive, under Team only:</span>
+          <span class="path">b598 Quarry Road Storage Bunker › Team only › <b>Photos</b></span>
+          <span class="muted">Anyone who can open the bid's project folder can open its photos.</span></div>
+      </div>
+      <div class="mf"><span class="btn">Not now</span><span class="btn pri">Make the photo folder</span></div>
+    </div></div></div></div>
+    <div class="foot">When the bid has no project folder either, the words say so: the press makes <b>b612 Harbor Street Chapel Addition</b> in the company's shared Drive with Photos inside it, and the folder icon turns blue with it.</div>
+  </div>
+  <div class="col win">
+    <div class="cap opt">Desk · step 2 · the folder is made, photos dragged in</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b598 Quarry Road Storage Bunker</b><span>Folder made · no photos yet</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div class="drop over"><b>Drop photos here</b><div class="bs"><span class="btn sm">Pick files</span><span class="btn sm">Open in Drive ↗</span></div><span class="muted">Photos are made smaller before they go up, as box photos are.</span></div>
+        <div class="ups">
+          <div class="up ok"><span class="th t1"></span><span>mechanical-room-north.jpg</span><span class="st">Added</span></div>
+          <div class="up ok"><span class="th t2"></span><span>water-heater-closet.jpg</span><span class="st">Added</span></div>
+          <div class="up"><span class="th t3"></span><span>riser-at-grid-C4.jpg<div class="bar"><i style="width:62%"></i></div></span><span class="st muted">62%</span></div>
+          <div class="up bad"><span class="th t4"></span><span>site-walk.mov<br><span class="muted">A video. Photos only for now.</span></span><span class="st">Held</span></div>
+        </div>
+      </div>
+      <div class="mf"><span class="btn pri">Done</span></div>
+    </div></div></div></div>
+    <div class="foot">A photo is in the app the moment it is added and is filed in Drive within five minutes, as a box photo is. A file that fails does not stop the rest. It stays in the list with its reason.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · step 1</div>
+    <div class="frame"><div class="screen w375"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b598</b><span>Quarry Road Storage Bunker</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div>This bid has no photo folder yet.</div>
+        <div class="where"><span>Making one adds a folder named <b>Photos</b> to the bid's project folder in Google Drive, under Team only:</span>
+          <span class="path">b598 Quarry Road Storage Bunker › Team only › <b>Photos</b></span></div>
+      </div>
+      <div style="height:250px"></div>
+      <div class="mf"><span class="btn">Not now</span><span class="btn pri">Make the photo folder</span></div>
+    </div></div></div></div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · step 2 · on a site walk</div>
+    <div class="frame"><div class="screen w375"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b598</b><span>Folder made · 2 photos</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <span class="btn pri big">Take a photo</span>
+        <span class="btn big">Pick from this phone</span>
+        <div class="grid">
+          <div class="ph"><div class="th t1"></div><div class="nm">Mechanical room north</div><div class="by">Owen · just now</div></div>
+          <div class="ph"><div class="th t2"></div><div class="nm">Water heater closet</div><div class="by">Owen · just now</div></div>
+        </div>
+        <div class="muted">A photo taken with no signal waits on this phone and goes up when the signal is back.</div>
+      </div>
+      <div style="height:60px"></div>
+      <div class="mf"><span class="btn pri">Done</span></div>
+    </div></div></div></div>
+    <div class="foot">Take a photo opens the phone's camera. The window stays open, so the next press is the next photo.</div>
+  </div>
+  <div class="col win">
+    <div class="cap opt">Desk · the bid's folder is one the app cannot file into</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b604 Dawnlight Yoga Studio</b><span>3 photos · waiting to be filed in Drive</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div class="where" style="border-color: var(--amber); background: var(--bg-amber-100);"><span><b>The photos are safe in the app. They are not in Drive yet.</b></span><span>This bid's project folder sits in a personal Drive, and the app is not an editor of it. Share the folder with the app's address as an editor, or move it into the company's shared Drive. The photos file themselves after that.</span>
+          <span style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px"><span class="btn sm">Open the folder ↗</span><span class="btn sm">Copy the app's address</span></span></div>
+        <div class="grid">
+          <div class="ph"><div class="th t5"></div><div class="nm">Ceiling above reception</div><div class="by">Dana · today</div></div>
+          <div class="ph"><div class="th t6"></div><div class="nm">Existing water heater</div><div class="by">Dana · today</div></div>
+          <div class="ph"><div class="th t7"></div><div class="nm">Floor drain, studio B</div><div class="by">Dana · today</div></div>
+        </div>
+      </div>
+      <div class="mf"><span class="btn">Add photos</span><span class="btn pri">Done</span></div>
+    </div></div></div></div>
+    <div class="foot">This is not rare today. The plumbing bid folders made by hand sit in a personal Drive. A photo is never refused for it. The icon on the board is blue with its count either way.</div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 3 · PHOTOS EXIST ───────────────────────── -->
+<h2 id="blue"><span class="num">3</span> The same window when photos are there</h2>
+<p class="lede">A blue photos icon opens the photos in the app. Drive is one press away. A photo can be renamed where it sits and removed with an Undo.</p>
+<div class="row">
+  <div class="col win" style="flex-basis: 760px;">
+    <div class="cap opt">Desk · 12 photos · one being renamed, one menu open</div>
+    <div class="frame"><div class="screen" style="width: 758px;"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b603 Copper Kettle Café</b><span>Northgate Construction · b603 Copper Kettle Café › Team only › Photos</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div class="bar2"><span class="n">12 photos</span><span class="muted">newest first</span><span class="sp"></span><span class="btn sm">Select</span><span class="btn sm">Open in Drive ↗</span><span class="btn sm pri">Add photos</span></div>
+        <div class="grid">
+          <div class="ph"><div class="th t1"></div><span class="more">⋯</span><div class="nm">Mechanical room north</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph"><div class="th t2"></div><span class="more">⋯</span><input value="Grease trap location" aria-label="Photo name"><div class="by">Enter saves · Esc leaves it</div></div>
+          <div class="ph"><div class="th t3"></div><span class="more">⋯</span><div class="menu"><span>Rename</span><span>Open in Drive ↗</span><span>Download</span><span class="r">Remove</span></div><div class="nm">Riser at grid C4</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph"><div class="th t4"></div><span class="more">⋯</span><div class="nm">Existing floor sink</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph"><div class="th t5"></div><span class="more">⋯</span><div class="nm">Ceiling above the bar</div><div class="by">Priya · Nov 3</div></div>
+          <div class="ph"><div class="th t6"></div><span class="more">⋯</span><div class="nm">Water heater closet</div><div class="by">Priya · Nov 3</div></div>
+          <div class="ph"><div class="th t7"></div><span class="more">⋯</span><div class="nm">Gas meter</div><div class="by">Priya · Nov 3</div></div>
+          <div class="ph"><div class="th t8"></div><span class="more">⋯</span><div class="nm">Restroom rough, east wall</div><div class="by">Priya · Nov 3</div></div>
+        </div>
+        <div class="toast">Removed <b style="color:inherit">Back door.jpg</b>. It is in Drive's trash for 30 days. <u>Undo</u></div>
+      </div>
+    </div></div></div></div>
+    <div class="foot">Pressing a photo opens it large with next and back. A name is the Drive file's name, so a rename here is the rename in Drive. Dropping files anywhere on the window adds them.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · Select is on</div>
+    <div class="frame"><div class="screen w375"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Photos · b603</b><span>Copper Kettle Café · 12 photos</span></div><span class="x">×</span></div>
+      <div class="mb">
+        <div class="bar2"><span class="btn sm">Cancel</span><span class="sp"></span><span class="btn sm red">Remove 2 photos</span></div>
+        <div class="grid">
+          <div class="ph sel"><div class="th t1"></div><span class="tick"></span><div class="nm">Mechanical room north</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph"><div class="th t2"></div><span class="tick"></span><div class="nm">Grease trap location</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph sel"><div class="th t3"></div><span class="tick"></span><div class="nm">Riser at grid C4</div><div class="by">Dana · Nov 6</div></div>
+          <div class="ph"><div class="th t4"></div><span class="tick"></span><div class="nm">Existing floor sink</div><div class="by">Dana · Nov 6</div></div>
+        </div>
+      </div>
+      <div class="mf"><span class="btn">Pick from this phone</span><span class="btn pri">Take a photo</span></div>
+    </div></div></div></div>
+    <div class="foot">The button says what it will do with its count. Nothing selected and it is grey.</div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 4 · THE OTHER FOUR ───────────────────────── -->
+<h2 id="others"><span class="num">4</span> The other four links under the same rule</h2>
+<p class="lede">Blue opens the link in a new tab, as it does today. Grey opens a small window that sets the link or makes the thing. Under direction A each link has its own window.</p>
+<div class="four">
+  <div class="mini">
+    <div class="mh"><span class="ic"><svg><use href="#i-fold"/></svg></span><div class="ti"><b>Project folder · b612 Harbor Street Chapel Addition</b><span>Grey: this bid has no project folder.</span></div></div>
+    <div class="mb">
+      <div class="where"><span>Make one in the company's shared Drive:</span><span class="path">PipeTooling Jobs › <b>b612 Harbor Street Chapel Addition</b></span></div>
+      <div><span class="btn pri">Make the project folder</span></div>
+      <div class="or">or</div>
+      <div class="fld"><label>The bid already has a folder in Drive</label><div class="inp"><span>https://drive.google.com/drive/…</span><span class="btn sm">Paste</span></div></div>
+      <div><span class="btn dead">Save the link</span></div>
+    </div>
+    <div class="then">Blue: opens the folder in Drive.</div>
+  </div>
+  <div class="mini">
+    <div class="mh"><span class="ic"><svg><use href="#i-plan"/></svg></span><div class="ti"><b>Plans · b612 Harbor Street Chapel Addition</b><span>Grey: this bid has no plans.</span></div></div>
+    <div class="mb">
+      <div class="fld"><label>Name of the set</label><div class="inp"><span style="color:var(--text-strong)">Issued for bid</span></div></div>
+      <div class="fld"><label>Link to the plans</label><div class="inp"><span>https://drive.google.com/file/…</span><span class="btn sm">Paste</span></div></div>
+      <div class="muted">Or use Find, as the bid's form does.</div>
+      <div><span class="btn dead">Add the set</span></div>
+    </div>
+    <div class="then">Blue: one set opens it. Two or more show the count and open the picker, as today.</div>
+  </div>
+  <div class="mini">
+    <div class="mh"><span class="ic"><svg><use href="#i-ct"/></svg></span><div class="ti"><b>CountTooling · b598 Quarry Road Storage Bunker</b><span>Grey: no count project is linked.</span></div></div>
+    <div class="mb">
+      <div class="fld"><label>Link to the CountTooling project</label><div class="inp"><span>https://counttooling.com/?t=…</span><span class="btn sm">Paste</span></div></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap"><span class="btn dead">Save the link</span><span class="btn">Open CountTooling ↗</span></div>
+    </div>
+    <div class="then">Blue: opens the project in CountTooling. A second project draws a second crosshair.</div>
+  </div>
+  <div class="mini">
+    <div class="mh"><span class="ic"><svg><use href="#i-send"/></svg></span><div class="ti"><b>Bid submission · b603 Copper Kettle Café</b><span>Grey: nothing is filed as sent.</span></div></div>
+    <div class="mb">
+      <div class="fld"><label>Link to what was sent</label><div class="inp"><span>https://drive.google.com/drive/…</span><span class="btn sm">Paste</span></div></div>
+      <div><span class="btn dead">Save the link</span></div>
+    </div>
+    <div class="then">Blue: opens what was sent. On an unsent bid this slot is always grey, which is true.</div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">One rule for five icons: blue opens it, grey starts it.</p>
+  <p class="lose">A has no press that changes a blue link. That stays in the bid's form, under Files &amp; links, as today.</p>
+  <p class="lose">A is five windows to build and to learn, and four of them are one field and one button.</p>
+</div>
+
+<!-- ───────────────────────── BEST? ───────────────────────── -->
+<h2 id="best">Is this the best we can do?</h2>
+<p class="lede">The column holds up. The windows behind it are where a second look pays. Three things bothered me in A, and each one draws an alternative.</p>
+<div class="say">
+  <p class="lose"><b>Five windows for one bid's files.</b> A person who sets the folder often sets the plans next. In A that is close, press, a new window.</p>
+  <p class="lose"><b>A blue link cannot be changed from the board.</b> A wrong plans link sends the person to the gear and a long form.</p>
+  <p class="lose"><b>A press that only makes an empty folder.</b> Step 1 asks for a yes before the person can do what they came for. A person who says Not now has learned nothing, and a person who says yes and closes the window leaves an empty folder in Drive.</p>
+</div>
+
+<h2 id="b"><span class="num">B</span> One window per bid</h2>
+<p class="lede">Every icon, blue or grey, opens one window: the bid's files. It opens with the pressed row open. Every row has its Open and its Change.</p>
+<div class="row">
+  <div class="col win">
+    <div class="cap opt">Desk · the grey photos icon on b598 was pressed</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Files · b598 Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></div><span class="x">×</span></div>
+      <div class="rw off open"><span class="ic"><svg><use href="#i-cam"/></svg></span><span class="w"><b>Photos</b><span>None yet</span></span><span class="a"></span></div>
+      <div class="rwbody">
+        <div class="drop"><b>Drop photos here</b><div class="bs"><span class="btn sm pri">Pick files</span></div></div>
+        <div class="muted">The first photo makes the folder: <span style="font-family:ui-monospace,Menlo,monospace">b598 Quarry Road Storage Bunker › Team only › Photos</span></div>
+      </div>
+      <div class="rw"><span class="ic"><svg><use href="#i-fold"/></svg></span><span class="w"><b>Project folder</b><span>b598 Quarry Road Storage Bunker</span></span><span class="a"><span class="btn sm">Change</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-plan"/></svg></span><span class="w"><b>Plans</b><span>3 sets · Issued for bid, Addendum 1, Permit set</span></span><span class="a"><span class="btn sm">Add a set</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw off"><span class="ic"><svg><use href="#i-ct"/></svg></span><span class="w"><b>CountTooling</b><span>Not linked</span></span><span class="a"><span class="btn sm">Set the link</span></span></div>
+      <div class="rw off" style="border-bottom:0"><span class="ic"><svg><use href="#i-send"/></svg></span><span class="w"><b>Bid submission</b><span>Nothing filed as sent</span></span><span class="a"><span class="btn sm">Set the link</span></span></div>
+    </div></div></div></div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · the same window, photos there</div>
+    <div class="frame"><div class="screen w375"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Files · b603</b><span>Copper Kettle Café</span></div><span class="x">×</span></div>
+      <div class="rw open"><span class="ic"><svg><use href="#i-cam"/></svg></span><span class="w"><b>Photos</b><span>12 photos</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rwbody">
+        <div style="display:flex; gap:8px"><span class="btn pri" style="flex:1; min-height:44px">Take a photo</span><span class="btn" style="flex:1; min-height:44px">Pick</span></div>
+        <div class="grid">
+          <div class="ph"><div class="th t1"></div><span class="more">⋯</span><div class="nm">Mechanical room north</div></div>
+          <div class="ph"><div class="th t2"></div><span class="more">⋯</span><div class="nm">Grease trap location</div></div>
+        </div>
+        <div class="muted">Show all 12</div>
+      </div>
+      <div class="rw"><span class="ic"><svg><use href="#i-fold"/></svg></span><span class="w"><b>Project folder</b><span>b603 Copper Kettle Café</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-plan"/></svg></span><span class="w"><b>Plans</b><span>Issued for bid</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-ct"/></svg></span><span class="w"><b>CountTooling</b><span>Linked</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw off" style="border-bottom:0"><span class="ic"><svg><use href="#i-send"/></svg></span><span class="w"><b>Bid submission</b><span>Nothing filed as sent</span></span><span class="a"><span class="btn sm">Set</span></span></div>
+    </div></div></div></div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">One window to build and to learn. Changing a link has a home on the board.</p>
+  <p class="lose">Opening the plans takes two presses where today it takes one. An estimator does that many times a day.</p>
+</div>
+
+<h2 id="c"><span class="num pick">C</span> A's presses, B's window <span class="tag">the pick</span></h2>
+<p class="lede">The column and the window are B's. The presses are split by what the person wants. A <b>blue link</b> goes straight out, as today. A <b>grey icon</b> opens the bid's Files window on its row. The <b>photos icon</b> always opens the window, because photos live in the app. The first photo makes the folder, so there is no step that only says yes.</p>
+<div class="row">
+  <div class="col win">
+    <div class="cap opt">Desk · grey photos pressed, four photos dropped</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Files · b598 Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></div><span class="x">×</span></div>
+      <div class="rw off open"><span class="ic"><svg><use href="#i-cam"/></svg></span><span class="w"><b>Photos</b><span>None yet · 4 picked</span></span><span class="a"></span></div>
+      <div class="rwbody">
+        <div class="ups">
+          <div class="up"><span class="th t1"></span><span>mechanical-room-north.jpg</span><span class="st muted">ready</span></div>
+          <div class="up"><span class="th t2"></span><span>water-heater-closet.jpg</span><span class="st muted">ready</span></div>
+          <div class="up"><span class="th t3"></span><span>riser-at-grid-C4.jpg</span><span class="st muted">ready</span></div>
+          <div class="up bad"><span class="th t4"></span><span>site-walk.mov<br><span class="muted">A video. Photos only for now.</span></span><span class="st">Held</span></div>
+        </div>
+        <div class="where"><span>This makes the bid's photo folder and puts the photos in it:</span><span class="path">b598 Quarry Road Storage Bunker › Team only › <b>Photos</b></span></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap"><span class="btn sm">Pick more</span><span class="btn pri">Make the folder and add 3 photos</span></div>
+      </div>
+      <div class="rw"><span class="ic"><svg><use href="#i-fold"/></svg></span><span class="w"><b>Project folder</b><span>b598 Quarry Road Storage Bunker</span></span><span class="a"><span class="btn sm">Change</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-plan"/></svg></span><span class="w"><b>Plans</b><span>3 sets · Issued for bid, Addendum 1, Permit set</span></span><span class="a"><span class="btn sm">Add a set</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw off"><span class="ic"><svg><use href="#i-ct"/></svg></span><span class="w"><b>CountTooling</b><span>Not linked</span></span><span class="a"><span class="btn sm">Set the link</span></span></div>
+      <div class="rw off" style="border-bottom:0"><span class="ic"><svg><use href="#i-send"/></svg></span><span class="w"><b>Bid submission</b><span>Nothing filed as sent</span></span><span class="a"><span class="btn sm">Set the link</span></span></div>
+    </div></div></div></div>
+    <div class="foot">The confirm the owner asked for is still there. It is the button that adds the photos, and it names the folder it makes. After the first time the button reads <b>Add 3 photos</b>.</div>
+  </div>
+  <div class="col win">
+    <div class="cap opt">Desk · the grey CountTooling icon was pressed</div>
+    <div class="frame"><div class="screen w600"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Files · b598 Quarry Road Storage Bunker</b><span>Tallgrass Solutions</span></div><span class="x">×</span></div>
+      <div class="rw off"><span class="ic"><svg><use href="#i-cam"/></svg></span><span class="w"><b>Photos</b><span>None yet</span></span><span class="a"><span class="btn sm">Add photos</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-fold"/></svg></span><span class="w"><b>Project folder</b><span>b598 Quarry Road Storage Bunker</span></span><span class="a"><span class="btn sm">Change</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-plan"/></svg></span><span class="w"><b>Plans</b><span>3 sets · Issued for bid, Addendum 1, Permit set</span></span><span class="a"><span class="btn sm">Add a set</span><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw off open"><span class="ic"><svg><use href="#i-ct"/></svg></span><span class="w"><b>CountTooling</b><span>Not linked</span></span><span class="a"></span></div>
+      <div class="rwbody">
+        <div class="fld"><label>Link to the CountTooling project</label><div class="inp"><span>https://counttooling.com/?t=…</span><span class="btn sm">Paste</span></div></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap"><span class="btn sm">Open CountTooling ↗</span><span class="btn dead">Save the link</span></div>
+      </div>
+      <div class="rw off" style="border-bottom:0"><span class="ic"><svg><use href="#i-send"/></svg></span><span class="w"><b>Bid submission</b><span>Nothing filed as sent</span></span><span class="a"><span class="btn sm">Set the link</span></span></div>
+    </div></div></div></div>
+    <div class="foot">The blue folder and plans icons on this row never open this window from the board. They open Drive, as they do today.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">Phone · grey photos pressed, the first photo taken</div>
+    <div class="frame"><div class="screen w375"><div class="stage"><div class="modal">
+      <div class="mh"><div class="ti"><b>Files · b598</b><span>Quarry Road Storage Bunker</span></div><span class="x">×</span></div>
+      <div class="rw off open"><span class="ic"><svg><use href="#i-cam"/></svg></span><span class="w"><b>Photos</b><span>None yet · 1 taken</span></span><span class="a"></span></div>
+      <div class="rwbody">
+        <div class="grid"><div class="ph"><div class="th t1"></div><div class="nm">Photo 1</div><div class="by">ready</div></div></div>
+        <div class="where"><span>This makes the bid's photo folder and puts the photo in it:</span><span class="path">b598 Quarry Road Storage Bunker › Team only › <b>Photos</b></span></div>
+        <span class="btn pri big">Make the folder and add 1 photo</span>
+        <span class="btn big">Take another first</span>
+      </div>
+      <div class="rw"><span class="ic"><svg><use href="#i-fold"/></svg></span><span class="w"><b>Project folder</b><span>b598 Quarry Road Storage Bunker</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw"><span class="ic"><svg><use href="#i-plan"/></svg></span><span class="w"><b>Plans</b><span>3 sets</span></span><span class="a"><span class="btn sm">Open ↗</span></span></div>
+      <div class="rw off"><span class="ic"><svg><use href="#i-ct"/></svg></span><span class="w"><b>CountTooling</b><span>Not linked</span></span><span class="a"><span class="btn sm">Set</span></span></div>
+      <div class="rw off" style="border-bottom:0"><span class="ic"><svg><use href="#i-send"/></svg></span><span class="w"><b>Bid submission</b><span>Nothing filed as sent</span></span><span class="a"><span class="btn sm">Set</span></span></div>
+    </div></div></div></div>
+    <div class="foot">The press that names the folder comes once for a bid. After it, each photo taken goes up by itself.</div>
+  </div>
+</div>
+
+<h3>Side by side</h3>
+<div class="scroll"><table class="cmp">
+  <tr><th></th><th>Today</th><th>A · a window per icon</th><th>B · one window per bid</th><th class="pk">C · the pick</th></tr>
+  <tr><th>Presses to open the plans</th><td>1</td><td>1</td><td>2</td><td class="pk">1</td></tr>
+  <tr><th>Presses from a grey photos icon to the first photo going up</th><td>no door</td><td>3: the icon, Make the photo folder, Pick files</td><td>2</td><td class="pk">2, then the button that names the folder</td></tr>
+  <tr><th>Change a link that is wrong</th><td>the gear, then the form</td><td>the gear, then the form</td><td>Change, on its row</td><td class="pk">the photos icon, then Change on its row</td></tr>
+  <tr><th>Windows to build</th><td></td><td>five</td><td>one</td><td class="pk">one</td></tr>
+  <tr><th>An empty folder left in Drive</th><td></td><td>yes, by a yes with no photo after it</td><td>no</td><td class="pk">no</td></tr>
+  <tr><th>What it costs</th><td></td><td>four windows of one field each</td><td>a press on every open, all day</td><td class="pk">two icons that look alike can do different things: a blue plans icon leaves the app, a blue photos icon stays in it</td></tr>
+</table></div>
+
+<!-- ───────────────────────── CALLS ───────────────────────── -->
+<h2 id="calls">The owner's calls</h2>
+<ol class="calls">
+  <li><b class="q">Which direction?</b> <i>My pick: C.</i> The column as asked, one Files window, blue links straight out.</li>
+  <li><b class="q">Is the folder made by a press of its own, or by the first photo?</b> You asked for a confirm. <i>My pick: the first photo, with the button naming the folder it makes.</i> No empty folders, one press fewer.</li>
+  <li><b class="q">Where does the photo folder live in Drive?</b> <i>My pick: Photos, under Team only, inside the bid's project folder.</i> A photo saved from a text onto a bid already lands there. When the bid has no project folder, the app makes one in the company's shared Drive first.</li>
+  <li><b class="q">The bid folders made by hand sit in a personal Drive. Do they move into the company's shared Drive?</b> The app cannot file into them as they are. <i>My pick: move them, once the estimators are members of the shared Drive.</i> Until then a photo waits in the app with its reason. This is card #240's open call.</li>
+  <li><b class="q">When a bid is won, what happens to its photos?</b> <i>My pick: nothing moves.</i> The bid's folder already becomes the job's folder, so the photos ride along in Team only › Photos. Customer Pictures stays the job's own.</li>
+  <li><b class="q">Who may add a photo, and who may remove one?</b> <i>My pick: anyone who can edit the bid may add, a primary on their own bids included. The person who added it and the office may remove.</i> A removal goes to Drive's trash with an Undo. It would be the first thing the app removes from Drive.</li>
+  <li><b class="q">Is the Bid submission slot drawn on an unsent bid?</b> <i>My pick: yes, grey.</i> Five slots on every row keep the column straight.</li>
+  <li><b class="q">Photos only, or videos too?</b> <i>My pick: photos first.</i> A video is held with its reason and can go in through Drive.</li>
+  <li><b class="q">Does the Files window replace Files &amp; links in the bid's form?</b> <i>My pick: not yet.</i> Both write the same columns. Retire the form's section after a month of use.</li>
+</ol>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-theme-pick') === t)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>
