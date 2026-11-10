@@ -11,7 +11,8 @@ import { formatPayWeekLabel, previousCompletePayWeek, type PayWeek } from '../pa
 
 /** Who may mark a tally transaction as payroll: every payroll-access role (dev, controller,
  *  pay-approved master) — the DB side moved from `is_dev()` to `has_payroll_access()` in
- *  `20260906130000_tally_payroll_flag_payroll_access.sql`. Payroll RULES stay dev-only. */
+ *  `20260906130000_tally_payroll_flag_payroll_access.sql`. Payroll RULES are the controller's and a
+ *  dev's (`canEditTallyPayrollRules`). */
 export function canMarkTallyPayroll(input: { isDev: boolean; canAccessPay: boolean }): boolean {
   return input.isDev || input.canAccessPay
 }

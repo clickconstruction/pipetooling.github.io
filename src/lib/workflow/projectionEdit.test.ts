@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import {
+  canSeeProjections,
   nextProjectionSequence,
   projectionAnchorFields,
   projectionSaveProblem,
@@ -9,6 +12,37 @@ import {
 } from './projectionEdit'
 
 const saved = { id: 'p1', stage_name: 'Rough', memo: 'draw 1', amount: 42000, step_id: 's2', placement: 'before' }
+
+describe('canSeeProjections', () => {
+  it('is the owner, a dev and the controller: projections are the books’ (punch list #188 row 48)', () => {
+    for (const role of ['dev', 'master_technician', 'controller']) expect(canSeeProjections(role), role).toBe(true)
+    for (const role of ['assistant', 'estimator', 'superintendent', 'primary', 'helpers', 'subcontractor', null, undefined]) expect(canSeeProjections(role), String(role)).toBe(false)
+  })
+
+  it('is the one gate of the bar, the read behind it and the Forecast’s money column', () => {
+    const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+    expect(src('src/pages/Workflow.tsx')).toContain('const canEditProjections = canSeeProjections(userRole)')
+    expect(src('src/components/projects/ProjectsForecastSpecificTab.tsx')).toContain('const canSeeMoney = canSeeProjections(myRole)')
+    const hook = src('src/hooks/useWorkflowProjections.ts')
+    expect(hook.match(/canSeeProjections\(userRole\)/g)?.length).toBe(2)
+    expect(hook).not.toMatch(/userRole [!=]== '/)
+  })
+
+  it('the newest delete policy on workflow_projections admits the same three roles', () => {
+    const dir = join(process.cwd(), 'supabase', 'migrations')
+    const head = 'FOR DELETE'
+    const newest = readdirSync(dir)
+      .filter((f) => f.endsWith('.sql') && !f.includes('baseline'))
+      .sort()
+      .reverse()
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .find((sql) => /CREATE POLICY "Devs and masters can delete projections"/.test(sql))
+    expect(newest, 'a migration after the baseline restates the delete policy').toBeTruthy()
+    const policy = newest!.slice(newest!.indexOf('CREATE POLICY "Devs and masters can delete projections"'))
+    expect(policy.slice(0, policy.indexOf(';'))).toContain(head)
+    expect(policy.slice(0, policy.indexOf(';'))).toContain('USING (public.is_master_or_dev() OR public.is_controller())')
+  })
+})
 
 describe('seedEditingProjection', () => {
   it('opens an existing projection on its own fields', () => {

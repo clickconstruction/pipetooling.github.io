@@ -28,6 +28,7 @@ import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
 import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
 import { useProjectJobs } from '../hooks/useProjectJobs'
 import { useWorkflowProjections } from '../hooks/useWorkflowProjections'
+import { canSeeProjections } from '../lib/workflow/projectionEdit'
 import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
 import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
 import { WorkflowLineItemModals } from '../components/workflow/WorkflowLineItemModals'
@@ -115,8 +116,8 @@ export default function Workflow() {
   const { markStarted, deleteStep, assignPerson } = stepWrites
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
-  // Projections are the books' (punch list #188 row 48, v2.6760): the owner pair and the controller.
-  const canEditProjections = userRole === 'dev' || userRole === 'master_technician' || (userRole as string | null) === 'controller'
+  // Projections are the books' (punch list #188 row 48, v2.6760): the owner pair and the controller, the gate the read behind the bar holds too.
+  const canEditProjections = canSeeProjections(userRole)
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
   const projectionsApi =

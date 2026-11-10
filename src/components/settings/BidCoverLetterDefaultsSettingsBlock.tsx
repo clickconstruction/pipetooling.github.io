@@ -161,7 +161,7 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
         }}
       >
         <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Bid Cover Letter Defaults (dev)
+        Bid Cover Letter Defaults
       </button>
       {open && (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>

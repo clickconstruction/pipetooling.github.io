@@ -18,6 +18,7 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
+import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 
 type CustomerContact = {
@@ -276,6 +277,8 @@ export default function JobModeDetailsSection({
       <JobModeMachinesLine jobId={jobId} jobWords={[hcpNumber, jobName].filter(Boolean).join(' · ')} />
       {/* The field's door to the job's photos (punch list #244, PR 4): the same window the Pipeline row's camera opens. */}
       <JobModePhotosLine jobId={jobId} hcpNumber={hcpNumber} jobName={jobName} jobAddress={jobAddress} />
+      {/* A photo of the supply house ticket (punch list #295, PR 4): the same press as Tally's, this job picked first. */}
+      {authUser?.id ? <TicketPress variant="line" jobId={jobId} userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
       <div
         style={{
           display: 'flex',

@@ -35,6 +35,7 @@ import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './d
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
+import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
@@ -166,6 +167,13 @@ export const WRITE_VERBS = {
   // shape is checked there since it needs the day.
   plan_bill: { rpc: null, step: 'plan' },
   apply_bill: { rpc: null, step: 'apply' },
+  // v2.6795 / 0.53.0 (PR 4; numbered behind v2.6792's 0.50.0, which merged first): two marks on a job — the Collections flag through the Job window's own
+  // set_job_collections_flag, and the Lien contract row's own save of a contract's end as one PATCH under RLS; rpc is
+  // null, the dry run the server's read of the job (devMcpJobMarks.ts).
+  plan_collections_flag: { rpc: null, step: 'plan' },
+  apply_collections_flag: { rpc: null, step: 'apply' },
+  plan_contract_ended: { rpc: null, step: 'plan' },
+  apply_contract_ended: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -298,6 +306,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isPersonMatterVerb(verb)) {
     // v2.6582: the shape check is devMcpPersonMatter's; the dry run is the server's read of the person and the standing matter.
     const built = personMatterInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobMarkVerb(verb)) {
+    // v2.6795: the shape check is devMcpJobMarks'; the dry run is the server's read of the job.
+    const built = jobMarkInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1136,6 +1150,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
   const job = verb === 'apply_job'
+  if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
+  if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`

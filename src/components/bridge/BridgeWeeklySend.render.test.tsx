@@ -21,7 +21,7 @@ describe('BridgeWeeklySend', () => {
   it('reads the switch and the last run', async () => {
     renderWithProviders(<BridgeWeeklySend io={fakeIo(true, { at: '', day: '2026-10-19', dry: false, sent: ['a@x.com', 'b@x.com'], failed: [], gaps: [], subject: '' })} />)
     expect((await screen.findByRole('switch', { name: 'Weekly email' })).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('On: the sheet goes to every dev on Monday at 6 AM Central. Last sent Oct 19 to 2 people.')
+    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('On: the sheet goes to the owner and every dev on Monday at 6 AM Central. Last sent Oct 19 to 2 people.')
   })
 
   it('off: says so, and that the button still works', async () => {

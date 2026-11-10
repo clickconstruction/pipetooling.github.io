@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
-import { isControllerOrDev } from '../lib/doorRoles'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -46,7 +45,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
-import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
+import { buildTallyPayrollRuleFlagsToInsert, canEditTallyPayrollRules, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
 import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
 import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
@@ -252,7 +251,7 @@ export default function JobTally() {
   const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')
   const [role, setRole] = useState<string | null>(null)
   // Punch list #188 row 62 (v2.6761): the rules decide what counts as payroll, her chore, so the controller holds them with a dev.
-  const canEditPayrollRules = isControllerOrDev(role)
+  const canEditPayrollRules = canEditTallyPayrollRules(role)
   // #72 PR 2a: office roles land on the team's queue (Team); My card is their own card's table.
   const isTallyOffice = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const tallyTxView: 'team' | 'mine' = searchParams.get('view') === 'mine' ? 'mine' : 'team'
@@ -438,7 +437,8 @@ export default function JobTally() {
 
   const applyPayrollRules = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (role !== 'dev') return
+      // The rules window's gate: whoever is shown Apply now runs it (the RPC admits the same two roles, 20261109005000).
+      if (!canEditPayrollRules) return
       try {
         const rulesData = await withSupabaseRetry(
           () => supabase.from('mercury_tally_payroll_rules').select('id, enabled, sort_order, criteria').eq('enabled', true),
@@ -489,14 +489,14 @@ export default function JobTally() {
         if (!opts?.silent) showToast(formatErrorMessage(e, 'Could not apply payroll rules'), 'error')
       }
     },
-    [role, tallyTxRows, payrollDecidedIds, loadTallyTransactions, showToast],
+    [canEditPayrollRules, tallyTxRows, payrollDecidedIds, loadTallyTransactions, showToast],
   )
 
-  // Auto-apply payroll rules on load (dev opt-in). Signature = undecided tx ids, so a pass that
+  // Auto-apply payroll rules on load (the rules window's switch, so its two roles). Signature = undecided tx ids, so a pass that
   // flags/decides transactions shrinks the set and won't re-fire for the same ones.
   const payrollAutoApplySigRef = useRef<string>('')
   useEffect(() => {
-    if (role !== 'dev' || !payrollAutoApply || tallyTxLoading) return
+    if (!canEditPayrollRules || !payrollAutoApply || tallyTxLoading) return
     const undecided = tallyTxRows
       .map((r) => r.mercury_transaction_id)
       .filter((id) => !payrollDecidedIds.has(id))
@@ -505,7 +505,7 @@ export default function JobTally() {
     if (sig === '' || sig === payrollAutoApplySigRef.current) return
     payrollAutoApplySigRef.current = sig
     void applyPayrollRules({ silent: true })
-  }, [role, payrollAutoApply, tallyTxLoading, tallyTxRows, payrollDecidedIds, applyPayrollRules])
+  }, [canEditPayrollRules, payrollAutoApply, tallyTxLoading, tallyTxRows, payrollDecidedIds, applyPayrollRules])
 
   const tallyTxRowsGlobalFiltered = useMemo(() => {
     if (!tallyGlobalMinPostedYmd) return tallyTxRows

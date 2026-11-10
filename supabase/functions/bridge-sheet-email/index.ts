@@ -2,13 +2,16 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+// The kernel straight from the copy, not its index, as bridge-weekly-sheet reads it.
+import { isBridgeRole } from '../_shared/gcKernels/lib/bridge/weeklySend.ts'
 
 /**
  * bridge-sheet-email (v2.5224): mails the Bridge's Monday sheet to the person
  * who pressed **Email me this sheet** — and to nobody else. The page builds
  * the sheet from its own kernels and sends the finished subject, text and
- * HTML; this function checks the caller is a dev with a real account and
- * sends it to that account's own address through Resend.
+ * HTML; this function checks the caller is the owner or a dev with a real
+ * account (the Bridge's own audience since v2.6763, `isBridgeRole`) and sends
+ * it to that account's own address through Resend.
  *
  * Body: { subject, html, text }. Never a recipient: the recipient is the caller.
  */
@@ -53,7 +56,7 @@ serve(async (req) => {
     const { data: me, error: meErr } = await admin.from('users').select('id, role, email, archived_at, is_sample, is_digital_twin').eq('id', user.id).maybeSingle()
     const row = me as { role?: string; email?: string | null; archived_at?: string | null; is_sample?: boolean; is_digital_twin?: boolean } | null
     if (meErr || !row) return jsonResponse({ error: 'Unauthorized' }, 401)
-    if (row.role !== 'dev' || row.archived_at || row.is_sample || row.is_digital_twin) return jsonResponse({ error: 'Forbidden — the Bridge is dev only' }, 403)
+    if (!isBridgeRole(row.role) || row.archived_at || row.is_sample || row.is_digital_twin) return jsonResponse({ error: 'Forbidden. The Bridge is the owner’s and a dev’s.' }, 403)
     const email = (row.email ?? user.email ?? '').trim()
     if (!email) return jsonResponse({ error: 'Your account has no email address' }, 400)
 

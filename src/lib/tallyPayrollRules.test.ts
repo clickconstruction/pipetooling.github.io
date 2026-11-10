@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleMatchTx } from './tallyPayrollRules'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { buildTallyPayrollRuleFlagsToInsert, canEditTallyPayrollRules, type TallyPayrollRuleMatchTx } from './tallyPayrollRules'
 
 function tx(id: string, counterparty: string, amount = -1000): TallyPayrollRuleMatchTx {
   return { mercury_transaction_id: id, amount, counterparty_name: counterparty, raw: null }
@@ -11,6 +13,22 @@ const payrollRule = {
   sort_order: 0,
   criteria: { v: 1, counterparty: { op: 'contains', value: 'gusto' } } as unknown as import('../types/database').Json,
 }
+
+describe('canEditTallyPayrollRules', () => {
+  it('is the controller and a dev (punch list #188 row 62)', () => {
+    for (const role of ['dev', 'controller']) expect(canEditTallyPayrollRules(role), role).toBe(true)
+    for (const role of ['master_technician', 'assistant', 'estimator', 'superintendent', 'primary', 'helpers', 'subcontractor', null, undefined]) expect(canEditTallyPayrollRules(role), String(role)).toBe(false)
+  })
+
+  it('gates Apply now and the auto-apply with the window that offers them, so the press runs for whoever is shown it', () => {
+    const page = readFileSync(join(process.cwd(), 'src/pages/JobTally.tsx'), 'utf8')
+    expect(page).toContain('const canEditPayrollRules = canEditTallyPayrollRules(role)')
+    const apply = page.slice(page.indexOf('const applyPayrollRules = useCallback('), page.indexOf('const tallyTxRowsGlobalFiltered'))
+    expect(apply).toContain('if (!canEditPayrollRules) return')
+    expect(apply).toContain('if (!canEditPayrollRules || !payrollAutoApply || tallyTxLoading) return')
+    expect(apply).not.toMatch(/role [!=]== 'dev'/)
+  })
+})
 
 describe('buildTallyPayrollRuleFlagsToInsert', () => {
   it('flags matching, undecided, split-free transactions', () => {
