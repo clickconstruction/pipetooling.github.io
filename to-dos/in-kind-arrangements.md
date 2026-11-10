@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls
+status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls, and the chip beside a customer's name (mock-up 2, waiting on the owner)
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -55,6 +55,10 @@ November was not settled when this was written. At $1,000 a month the rest takes
 [`in-kind-arrangements-mockup.html`](in-kind-arrangements-mockup.html), drawn 2026-11-10 with made-up names and amounts. Frames A to H: today's reading, the card on the customer's page, the ledger for one partner, a month's credit in one press, the Needs you line, a ledger of lines as things are delivered, the list, and the smallest alternative. It ends with a second look and the owner's calls.
 
 The owner widened the ask the same day: *sometimes we trade with others for gravel or other things and I still need to enter each month's credit*. So the design holds two cases. One is a standing arrangement with a credit each month. The other is a partner who gives things as they come, such as concrete by the load.
+
+### Mock-up 2: the chip beside a customer's name
+
+[`in-kind-arrangements-chip-mockup.html`](in-kind-arrangements-chip-mockup.html), drawn 2026-11-10 with made-up names. The owner, once the first arrangement was live: *where in the app should a user be able to see the in kind balance due or credit for a customer, such as next to a customer's name?* It draws one chip with three things to say (on schedule with what is to come, a month due, they gave first) and where it goes: the Customers list with its total split, the customer's page, a job and the Bill window, then *Who owes what*. It leaves the chip off what the customer sees, the crew's screens, search and Messages. Not built. It waits on the owner's five calls at the foot of the page.
 
 ## Decided 2026-11-10
 

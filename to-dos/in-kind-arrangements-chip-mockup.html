@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The in kind chip beside a customer's name — the mock-up</title>
+<style>
+  /* Punch list #301, mock-up 2. Everything here is made up: Calloway Holdings, Hartwell Electric, Mesa Dental Group,
+     Pecan Creek Gravel, every address, job number, date and amount. The frames are drawn in the app's own token
+     values (src/index.css), light and dark. A dashed copper outline marks what is new on a screen that exists today. */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eceae4; color: #1f2937; font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 0 16px 72px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #5f6672; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: #111827; max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2.sec { font-size: 20px; margin: 46px 0 6px; color: #111827; }
+  .lede { margin: 0 0 6px; color: #374151; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5f6672; }
+  .cap b { color: #9a4a1c; }
+  .frame { width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid #cfd4db; border-radius: 12px; box-shadow: 0 8px 24px rgba(17,24,39,.08); background: #f0f2f5; }
+  .frame > .board { border-radius: 12px; }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid #9a4a1c; background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: #111827; }
+  ol.calls, ul.calls { margin: 10px 0 0; padding-left: 20px; max-width: 104ch; color: #374151; }
+  ol.calls li, ul.calls li { margin: 0 0 8px; }
+  .themebar { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 8px 0; background: #eceae4; }
+  .themebar button { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; border: 1px solid #aab2bd; background: #fff; color: #1f2937; cursor: pointer; }
+  .themebar button[aria-pressed="true"] { background: #111827; color: #fff; border-color: #111827; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .opt { background: #fff; border: 1px solid #cfd4db; border-radius: 10px; padding: 14px 16px; }
+  .opt.pick { border: 2px solid #9a4a1c; }
+  .opt h3 { margin: 0 0 4px; font-size: 15px; color: #111827; }
+  .opt .tagline { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #9a4a1c; }
+  .opt p { margin: 6px 0 0; font-size: 13px; color: #374151; }
+  .opt .for { color: #15803d; font-weight: 600; } .opt .against { color: #b91c1c; font-weight: 600; }
+
+  /* ---- the app's tokens, as src/index.css names them ---- */
+  .board { font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--text); background: var(--bg-page); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+  .board * { box-sizing: border-box; }
+  .board.light { --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --text-strong: #111827; --text: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --border: #cfd4db; --border-strong: #aab2bd; --line: #e5e7eb; --bg-blue-tint: #eff6ff; --text-blue-800: #1e40af; --bg-green-tint: #f0fdf4; --text-green-600: #059669; --text-green-700: #15803d; --bg-amber-tint: #fffbeb; --text-amber-800: #92400e; --border-amber: #fcd34d; --bg-red-tint: #fef2f2; --text-red-700: #b91c1c; --border-indigo-soft: #c7d2fe; --copper: #9a4a1c; --dead: #e5e7eb; --dead-ink: #6b7280; --scrim: rgba(17,24,39,.45); }
+  .board.dark { --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --text-strong: #f9fafb; --text: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --border: #374151; --border-strong: #4b5563; --line: #374151; --bg-blue-tint: #1e3358; --text-blue-800: #93c5fd; --bg-green-tint: #12301f; --text-green-600: #34d399; --text-green-700: #4ade80; --bg-amber-tint: #3a2f11; --text-amber-800: #fcd34d; --border-amber: #92400e; --bg-red-tint: #3b1a1a; --text-red-700: #f87171; --border-indigo-soft: #312e81; --copper: #f0a878; --dead: #374151; --dead-ink: #9ca3af; --scrim: rgba(0,0,0,.6); }
+  .board.phone { width: 375px; max-width: 100%; padding: 14px 12px 16px; font-size: 15px; gap: 10px; }
+  .board.scrim { background: var(--scrim); align-items: center; justify-content: center; }
+  .board.phone.scrim { justify-content: flex-end; padding: 60px 0 0; }
+
+  .crumb { font-size: 12.5px; color: var(--text-link); }
+  .idrow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .idrow h3 { margin: 0; font-size: 23px; color: var(--text-strong); }
+  .board.phone .idrow h3 { font-size: 20px; }
+  .tchip { display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .faint { color: var(--text-faint); font-size: 12.5px; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 12.5px; }
+  .strong { color: var(--text-strong); font-weight: 600; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); }
+  .tabs span { font-size: 14px; font-weight: 600; padding: 6px 14px 8px; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tabs span.on { color: var(--text-link); border-bottom-color: var(--text-link); }
+  .tabs small { font-size: 11px; color: var(--text-faint); margin-left: 4px; }
+
+  .money { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .board.phone .money { grid-template-columns: 1fr 1fr; }
+  .money > div { padding: 11px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; }
+  .money .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .money .v { font-size: 21px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .board.phone .money .v { font-size: 18px; }
+  .money .d { font-size: 12px; color: var(--text-muted); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+  .pill.ok { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .pill.due { background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .pill.bad { background: var(--bg-red-tint); color: var(--text-red-700); }
+  .pill.grey { background: var(--bg-muted); color: var(--text-700); }
+  .pill.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .board.phone .card { padding: 12px; }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .head h4 { margin: 0; font-size: 16px; color: var(--text-strong); }
+  .head .sub { font-size: 12.5px; color: var(--text-muted); }
+  a.lnk, .lnk { color: var(--text-link); text-decoration: none; font-weight: 600; font-size: 13px; }
+  .meter { height: 10px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; display: flex; }
+  .meter i { display: block; height: 100%; background: #16a34a; }
+  .meter i.next { background: var(--border-amber); }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat { flex: 1 1 150px; display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-subtle); }
+  .stat .k { font-size: 12px; color: var(--text-muted); }
+  .stat .v { font-size: 19px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .stat .d { font-size: 12px; color: var(--text-muted); }
+  .strip { border-radius: 8px; padding: 10px 12px; font-size: 13.5px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .strip.due { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); }
+  .strip.ok { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .strip.info { background: var(--bg-subtle); border: 1px solid var(--line); color: var(--text-700); }
+  .strip b { color: inherit; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 14px; border-radius: 8px; border: 1px solid transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.blue { background: #2563eb; color: #fff; }
+  .btn.line { background: var(--surface); color: var(--text-link); border-color: var(--border-strong); }
+  .btn.quiet { background: transparent; color: var(--text-muted); font-weight: 500; }
+  .btn.sm { min-height: 30px; padding: 3px 10px; font-size: 12.5px; }
+  .btn.wide { width: 100%; min-height: 46px; font-size: 15px; white-space: normal; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .new { outline: 2px dashed var(--copper); outline-offset: 3px; }
+  .tag-new { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; font-weight: 600; color: var(--text-muted); font-size: 12px; padding: 7px 10px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); white-space: nowrap; }
+  .tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl th.num, .tbl td.num { text-align: right; }
+  .tbl tr.due td { background: var(--bg-amber-tint); }
+  .tbl tr.later td { color: var(--text-muted); }
+  .cols { display: flex; gap: 14px; align-items: flex-start; }
+  .bill { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .bill:last-child { border-bottom: 0; }
+  .bill .t { min-width: 0; }
+  .bill .a { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.28); width: 100%; }
+  .sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 14px 18px; display: flex; flex-direction: column; gap: 11px; width: 100%; }
+  .grab { width: 40px; height: 4px; border-radius: 99px; background: var(--border-strong); margin: 0 auto 2px; }
+  .lab { font-size: 13px; font-weight: 600; color: var(--text-strong); margin: 0 0 4px; }
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); font-size: 14px; }
+  .field .hint { color: var(--text-muted); font-size: 12.5px; }
+  .choice { display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .choice.on { border: 2px solid #2563eb; background: var(--bg-blue-tint); padding: 8px 10px; }
+  .dot { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-strong); margin-top: 2px; }
+  .choice.on .dot { border-color: #2563eb; box-shadow: inset 0 0 0 3px var(--surface); background: #2563eb; }
+  .choice .w { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .choice .why { font-size: 12.5px; color: var(--text-muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .seg span { padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--text-700); background: var(--surface); }
+  .seg span.on { background: #2563eb; color: #fff; }
+  .thumb { width: 54px; height: 66px; border-radius: 4px; background: repeating-linear-gradient(180deg, #f5f5f2 0 6px, #d9dbe0 6px 7px); border: 1px solid #c9ced6; flex: 0 0 auto; }
+
+  .ny { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ny .h { display: flex; gap: 8px; align-items: center; }
+  .ny .h b { font-size: 17px; color: var(--text-strong); }
+  .ny .cnt { font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .nyrow { display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .nyrow .t { font-weight: 600; font-size: 14.5px; color: var(--text-strong); }
+  .nyrow .d { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; }
+  .nyrow .amt { font-size: 16px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .board.phone .nyrow { flex-wrap: wrap; }
+  .board.phone .nyrow .btn { width: 100%; min-height: 44px; }
+
+  /* ---- this page: the chip, the Customers list's row, the job window ---- */
+  .ik { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--bg-blue-tint); color: var(--text-blue-800); border: 1px solid var(--border-indigo-soft); font-variant-numeric: tabular-nums; }
+  .ik.due { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .type { display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--surface); color: var(--text-700); border: 1px solid var(--border-strong); }
+  .cstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .cstat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
+  .cstat .k { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .cstat .v { font-size: 20px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .cstat .d { font-size: 12px; color: var(--text-muted); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters span { font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); }
+  .filters span.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .list { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 2px 16px; }
+  .crow { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .crow:last-child { border-bottom: 0; }
+  .crow .who { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .crow .nm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 16px; font-weight: 700; color: var(--text-strong); }
+  .crow .ad { font-size: 12.5px; color: var(--text-muted); }
+  .crow .side { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .crow .meta { font-size: 11.5px; color: var(--text-muted); }
+  .trio { display: grid; grid-template-columns: repeat(3, 108px); text-align: right; }
+  .trio .k { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .trio .v { font-size: 14.5px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .trio .v.g { color: var(--text-green-600); }
+  .bar { width: 324px; height: 4px; border-radius: 99px; background: var(--bg-muted); overflow: hidden; display: flex; }
+  .bar i { display: block; height: 100%; background: #16a34a; }
+  .board.phone .crow { flex-direction: column; gap: 8px; }
+  .board.phone .crow .side { align-items: flex-start; align-self: stretch; }
+  .board.phone .trio { grid-template-columns: repeat(3, 1fr); text-align: left; width: 100%; }
+  .board.phone .trio .v { font-size: 13.5px; }
+  .board.phone .bar { width: 100%; }
+  .spec { display: grid; grid-template-columns: max-content 1fr; gap: 12px 18px; align-items: center; }
+  .spec .w { font-size: 13px; color: var(--text-700); }
+  .spec > .ik { justify-self: start; }
+  .jtabs { display: flex; gap: 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+  .jtabs span { padding: 4px 0 7px; }
+  .jtabs span.on { color: var(--text-link); border-bottom: 2px solid var(--text-link); margin-bottom: -1px; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 13.5px; }
+  .kv .k { color: var(--text-muted); }
+  .grp td { background: var(--bg-subtle); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #301 · mock-up 2 · 2026-11-10 · every name and number is made up</p>
+  <h1>The in kind chip beside a customer's name</h1>
+  <p>The deal has a home now: a card on the customer's page, a ledger, and the In kind page. What is missing is the reminder everywhere else. On the Customers list, on a job and in the Bill window, a customer who pays in kind looks like any other, and the open balance still reads as money owed.</p>
+  <p>The owner's ask: <i>where in the app should a user be able to see the in kind balance due or credit for a customer, such as next to a customer's name?</i> This page draws one small chip that travels with the name, and the four places it earns its room. <b>Calloway Holdings</b> pays $19,875.40 of finished work with a rent credit. <b>Pecan Creek Gravel</b> gave gravel before its job was billed. The dashed copper outline marks what is new.</p>
+</header>
+
+<div class="themebar"><span class="cap">The frames in</span><button type="button" id="t-light" aria-pressed="true">Light</button><button type="button" id="t-dark" aria-pressed="false">Dark</button></div>
+
+<!-- ======================= A ======================= -->
+<h2 class="sec">A · The chip</h2>
+<p class="lede">One chip, three things it can say, two colours. It is quiet when the deal is on schedule, since nothing is late. It turns amber only when a month's credit is waiting on a person. A press opens the ledger. A customer whose deal has ended carries no chip.</p>
+<div class="frame">
+<div class="board light" style="width: 860px;">
+  <div class="card">
+    <div class="spec">
+      <span class="ik">🤝 In kind · $9,375.40 to come</span><span class="w"><b class="strong">On schedule.</b> Work is billed and the deal is paying it down. The amount is what is still open on the deal's bills.</span>
+      <span class="ik due">🤝 In kind · November due</span><span class="w"><b class="strong">A month is waiting.</b> The same line Needs you shows. It goes back to quiet once the month is entered.</span>
+      <span class="ik">🤝 In kind · we owe $1,400.00 of work</span><span class="w"><b class="strong">They gave first.</b> More was given than is billed. The amount is what we owe them in work.</span>
+      <span class="ik">🤝 In kind</span><span class="w"><b class="strong">The short form.</b> On a phone, and beside the name on a job, where the amount is not the subject.</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================= B ======================= -->
+<h2 class="sec">B · The Customers list</h2>
+<p class="lede">The biggest gap today. The row gives no sign of the deal, the page counts the open $9,375.40 in the total everyone reads as money owed, and <i>Owes money</i> lists the customer with the ones to chase. With the chip, the row says how it is paid, the total splits, and a filter finds everyone who pays this way.</p>
+<div class="row">
+  <div class="col" style="flex: 1 1 100%;">
+    <span class="cap"><b>B1</b> · today</span>
+    <div class="frame">
+    <div class="board light" style="width: 1080px;">
+      <div class="idrow"><h3>Customers</h3></div>
+      <div class="cstats">
+        <div class="cstat"><div class="k">Customers</div><div class="v">212</div><div class="d">131 residential · 81 commercial</div></div>
+        <div class="cstat"><div class="k">Active last 90 days</div><div class="v">64</div><div class="d">had a job, payment, bid or estimate</div></div>
+        <div class="cstat"><div class="k">Total open balance</div><div class="v" style="color:var(--text-amber-800)">$61,240.15</div><div class="d">across 14 customers</div></div>
+        <div class="cstat"><div class="k">No customer type</div><div class="v">0</div><div class="d">all classified</div></div>
+      </div>
+      <div class="filters"><span class="on">All</span><span>Commercial</span><span>Residential</span><span>Owes money (14)</span><span>Active 90d (64)</span></div>
+      <div class="list">
+        <div class="crow">
+          <div class="who"><div class="nm">Calloway Holdings <span class="type">Commercial</span></div><div class="ad">410 Mesa Road, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">12 jobs · payment · Oct 31 · pays in 0d</span>
+            <div class="trio"><div><div class="k">Paid</div><div class="v g">$10,500.00</div></div><div><div class="k">Billed</div><div class="v">$19,875.40</div></div><div><div class="k">Unbilled</div><div class="v">—</div></div></div>
+            <div class="bar"><i style="width:52.8%"></i></div></div>
+        </div>
+        <div class="crow">
+          <div class="who"><div class="nm">Hartwell Electric <span class="type">Commercial</span></div><div class="ad">2210 Depot Street, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">7 jobs · payment · Sep 18 · pays in 21–40d</span>
+            <div class="trio"><div><div class="k">Paid</div><div class="v g">$18,630.00</div></div><div><div class="k">Billed</div><div class="v">$22,840.00</div></div><div><div class="k">Unbilled</div><div class="v">$1,150.00</div></div></div>
+            <div class="bar"><i style="width:81.6%"></i></div></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 1 1 100%;">
+    <span class="cap"><b>B2</b> · with the chip</span>
+    <div class="frame">
+    <div class="board light" style="width: 1080px;">
+      <div class="idrow"><h3>Customers</h3></div>
+      <div class="cstats">
+        <div class="cstat"><div class="k">Customers</div><div class="v">212</div><div class="d">131 residential · 81 commercial</div></div>
+        <div class="cstat"><div class="k">Active last 90 days</div><div class="v">64</div><div class="d">had a job, payment, bid or estimate</div></div>
+        <div class="cstat new"><div class="k">Total open balance</div><div class="v" style="color:var(--text-amber-800)">$51,864.75</div><div class="d">across 13 customers<br>$9,375.40 more is scheduled in kind</div></div>
+        <div class="cstat"><div class="k">No customer type</div><div class="v">0</div><div class="d">all classified</div></div>
+      </div>
+      <div class="filters"><span class="on">All</span><span>Commercial</span><span>Residential</span><span class="new">Owes money (13)</span><span class="new">In kind (2)</span><span>Active 90d (64)</span></div>
+      <div class="list">
+        <div class="crow">
+          <div class="who"><div class="nm">Calloway Holdings <span class="type">Commercial</span> <span class="ik new">🤝 In kind · $9,375.40 to come</span></div><div class="ad">410 Mesa Road, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">12 jobs · <span class="new" style="border-radius:3px">credit · Oct 31 · paid in kind</span></span>
+            <div class="trio"><div class="new" style="border-radius:3px"><div class="k">Paid in kind</div><div class="v g">$10,500.00</div></div><div><div class="k">Billed</div><div class="v">$19,875.40</div></div><div><div class="k">Unbilled</div><div class="v">—</div></div></div>
+            <div class="bar"><i style="width:52.8%"></i></div></div>
+        </div>
+        <div class="crow">
+          <div class="who"><div class="nm">Hartwell Electric <span class="type">Commercial</span></div><div class="ad">2210 Depot Street, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">7 jobs · payment · Sep 18 · pays in 21–40d</span>
+            <div class="trio"><div><div class="k">Paid</div><div class="v g">$18,630.00</div></div><div><div class="k">Billed</div><div class="v">$22,840.00</div></div><div><div class="k">Unbilled</div><div class="v">$1,150.00</div></div></div>
+            <div class="bar"><i style="width:81.6%"></i></div></div>
+        </div>
+        <div class="crow">
+          <div class="who"><div class="nm">Pecan Creek Gravel <span class="type">Commercial</span> <span class="ik new">🤝 In kind · we owe $1,400.00 of work</span></div><div class="ad">88 Quarry Lane, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">1 job · no bill yet</span>
+            <div class="trio"><div><div class="k">Paid</div><div class="v">—</div></div><div><div class="k">Billed</div><div class="v">—</div></div><div><div class="k">Unbilled</div><div class="v">$3,900.00</div></div></div>
+            <div class="bar"></div></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 0 0 375px;">
+    <span class="cap"><b>B3</b> · phone, a month due</span>
+    <div class="frame">
+    <div class="board light phone">
+      <div class="idrow"><h3>Customers</h3></div>
+      <div class="filters"><span class="on">All</span><span>Owes money (13)</span><span class="new">In kind (2)</span></div>
+      <div class="list" style="padding: 2px 12px;">
+        <div class="crow">
+          <div class="who"><div class="nm">Calloway Holdings <span class="type">Commercial</span></div><div><span class="ik due new">🤝 In kind · November due</span></div><div class="ad">410 Mesa Road, Larkspur, TX 78001</div></div>
+          <div class="side"><span class="meta">12 jobs · credit · Oct 31 · paid in kind</span>
+            <div class="trio"><div><div class="k">Paid in kind</div><div class="v g">$10,500.00</div></div><div><div class="k">Billed</div><div class="v">$19,875.40</div></div><div><div class="k">Unbilled</div><div class="v">—</div></div></div>
+            <div class="bar"><i style="width:52.8%"></i></div></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= C ======================= -->
+<h2 class="sec">C · The customer's page</h2>
+<p class="lede">The card that holds the deal sits under the money strip, below the fold on a phone. The chip beside the name says it at the top. A press scrolls to the card, since the card is already on this page.</p>
+<div class="frame">
+<div class="board light" style="width: 1080px;">
+  <div class="crumb">← Customers</div>
+  <div class="idrow"><h3>Calloway Holdings</h3><span class="type">Commercial</span><span class="ik new">🤝 In kind · $9,375.40 to come</span><span class="faint">Customer since Feb 2024</span>
+    <span style="margin-left:auto" class="btnrow"><span class="btn line sm">Timeline</span><span class="btn line sm" style="color:var(--text-700)">✎ Edit customer</span></span></div>
+  <div class="tabs"><span class="on">Profile</span><span>Estimates</span><span>Jobs<small>12</small></span><span>Invoices<small>12</small></span></div>
+  <div class="money">
+    <div><div class="k">Lifetime value</div><div class="v" style="color:var(--text-green-600)">$19,875.40</div><div class="d">billed across 12 jobs<br>$10,500.00 paid, all of it in kind</div></div>
+    <div><div class="k">Open balance</div><div class="v">$9,375.40</div><div class="d"><span class="pill ok">scheduled in kind · none late</span></div></div>
+    <div><div class="k">Pays in</div><div class="v">—</div><div class="d">paid in kind, so there is no pay speed</div></div>
+    <div><div class="k">Estimates won</div><div class="v">—</div><div class="d">no decided estimates yet</div></div>
+  </div>
+  <div class="strip info"><span>The <b>Pays in kind</b> card follows here, as it is today.</span></div>
+</div>
+</div>
+
+<!-- ======================= D ======================= -->
+<h2 class="sec">D · On a job, and when it is billed</h2>
+<p class="lede">This is where the chip changes what someone does. A new job for a customer who pays in kind is not on the deal until a person puts it there. Today nothing says so. The bill goes out as money and the customer gets chased, or the job quietly never gets paid. D1 says it on the job. D2 asks the question once, at the moment the bill is made.</p>
+<div class="row">
+  <div class="col" style="flex: 1 1 520px;">
+    <span class="cap"><b>D1</b> · the job window, a job that is not on the deal</span>
+    <div class="frame" style="width:100%">
+    <div class="board light scrim" style="padding: 22px;">
+      <div class="win" style="max-width: 560px;">
+        <div class="head"><div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><h4>1188 · Parking lot drain</h4><span class="pill grey">Ready to bill</span></div><span class="muted">✕</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="lnk">Calloway Holdings</span><span class="ik new">🤝 In kind</span><span class="pill ok">Service call</span></div>
+        <div class="jtabs"><span class="on">Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span></div>
+        <div class="strip info new" style="align-items:flex-start"><span><b>Calloway Holdings pays in kind.</b> This job is not on that arrangement. Its bill will be sent and chased as money.</span><span class="btn line sm">Put it on the arrangement</span></div>
+        <div class="kv"><span class="k">Address</span><span>410 Mesa Road, Larkspur</span><span class="k">To bill</span><span class="strong">$1,250.00</span><span class="k">Work done</span><span>Nov 6</span></div>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 1 1 520px;">
+    <span class="cap"><b>D2</b> · Bill Customer, the same job</span>
+    <div class="frame" style="width:100%">
+    <div class="board light scrim" style="padding: 22px;">
+      <div class="win" style="max-width: 560px;">
+        <div class="head"><h4>Bill Customer</h4><span class="muted">✕</span></div>
+        <div class="small muted">1188 · Parking lot drain · Calloway Holdings · $1,250.00</div>
+        <div class="new" style="display:flex;flex-direction:column;gap:8px;border-radius:8px">
+          <div class="lab" style="margin:0">Calloway Holdings pays in kind. How is this bill paid?</div>
+          <div class="choice"><span class="dot"></span><div><div class="w">In kind, on the arrangement</div><div class="why">It joins the 8 bills the rent credit pays down. It is not sent and not chased.</div></div></div>
+          <div class="choice"><span class="dot"></span><div><div class="w">With money</div><div class="why">It is sent and chased like any other bill.</div></div></div>
+        </div>
+        <div class="btnrow" style="justify-content:flex-end"><span class="btn quiet">Cancel</span><span class="btn" style="background:var(--dead);color:var(--dead-ink)">Pick how it is paid</span></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>A job already on the deal</b> shows the short chip beside the name and nothing else. Its Bill tab and its Pipeline row already read <i>Scheduled in kind</i> since v2.6834.</p>
+
+<!-- ======================= E ======================= -->
+<h2 class="sec">E · Who owes what</h2>
+<p class="lede">The list people chase from. Today the in kind customer sits at the top, as the oldest and one of the largest. With the chip it leaves the money total and gets a group of its own under it. The same split belongs on the Dashboard's receivables card and the Bridge's Collect pile. They are not drawn here. They take the same two numbers.</p>
+<div class="row">
+  <div class="col" style="flex: 1 1 480px;">
+    <span class="cap"><b>E1</b> · today</span>
+    <div class="frame" style="width:100%">
+    <div class="board light" style="padding: 18px;">
+      <div class="card" style="padding: 0; gap: 0; overflow: hidden;">
+        <div class="head" style="padding: 12px 14px 8px"><h4>Waiting on Customers · Who owes what</h4></div>
+        <table class="tbl">
+          <tr><th>Customer</th><th style="text-align:center">Bills</th><th style="text-align:center">Oldest</th><th class="num">Owed</th></tr>
+          <tr><td class="strong">Calloway Holdings</td><td style="text-align:center">8</td><td style="text-align:center"><span class="pill bad">193 days</span></td><td class="num strong">$9,375.40</td></tr>
+          <tr><td class="strong">Hartwell Electric</td><td style="text-align:center">2</td><td style="text-align:center"><span class="pill due">34 days</span></td><td class="num strong">$4,210.00</td></tr>
+          <tr><td class="strong">Mesa Dental Group</td><td style="text-align:center">1</td><td style="text-align:center"><span class="pill grey">12 days</span></td><td class="num strong">$2,880.00</td></tr>
+          <tr><td class="muted">11 more customers</td><td></td><td></td><td class="num muted">$44,774.75</td></tr>
+          <tr><td class="strong">Total</td><td></td><td></td><td class="num strong">$61,240.15</td></tr>
+        </table>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 1 1 480px;">
+    <span class="cap"><b>E2</b> · with the chip</span>
+    <div class="frame" style="width:100%">
+    <div class="board light" style="padding: 18px;">
+      <div class="card" style="padding: 0; gap: 0; overflow: hidden;">
+        <div class="head" style="padding: 12px 14px 8px"><h4>Waiting on Customers · Who owes what</h4></div>
+        <table class="tbl">
+          <tr><th>Customer</th><th style="text-align:center">Bills</th><th style="text-align:center">Oldest</th><th class="num">Owed</th></tr>
+          <tr><td class="strong">Hartwell Electric</td><td style="text-align:center">2</td><td style="text-align:center"><span class="pill due">34 days</span></td><td class="num strong">$4,210.00</td></tr>
+          <tr><td class="strong">Mesa Dental Group</td><td style="text-align:center">1</td><td style="text-align:center"><span class="pill grey">12 days</span></td><td class="num strong">$2,880.00</td></tr>
+          <tr><td class="muted">11 more customers</td><td></td><td></td><td class="num muted">$44,774.75</td></tr>
+          <tr><td class="strong">Total owed in money</td><td></td><td></td><td class="num strong">$51,864.75</td></tr>
+          <tr class="grp"><td colspan="4"><span class="new" style="border-radius:3px">Scheduled in kind, not chased</span></td></tr>
+          <tr><td><span class="strong">Calloway Holdings</span> <span class="ik new" style="margin-left:6px">🤝 In kind</span></td><td style="text-align:center">8</td><td style="text-align:center" class="muted">on schedule</td><td class="num">$9,375.40</td></tr>
+        </table>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= where ======================= -->
+<h2 class="sec">Where it goes, and where it does not</h2>
+<div class="opts">
+  <div class="opt pick"><div class="tagline">Build first</div><h3>The Customers list, the customer's page, a job and the Bill window</h3><p>Frames B, C and D. These are the places with no sign of the deal today. D is the one that prevents a mistake.</p></div>
+  <div class="opt"><div class="tagline">Build second</div><h3>Who owes what, the Dashboard's receivables card, the Bridge's Collect pile</h3><p>Frame E. This is the sweep already listed as left on the card. The chip and its two numbers give all three one shared piece.</p></div>
+  <div class="opt"><div class="tagline">Leave it off</div><h3>What the customer sees, the crew's screens, search and Messages</h3><p>A bill, the portal and a statement are the customer's own papers. Crew screens show no money owed. In search and Messages it would be one more chip that changes nothing a person does there.</p></div>
+</div>
+<p class="note"><b>A correction to what I said in chat.</b> I listed Accounts Receivable as a place for the chip. That page is the window that matches deposits to bills. It has no list of customers and what each owes, so there is no row for a chip to sit on. It keeps its <i>In kind</i> link and nothing more.</p>
+
+<!-- ======================= second look ======================= -->
+<h2 class="sec">Is this the best we can do?</h2>
+<ul class="calls">
+  <li><b>Fix the numbers before the chip.</b> A chip beside a name does nothing if the total above it still counts the deal as money owed. In B and E the split total is the real change, and the chip is its label. If only one thing ships, it should be the totals.</li>
+  <li><b>A chip everywhere the name appears</b> lost. The name shows on the schedule, in search, in Messages, on dispatch. A chip in each would be seen so often it would stop being read. It stays where money or billing is the subject.</li>
+  <li><b>An icon with no words</b> lost. Nobody knows what a handshake means until they have been told once, and a tooltip does not exist on a phone.</li>
+  <li><b>The amount in every chip</b> lost on a job. Beside the name on one job, $9,375.40 reads as that job's balance. The short form goes there.</li>
+  <li><b>Green or red</b> both lost. Green says paid and red says late, and the deal is neither. Quiet blue for on schedule and amber for a month due are the two states a person acts on.</li>
+  <li><b>Guessing at the bill</b> lost. D2 could default to money, and the landlord gets a late notice. It could default to the arrangement, and a real bill is never chased. Asking costs one press on a rare customer.</li>
+  <li><b>What I am least sure of:</b> the strip in D1. It may be one line too many on a job window that is already full. The chip plus the question in D2 may be enough.</li>
+</ul>
+
+<h2 class="sec">The calls that are the owner's</h2>
+<ol class="calls">
+  <li><b>The amount on the Customers list.</b> Drawn with the amount. The word alone is quieter, and the amount is one press away.</li>
+  <li><b>A new bill for a customer who pays in kind.</b> Drawn as a question that must be answered. The other choice is to default to money and only offer the arrangement.</li>
+  <li><b><i>Owes money</i> on the Customers list.</b> Drawn leaving out a customer whose whole balance is scheduled in kind. A customer with both kinds stays in, counted for the money part only.</li>
+  <li><b>Who sees the chip.</b> Drawn for the office. The deal's lines are the office's to read today, so a superintendent or a crew lead would see no chip.</li>
+  <li><b>The strip on the job window (D1).</b> Keep it, or let the chip and the Bill window carry it.</li>
+</ol>
+
+</div>
+<script>
+  (function () {
+    var l = document.getElementById('t-light'), d = document.getElementById('t-dark');
+    function set(dark) {
+      document.querySelectorAll('.board').forEach(function (b) { b.classList.toggle('dark', dark); b.classList.toggle('light', !dark); });
+      l.setAttribute('aria-pressed', String(!dark)); d.setAttribute('aria-pressed', String(dark));
+    }
+    l.addEventListener('click', function () { set(false); });
+    d.addEventListener('click', function () { set(true); });
+  })();
+</script>
+</body>
+</html>

@@ -14,7 +14,7 @@ const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpaci
 
 export function BridgeCashAccounts({ accounts, onFlip }: { accounts: CashAccounts; onFlip: (id: string) => void }) {
   return (
-    <section data-testid="bridge-cash-accounts" aria-label="The bank’s accounts" style={{ marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.55rem' }}>
+    <section id="bridge-cash-accounts" data-testid="bridge-cash-accounts" aria-label="The bank’s accounts" style={{ marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.55rem', scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
       <div style={label}>The bank’s accounts</div>
       <ul style={{ listStyle: 'none', margin: '0.35rem 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', columnGap: '1.2rem' }}>
         {accounts.rows.map((r) => (

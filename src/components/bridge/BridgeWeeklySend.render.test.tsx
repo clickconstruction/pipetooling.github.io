@@ -10,6 +10,7 @@ vi.mock('../../lib/supabase', async () => {
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeWeeklySend } from './BridgeWeeklySend'
 import { WEEKLY_SEND_CONFIRM } from '../../lib/bridge/weeklySend'
+import { WEEKLY_EMAIL_WORDS } from '../../lib/bridge/doors'
 import type { WeeklySendIo } from '../../lib/bridge/weeklySendIo'
 
 const fakeIo = (on: boolean, lastRun: Awaited<ReturnType<WeeklySendIo['load']>>['lastRun'] = null): WeeklySendIo & { setOn: ReturnType<typeof vi.fn> } => ({
@@ -28,6 +29,15 @@ describe('BridgeWeeklySend', () => {
     renderWithProviders(<BridgeWeeklySend io={fakeIo(false)} />)
     expect((await screen.findByRole('switch', { name: 'Weekly email' })).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('Off: nothing goes out on Monday. Email me this sheet still works. Not sent yet.')
+  })
+
+  it('behind The flow the words no longer speak of a sheet on the page', async () => {
+    renderWithProviders(<BridgeWeeklySend io={fakeIo(false)} words={WEEKLY_EMAIL_WORDS} />)
+    await screen.findByRole('switch', { name: 'Weekly email' })
+    const text = screen.getByTestId('bridge-weekly-send').textContent ?? ''
+    expect(text).toContain('Every Monday at 6 AM Central the app builds a one page sheet of the Bridge.')
+    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('Off: nothing goes out on Monday. Not sent yet.')
+    expect(text).not.toContain('Email me this sheet')
   })
 
   it('turning it on asks first; cancel changes nothing, confirm writes true', async () => {

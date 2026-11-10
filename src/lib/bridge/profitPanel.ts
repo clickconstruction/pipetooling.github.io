@@ -1,5 +1,10 @@
 /**
- * The Daily profit rate panel (link PR 9): what the card's number is made of,
+ * Profit after overhead (v2.6840, punch list #303): the Daily profit rate card left the page
+ * with the doors, and its panel came back as the breakdown of the eight week chart behind
+ * Money, opened by one press. `warn` and `left` are for that: the warning stands first, so a
+ * reading that is low because hours wait is never taken for a loss.
+ *
+ * As it was, the Daily profit rate panel (link PR 9): what the card's number is made of,
  * in four parts — the trend by pay week (earned against costs, the net as a
  * bar, a week hatched while its hours wait), where a day's money goes (the
  * 14-day average as a waterfall), where each input is read from and what can
@@ -21,6 +26,10 @@ export type ProfitPanel = {
   breakEven: string
   note: string
   noteTone: 'amber' | 'green' | 'grey'
+  /** What a day keeps after every cost, on the average of `days` days. */
+  left: { usd: number; days: number }
+  /** Stands first when hours wait on approval: the reading is low, and about what it reads with them. Null when none wait. */
+  warn: string | null
 }
 
 export type ProfitPanelInput = {
@@ -126,5 +135,9 @@ export function buildProfitPanel(input: ProfitPanelInput): ProfitPanel {
     note = `The day loses ${money(Math.abs(s.climbPerDay))} on the ${s.days}-day average with every hour read. That is a result, not a reading.`
     noteTone = 'amber'
   }
-  return { weeks, eightWeeks, waterfall, sources, breakEven, note, noteTone }
+  // In plain words, for the top of the breakdown.
+  const waitHours = Math.round(pending)
+  const withThem = input.fieldEarnedPerHour != null ? s.climbPerDay + (pending * input.fieldEarnedPerHour) / s.days : null
+  const warn = waitHours > 0 ? `Reads low for now. ${waitHours.toLocaleString('en-US')} ${waitHours === 1 ? 'hour still waits' : 'hours still wait'} on approval.${withThem != null ? ` With them it reads about ${money(withThem)} a day.` : ''}` : null
+  return { weeks, eightWeeks, waterfall, sources, breakEven, note, noteTone, left: { usd: s.climbPerDay, days: s.days }, warn }
 }
