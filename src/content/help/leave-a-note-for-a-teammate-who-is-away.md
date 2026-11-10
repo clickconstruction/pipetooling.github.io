@@ -2,7 +2,7 @@
 title: leave a note for a teammate who is away
 category: Office
 roles: dev, master_technician, controller
-keywords: away note, away, left, note, countdown, day back, sealed, archived, sign in, bring back, one screen, away section, users, see what they see, preview, their screen, imitate
+keywords: away note, away, left, note, countdown, day back, due back, sealed, archived, sign in, bring back, restore, one screen, away section, away row, users, see what they see, preview, their screen, imitate, bell
 order: 43
 ---
 A teammate who left can keep their login. While they are away, the app shows them one screen you wrote for them. Nothing else opens. You write the note person by person from their desk.
@@ -45,13 +45,31 @@ Off by default. When on, the office gets a Needs you item on the day, with Bring
 
 ## Where they are listed
 
-Open People → Users. A teammate with a note on lists under **Away**, above **Archived**. The row shows the day they left and the day back with the days left. On the day it reads *Back today* in amber. After the day it reads *Due back* with the day. A note with no day back reads *No day back set*.
+Open People → Users. A teammate with a note on lists under **Away**, below the roster and above **Archived**. Each person is one row, drawn like every other row on the page.
 
-Press {{button:outline|Edit the note…}} on the row to change the note. Press {{button:blue|Bring back…}} on the row when they return. Archived holds only the people who cannot sign in.
+The first line names the person and their role. Press the name to open their desk. The same line gives the day they left and the day back, with how far off that day is. One row might read *Left Nov 3 · back Nov 8, 2029, in 3 years*. Hover over the days to see the exact day and the count of days.
+
+A small bell on the line means **Tell me when the countdown ends** is on. A note with no day back reads *no day back set*.
+
+The second line starts with **They read:** and shows the first line of your note. That line ends in **See what they see**.
+
+:::example An Away row
+Corinne Vela, Estimator. Left Aug 29 · back Nov 22, in 12 days. They read: "Rest up, Corinne." See what they see.
+:::
+
+Press **⋯** at the end of the row for the rest. The menu holds **Open desk**, **Edit the note…** and **Bring back…**. A teammate whose employment never ended gets **Restore** in place of Bring back. Restore asks first, because it takes the note down.
+
+## On the day back
+
+On the day back the row turns amber and reads *back today*. After that day it reads *due back* with the day and how long ago it was. {{button:outline-amber|Bring back…}} leaves the menu and sits on the row, because it is the next press. Archived holds only the people who cannot sign in.
+
+## On a phone
+
+Away is one card, like every other group. Tap a row to open their desk. Swipe the row left for **See what they see**, **Edit the note…** and **Bring back…**. On the day back, Bring back sits under the row.
 
 ## See what they see
 
-Press {{button:outline|See what they see}} on their Away row. A window opens on the screen their sign-in opens to. The window draws that screen from the note you saved.
+Press **See what they see** at the end of the note line on their Away row. A window opens on the screen their sign-in opens to. The window draws that screen from the note you saved.
 
 The amber bar at the top says it is a preview. The bar names whose screen it is. You stay signed in as yourself. Nothing is saved.
 
@@ -67,7 +85,7 @@ You can write the note on their last day. In **End employment**, keep **Archive 
 
 ## Change it or take it down
 
-Press {{button:outline|Edit the note…}} on the Status row or on their Away row. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. Their sign-in closes again until they are brought back.
+Press {{button:outline|Edit the note…}} on the Status row. On their Away row, the same press is in the **⋯** menu. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. Their sign-in closes again until they are brought back.
 
 Bring back takes the note down for you. See [bring back a teammate who left](/help/bring-back-a-teammate).
 

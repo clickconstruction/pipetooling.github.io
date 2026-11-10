@@ -1,6 +1,7 @@
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { RailRow } from '../../lib/people/deskRailAttention'
-import { MORE_SWIPE_GREY, SWIPE_ACTION_WIDTH, classifySwipe, isTwinEmail, needsYouCount, personInitial, phoneRowNote, swipeOffset, swipeSettles } from '../../lib/people/usersTabPhone'
+import { MORE_SWIPE_GREY, SWIPE_ACTION_WIDTH, isTwinEmail, needsYouCount, personInitial, phoneRowNote } from '../../lib/people/usersTabPhone'
+import { useSwipeRow } from './useSwipeRow'
 import type { UsersTabRowItem, UsersTabRowMenuAction } from './UsersTabRow'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 
@@ -46,50 +47,8 @@ export function UsersTabPhoneRow({
   if (more.length > 0) actions.push({ key: 'more', label: 'More', background: MORE_SWIPE_GREY, onClick: () => setMoreOpen((v) => !v) })
   const actionsWidth = SWIPE_ACTION_WIDTH * actions.length
 
-  const start = useRef<{ x: number; y: number; id: number } | null>(null)
-  const axis = useRef<'horizontal' | 'vertical' | 'undecided'>('undecided')
-  const [dragX, setDragX] = useState<number | null>(null)
-  const suppressClick = useRef(false)
-
-  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    if (actions.length === 0) return
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    start.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
-    axis.current = 'undecided'
-  }
-  function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    const s = start.current
-    if (!s || s.id !== e.pointerId) return
-    const dx = e.clientX - s.x
-    const dy = e.clientY - s.y
-    if (axis.current === 'undecided') {
-      axis.current = classifySwipe(dx, dy)
-      if (axis.current === 'horizontal') {
-        try {
-          e.currentTarget.setPointerCapture(e.pointerId)
-        } catch {
-          /* jsdom / older browsers */
-        }
-      }
-    }
-    if (axis.current !== 'horizontal') return
-    setDragX(swipeOffset(dx, actionsWidth, swipeOpen))
-  }
-  function endDrag(e: ReactPointerEvent<HTMLDivElement>) {
-    const s = start.current
-    if (!s || s.id !== e.pointerId) return
-    if (axis.current === 'horizontal') {
-      const dx = e.clientX - s.x
-      onSwipeChange(swipeSettles(dx, actionsWidth, swipeOpen))
-      suppressClick.current = true
-      setTimeout(() => {
-        suppressClick.current = false
-      }, 0)
-    }
-    start.current = null
-    axis.current = 'undecided'
-    setDragX(null)
-  }
+  const swipe = useSwipeRow({ actionsWidth, swipeOpen, onSwipeChange, enabled: actions.length > 0 })
+  const suppressClick = swipe.suppressClick
   function onRowClick() {
     if (suppressClick.current) return
     if (swipeOpen) {
@@ -106,7 +65,6 @@ export function UsersTabPhoneRow({
   const hours = rail.rowNeeds?.hoursWaiting ?? 0
   const needs = needsYouCount(rail.rowNeeds)
   const needsTone = rail.attention === 'red' ? { background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', border: '1px solid #dc2626' } : { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid #f59e0b' }
-  const offset = dragX ?? (swipeOpen ? -actionsWidth : 0)
 
   const avatar: CSSProperties = {
     width: 30,
@@ -160,10 +118,7 @@ export function UsersTabPhoneRow({
           } else if (e.key === 'ArrowLeft' && actions.length > 0) onSwipeChange(true)
           else if (e.key === 'ArrowRight') onSwipeChange(false)
         }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        {...swipe.handlers}
         style={{
           position: 'relative',
           display: 'flex',
@@ -173,8 +128,8 @@ export function UsersTabPhoneRow({
           minHeight: 46,
           boxSizing: 'border-box',
           background: 'var(--surface)',
-          transform: `translateX(${offset}px)`,
-          transition: dragX == null ? 'transform 160ms ease-out' : 'none',
+          transform: `translateX(${swipe.offset}px)`,
+          transition: swipe.dragging ? 'none' : 'transform 160ms ease-out',
           touchAction: 'pan-y',
           cursor: openDesk ? 'pointer' : 'default',
           userSelect: 'none',
