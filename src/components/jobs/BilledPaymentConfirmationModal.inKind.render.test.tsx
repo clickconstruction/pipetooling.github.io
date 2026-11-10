@@ -81,6 +81,8 @@ describe('BilledPaymentConfirmationModal — In kind (v2.6816)', () => {
     expect(await screen.findByText(IN_KIND_MEMO_REQUIRED)).toBeTruthy()
     expect(rpc).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText('What was given instead of money'), { target: { value: 'Rent credit, March 2026' } })
+    // v2.6825: the refusal lifts as the memo is typed, before any press.
+    expect(screen.queryByText(IN_KIND_MEMO_REQUIRED)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
     await vi.waitFor(() => expect(rpc).toHaveBeenCalled())
     const call = rpc.mock.calls[0] as unknown as [string, Record<string, unknown>]
