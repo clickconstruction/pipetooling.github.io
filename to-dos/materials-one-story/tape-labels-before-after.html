@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Print labels: tape made the obvious choice, before and after</title>
+<style>
+  /* Punch list #304. Every job, stencil, code and count here is made up: Oak Hollow Apartments Building C (JP1042), its
+     cages A1 to B2, the codes under them. Tokens are src/index.css's; the saturated action colours stay literal. The
+     window frames are 640 wide, as the labels window is. The window itself is always drawn light, as the app draws it. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  /* the labels window stays light in the app (data-theme="light" on the dialog) */
+  .win { --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280; --bg-amber-100: #fef3c7; --text-amber-800: #92400e; --bg-green-100: #dcfce7; --text-green-700: #15803d; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1360px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); max-width: 96ch; }
+  .controls { display: flex; gap: 6px; align-items: center; margin: 14px 0 0; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; flex: 0 0 642px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { background: rgba(0,0,0,.35); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; max-width: 100%; padding: 14px 0; }
+  .frame.now { border-style: dashed; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; max-width: 640px; }
+  .new { outline: 2px dashed #15803d; outline-offset: 3px; border-radius: 8px; }
+  /* the labels window */
+  .win { width: 612px; margin: 0 auto; background: var(--surface); color: var(--text-strong); border-radius: 10px; padding: 16px 20px; display: grid; gap: 12px; font-size: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.3); }
+  .win h3 { margin: 0; font-size: 16.5px; }
+  .win .sub { color: var(--text-muted); font-size: 12.5px; }
+  .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .head .t { flex: 1 1 auto; min-width: 0; display: grid; }
+  .chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: #fff; border-color: var(--text-strong); }
+  .chip.sm { min-height: 26px; padding: 0 9px; font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: 600 13.5px var(--font); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.quiet { font-weight: 500; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .bar .r { margin-left: auto; }
+  .lnk { color: #2563eb; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  /* a sheet label, abbreviated */
+  .sheet { border: 2px solid #111827; border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+  .sheet .top { display: grid; grid-template-columns: 1fr 84px; gap: 10px; align-items: center; }
+  .sheet .st { font-size: 46px; font-weight: 900; line-height: 1; }
+  .sheet .rule { border-bottom: 1px solid #9ca3af; height: 20px; display: flex; justify-content: space-between; font-size: 12.5px; align-items: flex-end; padding: 0 4px; }
+  .qr { width: 84px; height: 84px; border: 5px solid #fff; outline: 1px solid #d1d5db; background:
+      linear-gradient(90deg, #111 0 14%, transparent 14% 28%, #111 28% 42%, transparent 42% 56%, #111 56% 62%, transparent 62% 76%, #111 76% 100%) 0 0 / 100% 14%,
+      repeating-conic-gradient(#111 0 25%, #fff 0 50%) 0 0 / 14% 14%; background-repeat: repeat-y, repeat; }
+  /* a tape strip: 24 mm tape, 72 mm long, drawn at 3 px a millimetre */
+  .tape { width: 216px; height: 72px; background: #fff; color: #000; border: 1px solid #cfd4db; display: grid; grid-template-columns: 66px 1fr; gap: 3px; align-items: center; padding: 3px; overflow: hidden; }
+  .tape .qr { width: 66px; height: 66px; border-width: 4px; outline: 0; }
+  .tape .st { font-size: 27px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+  .tape .cd { font: 7px/1.2 ui-monospace, Menlo, monospace; margin-top: 3px; }
+  .tape .wd { font-size: 6px; line-height: 1.2; }
+  .strips { display: flex; gap: 10px; flex-wrap: wrap; }
+  /* the two outputs, named */
+  .outs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .out { border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; display: grid; gap: 3px; align-content: start; }
+  .out.on { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; background: var(--bg-blue-tint); }
+  .out .n { font-weight: 700; display: flex; gap: 8px; align-items: center; }
+  .out .n i { font-style: normal; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); display: inline-block; flex: 0 0 auto; }
+  .out.on .n i { border-color: #2563eb; background: radial-gradient(#2563eb 0 45%, transparent 50%); }
+  .out .d { color: var(--text-700); font-size: 12.5px; }
+  .setup { border: 1px solid var(--text-amber-800); background: var(--bg-amber-100); color: var(--text-amber-800); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; }
+  .setup b { color: var(--text-amber-800); }
+  .setup ol { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+  .ready { display: flex; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #059669; flex: 0 0 auto; }
+  .path { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .path span { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; color: var(--text-strong); }
+  .path i { font-style: normal; color: var(--text-faint); }
+  .path .n { border: 0; background: none; padding: 0; color: var(--text-muted); font-weight: 600; }
+  table.v { border-collapse: collapse; width: 100%; max-width: 1100px; margin-top: 12px; background: var(--surface); }
+  table.v th, table.v td { border: 1px solid var(--border); padding: 8px 10px; font-size: 13px; text-align: left; vertical-align: top; }
+  table.v th { background: var(--bg-subtle); font-size: 12px; }
+  table.v td.pick, table.v th.pick { background: var(--bg-green-100); }
+  .scrollx { overflow-x: auto; max-width: 100%; }
+  ol.calls { margin: 10px 0 0; padding-left: 22px; max-width: 104ch; display: grid; gap: 8px; color: var(--text-700); }
+  ol.calls .mine { color: var(--text-green-700); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #304 · mock-up · nothing here is built</p>
+  <h1>Print labels: tape made the obvious choice</h1>
+  <p>The owner, 2026-11-10, with the Brother PT-D610BT and tape in hand: should the new view make label printing more apparent and easy to find. The app already prints a strip per box for that printer. What is hard to find is the choice itself, and the three things to do the first time.</p>
+  <div class="stamp">Drawn 2026-11-10. Every job, stencil and code is made up. Green dashes mark what the after adds. The strips are drawn at 3 px a millimetre: 24 mm tape, 72 mm long.</div>
+  <div class="controls"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></div>
+</header>
+
+<h2><span class="num">→</span>How the window is reached</h2>
+<p class="lede">The window is the same one in both. Since v2.6851 it opens from the Materials page; before that only from a job's page under Jobs.</p>
+<div class="path"><span>Materials</span><i>›</i><span>Print labels</span><i>›</i><span>Which job? JP1042</span><i>›</i><span>the labels window</span><i>›</i><span class="n">then the browser's print window</span></div>
+
+<!-- ───────────── BEFORE ───────────── -->
+<h2><span class="num today">1</span>Before: the window today</h2>
+<p class="lede">The window opens on paper sheets. Tape is a small chip in the corner, and nothing says tape means the Brother. The first-time steps are one sentence of grey text that shows only after the chip is pressed.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="cap">Today · the window opens on Sheet</div>
+    <div class="frame now"><div class="win">
+      <div class="head">
+        <div class="t"><h3>Labels · JP1042 · Oak Hollow Apartments Building C</h3><span class="sub">6 labels, one a sheet. The camera opens the box from the code.</span></div>
+        <span class="chips"><span class="chip on">Sheet</span><span class="chip">Tape</span></span>
+      </div>
+      <div class="bar"><span class="btn pri">Print 6 labels</span><span class="btn quiet">Export the labels as a CSV</span><span class="btn r">Close</span></div>
+      <div class="chips"><span class="chip on">A1</span><span class="chip on">A2</span><span class="chip on">A3</span><span class="chip on">A4</span><span class="chip on">B1</span><span class="chip on">B2</span></div>
+      <div class="sheet">
+        <div class="top"><div><div class="st">A1</div><b style="font-size:13.5px">JP1042 · Oak Hollow Apartments Building C</b><div class="sub">cage · Building C · level 1</div></div><div><div class="qr"></div><div style="font-size:10.5px;font-weight:700;text-align:center;letter-spacing:.06em;color:#374151">4F2A-9C18</div></div></div>
+        <div class="rule"><span>1/2" copper 90 · Mueller</span><b>40</b></div><div class="rule"><span>Ball valve · Apollo</span><b>4</b></div><div class="rule"></div>
+      </div>
+    </div></div>
+    <div class="foot">A person with a tape printer on the desk has no reason to press the small chip. The owner did not know the tape choice was there.</div>
+  </div>
+
+  <div class="col">
+    <div class="cap">Today · Tape pressed</div>
+    <div class="frame now"><div class="win">
+      <div class="head">
+        <div class="t"><h3>Labels · JP1042 · Oak Hollow Apartments Building C</h3><span class="sub">Tape prints one strip per box on your P-touch, 24 mm wide. The first time, pick the printer and the 24 mm paper in the print window. After that it is remembered.</span></div>
+        <span class="chips"><span class="chip">Sheet</span><span class="chip on">Tape</span></span>
+        <span class="chips"><span class="chip">18 mm</span><span class="chip on">24 mm</span></span>
+      </div>
+      <div class="bar"><span class="btn pri">Print 6 tape labels</span><span class="btn quiet">Export the labels as a CSV</span><span class="btn r">Close</span></div>
+      <div class="chips"><span class="chip on">A1</span><span class="chip on">A2</span><span class="chip on">A3</span><span class="chip on">A4</span><span class="chip on">B1</span><span class="chip on">B2</span></div>
+      <div class="strips">
+        <div class="tape"><div class="qr"></div><div><div class="st">A1</div><div class="cd">PRTS.CO/B/4F2A-9C18</div><div class="wd">Scan for what is inside</div></div></div>
+        <div class="tape"><div class="qr"></div><div><div class="st">A2</div><div class="cd">PRTS.CO/B/7D75-9246</div><div class="wd">Scan for what is inside</div></div></div>
+      </div>
+    </div></div>
+    <div class="foot">The printing works as built. The setup is three steps squeezed into grey text, with no word about the driver or the cable, and no way to try one strip before a run of ninety.</div>
+  </div>
+</div>
+
+<!-- ───────────── AFTER ───────────── -->
+<h2><span class="num pick">2</span>After: two outputs, named, and the first time walked</h2>
+<p class="lede">The window's first question is what the label is printed on. Each answer says what it is and what it needs. Brother tape, chosen for the first time on a computer, opens the steps and offers one test strip. After a print the computer remembers, and the window opens on tape.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="cap opt">After · the first time, Brother tape chosen</div>
+    <div class="frame"><div class="win">
+      <div class="head"><div class="t"><h3>Labels · JP1042 · Oak Hollow Apartments Building C</h3><span class="sub">6 boxes. Pick what the labels print on.</span></div><span class="btn">Close</span></div>
+      <div class="outs new">
+        <div class="out"><span class="n"><i></i>Paper sheet</span><span class="d">One Letter page a box, with lines to write on. Any printer.</span></div>
+        <div class="out on"><span class="n"><i></i>Brother tape</span><span class="d">One strip a box for the P-touch, for boxes that sit in the sun.</span><span class="chips" style="margin-top:4px"><span class="chip sm">18 mm</span><span class="chip sm on">24 mm</span></span></div>
+      </div>
+      <div class="setup new">
+        <b>First time on this computer</b>
+        <ol>
+          <li>Plug the P-touch in with its USB cable and switch it on.</li>
+          <li>Add it as a printer with Brother's driver.</li>
+          <li>In the print window, pick the P-touch and the 24 mm paper. The browser remembers both.</li>
+        </ol>
+        <span class="lnk" style="color:#92400e;text-decoration:underline">How do I set up the tape printer?</span>
+      </div>
+      <div class="bar"><span class="btn new">Print 1 test strip</span><span class="btn pri">Print 6 tape labels</span><span class="btn quiet r">Export the labels as a CSV</span></div>
+      <div class="bar"><span class="chips"><span class="chip on">A1</span><span class="chip on">A2</span><span class="chip on">A3</span><span class="chip on">A4</span><span class="chip on">B1</span><span class="chip on">B2</span></span><span class="chips r new"><span class="chip sm">None</span><span class="chip sm">Every box</span></span></div>
+      <div class="strips">
+        <div class="tape"><div class="qr"></div><div><div class="st">A1</div><div class="cd">PRTS.CO/B/4F2A-9C18</div><div class="wd">Scan for what is inside</div></div></div>
+        <div class="tape"><div class="qr"></div><div><div class="st">A2</div><div class="cd">PRTS.CO/B/7D75-9246</div><div class="wd">Scan for what is inside</div></div></div>
+      </div>
+    </div></div>
+    <div class="foot">The test strip prints the first box alone. It is there so a wrong paper size costs 72 mm of tape, not a whole run.</div>
+  </div>
+
+  <div class="col">
+    <div class="cap opt">After · the next time on this computer</div>
+    <div class="frame"><div class="win">
+      <div class="head"><div class="t"><h3>Labels · JP1042 · Oak Hollow Apartments Building C</h3><span class="sub">6 boxes, one strip each.</span></div><span class="btn">Close</span></div>
+      <div class="ready new"><span class="dot"></span><span><b>Brother tape · 24 mm.</b> This computer printed tape last on Nov 10.</span><span class="lnk" style="margin-left:auto">Change</span><span class="lnk">Printer setup</span></div>
+      <div class="bar"><span class="btn pri">Print 6 tape labels</span><span class="btn">Print 1 test strip</span><span class="btn quiet r">Export the labels as a CSV</span></div>
+      <div class="bar"><span class="chips"><span class="chip on">A1</span><span class="chip on">A2</span><span class="chip on">A3</span><span class="chip on">A4</span><span class="chip on">B1</span><span class="chip on">B2</span></span><span class="chips r"><span class="chip sm">None</span><span class="chip sm">Every box</span></span></div>
+      <div class="strips">
+        <div class="tape"><div class="qr"></div><div><div class="st">A1</div><div class="cd">PRTS.CO/B/4F2A-9C18</div><div class="wd">Scan for what is inside</div></div></div>
+        <div class="tape"><div class="qr"></div><div><div class="st">A2</div><div class="cd">PRTS.CO/B/7D75-9246</div><div class="wd">Scan for what is inside</div></div></div>
+      </div>
+    </div></div>
+    <div class="foot">Three presses from the Materials page to the print window: Print labels, the job, Print 6 tape labels. <b>Change</b> brings the two outputs back. <b>Printer setup</b> opens the three steps again.</div>
+  </div>
+</div>
+
+<div class="say">
+  <p class="gain">The choice is the first thing read, and it names the Brother. Nobody has to know a chip is there.</p>
+  <p class="gain">The first-time steps are a list in the window, with the cable and the driver in them.</p>
+  <p class="gain">One test strip before a run. A job in the app today holds 92 boxes.</p>
+  <p class="gain">None and Every box, as the manifest window already has, so one new cage's strip does not mean unticking the rest.</p>
+  <p class="lose">The window is a little taller the first time. The steps fold away after the first print.</p>
+  <p class="rule">The app cannot see which printers a computer has. "This computer printed tape" is what the browser remembers, not a check of the printer.</p>
+</div>
+
+<!-- ───────────── SECOND LOOK ───────────── -->
+<h2><span class="num">?</span>Is this the best we can do?</h2>
+<div class="scrollx"><table class="v">
+  <thead><tr><th></th><th>What it would be</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><th>A press of its own on the strip</th><td>Print tape labels beside Print labels on the Materials page.</td><td>No. Two presses for one window. The choice belongs inside it.</td></tr>
+    <tr><th>Tape as everyone's default</th><td>The window opens on tape on every computer.</td><td>No. A computer with no P-touch would open on a format it cannot print. The default follows what that computer last printed.</td></tr>
+    <tr><th>Print over Bluetooth from the app</th><td>No cable, straight from the browser.</td><td>Cannot be built. The printer's Bluetooth answers Brother's own phone app only.</td></tr>
+    <tr><th class="pick">Name the two outputs, walk the first time, one test strip</th><td class="pick">The after above.</td><td class="pick">The pick. One small client-only PR.</td></tr>
+    <tr><th>Remember which boxes have a label</th><td>The window ticks only the boxes never printed.</td><td>Later, on the owner's word. It needs a column on the box and a migration.</td></tr>
+  </tbody>
+</table></div>
+<div class="say">
+  <p class="rule"><b>First, before any of this:</b> the tape format has never been printed on the real printer. Print three strips on the PT-D610BT from today's window. If the strip's length, margins or cut are off, that is the fix to make first.</p>
+</div>
+
+<h2><span class="num">!</span>The owner's calls</h2>
+<ol class="calls">
+  <li><b>Which tape width is in the box?</b> The app lays out 18 mm and 24 mm. <span class="mine">Another width needs a layout added.</span></li>
+  <li><b>Does the test strip print the first ticked box, or a sample that belongs to no box?</b> <span class="mine">My pick: the first ticked box, so the test is a real label and no tape is wasted.</span></li>
+  <li><b>Should the app remember which boxes already have a label?</b> <span class="mine">My pick: not yet. None and Every box cover a new cage for now.</span></li>
+  <li><b>Is "Brother tape" the right name, or "Tape label"?</b> <span class="mine">My pick: Brother tape. It is the word on the printer.</span></li>
+</ol>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>
