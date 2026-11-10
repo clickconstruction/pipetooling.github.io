@@ -42,12 +42,17 @@ import {
   type ValueFloor,
   valueFloorWords,
 } from '../../lib/research/permitResearch'
-import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, pullPermitsNow, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
+import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, loadResearchers, pullPermitsNow, putBackPermit, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
-import { PermitSkimDeck } from './PermitSkimDeck'
+import { PermitSkimDeck, type AnsweredPatch, type Researcher } from './PermitSkimDeck'
+import { PermitPlaceList } from './PermitPlaceList'
+import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
+import { PermitBuilders } from './PermitBuilders'
+import { PermitCountStrip } from './PermitCountStrip'
+import { notPursuingVerdict, placeCounts, pursueReason } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -101,8 +106,20 @@ export function HintChip({ hint }: { hint: Hint }) {
 export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
-  // Skim is step one and where the tab opens; the ledger and the map are the wide view of the same rows.
-  const [view, setView] = useState<'skim' | 'ledger' | 'map'>('skim')
+  // Skim is step one and where the tab opens; Kept, Pursuing and Closed are where an answered permit sits;
+  // the ledger and the map are the wide view of a window of the same rows.
+  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'builders' | 'ledger' | 'map'>('skim')
+  const wide = view === 'ledger' || view === 'map'
+  // Every permit the feed has brought, with no window: the deck, the step strip and the three lists read these.
+  const [allRows, setAllRows] = useState<ResearchPermitRow[]>([])
+  const [allLoading, setAllLoading] = useState(true)
+  const [allError, setAllError] = useState<string | null>(null)
+  const [researchers, setResearchers] = useState<Researcher[]>([])
+  const [digRow, setDigRow] = useState<ResearchPermitRow | null>(null)
+  const [closing, setClosing] = useState<{ mode: 'pursue' | 'not_pursuing'; row: ResearchPermitRow } | null>(null)
+  const [closeError, setCloseError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [countKey, setCountKey] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
@@ -150,6 +167,83 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     void load()
   }, [load])
 
+  const loadAll = useCallback(async () => {
+    setAllError(null)
+    try {
+      setAllRows(await loadResearchPermits(city, '2000-01-01', false))
+    } catch (e) {
+      setAllError(formatErrorMessage(e))
+    } finally {
+      setAllLoading(false)
+    }
+  }, [city])
+  useEffect(() => {
+    void loadAll()
+  }, [loadAll])
+  useEffect(() => {
+    let live = true
+    void loadResearchers().then((list) => live && setResearchers(list))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const places = useMemo(() => placeCounts(allRows, floor), [allRows, floor])
+  /** An answer was written: the row reads it at once, so the strip and the lists do not wait on a reload. */
+  const patchRow = useCallback(
+    (permitId: string, patch: AnsweredPatch) => {
+      const me = researchers.find((r) => r.id === authUserId)?.name ?? null
+      setAllRows((prev) => prev.map((r) => (r.id === permitId ? { ...r, ...patch, verdict_by_name: me ?? r.verdict_by_name ?? 'you' } : r)))
+      setCountKey((k) => k + 1)
+    },
+    [researchers, authUserId],
+  )
+
+  /** A row's own write: its presses rest while it runs, a failure says why, and the rows read again after. */
+  const runOn = async (row: ResearchPermitRow, doing: () => Promise<void>, done: string) => {
+    setBusyId(row.id)
+    try {
+      await doing()
+      showToast(done, 'success')
+      await loadAll()
+      setCountKey((k) => k + 1)
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+  const handTo = (row: ResearchPermitRow, userId: string | null) => {
+    const name = researchers.find((r) => r.id === userId)?.name ?? null
+    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: name ? `Handed to ${name}.` : 'Handed to nobody yet.', lookAgainOn: row.verdict_look_again_on, prospectId: null, userId: authUserId, forUserId: userId }), name ? `${row.address ?? row.permit_number} is ${name}’s to follow up.` : `${row.address ?? row.permit_number} is nobody’s yet.`)
+  }
+  const putBack = (row: ResearchPermitRow) => {
+    void runOn(row, () => putBackPermit(row.id, authUserId), `${row.address ?? row.permit_number} is back on the skim.`)
+  }
+  const closeOut = async (row: ResearchPermitRow, out: PermitCloseOut) => {
+    setSaving(true)
+    setCloseError(null)
+    try {
+      if (out.kind === 'pursue') {
+        const lead = await approachFromPermit(row, out.role, authUserId, {})
+        await recordVerdict({ permitId: row.id, verdict: 'approach', reason: pursueReason(out.pursueFor), lookAgainOn: null, prospectId: lead.prospectId, userId: authUserId, pursueFor: out.pursueFor, forUserId: out.forUserId })
+        showToast(lead.reused ? `Put the permit on ${lead.companyName}’s lead on the GCs deck.` : `GC lead made: ${lead.companyName}, on the GCs deck.`, 'success')
+      } else {
+        const v = notPursuingVerdict(out.code)
+        await recordVerdict({ permitId: row.id, verdict: 'not_for_us', reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId, reasonCode: v.reasonCode })
+        showToast(`${row.address ?? row.permit_number} is closed. ${v.reason}`, 'success')
+      }
+      setClosing(null)
+      setDigRow(null)
+      await loadAll()
+      setCountKey((k) => k + 1)
+    } catch (e) {
+      setCloseError(formatErrorMessage(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const sized = useMemo(() => rowsAboveFloor(rows, floor), [rows, floor])
   const counts = useMemo(() => lensCounts(sized), [sized])
   const visible = useMemo(() => rowsShowing(sized, showing), [sized, showing])
@@ -177,6 +271,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       await recordVerdict({ permitId: row.id, verdict: d.verdict, reason: d.reason, lookAgainOn: d.lookAgainOn, prospectId, userId: authUserId })
       setDeciding(null)
       await load()
+      void loadAll()
+      setCountKey((k) => k + 1)
     } catch (e) {
       setDecideError(formatErrorMessage(e))
     } finally {
@@ -192,6 +288,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       const stopped = out.feeds.find((f) => f.error)
       showToast(stopped ? `The pull kept ${kept} rows and stopped on ${stopped.source}: ${stopped.error}` : `Pulled ${kept} rows from the feed.`, stopped ? 'warning' : 'success')
       await load()
+      void loadAll()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     } finally {
@@ -222,7 +319,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             ))}
           </select>
         </label>
-        {view !== 'skim' && (
+        {wide && (
           <>
         <select aria-label="Filed window" value={windowDays} onChange={(e) => setWindowDays(Number(e.target.value) as ResearchWindow)} style={selectStyle}>
           {RESEARCH_WINDOWS.map((d) => (
@@ -247,30 +344,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             </option>
           ))}
         </select>
-        {view !== 'skim' && (
+        {wide && (
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text)' }}>
             <input type="checkbox" checked={residential} onChange={(e) => setResidential(e.target.checked)} />
             Include houses
           </label>
         )}
         <span style={{ flex: '1 1 auto' }} />
-        <div role="group" aria-label="View" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          {(['skim', 'ledger', 'map'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={view === v}
-              onClick={() => {
-                // An answer on the skim changes the rows the ledger and the map show, so they read again.
-                if (view === 'skim' && v !== 'skim') void load()
-                setView(v)
-              }}
-              style={{ background: view === v ? 'var(--bg-200)' : 'var(--surface)', color: 'var(--text)', border: 0, borderRight: v === 'map' ? 0 : '1px solid var(--border)', padding: '7px 12px', fontSize: '0.8125rem', fontWeight: view === v ? 600 : 400, minHeight: 36, cursor: 'pointer' }}
-            >
-              {v === 'skim' ? 'Skim' : v === 'ledger' ? 'Ledger' : 'Map'}
-            </button>
-          ))}
-        </div>
         <button
           type="button"
           onClick={() => void pullNow()}
@@ -281,7 +361,39 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </button>
       </div>
 
-      <div style={mutedStyle}>{loading ? 'Reading the permits…' : view === 'skim' ? pulledAtWords(pull) : line}</div>
+      <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        {(
+          [
+            { v: 'skim', words: 'Skim', n: places.skim },
+            { v: 'kept', words: 'Kept', n: places.kept },
+            { v: 'pursuing', words: 'Pursuing', n: places.pursuing },
+            { v: 'closed', words: 'Closed', n: places.closed },
+            { v: 'builders', words: 'Builders', n: null },
+            { v: 'ledger', words: 'Ledger', n: null },
+            { v: 'map', words: 'Map', n: null },
+          ] as const
+        ).map((step) => {
+          const on = view === step.v
+          return (
+            <button
+              key={step.v}
+              type="button"
+              aria-pressed={on}
+              onClick={() => {
+                // An answer changes the rows the ledger and the map show, so they read again when they open.
+                if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
+                setView(step.v)
+              }}
+              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: step.v === 'ledger' ? 'auto' : undefined }}
+            >
+              {step.words}
+              {step.n != null && !allLoading ? ` ${step.n}` : ''}
+            </button>
+          )
+        })}
+      </div>
+
+      <div style={mutedStyle}>{loading ? 'Reading the permits…' : wide ? line : pulledAtWords(pull)}</div>
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700, var(--text-red-700))', fontSize: '0.875rem' }}>
@@ -292,7 +404,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </div>
       )}
 
-      {view !== 'skim' && tally.length > 0 && (
+      {wide && tally.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', background: 'var(--surface)' }}>
           <strong>Who wins what in {city}, this window</strong> <span style={mutedStyle}>· the plumbers named on a permit, not the applicants who pulled their own:</span>
           {tally.map((t) => (
@@ -304,22 +416,28 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       {view === 'skim' && (
-        <PermitSkimDeck
-          authUserId={authUserId}
-          city={city}
-          floor={floor}
-          todayYmd={todayYmd}
-          isMobile={isMobile}
-          onDigIn={() => {
-            setShowing('look')
-            setWindowDays(90)
-            setView('ledger')
-            void load()
-          }}
-        />
+        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} />
       )}
 
-      {view !== 'skim' && !loading && !error && visible.length === 0 && emptyState()}
+      {(view === 'kept' || view === 'pursuing' || view === 'closed') &&
+        (allError ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
+            <span>{allError}</span>
+            <button type="button" onClick={() => void loadAll()} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', cursor: 'pointer' }}>
+              Retry
+            </button>
+          </div>
+        ) : allLoading ? (
+          <div style={mutedStyle}>Reading the permits…</div>
+        ) : (
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onSkim={() => setView('skim')} />
+        ))}
+
+      {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
+
+      {!wide && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
+
+      {wide && !loading && !error && visible.length === 0 && emptyState()}
 
       {view === 'map' && visible.length > 0 && (
         <ResearchMapCard rows={visible} selectedId={selectedId} onSelect={setSelectedId} isMobile={isMobile}>
@@ -503,6 +621,29 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
 <strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
+      {digRow && !closing && !whoRow && (
+        <PermitBuildingSheet
+          row={digRow}
+          onClose={() => setDigRow(null)}
+          onDecide={() => setDigRow(null)}
+          onWho={() => setWhoRow(digRow)}
+          closeOut={
+            digRow.verdict === 'look'
+              ? {
+                  onPursue: () => {
+                    setCloseError(null)
+                    setClosing({ mode: 'pursue', row: digRow })
+                  },
+                  onNotPursuing: () => {
+                    setCloseError(null)
+                    setClosing({ mode: 'not_pursuing', row: digRow })
+                  },
+                }
+              : undefined
+          }
+        />
+      )}
+      {closing && <PermitCloseOutSheet mode={closing.mode} row={closing.row} me={authUserId} researchers={researchers} saving={saving} error={closeError} onDone={(out) => void closeOut(closing.row, out)} onCancel={() => !saving && setClosing(null)} />}
       {siteRow && !deciding && !whoRow && (
         <PermitBuildingSheet
           row={siteRow}

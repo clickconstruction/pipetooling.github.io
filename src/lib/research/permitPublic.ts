@@ -4,7 +4,7 @@
  * can read, the other permits on one address, the other permits one name pulled, and the public
  * doors a county and the state keep. No React, no Supabase.
  */
-import { contactParts, nameKey } from '../../../supabase/functions/_shared/permitLookup'
+import { builderKeyOf, contactParts } from '../../../supabase/functions/_shared/permitLookup'
 
 /** A Google search opened in a new tab: what is asked, and the words a screen reader and a hover say. */
 export type GoogleAsk = { query: string; url: string; label: string }
@@ -187,8 +187,7 @@ export function siteWords(lines: readonly PermitLine[]): string {
 
 /** The key a builder's permits are matched on: the company when the line names one, else the person. */
 export function builderKey(contact: string | null | undefined): string | null {
-  const { person, company } = contactParts(contact)
-  return nameKey(company ?? person)
+  return builderKeyOf(contact)
 }
 
 const DULL_WORDS = new Set(['the', 'and', 'of', 'llc', 'inc', 'ltd', 'llp', 'pllc', 'corp', 'co', 'company', 'incorporated', 'group'])

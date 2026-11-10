@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, keep, pass, pursue, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -25,9 +25,39 @@ Press the name beside **Who** to see who pulled it. Press the line beside **Prop
 
 The count says how many are left. A permit stays in the deck until someone answers it. When none are left the card says so. Press **Dig in** to open the ones you kept.
 
+## Work the ones you kept
+
+A strip under the filters counts where every permit is. **Skim** waits on an answer. **Kept** waits on a closer look. **Pursuing** has a lead. **Closed** is done.
+
+After a keep the dark bar asks who it is for. Tap a name to hand it over. You can also pick a name beside **Hand to** on a kept row.
+
+Press **Kept** and press a permit's name. It opens with what was done on it. Press **Pursue…** to go after it. Say what it is for and who follows up. A lead is made on the GCs deck. Press **Not pursuing…** to drop it. Tap one reason.
+
+Press **Put back** on a kept row to send it to the skim again.
+
+## Find a closed permit
+
+Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has a plumber** holds the ones a plumber took. **Not pursuing** holds the ones dropped after a look.
+
+Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
+
+## Know the builders
+
+Press **Builders**. The list shows everyone who pulled a commercial permit in the last year. Each row says how many permits they pulled and how many have no plumber yet. It also shows our bids with them and the plumber they use.
+
+Press **3 or more permits and never bid** to see who to get to know.
+
+Press a builder's name. Pick **Good** or **Avoid** and say why in a line. The mark shows on every skim card of that builder. A Good builder's permits come first. An Avoid builder's permits come last.
+
+Pick **Files for others** under what kind of company for a name that pulls permits for other people. Its cards then lead with the county's owner.
+
+## Read the count
+
+Six numbers sit under the lists. The first says how many permits arrived this month. The next three say how many were skimmed, kept and pursued. The last two say how many became a bid and a win. The lines under them say who skimmed and why permits were passed.
+
 ## Open the ledger
 
-Press **Ledger** beside **Skim** to see the permits as a list.
+Press **Ledger** on the strip to see the permits as a list.
 
 The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. The **Declared value** pick keeps small permits off the list. It starts at $25k and up, or not declared. Tick **Include houses** to see single family permits too.
 

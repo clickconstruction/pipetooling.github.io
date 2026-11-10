@@ -5,6 +5,7 @@
  * function `permit-pull` runs these; `src/lib/research/permitFeed.test.ts` holds them. No I/O.
  */
 import { pointFromFeedCoords } from './permitCoords.ts'
+import { builderKeyOf } from './permitLookup.ts'
 
 export type PermitKind = 'building' | 'plumbing' | 'other'
 export type PermitStage = 'applied' | 'issued'
@@ -126,6 +127,8 @@ export type PermitRow = {
   declared_value: number | null
   area_sf: number | null
   contact: string | null
+  /** The company (else the person) on the contact line, keyed: every permit of one builder shares it. */
+  builder_key: string | null
   raw: Record<string, unknown>
 }
 
@@ -159,6 +162,7 @@ export function permitRowFromSanAntonio(record: Record<string, unknown>, feed: P
     declared_value: numberOf(record['DECLARED VALUATION']),
     area_sf: numberOf(record['AREA (SF)']),
     contact: textOf(record['PRIMARY CONTACT']),
+    builder_key: builderKeyOf(textOf(record['PRIMARY CONTACT'])),
     raw,
   }
 }

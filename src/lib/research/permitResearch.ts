@@ -18,6 +18,10 @@ export const DEFAULT_RESEARCH_CITY = 'San Antonio'
 export const RESEARCH_CITIES: readonly string[] = [DEFAULT_RESEARCH_CITY]
 
 export type PermitVerdict = 'look' | 'approach' | 'not_for_us' | 'taken'
+/** What a pursue is for (punch list #302): the plumber is sometimes chosen already, and then the relationship is the point. */
+export type PursueFor = 'this_job' | 'next_jobs' | 'both'
+/** Our mark on a builder. */
+export type BuilderMarkValue = 'good' | 'avoid'
 export const PERMIT_VERDICTS: readonly PermitVerdict[] = ['approach', 'look', 'not_for_us', 'taken']
 
 export const VERDICT_WORDS: Record<PermitVerdict, { press: string; chip: string; hint: string }> = {
@@ -61,6 +65,21 @@ export type ResearchPermitRow = {
   verdict_by: string | null
   verdict_by_name: string | null
   verdict_at: string | null
+  // From `research_permits_v2` (migration *_permit_skim); absent on a row the older read returned.
+  verdict_reason_code?: string | null
+  verdict_for_user?: string | null
+  verdict_for_name?: string | null
+  verdict_pursue_for?: PursueFor | null
+  builder_key?: string | null
+  builder_name?: string | null
+  builder_kind?: string | null
+  builder_mark?: BuilderMarkValue | null
+  builder_mark_reason?: string | null
+  builder_mark_by_name?: string | null
+  builder_mark_at?: string | null
+  /** The builder's commercial building permits in the last year, and how many have no plumbing permit. */
+  builder_permits?: number | null
+  builder_open?: number | null
 }
 
 /** What the list shows: the rows waiting on a look are the default; the rest are lenses on the same rows. */

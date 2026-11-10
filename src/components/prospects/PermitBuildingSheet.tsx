@@ -3,7 +3,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { SAN_ANTONIO_PERMIT_PORTAL, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { deedsDoor, feedRowFields, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
-import { loadPermitFeedRow, loadSitePermits, lookupParcel, type LookupAnswer, type PermitFeedRow } from '../../lib/research/permitResearchIo'
+import { loadPermitFeedRow, loadPermitHistory, loadSitePermits, lookupParcel, type LookupAnswer, type PermitFeedRow, type PermitVerdictEvent } from '../../lib/research/permitResearchIo'
+import { VERDICT_WORDS, isPermitVerdict } from '../../lib/research/permitResearch'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
 /**
@@ -43,6 +44,7 @@ export function PermitBuildingSheet({
   onDecide,
   onWho,
   answers,
+  closeOut,
 }: {
   row: ResearchPermitRow
   onClose: () => void
@@ -50,6 +52,8 @@ export function PermitBuildingSheet({
   onDecide: () => void
   /** Opened from the skim: the two answers take the foot in place of Decide. */
   answers?: { onPass: () => void; onKeep: () => void }
+  /** Opened from Kept: what was done on the permit shows, and the close-out takes the foot. */
+  closeOut?: { onPursue: () => void; onNotPursuing: () => void }
   /** Opens the Who pulled it card on this permit's contact. */
   onWho: () => void
 }) {
@@ -58,6 +62,20 @@ export function PermitBuildingSheet({
   const [parcel, setParcel] = useState<Loadable<LookupAnswer<ParcelFacts>>>({ state: 'loading' })
   const [showAll, setShowAll] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [events, setEvents] = useState<PermitVerdictEvent[] | null>(null)
+  const showHistory = closeOut != null
+
+  // What was done on the permit, newest first: shown on a kept permit, where the next person picks it up.
+  useEffect(() => {
+    if (!showHistory) return
+    let live = true
+    loadPermitHistory(row.id)
+      .then((list) => live && setEvents(list))
+      .catch(() => live && setEvents([]))
+    return () => {
+      live = false
+    }
+  }, [showHistory, row.id])
 
   const load = useCallback(
     async (refresh: boolean) => {
@@ -248,6 +266,27 @@ export function PermitBuildingSheet({
           )}
         </section>
 
+        {showHistory && (
+          <section>
+            <div style={sectionTitle}>What we did</div>
+            {events == null && <div style={muted}>Reading what was done…</div>}
+            {events != null && events.length === 0 && <div style={muted}>Kept, with nothing written since.</div>}
+            {events != null && events.length > 0 && (
+              <div style={{ ...facts, gridTemplateColumns: '64px minmax(0, 1fr)' }}>
+                {events.map((ev) => (
+                  <Fragment key={ev.id}>
+                    <span style={factName}>{new Date(ev.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                      <strong>{ev.by_name ?? 'Someone'}</strong>: {ev.verdict === 'back' ? 'Put back' : isPermitVerdict(ev.verdict) ? VERDICT_WORDS[ev.verdict].chip : ev.verdict}
+                      {ev.for_name ? ` for ${ev.for_name}` : ''}. <span style={muted}>{ev.reason}</span>
+                    </span>
+                  </Fragment>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         <section>
           <div style={sectionTitle}>More, one press away</div>
           <div style={muted}>Each opens a public search page in a new tab.</div>
@@ -277,7 +316,16 @@ export function PermitBuildingSheet({
         </section>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 12, flexWrap: 'wrap' }}>
-          {answers ? (
+          {closeOut ? (
+            <>
+              <button type="button" onClick={closeOut.onPursue} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
+                Pursue…
+              </button>
+              <button type="button" onClick={closeOut.onNotPursuing} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
+                Not pursuing…
+              </button>
+            </>
+          ) : answers ? (
             <>
               <button type="button" onClick={answers.onPass} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
                 Pass

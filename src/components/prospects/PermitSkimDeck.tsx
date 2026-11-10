@@ -4,7 +4,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
-import { contactKeys, rowLens, rowsAboveFloor, type ContactHistory, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
+import { contactKeys, rowsAboveFloor, type ContactHistory, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
+import { BUILDER_KIND_WORDS, builderLine, isBuilderKind, placeCounts, placeOf, skimBuilderContext } from '../../lib/research/permitBuilders'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import {
   PASS_REASONS,
@@ -24,7 +25,7 @@ import {
   type SkimAnswer,
   type SkimCard,
 } from '../../lib/research/permitSkim'
-import { loadContactHistory, loadResearchPermits, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
+import { loadContactHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
 import { swipeAnswer, swipeIsScroll, swipeMayStart, swipeProgress } from '../../lib/research/permitLook'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { PermitSkimLook } from './PermitSkimLook'
@@ -40,8 +41,6 @@ import { WhoPulledItSheet } from './WhoPulledItSheet'
  * Two pictures sit across the top (PermitSkimLook), and on a phone a drag answers: right keeps,
  * left passes, with the word showing as the card passes a third of its width.
  */
-const SKIM_SINCE_YMD = '2000-01-01'
-
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const cardStyle: CSSProperties = { position: 'relative', touchAction: 'pan-y', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
 // On a phone the two answers stay at the foot of the screen, over the app's own bottom bar, however tall the card is.
@@ -60,7 +59,12 @@ const pill = (tone: 'green' | 'grey' | 'blue' | 'amber'): CSSProperties => ({
 })
 const keyCap: CSSProperties = { font: 'inherit', fontSize: '0.6875rem', fontWeight: 600, border: '1px solid currentColor', borderRadius: 4, padding: '0 5px', opacity: 0.75 }
 
-type Pending = { card: SkimCard; answer: SkimAnswer; reasonCode: PassReasonCode | null }
+type Pending = { card: SkimCard; answer: SkimAnswer; reasonCode: PassReasonCode | null; forUserId: string | null }
+
+/** A person a kept permit can be handed to. */
+export type Researcher = { id: string; name: string }
+/** What an answer changed on a row, handed up so the step strip and the lists read it without a reload. */
+export type AnsweredPatch = Pick<ResearchPermitRow, 'verdict' | 'verdict_reason' | 'verdict_reason_code' | 'verdict_for_user' | 'verdict_for_name' | 'verdict_at' | 'verdict_by'>
 type Parcel = { state: 'loading' } | { state: 'done'; facts: ParcelFacts | null }
 
 /** The property line's words from the county's parcel: the owner, and what stands on the lot. */
@@ -75,6 +79,12 @@ export function PermitSkimDeck({
   floor,
   todayYmd,
   isMobile,
+  rows,
+  loading,
+  error,
+  researchers,
+  onReload,
+  onAnswered,
   onDigIn,
 }: {
   authUserId: string
@@ -82,15 +92,21 @@ export function PermitSkimDeck({
   floor: ValueFloor
   todayYmd: string
   isMobile: boolean
+  /** Every permit the feed has brought, with no window: the tab reads them once for the deck, the strip and the lists. */
+  rows: readonly ResearchPermitRow[]
+  loading: boolean
+  error: string | null
+  /** The people a keep can be handed to. Empty when the list cannot be read: the bar then offers no names. */
+  researchers: readonly Researcher[]
+  onReload: () => void
+  /** An answer was written: what it changed on the row. */
+  onAnswered: (permitId: string, patch: AnsweredPatch) => void
   /** Opens the kept permits, where step two works them. */
   onDigIn: () => void
 }) {
   const { showToast } = useToastContext()
   const office = useOfficeAnchor(true)
-  const [rows, setRows] = useState<ResearchPermitRow[]>([])
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
   const [tally, setTally] = useState({ kept: 0, passed: 0 })
   const [pending, setPending] = useState<Pending | null>(null)
@@ -101,40 +117,42 @@ export function PermitSkimDeck({
   const drag = useRef<{ id: number; x: number; y: number; width: number; live: boolean } | null>(null)
   const [dx, setDx] = useState(0)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const list = await loadResearchPermits(city, SKIM_SINCE_YMD, false)
-      setRows(list)
-      // Our history with the names in the deck alone, one read, fail-soft: the deck stands without it.
-      try {
-        const waiting = rowsAboveFloor(list, floor).filter((r) => rowLens(r) === 'waiting')
-        setHistory(await loadContactHistory(waiting.flatMap((r) => contactKeys(r.contact))))
-      } catch {
-        setHistory(new Map())
-      }
-    } catch (e) {
-      setError(formatErrorMessage(e))
-    } finally {
-      setLoading(false)
-    }
-  }, [city, floor])
-
+  // Our history with the names in the deck alone, one read, fail-soft: the deck stands without it.
+  const waitingKeys = useMemo(() => [...new Set(rowsAboveFloor(rows, floor).filter((r) => placeOf(r).place === 'skim').flatMap((r) => contactKeys(r.contact)))].sort().join('|'), [rows, floor])
   useEffect(() => {
-    void load()
-  }, [load])
+    if (waitingKeys === '') {
+      setHistory(new Map())
+      return
+    }
+    let live = true
+    loadContactHistory(waitingKeys.split('|'))
+      .then((h) => live && setHistory(h))
+      .catch(() => live && setHistory(new Map()))
+    return () => {
+      live = false
+    }
+  }, [waitingKeys])
 
-  const deck = useMemo(() => skimDeck(rows, { todayYmd, office, history }, floor).filter((c) => !done.has(c.row.id)), [rows, todayYmd, office, history, floor, done])
+  const deck = useMemo(() => skimDeck(rows, { todayYmd, office, history, ...skimBuilderContext(rows) }, floor).filter((c) => !done.has(c.row.id)), [rows, todayYmd, office, history, floor, done])
   const top = deck[0] ?? null
-  const keptCount = useMemo(() => rows.filter((r) => rowLens(r) === 'look').length + tally.kept, [rows, tally.kept])
+  // A kept permit the tab has not yet been told about is still held here, so the press counts it.
+  const keptCount = useMemo(() => placeCounts(rows, floor).kept + (pending?.answer === 'keep' ? 1 : 0), [rows, floor, pending])
 
   /** Write one held answer. A failure names the permit, says why, and puts the card back. */
   const write = useCallback(
     async (p: Pending) => {
       const v = skimVerdict(p.answer, p.reasonCode)
       try {
-        await recordVerdict({ permitId: p.card.row.id, verdict: v.verdict, reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId })
+        await recordVerdict({ permitId: p.card.row.id, verdict: v.verdict, reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId, reasonCode: p.answer === 'pass' ? p.reasonCode : null, forUserId: p.answer === 'keep' ? p.forUserId : null })
+        onAnswered(p.card.row.id, {
+          verdict: v.verdict,
+          verdict_reason: v.reason,
+          verdict_reason_code: p.answer === 'pass' ? p.reasonCode : null,
+          verdict_for_user: p.answer === 'keep' ? p.forUserId : null,
+          verdict_for_name: p.answer === 'keep' ? (researchers.find((r) => r.id === p.forUserId)?.name ?? null) : null,
+          verdict_at: new Date().toISOString(),
+          verdict_by: authUserId,
+        })
       } catch (e) {
         showToast(`${p.card.row.address ?? p.card.row.permit_number} was not saved. ${formatErrorMessage(e)}`, 'error')
         setDone((prev) => {
@@ -145,7 +163,7 @@ export function PermitSkimDeck({
         setTally((t) => (p.answer === 'keep' ? { ...t, kept: Math.max(0, t.kept - 1) } : { ...t, passed: Math.max(0, t.passed - 1) }))
       }
     },
-    [authUserId, showToast],
+    [authUserId, showToast, onAnswered, researchers],
   )
 
   const flush = useCallback(() => {
@@ -159,7 +177,7 @@ export function PermitSkimDeck({
   const answer = useCallback(
     (card: SkimCard, a: SkimAnswer) => {
       flush()
-      const p: Pending = { card, answer: a, reasonCode: null }
+      const p: Pending = { card, answer: a, reasonCode: null, forUserId: null }
       pendingRef.current = p
       setPending(p)
       setSheet(null)
@@ -186,6 +204,14 @@ export function PermitSkimDeck({
     const p = pendingRef.current
     if (!p || p.answer !== 'pass') return
     const next: Pending = { ...p, reasonCode: p.reasonCode === code ? null : code }
+    pendingRef.current = next
+    setPending(next)
+  }, [])
+
+  const pickFor = useCallback((userId: string | null) => {
+    const p = pendingRef.current
+    if (!p || p.answer !== 'keep') return
+    const next: Pending = { ...p, forUserId: userId }
     pendingRef.current = next
     setPending(next)
   }, [])
@@ -290,13 +316,23 @@ export function PermitSkimDeck({
   }
 
   const bar = pending && (
-    <div role="status" style={{ margin: isMobile ? '0 0 10px' : '14px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--text)', color: 'var(--surface)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-      <span>{answeredWords(pending.answer)}</span>
+    <div role="status" style={{ margin: isMobile ? '0 0 10px' : '14px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+      <span>{pending.answer === 'keep' && researchers.length > 0 ? 'Kept. For?' : answeredWords(pending.answer)}</span>
+      {pending.answer === 'keep' &&
+        researchers.length > 0 &&
+        [{ id: null as string | null, name: 'Anyone' }, ...researchers.slice(0, 8)].map((r) => {
+          const on = pending.forUserId === r.id
+          return (
+            <button key={r.id ?? 'anyone'} type="button" aria-pressed={on} onClick={() => pickFor(r.id)} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--surface)', background: on ? 'var(--surface)' : 'transparent', color: on ? 'var(--text-strong)' : 'var(--surface)', padding: '3px 10px', minHeight: 32, cursor: 'pointer' }}>
+              {r.id === authUserId ? 'Me' : r.name}
+            </button>
+          )
+        })}
       {pending.answer === 'pass' &&
         PASS_REASONS.map((r) => {
           const on = pending.reasonCode === r.code
           return (
-            <button key={r.code} type="button" aria-pressed={on} onClick={() => pickReason(r.code)} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--surface)', background: on ? 'var(--surface)' : 'transparent', color: on ? 'var(--text)' : 'var(--surface)', padding: '3px 10px', minHeight: 32, cursor: 'pointer' }}>
+            <button key={r.code} type="button" aria-pressed={on} onClick={() => pickReason(r.code)} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--surface)', background: on ? 'var(--surface)' : 'transparent', color: on ? 'var(--text-strong)' : 'var(--surface)', padding: '3px 10px', minHeight: 32, cursor: 'pointer' }}>
               {r.words}
             </button>
           )
@@ -313,7 +349,7 @@ export function PermitSkimDeck({
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
         <span>{error}</span>
-        <button type="button" onClick={() => void load()} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', cursor: 'pointer' }}>
+        <button type="button" onClick={onReload} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', cursor: 'pointer' }}>
           Retry
         </button>
       </div>
@@ -385,8 +421,16 @@ export function PermitSkimDeck({
             ) : (
               <span style={muted}>nobody named</span>
             )}{' '}
-            <span style={pill(top.hint.tone === 'warm' ? 'amber' : top.hint.tone === 'new' ? 'blue' : 'grey')}>{top.hint.word}</span>
-            <span style={{ ...muted, display: 'block', marginTop: 2 }}>{top.hint.detail}</span>
+            {row.builder_mark === 'good' && <span style={pill('green')}>Good</span>}
+            {row.builder_mark === 'avoid' && <span style={{ ...pill('grey'), background: 'var(--bg-red-tint, var(--bg-200))', color: 'var(--text-red-700)' }}>Avoid</span>}{' '}
+            {isBuilderKind(row.builder_kind) && row.builder_kind === 'files_for_others' ? <span style={pill('grey')}>{BUILDER_KIND_WORDS.files_for_others}</span> : <span style={pill(top.hint.tone === 'warm' ? 'amber' : top.hint.tone === 'new' ? 'blue' : 'grey')}>{top.hint.word}</span>}
+            {row.builder_mark && row.builder_mark_reason ? (
+              <span style={{ ...muted, display: 'block', marginTop: 2 }}>
+                “{row.builder_mark_reason}”{row.builder_mark_by_name ? ` ${row.builder_mark_by_name}.` : ''}
+              </span>
+            ) : null}
+            <span style={{ ...muted, display: 'block', marginTop: 2 }}>{row.builder_kind === 'files_for_others' ? 'Not who builds it. Read the owner under Property.' : top.hint.detail}</span>
+            {builderLine(row) && <span style={{ ...muted, display: 'block', marginTop: 2 }}>{builderLine(row)}</span>}
           </span>
           <GoogleSearchPress ask={asks.company ?? asks.person} />
         </div>
