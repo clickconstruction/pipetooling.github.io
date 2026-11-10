@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BoxPublicPage } from './BoxPublicPage'
@@ -47,7 +47,9 @@ describe('BoxPublicPage', () => {
     expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
     expect(screen.getByTestId('box-page-counted').textContent).toContain('Last counted Thursday, Nov 5')
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('/functions/v1/box-read?code=4F2A9C18')
-    expect(document.title).toBe('Cage B3 · Click Plumbing & Electrical')
+    // The title is set by an effect after the box is drawn. On a slow runner the read above can land a tick before it (two
+    // CI runs failed here on 2026-11-10 reading 'Box label'), so wait for it instead of reading once.
+    await waitFor(() => expect(document.title).toBe('Cage B3 · Click Plumbing & Electrical'))
   })
 
   it('Sign in to change a count remembers the box and goes to the sign-in', async () => {
