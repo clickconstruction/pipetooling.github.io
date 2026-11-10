@@ -42,6 +42,8 @@ import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
 import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
+import { BridgeWeek } from '../components/bridge/BridgeWeek'
+import { WEEK_CASH_MAY_LEAD, buildWeekCall, firstName, topPerson } from '../lib/bridge/weekCall'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
@@ -116,6 +118,8 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
+/** Where a door on the first screen lands: clear of the app's top bar. */
+const anchor: CSSProperties = { scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 5rem)' }
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
@@ -837,27 +841,29 @@ export default function Bridge() {
   }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow, collectScoreReads, collectScoreKey, collectReads])
 
   const recordCall = useCallback(
-    async (moves: CallMove[], note: string | null) => {
-      if (!data || !thisWeekStart || !litLink || !stageFlow) return
+    // `linkOverride` is the first screen's proposal (punch list #303): the page's own reading, or Capital in a week cash leads.
+    async (moves: CallMove[], note: string | null, linkOverride?: CallLink) => {
+      const link = linkOverride ?? litLink
+      if (!data || !thisWeekStart || !link || !stageFlow) return
       setRecording(true)
       try {
         await recordBridgeCall(supabase, {
           weekStart: thisWeekStart,
           calledOn: data.todayYmd,
           calledByName: profileName ?? '',
-          link: litLink,
+          link,
           moves,
           measures: {
-            linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null,
-            linkPileUsd: stageFlow.stages.find((s) => s.id === litLink)?.pile.usd ?? null,
-            throttles: isStageLink(litLink) ? null : stageFlow.linkId,
+            linkWeeks: stageFlow.stages.find((s) => s.id === link)?.weeks ?? null,
+            linkPileUsd: stageFlow.stages.find((s) => s.id === link)?.pile.usd ?? null,
+            throttles: isStageLink(link) ? null : stageFlow.linkId,
             stageWeeks: nowReading.stageWeeks,
             keys: moveNumbers,
           },
           note,
         })
         setCalls(await loadBridgeCalls(supabase))
-        showToast(`Recorded: ${litLink} is the link this week`, 'success', 2500)
+        showToast(`Recorded: ${link} is the link this week`, 'success', 2500)
       } catch (e) {
         showToast(formatErrorMessage(e), 'error', 4000)
       } finally {
@@ -884,6 +890,34 @@ export default function Bridge() {
     },
     [calls, thisWeekStart, showToast],
   )
+
+  // The first screen (punch list #303, PR 1): three tiles and the week's call, proposed from the readings above.
+  const weekModel = useMemo(() => {
+    if (!data || !thisWeekStart || !calls) return null
+    const late = receipts.filter((r) => r.basis === 'late')
+    return buildWeekCall({
+      todayYmd: data.todayYmd,
+      weekStart: thisWeekStart,
+      headline,
+      forecast,
+      cashTodayUsd: cashToday,
+      cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
+      flow: stageFlow,
+      picked: pickedStage && pickedStage !== stageFlow?.linkId ? pickedStage : null,
+      moveNumbers,
+      counts: { billJobs: billPile?.knownJobs ?? null, lateInvoices: late.length + doubtful.length },
+      people: {
+        caller: firstName(profileName),
+        biller: topPerson(vectorInputs?.invoiceSends ?? [], vectorInputs?.people ?? [], data.windowStart),
+        collector: topPerson(vectorInputs?.payments ?? [], vectorInputs?.people ?? [], data.windowStart),
+      },
+      // The hazards are the supply invoices due, by day: the one bill a call can ask more days on.
+      supplyDue: forecast ? (data.hazards.find((h) => h.ymd > data.todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
+      calls,
+      now: nowReading,
+      dayLabel: md,
+    })
+  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading])
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -1270,6 +1304,14 @@ export default function Bridge() {
         </>
       ) : (
         <>
+          {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. Everything under it is the page as it was. */}
+          {weekModel && (
+            <>
+              <BridgeWeek model={weekModel} softCount={readingGaps.length} recording={recording} answering={answering} onRecord={(link, moves) => void recordCall(moves, null, link)} onAnswer={(o) => void answerCall(o, null)} />
+              <div style={{ ...label, borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginBottom: '0.5rem' }}>Behind the first screen</div>
+            </>
+          )}
+
           {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
           <BridgeRule />
 
@@ -1277,6 +1319,7 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
+          <div id="bridge-flow" style={anchor} />
           {shownFlow && (
             <BridgeStages
               flow={shownFlow}
@@ -1417,12 +1460,12 @@ export default function Bridge() {
           {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+          <div id="bridge-soft" style={{ ...anchor, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <BridgeThisWeek moves={thisWeek} />
             <BridgeReadingGaps gaps={readingGaps} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+          <div id="bridge-money" style={{ ...anchor, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <button type="button" onClick={() => setOpenCard((c) => (c === 'profit' ? null : 'profit'))} aria-expanded={openCard === 'profit'} data-testid="bridge-card-profit" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'profit' ? '2px solid #2563eb' : panel.border, padding: openCard === 'profit' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={label}>Daily profit rate</div>
@@ -1501,6 +1544,7 @@ export default function Bridge() {
           {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
 
           {/* People (v2.5222): Vectors (v2.3344) and Vectors by the day (v2.4217) under one strip */}
+          <div id="bridge-people" style={anchor} />
           <BridgePeople
             summary={peopleSummary(vectorInputs ? vectors : null, vectorWeek ? formatPayWeekLabel(vectorWeek) : '', vectorWeek ? vectorWeek.end >= data.todayYmd : false)}
             open={peopleOpen}

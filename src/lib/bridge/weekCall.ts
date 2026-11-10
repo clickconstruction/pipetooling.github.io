@@ -1,0 +1,426 @@
+/**
+ * The week's call (punch list #303, PR 1): the Bridge's first screen as one model.
+ *
+ * Three tiles say where the company stands: what the field made in the last full pay week,
+ * cash's low point against the floor, and the slowest step. One card proposes the week's call
+ * on that step with two or three moves, each with a person and a door, so one press records
+ * it. Once a call stands the same card shows it, and from Friday it asks whether it moved.
+ * A call from an earlier week that nobody answered is asked for beside it.
+ *
+ * One rule from the cash story: when the forecast goes under the floor inside the window and
+ * the page may trust its cash figure, cash leads. The first moves are cash moves and the call
+ * is recorded on Capital, with the slowest step as the move after them.
+ *
+ * Nothing here is a new reading. The step is `buildStageFlow`'s, the moves are `LINK_DESK`'s
+ * presets made concrete with the page's own numbers, the call and Friday are `calls.ts`'s.
+ * Every sentence passes the plain-words rule, and `weekCallBudget` counts what a phone's first
+ * screen holds so a test can keep it short. Pure: no React, no Supabase.
+ */
+import type { CashForecast } from './cashForecast'
+import {
+  CALL_LINK_NAMES,
+  buildScorecard,
+  callForWeek,
+  callVerdict,
+  fridayAsks,
+  isStageLink,
+  lastCallBefore,
+  moveDone,
+  shortUsd,
+  type BridgeCall,
+  type CallLink,
+  type CallMove,
+  type CallReadingNow,
+  type MoveDone,
+  type MoveKey,
+} from './calls'
+import { shortK, type Headline } from './headline'
+import { LINK_DESK, type DeskMovePreset } from './linkDesk'
+import type { StageFlow, StageReading } from './stageFlow'
+import { THIS_WEEK_DOORS } from './thisWeek'
+
+/** Moves on the card at a desk, and on a phone. A fourth is a list again. */
+export const WEEK_CALL_MOVES = 3
+export const WEEK_CALL_MOVES_PHONE = 2
+
+/**
+ * Whether cash may lead the first screen. Off until the owner says the bank the page reads is
+ * the whole bank (punch list #303, the owner's call 2): a first screen that cries wolf teaches
+ * a person to stop looking. The cash tile shows red either way.
+ */
+export const WEEK_CASH_MAY_LEAD = false
+
+/** How the week runs, for the desk's side panel until a first call exists. */
+export const WEEK_HOW = ['Monday you make the call.', 'Each move goes to a person.', 'Friday this card asks if the step moved.'] as const
+
+/** What a phone's first screen may hold: the tiles, the card with its two moves, the press. */
+export const WEEK_FIRST_SCREEN_WORDS = 150
+export const WEEK_FIRST_SCREEN_NUMBERS = 24
+
+export type WeekTone = 'plain' | 'green' | 'red' | 'amber'
+
+export type WeekBar = { share: number; current: boolean; waiting: boolean; label: string }
+
+export type WeekTile = {
+  id: 'made' | 'cash' | 'step'
+  label: string
+  value: string
+  sub: string
+  tone: WeekTone
+  /** The eight pay weeks, on the made tile. */
+  bars?: WeekBar[]
+  /** The tile takes the whole row: cash, in a week it leads. */
+  wide?: boolean
+}
+
+export type WeekDoor = { to: string; label: string }
+
+export type WeekMove = {
+  key: MoveKey
+  /** A cash move changes the day cash goes under the floor; a step move works the slowest step. */
+  kind: 'step' | 'cash'
+  title: string
+  why: string
+  door: WeekDoor | null
+  /** The person the page proposes, or the one named on a recorded call. Empty when nobody. */
+  who: string
+  /** The number behind it today, kept on the call so Friday can read it again. */
+  then: number | null
+  /** On a recorded call: how far the number moved, and the word for it. */
+  done: MoveDone | null
+  doneText: string | null
+}
+
+export type WeekCallState = 'propose' | 'standing' | 'friday' | 'answered'
+
+export type WeekLast = {
+  linkName: string
+  /** "Last week's call was Bill. Did it move?" or "Last week Bill moved." */
+  text: string
+  tone: WeekTone
+  /** Nobody answered it: the two presses show. */
+  asks: boolean
+  consequence: string
+  moves: Array<{ title: string; who: string; doneText: string; done: MoveDone }>
+}
+
+export type WeekCallModel = {
+  state: WeekCallState
+  /** The link the card is about: the proposal's, or the recorded call's. Null when nothing reads. */
+  link: CallLink | null
+  cashLeads: boolean
+  tiles: WeekTile[]
+  card: {
+    label: string
+    lead: string
+    line: string
+    moves: WeekMove[]
+    /** The words on the record press; null once a call stands. */
+    press: string | null
+    foot: string
+    tone: 'lit' | 'ask' | 'plain'
+  }
+  last: WeekLast | null
+}
+
+export type WeekCallInput = {
+  todayYmd: string
+  /** The pay week today falls in. */
+  weekStart: string
+  headline: Headline | null
+  forecast: Pick<CashForecast, 'days' | 'lowest' | 'floorUsd' | 'clearsFloor'> | null
+  cashTodayUsd: number | null
+  /** The cash figure is the bank's own balance and the owner trusts it as the whole bank. */
+  cashMayLead: boolean
+  flow: StageFlow | null
+  /** The stage or resource pressed on the cards below, when it is not the page's own reading. */
+  picked: CallLink | null
+  /** Today's numbers behind the keyed moves: dollars for bill and chase, hours for approve, counts for price and pct. */
+  moveNumbers: Partial<Record<MoveKey, number | null>>
+  counts: { billJobs: number | null; lateInvoices: number | null }
+  /** First names the page can propose: who is signed in, who sent the most bills, who took the most payments. */
+  people: { caller: string; biller: string; collector: string }
+  /** The soonest supply bills due on or before the low point: the one bill a call can ask more days on. */
+  supplyDue: { usd: number; ymd: string } | null
+  calls: ReadonlyArray<BridgeCall>
+  now: CallReadingNow
+  dayLabel: (ymd: string) => string
+}
+
+const cap = (s: string): string => (s ? `${s.charAt(0).toUpperCase()}${s.slice(1)}` : s)
+const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many)
+const count = (n: number): string => Math.round(n).toLocaleString('en-US')
+
+const DONE_TEXT: Record<MoveDone, string> = { yes: 'done', part: 'part', no: 'not yet', unknown: 'yours' }
+
+/** A keyed number in words, with no dash for a missing one. */
+function numberWords(key: MoveKey, v: number | null): string {
+  if (v == null) return 'not read'
+  if (key === 'bill' || key === 'chase') return shortUsd(v)
+  if (key === 'approve') return `${count(v)} hours`
+  return `${count(v)} ${plural(Math.round(v), 'job', 'jobs')}`
+}
+
+// ── the tiles ──────────────────────────────────────────────────────────────
+
+function madeTile(h: Headline | null, thisWeekLeads: boolean): WeekTile {
+  if (!h || h.weeks.length === 0) return { id: 'made', label: 'Made last week', value: 'not read', sub: 'The field’s weeks are not read yet.', tone: 'plain' }
+  const closed = h.weeks.filter((w) => !w.current)
+  const lastFull = closed[closed.length - 1] ?? null
+  const max = Math.max(1, ...h.weeks.map((w) => Math.max(0, w.recordedUsd ?? 0)))
+  const bars: WeekBar[] = h.weeks.map((w) => ({ share: Math.max(0, w.recordedUsd ?? 0) / max, current: w.current, waiting: w.waiting, label: w.label }))
+  const range = h.settled ? `${h.settled.count} settled ${plural(h.settled.count, 'week', 'weeks')} ran ${shortK(h.settled.lowUsd)} to ${shortK(h.settled.highUsd)}.` : 'No week is settled yet.'
+  if (thisWeekLeads || !lastFull) {
+    const w = h.thisWeek
+    return {
+      id: 'made',
+      label: 'Made this week so far',
+      value: w.recordedUsd == null ? 'no hours yet' : `${shortK(w.recordedUsd)}${w.pendingHours > 0 ? ' ≈' : ''}`,
+      sub: lastFull && lastFull.recordedUsd != null ? `Last week was ${shortK(lastFull.recordedUsd)}.` : range,
+      tone: 'plain',
+      bars,
+    }
+  }
+  return {
+    id: 'made',
+    label: 'Made last week',
+    value: lastFull.recordedUsd == null ? 'no hours' : `${shortK(lastFull.recordedUsd)}${lastFull.waiting ? ' ≈' : ''}`,
+    sub: lastFull.waiting ? `${count(lastFull.pendingHours)} hours still wait on approval.` : range,
+    tone: 'plain',
+    bars,
+  }
+}
+
+/** The first forecast day with cash under the floor, or today when it already is. */
+export function firstDayUnderFloor(forecast: Pick<CashForecast, 'days' | 'floorUsd'>, cashTodayUsd: number | null, todayYmd: string): { ymd: string; offset: number } | null {
+  if (cashTodayUsd != null && cashTodayUsd < forecast.floorUsd) return { ymd: todayYmd, offset: 0 }
+  const d = forecast.days.find((x) => x.cashUsd < forecast.floorUsd)
+  return d ? { ymd: d.ymd, offset: d.offset } : null
+}
+
+/** "today", "tomorrow", "in 9 days", "in 2 weeks". */
+export function whenWords(offset: number): string {
+  if (offset <= 0) return 'today'
+  if (offset === 1) return 'tomorrow'
+  if (offset < 14) return `in ${offset} days`
+  return `in ${Math.round(offset / 7)} weeks`
+}
+
+function cashTile(input: WeekCallInput, leads: boolean): WeekTile {
+  const f = input.forecast
+  if (!f) return { id: 'cash', label: 'Cash low point, 8 weeks', value: 'not read', sub: 'Cash on hand is not read yet.', tone: 'plain' }
+  const floor = shortK(f.floorUsd)
+  if (f.clearsFloor) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. The floor is ${floor}.`, tone: 'green' }
+  const first = firstDayUnderFloor(f, input.cashTodayUsd, input.todayYmd)
+  const from = first && first.offset > 0 ? `from ${input.dayLabel(first.ymd)}` : 'today'
+  if (!leads) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. Under the ${floor} floor ${from}.`, tone: 'red' }
+  const bank = input.cashTodayUsd != null ? ` The bank has ${shortK(input.cashTodayUsd)} today.` : ''
+  const goes = first && first.offset > 0 ? `Cash goes under ${floor} on ${input.dayLabel(first.ymd)}.` : `Cash is under the ${floor} floor.`
+  return { id: 'cash', label: 'Cash comes first this week', value: `Under the floor ${whenWords(first?.offset ?? 0)}`, sub: `${goes}${bank}`, tone: 'red', wide: true }
+}
+
+function stepTile(flow: StageFlow | null): WeekTile {
+  const s = flow?.stages.find((x) => x.id === flow.linkId) ?? null
+  if (!s) return { id: 'step', label: 'Slowest step', value: 'not read', sub: 'The five steps are not read yet.', tone: 'plain' }
+  return { id: 'step', label: 'Slowest step', value: s.name, sub: `${cap(s.weeksText)}.`, tone: 'red' }
+}
+
+// ── the proposal ───────────────────────────────────────────────────────────
+
+/** A desk preset made concrete with today's number; null when its number is zero, so the move has nothing to do. */
+function concreteMove(preset: DeskMovePreset, input: WeekCallInput, kind: WeekMove['kind']): WeekMove | null {
+  const base = { key: preset.key, kind, done: null, doneText: null }
+  if (preset.key === 'other') return { ...base, title: preset.title, why: '', door: null, who: '', then: null }
+  const n = input.moveNumbers[preset.key] ?? null
+  if (n == null || n <= 0) return null
+  const { caller, biller, collector } = input.people
+  if (preset.key === 'bill') {
+    const jobs = input.counts.billJobs
+    return { ...base, title: jobs && jobs > 0 ? `Bill the ${count(jobs)} finished ${plural(jobs, 'job', 'jobs')}.` : 'Bill the finished work.', why: `${shortUsd(n)} is finished and not billed.`, door: THIS_WEEK_DOORS.stages, who: biller, then: n }
+  }
+  if (preset.key === 'chase') {
+    const late = input.counts.lateInvoices
+    return { ...base, title: late && late > 0 ? `Chase the ${count(late)} late ${plural(late, 'invoice', 'invoices')}.` : 'Chase the late invoices.', why: `${shortUsd(n)} is past its day.`, door: THIS_WEEK_DOORS.billing, who: collector, then: n }
+  }
+  if (preset.key === 'approve') return { ...base, title: `Approve the ${count(n)} hours waiting.`, why: 'The week reads low until then.', door: THIS_WEEK_DOORS.approvals, who: caller, then: n }
+  if (preset.key === 'price') return { ...base, title: `Price the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} with no price.`, why: 'Their hours earn nothing until then.', door: THIS_WEEK_DOORS.jobs, who: caller, then: n }
+  return { ...base, title: `Set a percent on the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} without one.`, why: 'They read as half done until then.', door: THIS_WEEK_DOORS.jobs, who: caller, then: n }
+}
+
+/** A link's moves, the ones with a number first: they have a door, and Friday can read them again. */
+export function proposedMoves(link: CallLink, input: WeekCallInput, kind: WeekMove['kind'] = 'step'): WeekMove[] {
+  const presets = LINK_DESK[link].moves
+  const keyed = presets.filter((p) => p.key !== 'other')
+  const words = presets.filter((p) => p.key === 'other')
+  return [...keyed, ...words].map((p) => concreteMove(p, input, kind)).filter((m): m is WeekMove => m !== null)
+}
+
+function cashMoves(input: WeekCallInput, step: StageReading | null): WeekMove[] {
+  const out: WeekMove[] = []
+  const chase = concreteMove({ key: 'chase', title: '' }, input, 'cash')
+  if (chase) out.push({ ...chase, why: `${shortUsd(chase.then ?? 0)} is late. The forecast leans on it.` })
+  if (input.supplyDue && input.supplyDue.usd > 0) {
+    out.push({ key: 'other', kind: 'cash', title: 'Ask the supply houses for more days.', why: `${shortUsd(input.supplyDue.usd)} of supply bills is due ${input.dayLabel(input.supplyDue.ymd)}.`, door: null, who: input.people.caller, then: null, done: null, doneText: null })
+  }
+  if (out.length === 0) out.push({ key: 'other', kind: 'cash', title: 'Delay what can wait. Spend nothing on other links.', why: '', door: null, who: input.people.caller, then: null, done: null, doneText: null })
+  const first = step ? proposedMoves(step.id, input, 'step').find((m) => m.key !== 'chase') : null
+  if (first) out.push(first)
+  return out.slice(0, WEEK_CALL_MOVES)
+}
+
+// ── a recorded call ────────────────────────────────────────────────────────
+
+function scoredMoves(call: BridgeCall, now: CallReadingNow): WeekMove[] {
+  return call.moves.map((m: CallMove) => {
+    const cur = m.key === 'other' ? null : (now.keys[m.key] ?? null)
+    const done: MoveDone = m.key === 'other' ? 'unknown' : moveDone(m.then, cur)
+    const why = m.key === 'other' ? 'The app cannot read this one. You say.' : `It was ${numberWords(m.key, m.then)}. Today it is ${numberWords(m.key, cur)}.`
+    return { key: m.key, kind: 'step' as const, title: m.title, why, door: null, who: m.who, then: m.then, done, doneText: DONE_TEXT[done] }
+  })
+}
+
+/** The link's measure when called against today, in one or two sentences; a cash call reads today's low point; empty when nothing reads. */
+function measureLine(call: BridgeCall, now: CallReadingNow, input: WeekCallInput): string {
+  if (isStageLink(call.link) && call.measures.linkWeeks != null) {
+    const pileThen = call.measures.linkPileUsd ?? null
+    const pileNow = now.stagePilesUsd?.[call.link] ?? null
+    const weeksNow = now.stageWeeks[call.link] ?? null
+    const then = `It was ${call.measures.linkWeeks.toFixed(1)} weeks${pileThen != null ? ` and ${shortUsd(pileThen)}` : ''} when called.`
+    const today = weeksNow != null ? ` Today it is ${weeksNow.toFixed(1)} weeks${pileNow != null ? ` and ${shortUsd(pileNow)}` : ''}.` : ''
+    return `${then}${today}`
+  }
+  // A cash call keeps no snapshot of the low point yet (calls.ts is copied to the edge functions, so its shape changes with the PR that lets cash lead).
+  if (call.link === 'capital' && input.forecast) return `Today the low point is ${shortK(input.forecast.lowest.cashUsd)}, on ${input.dayLabel(input.forecast.lowest.ymd)}.`
+  return ''
+}
+
+const callName = (link: CallLink): string => (link === 'capital' ? 'Cash' : CALL_LINK_NAMES[link])
+
+function lastOf(input: WeekCallInput): WeekLast | null {
+  const c = lastCallBefore(input.calls, input.weekStart)
+  if (!c) return null
+  const card = buildScorecard({ call: c, calls: input.calls, now: input.now, todayYmd: input.todayYmd, dayLabel: input.dayLabel })
+  const name = callName(c.link)
+  const asks = card.fridayAsks
+  const text = asks ? `The last call was ${name}. Did it move?` : card.verdict === 'moved' ? `The last call was ${name}. It moved.` : card.verdict === 'did_not_move' ? `The last call was ${name}. It did not move.` : `The last call was ${name}.`
+  return {
+    linkName: name,
+    text,
+    tone: asks ? 'amber' : card.verdict === 'moved' ? 'green' : card.verdict === 'did_not_move' ? 'red' : 'plain',
+    asks,
+    consequence: card.consequence,
+    moves: card.moves.map((m) => ({ title: m.title, who: m.who === '—' ? '' : m.who, doneText: DONE_TEXT[m.done], done: m.done })),
+  }
+}
+
+// ── the model ──────────────────────────────────────────────────────────────
+
+export function buildWeekCall(input: WeekCallInput): WeekCallModel {
+  const call = callForWeek(input.calls, input.weekStart)
+  const asking = call ? fridayAsks(call, input.todayYmd) : false
+  const fifthDay = new Date(Date.parse(`${input.weekStart}T00:00:00Z`) + 5 * 86_400_000).toISOString().slice(0, 10)
+  const flow = input.flow
+  const step = flow?.stages.find((x) => x.id === flow.linkId) ?? null
+  const under = input.forecast != null && !input.forecast.clearsFloor
+  const cashLeads = call ? call.link === 'capital' : input.cashMayLead && under && input.picked == null
+
+  const made = madeTile(input.headline, input.todayYmd >= fifthDay)
+  const cash = cashTile(input, cashLeads && !call)
+  const stepT = stepTile(flow)
+  const tiles = cash.wide ? [cash, made, stepT] : [made, cash, stepT]
+  const last = call ? null : lastOf(input)
+
+  if (call) {
+    const name = callName(call.link)
+    const moves = scoredMoves(call, input.now)
+    const line = measureLine(call, input.now, input)
+    const by = call.calledByName ? ` by ${call.calledByName}` : ''
+    if (call.outcome) {
+      const card = buildScorecard({ call, calls: input.calls, now: input.now, todayYmd: input.todayYmd, dayLabel: input.dayLabel })
+      return { state: 'answered', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.outcome === 'moved' ? `${name} moved.` : `${name} did not move.`, line, moves, press: null, foot: card.consequence, tone: 'plain' } }
+    }
+    if (asking) {
+      const verdict = callVerdict(call, input.now)
+      const foot = verdict === 'moved' ? 'The numbers say it moved. Your answer is the one kept.' : verdict === 'did_not_move' ? 'The numbers say it did not move. Your answer is the one kept.' : 'The app cannot read this one. Your answer is the one kept.'
+      return { state: 'friday', link: call.link, cashLeads, tiles, last, card: { label: 'Friday’s question', lead: `Did ${name} move?`, line, moves, press: null, foot, tone: 'ask' } }
+    }
+    return { state: 'standing', link: call.link, cashLeads, tiles, last, card: { label: 'This week’s call', lead: call.link === 'capital' ? 'Keep cash above the floor.' : `${name} is this week’s call.`, line, moves, press: null, foot: `Called ${input.dayLabel(call.calledOn)}${by}. Friday asks if it moved.`, tone: 'lit' } }
+  }
+
+  if (cashLeads && input.forecast) {
+    const first = firstDayUnderFloor(input.forecast, input.cashTodayUsd, input.todayYmd)
+    const floor = shortK(input.forecast.floorUsd)
+    const goes = first && first.offset > 0 ? `Cash goes under ${floor} on ${input.dayLabel(first.ymd)}.` : `Cash is under the ${floor} floor.`
+    const still = step ? ` ${step.name} is still the slowest step.` : ''
+    return { state: 'propose', link: 'capital', cashLeads, tiles, last, card: { label: 'This week’s call', lead: 'Keep cash above the floor.', line: `${goes}${still}`, moves: cashMoves(input, step), press: 'Make this the week’s call', foot: 'Friday asks if the day moved.', tone: 'lit' } }
+  }
+
+  const link: CallLink | null = input.picked ?? flow?.linkId ?? null
+  if (!link) {
+    return { state: 'propose', link: null, cashLeads, tiles, last, card: { label: 'This week’s call', lead: 'The five steps are not read yet.', line: 'The call opens once they are.', moves: [], press: null, foot: '', tone: 'plain' } }
+  }
+  const name = CALL_LINK_NAMES[link]
+  const isReading = link === flow?.linkId
+  const stage = isStageLink(link) ? (flow?.stages.find((x) => x.id === link) ?? null) : null
+  // The pile, then its first two paces: why it waits. The weeks are on the step tile, so the card does not say them again.
+  const paces = stage ? stage.flow.slice(0, 2).map((f) => ` ${cap(f.who)} ${f.usd} ${f.tail ?? 'a week'}.`).join('') : ''
+  const line = !isReading && step ? `The page reads ${step.name} as the slowest step.` : stage && stage.readable ? `${cap(stage.pile.headline)}.${paces}` : stage ? 'The app does not read this step yet.' : ''
+  return {
+    state: 'propose',
+    link,
+    cashLeads,
+    tiles,
+    last,
+    card: { label: 'This week’s call', lead: isReading ? `${name} is the slowest step.` : `${name} is your pick.`, line, moves: proposedMoves(link, input).slice(0, WEEK_CALL_MOVES), press: `Make ${name} this week’s call`, foot: 'Friday asks if it moved.', tone: 'lit' },
+  }
+}
+
+// ── the budget ─────────────────────────────────────────────────────────────
+
+/** Every sentence a phone's first screen prints, in order: the tiles, the card with its first moves, the press. */
+export function weekCallWords(model: WeekCallModel, moves: number = WEEK_CALL_MOVES_PHONE): string[] {
+  const out: string[] = []
+  for (const t of model.tiles) out.push(t.label, t.value, t.sub)
+  if (model.last) out.push(model.last.text)
+  out.push(model.card.label, model.card.lead, model.card.line)
+  for (const m of model.card.moves.slice(0, moves)) out.push(m.title, m.why, m.who, m.doneText ?? '')
+  if (model.card.press) out.push(model.card.press)
+  out.push(model.card.foot)
+  return out.filter((s) => s.trim().length > 0)
+}
+
+const NUMBER = /\$?\d[\d,.]*\s?(k|M|h|%)?/g
+
+/** The words and the numbers on a phone's first screen, for the budget test. */
+export function weekCallBudget(model: WeekCallModel): { words: number; numbers: number } {
+  const text = weekCallWords(model).join(' ')
+  return { words: text.trim().split(/\s+/).filter(Boolean).length, numbers: (text.match(NUMBER) ?? []).length }
+}
+
+/** The moves the record press writes: the ones left on, with the person on each. */
+export function movesToRecord(moves: ReadonlyArray<WeekMove>, off: ReadonlySet<number>, who: ReadonlyMap<number, string>): CallMove[] {
+  return moves.flatMap((m, i) => (off.has(i) ? [] : [{ key: m.key, title: m.title, who: (who.get(i) ?? m.who).trim(), then: m.then }]))
+}
+
+/** A person's first name, as the chip prints it. */
+export function firstName(name: string | null | undefined): string {
+  return (name ?? '').trim().split(/\s+/)[0] ?? ''
+}
+
+/** Who has the most events in the window, by name: the person who bills, or who takes the payments. Empty when nobody is named. */
+export function topPerson(events: ReadonlyArray<{ userId: string | null; ymd: string }>, people: ReadonlyArray<{ userId: string; name: string }>, sinceYmd: string): string {
+  const tally = new Map<string, number>()
+  for (const e of events) {
+    if (!e.userId || e.ymd < sinceYmd) continue
+    tally.set(e.userId, (tally.get(e.userId) ?? 0) + 1)
+  }
+  let best: string | null = null
+  let bestN = 0
+  for (const [id, n] of tally) {
+    if (n > bestN || (n === bestN && best != null && id < best)) {
+      best = id
+      bestN = n
+    }
+  }
+  return firstName(people.find((p) => p.userId === best)?.name)
+}
