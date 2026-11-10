@@ -8,6 +8,7 @@ import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
 import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { lienAffidavitFormForItems, type LienAffidavitForm, type LienAffidavitFormItem } from './lienAffidavitForm'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -100,6 +101,18 @@ export async function sendLienDeskItemOnWord(itemId: string, word: { note: strin
         .eq('id', itemId),
     'lien desk: send on word',
   )
+}
+
+/**
+ * The form the job's affidavit was drafted on (punch list #305), for the job's Lien window: it prints the paper and
+ * holds no desk data, so it reads the job's affidavit items and the rule decides (`lienAffidavitForm.ts`).
+ */
+export async function readLienAffidavitForm(jobId: string): Promise<LienAffidavitForm> {
+  const rows = await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').select('kind, status, fields, voided_at, created_at').eq('job_id', jobId).eq('kind', 'affidavit').is('voided_at', null),
+    'lien window: the affidavit’s form',
+  )
+  return lienAffidavitFormForItems((rows ?? []) as unknown as LienAffidavitFormItem[])
 }
 
 /** The leader's click. The trigger refuses it from anyone else. */

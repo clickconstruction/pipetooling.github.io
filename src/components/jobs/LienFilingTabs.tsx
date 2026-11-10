@@ -34,6 +34,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
 import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
+import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
@@ -90,6 +91,8 @@ export default function LienFilingTabs({
   workMonths,
   claimCorrection = null,
   claimCorrectionUnread = false,
+  affidavitForm = 'short',
+  affidavitFormUnread = false,
   onClose,
 }: {
   job: JobWithDetails
@@ -122,6 +125,10 @@ export default function LienFilingTabs({
   claimCorrection?: LienClaimCorrection | null
   /** The correction's read failed: the papers carry the bills' figure and the tab says to check the desk first. */
   claimCorrectionUnread?: boolean
+  /** The form the job's affidavit was drafted on (punch list #305, `lienAffidavitForm.ts`): a paper approved on the earlier form prints on it. Absent, the short form. */
+  affidavitForm?: LienAffidavitForm
+  /** That read failed: the tab draws the earlier form and says to check the desk first. */
+  affidavitFormUnread?: boolean
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -225,8 +232,11 @@ export default function LienFilingTabs({
       noticesRecorded: liveNotices.length > 0,
       contactPerson: signerNameFallback,
       issuer,
+      form: affidavitForm,
+      // The short form names the months and the sends of the notices recorded on the job.
+      filings: live,
     })
-  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths])
+  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -315,7 +325,9 @@ export default function LienFilingTabs({
   const affidavitReady = affidavitGates.every((g) => g.ok)
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
-      ? `No recorded notice names ${clock.workMonth} (the last work month) — confirm coverage before swearing ¶9.`
+      ? affidavitFields.form === 'short'
+        ? `No recorded notice names ${clock.workMonth} (the last work month). The affidavit names only the months a recorded notice names. Confirm coverage before it is sworn.`
+        : `No recorded notice names ${clock.workMonth} (the last work month) — confirm coverage before swearing ¶9.`
       : ''
 
   // ---------- actions ----------
@@ -930,8 +942,25 @@ export default function LienFilingTabs({
           {affidavitReady ? (
             <>
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
-                <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
+                {affidavitFields.form === 'short' ? (
+                  <>
+                    <b>The claim it swears:</b> <b>{demandMoney(affidavitFields.unpaidAmount)}</b>
+                  </>
+                ) : (
+                  <>
+                    <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
+                  </>
+                )}
                 {claimNoteLines}
+                {affidavitFormUnread ? (
+                  <span data-lien-window-form-note="unread" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-700)' }}>
+                    Could not read which form this affidavit was drafted on, so it shows the earlier form. Check the job on the Lien desk before you print.
+                  </span>
+                ) : affidavitFields.form !== 'short' ? (
+                  <span data-lien-window-form-note="long" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {LIEN_AFFIDAVIT_LONG_FORM_WORDS} The Lien desk redraws it.
+                  </span>
+                ) : null}
               </div>
               {recordStep === 'affidavit_filing' && !isMobile ? (
                 filingRecordBox

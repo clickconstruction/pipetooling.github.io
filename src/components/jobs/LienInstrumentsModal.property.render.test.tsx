@@ -173,6 +173,8 @@ describe('LienInstrumentsModal · the Mechanic’s lien tab prints the desk’s 
     // The affidavit's gate, cleared: the owner with a mailing address, the legal description, a § 53.056 notice on record.
     db.rows.customer_addresses = [{ ...SITE, legal_description: 'LOT 1 BLK 2 SAMPLE SUBD', owner_name: 'Pat Owner', owner_mailing_address: '4 Owner Ct, Liberty Hill, TX 78642', owner_mode: 'homeowner' }]
     db.rows.job_lien_filings = [{ id: 'f-n', job_id: 'job-891', kind: 'notice_53_056', filed_at: '2026-10-14', serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [], fields: {}, created_at: '2026-10-14T15:00:00Z' }]
+    // The period is the earlier form's paragraph 5: a paper approved before the short form (punch list #305), its desk item unmarked.
+    db.rows.job_lien_desk_items = [{ id: 'd-1', job_id: 'job-891', kind: 'affidavit', status: 'approved', fields: { notice: {} }, voided_at: null, created_at: '2026-10-20T15:00:00Z' }]
     renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891({ last_work_date: null, created_at: '2026-08-18T05:40:28Z' })} />)
     await waitFor(() => expect(document.body.textContent).toContain('The name and address of the original contractor is: Burd & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119.'))
     expect(document.body.textContent).toContain('during the period from August 1, 2026 through August 31, 2026.')
@@ -196,9 +198,9 @@ describe('LienInstrumentsModal · the printed papers carry the desk’s claim', 
   it('the affidavit swears what the sent bills owe, and says what is not billed yet', async () => {
     ready()
     renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
-    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $2,000.00.'))
-    expect(document.body.textContent).toContain('The original contract amount was $5,000.00.')
-    expect(document.body.textContent).not.toContain('due and unpaid is $5,000.00')
+    await waitFor(() => expect(document.body.textContent).toContain('The amount of the claim is $2,000.00.'))
+    // The short form swears the claim alone: the job's whole price is on no line of the paper.
+    expect(document.body.textContent).not.toContain('$5,000.00')
     expect(note('unbilled')).toBe('Not billed yet · $3,000 of the job’s $5,000 · not claimed until it is billed')
     expect(note('by_hand')).toBe('')
   })
@@ -207,8 +209,7 @@ describe('LienInstrumentsModal · the printed papers carry the desk’s claim', 
     ready()
     db.rows.job_lien_claim_corrections = [{ job_id: 'job-891', amount_off: 500, per_month: null, reason: 'GC disputes a fixture', carry: true, set_by_name: 'Rey', set_at: '2026-10-20T16:00:00Z', looked_at: null, looked_by_name: '' }]
     const view = renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
-    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $1,500.00.'))
-    expect(document.body.textContent).toContain('in the amount of $1,500.00')
+    await waitFor(() => expect(document.body.textContent).toContain('The amount of the claim is $1,500.00. Claimant claims a lien on the property for that amount.'))
     expect(note('by_hand')).toContain('Claim set by hand on the Lien desk: $1,500 · $500 under the $2,000 unpaid in the app · carries until cleared · Rey')
     expect(note('by_hand')).toContain('“GC disputes a fixture”')
     view.unmount()
@@ -223,10 +224,56 @@ describe('LienInstrumentsModal · the printed papers carry the desk’s claim', 
     db.rows.job_lien_claim_corrections = [{ job_id: 'job-891', amount_off: 500, per_month: null, reason: 'GC disputes a fixture', carry: true, set_by_name: 'Rey', set_at: '2026-10-20T16:00:00Z', looked_at: null, looked_by_name: '' }]
     renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={staged()} />)
     await waitFor(() => expect(document.querySelector('[data-lien-window-claim-reading]')).toBeTruthy())
-    expect(document.body.textContent).not.toContain('The amount currently due and unpaid is')
+    expect(document.body.textContent).not.toContain('The amount of the claim is')
     land()
-    await waitFor(() => expect(document.body.textContent).toContain('The amount currently due and unpaid is $1,500.00.'))
+    await waitFor(() => expect(document.body.textContent).toContain('The amount of the claim is $1,500.00.'))
     expect(document.querySelector('[data-lien-window-claim-reading]')).toBeNull()
+  })
+})
+
+describe('LienInstrumentsModal · a paper keeps the form it was drafted on (punch list #305)', () => {
+  const ready = () => {
+    db.rows.customer_addresses = [{ ...SITE, legal_description: 'LOT 1 BLK 2 SAMPLE SUBD', owner_name: 'Pat Owner', owner_mailing_address: '4 Owner Ct, Liberty Hill, TX 78642', owner_mode: 'homeowner' }]
+    db.rows.job_lien_filings = [{ id: 'f-n', job_id: 'job-891', kind: 'notice_53_056', filed_at: null, serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-14' }], fields: {}, created_at: '2026-10-14T15:00:00Z' }]
+  }
+  const draft = (fields: Record<string, unknown>, status = 'approved') => ({ id: 'd-1', job_id: 'job-891', kind: 'affidavit', status, fields, voided_at: null, created_at: '2026-10-20T15:00:00Z' })
+
+  it('a job with no draft on the desk prints the short form, with the months and the notice from the record', async () => {
+    ready()
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('Payment is requested for work done and materials furnished in August 2026.'))
+    expect(document.body.textContent).toContain('Notice of the claim was sent to the owner by certified mail on October 14, 2026.')
+    expect(document.body.textContent).toContain('Claimant did so under a contract with Burd & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119, the original contractor.')
+    expect(document.querySelector('[data-lien-window-form-note]')).toBeNull()
+  })
+
+  it('an affidavit approved before the short form prints the ten paragraphs it was approved with, and the tab says so', async () => {
+    ready()
+    db.rows.job_lien_desk_items = [draft({ notice: {} })]
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('All statutory notices required by the Texas Property Code have been sent'))
+    expect(document.body.textContent).not.toContain('Payment is requested for work done')
+    expect(document.querySelector('[data-lien-window-form-note="long"]')).toBeTruthy()
+  })
+
+  it('a draft redrawn on the desk carries the mark and prints the short form', async () => {
+    ready()
+    db.rows.job_lien_desk_items = [draft({ notice: {}, affidavitForm: 'short' }, 'drafted')]
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891()} />)
+    await waitFor(() => expect(document.body.textContent).toContain('Payment is requested for work done and materials furnished in August 2026.'))
+  })
+
+  it('draws no paper until the form is read, so a sworn paper is never drawn on one form and then on the other', async () => {
+    ready()
+    let land!: () => void
+    db.slow.job_lien_desk_items = new Promise<void>((r) => (land = r))
+    db.rows.job_lien_desk_items = [draft({ notice: {} })]
+    renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-form-reading]')).toBeTruthy())
+    expect(document.body.textContent).not.toContain('BEFORE ME')
+    land()
+    await waitFor(() => expect(document.body.textContent).toContain('All statutory notices required by the Texas Property Code have been sent'))
+    expect(document.querySelector('[data-lien-window-form-reading]')).toBeNull()
   })
 })
 

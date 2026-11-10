@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions, nothing built
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · PR 1 open (v2.6855): the short form for every new draft, a paper already drafted keeps the earlier form until someone redraws it
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -13,11 +13,12 @@ summary: >
   notices) and carry five things the statute does not list. The page for the lien attorney maps the
   eight items to a short form of seven paragraphs, four on a job contracted with the owner, and
   asks five questions. A property where nobody answered the homestead question passes today as not
-  a homestead. Sworn text changes only on counsel's word.
-next: The owner sends the page to the lien attorney. The short form is one PR on counsel's yes. The homestead hold changes no sworn text and can ship on the owner's word alone.
+  a homestead. The owner chose to build before counsel answers, so the wording may change on
+  counsel's word.
+next: The owner says whether the 13 affidavits approved on the earlier form stay on it or are redrawn. Then the § 53.254(f) notice on a homestead, then the two holds. The homestead hold needs a column, and on the day it ships it would hold 11 of the 12 papers ready for 2026-11-16, so its timing is his.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
-blocker: Counsel's answers to the five questions. The homestead hold needs only the owner's go.
-opinion: your call — send the page to counsel; build the homestead hold now, since a house can reach Ready to file today with the question never asked
+blocker: The owner's word on the approved papers and on when the homestead hold ships. Counsel's answers may still change the wording.
+opinion: your call — leave the approved papers as approved unless counsel says the earlier form is short; ship the homestead hold after the 16th, the address hold any time
 ---
 
 # The lien affidavit, cut to what § 53.054 lists (#305)
@@ -31,7 +32,7 @@ other suggestions?* Then, on the suggestions, his go to draft the revised affida
 and after page for his attorney. Then the lens: *I want to do the minimum required by law, short
 and sweet.*
 
-Nothing is built. Every statute reference here is the app's reading, not a lawyer's.
+The short form is built (v2.6855, see *The build*). Every statute reference here is the app's reading, not a lawyer's.
 
 ## What is there today (read on main, 2026-11-10)
 
@@ -53,7 +54,9 @@ desk reaches through `buildLienDeskAffidavitFields` (`src/lib/jobs/lienDeskAffid
   contractor's address only when it is not blank.
 - **Paragraph 1** says *located at* one address, the issuer's.
 - **Homestead.** `affidavitGates` in `src/lib/jobs/lienDeskAffidavits.ts` holds a property whose
-  `homestead` is true. A null reads as *Not a homestead* and passes.
+  `homestead` is true. The column is `boolean NOT NULL DEFAULT false` (read 2026-11-10), so it
+  holds no null: a property nobody asked about reads *Not a homestead*, the same as one answered
+  no, and passes.
 - **One paper per job.** Notices combine jobs at a property (`lienNoticeCombine.ts`). Affidavits do
   not.
 
@@ -132,19 +135,35 @@ claimant as original contractor, and the claim.
    about the contract before one is filed?
 5. May one affidavit cover several jobs at one property under the same original contractor?
 
-## The build, once counsel answers
+## The build
 
-1. **The homestead hold** (S). `affidavitGates` treats a null `homestead` as not answered and
-   holds the paper, with a press that opens the property record. No sworn text changes. Needs the
-   owner's go only.
-2. **The short form** (M). `buildLienAffidavitBlocks` and its fields: the months, the notices from
-   `job_lien_filings.sends`, the addresses, the claim alone, the strip and the preamble gone. On
-   counsel's yes to questions 1 to 3.
-3. **A hold while an address is missing** (S), the hiring party's or the original contractor's.
-4. **One affidavit per property** (M). Question 5, only on a yes.
+The owner chose on 2026-11-10 to build before counsel answers. Each PR is small, and the sworn
+wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's changes are one edit.
+
+1. **The short form** (M). Shipped as v2.6855 (`docs/recent-features/v2.6855.md`): the seven and
+   four paragraphs, the months (the noticed ones inside the job's own work span) and the notices from the job's
+   recorded § 53.056 filings, the strip
+   and the letterhead gone, the county left for the notary. The desk stored no affidavit words and
+   redrew every paper from the job, so a paper now keeps the form it was drafted on: the 13
+   affidavits approved on 2026-11-09 and 2026-11-10 stay on the earlier form, and **Redraw on the
+   short form…** on the Affidavits pane moves one, which then needs approval again.
+2. **The § 53.254(f) notice on a homestead** (S). The paper side only; the desk still holds every
+   homestead.
+3. **The homestead hold** (S, with a migration). A column that records the question was answered,
+   since `homestead` cannot say so. `affidavitGates` holds a residential property with no answer,
+   with a press that opens the property record. On the day it ships every property is unanswered:
+   read on 2026-11-10, it would hold 11 of the 12 papers ready for 2026-11-16, on 6 properties.
+4. **A hold while an address is missing** (S), the hiring party's or the original contractor's.
+   Read on 2026-11-10 it holds nothing: every GC on the desk has an address.
+5. **A second company address** (S). Settings hold one (`physical_invoice_issuer_v1.addressText`),
+   printed as the mailing address. One optional field in the same JSON and one input in Settings;
+   the paper already prints *Its physical address is …* when given one that differs.
+6. **One affidavit per property** (M). Question 5, only on a yes.
 
 ## Decisions that are the owner's
 
 - **Send the page to counsel?** The pick: yes, as it stands.
-- **Build the homestead hold before counsel answers?** The pick: yes. It only makes the desk
-  stricter.
+- **Build the homestead hold before counsel answers?** The pick: yes, after 2026-11-16. It only
+  makes the desk stricter, and before the 16th it would take ready papers out of Ready.
+- **The 13 affidavits approved on the earlier form: leave them, or redraw them?** The pick: leave
+  them as approved. Redrawing sends each back for approval days before its deadline.

@@ -44,6 +44,8 @@ import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow, lienCourtesyFromItems } from '../../lib/jobs/lienTimelineDesk'
 import { readLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
+import { readLienAffidavitForm } from '../../lib/jobs/lienDeskIo'
+import type { LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import type { LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import type { LienTimelineCourtesy } from '../../lib/jobs/lienTimeline'
 import LienTimelineStrip from './LienTimelineStrip'
@@ -323,6 +325,28 @@ export default function LienInstrumentsModal({
       },
       () => {
         if (!cancelled) setClaimRead({ correction: null, failed: true })
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open of a job
+  }, [open, job?.id])
+
+  // The form the job's affidavit was drafted on (punch list #305): a paper approved on the earlier form keeps it. Null while the read is
+  // out, and the filing tabs wait for it, as for the claim: a sworn paper is not drawn on one form and then on another.
+  const [affidavitFormRead, setAffidavitFormRead] = useState<{ form: LienAffidavitForm; failed: boolean } | null>(null)
+  useEffect(() => {
+    setAffidavitFormRead(null)
+    if (!open || !job) return
+    let cancelled = false
+    readLienAffidavitForm(job.id).then(
+      (form) => {
+        if (!cancelled) setAffidavitFormRead({ form, failed: false })
+      },
+      // Unread, the tab draws the earlier form and says so: the form every paper approved before the short one is on.
+      () => {
+        if (!cancelled) setAffidavitFormRead({ form: 'long', failed: true })
       },
     )
     return () => {
@@ -1710,8 +1734,14 @@ export default function LienInstrumentsModal({
           <div data-lien-window-claim-reading style={{ padding: '1rem 1.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Reading the claim on the job…
           </div>
+        ) : !affidavitFormRead ? (
+          <div data-lien-window-form-reading style={{ padding: '1rem 1.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Reading the affidavit’s draft…
+          </div>
         ) : (
           <LienFilingTabs
+            affidavitForm={affidavitFormRead.form}
+            affidavitFormUnread={affidavitFormRead.failed}
             noticeMonths={noticeMonths ?? null}
             job={linkedJob ?? job}
             workDays={lastWorkJob}
