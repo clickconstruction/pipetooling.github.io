@@ -530,11 +530,14 @@ short of the total · Look*, Look drew the PDF beside the seven lines with the s
 *Save 7 lines* dead, and *Count it as read anyway* → *Count it as read* turned the row to *7 lines ·
 counted as read by Robert*. No console error. What the walk left and found:
 
-- **A made-up test bill stays on the ZZ test house** (S1183455, $1,284.10, accepted). It is not
-  deleted because `supply_papers.invoice_id` is ON DELETE SET NULL: deleting the bill would leave an
-  accepted paper with no bill, and the purchase view would still count it. The pipe side should
-  either cascade the delete or have the view require a bill for an invoice or a credit; the test
-  row goes once that rule is in. The views of stage 4 leave ZZ test houses out either way.
+- **The made-up test bill is gone** (S1183455, $1,284.10, accepted). It stayed on the ZZ test
+  house after the walk because `supply_papers.invoice_id` is ON DELETE SET NULL: deleting the bill
+  left an accepted paper with no bill, and the purchase view still counted it. v2.6824 made the
+  view require a bill, and the bill was deleted through its own Edit window on 2026-11-10. Read
+  back: the house holds no bill, the paper keeps its row and its seven lines with no bill, and
+  `supply_purchase_lines` counts none of them. No screen deletes a paper, so that row stays. The
+  ZZ test house itself is kept on purpose, as its own note says, and the views of stage 4 leave ZZ
+  test houses out either way.
 - **The made-up fixtures print no part codes** (they were drawn before PR 1's schema), so the Code
   and Unit columns of Look were empty on the walk. A real bill fills them; the fixtures should
   gain codes when the pipe side next touches `scripts/bills-fixtures.mjs`.
