@@ -3,7 +3,7 @@
  * short address printed on the label, forwarded here as `/b/7D759246`. Signed in, it finds the box by its
  * code and goes to its screen on the On site tab; a code no box carries says so and offers the tab. Signed
  * out (v2.6797, punch list #294) it is the box page: what is in the box with its counts and newest photo,
- * read through the `box-read` function, with Sign in to change a count coming back here with a session.
+ * read through the `box-read` function, with Sign in to record a use or a count coming back here with a session.
  * The route sits outside the Layout, so the sign-in gate never swallows a scan.
  */
 import { useEffect, useState } from 'react'

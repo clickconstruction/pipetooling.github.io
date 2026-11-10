@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_FIND_MAX, boxPageCode, boxPageCodeWords, boxPageDayWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_FIND_MAX, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
 import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
 
 const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
@@ -149,5 +149,32 @@ describe('the last box this phone scanned (boxPageMemory)', () => {
     expect(typedCodeWords('4f2a9c18x')).toBe('4F2A-9C18')
     expect(typedCodeWords('4f2')).toBe('4F2')
     expect(boxPageFindPath('4F2A9C18')).toBe('/b/4f2a9c18?find=1')
+  })
+})
+
+describe('the count as a verdict (v2.6868)', () => {
+  it('says how long ago inside the 14 days, with the day beside it', () => {
+    expect(boxPageCountVerdict('2026-11-10', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted today', detail: 'Tuesday, Nov 10' })
+    expect(boxPageCountVerdict('2026-11-09', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted yesterday', detail: 'Monday, Nov 9' })
+    expect(boxPageCountVerdict('2026-11-08', '2026-11-10')).toEqual({ kind: 'fresh', words: 'Counted 2 days ago', detail: 'Sunday, Nov 8' })
+    expect(boxPageCountVerdict('2026-10-28', '2026-11-10').kind).toBe('fresh')
+  })
+
+  it('is due a count from the fourteenth day, the office badge\'s own rule', () => {
+    expect(boxPageCountVerdict('2026-10-27', '2026-11-10')).toEqual({ kind: 'due', words: 'Due a count', detail: 'last counted 14 days ago' })
+    expect(boxPageCountVerdict('2026-10-19', '2026-11-10')).toEqual({ kind: 'due', words: 'Due a count', detail: 'last counted 22 days ago' })
+  })
+
+  it('never counted says so, and a day that cannot be read gives no verdict on its age', () => {
+    expect(boxPageCountVerdict(null, '2026-11-10')).toEqual({ kind: 'never', words: 'Never counted', detail: '' })
+    expect(boxPageCountVerdict('2026-11-08', '')).toEqual({ kind: 'fresh', words: 'Counted Sunday, Nov 8', detail: '' })
+    // A phone whose clock is a day behind the app's calendar still reads sensibly.
+    expect(boxPageCountVerdict('2026-11-10', '2026-11-09').words).toBe('Counted today')
+  })
+
+  it('counts the parts beside the heading', () => {
+    expect(boxPagePartsWords(0)).toBe('')
+    expect(boxPagePartsWords(1)).toBe('1 part')
+    expect(boxPagePartsWords(6)).toBe('6 parts')
   })
 })

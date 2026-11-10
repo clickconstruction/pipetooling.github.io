@@ -92,9 +92,13 @@ After the first print the window opens on tape on that computer. Press **Change*
 
 Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
-Signed out, the scan still opens a page. The page shows what is in the box, the newest photo and the day of the last count. The page never names the job. To record a part used, moved or counted, press **Sign in to change a count**. After you sign in you land on that box.
+Signed out, the scan still opens a page. The top matches the label, with the stencil in a box and the code under it. A line under that says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. The page never names the job.
 
-Looking for a part that is not in that box? Press **Find a part on this site**. Type the part, the maker or a stencil and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
+Looking for a part that is not in that box? Type the part, the maker or a stencil in the search field and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site.
+
+To record a part used, moved or counted, press **Sign in to record a use or a count**. After you sign in you land on that box. You sign in once in a phone's browser. After that a scan opens the box's own screen.
+
+A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 
