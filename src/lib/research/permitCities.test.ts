@@ -60,6 +60,8 @@ describe('the cities the pull reads (punch list #292, revision 4)', () => {
     expect(permitCity('Nowhere')).toBeNull()
     for (const c of PERMIT_CITIES) {
       expect(c.permitSearch).toMatch(/^https:\/\//)
+      // Every city the pull reads has its county clerk's deed search.
+      expect(c.deeds).toMatch(/^https:\/\//)
       expect(c.feeds.length).toBeGreaterThan(0)
       for (const f of c.feeds) expect(f.city).toBe(c.name)
     }

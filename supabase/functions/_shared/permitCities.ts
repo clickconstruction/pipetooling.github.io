@@ -502,7 +502,8 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     county: 'Comal',
     center: { lat: 29.703, lng: -98.1245 },
     permitSearch: 'https://nbpermits.nbtexas.org/publicaccess',
-    deeds: null,
+    // The Comal County Clerk's page links here for land records.
+    deeds: 'https://comal.landrecordsonline.com/',
     parcels: false,
     feeds: [NEW_BRAUNFELS_READER],
   },
@@ -511,7 +512,8 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     county: 'Hays',
     center: { lat: 29.8833, lng: -97.9414 },
     permitSearch: 'https://www.mygovernmentonline.org/',
-    deeds: null,
+    // The Hays County Clerk's self-service records search, on the county's own address.
+    deeds: 'https://erss.co.hays.tx.us/web/',
     parcels: false,
     feeds: [SAN_MARCOS_READER],
   },
@@ -520,7 +522,8 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     county: 'Guadalupe',
     center: { lat: 29.5688, lng: -97.9647 },
     permitSearch: 'https://eportal.seguintexas.gov/EnerGov_Prod/SelfService',
-    deeds: null,
+    // The Guadalupe County Clerk's official public records page links here.
+    deeds: 'https://roam.guadalupetx.gov/',
     parcels: false,
     feeds: [SEGUIN_READER],
   },

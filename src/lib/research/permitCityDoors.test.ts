@@ -24,6 +24,10 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(permitSearchDoor('Nowhere')).toBeNull()
     expect(cityDeedsDoor('San Antonio')).toBe('https://bexar.tx.publicsearch.us/')
     expect(cityDeedsDoor('Austin')).toBe('https://www.tccsearch.org/')
+    expect(cityDeedsDoor('New Braunfels')).toBe('https://comal.landrecordsonline.com/')
+    expect(cityDeedsDoor('San Marcos')).toBe('https://erss.co.hays.tx.us/web/')
+    expect(cityDeedsDoor('Seguin')).toBe('https://roam.guadalupetx.gov/')
+    expect(cityDeedsDoor('Nowhere')).toBeNull()
     expect(appraisalDoor('Austin')).toMatch(/^https:\/\//)
     for (const city of ['New Braunfels', 'San Marcos', 'Seguin']) {
       expect(appraisalDoor(city)).toMatch(/^https:\/\//)
