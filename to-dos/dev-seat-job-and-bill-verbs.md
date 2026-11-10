@@ -2,7 +2,7 @@
 name: "The dev seat sets up a job, updates it and sends the bill: the first step of MCP doing everything a user can"
 number: 293
 group: close
-status: asked 2026-11-09 · design agreed in chat the same morning · PR 1 (v2.6790, plan_job / apply_job, #7463) armed · PR 2 (v2.6793, plan_job_update / apply_job_update, #7464) stacked on PR 1 · PR 3 (v2.6794, plan_bill / apply_bill, #7467) stacked on PR 2 · PR 4 (v2.6795, plan_collections_flag / apply_collections_flag + plan_contract_ended / apply_contract_ended) built on claude/293-lien-collections, stacked on PR 3 · then the deploy and the ZZ walk from the seat
+status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap is fix PR #7520 (plan_bill refuses a job with no number to bill under), armed · left: #7520's merge and deploy, the owner's look
 summary: >
   The dev seat read everything and wrote fifty-one named things, but no verb made a job or sent a
   bill, so the short bill link's walk (#290) had to be driven through the app in Chrome. Three
@@ -11,8 +11,8 @@ summary: >
   row do. Every write goes through what the app itself calls, so a verb can do nothing the
   signed-in dev could not do on the screen. The card also carries the road: what a user can do
   against what the seat can do, pair by pair.
-next: PR 2 and PR 3 on fresh main after PR 1 merges; deploy dev-mcp after each merge (download and hash-compare first); then the walk — plan_job → apply_job a ZZ TEST job on the owner's test customer, plan_job_update to Ready to Bill, plan_bill with stripe_mode test and a text to the test contact; record it here
-size: M as a train of three (S · S · M)
+next: the owner's look at the ZZ TEST job (the Pipeline, its Bills tab, the text in the test contact's thread); deploy dev-mcp after #7520 merges (download and hash-compare first); then retire the card. The road's next pairs are in The road below.
+size: M as a train of four (S · S · M · S) and one fix (XS)
 blocker: none; the owner's test contact and customer exist
 opinion: build in the card's order — each pair stands alone, and the bill needs the status move
 mockup: not required — the verbs have no screen; the plan replies are the design, and the design note holds them in words
@@ -64,10 +64,24 @@ From an MCP client as the dev (the key in `PT_DEV_MCP_TOKEN`):
 1. `find_customer` the owner's test customer; `read_rows` on `service_types` for Plumbing's id.
 2. `plan_job { job: { job_name: 'ZZ TEST seat walk', job_address, customer_id, service_type_id, revenue: 1, kind: 'service' } }` → read the row, the owner, the readiness → `apply_job` with the plan_hash → the job on the Pipeline at Working (a new job's default); `get_job` reads it.
 3. `plan_job_update { update: { job_id, status: 'ready_to_bill' } }` → the two steps → `apply_job_update` → Ready to Bill.
-4. `plan_bill { bill: { job_id, stripe_mode: 'test', send: { text: true } } }` → the amount, the number, the text's words → `apply_bill` → a one-dollar test-mode bill, its 43-character link in the test contact's thread, the link opening Stripe's test page.
-5. A second `apply_job` with the same plan is refused as already applied; a `plan_job` of the same name is refused without `allow_duplicate_name`.
+4. The job needs an HCP or Click number with digits, since a Stripe bill is numbered from it: `plan_job_update { update: { job_id, set: { click_number } } }` → apply (once #7520 lands, `plan_bill` refuses without one and says so).
+5. `plan_bill { bill: { job_id, stripe_mode: 'test', send: { text: true } } }` → the amount, the number, the text's words → `apply_bill` → a one-dollar test-mode bill, its 43-character link in the test contact's thread, the link opening Stripe's test page.
+6. A second `apply_job` with the same plan is refused as already applied; a `plan_job` of the same name is refused without `allow_duplicate_name`.
 
 The ZZ rows stay for the owner to look at. No customer's name, number or dollar figure goes in the repo.
+
+## The walk (2026-11-09, late evening, on prod from the seat)
+
+Every step over `https://mcp.clicktooling.com/dev` with the dev's key, each server deployed from main after a download-and-hash compare of the live bundle (one compare found prod running a working tree, every difference main being ahead).
+
+1. **Make** (0.50.0): `plan_job` showed the row as New Job writes it: the owner's test customer, Plumbing, revenue 1, kind service, the company owner account as master, the address Title-Cased, the customer's email and phone filled in. `apply_job` made it. The job landed at **Working**, the table's default since `20260722264000`; the plan's words said Waiting, fixed on PR 2's branch and by #7492. A second apply of the plan and a second plan of the name were both refused.
+2. **Move** (0.53.0): `plan_job_update { status: 'ready_to_bill' }` named one step, Working → Ready to Bill; `apply_job_update` made it through `update_job_status`. A second apply was refused as already reading that way.
+3. **Bill** (0.55.0): the first `apply_bill` stopped at `create-stripe-invoice`: *Job must have an HCP or Click number (digits)*. The Ready to Bill row stood, as in the app. `plan_job_update { set: { click_number } }` gave the job a number (it reads JP9293 since), a fresh `plan_bill` showed the row, the amount, the number and the Billed line's words, and `apply_bill` made the test-mode Stripe bill with its ten-letter code, moved the job to Billed and texted the link from the company number. The text's row sits in the test contact's thread, tied to the job, reading the app's own Billed line ending in the 43-character short link; the link answers 301 to the pay page. A repeat apply was refused. The plan's missing check is fix PR #7520.
+4. **Marks** (0.56.0): `plan_collections_flag` and `plan_contract_ended` planned on the Billed ZZ job (before → after, the activity line, the clocks' footing). Not applied, so the office's Collections column does not carry a test job.
+
+The ZZ rows stay for the owner: the job, its billed test-mode bill and the text.
+
+Two findings beside the fix: the first `plan_bill` after a fresh deploy failed once on the session mint (*Email link is invalid or has expired*) and passed on retry; and every seat PR that landed during the train dropped the next one from the queue, since the server version, the verb count and their test pins are not claimed (the merge recipes are in the session notes and the dev-mcp version-race memory).
 
 ## The road: what a user can do against what the seat can do
 
@@ -106,3 +120,4 @@ Next after this train, in the order the call log asks: a free text or email to a
 - 2026-11-09, later: PR 2 built on PR 1's branch (v2.6793): the update's shape held to the form's payload, the status walk to the RPC's neighbours, the read-back after the PATCH; #7464.
 - 2026-11-09, afternoon: PR 3 built on PR 2's branch (v2.6794): the remainder as the RPC sizes it, the sheet's words and the share row's draft through the kernel copy, the modal's doors in order with each outcome named; #7467.
 - 2026-11-09, afternoon: PR 4 built on PR 3's branch (v2.6795) after the punch-list session relayed the owner's ask: the Collections flag through the Job window's RPC, the contract's end as the Lien row saves it.
+- 2026-11-09/10: PR 1 to PR 4 merged one at a time, each renumbered behind the seat trains that landed first; dev-mcp deployed from main after each; the walk above passed; fix PR #7520 armed for the gap it found.
