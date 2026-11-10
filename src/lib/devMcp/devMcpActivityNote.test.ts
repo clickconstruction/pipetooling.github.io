@@ -65,11 +65,11 @@ describe('devMcpActivityNote — the verbs on the allowlist', () => {
     }
     expect(planVerbFor('apply_activity_note')).toBe('plan_activity_note')
     expect(isActivityNoteVerb('plan_job')).toBe(false)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.57.0'")
-    expect(SERVER).toContain('Writes are seventy-three verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.58.0'")
+    expect(SERVER).toContain('Writes are seventy-five verbs and nothing else:')
     expect(SERVER).toContain('plan_activity_note → apply_activity_note')
     expect(README).toContain('`plan_activity_note(note)` · `apply_activity_note(note, plan_hash)`')
-    expect(README).toContain('seventy-three `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('seventy-five `plan_` / `apply_` / `revert_` verbs')
     expect(README).toContain('the two note verbs (v2.6822)')
   })
   it('writes the rows the app writes: the thread note the hook inserts and the entry the popover inserts, column for column', () => {
