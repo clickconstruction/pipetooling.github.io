@@ -96,6 +96,17 @@ describe('buildPaymentChaseQueue', () => {
     expect(q.askCount).toBe(1)
   })
 
+  it('never queues a bill an in-kind deal pays, however old it is (punch list #301)', () => {
+    const inKind = invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-01-05T12:00:00Z' })
+    ;(inKind as { job: { in_kind_arrangement_id?: string } }).job.in_kind_arrangement_id = 'a1'
+    const cash = invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j2', invoiceId: 'i2', amount: 2700, billedAt: '2026-07-01T12:00:00Z' })
+    const q = buildPaymentChaseQueue([inKind, cash], speeds, null, [], TODAY)
+    expect(q.due[0]?.bills.map((b) => b.invoiceId)).toEqual(['i2'])
+    expect(q.dueDollars).toBe(2700)
+    // With only the in-kind bill, there is nobody to call.
+    expect(buildPaymentChaseQueue([inKind], speeds, null, [], TODAY).due).toEqual([])
+  })
+
   it('keeps a bill inside its promise out of the queue, and re-queues it as broken only past the grace', () => {
     const rows = [
       invRow({ customerId: 'palmer', customerName: 'Palmer', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-07-01T12:00:00Z' }),

@@ -121,6 +121,17 @@ describe('buildBilledPaymentForecast', () => {
     expect(without.buckets.flatMap((b) => b.rows)[0]!.model).toMatchObject({ source: 'segment', medianDays: 38, expectedYmd: '2026-09-08', paceWords: 'commercial pace ~38d' })
   })
 
+  it('a bill an in-kind deal pays is in no week: it is counted apart, since a credit is not money coming (punch list #301)', () => {
+    const inKind = invRow({ id: 'k', amount: 1480, billed_at: '2026-01-05T15:00:00Z', job: job({ id: 'j7', in_kind_arrangement_id: 'a1', payments: [{ invoice_id: 'k', amount: 799.5, paid_on: '2026-01-05' }] as never } as never) })
+    const cash = invRow({ id: 'c', amount: 500, billed_at: '2026-08-04T15:00:00Z', job: job({ id: 'j8' }) })
+    const f = buildBilledPaymentForecast([inKind, cash], speeds, TODAY)
+    expect(f.buckets.flatMap((b) => b.rows).map((r) => r.invoiceId)).toEqual(['c'])
+    expect(f.openTotal).toBe(500)
+    expect(f.rowCount).toBe(1)
+    expect(f.inKind).toEqual({ count: 1, dollars: 680.5 })
+    expect(buildBilledPaymentForecast([cash], speeds, TODAY).inKind).toEqual({ count: 0, dollars: 0 })
+  })
+
   it('rows with no reference date land in the unknown bucket; paid-to-zero rows are skipped and counted', () => {
     const undated = invRow({ id: 'a', amount: 500 })
     const paidOff = invRow({

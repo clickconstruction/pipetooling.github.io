@@ -1,5 +1,6 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { slipAdjustedYmd } from './paymentReliability'
 import { paySpeedPayer } from './billToParty'
@@ -63,6 +64,8 @@ export type PaymentForecast = {
   rowCount: number
   /** Rows dropped for having no open money (paid down to $0 but still on the board). */
   skippedNoMoney: number
+  /** Bills an in-kind deal pays (punch list #301): open, and never money coming, so in no bucket. */
+  inKind: { count: number; dollars: number }
 }
 
 function ymdWeekday(ymd: string): number | null {
@@ -123,6 +126,7 @@ export function buildBilledPaymentForecast(
     unknown: [],
   }
   let skippedNoMoney = 0
+  const inKind = { count: 0, dollars: 0 }
   for (const r of rows) {
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
@@ -131,6 +135,12 @@ export function buildBilledPaymentForecast(
       continue
     }
     const job = r.job
+    // v2.6834: a credit is not cash. A bill an in-kind deal pays is counted apart and forecast in no week.
+    if (jobIsScheduledInKind(job)) {
+      inKind.count += 1
+      inKind.dollars += open
+      continue
+    }
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
     const name = (job.job_name ?? '').trim()
     // The payer is whoever the bill went to (v2.3346): whose word a promise is, and
@@ -199,5 +209,6 @@ export function buildBilledPaymentForecast(
     openTotal: buckets.reduce((s, b) => s + b.sum, 0),
     rowCount: buckets.reduce((s, b) => s + b.rows.length, 0),
     skippedNoMoney,
+    inKind,
   }
 }

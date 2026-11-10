@@ -81,6 +81,24 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(l.verdict).toBeNull()
   })
 
+  it('a bill an in-kind deal pays reads Scheduled in kind with no day, and nobody is asked for a date (punch list #301)', () => {
+    // A direct job with the lien far off: without the deal this would read Expected Oct 4 and, later, Ask for a date.
+    const direct = buildLienPayRunway(runwayInput({ isSub: false, expectedPayYmd: null }))
+    const l = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: direct, inCollections: false, inKind: true })
+    expect(l.rows.map((r) => r.key)).toEqual(['billed', 'inkind', 'lien'])
+    expect(l.rows[1]).toMatchObject({ label: 'Scheduled in kind', date: '', far: '', tone: 'green', action: null })
+    expect(l.verdict).toBeNull()
+    // The same bill with no deal asks for a date once the day has gone by.
+    const late = buildBilledDatesLedger({ todayYmd: '2026-10-20', row, data, promise: null, runway: buildLienPayRunway(runwayInput({ isSub: false, todayYmd: '2026-10-20' })), inCollections: false })
+    expect(late.rows.map((r) => r.key)).toContain('money')
+    // A promise on the job does not bring an Expected row back: the deal is how it is paid.
+    const promised = buildBilledDatesLedger({ todayYmd: today, row, data, promise: { promisedYmd: '2026-10-10', markedByName: 'Tess' } as never, runway: direct, inCollections: false, inKind: true })
+    expect(promised.rows.map((r) => r.key)).toEqual(['billed', 'inkind', 'lien'])
+    // A bill the office gave up on stays as it was: no money row of any kind.
+    const gaveUp = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: direct, inCollections: false, uncollectible: true, inKind: true })
+    expect(gaveUp.rows.map((r) => r.key)).not.toContain('inkind')
+  })
+
   it('a bill the office gave up on (Uncollectible) has no Expected or They said row: nobody expects the money', () => {
     const promise = { promisedYmd: '2026-10-13', markedByName: 'Wendi' }
     const kept = buildBilledDatesLedger({ todayYmd: today, row, data, promise, runway: null, inCollections: true })
