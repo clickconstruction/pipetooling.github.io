@@ -2,18 +2,19 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: building 2026-11-10 on the owner's word · PR 1 (the tables and the verbs) built · left: PR 2 the card, the ledger and Add a line · PR 3 the monthly press and the Needs you line · PR 4 the cost side and the list
+status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows · left: set the landlord's arrangement up on their page, the readers that still read these bills as late, and the owner's four small calls
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
   finished work paid off by $1,000 a month held back from the rent. Today that arrangement lives only as
   fourteen payment rows on fifteen bills and a memo on each. Nothing in the app says "this customer pays in
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
-  receivable. This card holds the ask and that first ledger until the owner wants the page.
-next: PR 2, the card on the customer's page, the ledger and Add a line; the four small calls still open can be answered along the way
-size: L as a train of four (S · M · S · M); left: PRs 2 to 4 (M · S · M)
-ver: v2.6827
-blocker: none; the owner said build it on 2026-11-10
+  receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
+  that is due, and the In kind page lists every one. This card holds what is left.
+next: The owner sets the landlord's arrangement up on that customer's page (Set up paying in kind, the fifteen jobs, the monthly credit from November 2026) and enters November. Then the sweep of the readers under Left.
+size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836
+blocker: the landlord's arrangement is the owner's to set up; nothing was written on a real customer
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
 
@@ -72,12 +73,22 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 3. **Who may see and enter.** The people who can record a payment today, or the owner only.
 4. **The words.** The page is called In kind and each row an arrangement, since trade already means plumbing or electrical in the app.
 
-## The shape
+## What shipped (2026-11-10)
 
-1. **The arrangement and its lines as rows (S).** A table for an in-kind arrangement: the customer, what is given, the bills it pays and their order, a note, and for a monthly one the amount a month, the start month and the name the rent goes out under at the bank. A table for its lines: the date, the amount, the memo, and overhead or the job it is put on. A month marked *no credit* is a line too, so a month with full rent paid never reads as forgotten. A migration with the repo's four fences. Nothing on screen yet.
-2. **The card, the ledger and Add a line (M).** On the customer page, *Pays in kind*: the terms in a sentence, given so far, what is left, and for a monthly one the month that is due (frame B). The open bills read *scheduled in kind* instead of late; Accounts Receivable, the chase flow and the payment forecast treat them that way; the collected line says how much came in kind; pay speed leaves in-kind payments out. The ledger window shows each line with what it counts as and the bills it went to (frames C and F). *Add a line* takes the amount, the date and the memo, counts as overhead unless a job is picked, and writes today's In kind payments across the oldest open bills (frame F).
-3. **The monthly press and the Needs you line (S).** For an arrangement with a monthly amount, one press records the month's credit with the amount read from the rent that left the bank (frame D). A Needs you line appears when a month has rent at the bank and no credit, or has ended with neither, naming every month behind (frame E).
-4. **The cost side and the list (M).** A line's amount reaches the overhead numbers, or the job's material cost when it is put on a job. Then every arrangement on one page with what is owed each way (frame G). `/accounts-receivable` has no tabs today, so the list is a page of its own with a door from there.
+1. **v2.6827, the tables and the verbs.** `in_kind_arrangements`, `in_kind_lines`, `in_kind_line_payments`, `jobs_ledger.in_kind_arrangement_id`, and `in_kind_line_add` (one transaction, a dry run, a Stripe bill passed over and named), `in_kind_line_remove`, `in_kind_line_set_cost`, `in_kind_arrangement_set_jobs`.
+2. **v2.6829, the card, the ledger and Add a line.** On the customer's page, for the office. The money strip reads *scheduled in kind, none late*.
+3. **v2.6831, the month's credit and the Needs you line.** The bank read, the month's window with the suggested credit, *No credit this month*, the due line, `in-kind-credit-due`.
+4. **v2.6834, not chased, not forecast, not in pay speed.** The chase queue, the payment forecast, the Billed row's dates block, and a `pay_speed_exclusions` row for every In kind payment.
+5. **v2.6836, the cost side and the list.** Overhead or a job's material, and the page **In kind** reached from Accounts Receivable.
+
+## Left
+
+- **The landlord's arrangement is not set up.** The train wrote nothing on a real customer. On that customer's page: *Set up paying in kind*, tick the fifteen jobs, tick *It has a credit every month* with the usual credit, the whole rent, the name the rent goes out under at the bank, and November 2026 as the first month to enter. The fourteen payments typed by hand then read as *typed on the bills by hand* and count as paid. November 2026 is still not entered.
+- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, the Customers list's open balance. Each has its own row list and select.
+- **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
+- **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
+- **A combine of two jobs** carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables).
+- **Not walked live**, covered by the database bed or unit tests only: a line on a bill row (the walk's ZZ jobs were billed with no bill row), a bill on Stripe passed over, the forecast's last line, the overhead pool's display.
 
 ## Where it plugs in
 
@@ -88,6 +99,10 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 - The rent leaving the bank: the Mercury feed the Banking tabs already read.
 - Help: `src/content/help/record-payments-so-they-count.md` already teaches the month-at-a-time credit.
 
-## How to verify
+## How it was verified
+
+Walked on prod on 2026-11-10 from a dev server against a customer named *ZZ Test In Kind 2026-11-10* with three ZZ Test jobs, all deleted afterwards: set up, a $350.00 line that paid one job off and put $50.00 on the next in one press, a line counted on a job (that job's Costs tab), the Pipeline's Billed row reading *Scheduled in kind*, monthly terms, the bank read, the Needs you line, October's window, the list page, a line moved to overhead and a line taken back. The walk found three things, fixed before the PRs went up: *Still to come* counted a job not billed yet, the failure words read badly, and the page needed a search door. `npm run test:pg:in-kind` holds the database side.
+
+## The live case
 
 The landlord customer's record is the live case: fifteen bills, fourteen In kind payments, $14,643.46 open as of 2026-11-09, and November 2026's credit not entered as of 2026-11-10. The mock-up uses made-up names and amounts.
