@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { readBillAnswer } from '../bills/billRead'
-import { checkPaper, codeInText, expectedExtensionCents, moneyWords, paperFromBillRead, purchaseSign, type PaperLine, type PaperRead } from './paperChecks'
+import { checkPaper, codeInText, countsAsPurchase, expectedExtensionCents, moneyWords, paperFromBillRead, purchaseSign, type PaperLine, type PaperRead } from './paperChecks'
 
 const FIXTURES = resolve(__dirname, '../../../test/fixtures/bills')
 const answerOf = (slug: string): unknown => JSON.parse(readFileSync(resolve(FIXTURES, `${slug}.answer.json`), 'utf8'))
@@ -166,5 +166,14 @@ describe('words and signs', () => {
     expect(purchaseSign('credit')).toBe(-1)
     expect(purchaseSign('quote')).toBe(0)
     expect(purchaseSign('ship_ticket')).toBe(0)
+  })
+  it('counts a purchase only for an invoice or credit that still has its bill and whose check passed (the view’s rule)', () => {
+    expect(countsAsPurchase({ kind: 'invoice', checkState: 'adds_up', invoiceId: 'inv-1' })).toBe(true)
+    expect(countsAsPurchase({ kind: 'credit', checkState: 'accepted', invoiceId: 'inv-1' })).toBe(true)
+    // The bill was deleted: the paper keeps its rows and drops out of the count.
+    expect(countsAsPurchase({ kind: 'invoice', checkState: 'adds_up', invoiceId: null })).toBe(false)
+    expect(countsAsPurchase({ kind: 'invoice', checkState: 'off', invoiceId: 'inv-1' })).toBe(false)
+    expect(countsAsPurchase({ kind: 'ship_ticket', checkState: 'adds_up', invoiceId: 'inv-1' })).toBe(false)
+    expect(countsAsPurchase({ kind: 'quote', checkState: 'accepted', invoiceId: 'inv-1' })).toBe(false)
   })
 })

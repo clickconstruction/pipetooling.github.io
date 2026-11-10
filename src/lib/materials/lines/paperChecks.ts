@@ -33,6 +33,18 @@ export function purchaseSign(kind: PaperKind): 1 | -1 | 0 {
   return kind === 'invoice' ? 1 : 0
 }
 
+export type CheckState = 'adds_up' | 'off' | 'accepted'
+
+/**
+ * Whether a paper's lines count as purchases: the view `supply_purchase_lines`'s rule in TypeScript (v2.6824). An invoice
+ * or credit, still owned by a bill on file (a deleted bill leaves its paper with no `invoice_id`, and the paper then
+ * drops out of every count), whose lines add up or a person accepted. A ship ticket, a quote, an acknowledgement never
+ * count; an `off` paper waits for a person.
+ */
+export function countsAsPurchase(paper: { kind: PaperKind; checkState: CheckState; invoiceId: string | null }): boolean {
+  return PURCHASE_KINDS.has(paper.kind) && paper.invoiceId != null && (paper.checkState === 'adds_up' || paper.checkState === 'accepted')
+}
+
 export interface PaperLine {
   lineNo: number
   lineKind: LineKind
