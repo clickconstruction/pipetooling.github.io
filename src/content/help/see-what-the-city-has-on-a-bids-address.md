@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: austin, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -40,7 +40,7 @@ Every answer keeps your name and the day. Press **Undo** to take one back.
 The block never says a site has no permits. It says one of three things.
 
 - **No permit seen** means the city's records hold nothing on that address since the day they start.
-- **No permit records** means the bid is in a town whose permits we do not read. Today we read San Antonio.
+- **No permit records** means the bid is in a town whose permits we do not read. Today we read San Antonio and Austin.
 - **Cannot be looked up** means the address is not a street address. Add the street number and the city.
 
 ## See the jobs you priced for a GC

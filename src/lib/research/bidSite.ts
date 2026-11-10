@@ -49,7 +49,8 @@ const TYPE_SET = new Set(Object.values(TYPES))
 
 /** Words that name a kind of route and add nothing once the number is there: "US Hwy 281" is 281. */
 const ROUTE_WORDS = new Set(['us', 'state', 'sh', 'tx', 'texas', 'hwy', 'highway', 'ih', 'i', 'interstate', 'loop'])
-const SIDE_ROAD_WORDS = new Set(['frontage', 'access', 'service', 'feeder'])
+// Austin writes a service road as "SVRD" with the side it runs on: "10000 RESEARCH BLVD SVRD SB".
+const SIDE_ROAD_WORDS = new Set(['frontage', 'access', 'service', 'feeder', 'svrd', 'sb', 'nb', 'eb', 'wb'])
 const UNIT_WORDS = '(?:suite|ste|unit|apt|bldg|building|space|spc|lot|room|floor)'
 const CROSSING_WORDS = new Set(['and', 'at', '&', '@'])
 
@@ -97,7 +98,11 @@ function splitType(tokens: readonly string[]): { words: string[]; type: string |
 
 /** A street line ("4120 Mill Street", a feed's "4120 mill st") in the shape both sides compare in, or null when it has no house number or no street. */
 export function canonOfStreet(street: string | null | undefined): SiteCanon | null {
-  const line = (street ?? '').replace(/\s+/g, ' ').trim()
+  // A unit is not part of the street: a bid writes "Suite 255", Austin's feed "UNIT 143" or "BLDG 3 UNIT 347".
+  const line = (street ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(new RegExp(`\\s+(?:${UNIT_WORDS}\\b|#).*$`, 'i'), '')
   const m = line.match(/^(\d+[a-z]?)(?:\s*-\s*\d+)?\s+(.+)$/i)
   if (!m) return null
   const { words, type } = splitType(streetTokens(m[2] as string))

@@ -3,7 +3,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { ROBOT_BID_RE } from '../../lib/bids/bidPursuit'
-import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
+import { BID_PERMIT_CITIES } from '../../lib/research/permitResearch'
 import { bidSiteWords, leadPermit, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
 import { siteCountWords, sitePermitLines, siteTiles, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
@@ -47,12 +47,12 @@ export function BidSitePermits({
     return () => window.clearTimeout(t)
   }, [address])
 
-  const site = useMemo(() => readBidAddress(rested, RESEARCH_CITIES), [rested])
+  const site = useMemo(() => readBidAddress(rested, BID_PERMIT_CITIES), [rested])
   const city = site.kind === 'site' ? site.city : null
   const number = site.kind === 'site' ? site.number : null
   const [loaded, setLoaded] = useState<Loaded>({ state: 'idle' })
   const [openAll, setOpenAll] = useState(false)
-  const recordsStart = usePermitRecordsStart(city ?? RESEARCH_CITIES[0] ?? '')
+  const recordsStart = usePermitRecordsStart(city ?? BID_PERMIT_CITIES[0] ?? '')
   const today = todayYmdInAppTz()
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export function BidSitePermits({
     )
   }
 
-  const words = bidSiteWords(site, projectName, onSite, { todayYmd: today, recordsStartYmd: recordsStart, readCities: RESEARCH_CITIES })
+  const words = bidSiteWords(site, projectName, onSite, { todayYmd: today, recordsStartYmd: recordsStart, readCities: BID_PERMIT_CITIES })
   const value = bidValue.trim() ? parseFloat(bidValue.replace(/[$,]/g, '')) : NaN
   const tiles = siteTiles(onSite, projectName, Number.isFinite(value) ? value : null)
   const lines = sitePermitLines(onSite, projectName)

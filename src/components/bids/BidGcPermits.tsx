@@ -3,7 +3,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
-import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
+import { BID_PERMIT_CITIES } from '../../lib/research/permitResearch'
 import { reachDay } from '../../lib/research/permitReach'
 import { gcJobsView, numbersToAsk, type GcBid, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadBidsOfCustomers, loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
@@ -21,6 +21,12 @@ import { BidGcTiedNames } from './BidGcTiedNames'
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 
+/** One city whose permits are read, with the day its records start: "San Antonio · since Aug 26". */
+function CityScopeChip({ city, today }: { city: string; today: string }) {
+  const start = usePermitRecordsStart(city)
+  return <PermitChip chip={{ words: start ? `${city} · since ${reachDay(start, today)}` : city, tone: 'blue' }} />
+}
+
 /** How many jobs show before the rest fold behind a press on a desk. */
 const DESK_LINES = 6
 
@@ -32,7 +38,6 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
   const [open, setOpen] = useState(false)
   const idsKey = [...customerIds].sort().join(',')
   const today = todayYmdInAppTz()
-  const recordsStart = usePermitRecordsStart(RESEARCH_CITIES[0] ?? '')
 
   useEffect(() => {
     let live = true
@@ -40,7 +45,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
     setOpen(false)
     ;(async () => {
       const bids = await loadBidsOfCustomers(idsKey === '' ? [] : idsKey.split(','))
-      const asks = numbersToAsk(bids, RESEARCH_CITIES)
+      const asks = numbersToAsk(bids, BID_PERMIT_CITIES)
       const permits = new Map<string, SitePermitRow[]>()
       for (const [city, numbers] of asks) {
         const rows = await loadPermitsByHouseNumber(city, numbers)
@@ -59,7 +64,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
     }
   }, [idsKey])
 
-  const view = useMemo(() => (loaded.state === 'done' ? gcJobsView(loaded.bids, loaded.permits, RESEARCH_CITIES, currentBidId) : null), [loaded, currentBidId])
+  const view = useMemo(() => (loaded.state === 'done' ? gcJobsView(loaded.bids, loaded.permits, BID_PERMIT_CITIES, currentBidId) : null), [loaded, currentBidId])
 
   const box: CSSProperties = { marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 8, minWidth: 0 }
   const title = <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>What we can see about {customerName}</div>
@@ -89,8 +94,9 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
     <div style={box} data-testid="bid-gc-permits">
       {title}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <PermitChip chip={{ words: `${RESEARCH_CITIES.join(', ')} only`, tone: 'blue' }} />
-        {recordsStart && <PermitChip chip={{ words: `since ${reachDay(recordsStart, today)}`, tone: 'blue' }} />}
+        {BID_PERMIT_CITIES.map((c) => (
+          <CityScopeChip key={c} city={c} today={today} />
+        ))}
         <PermitChip chip={{ words: view.coverage, tone: 'grey' }} />
       </div>
       <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>The jobs you priced for them</div>

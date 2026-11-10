@@ -71,7 +71,7 @@ describe('BidSitePermits', () => {
   it('says a town is not read, and asks the table for nothing', async () => {
     renderWithProviders(<BidSitePermits address="3798 Kyle Crossing Kyle, TX 78640" projectName="Cedar Bend Clinic" bidValue="" />)
     expect(await screen.findByText('No permit records for Kyle.')).toBeTruthy()
-    expect(screen.getByText('Permits are read for San Antonio only.')).toBeTruthy()
+    expect(screen.getByText('Permits are read for San Antonio and Austin only.')).toBeTruthy()
     expect(io.loadPermitsByHouseNumber).not.toHaveBeenCalled()
   })
 
@@ -111,7 +111,9 @@ describe('BidGcPermits', () => {
     await waitFor(() => expect(screen.getByText('Of the 2 sites we can see, 1 has a permit. No general plumbing permit under another name seen.')).toBeTruthy())
     expect(io.loadBidsOfCustomers).toHaveBeenCalledWith(['c1', 'c2'])
     expect(io.loadPermitsByHouseNumber).toHaveBeenCalledWith('San Antonio', ['4120', '88'])
-    expect(screen.getByText('San Antonio only')).toBeTruthy()
+    // Each city read is named, with the day its records start once that is known.
+    expect(screen.getByText('San Antonio')).toBeTruthy()
+    expect(screen.getByText('Austin')).toBeTruthy()
     expect(screen.getByText('2 of your 3 bids with them')).toBeTruthy()
     expect(screen.getByText('B512 · Mill Street Lofts, Building C')).toBeTruthy()
     expect(screen.getByText('This bid · no general plumbing permit seen')).toBeTruthy()

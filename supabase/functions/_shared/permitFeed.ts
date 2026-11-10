@@ -193,3 +193,85 @@ export function pullSinceDay(newestFiledOn: string | null, todayYmd: string, fir
   d.setUTCDate(d.getUTCDate() - back)
   return d.toISOString().slice(0, 10)
 }
+
+// --- Austin (punch list #307, PR 8) ---------------------------------------------------------
+// The city's issued construction permits on its open-data portal (Socrata). Unlike San Antonio's
+// feed it names the contractor, with a trade and a phone, and it carries a unit on the address.
+// It has one plumbing type; the work class tells an irrigation or a fire-line permit from the
+// building's plumbing.
+
+export const AUSTIN_SODA = 'https://data.austintexas.gov/resource/3syk-w9eu.json'
+export const AUSTIN_SOURCE = 'atx-issued'
+export const AUSTIN_CITY = 'Austin'
+
+function ymdOrThrow(day: string, what: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`austinPageUrl: ${what} must be YYYY-MM-DD, got ${day}`)
+  return day
+}
+
+/** One page of Austin's building and plumbing permits issued on or after `sinceDay` (and before `untilDay` on a read back), oldest first. */
+export function austinPageUrl(sinceDay: string, limit: number, offset: number, untilDay: string | null = null): string {
+  const where = [`issue_date >= '${ymdOrThrow(sinceDay, 'sinceDay')}'`, untilDay ? `issue_date < '${ymdOrThrow(untilDay, 'untilDay')}'` : null, `permittype in ('BP','PP')`].filter(Boolean).join(' AND ')
+  const q = new URLSearchParams({ $where: where, $order: 'issue_date ASC, permit_number ASC', $limit: String(Math.max(1, Math.floor(limit))), $offset: String(Math.max(0, Math.floor(offset))) })
+  return `${AUSTIN_SODA}?${q.toString()}`
+}
+
+const AUSTIN_COMMERCIAL_WORK: Record<string, string> = { New: 'New commercial', Remodel: 'Commercial remodel', Addition: 'Commercial addition', 'Addition and Remodel': 'Commercial addition', Shell: 'Commercial shell', Repair: 'Commercial repair', Demolition: 'Commercial demolition' }
+const AUSTIN_RESIDENTIAL_WORK: Record<string, string> = { New: 'New house', Addition: 'Home addition', 'Addition and Remodel': 'Home addition', Remodel: 'Home remodel', Repair: 'Home repair', Demolition: 'Home demolition' }
+
+/**
+ * Austin's one plumbing type in the words the app tells plumbing permits apart by: an irrigation
+ * or a fire-line permit by its work class, every other as the building's general plumbing.
+ */
+export function austinPlumbingType(workClass: string | null): string {
+  const w = (workClass ?? '').toLowerCase()
+  if (w.includes('irrigation')) return 'Plumbing Irrigation Permit'
+  if (w.includes('fireline') || w.includes('fire line')) return 'Plumbing Fireline Permit'
+  return 'Plumbing General Permit'
+}
+
+/** One Austin record as a `permits` row, or null when it is not a building or a plumbing permit or has no number. */
+export function permitRowFromAustin(record: Record<string, unknown>): PermitRow | null {
+  const type = textOf(record['permittype'])
+  if (type !== 'BP' && type !== 'PP') return null
+  const number = textOf(record['permit_number'])
+  if (!number) return null
+  const residential = textOf(record['permit_class_mapped']) === 'Residential'
+  const workClass = textOf(record['work_class'])
+  const building = type === 'BP'
+  const work = building
+    ? ((residential ? AUSTIN_RESIDENTIAL_WORK : AUSTIN_COMMERCIAL_WORK)[workClass ?? ''] ?? `${residential ? 'Residential' : 'Commercial'} ${(workClass ?? 'permit').toLowerCase()}`)
+    : austinPlumbingType(workClass).replace(/ Permit$/, '')
+  const address = textOf(record['permit_location']) ?? textOf(record['original_address1'])
+  // The contractor as "Person, Company", the shape the contact line is split on; the applicant when no contractor is named.
+  const company = textOf(record['contractor_company_name']) ?? textOf(record['applicant_org'])
+  const person = textOf(record['contractor_full_name']) ?? textOf(record['applicant_full_name'])
+  const contact = company && person && company.toLowerCase() !== person.toLowerCase() ? `${person}, ${company}` : (company ?? person)
+  const lat = numberOf(record['latitude'])
+  const lng = numberOf(record['longitude'])
+  const { location: _location, link: _link, ...raw } = record as Record<string, unknown> & { location?: unknown; link?: unknown }
+  const description = textOf(record['description'])
+  return {
+    city: AUSTIN_CITY,
+    source: AUSTIN_SOURCE,
+    permit_number: number,
+    permit_type: building ? 'Building Permit' : austinPlumbingType(workClass),
+    kind: building ? 'building' : 'plumbing',
+    stage: 'issued',
+    residential,
+    work_type: work,
+    project_name: description ? description.slice(0, 160) : null,
+    address,
+    address_key: address ? address.toLowerCase() : null,
+    zip: textOf(record['original_zip']),
+    lat: lat != null && lat !== 0 ? lat : null,
+    lng: lng != null && lng !== 0 ? lng : null,
+    submitted_on: dayOf(record['applieddate']),
+    issued_on: dayOf(record['issue_date']),
+    declared_value: numberOf(record['total_job_valuation']) || numberOf(record['total_valuation_remodel']) || null,
+    area_sf: numberOf(record['total_new_add_sqft']) || numberOf(record['remodel_repair_sqft']) || null,
+    contact,
+    builder_key: builderKeyOf(contact),
+    raw,
+  }
+}

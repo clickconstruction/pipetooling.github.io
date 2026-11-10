@@ -16,6 +16,11 @@ export function canResearchPermits(role: UserRole | null): boolean {
 /** The cities with a feed today; a city is one row of this list until a second feed lands. */
 export const DEFAULT_RESEARCH_CITY = 'San Antonio'
 export const RESEARCH_CITIES: readonly string[] = [DEFAULT_RESEARCH_CITY]
+/**
+ * The cities whose permits a bid's address is looked up in (punch list #307). Wider than the
+ * Permits tab's own cities: Austin's permits are pulled for bids and have no skim of their own.
+ */
+export const BID_PERMIT_CITIES: readonly string[] = [DEFAULT_RESEARCH_CITY, 'Austin']
 
 export type PermitVerdict = 'look' | 'approach' | 'not_for_us' | 'taken'
 /** What a pursue is for (punch list #302): the plumber is sometimes chosen already, and then the relationship is the point. */

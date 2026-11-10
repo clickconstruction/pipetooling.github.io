@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { todayYmdInAppTz } from '../utils/dateUtils'
-import { RESEARCH_CITIES } from '../lib/research/permitResearch'
+import { BID_PERMIT_CITIES } from '../lib/research/permitResearch'
 import { numbersToAsk, type Chip, type SitePermitRow } from '../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../lib/research/bidSiteIo'
 import { bidPermitNews, type NewsBid, type NewsItem } from '../lib/research/bidPermitNews'
@@ -15,7 +15,7 @@ const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map
  */
 export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean): { chips: Map<string, Chip>; news: NewsItem[] } {
   const undecided = useMemo(() => (enabled ? bids.filter((b) => b.outcome == null) : []), [bids, enabled])
-  const asks = useMemo(() => numbersToAsk(undecided, RESEARCH_CITIES), [undecided])
+  const asks = useMemo(() => numbersToAsk(undecided, BID_PERMIT_CITIES), [undecided])
   // The read runs again only when the set of house numbers changes, not on every reload of the board.
   const asksKey = useMemo(() => [...asks].map(([city, numbers]) => `${city}:${[...numbers].sort().join(',')}`).join('|'), [asks])
   const [permits, setPermits] = useState<Map<string, SitePermitRow[]> | null>(null)
@@ -48,5 +48,5 @@ export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean): { 
     }
   }, [asksKey])
 
-  return useMemo(() => (permits ? bidPermitNews(undecided, permits, RESEARCH_CITIES, todayYmdInAppTz()) : NOTHING), [permits, undecided])
+  return useMemo(() => (permits ? bidPermitNews(undecided, permits, BID_PERMIT_CITIES, todayYmdInAppTz()) : NOTHING), [permits, undecided])
 }

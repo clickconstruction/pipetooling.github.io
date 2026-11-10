@@ -1,12 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { feedPageSql, permitRowFromSanAntonio, pullSinceDay, SAN_ANTONIO_CKAN, SAN_ANTONIO_FEEDS, type PermitFeed, type PermitRow } from '../_shared/permitFeed.ts'
+import { AUSTIN_CITY, AUSTIN_SOURCE, austinPageUrl, feedPageSql, permitRowFromAustin, permitRowFromSanAntonio, pullSinceDay, SAN_ANTONIO_CKAN, SAN_ANTONIO_FEEDS, type PermitFeed, type PermitRow } from '../_shared/permitFeed.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { builderKeyOf } from '../_shared/permitLookup.ts'
 
 /**
  * Research (punch list #292, v2.6782): pull a city's permits into `permits`. San Antonio first:
- * two CKAN datastores (issued permits, submitted applications) read through the SQL door, the
+ * two CKAN datastores (issued permits, submitted applications) read through the SQL door; since
+ * punch list #307 Austin's issued permits too (Socrata), for the permits on a bid's address. The
  * kept building types and every plumbing type since ten days before the newest row held (75
  * days back on the first run), paged oldest first, upserted on (city, source, number, type) so
  * a re-read changes nothing. Each feed's run lands in `permit_pulls`, error and all. Runs
@@ -51,6 +52,37 @@ async function readPage(feed: PermitFeed, since: string, offset: number, until: 
   return body.result?.records ?? []
 }
 
+/** One page of Austin's issued building and plumbing permits (Socrata answers a bare array). */
+async function readAustinPage(since: string, offset: number, until: string | null): Promise<Record<string, unknown>[]> {
+  const res = await fetch(austinPageUrl(since, PAGE, offset, until), { headers: { Accept: 'application/json' } })
+  if (!res.ok) throw new Error(`the feed answered ${res.status}`)
+  const body = await res.json()
+  if (!Array.isArray(body)) throw new Error(`the feed refused the read: ${JSON.stringify(body).slice(0, 300)}`)
+  return body as Record<string, unknown>[]
+}
+
+/** A feed as the run reads it: where its rows go, the column its newest row is found by, its page and its row. */
+type FeedSpec = {
+  source: string
+  city: string
+  newestColumn: 'issued_on' | 'submitted_on'
+  readPage: (since: string, offset: number, until: string | null) => Promise<Record<string, unknown>[]>
+  toRow: (record: Record<string, unknown>) => PermitRow | null
+}
+
+const FEEDS: FeedSpec[] = [
+  ...SAN_ANTONIO_FEEDS.map(
+    (feed): FeedSpec => ({
+      source: feed.source,
+      city: feed.city,
+      newestColumn: feed.stage === 'issued' ? 'issued_on' : 'submitted_on',
+      readPage: (since, offset, until) => readPage(feed, since, offset, until),
+      toRow: (record) => permitRowFromSanAntonio(record, feed),
+    }),
+  ),
+  { source: AUSTIN_SOURCE, city: AUSTIN_CITY, newestColumn: 'issued_on', readPage: readAustinPage, toRow: permitRowFromAustin },
+]
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405)
@@ -90,13 +122,13 @@ serve(async (req) => {
   const started = Date.now()
   const outcomes: FeedOutcome[] = []
 
-  for (const feed of SAN_ANTONIO_FEEDS) {
+  for (const feed of FEEDS) {
     const outcome: FeedOutcome = { source: feed.source, since: '', seen: 0, kept: 0, pages: 0, error: null }
     outcomes.push(outcome)
     try {
       let since = sinceOverride
       if (!since) {
-        const col = feed.stage === 'issued' ? 'issued_on' : 'submitted_on'
+        const col = feed.newestColumn
         const { data: newest } = await admin
           .from('permits')
           .select(col)
@@ -115,12 +147,12 @@ serve(async (req) => {
           outcome.error = 'stopped on the time budget; the next run carries on'
           break
         }
-        const records = await readPage(feed, since, offset, until)
+        const records = await feed.readPage(since, offset, until)
         outcome.pages++
         outcome.seen += records.length
         const rows: PermitRow[] = []
         for (const r of records) {
-          const row = permitRowFromSanAntonio(r, feed)
+          const row = feed.toRow(r)
           if (row) rows.push(row)
         }
         // One row per key inside the page too: the door can hand the same permit and type twice.
