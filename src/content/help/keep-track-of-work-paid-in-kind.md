@@ -112,6 +112,16 @@ Press **Open the ledger** on the card. The ledger shows each line with what it c
 
 An In kind payment typed on a bill by hand still counts as paid. The ledger says how many there are, and **Show them** lists them.
 
+## The chip beside a customer's name
+
+A customer who pays in kind carries a small chip beside the name. It shows on the Customers list and on the customer's page.
+
+The chip says where the deal stands. *In kind · $9,375.40 to come* is what is still open on the deal's bills. *In kind · November due* means a month's credit is waiting, and the chip turns amber. *In kind · we owe $1,400.00 of work* means they gave more than is billed.
+
+Press the chip to open the deal's ledger.
+
+On the Customers list, **Total open balance** counts money owed only. The part a deal pays is named under it as scheduled in kind. **Owes money** leaves that part out too. Press **In kind** to list everyone who pays this way.
+
 ## See every arrangement
 
 Open [Accounts Receivable](/accounts-receivable) and press **In kind** at the top. The [In kind](/in-kind) page lists every customer who pays this way.
