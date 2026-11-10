@@ -11,7 +11,7 @@ The Materials tab on Jobs is the office side of the cages and boxes on a big sit
 
 Open **Jobs** and press **Materials**. The desk lists every job with a container and sorts the ones losing money to the top. Press a job to open its page.
 
-The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week.
+The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open.
 
 The Pipeline's tools menu has a **Materials desk** row with the count of jobs that lost something this week. A job's window has a **Materials** tab with the same facts and **Open the materials page**. A bid's Procure step has the same door once the bid is a job. The line under its four steps reads **Materials on site**.
 
