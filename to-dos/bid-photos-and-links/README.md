@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · nothing built
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 (the photo table and its bucket) in work on `claude/bid-photos-table` · nothing on screen yet
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is eight small PRs with the photos icon first.
-next: The owner's word on the direction (call 1) and on where the folder lives (call 3). PR 1, the photo table and its bucket, is the same under every direction and can start on his go.
+next: PR 1, the photo table and its bucket, then its push. The owner's word on where the folder lives (call 3) before PR 2, and on who may remove a photo (call 6) before PR 4.
 size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask
-blocker: The owner's go. Call 1 gates PR 5, call 5 gates PR 4, call 3 gates PR 2. None gates PR 1.
-opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column
+blocker: None for PR 1. Call 3 gates PR 2 and call 6 gates PR 4.
+opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column, as direction C draws it
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -230,14 +230,14 @@ and the window can be opened from the bid's preview later with no new work.
 
 ## Recommendation
 
-**C.** The column exactly as asked, one Files window behind it, blue links straight out, and the
+**C, and the owner took it on 2026-11-10.** The column exactly as asked, one Files window behind it, blue links straight out, and the
 folder made by the first photo. PRs 1 to 3 are the photos icon and its window and are the same
 under A, B and C but for the window's title and frame, so they can start before call 1 is
 answered.
 
 ## The owner's calls
 
-1. **Which direction?** My pick: C.
+1. **Which direction?** My pick: C. **Answered 2026-11-10: C**, with the go for PR 1.
 2. **Is the folder made by a press of its own, or by the first photo?** He asked for a confirm.
    My pick: the first photo, with the button naming the folder it makes. No empty folders, and one
    press fewer.
@@ -296,8 +296,9 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - Then `supabase db push` from a main checkout, the `chore(types)` PR, and the dev-mcp catalog
   rebuilt with it.
 
-**PR 2 · the Drive leg (M).** Edge only. Nothing calls it yet.
-- *Migration*: none.
+**PR 2 · the Drive leg (M).** Edge, and one line of cron. Nothing calls it yet.
+- *Migration*: the `photo-save` cron's guard gains a clause for a waiting `bid_photos` row, with every
+  earlier clause written again from the newest definition. No table changes.
 - *Edge functions*: new **`bid-photos`** (`make`: the bid's folder by `drive-intake`'s rule, moved
   into `_shared`, then Team only › Photos; `list`: the table's rows, and any picture in the folder
   with no row is adopted as one, so a file dragged in through Drive or saved from a text counts;
