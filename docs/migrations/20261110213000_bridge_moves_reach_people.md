@@ -10,3 +10,5 @@ The Bridge's call reaches its people (punch list #303, PR 4). A call's moves are
 Held by `npm run test:pg:bridge-moves` (`supabase/tests/bridge_moves/`, in `scripts/sql-beds.txt`): the table stays closed to an assistant, each person reads only their own moves, every refusal, the stamp, and the moves leaving on an answer, a passed week, a newer call and an archived account.
 
 Deploy order: the client reads through `bridge_my_moves` and answers with no moves while the function is missing, so the Needs you card is as it was until the push. Push right after the merge.
+
+**Applied** to prod 2026-11-10, right after PR #7581 merged, read the same day through `npm run check:migration-drift`: 1224 local files against 1224 remote versions, fully applied, this one among them. Read back on the live project: the anonymous key is refused by both functions (`42501`), a signed-in account with no move reads none, and a call that does not exist is refused in words.
