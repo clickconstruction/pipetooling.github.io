@@ -8,6 +8,7 @@ import { reachDay } from '../../lib/research/permitReach'
 import { gcJobsView, numbersToAsk, type GcBid, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadBidsOfCustomers, loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
 import { PermitChip } from './BidSitePermits'
+import { EmptyState } from '../EmptyState'
 
 /**
  * What we can see about a GC (punch list #307, PR 3): under the GC's card in a bid's window, the
@@ -98,7 +99,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
           <span>{view.verdict}</span>
         </div>
       ) : (
-        <div style={muted}>None of your bids with them is on a street address in a city whose permits are read.</div>
+        <EmptyState main="None of your bids with them is on a street address in a city whose permits are read." compact />
       )}
       {shown.length > 0 && (
         <div style={{ borderTop: '1px solid var(--border)' }}>
