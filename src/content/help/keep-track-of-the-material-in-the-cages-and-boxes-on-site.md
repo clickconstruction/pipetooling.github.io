@@ -88,9 +88,11 @@ Once it is connected, the window names the printer and the tape inside it. Press
 
 Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
 
-On Windows with Brother's driver, you can press **Use the print window instead**. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm.
+On Windows with Brother's driver, you can press **Use the print window instead**. After the first print it sits under **Printer setup**. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm.
 
 Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip.
+
+A box with more than one side needs more than one strip. Set **Copies of each** with the minus and plus presses. With 2, the strips come out as 1, 1, 2, 2, 3, 3. The print press names the total, as in **Print 6 tape labels**. The test strip is always one strip. The presses sit at the bottom of the window and stay in reach as you scroll.
 
 After the first print the window opens on tape on that computer. Press **Change** to pick paper again. Press **Printer setup** to read the three steps again.
 
