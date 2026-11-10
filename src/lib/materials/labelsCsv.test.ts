@@ -14,10 +14,10 @@ describe('the labels as a CSV (v2.6800)', () => {
   ]
   const places = [{ id: 'p1', name: 'Level 2' }]
 
-  it('lists every live cage and box in stencil order with the dashed code, the typed address and the bare QR', () => {
+  it('lists every live cage and box in stencil order with the dashed code, the typed address and the QR with its scheme', () => {
     const rows = labelsCsvRows(containers, places)
     expect(rows.map((r) => r.stencil)).toEqual(['A2', 'A10', 'B3'])
-    expect(rows[2]).toEqual({ stencil: 'B3', kind: 'cage', place: 'Level 2', where: 'by the north stair', code: '7D75-9246', address: 'prts.co/b/7D75-9246', qr: 'PRTS.CO/B/7D759246' })
+    expect(rows[2]).toEqual({ stencil: 'B3', kind: 'cage', place: 'Level 2', where: 'by the north stair', code: '7D75-9246', address: 'prts.co/b/7D75-9246', qr: 'HTTPS://PRTS.CO/B/7D759246' })
   })
 
   it('writes a header and escapes a cell with quotes, CRLF line ends', () => {
