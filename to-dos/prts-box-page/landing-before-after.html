@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The box page a scan opens: before and after</title>
+<style>
+  /* Punch list #294. Everything here is made up: cage B3 at Level 2 by the north stair, cage T1, cage A2, the parts and
+     their counts, the codes 4F2A-9C18 and 81C0-33D7, the office number (303) 555-0142. The mock-up's own chrome uses
+     src/index.css's tokens and has a Light and Dark switch. The phone frames stay on the portal's paper in both
+     (src/lib/portal/portalTheme.ts), because the box page is pinned light as every signed-out page is. Frames are 375. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --bg-red-100: #fee2e2; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --bg-amber-100: #45390f; --bg-green-100: #14532d; --bg-red-100: #4c1d1d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); max-width: 110ch; }
+  .controls { display: flex; gap: 6px; align-items: center; margin: 14px 0 0; flex-wrap: wrap; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .key { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-700); margin-left: 14px; }
+  .key i { width: 22px; height: 12px; border-radius: 4px; display: inline-block; }
+  .key i.t { border: 2px dashed #15803d; } .key i.f { border: 2px dashed #b45309; }
+  h2 { font-size: 20px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .say p.no { border-color: var(--text-red-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; flex: 0 0 377px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .under { font-size: 12.5px; color: var(--text-700); line-height: 1.45; max-width: 375px; }
+  .frame { border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  table.v { border-collapse: collapse; width: 100%; max-width: 1180px; margin-top: 12px; background: var(--surface); }
+  table.v th, table.v td { border: 1px solid var(--border); padding: 8px 10px; font-size: 13px; text-align: left; vertical-align: top; color: var(--text-700); }
+  table.v th { background: var(--bg-subtle); font-size: 12px; color: var(--text-strong); }
+  table.v td.pick, table.v th.pick { background: var(--bg-green-100); }
+  table.v td.st { color: var(--text-green-700); font-weight: 700; white-space: nowrap; }
+  table.v td.sf { color: var(--text-amber-800); font-weight: 700; white-space: nowrap; }
+  table.v code { font: 12px ui-monospace, Menlo, monospace; color: var(--text-strong); }
+  .scrollx { overflow-x: auto; max-width: 100%; }
+  ol.calls { margin: 10px 0 0; padding-left: 22px; max-width: 104ch; display: grid; gap: 8px; color: var(--text-700); }
+  ol.calls .mine { color: var(--text-green-700); font-weight: 700; }
+
+  /* ── the phone: the portal's paper, pinned light ── */
+  .screen { --paper: #f6f3ec; --card: #fdfcf9; --ink: #16283c; --muted: #5a6b7e; --faint: #5e6d7c; --hair: #ddd6c8; --copper: #9a5b2b; --green: #1f7a3a; --amber: #8a5a00; --blue: #2563eb;
+    position: relative; width: 375px; background: var(--paper); color: var(--ink); font: 16px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 0 0 22px; }
+  .screen b { color: var(--ink); }
+  .screen.tall { min-height: 662px; }
+  .sbar { height: 22px; background: #e7e3d9; }
+  .fold { position: absolute; left: 0; right: 0; top: 662px; border-top: 1px dashed #9aa3ae; pointer-events: none; }
+  .fold span { position: absolute; left: 206px; top: -17px; font: 600 10px/1.4 ui-monospace, Menlo, monospace; color: #6b7280; background: var(--paper); padding: 0 4px; }
+  .pad { padding: 14px 16px 0; display: grid; gap: 12px; }
+  .brand { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); margin: 0; }
+  .h1 { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -.01em; }
+  .where { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+  .lab { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+  .lab span { letter-spacing: 0; text-transform: none; font-weight: 600; }
+  .list { background: var(--card); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  .ln { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--hair); align-items: flex-start; }
+  .ln:first-child { border-top: 0; }
+  .ln .mk { display: block; color: var(--muted); font-size: 13px; }
+  .ln .n { font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ln .warn { display: block; color: var(--amber); font-size: 13px; font-weight: 600; margin-top: 5px; }
+  .ln.f { outline-offset: -3px; }
+  .ln.zero { background: #f3efe6; } .ln.zero .nm { color: var(--muted); } .ln.zero .n { color: var(--muted); font-size: 14px; font-weight: 700; }
+  .cnt { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  .press { display: flex; align-items: center; justify-content: center; min-height: 48px; width: 100%; border-radius: 12px; border: 1px solid var(--hair); background: var(--card); color: var(--ink); font-weight: 700; font-size: 16px; padding: 0 14px; text-align: center; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .small { margin: 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+  .empty { border: 1px dashed var(--hair); border-radius: 12px; padding: 14px 12px; color: var(--muted); font-size: 15px; }
+  .empty u { color: var(--blue); font-weight: 700; text-decoration: none; }
+  .st h3 { margin: 6px 0 6px; font-size: 22px; line-height: 1.2; font-weight: 800; }
+  .st p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  /* the after's pieces */
+  .id { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+  .tile { min-width: 68px; height: 68px; padding: 0 10px; border: 3px solid var(--ink); border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 900; letter-spacing: -.02em; line-height: 1; }
+  .id .k { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .id .p { font-size: 17px; font-weight: 700; line-height: 1.25; }
+  .id .c { font: 13px/1.3 ui-monospace, Menlo, monospace; color: var(--muted); margin-top: 2px; }
+  .id.one { grid-template-columns: 1fr; gap: 0; } .id.one .p { font-size: 20px; font-weight: 800; }
+  .ver { display: flex; gap: 8px; align-items: baseline; font-size: 15px; padding: 8px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--hair); }
+  .ver i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--green); transform: translateY(-1px); }
+  .ver.due i { background: #d97706; } .ver.due b { color: var(--amber); }
+  .ver.never i { background: #9aa3ae; }
+  .ver b { white-space: nowrap; }
+  .ver span { color: var(--muted); font-size: 13.5px; }
+  .pic { position: relative; height: 150px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hair); background: linear-gradient(160deg, #8b8f93 0%, #c9c3b5 45%, #6f6a60 100%); }
+  .pic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pic em { position: absolute; left: 8px; bottom: 8px; font-style: normal; font-size: 12.5px; font-weight: 600; color: #fff; background: rgba(15, 23, 42, .72); border-radius: 999px; padding: 3px 10px; }
+  .pic.big { height: 250px; border-radius: 12px 12px 0 0; border-bottom: 0; }
+  .capt { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; font-size: 13px; color: var(--muted); background: var(--card); border: 1px solid var(--hair); border-top: 0; border-radius: 0 0 12px 12px; }
+  .q { font-size: 15px; font-weight: 700; margin: 0 0 6px; }
+  .find { display: flex; gap: 8px; }
+  .find .in { flex: 1; min-width: 0; min-height: 48px; border: 1px solid var(--hair); border-radius: 12px; background: #fff; color: var(--faint); font-size: 16px; display: flex; align-items: center; padding: 0 14px; }
+  .find .in.typed { color: var(--ink); }
+  .find .go { min-width: 72px; min-height: 48px; border-radius: 12px; background: var(--blue); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .hit { background: var(--card); border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; }
+  .hit .hd { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px 6px; align-items: baseline; }
+  .hit .hd span { color: var(--muted); font-size: 13px; text-align: right; }
+  .hit .open { display: block; padding: 10px 12px; border-top: 1px solid var(--hair); color: var(--blue); font-weight: 700; font-size: 15px; }
+  .t { outline: 2px dashed #15803d; outline-offset: 3px; border-radius: 10px; }
+  .f { outline: 2px dashed #b45309; outline-offset: 3px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #294 · mock-up · nothing here is built</p>
+  <h1>The box page a scan opens: before and after</h1>
+  <p>The owner, 2026-11-10, after his first cage labels came off the Brother PT-D610BT and an iPhone scanned one: should the page the scan opens be improved. His test cage had one line, so most of the screen under it was empty. The page already shows the right things. What it lacks is the label's own look at the top, a plain word on whether the count can be trusted, the search within reach, and a sign-in press that says who it is for.</p>
+  <div class="stamp">Drawn 2026-11-10 from BoxPublicPage.tsx, the box-read function and its kernel as they stand on main. Every cage, part, count, code and number is made up. The dotted line on a phone is about where an iPhone's first screen ends. The phones stay light in both themes, as the page does.</div>
+  <div class="controls"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button>
+    <span class="key"><i class="t"></i>new, drawn from what box-read answers today</span>
+    <span class="key"><i class="f"></i>new, needs a change to box-read</span></div>
+</header>
+
+<!-- ───────────── WHO ───────────── -->
+<h2><span class="num">→</span>Who is holding the phone</h2>
+<p class="lede">A signed-in scan never stops here. It goes straight to the cage's screen on the Tally's On site tab. So everyone who sees this page is signed out, standing at a cage.</p>
+<div class="scrollx"><table class="v">
+  <thead><tr><th>Who</th><th>What they need in the first second</th><th>The press they most likely want next</th></tr></thead>
+  <tbody>
+    <tr><th>A crew member whose browser is signed out</th><td>That the page is this cage, and what is in it.</td><td>Sign in, once. An iPhone's camera opens a scan in Safari, which keeps its own sign-in apart from the app on the home screen, so the first scan lands here even for someone signed in to the app.</td></tr>
+    <tr><th>A helper sent to fetch a part</th><td>Is the part in this cage, and how many.</td><td>When it is not here: look in the other cages on the site.</td></tr>
+    <tr><th>A subcontractor from another trade, or the GC's superintendent</th><td>Whose cage this is, and that it is counted.</td><td>Tell someone when it is open, damaged or in the way.</td></tr>
+    <tr><th>A stranger</th><td>Nothing they should have. The page names no job, customer, street, price or person.</td><td>None. The page must stay dull for them.</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ───────────── BEFORE ───────────── -->
+<h2><span class="num today">1</span>Before: the page today</h2>
+<p class="lede">Left, the shape of the owner's screenshot: a cage with one line, no place, no photo and no maker on the line. Right, the same page on a cage that has them. The page draws a place, a photo and a maker whenever the cage has one. The test cage had none, so nothing was left out.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Today · a one-line cage</div>
+    <div class="frame now"><div class="screen tall">
+      <div class="sbar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div><p class="h1">Cage T1</p></div>
+        <div>
+          <p class="lab">What is in it</p>
+          <div class="list"><div class="ln"><span>Test elbow</span><span class="n">8</span></div></div>
+          <p class="cnt">Last counted <b>Sunday, Nov 8</b>. Counts are the app's as of right now.</p>
+        </div>
+        <div class="press blue">Sign in to change a count</div>
+        <div class="press">Find a part on this site</div>
+        <p class="small">This page shows what is in the cage, not whose job it is. To record a part used, moved or counted, sign in. You come back to this cage.</p>
+      </div>
+    </div></div>
+    <div class="under">Half the screen is empty paper. That is honest for a one-line cage, and filling it for its own sake would be noise.</div>
+  </div>
+  <div class="col">
+    <div class="cap">Today · a full cage with a photo</div>
+    <div class="frame now"><div class="screen">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div><p class="h1">Cage B3</p><p class="where">Level 2 · by the north stair</p></div>
+        <div>
+          <div class="pic big"><svg viewBox="0 0 343 250" aria-hidden="true"><g stroke="rgba(20,20,20,.55)" stroke-width="3" fill="none"><rect x="36" y="34" width="270" height="190" rx="4"/><path d="M36 82h270M36 130h270M36 178h270M76 34v190M116 34v190M156 34v190M196 34v190M236 34v190M276 34v190"/></g><g fill="rgba(255,255,255,.55)"><rect x="50" y="140" width="60" height="30" rx="3"/><rect x="122" y="146" width="50" height="24" rx="3"/><rect x="184" y="136" width="74" height="34" rx="3"/><rect x="54" y="188" width="100" height="28" rx="3"/><rect x="168" y="186" width="126" height="30" rx="3"/></g><rect x="50" y="46" width="88" height="42" rx="3" fill="#fdfcf9" stroke="rgba(0,0,0,.3)"/><text x="94" y="74" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="21" font-weight="800" fill="#16283c">B3</text></svg></div>
+          <div class="capt"><span>Newest photo</span><b>Saturday, Nov 7</b></div>
+        </div>
+        <div>
+          <p class="lab">What is in it</p>
+          <div class="list">
+            <div class="ln"><span>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></span><span class="n">18</span></div>
+            <div class="ln"><span>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></span><span class="n">200</span></div>
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span></span><span class="n">10</span></div>
+            <div class="ln"><span>3/4" copper 90° elbows<span class="mk">Mueller</span></span><span class="n">42</span></div>
+            <div class="ln"><span>3/4" copper couplings<span class="mk">Mueller</span></span><span class="n">36</span></div>
+            <div class="ln"><span>3/4" pipe hangers<span class="mk">Oatey</span></span><span class="n">60</span></div>
+          </div>
+          <p class="cnt">Last counted <b>Sunday, Nov 8</b>. Counts are the app's as of right now.</p>
+        </div>
+        <div class="press blue">Sign in to change a count</div>
+        <div class="press">Find a part on this site</div>
+        <p class="small">This page shows what is in the cage, not whose job it is. To record a part used, moved or counted, sign in. You come back to this cage.</p>
+      </div>
+    </div></div>
+    <div class="under">With a photo, three of the six lines make the first screen. The count's day and both presses are a scroll and a half away.</div>
+  </div>
+  <div class="col" style="flex: 1 1 320px; max-width: 460px;">
+    <div class="cap">What is weak</div>
+    <div class="say" style="margin-top: 0;">
+      <p class="lose"><b>The top does not look like the label.</b> The label in the hand reads a stencil in a box and eight characters. The page reads a heading, and never shows the code.</p>
+      <p class="lose"><b>The count's day is a date to work out.</b> "Sunday, Nov 8" does not say whether the numbers can be trusted. The app already has the rule: a cage is due a count after 14 days.</p>
+      <p class="lose"><b>The blue press is for the fewest people.</b> "Sign in to change a count" tells a helper nothing about what follows, and tells a subcontractor to do something they cannot.</p>
+      <p class="lose"><b>The search is a press away.</b> "It is not in this one" is the most likely next thought, and it costs a tap and a new screen before the first letter.</p>
+      <p class="lose"><b>A part that ran out vanishes.</b> The page drops every line at zero, so a person hunts the cage for valves that the app knows are gone.</p>
+      <p class="lose"><b>Nobody says whose cage it is in a sentence,</b> or how to reach them.</p>
+      <p class="no"><b>Found on the way:</b> on a retired cage's page the Find a part on this site press cannot work. The function answers "retired" before it reaches the search, so the press ends in an error. Read from the code, not walked on a phone.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── AFTER ───────────── -->
+<h2><span class="num">2</span>After: three directions on the same cage</h2>
+<p class="lede">The same cage B3 in each, without its photo so the three compare line for line. A changes no function. B is A plus what the function already holds and does not pass on. C turns the page around the search.</p>
+<div class="row">
+  <!-- A -->
+  <div class="col">
+    <div class="cap">A · the same page, sharper · no function change</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id t"><div class="tile">B3</div><div><div class="k">Cage</div><div class="p">Level 2 · by the north stair</div><div class="c">4F2A-9C18</div></div></div>
+        <div class="ver t"><i></i><b>Counted 2 days ago</b><span>Sunday, Nov 8</span></div>
+        <div>
+          <p class="lab">What is in it <span class="t">6 parts</span></p>
+          <div class="list">
+            <div class="ln"><span>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></span><span class="n">18</span></div>
+            <div class="ln"><span>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></span><span class="n">200</span></div>
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span></span><span class="n">10</span></div>
+            <div class="ln"><span>3/4" copper 90° elbows<span class="mk">Mueller</span></span><span class="n">42</span></div>
+            <div class="ln"><span>3/4" copper couplings<span class="mk">Mueller</span></span><span class="n">36</span></div>
+            <div class="ln"><span>3/4" pipe hangers<span class="mk">Oatey</span></span><span class="n">60</span></div>
+          </div>
+          <p class="cnt">These are the app's counts as of right now.</p>
+        </div>
+        <div class="t">
+          <p class="q">Not in this cage?</p>
+          <div class="find"><div class="in">A part, a maker or a stencil</div><div class="go">Find</div></div>
+          <p class="small" style="margin-top: 6px;">Looks in the other cages and boxes on this site.</p>
+        </div>
+        <div class="t">
+          <p class="q">On Click's crew?</p>
+          <div class="press">Sign in to record a use or a count</div>
+          <p class="small" style="margin-top: 6px;">Sign in once on this phone. After that a scan opens the cage's own screen.</p>
+        </div>
+        <p class="small t">This cage belongs to Click Plumbing &amp; Electrical. The page shows what is in it, not whose job it is.</p>
+      </div>
+    </div></div>
+    <div class="under"><b>What changes:</b> the top is the label, with its code. The count is a verdict. The search is a field on the page and holds the one blue press. The sign-in says who it is for and that it is once. Client only, no deploy.</div>
+  </div>
+  <!-- B -->
+  <div class="col">
+    <div class="cap opt">B · A, plus what the function already holds · the pick</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id t"><div class="tile">B3</div><div><div class="k">Cage</div><div class="p">Level 2 · by the north stair</div><div class="c">4F2A-9C18</div></div></div>
+        <div class="ver t"><i></i><b>Counted 2 days ago</b><span>Sunday, Nov 8</span></div>
+        <div>
+          <p class="lab">What is in it <span class="t">6 parts</span></p>
+          <div class="list">
+            <div class="ln"><span>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></span><span class="n">18</span></div>
+            <div class="ln"><span>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></span><span class="n">200</span></div>
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span><span class="warn f">2 could not be found since the count</span></span><span class="n">10</span></div>
+            <div class="ln"><span>3/4" copper 90° elbows<span class="mk">Mueller</span></span><span class="n">42</span></div>
+            <div class="ln"><span>3/4" copper couplings<span class="mk">Mueller</span></span><span class="n">36</span></div>
+            <div class="ln"><span>3/4" pipe hangers<span class="mk">Oatey</span></span><span class="n">60</span></div>
+            <div class="ln zero f"><span class="nm">1" copper tees<span class="mk">Mueller</span></span><span class="n">None left</span></div>
+          </div>
+          <p class="cnt">These are the app's counts as of right now.</p>
+        </div>
+        <div class="t">
+          <p class="q">Not in this cage?</p>
+          <div class="find"><div class="in">A part, a maker or a stencil</div><div class="go">Find</div></div>
+          <p class="small" style="margin-top: 6px;">Looks in the other cages and boxes on this site.</p>
+        </div>
+        <div class="f">
+          <p class="q">Something missing or wrong?</p>
+          <div class="press">Text the office about Cage B3</div>
+          <p class="small" style="margin-top: 6px;">Opens a text with this cage's name in it. Or call (303) 555-0142.</p>
+        </div>
+        <div class="t">
+          <p class="q">On Click's crew?</p>
+          <div class="press">Sign in to record a use or a count</div>
+          <p class="small" style="margin-top: 6px;">Sign in once on this phone. After that a scan opens the cage's own screen.</p>
+        </div>
+        <p class="small t">This cage belongs to Click Plumbing &amp; Electrical. The page shows what is in it, not whose job it is.</p>
+      </div>
+    </div></div>
+    <div class="under"><b>What B adds:</b> a part that ran out since the last count stays on the list as None left. A line the crew pressed Can't find on says so. One press opens a text to the office with the cage's name filled in, which writes nothing to the app.</div>
+  </div>
+  <!-- C -->
+  <div class="col">
+    <div class="cap">C · find first · no function change</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id one t"><div><div class="k">Cage B3 · 4F2A-9C18</div><div class="p">Level 2 · by the north stair</div></div></div>
+        <div class="t">
+          <p class="q">What are you looking for?</p>
+          <div class="find"><div class="in typed">ball valve</div><div class="go">Find</div></div>
+        </div>
+        <div class="t">
+          <p class="lab">In this cage <span>1 of 6 parts</span></p>
+          <div class="list">
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span></span><span class="n">10</span></div>
+          </div>
+        </div>
+        <div class="t">
+          <p class="lab">In the other cages on this site <span>1 box</span></p>
+          <div class="hit">
+            <div class="hd"><b>Cage A2</b><span>Level 1 · by the hoist</span></div>
+            <div class="ln"><span>1" ball valves, full port<span class="mk">Apollo</span></span><span class="n">6</span></div>
+            <span class="open">Open Cage A2 ›</span>
+          </div>
+        </div>
+        <p class="cnt">Cage B3 was counted 2 days ago, Sunday, Nov 8.</p>
+        <div class="press">Sign in to record a use or a count</div>
+        <p class="small">This cage belongs to Click Plumbing &amp; Electrical. The page shows what is in it, not whose job it is.</p>
+      </div>
+    </div></div>
+    <div class="under"><b>What C bets on:</b> the person came to find one part. Typing narrows this cage as they type and looks across the site on Find. Before a word is typed the whole list shows under the field.</div>
+  </div>
+</div>
+
+<!-- ───────────── STATES ───────────── -->
+<h2><span class="num pick">3</span>The pick in its states</h2>
+<p class="lede">Direction B on the cages a real site has. Green dashes come from today's answer. Amber dashes wait on the function.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">A cage with a photo, due a count</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id"><div class="tile">B3</div><div><div class="k">Cage</div><div class="p">Level 2 · by the north stair</div><div class="c">4F2A-9C18</div></div></div>
+        <div class="ver due t"><i></i><b>Due a count</b><span>last counted 22 days ago</span></div>
+        <div class="pic t"><svg viewBox="0 0 343 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g stroke="rgba(20,20,20,.55)" stroke-width="3" fill="none"><rect x="36" y="-10" width="270" height="170" rx="4"/><path d="M36 30h270M36 72h270M36 114h270M76 -10v170M116 -10v170M156 -10v170M196 -10v170M236 -10v170M276 -10v170"/></g><g fill="rgba(255,255,255,.55)"><rect x="50" y="80" width="60" height="28" rx="3"/><rect x="122" y="84" width="50" height="24" rx="3"/><rect x="184" y="76" width="74" height="32" rx="3"/><rect x="168" y="120" width="126" height="26" rx="3"/></g><rect x="50" y="10" width="80" height="38" rx="3" fill="#fdfcf9" stroke="rgba(0,0,0,.3)"/><text x="90" y="36" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="20" font-weight="800" fill="#16283c">B3</text></svg><em>Photo from Sat, Nov 7 · tap to see it whole</em></div>
+        <div>
+          <p class="lab">What is in it <span>6 parts</span></p>
+          <div class="list">
+            <div class="ln"><span>1/2" copper pipe, 10 ft<span class="mk">Cerro</span></span><span class="n">18</span></div>
+            <div class="ln"><span>1/2" PEX crimp rings<span class="mk">Sioux Chief</span></span><span class="n">200</span></div>
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span></span><span class="n">10</span></div>
+            <div class="ln"><span>3/4" copper 90° elbows<span class="mk">Mueller</span></span><span class="n">42</span></div>
+          </div>
+          <p class="cnt">Two more lines, then the search, the office and the sign-in as above.</p>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">The photo is a band 150 tall, so four lines make the first screen where today three do. A tap opens it whole. Past 14 days the verdict turns amber and says Due a count, the app's own words for it.</div>
+  </div>
+  <div class="col">
+    <div class="cap">A line at zero, and a line reported missing</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id"><div class="tile">B3</div><div><div class="k">Cage</div><div class="p">Level 2 · by the north stair</div><div class="c">4F2A-9C18</div></div></div>
+        <div class="ver"><i></i><b>Counted 2 days ago</b><span>Sunday, Nov 8</span></div>
+        <div>
+          <p class="lab">What is in it <span>2 parts</span></p>
+          <div class="list">
+            <div class="ln"><span>3/4" ball valves, full port<span class="mk">Apollo</span><span class="warn f">2 could not be found since the count</span></span><span class="n">10</span></div>
+            <div class="ln"><span>3/4" pipe hangers<span class="mk">Oatey</span></span><span class="n">60</span></div>
+            <div class="ln zero f"><span class="nm">1" copper tees<span class="mk">Mueller</span></span><span class="n">None left</span></div>
+            <div class="ln zero f"><span class="nm">3/4" copper couplings<span class="mk">Mueller</span></span><span class="n">None left</span></div>
+          </div>
+          <p class="cnt">These are the app's counts as of right now.</p>
+        </div>
+        <div>
+          <p class="q">Not in this cage?</p>
+          <div class="find"><div class="in">A part, a maker or a stencil</div><div class="go">Find</div></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">A line shows None left when it was emptied since the cage's last count. The next count clears it. Parts with something on hand list first. The function's summary already carries both facts and the kernel drops them.</div>
+  </div>
+  <div class="col">
+    <div class="cap">The owner's one-line cage</div>
+    <div class="frame"><div class="screen tall">
+      <div class="sbar"></div><div class="fold"><span>first screen ends</span></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id t"><div class="tile">T1</div><div><div class="k">Cage</div><div class="c" style="font-size: 15px;">81C0-33D7</div></div></div>
+        <div class="ver t"><i></i><b>Counted 2 days ago</b><span>Sunday, Nov 8</span></div>
+        <div>
+          <p class="lab">What is in it <span class="t">1 part</span></p>
+          <div class="list"><div class="ln"><span>Test elbow</span><span class="n">8</span></div></div>
+          <p class="cnt">These are the app's counts as of right now.</p>
+        </div>
+        <div class="t">
+          <p class="q">Not in this cage?</p>
+          <div class="find"><div class="in">A part, a maker or a stencil</div><div class="go">Find</div></div>
+        </div>
+        <div class="f">
+          <p class="q">Something missing or wrong?</p>
+          <div class="press">Text the office about Cage T1</div>
+        </div>
+        <div class="t">
+          <p class="q">On Click's crew?</p>
+          <div class="press">Sign in to record a use or a count</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">The cage in his screenshot. With no place set the code takes that line. The whole page fits the first screen, and what filled the space is the three things a person does next.</div>
+  </div>
+  <div class="col">
+    <div class="cap">An empty cage</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="id"><div class="tile">D4</div><div><div class="k">Cage</div><div class="p">Roof · by the mechanical well</div><div class="c">A9E1-07B2</div></div></div>
+        <div class="ver never t"><i></i><b>Never counted</b></div>
+        <div>
+          <p class="lab">What is in it</p>
+          <div class="empty t">Nothing is recorded in this cage. If parts are in it, the crew signs in and adds them.</div>
+        </div>
+        <div>
+          <p class="q">Looking for a part?</p>
+          <div class="find"><div class="in">A part, a maker or a stencil</div><div class="go">Find</div></div>
+          <p class="small" style="margin-top: 6px;">Looks in the other cages and boxes on this site.</p>
+        </div>
+        <div>
+          <p class="q">On Click's crew?</p>
+          <div class="press">Sign in to add a part</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">Today the empty words end in a small Sign in link. Here the search stays, since an empty cage is when a person most needs the others. A cage counted down to nothing reads "Nothing on hand. Counted 2 days ago."</div>
+  </div>
+  <div class="col">
+    <div class="cap">A retired cage</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="st">
+          <h3><span class="f">Cage B3</span> was retired</h3>
+          <p>It left the job on Sunday, Nov 8. Its parts were moved or used before it went. This label can come off.</p>
+        </div>
+        <div class="press t">Scan another label</div>
+        <div class="f">
+          <div class="press">Text the office about Cage B3</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">Today this page offers Find a part on this site, and that press ends in an error. The after drops it: a retired label may be anywhere, so it should not open a site's search. Naming the cage needs the function to answer the stencil with "retired".</div>
+  </div>
+  <div class="col">
+    <div class="cap">A code no box carries</div>
+    <div class="frame"><div class="screen">
+      <div class="sbar"></div>
+      <div class="pad">
+        <p class="brand">Click Plumbing &amp; Electrical</p>
+        <div class="st">
+          <h3>4F2A-9C19 is not a box on any job</h3>
+          <p>Check the eight characters under the QR code, or scan the label again.</p>
+        </div>
+        <div class="press t">Type the code</div>
+        <div class="t">
+          <div class="press">Find a part on the site you last scanned</div>
+          <p class="small" style="margin-top: 6px;">Shows only when this phone scanned a box in the last day.</p>
+        </div>
+      </div>
+    </div></div>
+    <div class="under">Today the page stops at the sentence. The Scan a label page already takes a typed code and remembers the last site for a day, so both presses are links to what is built.</div>
+  </div>
+</div>
+
+<!-- ───────────── SOURCES ───────────── -->
+<h2><span class="num">4</span>Where each piece comes from</h2>
+<p class="lede">What box-read answers today is one object: the code, the stencil, the kind, the place, the where-note, the lines with their maker and count, the day of the last count and the newest photo. The page draws all of it except the code. Nothing else is being held back by the page.</p>
+<div class="scrollx"><table class="v">
+  <thead><tr><th>Piece in the after</th><th>Read from</th><th>Needs</th></tr></thead>
+  <tbody>
+    <tr><th>The stencil in a tile, the kind, the place</th><td><code>box.stencil</code>, <code>box.kind</code>, <code>box.place</code>, <code>box.where</code>. Drawn today as a heading and a grey line.</td><td class="st">Nothing</td></tr>
+    <tr><th>The code under the stencil</th><td><code>box.code</code>. Answered today and never drawn.</td><td class="st">Nothing</td></tr>
+    <tr><th>Counted 2 days ago · Due a count · Never counted</th><td><code>box.lastCountedOn</code> against the app's 14-day rule, <code>STALE_COUNT_DAYS</code>. Arithmetic on the phone.</td><td class="st">Nothing</td></tr>
+    <tr><th>The photo as a band, a tap to see it whole</th><td><code>box.photo</code>. Drawn today up to 320 tall.</td><td class="st">Nothing</td></tr>
+    <tr><th>6 parts, the maker under a part</th><td><code>box.lines</code>. The maker is drawn today when a line has one.</td><td class="st">Nothing</td></tr>
+    <tr><th>The search as a field on the page</th><td>The <code>?find=</code> read as built. The press becomes a field.</td><td class="st">Nothing</td></tr>
+    <tr><th>The sign-in's words, the owner sentence</th><td>Words only. The company's name is on the page today.</td><td class="st">Nothing</td></tr>
+    <tr><th>Empty cage, not-a-box and retired presses</th><td>The Scan a label page and the phone's memory of its last scan, both built.</td><td class="st">Nothing</td></tr>
+    <tr><th>None left on a line</th><td>The summary the function calls already answers every line at zero and the time it was last touched. The kernel's <code>boxPageLines</code> drops them.</td><td class="sf">Kernel + deploy</td></tr>
+    <tr><th>2 could not be found since the count</th><td>The summary's <code>cannot_find_since_count</code> on each line. Not passed on.</td><td class="sf">Kernel + deploy</td></tr>
+    <tr><th>Text the office, and the number to call</th><td>The company's own number, <code>PORTAL_COMPANY.phone</code>, which the bill page's function already answers. The press is a text link with the cage's name filled in.</td><td class="sf">Function + deploy</td></tr>
+    <tr><th>The stencil on a retired cage's page</th><td>The row the function already read. Today it answers the retired day alone.</td><td class="sf">Function + deploy</td></tr>
+  </tbody>
+</table></div>
+<div class="say">
+  <p class="rule"><b>No migration in any of it.</b> Every amber row is the kernel passing on what the summary already computes, or one more field in the answer, then <code style="font: 12px ui-monospace, Menlo, monospace;">supabase functions deploy box-read</code>.</p>
+  <p class="no"><b>Not offered, because it crosses the privacy line</b> the card and docs/ACCESS_CONTROL.md fix: who counted the cage last or touched a line, though the summary holds those names one field away. Who took the photo. The job's name, number or building. The customer. The address, a map or directions. A price or what the cage is worth. The history of who took what. The other cages listed before a search asks, which the card already decided.</p>
+  <p class="no"><b>Not offered, because it breaks the page's other rule,</b> that nothing signed out can write: a form on the page that reports a part missing. The text to the office does that job through a door that already exists.</p>
+</div>
+
+<!-- ───────────── SECOND LOOK ───────────── -->
+<h2><span class="num">?</span>Is this the best we can do?</h2>
+<div class="scrollx"><table class="v">
+  <thead><tr><th></th><th>What it would be</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><th>A · the same page, sharper</th><td>The label's look, the count as a verdict, the search on the page, a sign-in that says who it is for.</td><td>Yes, as the first half of B. It ships without touching the function.</td></tr>
+    <tr><th class="pick">B · A, plus None left, the missing mark and Text the office</th><td class="pick">The after in section 3.</td><td class="pick">The pick, in two small PRs. PR 1 is A, client only. PR 2 is the kernel and the function's four fields, then one deploy.</td></tr>
+    <tr><th>C · find first</th><td>The search above the list, typing narrows the cage.</td><td>No. Most cages hold under ten lines, which a person reads faster than they type. It puts a keyboard between the scan and the answer. And a page that opens on a search invites a stranger to go through the site.</td></tr>
+    <tr><th>Fill the empty half of the screen</th><td>A logo, a map, tips, the company's story.</td><td>No. A one-line cage is a short page. B fills it with the three next presses and nothing else.</td></tr>
+    <tr><th>A form to report a part missing, no sign-in</th><td>Pick a line, type a note, send.</td><td>No. It is the first write a signed-out page could make, and a label is a key anyone can photograph. The text to the office costs nothing new.</td></tr>
+    <tr><th>Open the app instead of signing in again</th><td>The scan hands off to the app on the home screen.</td><td>Cannot be built on an iPhone. Safari cannot open a home-screen app. Signing in once in Safari is the fix, and the press now says so.</td></tr>
+    <tr><th>Show who counted it last</th><td>"Counted 2 days ago by …"</td><td>No. A person's name is over the privacy line.</td></tr>
+    <tr><th>Follow the phone's dark mode</th><td>A dark page in a dark mechanical room.</td><td>Not now. Every signed-out page is pinned light by the house rule, and one page should not break it alone.</td></tr>
+  </tbody>
+</table></div>
+<div class="say">
+  <p class="gain"><b>Why B.</b> It answers the three questions in the order a person at the cage asks them. Is this the right cage: the tile and the code match the label in the hand. Is my part here and can I trust the number: the list, the verdict, None left. What do I do if not: search the site, text the office, or sign in once. A stranger still learns nothing the label on the cage does not already say.</p>
+  <p class="lose"><b>What B costs.</b> The office's number goes on a page anyone with a label can open. It is the number already on every bill. A line marked "could not be found" tells a stranger that parts go missing from this cage, which is the one piece of B worth the owner's second thought.</p>
+</div>
+
+<h2><span class="num">!</span>The owner's calls</h2>
+<ol class="calls">
+  <li><b>Build B, as two PRs with A first?</b> <span class="mine">My pick: yes. PR 1 changes no function and can ship the same day.</span></li>
+  <li><b>Which press is blue, Find or Sign in?</b> <span class="mine">My pick: Find. Everyone can use it, and a crew member signs in once and never sees this page again.</span></li>
+  <li><b>Do the sign-in's new words read right: "Sign in to record a use or a count"?</b> <span class="mine">My pick: yes, with "On Click's crew?" above it and the line that it is once per phone.</span></li>
+  <li><b>Which lines at zero show as None left?</b> <span class="mine">My pick: the ones emptied since the cage's last count. A count clears them, so an old cage does not grow a tail.</span></li>
+  <li><b>Does "could not be found" show to someone signed out?</b> <span class="mine">My pick: yes. It stops a helper hunting for valves the crew already looked for. Say no and the line just reads 10.</span></li>
+  <li><b>A way to say something is wrong with no sign-in: a text to the office, a form, or nothing?</b> <span class="mine">My pick: the text, to the number the bill page shows. No form.</span></li>
+  <li><b>The photo: a band 150 tall with a tap to see it whole, or as tall as today?</b> <span class="mine">My pick: the band. It buys one more line on the first screen, and at the cage the list is what the person cannot see.</span></li>
+  <li><b>A retired cage's page: drop the Find press, or let a retired label search its old site?</b> <span class="mine">My pick: drop it. It is broken today, and a retired label may be anywhere.</span></li>
+</ol>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

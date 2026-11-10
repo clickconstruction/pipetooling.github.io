@@ -12,10 +12,11 @@ permissions.
 Punch list #209, Materials on site: every cage and box of material on a big job
 site gets a printed label with a QR code, and the crew scans it to open that
 box's screen on their phone. The QR used to hold a 130-character link, a
-49-module code. The label now encodes `PRTS.CO/B/7D759246` (the host, the `/b/`
-route and the box's eight-character code, in capitals and with no scheme, so
-the QR packs it in alphanumeric mode): 18 characters, a version-1, 21-module
-code that prints bigger per module and scans from farther. prts.co ("parts") was
+49-module code. The label now encodes `HTTPS://PRTS.CO/B/7D759246` (the scheme,
+the host, the `/b/` route and the box's eight-character code, in capitals so
+the QR packs it in alphanumeric mode): 26 characters, a version-2, 25-module
+code that prints bigger per module and scans from farther. It carried no scheme
+until v2.6862; an iPhone's camera read that as words and searched the web. prts.co ("parts") was
 bought 2026-10-28 at Spaceship for this one job. Cloudflare answers every
 request to it with a 301 to the same path on clicktooling.com, lower-cased, so
 the app's `/b/:code` route receives `/b/7d759246`. The label's host constant is

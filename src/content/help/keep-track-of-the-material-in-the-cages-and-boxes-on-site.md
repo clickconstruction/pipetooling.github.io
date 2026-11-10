@@ -70,6 +70,8 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 
 A printed label carries a code. Point your camera at it and the box opens. Each label prints on its own sheet.
 
+A label printed before November 11, 2026 can open a web search on an iPhone. Print that label again and the new one opens the box. Until then, type its code with **Scan a label**.
+
 A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job.
 
 To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. The office can print a whole job's labels from Materials, with **Print labels** beside On site.

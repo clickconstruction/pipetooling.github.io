@@ -51,7 +51,7 @@ describe('ManifestPrintModal', () => {
     expect(within(a1).getAllByTestId('manifest-item').map((r) => r.textContent)).toEqual(['1/2" ball valve12', '3/4" copper 9050'])
     const qr = within(a1).getByTestId('manifest-qr')
     expect(qr.querySelector('svg')).toBeTruthy()
-    // v2.6796: the code reads for a person with its dash; the QR's value stays the bare address.
+    // v2.6796: the code reads for a person with its dash; the QR's value keeps the code with no dash.
     expect(qr.textContent).toBe('7D75-9246')
     expect(a1.textContent).toContain('go to prts.co/b/7D75-9246')
     expect(within(a1).getAllByTestId('manifest-blank-row')).toHaveLength(MANIFEST_MIN_ROWS - 2)
