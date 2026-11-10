@@ -33,6 +33,25 @@ export async function loadResearchPermits(city: string, sinceYmd: string, reside
   return (data ?? []) as ResearchPermitRow[]
 }
 
+/**
+ * The day a city's records start: the earliest day any pull that ran clean read back to. The
+ * counts on Permits say it (punch list #307), so nothing reads as a year on ten weeks of rows.
+ * Null when no pull is on record.
+ */
+export async function loadRecordsStart(city: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('permit_pulls' as never)
+    .select('since')
+    .eq('city', city)
+    .is('error', null)
+    .not('since', 'is', null)
+    .order('since', { ascending: true })
+    .limit(1)
+  if (error) failed(error, 'read where the records start')
+  const first = ((data ?? []) as Array<{ since: string | null }>)[0]
+  return first?.since ?? null
+}
+
 export type LatestPull = { ranAt: string | null; error: string | null }
 
 /** The newest run per feed, folded to one line: the newest time and the first error among them. */

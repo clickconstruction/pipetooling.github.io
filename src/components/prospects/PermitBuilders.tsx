@@ -10,6 +10,7 @@ import {
   BUILDER_KIND_WORDS,
   BUILDER_SHOWING_WORDS,
   builderChipCounts,
+  builderCountWords,
   builderName,
   buildersShowing,
   isBuilderKind,
@@ -20,13 +21,15 @@ import {
   type BuilderRow,
   type BuilderShowing,
 } from '../../lib/research/permitBuilders'
-import { BUILDER_PERMIT_DAYS, googleAskForCompany, sitePermitLines, type SitePermit } from '../../lib/research/permitPublic'
+import { googleAskForCompany, sitePermitLines, type SitePermit } from '../../lib/research/permitPublic'
+import { permitsColumnWords, reachWords, recordsReach, recordsStartLine, theirPermitsTitle, type RecordsReach } from '../../lib/research/permitReach'
+import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { loadBuilders, loadPermitsOfBuilder, markBuilder, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
 /**
  * Permits, Builders (punch list #302, PR 6): every name that pulled a commercial building permit
- * in the city in the last year, with our mark, how busy it is, how many of its permits have no
+ * in the city as far back as the records go, a year at most, with our mark, how busy it is, how many of its permits have no
  * plumber yet, our bids with it and the plumber it uses. The chip *3 or more permits and never
  * bid* is who to get to know. A row opens the builder: its mark with the reason, what kind of
  * company it is, and its permits.
@@ -55,6 +58,11 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   const [showing, setShowing] = useState<BuilderShowing>('all')
   const [search, setSearch] = useState('')
   const [openKey, setOpenKey] = useState<string | null>(null)
+  // How far back every count here can see (punch list #307): the day the records start, or a year.
+  const recordsStart = usePermitRecordsStart(city)
+  const reach = useMemo(() => recordsReach(recordsStart, todayYmd), [recordsStart, todayYmd])
+  const reachSays = reachWords(reach, todayYmd)
+  const startLine = recordsStartLine(city, reach, todayYmd)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -102,6 +110,8 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
         <input type="search" aria-label="Search builders" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a builder or a plumber" style={{ flex: '1 1 200px', minWidth: 0, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 11px', font: 'inherit', fontSize: '0.875rem', minHeight: 36, background: 'var(--surface)', color: 'var(--text)' }} />
       </div>
 
+      {startLine && all.length > 0 && <div style={{ ...muted, background: 'var(--bg-200)', color: 'var(--text-700)', borderRadius: 8, padding: '8px 12px' }}>{startLine}</div>}
+
       {list.length === 0 ? (
         all.length === 0 ? (
           <EmptyState main="No builders yet." tail="A builder shows here once the next pull has read who pulled each permit." compact />
@@ -124,9 +134,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
                 <strong style={{ fontSize: '0.9375rem' }}>{builderName(r)}</strong>
                 <MarkPill mark={r.mark} />
               </span>
-              <span style={{ fontSize: '0.8125rem' }}>
-                {r.permits} permit{r.permits === 1 ? '' : 's'} this year, {r.open} with no plumber yet
-              </span>
+              <span style={{ fontSize: '0.8125rem' }}>{builderCountWords(r, reachSays)}</span>
               <span style={muted}>
                 Our bids: {ourBidsWords(r)} · Plumber: {plumberUsedWords(r)}
               </span>
@@ -140,7 +148,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
               <tr>
                 <th style={th}>Builder</th>
                 <th style={th}>Mark</th>
-                <th style={{ ...th, textAlign: 'right' }}>Permits, 12 mo</th>
+                <th style={{ ...th, textAlign: 'right' }}>{permitsColumnWords(reach, todayYmd)}</th>
                 <th style={{ ...th, textAlign: 'right' }}>Without a plumber</th>
                 <th style={th}>Last permit</th>
                 <th style={th}>Our bids</th>
@@ -182,6 +190,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
           city={city}
           authUserId={authUserId}
           todayYmd={todayYmd}
+          reach={reach}
           onClose={() => setOpenKey(null)}
           onSaved={() => {
             void load()
@@ -194,7 +203,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
 }
 
 /** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. */
-function BuilderSheet({ row, city, authUserId, todayYmd, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; onClose: () => void; onSaved: () => void }) {
+function BuilderSheet({ row, city, authUserId, todayYmd, reach, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToastContext()
   const name = builderName(row)
   const [mark, setMark] = useState<BuilderMarkValue | 'none'>(row.mark ?? 'none')
@@ -263,7 +272,7 @@ function BuilderSheet({ row, city, authUserId, todayYmd, onClose, onSaved }: { r
               {name}
             </h2>
             <div style={muted}>
-              {row.permits} permit{row.permits === 1 ? '' : 's'} in the last year, {row.open} with no plumber yet · last filed {shortDay(row.last_permit_on)}
+              {builderCountWords(row, reachWords(reach, todayYmd))} · last filed {shortDay(row.last_permit_on)}
             </div>
             <div style={{ marginTop: 8 }}>
               <GoogleSearchPress ask={googleAskForCompany(name, city)} words="Google the builder" />
@@ -320,7 +329,7 @@ function BuilderSheet({ row, city, authUserId, todayYmd, onClose, onSaved }: { r
         </section>
 
         <section>
-          <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>Their permits, the last {BUILDER_PERMIT_DAYS} days</div>
+          <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>{theirPermitsTitle(reach, todayYmd)}</div>
           {permits == null && <div style={muted}>Reading their permits…</div>}
           {permits != null && lines.length === 0 && <div style={muted}>The feed holds none under this name’s key yet.</div>}
           {lines.length > 0 && (

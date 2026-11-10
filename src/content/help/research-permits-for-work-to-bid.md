@@ -63,7 +63,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows everyone who pulled a commercial permit in the last year. Each row says how many permits they pulled and how many have no plumber yet. It also shows our bids with them and the plumber they use.
+Press **Builders**. The list shows every name on a commercial permit we can see. A line over the list says the day the records start. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
@@ -175,7 +175,7 @@ Press **Copy** for the permit number, then **Open the city's permit search** and
 
 :::card Their other permits
 
-The other permits the same name pulled in the last year, newest first.
+The other permits we can see under the same name, newest first. The line over them says how far back the records go.
 
 :::
 

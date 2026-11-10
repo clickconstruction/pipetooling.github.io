@@ -2,11 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
-import type { ResearchPermitRow } from '../../lib/research/permitResearch'
+import { ymdPlusDays, type ResearchPermitRow } from '../../lib/research/permitResearch'
+import { reachDay } from '../../lib/research/permitReach'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const io = vi.hoisted(() => ({
   loadResearchPermits: vi.fn(),
   loadLatestPull: vi.fn(),
+  loadRecordsStart: vi.fn(),
   recordVerdict: vi.fn(),
   approachFromPermit: vi.fn(),
   pullPermitsNow: vi.fn(),
@@ -50,6 +53,10 @@ vi.mock('../map/PinsMapCanvas', () => ({
 }))
 
 import { ProspectsResearchTab } from './ProspectsResearchTab'
+
+/** The records in these tests start thirty days back, so every count says the day and not a year (punch list #307). */
+const RECORDS_START = ymdPlusDays(todayYmdInAppTz(), -30)
+const SINCE = `since ${reachDay(RECORDS_START, todayYmdInAppTz())}`
 
 /** The tab opens on Skim since punch list #302; the ledger is one press away. */
 async function openLedger() {
@@ -99,6 +106,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
     io.loadResearchPermits.mockReset().mockResolvedValue([row(), row({ id: 'p2', address: '300 HOPKINS ST', plumber: 'Lone Star Plumbing Co.', plumber_permit_on: '2026-11-04' })])
     io.loadLatestPull.mockReset().mockResolvedValue({ ranAt: new Date().toISOString(), error: null })
+    io.loadRecordsStart.mockReset().mockResolvedValue(RECORDS_START)
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
     io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
@@ -242,7 +250,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     await openLedger()
     expect(screen.getByRole('link', { name: 'Search Google for Ridgeway Builders' }).getAttribute('href')).toBe('https://www.google.com/search?q=%22Ridgeway%20Builders%22%20San%20Antonio%20TX')
     fireEvent.click(screen.getByRole('button', { name: 'Ridgeway Builders' }))
-    await waitFor(() => expect(screen.getByText('This name pulled 1 other permit in the last 365 days.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(`This name is on 1 other permit we can see ${SINCE}.`)).toBeTruthy())
+    expect(io.loadRecordsStart).toHaveBeenCalledWith('San Antonio')
     expect(io.loadBuilderPermits).toHaveBeenCalledWith('San Antonio', 'ridgeway', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
     expect(screen.getByText(/77 KILN ST/)).toBeTruthy()
     expect(screen.queryByText(/5 ASTER RDG/)).toBeNull()
@@ -350,7 +359,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByRole('button', { name: 'Kept 1' })).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
       expect(screen.getByText('Good')).toBeTruthy()
-      expect(screen.getByText('4 permits this year. 2 have no plumber yet.')).toBeTruthy()
+      await waitFor(() => expect(screen.getByText(`4 permits ${SINCE}. 2 have no plumber yet.`)).toBeTruthy())
       // The mark lifts the card and says so.
       expect(screen.getByText('No plumber yet · a builder marked Good · a builder we won with')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
@@ -544,8 +553,13 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByRole('button', { name: '3 or more permits and never bid 1' })).toBeTruthy()
       expect(screen.getByText('5 priced, 3 won')).toBeTruthy()
       expect(screen.getByText('Copperline Mechanical on 4')).toBeTruthy()
+      // Every count says how far back it can see: the line over the list, the column, the sheet.
+      await waitFor(() => expect(screen.getByText(`San Antonio's records here start ${SINCE.replace('since ', '')}. Every count is what we can see since then.`)).toBeTruthy())
+      expect(screen.getByRole('columnheader', { name: `Permits ${SINCE}` })).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Tall Pine Development' }))
       const sheet = await screen.findByRole('dialog')
+      expect(within(sheet).getByText(new RegExp(`^5 permits ${SINCE}, 1 with no plumber yet`))).toBeTruthy()
+      expect(within(sheet).getByText(`Their permits ${SINCE}`)).toBeTruthy()
       fireEvent.click(within(sheet).getByRole('button', { name: 'Avoid' }))
       fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
       expect(io.markBuilder).not.toHaveBeenCalled()
@@ -553,6 +567,17 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.change(within(sheet).getByLabelText('Why, in a line'), { target: { value: 'Slow pay on the Millrace job.' } })
       fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
       await waitFor(() => expect(io.markBuilder).toHaveBeenCalledWith('tallpinedevelopment', 'avoid', 'Slow pay on the Millrace job.', 'u1'))
+    })
+
+    it('claims no span when no pull is on record, and a year once the records reach one', async () => {
+      io.loadRecordsStart.mockResolvedValue(null)
+      io.loadResearchPermits.mockResolvedValue([row({ builder_permits: 4, builder_open: 2 })])
+      const first = renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('4 permits we can see. 2 have no plumber yet.')).toBeTruthy())
+      first.unmount()
+      io.loadRecordsStart.mockResolvedValue(ymdPlusDays(todayYmdInAppTz(), -800))
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText('4 permits in the last year. 2 have no plumber yet.')).toBeTruthy())
     })
 
     it('says Builders is not open yet before the database change is in, and shows the count once it answers', async () => {
