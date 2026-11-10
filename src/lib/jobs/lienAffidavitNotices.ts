@@ -21,6 +21,20 @@ export type LienAffidavitNoticeRow = {
   voided_at?: string | null
 }
 
+/**
+ * The noticed months that are this job's own: the ones inside its work span, the first day of work through the last.
+ * A notice mailed for several jobs at one property is one paper, and each job's filing row stores the paper's months
+ * (`combinedFilingPayloads`, `lienNoticeByHand`), so a ticket worked in August carries April through August. The
+ * affidavit is per job and swears the months payment is requested for, so a month the job's span does not reach is
+ * left off. A span end with no day known leaves that side open.
+ */
+export function lienAffidavitMonthsInSpan(months: ReadonlyArray<string>, workStartYmd: string | null | undefined, workEndYmd: string | null | undefined): string[] {
+  const monthOf = (ymd: string | null | undefined) => /^(\d{4}-\d{2})-\d{2}$/.exec(ymd ?? '')?.[1] ?? ''
+  const from = monthOf(workStartYmd)
+  const to = monthOf(workEndYmd)
+  return months.filter((m) => (!from || m >= from) && (!to || m <= to))
+}
+
 /** One notice sent to the owner: the day it went and how. */
 export type LienAffidavitOwnerSend = { method: string; sentOn: string }
 

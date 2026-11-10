@@ -141,7 +141,8 @@ The owner chose on 2026-11-10 to build before counsel answers. Each PR is small,
 wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's changes are one edit.
 
 1. **The short form** (M). Shipped as v2.6855 (`docs/recent-features/v2.6855.md`): the seven and
-   four paragraphs, the months and the notices from the job's recorded § 53.056 filings, the strip
+   four paragraphs, the months (the noticed ones inside the job's own work span) and the notices from the job's
+   recorded § 53.056 filings, the strip
    and the letterhead gone, the county left for the notary. The desk stored no affidavit words and
    redrew every paper from the job, so a paper now keeps the form it was drafted on: the 13
    affidavits approved on 2026-11-09 and 2026-11-10 stay on the earlier form, and **Redraw on the

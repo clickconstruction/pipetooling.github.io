@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitMethodWords, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
+import { lienAffidavitMethodWords, lienAffidavitMonthsInSpan, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
 
 const send = (recipient: string, sent_on: string, method = 'certified_mail') => ({ recipient, method, tracking: '9407', sent_on })
 const notice = (months: string[], sends: unknown, over: Record<string, unknown> = {}) => ({ kind: 'notice_53_056', months_covered: months, sends, voided_at: null, ...over })
@@ -13,6 +13,30 @@ describe('lienAffidavitNoticeMonths · the months the recorded notices name', ()
     expect(lienAffidavitNoticeMonths([notice(['2026-06'], [], { voided_at: '2026-09-02T17:00:00Z' }), notice(['2026-07'], [], { kind: 'retainage_53_057' }), notice(['2026-08'], [], { kind: 'affidavit' }), notice(['August'], [])])).toEqual([])
     expect(lienAffidavitNoticeMonths(null)).toEqual([])
     expect(lienAffidavitNoticeMonths([notice(null as never, [])])).toEqual([])
+  })
+})
+
+describe('lienAffidavitMonthsInSpan · the noticed months that are this job’s own', () => {
+  // One paper mailed for several jobs at a property stores its months on every job's row.
+  const paper = ['2026-04', '2026-06', '2026-07', '2026-08']
+
+  it('a ticket worked in August keeps August and leaves the paper’s other months off', () => {
+    expect(lienAffidavitMonthsInSpan(paper, '2026-08-01', '2026-08-31')).toEqual(['2026-08'])
+  })
+
+  it('a job worked April through August keeps every noticed month in that span', () => {
+    expect(lienAffidavitMonthsInSpan(paper, '2026-04-02', '2026-08-11')).toEqual(paper)
+    expect(lienAffidavitMonthsInSpan(paper, '2026-06-15', '2026-07-03')).toEqual(['2026-06', '2026-07'])
+  })
+
+  it('a span that reaches no noticed month names none, so the paper prints its blank', () => {
+    expect(lienAffidavitMonthsInSpan(paper, '2026-09-01', '2026-09-30')).toEqual([])
+  })
+
+  it('a side with no day known is left open', () => {
+    expect(lienAffidavitMonthsInSpan(paper, '', '2026-06-30')).toEqual(['2026-04', '2026-06'])
+    expect(lienAffidavitMonthsInSpan(paper, '2026-07-01', null)).toEqual(['2026-07', '2026-08'])
+    expect(lienAffidavitMonthsInSpan(paper, '', '')).toEqual(paper)
   })
 })
 

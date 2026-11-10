@@ -104,7 +104,7 @@ The affidavit swears what the job's sent bills still owe. That is the amount the
 
 The affidavit is short. The affidavit says what Texas Property Code § 53.054 lists and little else. That reading is the app's, not a lawyer's. On a job under a GC the affidavit has seven numbered statements. The first three give your company and its mailing address, the trade, the property, and the GC with its address. The last four give the owner with a mailing address, the months, the notices and the claim. On a job you contracted with the owner the affidavit has four statements. The four name no months and no notices.
 
-The months and the notices come from the record. The paper names each month a recorded § 53.056 notice names. The paper gives the day each notice went to the owner and how the notice was sent. Read both lines before you print. A blank there means no notice to the owner is recorded on the job. Record it on the **§ 53.056 notice** tab, and the paper follows.
+The months and the notices come from the record. The paper names each month a recorded § 53.056 notice names. A month outside the job's own dates of work is left off. The paper gives the day each notice went to the owner and how the notice was sent. Read both lines before you print. A blank there means no notice to the owner is recorded on the job. Record it on the **§ 53.056 notice** tab, and the paper follows.
 
 Nothing prints above the title. The county under **STATE OF TEXAS** is blank. The notary writes in the county where you sign. The property's county is in the second statement.
 

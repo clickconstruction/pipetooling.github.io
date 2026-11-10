@@ -32,7 +32,7 @@ describe('affidavitStopPages · a stop’s window prints the pane’s affidavit'
     ({
       affidavits: { entries: [{ jobId: 'j1', isSub: over.isSub ?? true, gcCustomerId: over.gcCustomerId === undefined ? 'gc1' : over.gcCustomerId, openBalance: 2000, lastMonth: '2026-08', gates: [{ key: 'notice', ok: true, label: '' }], item: over.item ?? null }] },
       filingsByJob: { j1: [{ kind: 'notice_53_056', months_covered: ['2026-07', '2026-08'], voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-09-14' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-09-14' }] }] },
-      jobsById: { j1: { id: 'j1', hcp_number: '700', click_number: null, job_name: 'Sample Remodel', job_address: '12 Sample Rd, San Antonio, TX 78209', customer_name: 'Pat Owner', revenue: 5000, payments_made: 0, customer_address_id: null, master_user_id: null, created_at: '2026-08-18T05:40:28Z' } },
+      jobsById: { j1: { id: 'j1', hcp_number: '700', click_number: null, job_name: 'Sample Remodel', job_address: '12 Sample Rd, San Antonio, TX 78209', customer_name: 'Pat Owner', revenue: 5000, payments_made: 0, customer_address_id: null, master_user_id: null, created_at: '2026-07-01T05:40:28Z', first_work_date: '2026-07-06', last_work_date: '2026-08-20' } },
       gcsById: { gc1: { id: 'gc1', name: 'Harborline Builders', address: '9 Yard St, Devine TX 78016' } },
       addressesById: {},
       ownerByJob: {},
