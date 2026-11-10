@@ -12,8 +12,10 @@
  * bid to look at, and "Only my bids" keeps it for the same reason.
  */
 
-/** A project name that starts with the word "ZZ", whatever its case: "ZZ Shadow …", "zz test". Not "ZZZ Corp". */
-export const isZzBidName = (projectName: string | null | undefined): boolean => /^\s*ZZ\b/i.test(projectName ?? '')
+import { isZzBidName } from '../../../supabase/functions/_shared/zzTestJob'
+
+/** A project name that starts with the word "ZZ", whatever its case: "ZZ Shadow …", "zz test". Not "ZZZ Corp". The rule lives beside the jobs' in `_shared/zzTestJob.ts` since v2.6823, so the Bridge reads it too. */
+export { isZzBidName }
 
 export function splitRobotBids<T extends { id: string; project_name?: string | null }>(
   bids: ReadonlyArray<T>,

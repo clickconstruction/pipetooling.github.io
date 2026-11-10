@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxAddress, boxAddressWords, boxCode, boxCodeWords, boxUrl, dashedCode, labelRows, normalizeBoxCode } from './labels'
+import { boxAddress, boxAddressWords, boxClipboardWords, boxCode, boxCodeWords, boxUrl, copiedLabelWords, dashedCode, labelRows, normalizeBoxCode } from './labels'
 
 const ID = '7d759246-8476-4a37-884f-ed1562d5663f'
 
@@ -32,6 +32,12 @@ describe('the box code', () => {
     // the QR keeps the bare address; the dashed one would still fit a 21-module code at level M (20 characters)
     expect(boxUrl(ID)).not.toContain('-')
     expect(boxAddressWords(ID).toUpperCase().length).toBeLessThanOrEqual(20)
+  })
+
+  it('Copy the label code puts the dashed address in capitals on the clipboard and says so (v2.6800)', () => {
+    expect(boxClipboardWords(ID)).toBe('PRTS.CO/B/7D75-9246')
+    expect(copiedLabelWords(ID)).toBe('Copied PRTS.CO/B/7D75-9246. Paste it into the Brother app as a QR code.')
+    expect(normalizeBoxCode(boxClipboardWords(ID).split('/').pop() ?? '')).toBe(boxCode(ID))
   })
 })
 

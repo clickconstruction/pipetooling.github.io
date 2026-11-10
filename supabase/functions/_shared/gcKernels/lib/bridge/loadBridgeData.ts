@@ -11,7 +11,7 @@ import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } f
 import { invoiceBilledYmd, type BilledDayRow } from './billedDay.ts'
 import { upcomingFridays } from './cashForecast.ts'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay.ts'
-import { bridgeCollections, bridgeReadyToBill, withoutZzBridgeMoney, withoutZzFieldSessions, type BridgeZzTestJobIds } from './zzTestJobs.ts'
+import { bridgeCollections, bridgeReadyToBill, withoutZzBridgeBids, withoutZzBridgeMoney, withoutZzFieldSessions, type BridgeZzTestJobIds } from './zzTestJobs.ts'
 
 /**
  * Bridge data loader (v2.2677) — every number the Chart Table shows, from the
@@ -35,7 +35,7 @@ import { bridgeCollections, bridgeReadyToBill, withoutZzBridgeMoney, withoutZzFi
  *   date. Target: app_settings `bridge_target_usd_v1`.
  * - ZZ test jobs (v2.6807): the sessions clocked on one, its bills and payments, and its row in the Ready-to-bill
  *   and Collections reads stay out for everyone but a dev who shows them, as on the Bill pile. The caller passes
- *   their ids, or null to keep them (`zzTestJobs.ts`).
+ *   their ids, or null to keep them (`zzTestJobs.ts`). Since v2.6823 a ZZ bid is no bid due either (`isZzBidName`).
  */
 
 export const BRIDGE_TARGET_SETTING_KEY = 'bridge_target_usd_v1'
@@ -465,12 +465,12 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
       async () =>
         db
           .from('bids')
-          .select('id, bid_number, address, bid_value, bid_due_date, estimated_job_start_date')
+          .select('id, project_name, bid_number, address, bid_value, bid_due_date, estimated_job_start_date')
           .gte('bid_due_date', todayYmd)
           .lte('bid_due_date', ymdAddDays(todayYmd, 14))
           .is('bid_date_sent', null),
       'bridge bids due',
-    ) as Promise<Array<{ id: string; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
+    ) as Promise<Array<{ id: string; project_name: string | null; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
     withSupabaseRetry(
       async () => db.from('supply_house_invoices').select('amount, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
       'bridge supply due',
@@ -553,7 +553,7 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
     levers: {
       rtb: bridgeReadyToBill(rtbRows ?? [], zzTestJobIds),
       collections: bridgeCollections(collRows ?? [], zzTestJobIds),
-      bidsDue: (bidRows ?? [])
+      bidsDue: withoutZzBridgeBids(bidRows ?? [], zzTestJobIds)
         .filter((b) => (b.bid_value ?? 0) > 0)
         .map((b) => ({
           id: b.id,

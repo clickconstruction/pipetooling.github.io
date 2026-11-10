@@ -30,6 +30,8 @@ import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEX
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { boxAddressWords, boxCodeWords, boxUrl, labelRows } from '../../lib/materials/labels'
+import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/materials/labelsCsv'
+import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
@@ -747,6 +749,8 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{one ? 'One sheet: the stencil, the code, and the lines to write on.' : `${shown.length} ${shown.length === 1 ? 'label' : 'labels'}, one a sheet. The camera opens the box from the code.`}</span>
           </div>
           <button type="button" style={{ ...btnPrimary, flex: '0 0 auto' }} onClick={() => window.print()}>{shown.length === 1 ? 'Print 1 label' : `Print ${shown.length} labels`}</button>
+          {/* v2.6800 (punch list #294): one row per box for Brother's P-touch Editor, which merges a CSV into a tape label template. */}
+          {one ? null : <button type="button" style={{ ...btn, flex: '0 0 auto' }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={() => { const rows = labelsCsvRows(containers, places); downloadFile(new File([labelsCsvText(rows)], labelsCsvFileName(jl, todayYmdInAppTz()), { type: 'text/csv' })) }}>Export the labels as a CSV</button>}
           <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
         </div>
         <div className="on-site-labels-list" style={{ display: 'grid', gap: '0.9rem' }}>
