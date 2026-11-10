@@ -5,13 +5,37 @@ roles: dev, master_technician
 keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the top line. The big number is this week's field contribution. The two lights under it say whether net position is up and whether cash clears your floor.
-2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor. Cash on hand comes from the bank.
-3. Read the Truth check verdict: *steer by the profit rate*, *bill it to see it*, or *not a number to steer by yet*.
+1. Read the three numbers at the top. They are what the field made last week, cash's low point, and the slowest step.
+2. Read the card under them. It names the slowest step and the moves for this week.
+3. Press {{button:blue|Make Build this week's call}} to record it. The button names the step the page reads today.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
+
+## The first screen
+
+The page opens on three numbers.
+
+- **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
+- **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
+- **Slowest step** is the stage the page reads as the weakest link.
+
+Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
+
+- Press a name to change who does the move.
+- Press {{button:outline|take off}} to drop a move from the call. Press {{button:outline|put back}} to return it.
+- Press the blue button to record the call. The button waits until one move is on the call.
+
+After you record it, the card shows each move against today. A move reads *done*, *part* or *not yet*. A move the app cannot measure reads *yours*.
+
+From Friday the card asks whether the step moved. Press {{button:green|It moved}} or {{button:outline|It did not}}. Your answer is the one the page keeps.
+
+When an earlier call was never answered, **The last call** asks for its answer beside this week's card.
+
+Press {{button:outline|The flow ↓}}, {{button:outline|Money ↓}} or {{button:outline|People ↓}} to jump to that part of the page. The amber count beside them jumps to [Fix the reading](#fix-the-reading).
+
+To call a different step, press {{button:outline|Pick another step ›}} and press a stage card. The card at the top then proposes that step.
 
 ## A card behind every bar
 
@@ -82,6 +106,8 @@ Every card ends in a badge. Press any badge and a list opens. The list puts the 
 A card under the desk lists the four fixes people reach for first. Hire another plumber. Push for more bids. Add a field day. Cut overhead. Press one and the dial and the cards above show what it would do. One line under the press says what changed and whether the link moved. Cut overhead moves nothing above. That is the point. Press {{button:outline|back to today}} to put things back. The {{button:outline|?}} in the corner lists the other links' levers.
 
 ## The week's call
+
+You can record the call on [the first screen](#the-first-screen). The desk under the cards records it too, with every move the stage has.
 
 Under the cards sits the desk of the pressed stage. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Below that are the moves the week would make. Tick the ones you mean and type an owner beside each. Press {{button:green|This is the link this week}} to record the call. The call keeps today's numbers, so Friday can read them again.
 
