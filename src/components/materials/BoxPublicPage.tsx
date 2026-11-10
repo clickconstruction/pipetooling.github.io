@@ -10,14 +10,18 @@
  * own 14-day rule; the photo is a band a tap opens whole; the search is a field on the page and holds the one blue press;
  * the sign-in says who it is for and that it is once per phone. A retired label no longer offers the search, which the
  * function refuses for it, and a code no box carries offers the typed code and the site this phone last scanned.
+ *
+ * v2.6874, the second half: a line emptied since the box's last count stays as *None left*, a line the crew pressed Can't
+ * find on says so, and **Text the office** opens the phone's own Messages to the letterhead's number with the box's name
+ * filled in. That press is a link: nothing signed out writes to the app. A retired label names its box.
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { POST_LOGIN_REDIRECT_KEY } from '../../lib/iosPwa'
 import { publicFunctionHeaders } from '../../lib/customerSampleMode'
-import { BOX_PAGE_FIND_MAX, BOX_SCAN_PATH, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageFindPath, boxPageFindView, boxPageFoundWords, boxPageNoun, boxPagePartsWords, boxPagePath, boxPageView, type BoxPageFindView, type BoxPageView } from '../../lib/materials/boxPage'
+import { BOX_PAGE_FIND_MAX, BOX_SCAN_PATH, boxPageCallHref, boxPageCannotFindWords, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageFindPath, boxPageFindView, boxPageFoundWords, boxPageNoun, boxPagePartsWords, boxPagePath, boxPageTextHref, boxPageTextWords, boxPageView, type BoxPageFindView, type BoxPageView } from '../../lib/materials/boxPage'
 import { readLastBox, rememberLastBox } from '../../lib/materials/boxPageMemory'
-import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PORTAL_FONT } from '../../lib/portal/portalTheme'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { portalFailure } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from '../portal/PortalFailureNote'
@@ -118,6 +122,12 @@ export function BoxPublicPage({ code }: { code: string }) {
   const noun = payload ? boxPageNoun(payload.box.kind, false) : 'box'
   const verdict = payload ? boxPageCountVerdict(payload.box.lastCountedOn, todayYmdInAppTz()) : null
   const placeWords = payload ? [payload.box.place, payload.box.where].filter(Boolean).join(' · ') : ''
+  // What is on hand first, then what ran out since the last count.
+  const rows = payload ? [...payload.box.lines.map((l) => ({ l, gone: false })), ...payload.box.gone.map((l) => ({ l, gone: true }))] : []
+  const officePhone = payload?.office?.phone ?? null
+  const textHref = payload ? boxPageTextHref(officePhone, boxPageTextWords(payload.box.kind, payload.box.stencil, payload.box.code)) : null
+  const retiredName = view.kind === 'retired' && view.stencil ? `${boxPageNoun(view.boxKind ?? 'box')} ${view.stencil}` : null
+  const retiredTextHref = view.kind === 'retired' && view.stencil ? boxPageTextHref(view.phone, boxPageTextWords(view.boxKind ?? 'box', view.stencil, code)) : null
 
   return (
     <div data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: PORTAL_FONT, padding: '1.25rem 1rem 3rem', display: 'grid', justifyItems: 'center', alignContent: 'start' }}>
@@ -227,7 +237,7 @@ export function BoxPublicPage({ code }: { code: string }) {
                 <span>What is in it</span>
                 {payload.box.lines.length > 0 ? <span style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 600 }} data-testid="box-page-parts">{boxPagePartsWords(payload.box.lines.length)}</span> : null}
               </h2>
-              {payload.box.lines.length === 0 ? (
+              {rows.length === 0 ? (
                 <div style={{ border: `1px dashed ${HAIR}`, borderRadius: 12 }} data-testid="box-page-empty">
                   <EmptyState main={payload.box.lastCountedOn ? `Nothing on hand in this ${noun}.` : `Nothing is recorded in this ${noun} yet.`} next={{ label: 'Sign in', onPress: signIn }} tail="to add a part." />
                 </div>
@@ -235,13 +245,18 @@ export function BoxPublicPage({ code }: { code: string }) {
                 <>
                   <table style={{ width: '100%', borderCollapse: 'collapse', background: CARD, border: `1px solid ${HAIR}`, borderRadius: 12, overflow: 'hidden' }} data-testid="box-page-lines">
                     <tbody>
-                      {payload.box.lines.map((l, i) => (
-                        <tr key={`${l.partName}|${l.manufacturer ?? ''}`}>
-                          <td style={{ padding: '10px 12px', borderTop: i === 0 ? 0 : `1px solid ${HAIR}`, fontSize: 16 }}>
+                      {rows.map(({ l, gone }, i) => (
+                        <tr key={`${gone ? 'gone' : 'here'}|${l.partName}|${l.manufacturer ?? ''}`} style={gone ? { background: NOTE_BAND } : undefined} data-testid={gone ? 'box-page-gone' : 'box-page-line'}>
+                          <td style={{ padding: '10px 12px', borderTop: i === 0 ? 0 : `1px solid ${HAIR}`, fontSize: 16, color: gone ? MUTED : INK }}>
                             {l.partName}
                             {l.manufacturer ? <span style={{ display: 'block', color: MUTED, fontSize: 13 }}>{l.manufacturer}</span> : null}
+                            {l.cannotFind ? <span style={{ display: 'block', marginTop: 3, color: DUE_WORDS_AMBER, fontSize: 13, fontWeight: 600 }} data-testid="box-page-cannot-find">{boxPageCannotFindWords(l.cannotFind)}</span> : null}
                           </td>
-                          <td style={{ padding: '10px 12px', borderTop: i === 0 ? 0 : `1px solid ${HAIR}`, textAlign: 'right', fontWeight: 700, fontSize: 18, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', width: '1%' }}>{l.onHand}</td>
+                          {gone ? (
+                            <td style={{ padding: '10px 12px', borderTop: i === 0 ? 0 : `1px solid ${HAIR}`, textAlign: 'right', fontWeight: 700, fontSize: 14, color: MUTED, whiteSpace: 'nowrap', width: '1%' }}>None left</td>
+                          ) : (
+                            <td style={{ padding: '10px 12px', borderTop: i === 0 ? 0 : `1px solid ${HAIR}`, textAlign: 'right', fontWeight: 700, fontSize: 18, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', width: '1%' }}>{l.onHand}</td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -252,13 +267,30 @@ export function BoxPublicPage({ code }: { code: string }) {
             </section>
             {/* The search within reach: "it is not in this one" is the next thought, and everyone can use it. */}
             <section>
-              <h2 style={ask}>{payload.box.lines.length > 0 ? `Not in this ${noun}?` : 'Looking for a part?'}</h2>
+              <h2 style={ask}>{rows.length > 0 ? `Not in this ${noun}?` : 'Looking for a part?'}</h2>
               <form onSubmit={openFind} style={{ display: 'flex', gap: 8 }} data-testid="box-page-find-form">
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="A part, a maker or a stencil" aria-label="What to find on this site" inputMode="search" style={field} data-testid="box-page-find-first" />
                 <button type="submit" style={{ ...press, width: 'auto', minWidth: 72, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} data-testid="box-page-find-open-press">Find</button>
               </form>
               <p style={{ ...small, marginTop: 6 }}>Looks in every cage and box on this site.</p>
             </section>
+            {/* A link, never a write: the phone's own Messages opens with the box's name filled in. */}
+            {textHref ? (
+              <section data-testid="box-page-office">
+                <h2 style={ask}>Something missing or wrong?</h2>
+                <a href={textHref} style={{ ...press, textDecoration: 'none' }} data-testid="box-page-text-office">
+                  Text the office about {boxPageNoun(payload.box.kind)} {payload.box.stencil}
+                </a>
+                <p style={{ ...small, marginTop: 6 }}>
+                  Opens a text with this {noun}'s name in it.
+                  {boxPageCallHref(officePhone) ? (
+                    <>
+                      {' '}Or call <a href={boxPageCallHref(officePhone) ?? undefined} style={{ color: 'var(--text-link)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="box-page-call-office">{officePhone}</a>.
+                    </>
+                  ) : null}
+                </p>
+              </section>
+            ) : null}
             <section>
               <h2 style={ask}>On Click's crew?</h2>
               <button type="button" onClick={signIn} style={press} data-testid="box-page-sign-in">
@@ -287,12 +319,17 @@ export function BoxPublicPage({ code }: { code: string }) {
 
         {view.kind === 'retired' ? (
           <section data-testid="box-page-retired">
-            <h1 style={h1}>This label is from a box that was retired</h1>
+            <h1 style={h1}>{retiredName ? `${retiredName} was retired` : 'This label is from a box that was retired'}</h1>
             <p style={para}>{view.retiredOn ? `It left the job on ${boxPageDayWords(view.retiredOn)}. ` : ''}Its parts were moved or used before it went. This label can come off.</p>
             {/* No search from here (v2.6868): the function answers retired before it reaches the search, and a retired label may be anywhere. */}
             <Link to={BOX_SCAN_PATH} style={{ ...press, marginTop: 14, textDecoration: 'none' }} data-testid="box-page-scan-another">
               Scan another label
             </Link>
+            {retiredTextHref && retiredName ? (
+              <a href={retiredTextHref} style={{ ...press, marginTop: 10, textDecoration: 'none' }} data-testid="box-page-text-office">
+                Text the office about {retiredName}
+              </a>
+            ) : null}
           </section>
         ) : null}
 
