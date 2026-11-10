@@ -175,9 +175,10 @@ describe("a name's other permits", () => {
 })
 
 describe('the public doors', () => {
-  it("knows the county clerk's deed search for San Antonio and nowhere else yet", () => {
+  it("knows the county clerk's deed search for the cities the pull reads, and no other", () => {
     expect(deedsDoor('San Antonio')).toBe('https://bexar.tx.publicsearch.us/')
-    expect(deedsDoor('Austin')).toBeNull()
+    expect(deedsDoor('Austin')).toBe('https://www.tccsearch.org/')
+    expect(deedsDoor('Laredo')).toBeNull()
     expect(deedsDoor(null)).toBeNull()
   })
 })

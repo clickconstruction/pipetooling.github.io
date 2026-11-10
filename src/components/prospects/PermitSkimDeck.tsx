@@ -24,6 +24,7 @@ import {
   type SkimAnswer,
   type SkimCard,
 } from '../../lib/research/permitSkim'
+import { noParcelWords, scoresMiles } from '../../lib/research/permitCityDoors'
 import { cardHistory, earlierWords, type HistoryEvent } from '../../lib/research/permitHistory'
 import { loadContactHistory, loadPermitHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
 import { passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from '../../lib/research/permitSecondLook'
@@ -148,9 +149,9 @@ export function PermitSkimDeck({
   }, [waitingKeys])
 
   const deck = useMemo(() => {
-    const ctx = { todayYmd, office, history, ...skimBuilderContext(rows) }
+    const ctx = { todayYmd, office, history, scoreMiles: scoresMiles(city, office), ...skimBuilderContext(rows) }
     return (mode === 'second' ? secondLookDeck(rows, ctx, floor, authUserId) : skimDeck(rows, ctx, floor)).filter((c) => !done.has(c.row.id))
-  }, [rows, todayYmd, office, history, floor, done, mode, authUserId])
+  }, [rows, todayYmd, office, history, floor, done, mode, authUserId, city])
   const top = deck[0] ?? null
   // A kept permit the tab has not yet been told about is still held here, so the press counts it.
   const keptCount = useMemo(() => placeCounts(rows, floor).kept + (pending?.answer === 'keep' ? 1 : 0), [rows, floor, pending])
@@ -502,7 +503,7 @@ export function PermitSkimDeck({
               {parcel?.state === 'done' && parcel.facts?.owner ? parcel.facts.owner : 'The permit and the county’s record'}
             </button>
             <span style={{ ...muted, display: 'block', marginTop: 2 }}>
-              {!parcel || parcel.state === 'loading' ? 'Asking the county…' : parcel.facts ? lotWords(parcel.facts) : 'The county has no parcel under this street address.'}
+              {!parcel || parcel.state === 'loading' ? 'Asking the county…' : parcel.facts ? lotWords(parcel.facts) : noParcelWords(city, true)}
             </span>
           </span>
           <span />

@@ -11,7 +11,7 @@ summary: >
   get two lenses: a building permit with no plumbing permit yet is work we can still bid, and a
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
-next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 (Austin's feed, the suburbs' weekly file, the digest) when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
+next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 asked 2026-11-10 for Austin, New Braunfels, San Marcos and Seguin: Austin is v2.6859 (the city list, the readers, the per-city doors); the three suburbs each publish a live map layer of permits (found and read that day), so they are readers too and the weekly file is not needed; the digest when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
 size: L as a train of four (M · S · M · S); shipped: revisions 1 to 3 (M · S · S); left: revision 4 (S)
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
@@ -157,7 +157,22 @@ Prospects, open to every estimator; the guide `research-permits-for-work-to-bid`
    Who wins what strip on the taken lens. The pin's size by declared value and the Inspections
    cities as the opening frame were dropped: the office ring and Fit all frame it, and a
    value-sized pin hid the small remodels that are most of the list.
-4. **Revision 4 (S): more cities, the file, and the digest.** Austin's Socrata feed (issued
+4. **Revision 4, as built (2026-11-10): the owner asked for Austin, New Braunfels, San Marcos and Seguin.**
+   All four publish permits a program can read, tested live that day:
+   - **Austin** (v2.6859): the city's Socrata dataset of issued permits, with the contractor, the
+     applicant, a valuation, square feet and plumbing permits. Issued only, so a permit shows later
+     in its life than San Antonio's applications do.
+   - **New Braunfels**: a layer on the city's open-data map service with applicant, owner and
+     contractor names, submit and issue days, and plumbing permits; no valuation.
+   - **San Marcos**: the city's building-permits map layer with type, land use, applied and issued
+     days, square feet and a project name; no names and no valuation.
+   - **Seguin**: the city's permits map layer with one name per permit, apply and issue days and a
+     link to the city's own page for the permit; no valuation.
+   The three map layers are one more door (a reader over an ArcGIS feature layer) and three field
+   maps. The dropped-file import below is no longer needed for these cities.
+   What is not built: the county parcel record outside Bexar (cards open the appraisal district),
+   the Needs you line counting cities other than San Antonio, and the city box on a phone's Skim.
+   **The earlier plan for this revision:** more cities, the file, and the digest. Austin's Socrata feed (issued
    permits with contractor and applicant columns, a point on every row) as a second city; the
    suburbs' portals as a weekly export dropped on an **Add a permit file** press that reads the
    file's columns the way the bank statement import does; a weekly line in the estimators'

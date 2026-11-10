@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { contactParts, SAN_ANTONIO_PERMIT_PORTAL, type CompanyFacts, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
+import { contactParts, type CompanyFacts, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
+import { askingCountyWords, noParcelWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
 import { shortDay, shortMoney, workWords, type Hint, type LeadFacts, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { loadBuilderPermits, lookupCompany, lookupParcel, type LookupAnswer } from '../../lib/research/permitResearchIo'
 import { BUILDER_PERMIT_DAYS, TEXAS_FRANCHISE_SEARCH, builderPermitLines, builderSearchWord, builderWords, googleAskForCompany, googleAsksForContact, type SitePermit } from '../../lib/research/permitPublic'
@@ -195,9 +196,9 @@ export function WhoPulledItSheet({
 
         <section>
           <div style={sectionTitle}>The property, at the county</div>
-          {parcel.state === 'loading' && <div style={muted}>Asking Bexar County…</div>}
+          {parcel.state === 'loading' && <div style={muted}>{askingCountyWords(row.city)}</div>}
           {parcel.state === 'failed' && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{parcel.message}</div>}
-          {parcel.state === 'done' && !parcelFacts && <div style={muted}>{parcel.answer.error ? `Could not ask: ${parcel.answer.error}` : 'The county’s parcel layer has no row for this street address.'}</div>}
+          {parcel.state === 'done' && !parcelFacts && <div style={muted}>{parcel.answer.error ? `Could not ask: ${parcel.answer.error}` : noParcelWords(row.city)}</div>}
           {parcelFacts && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={line}>
@@ -282,9 +283,11 @@ export function WhoPulledItSheet({
             <button type="button" onClick={() => void copyNumber()} style={smallPress}>
               {copied ? 'Copied' : `Copy ${row.permit_number}`}
             </button>
-            <a href={SAN_ANTONIO_PERMIT_PORTAL} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
-              Open the city’s permit search
-            </a>
+            {permitSearchDoor(row.city) && (
+              <a href={permitSearchDoor(row.city) ?? undefined} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                Open the city’s permit search
+              </a>
+            )}
           </div>
         </section>
 

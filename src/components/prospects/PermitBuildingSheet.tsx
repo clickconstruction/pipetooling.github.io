@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { SAN_ANTONIO_PERMIT_PORTAL, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
+import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
+import { appraisalDoor, askingCountyWords, cityReadsParcels, noParcelWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { deedsDoor, feedRowFields, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
 import { historyWords } from '../../lib/research/permitHistory'
@@ -112,6 +113,9 @@ export function PermitBuildingSheet({
   const plumber = plumberWords(row)
   const maps = mapsDoor(row)
   const deeds = deedsDoor(row.city)
+  const cityPermitSearch = permitSearchDoor(row.city)
+  // Offered only where the county's own record is not read: Bexar's answer carries its own link.
+  const appraisal = cityReadsParcels(row.city) ? null : appraisalDoor(row.city)
   const parcelFacts = parcel.state === 'done' ? parcel.value.facts : null
   const fields = useMemo(() => (feed.state === 'done' ? feedRowFields(feed.value?.raw) : []), [feed])
   const lines = useMemo(() => (site.state === 'done' ? sitePermitLines(site.value, row.id) : []), [site, row.id])
@@ -222,9 +226,16 @@ export function PermitBuildingSheet({
 
         <section>
           <div style={sectionTitle}>The property, at the county</div>
-          {parcel.state === 'loading' && <div style={muted}>Asking Bexar County…</div>}
+          {parcel.state === 'loading' && <div style={muted}>{askingCountyWords(row.city)}</div>}
           {parcel.state === 'failed' && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{parcel.message}</div>}
-          {parcel.state === 'done' && !parcelFacts && <div style={muted}>{parcel.value.error ? `Could not ask: ${parcel.value.error}` : 'The county’s parcel layer has no row for this street address.'}</div>}
+          {parcel.state === 'done' && !parcelFacts && <div style={muted}>{parcel.value.error ? `Could not ask: ${parcel.value.error}` : noParcelWords(row.city)}</div>}
+          {parcel.state === 'done' && !parcelFacts && !parcel.value.error && appraisal && (
+            <div style={{ marginTop: 6 }}>
+              <a href={appraisal} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                Open the appraisal district
+              </a>
+            </div>
+          )}
           {parcelFacts && (
             <>
               <Facts rows={countyFacts} />
@@ -292,9 +303,11 @@ export function PermitBuildingSheet({
                 <button type="button" onClick={() => void copyNumber()} style={smallPress}>
                   {copied ? 'Copied' : `Copy ${row.permit_number}`}
                 </button>
-                <a href={SAN_ANTONIO_PERMIT_PORTAL} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
-                  Open the city’s permit search
-                </a>
+                {cityPermitSearch && (
+                  <a href={cityPermitSearch} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                    Open the city’s permit search
+                  </a>
+                )}
               </div>
             </div>
             {deeds && (

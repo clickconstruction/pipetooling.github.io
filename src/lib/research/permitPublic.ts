@@ -4,6 +4,7 @@
  * can read, the other permits on one address, the other permits one name pulled, and the public
  * doors a county and the state keep. No React, no Supabase.
  */
+import { cityDeedsDoor } from './permitCityDoors'
 import { builderKeyOf, contactParts } from '../../../supabase/functions/_shared/permitLookup'
 
 /** A Google search opened in a new tab: what is asked, and the words a screen reader and a hover say. */
@@ -234,5 +235,5 @@ export const TEXAS_FRANCHISE_SEARCH = 'https://comptroller.texas.gov/taxes/franc
 
 /** The county clerk's deed search for a city the county serves, or null where no door is known. */
 export function deedsDoor(city: string | null | undefined): string | null {
-  return clean(city)?.toLowerCase() === 'san antonio' ? BEXAR_CLERK_RECORDS : null
+  return cityDeedsDoor(city)
 }

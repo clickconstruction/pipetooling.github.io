@@ -21,6 +21,8 @@ export type SkimContext = {
   marks?: ReadonlyMap<string, BuilderMark>
   /** Rows whose name only files permits for others. */
   filesForOthers?: ReadonlySet<string>
+  /** False for a city the whole of which is a long drive: the miles stay on the card and off the score (`scoresMiles`). */
+  scoreMiles?: boolean
 }
 
 /** Driven miles from the office, estimated from the straight line, whole miles; null with no point or no office. */
@@ -118,7 +120,7 @@ export function skimScore(row: ResearchPermitRow, ctx: SkimContext): SkimCard {
 
   if (row.area_sf != null && row.area_sf >= 5000) plus.push({ points: 1, words: sqFtWords(row.area_sf) ?? 'a large area' })
 
-  if (miles != null) {
+  if (miles != null && ctx.scoreMiles !== false) {
     if (miles <= 15) plus.push({ points: 2, words: `${miles} miles` })
     else if (miles <= 30) plus.push({ points: 1, words: `${miles} miles` })
     else if (miles > 50) minus.push({ points: 3, words: `${miles} miles away` })
