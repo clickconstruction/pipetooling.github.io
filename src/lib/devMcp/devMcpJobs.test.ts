@@ -248,6 +248,11 @@ describe('newJobDryRun — the plan', () => {
     expect(readiness.revenue).toContain('1')
     expect(readiness.customer_email).toContain('zz@example.com')
     expect(readiness.status).toContain('plan_job_update')
+    // v2.6826: a Stripe bill is numbered from the HCP or Click number, and the plan says when the job has none.
+    expect(readiness.number).toContain('none')
+    const numbered = newJobDryRun(p({ click_number: '9293' }), world())
+    if (!numbered.ok) throw new Error(numbered.refused)
+    expect((numbered.reply.readiness as Record<string, string>).number).toBe('9293')
     expect(dry.reply.not_done).toHaveLength(3)
     const noPrice = newJobDryRun(p({ revenue: 0 }), world({ customer: { id: CUSTOMER, name: 'ZZ', customer_type: null, contact_info: null } }))
     if (!noPrice.ok) throw new Error(noPrice.refused)
