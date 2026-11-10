@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>One place for work paid in kind — the mock-up</title>
 <style>
-  /* Punch list #301. Everything here is made up: Calloway Holdings and the shop at 410 Mesa Road, Pecan Creek Gravel,
-     Dale's Welding, Hartwell Electric, every job number, month, amount, bank line and ticket. The frames are drawn in
+  /* Punch list #301. Everything here is made up: Calloway Holdings and the shop at 410 Mesa Road, Lone Oak Concrete, Pecan Creek
+     Gravel, Dale's Welding, Hartwell Electric, every job number, month, amount, bank line and ticket. The frames are drawn in
      the app's own token values (src/index.css), light and dark, with the app's token names. Desk frames are 1080 to
      1180 wide, phone frames 375. A dashed copper outline marks what is new on a screen that exists today. */
   :root { color-scheme: light; }
@@ -157,7 +157,7 @@
   <p class="eyebrow">Punch list #301 · mock-up · 2026-11-10 · every name and number is made up</p>
   <h1>One place for work paid in kind</h1>
   <p>In kind became a kind of payment in v2.6816. It pays a bill down and is never counted as money. What the app still does not know is the deal behind the payments: who pays this way, with what, how much is left, and that a month's credit is due. Each month someone must remember, work out the amount, and split it across bills by hand.</p>
-  <p>Two cases are drawn. <b>Calloway Holdings</b> is a customer and also our landlord. It pays $19,875.40 of finished work with a rent credit each month. <b>Pecan Creek Gravel</b> paid part of one bill with three loads of road base. Frames A to G are the shape I would build. Frame H is the smallest alternative. The last two sections are the second look and the calls that are yours.</p>
+  <p>Two cases are drawn. <b>Calloway Holdings</b> is a customer and also our landlord. It pays $19,875.40 of finished work with a rent credit each month. <b>Lone Oak Concrete</b> pays for one job in concrete, a load at a time. Frames A to G are the shape I would build. Frame H is the smallest alternative. The last two sections are the second look and the calls that are yours.</p>
 </header>
 
 <div class="themebar"><span class="cap">The frames in</span><button type="button" id="t-light" aria-pressed="true">Light</button><button type="button" id="t-dark" aria-pressed="false">Dark</button></div>
@@ -246,7 +246,7 @@
   <div class="card" style="gap:12px">
     <div class="head">
       <div><h4 style="font-size:18px">Calloway Holdings · rent credit</h4><div class="sub">In kind · every month · started May 2026</div></div>
-      <div class="btnrow"><span class="btn quiet sm">Print the ledger</span><span class="btn line sm">Change the terms</span><span class="btn quiet sm">✕ Close</span></div>
+      <div class="btnrow"><span class="btn line sm">Add a line</span><span class="btn quiet sm">Print the ledger</span><span class="btn line sm">Change the terms</span><span class="btn quiet sm">✕ Close</span></div>
     </div>
     <div class="strip info"><span>We rent the shop at 410 Mesa Road for $3,000.00 a month. We pay $1,500.00. The other $1,500.00 pays down finished work. A month with no rent paid credits the whole $3,000.00.</span></div>
     <div class="stats">
@@ -323,7 +323,7 @@
 
 <!-- ======================= D ======================= -->
 <h2 class="sec">D · Entering a month's credit in one press</h2>
-<p class="lede">The window opens with the answer already picked. The bank line is the reason for the amount, shown so a person can check it. The two other true answers are one tap away. The split across bills is worked out and the memo is written. The press says the month and the amount.</p>
+<p class="lede">The window opens with the answer already picked. The bank line is the reason for the amount, shown so a person can check it. The two other true answers are one tap away. The split across bills is worked out and the memo is written. The press says the month and the amount. Only an arrangement with a monthly amount gets this window. Every other one uses Add a line, frame F.</p>
 <div class="row">
   <div class="col" style="flex: 0 1 620px;">
     <span class="cap"><b>D1</b> · desk: the window</span>
@@ -433,72 +433,140 @@
 </div>
 
 <!-- ======================= F ======================= -->
-<h2 class="sec">F · A one time trade: gravel for a repair</h2>
-<p class="lede">We fixed a water line at Pecan Creek Gravel's scale house and billed $2,400.00. They sent three loads of road base instead of a cheque. The window asks five things: who, what they gave, what it was worth, which bill it pays, and where the goods went. The worth comes off their ticket, and the ticket is kept.</p>
+<h2 class="sec">F · Things given as they come: a line each time</h2>
+<p class="lede">Most trades have no schedule. Lone Oak Concrete owes us for a wash rack job and pays in concrete, a load when we need one. Each delivery is one line with three boxes: the amount, the date and a memo of the details. A line counts as overhead unless you put it on a job. Nothing is due on a date, so there is no reminder.</p>
 <div class="row">
-  <div class="col" style="flex: 0 1 640px;">
-    <span class="cap"><b>F1</b> · desk: add what was given</span>
+  <div class="col" style="flex: 1 1 100%;">
+    <span class="cap"><b>F1</b> · desk: the partner's ledger, a line per delivery</span>
     <div class="frame">
-    <div class="board light scrim" style="width: 640px; padding: 26px;">
-      <div class="win">
-        <div class="head"><div><h4 style="font-size:18px">Add something given instead of money</h4><div class="sub">In kind</div></div><span class="btn quiet sm">✕</span></div>
-        <div><div class="lab">How often</div><span class="seg"><span class="on">One time</span><span>Every month</span></span></div>
-        <div class="two">
-          <div><div class="lab">Who gave it</div><div class="field">Pecan Creek Gravel <span class="hint">customer</span></div></div>
-          <div><div class="lab">Got it on</div><div class="field">Nov 6, 2026</div></div>
+    <div class="board light" style="width: 1080px;">
+      <div class="card" style="gap:12px">
+        <div class="head">
+          <div><h4 style="font-size:18px">Lone Oak Concrete · concrete as delivered</h4><div class="sub">In kind · lines as they come · no reminder</div></div>
+          <div class="btnrow"><span class="btn blue sm">Add a line</span><span class="btn quiet sm">Print the ledger</span><span class="btn quiet sm">✕ Close</span></div>
         </div>
-        <div class="two">
-          <div><div class="lab">What they gave</div><div class="field">Crushed limestone base, delivered</div></div>
-          <div><div class="lab">How much</div><div class="field">42 tons <span class="hint">3 loads</span></div></div>
+        <div class="meter" aria-label="$3,540.00 of $6,800.00 given"><i style="width:52.1%"></i></div>
+        <div class="stats">
+          <div class="stat"><span class="k">Our work</span><span class="v">$6,800.00</span><span class="d">J1171 · Batch plant wash rack, billed Sep 30</span></div>
+          <div class="stat"><span class="k">They gave</span><span class="v">$3,540.00</span><span class="d">3 lines</span></div>
+          <div class="stat"><span class="k">Still to come</span><span class="v">$3,260.00</span><span class="d">not chased as late</span></div>
         </div>
-        <div class="two">
-          <div><div class="lab">What it was worth</div><div class="field">$1,596.00 <span class="hint">$38.00 a ton</span></div></div>
-          <div><div class="lab">Their ticket</div><div style="display:flex;gap:10px;align-items:center"><span class="thumb"></span><span class="small"><span class="strong">Ticket 20418</span><br><span class="muted">a photo, kept with the trade</span></span></div></div>
-        </div>
-        <div>
-          <div class="lab">The bill it pays</div>
-          <div class="field">J1163 · Water line repair at the scale house <span class="hint">$2,400.00 open</span></div>
-          <div class="small muted" style="margin-top:4px">$804.00 stays open on this bill. They still owe it, in money or in more gravel.</div>
-        </div>
-        <div>
-          <div class="lab">Where it went</div>
-          <div style="display:grid;gap:6px">
-            <div class="choice on"><span class="dot"></span><span><span class="w">A job</span> · J1158 Oak Hollow Building C<br><span class="why">Counts as $1,596.00 of that job's material.</span></span></div>
-            <div class="choice"><span class="dot"></span><span><span class="w">The yard</span> <span class="why">· kept as stock</span></span></div>
-            <div class="choice"><span class="dot"></span><span><span class="w">The company</span> <span class="why">· an overhead cost, like rent</span></span></div>
-          </div>
-        </div>
-        <div class="btnrow" style="justify-content:flex-end"><span class="btn quiet">Cancel</span><span class="btn blue">Record 42 tons of gravel · $1,596.00</span></div>
+        <table class="tbl">
+          <thead><tr><th>Date</th><th>What was given</th><th>Counts as</th><th class="num">Amount</th><th class="num">Left after</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="strong">Nov 4, 2026</td><td>6 yards of 3000 psi, the yard pad behind the shop</td><td><span class="pill grey">Overhead</span></td><td class="num strong">$885.00</td><td class="num">$3,260.00</td><td class="num"><span class="lnk">Change</span></td></tr>
+            <tr><td class="strong">Oct 22, 2026</td><td>10 yards, the slab patch at Oak Hollow</td><td><span class="pill blue">J1158 · Oak Hollow Building C</span></td><td class="num strong">$1,475.00</td><td class="num">$4,145.00</td><td class="num"><span class="lnk">Change</span></td></tr>
+            <tr><td class="strong">Oct 9, 2026</td><td>8 yards of 3000 psi, the shop apron</td><td><span class="pill grey">Overhead</span></td><td class="num strong">$1,180.00</td><td class="num">$5,620.00</td><td class="num"><span class="lnk">Change</span></td></tr>
+          </tbody>
+        </table>
+        <div class="strip info"><span>$2,065.00 counts as overhead. $1,475.00 counts on a job.</span></div>
       </div>
     </div>
     </div>
   </div>
-  <div class="col" style="flex: 1 1 420px;">
-    <span class="cap"><b>F2</b> · its ledger afterwards: what is still owed, either way</span>
+</div>
+<div class="row">
+  <div class="col" style="flex: 0 1 540px;">
+    <span class="cap"><b>F2</b> · desk: Add a line</span>
     <div class="frame">
-    <div class="board light" style="width: 100%; min-width: 420px;">
-      <div class="card">
-        <div class="head"><div><h4 style="font-size:17px">Pecan Creek Gravel · gravel for a repair</h4><div class="sub">In kind · one time</div></div><span class="btn quiet sm">✕</span></div>
-        <div class="meter"><i style="width:66.5%"></i></div>
-        <div class="stats">
-          <div class="stat"><span class="k">Our work</span><span class="v">$2,400.00</span><span class="d">J1163, billed Oct 28</span></div>
-          <div class="stat"><span class="k">They gave</span><span class="v">$1,596.00</span><span class="d">42 tons of road base</span></div>
-          <div class="stat"><span class="k">They still owe</span><span class="v" style="color:var(--text-amber-800)">$804.00</span><span class="d">open 13 days</span></div>
+    <div class="board light scrim" style="width: 540px; padding: 26px;">
+      <div class="win">
+        <div class="head"><div><h4 style="font-size:18px">Add a line</h4><div class="sub">Lone Oak Concrete · concrete as delivered</div></div><span class="btn quiet sm">✕</span></div>
+        <div class="two">
+          <div><div class="lab">Amount</div><div class="field">$885.00</div></div>
+          <div><div class="lab">Date</div><div class="field">Nov 4, 2026</div></div>
         </div>
+        <div><div class="lab">What was given instead of money</div><div class="field" style="align-items:flex-start;min-height:58px">6 yards of 3000 psi, the yard pad behind the shop</div></div>
         <div>
-          <div class="bill"><span class="t"><span class="strong">Nov 6</span> · 42 tons crushed limestone base<br><span class="small muted">ticket 20418 · went to J1158 Oak Hollow Building C</span></span><span class="a strong">$1,596.00</span></div>
+          <div class="lab">Counts as</div>
+          <div style="display:grid;gap:6px">
+            <div class="choice on"><span class="dot"></span><span><span class="w">Overhead</span><br><span class="why">A cost of the company, on no job.</span></span></div>
+            <div class="choice"><span class="dot"></span><span><span class="w">A job</span><br><span class="why">Pick the job. It counts as that job's material.</span></span></div>
+          </div>
         </div>
-        <div class="btnrow"><span class="btn line sm">Add more they gave</span><span class="btn line sm">Record a payment in money</span><span class="btn quiet sm">Send the bill for $804.00</span></div>
+        <div class="small muted">Pays down J1171 · Batch plant wash rack. $3,260.00 is left on it after.</div>
+        <div class="btnrow" style="justify-content:flex-end"><span class="btn quiet">Cancel</span><span class="btn blue">Add the line · $885.00</span></div>
       </div>
     </div>
     </div>
-    <span class="cap" style="margin-top:10px"><b>F3</b> · the other way round: they gave first</span>
+  </div>
+  <div class="col" style="flex: 0 1 540px;">
+    <span class="cap"><b>F3</b> · the same window, with the line put on a job</span>
     <div class="frame">
-    <div class="board light" style="width: 100%; min-width: 420px;">
+    <div class="board light scrim" style="width: 540px; padding: 26px;">
+      <div class="win">
+        <div class="head"><div><h4 style="font-size:18px">Add a line</h4><div class="sub">Lone Oak Concrete · concrete as delivered</div></div><span class="btn quiet sm">✕</span></div>
+        <div class="two">
+          <div><div class="lab">Amount</div><div class="field">$1,475.00</div></div>
+          <div><div class="lab">Date</div><div class="field">Oct 22, 2026</div></div>
+        </div>
+        <div><div class="lab">What was given instead of money</div><div class="field" style="align-items:flex-start;min-height:58px">10 yards, the slab patch at Oak Hollow</div></div>
+        <div>
+          <div class="lab">Counts as</div>
+          <div style="display:grid;gap:6px">
+            <div class="choice"><span class="dot"></span><span><span class="w">Overhead</span></span></div>
+            <div class="choice on"><span class="dot"></span><span style="flex:1"><span class="w">A job</span><br><span class="field" style="margin-top:6px">J1158 · Oak Hollow Building C <span class="hint">▾</span></span><span class="why">Counts as $1,475.00 of that job's material.</span></span></div>
+          </div>
+        </div>
+        <div class="small muted">Pays down J1171 · Batch plant wash rack. $4,145.00 is left on it after.</div>
+        <div class="btnrow" style="justify-content:flex-end"><span class="btn quiet">Cancel</span><span class="btn blue">Add the line · $1,475.00</span></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col" style="flex: 0 0 375px;">
+    <span class="cap"><b>F4</b> · phone: the ledger, lines as cards</span>
+    <div class="frame">
+    <div class="board light phone">
+      <div class="head"><div><h4 style="font-size:17px">Lone Oak Concrete</h4><div class="sub">In kind · concrete as delivered</div></div><span class="btn quiet sm">✕</span></div>
       <div class="card">
-        <div class="head"><div><h4 style="font-size:17px">Dale's Welding · trailer rack</h4><div class="sub">In kind · one time</div></div></div>
+        <div class="meter"><i style="width:52.1%"></i></div>
+        <div class="small"><span class="strong">$3,540.00</span> given of $6,800.00<br><span class="strong">$3,260.00</span> still to come</div>
+        <span class="btn blue wide">Add a line</span>
+      </div>
+      <div class="card" style="gap:0">
+        <div class="bill"><span class="t"><span class="strong">Nov 4</span> <span class="pill grey">Overhead</span><br><span class="small muted">6 yards of 3000 psi, the yard pad behind the shop</span></span><span class="a strong">$885.00</span></div>
+        <div class="bill"><span class="t"><span class="strong">Oct 22</span> <span class="pill blue">J1158</span><br><span class="small muted">10 yards, the slab patch at Oak Hollow</span></span><span class="a strong">$1,475.00</span></div>
+        <div class="bill"><span class="t"><span class="strong">Oct 9</span> <span class="pill grey">Overhead</span><br><span class="small muted">8 yards of 3000 psi, the shop apron</span></span><span class="a strong">$1,180.00</span></div>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 0 0 375px;">
+    <span class="cap"><b>F5</b> · phone: Add a line as a sheet</span>
+    <div class="frame">
+    <div class="board light phone scrim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="head"><div><h4 style="font-size:17px">Add a line</h4><div class="sub">Lone Oak Concrete</div></div></div>
+        <div class="two">
+          <div><div class="lab">Amount</div><div class="field">$885.00</div></div>
+          <div><div class="lab">Date</div><div class="field">Nov 4</div></div>
+        </div>
+        <div><div class="lab">What was given instead of money</div><div class="field" style="align-items:flex-start;min-height:58px">6 yards of 3000 psi, the yard pad behind the shop</div></div>
+        <div><div class="lab">Counts as</div><span class="seg"><span class="on">Overhead</span><span>A job</span></span></div>
+        <span class="btn blue wide">Add the line · $885.00</span>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="col" style="flex: 1 1 300px;">
+    <p class="note" style="margin-top:22px"><b>Three boxes, by the owner's word.</b> Amount, date and a memo of the details. The yards, the mix and where it was poured go in the memo. No ticket photo is asked for, and nothing else must be filled.</p>
+    <p class="note"><b>Overhead unless it is put on a job.</b> A line is a cost that never touched a card or a supply house bill. It counts as overhead by default. Put on a job, it counts as that job's material, so the job's profit reads true.</p>
+    <p class="note"><b>The rent credit is the same ledger.</b> Its months are lines too. It only adds a monthly amount, so the app can remind and suggest. <i>Add a line</i> is there as well, for a credit that falls outside the month.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col" style="flex: 0 1 520px;">
+    <span class="cap"><b>F6</b> · the other way round: they gave first</span>
+    <div class="frame">
+    <div class="board light" style="width: 520px;">
+      <div class="card">
+        <div class="head"><div><h4 style="font-size:17px">Dale's Welding · trailer rack</h4><div class="sub">In kind · lines as they come</div></div></div>
         <div class="stats">
-          <div class="stat"><span class="k">They gave</span><span class="v">$900.00</span><span class="d">a trailer rack, Oct 20</span></div>
+          <div class="stat"><span class="k">They gave</span><span class="v">$900.00</span><span class="d">1 line, Oct 20</span></div>
           <div class="stat"><span class="k">Our work</span><span class="v">$0.00</span><span class="d">no job for them yet</span></div>
           <div class="stat"><span class="k">We owe</span><span class="v" style="color:var(--text-amber-800)">$900.00</span><span class="d">of work</span></div>
         </div>
@@ -508,34 +576,10 @@
     </div>
   </div>
 </div>
-<div class="row">
-  <div class="col" style="flex: 0 0 375px;">
-    <span class="cap"><b>F4</b> · phone: the same five questions</span>
-    <div class="frame">
-    <div class="board light phone scrim">
-      <div class="sheet">
-        <div class="grab"></div>
-        <div class="head"><h4 style="font-size:17px">Add something given instead of money</h4></div>
-        <span class="seg" style="align-self:flex-start"><span class="on">One time</span><span>Every month</span></span>
-        <div><div class="lab">Who gave it</div><div class="field">Pecan Creek Gravel</div></div>
-        <div><div class="lab">What they gave</div><div class="field">Crushed limestone base <span class="hint">42 tons</span></div></div>
-        <div><div class="lab">What it was worth</div><div class="field">$1,596.00 <span class="hint">ticket 20418 📷</span></div></div>
-        <div><div class="lab">The bill it pays</div><div class="field">J1163 · Water line repair <span class="hint">$804.00 stays open</span></div></div>
-        <div><div class="lab">Where it went</div><div class="field">J1158 Oak Hollow Building C <span class="hint">a job</span></div></div>
-        <span class="btn blue wide">Record 42 tons of gravel · $1,596.00</span>
-      </div>
-    </div>
-    </div>
-  </div>
-  <div class="col" style="flex: 1 1 360px;">
-    <p class="note" style="margin-top:22px"><b>Two sides, one record.</b> The bill side is today's In kind payment on J1163. The goods side is new: the gravel is a real cost of the job it went to, and no card or supply house bill will ever show it. Without that line, Oak Hollow Building C looks $1,596.00 more profitable than it was.</p>
-    <p class="note"><b>The rent credit has the same second side.</b> The bank shows $1,500.00 of rent a month. The shop costs $3,000.00. The other half is paid in work, and the overhead numbers do not see it today.</p>
-  </div>
-</div>
 
 <!-- ======================= G ======================= -->
 <h2 class="sec">G · Every arrangement in one list</h2>
-<p class="lede">The page the owner first asked about. One row per partner: what is given, how far along, what is left and which way, and what is due. Drawn as a page of its own, with a door from Accounts Receivable and from each customer's card. A trade that came out even folds away under Settled.</p>
+<p class="lede">The page the owner first asked about. One row per partner: what is given, how far along, what is left and which way, and what is due. Only the rent credit has a reminder. The rest take a line when something is delivered. Drawn as a page of its own, with a door from Accounts Receivable and from each customer's card. A trade that came out even folds away under Settled.</p>
 <div class="row">
   <div class="col" style="flex: 1 1 100%;">
     <span class="cap"><b>G1</b> · desk</span>
@@ -543,18 +587,19 @@
     <div class="board light" style="width: 1080px;">
       <div class="idrow"><span class="btn line sm" style="color:var(--text-700)">← Back</span><h3>In kind</h3><span class="tag-new">a new page</span><span class="faint" style="margin-left:auto">Work paid with something other than money</span></div>
       <div class="stats">
-        <div class="stat"><span class="k">Still to come in kind</span><span class="v">$9,375.40</span><span class="d">scheduled, none late</span></div>
-        <div class="stat"><span class="k">Owed to us in money</span><span class="v">$804.00</span><span class="d">what a trade did not cover</span></div>
+        <div class="stat"><span class="k">Still to come</span><span class="v">$13,439.40</span><span class="d">on 3 arrangements, none chased as late</span></div>
+        <div class="stat"><span class="k">Given so far, as overhead</span><span class="v">$15,061.00</span><span class="d">and $1,475.00 on jobs</span></div>
         <div class="stat"><span class="k">Work we owe</span><span class="v">$900.00</span><span class="d">they gave first</span></div>
       </div>
       <div class="card" style="padding: 0; gap: 0; overflow: hidden;">
-        <div class="head" style="padding: 12px 16px;"><div><h4>3 open</h4><div class="sub">1 has a credit due</div></div><span class="btn blue sm">Add something given</span></div>
+        <div class="head" style="padding: 12px 16px;"><div><h4>4 open</h4><div class="sub">1 has a credit due</div></div><span class="btn blue sm">Add an arrangement</span></div>
         <table class="tbl">
-          <thead><tr><th>Who</th><th>What is given</th><th>How often</th><th style="width:230px">So far</th><th class="num">Left</th><th>Next</th></tr></thead>
+          <thead><tr><th>Who</th><th>What is given</th><th>Reminder</th><th style="width:230px">So far</th><th class="num">Left</th><th>Next</th></tr></thead>
           <tbody>
             <tr><td class="strong">Calloway Holdings</td><td>Rent credit, the shop</td><td>Every month</td><td><div class="meter" style="margin-bottom:3px"><i style="width:52.8%"></i></div><span class="small muted">$10,500.00 of $19,875.40</span></td><td class="num"><span class="strong">$9,375.40</span><br><span class="small muted">to credit</span></td><td><span class="pill due">November is due</span> <span class="btn blue sm">Enter $1,500.00</span></td></tr>
-            <tr><td class="strong">Pecan Creek Gravel</td><td>42 tons of road base</td><td>One time</td><td><div class="meter" style="margin-bottom:3px"><i style="width:66.5%"></i></div><span class="small muted">$1,596.00 of $2,400.00</span></td><td class="num"><span class="strong">$804.00</span><br><span class="small muted">they owe us</span></td><td class="small muted">The bill is open 13 days</td></tr>
-            <tr><td class="strong">Dale's Welding</td><td>A trailer rack</td><td>One time</td><td><span class="small muted">$900.00 given, no bill yet</span></td><td class="num"><span class="strong">$900.00</span><br><span class="small muted">we owe work</span></td><td class="small muted">Waits for a job of theirs</td></tr>
+            <tr><td class="strong">Lone Oak Concrete</td><td>Concrete, as delivered</td><td class="muted">None</td><td><div class="meter" style="margin-bottom:3px"><i style="width:52.1%"></i></div><span class="small muted">$3,540.00 of $6,800.00 · 3 lines</span></td><td class="num"><span class="strong">$3,260.00</span><br><span class="small muted">to come</span></td><td><span class="small muted">Last line Nov 4</span> <span class="btn line sm">Add a line</span></td></tr>
+            <tr><td class="strong">Pecan Creek Gravel</td><td>Road base, by the load</td><td class="muted">None</td><td><div class="meter" style="margin-bottom:3px"><i style="width:66.5%"></i></div><span class="small muted">$1,596.00 of $2,400.00 · 1 line</span></td><td class="num"><span class="strong">$804.00</span><br><span class="small muted">to come</span></td><td><span class="small muted">Last line Nov 6</span> <span class="btn line sm">Add a line</span></td></tr>
+            <tr><td class="strong">Dale's Welding</td><td>A trailer rack</td><td class="muted">None</td><td><span class="small muted">$900.00 given · 1 line · no bill yet</span></td><td class="num"><span class="strong">$900.00</span><br><span class="small muted">we owe work</span></td><td class="small muted">Waits for a job of theirs</td></tr>
             <tr class="later"><td colspan="6"><span class="lnk">Settled · 1</span> &nbsp; Hartwell Electric · a panel swap at our shop for a water heater at theirs · $1,850.00 each way · Aug 14</td></tr>
           </tbody>
         </table>
@@ -575,14 +620,21 @@
         <span class="btn blue wide">Enter November's credit · $1,500.00</span>
       </div>
       <div class="card">
-        <div class="head"><h4>Pecan Creek Gravel</h4><span class="pill grey">One time</span></div>
-        <div class="small muted">42 tons of road base for J1163</div>
-        <div class="meter"><i style="width:66.5%"></i></div>
-        <div class="small"><span class="strong">$804.00</span> they still owe us</div>
+        <div class="head"><h4>Lone Oak Concrete</h4><span class="small muted">last line Nov 4</span></div>
+        <div class="small muted">Concrete, as delivered · 3 lines</div>
+        <div class="meter"><i style="width:52.1%"></i></div>
+        <div class="small"><span class="strong">$3,260.00</span> still to come of $6,800.00</div>
+        <span class="btn line wide" style="min-height:42px">Add a line</span>
       </div>
       <div class="card">
-        <div class="head"><h4>Dale's Welding</h4><span class="pill grey">One time</span></div>
-        <div class="small muted">A trailer rack · they gave first</div>
+        <div class="head"><h4>Pecan Creek Gravel</h4><span class="small muted">last line Nov 6</span></div>
+        <div class="small muted">Road base, by the load · 1 line</div>
+        <div class="meter"><i style="width:66.5%"></i></div>
+        <div class="small"><span class="strong">$804.00</span> still to come of $2,400.00</div>
+      </div>
+      <div class="card">
+        <div class="head"><h4>Dale's Welding</h4><span class="small muted">they gave first</span></div>
+        <div class="small muted">A trailer rack · 1 line</div>
         <div class="small"><span class="strong">$900.00</span> of work we owe</div>
       </div>
     </div>
@@ -633,7 +685,7 @@
     <span class="tagline">Second, once there are three or four</span>
     <h3>2 · A place of its own</h3>
     <p>Frame G, a page reached from Accounts Receivable. Every partner in one list, with what is owed each way.</p>
-    <p><span class="for">For.</span> The answer to "where is that fourteen thousand shown". The natural home for a gravel trade.</p>
+    <p><span class="for">For.</span> The answer to "where is that fourteen thousand shown". The natural home for a trade with no schedule.</p>
     <p><span class="against">Against.</span> A page is somewhere you go when you remember. With one arrangement it is a page with one row.</p>
   </div>
   <div class="opt">
@@ -652,19 +704,23 @@
   <li><b>The amount should be a reason, not a number.</b> The plain version of frame D is a box with $1,500.00 already in it. That hides why. The window shows the bank line and three plain answers instead. A person checks a fact instead of trusting a figure.</li>
   <li><b>"No credit this month" had to be a real answer.</b> Without it, a month with full rent paid looks the same as a month someone forgot. The reminder would nag for ever, or it would have to guess. Now the month is marked settled and the ledger shows it.</li>
   <li><b>Suggested, not entered by itself.</b> The app could write the credit when the rent leaves the bank. I would not start there. A payment to the landlord is not always rent. A month with no rent is only known when it ends. The press writes payments on real bills. One press a month is cheap, and it keeps a person looking at the ledger.</li>
-  <li><b>The gravel window asks for more than the rent credit did.</b> Five questions is the most I could cut it to. The fifth, where it went, is the one I would defend. It is the only place the app can learn a cost that never touched a card. It is also the biggest piece of new work, so it could come after the first build.</li>
-  <li><b>What the frames do not solve.</b> F3, a partner who gave first, has no bill to sit on. I drew it so the gap is visible. It needs the list of frame G, or it has no home. The rent's hidden half, the note under frame F, is shown as a fact and not fixed.</li>
+  <li><b>The first trade window asked too much, and the owner cut it.</b> My first frame F asked five things about one load of gravel, with a ticket photo and a place the goods went. The owner's answer was three boxes: the amount, the date and a memo. So a trade is now a ledger of lines, added as things are delivered. A line counts as overhead unless it is put on a job.</li>
+  <li><b>What the frames do not solve.</b> F6, a partner who gave first, has no bill to sit on. I drew it so the gap is visible. It needs the list of frame G, or it has no home. The rent credit's lines count as overhead like any other line, which is how the half of the rent paid in work gets seen.</li>
   <li><b>What the render showed.</b> At desk width every frame fits. On a 375 phone the page itself does not scroll sideways. The desk frames scroll inside their own box there, and the phone frames draw whole. On the phone the ledger leads with what is due, since the table of months does not fit. In dark, the green meter and the amber line stay readable.</li>
 </ul>
 
 <h2 class="sec">The calls that are the owner's</h2>
-<p class="lede"><b>Decided 2026-11-10: where it lives.</b> The card on the customer and a line on Needs you first, then the list. The calls below are still open.</p>
+<p class="lede"><b>Decided 2026-11-10, in the owner's words.</b></p>
+<ul class="calls">
+  <li><b>Where it lives.</b> The card on the customer and a line on Needs you first, then the list.</li>
+  <li><b>Entered as needed.</b> Nothing is entered by itself. Most arrangements have no schedule: a line is added the day something is delivered. The rent credit keeps its monthly reminder and its suggested amount, and still takes a person's press.</li>
+  <li><b>What a line records.</b> The amount, the date and a memo of the details.</li>
+  <li><b>What a line counts as.</b> Overhead, unless that line is put on a job.</li>
+</ul>
+<p class="lede" style="margin-top:14px"><b>Still open.</b></p>
 <ol class="calls">
-  <li><b>The monthly credit.</b> Suggested with one press, as in frame D? Or entered by itself when exactly the usual rent leaves the bank, with a line that says it was done?</li>
-  <li><b>When the reminder speaks.</b> The day the rent leaves the bank, and the last day of a month with no rent? Or a fixed day each month?</li>
-  <li><b>What a trade for goods must record.</b> Who, what, the worth and the bill are the floor. Is the ticket photo required or only asked for? Must the goods be placed on a job, the yard or the company before it saves?</li>
-  <li><b>Whether the worth counts as a cost.</b> Should gravel placed on a job raise that job's material cost? Should the rent's credited half show as overhead? Both change profit numbers the owner reads today.</li>
-  <li><b>A partner who gave first.</b> Is frame F3 a real case, goods taken before any work is done? If not, it is dropped and every arrangement starts from a bill.</li>
+  <li><b>When the rent reminder speaks.</b> The day the rent leaves the bank, and the last day of a month with no rent? Or a fixed day each month?</li>
+  <li><b>A partner who gave first.</b> Is frame F6 a real case, goods taken before any work is done? If not, it is dropped and every arrangement starts from a bill.</li>
   <li><b>Who may see and enter.</b> The same people who can record a payment today? Or the owner only?</li>
   <li><b>The words.</b> The page is called In kind and each row an arrangement. Trade already means plumbing or electrical in the app. Is In kind the word the office would look for?</li>
 </ol>
