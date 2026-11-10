@@ -255,6 +255,7 @@ export function foldedSourceWords(source: JobChargeSource, events: readonly JobC
     supply_house: 'supply house invoices',
     tally_part: 'tally parts',
     billed_material: 'other charges',
+    in_kind: 'things given in kind',
   }
   return `${n} ${plural[source]}`
 }

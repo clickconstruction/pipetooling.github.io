@@ -172,6 +172,7 @@ describe('fetchJobMaterialsCostSnapshot', () => {
       cardFuelTxIds: new Set(),
       tallyPartLines: [],
       tallyFetchFailed: false,
+      inKindLines: [], // v2.6836: nothing given in kind was put on the job (punch list #301)
     })
     route = () => null
     expect((await fetchJobMaterialsCostSnapshot('j1')).supplyInvoiceLines).toEqual([])

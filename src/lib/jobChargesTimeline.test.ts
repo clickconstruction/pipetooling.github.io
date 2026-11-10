@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  JOB_CHARGE_SOURCE_META,
   buildJobChargeEvents,
   buildJobChargesTimelineChartData,
   buildJobPaymentEvents,
@@ -106,6 +107,10 @@ describe('buildJobChargeEvents', () => {
       billedMaterials: [{ dateKey: '2026-06-06', amount: 75, description: 'Rented core drill' }],
     })
     expect(events).toHaveLength(6)
+    // v2.6836: a line given in kind and put on the job is a seventh stream, only when the caller has one (punch list #301).
+    const withInKind = buildJobChargeEvents({ teamLaborBreakdown: [], subLabor: [], mercury: [], supplyHouse: [], tallyParts: [], billedMaterials: [], inKind: [{ dateKey: '2026-10-22', amount: 1475, label: 'Lone Oak Concrete: 10 yards' }] })
+    expect(withInKind).toEqual([{ source: 'in_kind', dateKey: '2026-10-22', amount: 1475, label: 'Lone Oak Concrete: 10 yards' }])
+    expect(JOB_CHARGE_SOURCE_META.in_kind).toEqual({ icon: '🤝', name: 'Given in kind' })
     expect(events.map((e) => e.source)).toEqual([
       'team_labor',
       'sub_labor',

@@ -24,6 +24,8 @@ export type JobChargeSource =
   | 'supply_house'
   | 'tally_part'
   | 'billed_material'
+  /** What a partner gave instead of money, put on this job (punch list #301): a material cost with no card and no bill. */
+  | 'in_kind'
 
 export const JOB_CHARGE_SOURCE_META: Record<JobChargeSource, { icon: string; name: string }> = {
   team_labor: { icon: '👷', name: 'Team labor' },
@@ -33,6 +35,7 @@ export const JOB_CHARGE_SOURCE_META: Record<JobChargeSource, { icon: string; nam
   supply_house: { icon: '🧾', name: 'Supply house invoice' },
   tally_part: { icon: '📦', name: 'Tally part' },
   billed_material: { icon: '🧱', name: 'Other job charge' },
+  in_kind: { icon: '🤝', name: 'Given in kind' },
 }
 
 /** One dated cost event; `dateKey` null = the source row had no usable date. */
@@ -203,6 +206,8 @@ export type JobChargeEventsInput = {
     createdByName: string | null
   }>
   billedMaterials: Array<{ dateKey: string | null; amount: number; description: string | null }>
+  /** In-kind lines put on the job (punch list #301); absent where the caller has none to give. */
+  inKind?: Array<{ dateKey: string | null; amount: number; label: string }>
 }
 
 function roundHoursLabel(hours: number): string {
@@ -267,6 +272,9 @@ export function buildJobChargeEvents(input: JobChargeEventsInput): JobChargeEven
       amount: b.amount,
       label: b.description || 'Other job charge',
     })
+  }
+  for (const k of input.inKind ?? []) {
+    events.push({ source: 'in_kind', dateKey: k.dateKey, amount: k.amount, label: k.label })
   }
   return events
 }

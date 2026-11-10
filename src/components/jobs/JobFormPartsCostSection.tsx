@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { CardChargeCostAmount } from './CardChargeCostAmount'
+import { useJobInKindCost } from '../../hooks/useJobInKindCost'
+import { inKindCostTotal } from '../../lib/inKind/inKindCost'
 import { useNavigate } from 'react-router-dom'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -98,6 +100,7 @@ export function JobFormPartsCostSection({
 }: JobFormPartsCostSectionProps) {
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const navigate = useNavigate()
+  const { lines: inKindLines } = useJobInKindCost(editing?.id ?? null)
   const moneyRows: MoneyRow[] | null = editing?.id && teamLabor && subLabor
     ? buildMoneyRows({
         supplyUsd: supplyInvoiceTotal, supplyCount: supplyInvoiceLines.length, supplyFailed: supplyInvoiceRpcFailed,
@@ -106,6 +109,8 @@ export function JobFormPartsCostSection({
         subUsd: subLabor.data?.total ?? 0, subCount: subLabor.data?.count ?? 0, subLoading: subLabor.loading, subFailed: subLabor.error,
         tallyUsd: tallyPartsTotal, tallyCount: tallyPartLines.length, tallyFailed: tallyFetchFailed,
         otherUsd: materials.reduce((s, m) => s + (Number(m.amount) || 0), 0), otherCount: materials.filter(materialRowHasUserContent).length,
+        // v2.6836: what a partner gave instead of money and the office put on this job (punch list #301).
+        inKindUsd: inKindCostTotal(inKindLines), inKindCount: inKindLines.length,
       })
     : null
   const openRow = (r: MoneyRow) => {

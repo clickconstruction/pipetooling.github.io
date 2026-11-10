@@ -184,6 +184,8 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
       subUsd: packet.subLabor.data?.total ?? 0, subCount: packet.subLabor.data?.count ?? 0, subLoading: packet.subLabor.loading, subFailed: packet.subLabor.error,
       tallyUsd: packet.tallyPartsTotal, tallyCount: packet.tallyPartLines.length, tallyFailed: packet.tallyFetchFailed,
       otherUsd: packet.otherCharges.reduce((s, m) => s + (Number(m.amount) || 0), 0), otherCount: packet.otherCharges.filter(materialRowHasUserContent).length,
+      // v2.6836: the in-kind lines put on this job, from the same events the chart draws (punch list #301).
+      inKindUsd: inputs.chargeEvents.filter((e) => e.source === 'in_kind').reduce((s, e) => s + e.amount, 0), inKindCount: inputs.chargeEvents.filter((e) => e.source === 'in_kind').length,
     })
     const cards: JobCostsPacketCardLine[] = packet.mercuryAllocLines.map((ln) => {
       const tag = ln.mercuryTransactionId ? packet.mercuryCardTagByTxId?.get(ln.mercuryTransactionId) : undefined

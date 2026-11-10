@@ -11,6 +11,7 @@ import { isInKindPaymentType } from '../jobs/inKindPayment'
 import { addMonths, parseInKindAddResult, type InKindAddResult, type InKindArrangement, type InKindJob, type InKindLine, type InKindPayment } from './inKindLedger'
 import { bankPaidLines, type BankLine, type BankPaidLine } from './inKindBank'
 import type { InKindDealForDue } from './inKindCreditsDue'
+import { IN_KIND_COST_SELECT, inKindCostLines, type InKindCostLine } from './inKindCost'
 
 export interface InKindBill {
   id: string
@@ -342,4 +343,29 @@ export async function loadInKindDealsForDue(): Promise<InKindDealForDue[]> {
       return { arrangement, lines: lines.filter((l) => l.arrangement_id === arrangement.id), jobs: jobs.filter((j) => j.in_kind_arrangement_id === arrangement.id), bank }
     }),
   )
+}
+
+/** The in-kind lines put on one job, as its cost readers need them. The office's read; anyone else gets none. */
+export async function loadInKindCostLinesForJob(jobId: string): Promise<InKindCostLine[]> {
+  const rows = await withSupabaseRetry(
+    () => supabase.from('in_kind_lines').select(IN_KIND_COST_SELECT).eq('cost_job_id', jobId).is('removed_at', null).gt('amount', 0).order('given_on', { ascending: true }).limit(1000),
+    'read what was given in kind on this job',
+  )
+  return inKindCostLines(rows as unknown as Parameters<typeof inKindCostLines>[0])
+}
+
+// ---------- every arrangement, for the list (PR 4) ----------
+
+/** Every deal with its jobs, lines and payments. The list page's read. */
+export async function loadAllInKind(): Promise<InKindLedgerData[]> {
+  const rows = await withSupabaseRetry(() => supabase.from('in_kind_arrangements').select(ARRANGEMENT_COLS).order('created_at', { ascending: true }).limit(500), 'read the in kind arrangements')
+  return assemble(((rows ?? []) as unknown as Record<string, unknown>[]).map(toArrangement))
+}
+
+/** Customers by name, for the list page's set-up press. */
+export async function searchInKindCustomers(text: string): Promise<Array<{ id: string; name: string }>> {
+  const q = text.trim().replace(/[%_,()]/g, ' ').replace(/\s+/g, '%')
+  if (q.length < 2) return []
+  const rows = await withSupabaseRetry(() => supabase.from('customers').select('id, name').ilike('name', `%${q}%`).is('archived_at', null).order('name').limit(8), 'search the customers')
+  return ((rows ?? []) as Array<{ id: string; name: string | null }>).map((r) => ({ id: r.id, name: (r.name ?? '').trim() || 'A customer' }))
 }

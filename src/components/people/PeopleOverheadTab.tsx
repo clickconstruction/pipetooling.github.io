@@ -154,7 +154,7 @@ function OverheadPartsSectionsList({
                   const cardLabel = cardLabelForLine?.(ln) ?? ''
                   return (
                     <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                      {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label}
+                      {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : ln.source === 'in_kind' ? 'In kind' : 'Tally'} — {ln.label}
                       {cardLabel ? (
                         <span style={{ color: 'var(--text-muted)' }}> · on {cardLabel}</span>
                       ) : null}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { inKindCostLabel } from '../lib/inKind/inKindCost'
 import {
   buildJobChargeEvents,
   buildJobManualPercentEvents,
@@ -150,6 +151,8 @@ export async function loadJobChargesTimelineInputs(job: JobChargesTimelineJob, i
       amount: Number(m.amount ?? 0),
       description: m.description,
     })),
+    // v2.6836: what a partner gave instead of money and the office put on this job (punch list #301).
+    inKind: (snapshot.inKindLines ?? []).map((l) => ({ dateKey: l.givenOn, amount: l.amount, label: inKindCostLabel(l) })),
   })
   type ReportRow = { created_at: string; field_values: Record<string, unknown> | null; users: { name: string | null } | null }
   type PctEventRow = { pct: number | null; changed_at: string; users: { name: string | null } | null }
