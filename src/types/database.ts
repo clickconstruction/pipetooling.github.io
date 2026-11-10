@@ -1488,6 +1488,91 @@ export type Database = {
           },
         ]
       }
+      bid_photos: {
+        Row: {
+          added_at: string | null
+          bid_id: string
+          by_name: string
+          by_user_id: string | null
+          bytes: number
+          created_at: string
+          drive_file_id: string | null
+          fail_why: string | null
+          filed_at: string | null
+          height: number
+          id: string
+          name: string
+          original_bytes: number
+          removed_at: string | null
+          removed_by: string | null
+          storage_path: string | null
+          taken_at: string
+          width: number
+        }
+        Insert: {
+          added_at?: string | null
+          bid_id: string
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          height?: number
+          id?: string
+          name?: string
+          original_bytes?: number
+          removed_at?: string | null
+          removed_by?: string | null
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+        }
+        Update: {
+          added_at?: string | null
+          bid_id?: string
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          height?: number
+          id?: string
+          name?: string
+          original_bytes?: number
+          removed_at?: string | null
+          removed_by?: string | null
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_photos_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_photos_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_photos_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_plan_basis_exports: {
         Row: {
           bid_id: string
@@ -40669,6 +40754,10 @@ export type Database = {
         Returns: Json
       }
       dev_theme_marks_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      dev_theme_review_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
