@@ -15,7 +15,9 @@ Open **Prospects** and press the **Permits** tab. It opens on **Skim**. Estimato
 
 Skim shows one permit at a time. The best ones come first. A green line on the card says why it sits where it does.
 
-Press {{button:green|Keep}} if the permit is worth a closer look. Press **Pass** if it is not. On a desk the right arrow keeps and the left arrow passes.
+Two pictures sit at the top of the card. One is a street view of the address, with the month it was taken. The other is a map with the miles from the office. Press either one to open it in Google.
+
+Press {{button:green|Keep}} if the permit is worth a closer look. Press **Pass** if it is not. On a desk the right arrow keeps and the left arrow passes. On a phone you can drag the card. Right keeps and left passes.
 
 Nothing is typed. After a pass a dark bar offers four reasons. Tap one if you like. Press **Undo** in the bar to take your answer back. Your answer is saved a few seconds later.
 

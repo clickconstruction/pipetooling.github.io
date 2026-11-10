@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { EmptyState } from '../EmptyState'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
@@ -25,7 +25,9 @@ import {
   type SkimCard,
 } from '../../lib/research/permitSkim'
 import { loadContactHistory, loadResearchPermits, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
+import { swipeAnswer, swipeIsScroll, swipeMayStart, swipeProgress } from '../../lib/research/permitLook'
 import { GoogleSearchPress } from './GoogleSearchPress'
+import { PermitSkimLook } from './PermitSkimLook'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
 
@@ -35,11 +37,13 @@ import { WhoPulledItSheet } from './WhoPulledItSheet'
  * four one-tap reasons in the bar under the next card, and the bar is the undo. An answer is held
  * a few seconds before it is written, so Undo has something to take back. The deck has no window:
  * a permit stays until it is answered. The Who line and the Property line open the two sheets.
+ * Two pictures sit across the top (PermitSkimLook), and on a phone a drag answers: right keeps,
+ * left passes, with the word showing as the card passes a third of its width.
  */
 const SKIM_SINCE_YMD = '2000-01-01'
 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
-const cardStyle: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
+const cardStyle: CSSProperties = { position: 'relative', touchAction: 'pan-y', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
 // On a phone the two answers stay at the foot of the screen, over the app's own bottom bar, however tall the card is.
 const stickyAnswers: CSSProperties = { position: 'sticky', bottom: 'calc(var(--app-bottom-chrome, 0px) + 8px)', background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '0 0 14px 14px', zIndex: 5 }
 const factRow: CSSProperties = { display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr) auto', gap: 8, alignItems: 'start', padding: '10px 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem', textAlign: 'left', width: '100%', background: 'transparent', color: 'var(--text)', font: 'inherit' }
@@ -93,6 +97,9 @@ export function PermitSkimDeck({
   const pendingRef = useRef<Pending | null>(null)
   const [parcels, setParcels] = useState<Map<string, Parcel>>(new Map())
   const [sheet, setSheet] = useState<{ kind: 'who' | 'site'; card: SkimCard } | null>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const drag = useRef<{ id: number; x: number; y: number; width: number; live: boolean } | null>(null)
+  const [dx, setDx] = useState(0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -248,6 +255,40 @@ export function PermitSkimDeck({
     return () => window.removeEventListener('keydown', onKey)
   }, [sheet, top, answer, undo, pickReason])
 
+  // The swipe: a touch drags the card; past a third of its width it answers, short of it the card springs back.
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, a')) return
+    if (!swipeMayStart(e.pointerType, e.clientX, window.innerWidth)) return
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, width: cardRef.current?.offsetWidth ?? 320, live: false }
+  }
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    const moved = e.clientX - d.x
+    if (!d.live) {
+      if (swipeIsScroll(moved, e.clientY - d.y)) {
+        drag.current = null
+        return
+      }
+      if (Math.abs(moved) < 8) return
+      d.live = true
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // A browser that will not capture still gets the moves while the finger is on the card.
+      }
+    }
+    setDx(moved)
+  }
+  const endDrag = (e: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) => {
+    const d = drag.current
+    drag.current = null
+    setDx(0)
+    if (!d || !d.live || cancelled || !top) return
+    const a = swipeAnswer(e.clientX - d.x, d.width)
+    if (a) answer(top, a)
+  }
+
   const bar = pending && (
     <div role="status" style={{ margin: isMobile ? '0 0 10px' : '14px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--text)', color: 'var(--surface)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
       <span>{answeredWords(pending.answer)}</span>
@@ -303,18 +344,35 @@ export function PermitSkimDeck({
   const where = [row.address ?? row.permit_number, row.zip].filter(Boolean).join(', ')
   const far = milesWords(top.miles)
 
+  const pull = swipeProgress(dx, drag.current?.width ?? 320)
+  const stamp: CSSProperties = { position: 'absolute', top: 16, zIndex: 6, fontWeight: 800, fontSize: '1.375rem', letterSpacing: '0.08em', padding: '2px 12px', borderRadius: 8, border: '3px solid', background: 'var(--surface)', pointerEvents: 'none' }
   const card = (
-    <div style={cardStyle}>
+    <div
+      ref={cardRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => endDrag(e, false)}
+      onPointerCancel={(e) => endDrag(e, true)}
+      style={{ ...cardStyle, transform: dx ? `translateX(${dx}px) rotate(${dx / 22}deg)` : undefined, transition: dx ? 'none' : 'transform 150ms ease-out' }}
+    >
+      {dx !== 0 && (
+        <>
+          <span aria-hidden="true" style={{ ...stamp, left: 14, color: 'var(--text-green-700)', opacity: Math.max(0, pull), transform: 'rotate(-12deg)' }}>
+            KEEP
+          </span>
+          <span aria-hidden="true" style={{ ...stamp, right: 14, color: 'var(--text-muted)', opacity: Math.max(0, -pull), transform: 'rotate(12deg)' }}>
+            PASS
+          </span>
+        </>
+      )}
+      <PermitSkimLook row={row} milesWords={far} />
       <div style={{ padding: '14px 16px 4px' }}>
         <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {row.work_type ?? 'Permit'} · {filedWords(row, todayYmd)}
         </div>
         <h3 style={{ margin: '2px 0 0', fontSize: '1.1875rem', lineHeight: 1.25 }}>{skimTitle(row)}</h3>
         <div style={{ fontSize: '0.9375rem', marginTop: 2 }}>{skimMoney(row)}</div>
-        <div style={{ fontSize: '0.875rem', marginTop: 6 }}>
-          {where}
-          {far ? <span style={muted}> · {far}</span> : null}
-        </div>
+        <div style={{ fontSize: '0.875rem', marginTop: 6 }}>{where}</div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-green-700)', margin: '4px 0 10px' }}>{top.why}</div>
 
         <div style={factRow}>

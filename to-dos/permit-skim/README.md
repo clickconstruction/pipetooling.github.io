@@ -2,9 +2,9 @@
 name: "Permits: skim every one in a few seconds, dig into the few, and know the builders"
 number: 302
 group: gated
-status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830
+status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830 · PR 3 and 5, the pictures and the swipe, built as v2.6833
 mockup: to-dos/permit-skim/mockup.html
-ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim)
+ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim) · v2.6833 (PR 3 and 5, the pictures and the swipe)
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one. The
   owner asked for two steps. Skim: one permit on one screen with everything needed to decide, a
@@ -17,8 +17,8 @@ summary: >
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
   and one count says whether any of it turns into bids. The first build is eight small PRs, one
   built, then two weeks of use before more.
-next: PR 3 and 5 (the street view, the map and the swipe), then the migration with builders, the four places and the hand-off, the nudge and the count. The six calls stand on the picks drawn until the owner overturns one.
-size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1, 2 and 4; left: five (S · S · M · M · S)
+next: Deploy street-view-preview after v2.6833 merges. Then the migration with builders, the four places and the hand-off, the nudge and the count. The six calls stand on the picks drawn until the owner overturns one.
+size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 5; left: three (M · M · S)
 blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork
 ---
@@ -257,13 +257,13 @@ merge.
    state. Keep writes `look` and Pass writes `not_for_us` to `permit_verdicts`. Undo holds the
    write until the next answer or the page hides. The Who and Property lines open the two sheets
    with Keep and Pass at the foot. The ledger and the Decide sheet take the same four words.
-3. **The look (S, a function redeployed).** The two tiles and the bigger look. The street view
+3. **The look (S, a function redeployed). Built 2026-11-10 with PR 5 as v2.6833** (`docs/recent-features/v2.6833.md`). The bigger look became two doors: each tile opens Google. The two tiles and the bigger look. The street view
    through `fetchStreetViewImageBlob` by the permit's address, the month taken added to
    `street-view-preview`'s metadata answer, satellite when there is no picture, the map tile with
    the office ring, loaded for the top card only.
 4. **Everything public, and the Google press (M). Built 2026-11-10 as v2.6828** on the ledger and
    the map (`docs/recent-features/v2.6828.md`).
-5. **The swipe (S).** The drag on a phone over the same two answers.
+5. **The swipe (S). Built 2026-11-10 with PR 3 as v2.6833.** The drag on a phone over the same two answers.
 6. **Builders with a mark (M, a migration).** `builders`, `builder_names`, `builder_marks`; the
    matcher as a pure kernel shared by the pull and a one-time backfill; the Builders list; the
    builder's page with its kind, its mark and its permits; the card's Who line read from it; the
