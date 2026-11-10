@@ -15,7 +15,6 @@ import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
 import MaterialsOnSiteTab from '../components/materials/MaterialsOnSiteTab'
 import PrintLabelsWindow from '../components/materials/PrintLabelsWindow'
 import ScanLabelWindow from '../components/materials/ScanLabelWindow'
-import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useMaterialsOnSiteNeeds } from '../hooks/useMaterialsOnSiteNeeds'
 import { useOnSiteDeskJobs } from '../hooks/useOnSiteDeskJobs'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
@@ -77,7 +76,6 @@ export default function Materials() {
   const hideZzTestJobs = useZzTestJobsHidden(myRole)
   const { needs: onSiteNeeds } = useMaterialsOnSiteNeeds(canTrack, { hideZzTestJobs, userId: authUser?.id })
   const onSiteDesk = useOnSiteDeskJobs(canTrack)
-  const phoneStrip = useMatchMedia('(max-width: 640px)')
   const [scanLabelOpen, setScanLabelOpen] = useState(false)
   /** The labels window: null closed, else the job it opens on (null = ask which job). */
   const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
@@ -1467,7 +1465,6 @@ export default function Materials() {
         presses={stripPresses}
         onPress={onStripPress}
         badges={{ track: trackBadges(onSiteNeeds, myRole) }}
-        phone={phoneStrip}
       />
 
       {/* On site Tab (punch list #304) — the cages and boxes on every job; renders null when inactive */}
