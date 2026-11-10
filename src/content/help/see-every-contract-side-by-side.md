@@ -103,7 +103,7 @@ A card is due for review a year after it was last changed or last reviewed, whic
 The door on each card goes to the one place that wording is edited.
 
 - {{button:outline|Edit the wording}} opens the job service agreement's standard terms right on the card. Anyone in the office can save them. The new wording goes on every agreement sent from then on. Agreements already sent or signed keep theirs.
-- {{button:outline|Open where it is edited →}} is for the estimate terms and the bid cover-letter defaults. Those are on **Bids & materials**. The door opens that section. A dev edits these. Everyone else is told so on the card.
+- {{button:outline|Open where it is edited →}} is for the estimate terms and the bid cover-letter defaults. Those are on **Bids & materials**. The door opens that section. The owner edits the estimate terms. An estimator edits the bid cover-letter defaults. Everyone else is told on the card who edits it.
 - A card that says **Fixed in the app** has no editor. Ask a dev for a change.
 - You may need to print one sentence at 10 point, the size Texas asks for a waiver. Wrap it in double asterisks, `**like this**`. The asterisks never print. The sentence keeps the regular weight. It reads that way on the signing page, in the PDF and on this card.
 

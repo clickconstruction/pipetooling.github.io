@@ -1,8 +1,9 @@
 // messages-notify (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it.
 //
 // When the office sends a clause change for approval (edit_clause answered `proposed`), the app calls this with the
-// proposals it just made: the approvers (a dev or a controller, gc_clause_approve_team) get a push on every device and
-// an email with the change. When a controller or a dev decides one (approve_clause_proposal, decline_clause_proposal),
+// proposals it just made: the approvers (a dev, the owner or a controller: gc_clause_approve_team, whose copy here is
+// CLAUSE_APPROVER_ROLES in _shared/messagesTeams.ts) get a push on every device and an email with the change. When an
+// approver decides one (approve_clause_proposal, decline_clause_proposal),
 // the app calls it with that proposal: the editor gets an email that it went out, or the why. Their text by phone comes
 // with Quo (cut 5).
 //
@@ -26,6 +27,7 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { clauseDecisionNote, clauseProposalNote, notifyScope, type NotifyChange, type NotifyClause } from '../_shared/clauseNotify.ts'
 import { pushHoursFor, readReplyPushBody, runReplyPushes } from '../_shared/messagesReplyPush.ts'
+import { CLAUSE_APPROVER_ROLES } from '../_shared/messagesTeams.ts'
 import { HANDED_TEMPLATE, handedFresh, handedPush } from '../_shared/gcKernels/lib/messages/handedPush.ts'
 import { pushDecision } from '../_shared/gcKernels/lib/messages/pushHours.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
@@ -40,8 +42,6 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
-/** gc_clause_approve_team(): who approves a clause change. The client's copy is GC_CLAUSE_APPROVE_TEAM. */
-const APPROVER_ROLES = ['dev', 'controller']
 const FRESH_MS = 15 * 60 * 1000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -166,7 +166,7 @@ serve(async (req) => {
       const [{ data: papers }, { data: clauses }, { data: people }] = await Promise.all([
         admin.from('contract_template_documents').select('id, document_name').in('id', paperIds),
         admin.from('contract_clauses').select('id, paper_id, sequence_order, scope, retired_at').in('paper_id', paperIds),
-        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).not('email', 'is', null).in('role', APPROVER_ROLES).is('archived_at', null),
+        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).not('email', 'is', null).in('role', [...CLAUSE_APPROVER_ROLES]).is('archived_at', null),
       ])
       const approvers = ((people ?? []) as Array<Person & { role: string }>).filter((u) => u.id !== user.id)
       if (approvers.length === 0) return json({ success: true, push_sent: 0, email_sent: 0, approvers: [], message: 'No approver to tell' })

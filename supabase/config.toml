@@ -1019,11 +1019,11 @@ verify_jwt = false
 [functions.gmail-mine]
 verify_jwt = false
 
-# bridge-sheet-email (v2.5224) reads the dev's JWT itself and mails the Monday sheet to the caller only.
+# bridge-sheet-email (v2.5224) reads the caller's JWT itself (the owner or a dev) and mails the Monday sheet to the caller only.
 [functions.bridge-sheet-email]
 verify_jwt = false
 
-# bridge-weekly-sheet (v2.5883): the Monday cron's X-Cron-Secret, or a dev's dry run checked in the function.
+# bridge-weekly-sheet (v2.5883): the Monday cron's X-Cron-Secret, or the owner's or a dev's dry run checked in the function.
 [functions.bridge-weekly-sheet]
 verify_jwt = false
 

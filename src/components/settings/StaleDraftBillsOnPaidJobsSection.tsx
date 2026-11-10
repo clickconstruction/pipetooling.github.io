@@ -1,9 +1,9 @@
-/** Settings → Data & recovery → "Draft bills on paid jobs (dev)": the one-time sweep behind the
+/** Settings → Data & recovery → "Draft bills on paid jobs": the one-time sweep behind the
  * J3-1 fix (v2.2846). Lists `jobs_ledger_invoices` rows still in `ready_to_bill` whose job is already
  * `paid` — never-sent drafts the Dashboard used to show with live Bill Customer buttons — and retires
  * each through the existing, audited `delete_ready_to_bill_invoice` RPC (deleted-records archive keeps
  * the row). Self-contained like DeletedRecordsSection: single-surface, owns its own state. The parent
- * already gates the whole Data tab to `myRole === 'dev'`. */
+ * mounts it for the controller and a dev (`SettingsDataTab`, punch list #188 row 74, v2.6766). */
 import { useCallback, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -101,7 +101,7 @@ export default function StaleDraftBillsOnPaidJobsSection() {
         }}
       >
         <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Draft bills on paid jobs (dev)
+        Draft bills on paid jobs
       </button>
       {open && (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
