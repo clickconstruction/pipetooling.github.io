@@ -85,7 +85,7 @@ You can write the note on their last day. In **End employment**, keep **Archive 
 
 ## Change it or take it down
 
-Press {{button:outline|Edit the note…}} on the Status row. On their Away row, the same press is in the **⋯** menu. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. Their sign-in closes again until they are brought back.
+Press {{button:outline|Edit the note…}} on the Status row. On their Away row, the same press is in the **⋯** menu. Change the words or the switches and press {{button:blue|Save note}}. Press {{button:red|Take the note down}} to remove it. The teammate's sign-in closes again until they are brought back.
 
 Bring back takes the note down for you. See [bring back a teammate who left](/help/bring-back-a-teammate).
 
