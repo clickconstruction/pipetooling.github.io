@@ -19,7 +19,7 @@ summary: >
   CSV for Brother's label editor, and a Copy the label code press on the phone for Brother's app.
   His third ask: the code reads 4F2A-9C18 everywhere a person reads it, so it can be relayed by
   voice, while the bare code keeps working and the QR stays as small as it is.
-next: The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-D610BT and the PT-E720BT, once on each width, from Labels → Tape. Retire the card once the walks pass.
+next: The owner's pick on the page a scan opens, drawn 2026-11-10 as a before and after (`to-dos/prts-box-page/landing-before-after.html`, direction B recommended, eight calls). The owner makes the second Cloudflare rule for bare prts.co from `scripts/cloudflare/prts-co-redirect.md`; the ZZ walk in v2.6797's fragment on a phone with no session; the tape walk on the PT-D610BT and the PT-E720BT, once on each width, from Labels → Tape. Retire the card once the walks pass and the pick is built or declined.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
 blocker: None. The second Cloudflare rule is the owner's step and nothing waits on it; the tape walk needs the printers on the office Mac.
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
@@ -167,6 +167,7 @@ Later, not owed: a development's sibling jobs in the search; a *Print this list*
 - [`scan.html`](./scan.html): the scanned box on a phone, signed out, at 375 and 320, and the retired and not-a-box states.
 - [`search.html`](./search.html): Find a part on this site with its results, the empty answer, and the bare `prts.co` page with and without a remembered site.
 - [`sign-in.html`](./sign-in.html): the hand-off in three frames: the public page's press, the sign-in page, the box's screen in the app with its presses.
+- [`landing-before-after.html`](./landing-before-after.html): the page a scan opens, today and three after directions, the pick in its states, where each piece comes from, and the owner's calls (2026-11-10, see the last section).
 - [`tape-labels.html`](./tape-labels.html): the strip on 24 mm tape at print size and enlarged, the Labels panel with its Sheet · Tape chips and the counted press, the print window's first-time picks, and the phone's Copy the label code press.
 
 Every job, person, street, part and count in them is made up: Ridgeway Builders' Oak Hollow Apartments Building C, cage B3 at Level 2 by the north stair, Mateo Ruiz and Jordan Pike on the crew, the parts and their counts.
@@ -192,6 +193,32 @@ Designed 2026-11-09 from the owner's ask of that morning; the tape labels and th
 
 **Probed live** after each deploy, with `?preview=1` so no view counted: a real cage answers with its stencil, its lines, the last count's day and its newest photo (190 KB streamed from Drive); `?find=` lists the scanned cage first; an unknown code answers 404 and a non-code 400; the JSON names no job, customer, price or person.
 
-**Left**: the owner's second Cloudflare rule (bare `prts.co` → `/b`, in `scripts/cloudflare/prts-co-redirect.md`); the ZZ walk in v2.6797's fragment on a phone with no session, sign-in hand-off included; the tape walk on both printers and both widths. Then retire the card and let the release notes carry it.
+**Left**: the owner's pick on the page a scan opens (the last section); the owner's second Cloudflare rule (bare `prts.co` → `/b`, in `scripts/cloudflare/prts-co-redirect.md`); the ZZ walk in v2.6797's fragment on a phone with no session, sign-in hand-off included; the tape walk on both printers and both widths. Then retire the card and let the release notes carry it, once the pick is built or declined.
 
 **Learned on the way** (for the next stacked train): after a replay onto main the SQL beds run can post only its `changes` job, so the required `sql-beds` check never appears and the queue will not take the PR; `gh run rerun` on that run posts it, then `enqueuePullRequest`. PR 3 sat four hours on this.
+
+## The page a scan opens, a second look (2026-11-10)
+
+The owner printed his first cage labels on the PT-D610BT, scanned one with an iPhone and asked whether the page it opens should be improved. [`landing-before-after.html`](./landing-before-after.html) draws today's page, three after directions on one cage, the pick in its states, where each piece comes from, and the calls. Nothing is built; it waits on his pick.
+
+**What the read found.** `box-read` answers the code, the stencil, the kind, the place, the where-note, the lines with their maker and count, the day of the last count and the newest photo. The page draws all of it except the code. His test cage showed no place, photo or maker because it has none. The summary the function already calls also holds every line at zero, each line's Can't find presses since its count and the time it was last touched; the kernel's `boxPageLines` drops the lines at zero and passes none of the rest on. One fault, read from the code and not walked: the retired page's Find a part on this site press ends in an error, because the function answers `retired` before it reaches the search.
+
+**The recommendation: direction B, as two small PRs.**
+
+1. **PR 1 (S, client only, no deploy).** The stencil in a tile with the kind, the place and the code under it, as the label reads. The count as a verdict from `lastCountedOn` and the app's 14-day rule: *Counted 2 days ago*, *Due a count*, *Never counted*. The photo as a band with a tap to see it whole. The search as a field on the page, holding the one blue press. The sign-in reworded for who it is for, *Sign in to record a use or a count*, with the line that it is once per phone. The retired page loses its Find press and gains *Scan another label*; the not-a-box page gains *Type the code* and the last-scanned site.
+2. **PR 2 (S, the kernel and the function, one deploy, no migration).** A line emptied since the cage's last count stays as *None left*. A line with a Can't find since its count says so. *Text the office about Cage B3*, a text link to the company's own number with the cage's name filled in, which writes nothing. The stencil on a retired cage's page.
+
+The guide's Scan a label section moves with each PR.
+
+**Not offered.** Over the privacy line: who counted or touched a line, who took the photo, the job, the customer, the address or a map, a price, the history, the other cages before a search asks. Against the page's other rule, that nothing signed out writes: a form that reports a part missing. Not buildable: handing the scan to the app on an iPhone's home screen.
+
+**The calls**, each with the pick:
+
+1. Build B as two PRs with the client-only one first? *Yes.*
+2. Which press is blue, Find or Sign in? *Find.*
+3. Do the sign-in's new words read right? *Yes, with "On Click's crew?" above them.*
+4. Which lines at zero show as None left? *The ones emptied since the cage's last count; a count clears them.*
+5. Does "could not be found" show to someone signed out? *Yes.*
+6. A way to say something is wrong with no sign-in: a text to the office, a form, or nothing? *The text, to the number the bill page shows.*
+7. The photo as a band 150 tall, or as tall as today? *The band.*
+8. A retired cage's page: drop the Find press, or let a retired label search its old site? *Drop it.*
