@@ -10,7 +10,7 @@ summary: >
   minimum required by law, short and sweet. Read against Texas Property Code § 53.054(a), today's
   ten paragraphs may be short on four of the statute's eight items on a job under a GC (no months,
   no address for the hiring party, one address for the claimant, no date or method for the
-  notices) and carry six things the statute does not list. The page for the lien attorney maps the
+  notices) and carry five things the statute does not list. The page for the lien attorney maps the
   eight items to a short form of seven paragraphs, four on a job contracted with the owner, and
   asks five questions. A property where nobody answered the homestead question passes today as not
   a homestead. Sworn text changes only on counsel's word.
@@ -72,10 +72,10 @@ desk reaches through `buildLienDeskAffidavitFields` (`src/lib/jobs/lienDeskAffid
 | (a)(7) | the claimant's name, mailing address and, if different, physical address | ¶ 1, one address | ¶ 1 |
 | (a)(8) | for a sub, the date and method of each notice to the owner | ¶ 9, neither | ¶ 6 |
 
-Six things on today's paper are on no line of that list and go: the letterhead and the reference
-line, the *BEFORE ME* preamble, the first and last day of work, the contract amount and the amount
-paid, the general sentence about notices, and *together with all interest, costs, and attorney's
-fees allowed by law*. The jurat stays.
+Five things on today's paper are on no line of that list and go: the letterhead and the reference
+line, the first and last day of work, the contract amount and the amount paid, the general
+sentence about notices, and *together with all interest, costs, and attorney's fees allowed by
+law*. The *BEFORE ME* opening and the jurat both stay.
 
 The first draft of this page (eight questions, a redline that added to the paper) also proposed a
 return address, the job number at the foot, the notices as an exhibit and the certified mail
@@ -93,6 +93,27 @@ the § 53.254(f) notice (the desk holds every homestead today). Two details went
 form from this pass: the county under STATE OF TEXAS is the county where the affidavit is signed,
 where today's paper prints the property's county, and a line for the notary's printed name.
 
+## The opening and the notary's block (2026-11-10)
+
+The owner asked for the *BEFORE ME* opening back, to keep the notarial language. The Secretary of
+State's sample forms (September 2019) were read that day. The sample **jurat** is *State of Texas ·
+County of ___ · Sworn to and subscribed before me on the ___ day of ___, (year), by (name of
+signer)*, the seal and the notary's signature, and nothing more; `src/lib/legal/juratWords.ts`
+already prints it. The *Before me … personally appeared … being by me first duly sworn* wording is
+the sample **verification**, so it is recognised notarial language, though the jurat stands
+without it. The opening stays. The first short form on the page had also dropped the jurat's own
+venue lines, which today's paper prints blank for the notary; they are back. The one change to the
+notary's side is the county above the opening: today it prints the property's county, and the short
+form leaves it blank for the notary as the jurat's already is.
+
+## The homestead version
+
+Drawn on the page: the § 53.254(f) notice, *NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT
+CLAIMING A LIEN.*, at the top of the page above the title, in bold at 12 point against the
+statute's 10. Nothing else on the affidavit changes. § 53.254(a) to (e) are about the contract
+(written, signed before work, both spouses, recorded) and (g) about the notice to the owner, which
+the § 53.056 notice already prints on a residence.
+
 ## The short form
 
 On a job under a GC, seven paragraphs: the signer's authority and the claimant's addresses; the
@@ -104,10 +125,11 @@ claimant as original contractor, and the claim.
 ## The five questions
 
 1. Is the short form complete against § 53.054(a)?
-2. Do you want any of the six cuts back?
+2. Do you want any of the five cuts back?
 3. Is the day and method of each notice to the owner enough, and what does the paragraph say
    when a notice went late?
-4. When a lien on a homestead is proper, does the § 53.254(f) notice go at the top?
+4. Is the § 53.254(f) notice all a homestead affidavit needs, and what must the office confirm
+   about the contract before one is filed?
 5. May one affidavit cover several jobs at one property under the same original contractor?
 
 ## The build, once counsel answers

@@ -109,6 +109,8 @@
   .sheet .ref { display: inline-block; font-family: var(--font-ui); font-size: 0.68rem; font-weight: 600; line-height: 1; color: var(--accent); background: var(--accent-tint); border-radius: 999px; padding: 0.18rem 0.45rem; margin-left: 0.3rem; vertical-align: 0.15em; white-space: nowrap; }
   .pair { display: grid; gap: 1.25rem; }
   .cap { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.4rem; }
+  .sheet .hs { font-weight: 700; font-size: 1rem; line-height: 1.35; text-align: center; border: 2px solid var(--paper-ink); padding: 0.55rem 0.7rem; }
+  .sheet .follows { font-family: var(--font-ui); font-size: 0.82rem; color: var(--field); }
   ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.45rem; max-width: 65ch; font-size: 0.95rem; }
   a { color: var(--accent); }
   @media print { body { background: #fff; } .wrap { padding-block: 0; } .sheet { box-shadow: none; break-inside: auto; } }
@@ -120,7 +122,7 @@
   <header>
     <div class="eyebrow">For counsel's review · drawn November 10, 2026</div>
     <h1>Mechanic's and materialman's lien affidavit: the short form</h1>
-    <p class="lede">Our software prints this affidavit for each unpaid job. The owner's instruction is the minimum the law requires and nothing more. Below is what Texas Property Code § 53.054 lists, today's affidavit with what the statute does not ask for struck out, and the short form we propose. Five questions follow.</p>
+    <p class="lede">Our software prints this affidavit for each unpaid job. The owner's instruction is the minimum the law requires and nothing more. Below is what Texas Property Code § 53.054 lists, today's affidavit with what would leave it struck out, and the short form we propose. Five questions follow.</p>
     <p class="caveat">This was prepared by the company and its software, not by a lawyer. Every statute reference is our reading and may be wrong. Nothing in the software has changed. We will change only what you approve.</p>
   </header>
 
@@ -148,9 +150,9 @@
     <h2 id="o-h">Also required of the paper, outside § 53.054</h2>
     <p class="sub">Read on November 10, 2026. Each is kept or already handled.</p>
     <ul class="plain">
-      <li><strong>It must be sworn.</strong> The affidavit keeps its jurat, "sworn to and subscribed before me", with the notary's signature and seal. An acknowledgment alone would not do.</li>
+      <li><strong>It must be sworn.</strong> The affidavit keeps its opening, "BEFORE ME, the undersigned authority", and its jurat in the Secretary of State's sample form: State of Texas, County of, "sworn to and subscribed before me", the seal and the notary's signature. An acknowledgment alone would not do.</li>
       <li><strong>The clerk's format rules, Local Government Code § 191.007.</strong> A heading at the top of the first page naming the kind of paper, and a name printed under each signature. The short form keeps the title as its heading and prints the signer's name. A page that misses these pays twice the recording fee. The clerk may not refuse it, and the lien is not invalid.</li>
-      <li><strong>A homestead, § 53.254(f).</strong> The affidavit must carry "NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN." at the top in at least 10-point bold. The software holds every homestead for you today, so no form prints this yet. Question 4 asks about it.</li>
+      <li><strong>A homestead, § 53.254(f).</strong> The affidavit must carry "NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN." at the top in at least 10-point bold. The software holds every homestead for you today, so no form prints this yet. The homestead version below shows it.</li>
       <li><strong>A copy after filing, § 53.055.</strong> The owner, and the original contractor on a job under one, get a copy within five days of filing. This is a step the software tracks. It is not text on the affidavit.</li>
     </ul>
   </section>
@@ -163,16 +165,16 @@
         <div class="qn">1</div>
         <div class="qbody">
           <div class="qhead"><strong>Is the short form complete?</strong><span class="tag">§ 53.054(a)</span></div>
-          <p>The table above maps each item the statute lists to a paragraph of the short form. Two details changed with it. The county under STATE OF TEXAS is now the county where the affidavit is signed, since paragraph 2 already names the property's county. A line for the notary's printed name is added.</p>
+          <p>The table above maps each item the statute lists to a paragraph of the short form. Two details changed with it. The county above the opening sentence is left blank for the notary, as the county at the jurat already is. Today the top prints the property's county, which is wrong when the affidavit is signed in another county. A line for the notary's printed name is added.</p>
           <p class="ask">Is anything the law requires missing, or said in words that will not hold up?</p>
         </div>
       </li>
       <li>
         <div class="qn">2</div>
         <div class="qbody">
-          <div class="qhead"><strong>Six things we cut</strong><span class="tag">Struck in today's affidavit</span></div>
-          <p>None of these is on the statute's list as we read it: the letterhead and the reference line above the title, the "BEFORE ME" preamble, the first and last day of work, the contract amount and the amount paid, the general sentence about notices, and "together with all interest, costs, and attorney's fees allowed by law". The jurat stays.</p>
-          <p class="ask">Do you want any of the six back, and why?</p>
+          <div class="qhead"><strong>Five things we cut</strong><span class="tag">Struck in today's affidavit</span></div>
+          <p>None of these is on the statute's list as we read it: the letterhead and the reference line above the title, the first and last day of work, the contract amount and the amount paid, the general sentence about notices, and "together with all interest, costs, and attorney's fees allowed by law". The "BEFORE ME" opening and the jurat both stay.</p>
+          <p class="ask">Do you want any of the five back, and why?</p>
         </div>
       </li>
       <li>
@@ -188,7 +190,8 @@
         <div class="qbody">
           <div class="qhead"><strong>Homesteads</strong><span class="tag">§ 53.254</span></div>
           <p>The software holds any property marked as a homestead and tells the office to call you. We will also hold a property where nobody has answered the question.</p>
-          <p class="ask">When a lien on a homestead is proper, does the § 53.254(f) notice go at the top of this form, and is anything else different?</p>
+          <p>The homestead version is drawn below. It adds the § 53.254(f) notice at the top and nothing else.</p>
+          <p class="ask">Is the notice all a homestead affidavit needs, and what must the office confirm about the contract before one is filed?</p>
         </div>
       </li>
       <li>
@@ -203,9 +206,9 @@
   </section>
 
   <section aria-labelledby="t-h">
-    <h2 id="t-h">Today's affidavit, with what the statute does not list struck out</h2>
+    <h2 id="t-h">Today's affidavit, with what leaves it struck out</h2>
     <div class="legend">
-      <span><del>struck</del> is not on the statute's list</span>
+      <span><del>struck</del> leaves the affidavit</span>
       <span><span class="f">a field</span> is filled from the job's record</span>
     </div>
     <div class="sheet">
@@ -215,7 +218,7 @@
       </div>
       <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
       <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY</span></div>
-      <p><del>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</del></p>
+      <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
       <ol class="paras">
         <li><span class="pn">1.</span><div>My name is <span class="f">signer</span>. I am authorized to make this affidavit on behalf of <span class="f">claimant</span> ("Claimant"), located at <span class="f">claimant's address</span>.</div></li>
         <li><span class="pn">2.</span><div>Claimant furnished labor and/or materials for the improvement of the following described property in <span class="f">county</span> County, Texas — Legal description: <span class="f">legal description</span>; Property address: <span class="f">property address</span>.</div></li>
@@ -229,7 +232,8 @@
         <li><span class="pn">10.</span><div>Claimant claims a lien against all the above described property and improvements thereon in the amount of <span class="f">amount unpaid</span><del>, together with all interest, costs, and attorney's fees allowed by law</del>.</div></li>
       </ol>
       <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
-      <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
+      <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
+          <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
       <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div></div>
     </div>
   </section>
@@ -242,8 +246,8 @@
         <div class="cap">On a job under a general contractor</div>
         <div class="sheet">
           <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
-          <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY WHERE IT IS SIGNED</span></div>
-          <p><span class="f">signer</span>, being duly sworn, states:</p>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
+          <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
           <ol class="paras">
             <li><span class="pn">1.</span><div>I am authorized to make this affidavit for <span class="f">claimant</span> ("Claimant"). Claimant's mailing address is <span class="f">mailing address</span>. Its physical address is <span class="f">physical address</span>.<span class="ref">(a)(7)</span>
               <span class="when">The last sentence prints when the two addresses differ.</span></div></li>
@@ -256,6 +260,7 @@
             <li><span class="pn">7.</span><div>The amount of the claim is <span class="f">claim amount</span>. Claimant claims a lien on the property for that amount.<span class="ref">(a)(1)</span></div></li>
           </ol>
           <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
           <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
           <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div><div>Printed name: ______________________</div></div>
         </div>
@@ -264,8 +269,8 @@
         <div class="cap">On a job contracted with the owner</div>
         <div class="sheet">
           <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
-          <div class="venue">STATE OF TEXAS<br>COUNTY OF <span class="f">COUNTY WHERE IT IS SIGNED</span></div>
-          <p><span class="f">signer</span>, being duly sworn, states:</p>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
+          <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
           <ol class="paras">
             <li><span class="pn">1.</span><div>I am authorized to make this affidavit for <span class="f">claimant</span> ("Claimant"). Claimant's mailing address is <span class="f">mailing address</span>. Its physical address is <span class="f">physical address</span>.<span class="ref">(a)(7)</span></div></li>
             <li><span class="pn">2.</span><div>Claimant furnished <span class="f">trade</span> labor and materials to improve this property in <span class="f">county</span> County, Texas: <span class="f">legal description</span>, <span class="f">property address</span>.<span class="ref">(a)(3)</span><span class="ref">(a)(6)</span></div></li>
@@ -273,11 +278,24 @@
             <li><span class="pn">4.</span><div>The amount of the claim is <span class="f">claim amount</span>. Claimant claims a lien on the property for that amount.<span class="ref">(a)(1)</span></div></li>
           </ol>
           <div class="sig"><div class="line"></div><div><span class="f">signer</span></div><div><span class="f">claimant</span></div></div>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
           <p>SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by <span class="f">signer</span>.</p>
           <div class="sig"><div class="line"></div><div>Notary Public, State of Texas</div><div>Printed name: ______________________</div></div>
         </div>
       </div>
+      <div>
+        <div class="cap">On a homestead, when you say a lien is proper</div>
+        <div class="sheet">
+          <div class="hs">NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.<span class="ref">§ 53.254(f)</span></div>
+          <div class="doc-title">Mechanic's and Materialman's Lien Affidavit</div>
+          <div class="venue">STATE OF TEXAS<br>COUNTY OF ______________</div>
+          <p>BEFORE ME, the undersigned authority, on this day personally appeared <span class="f">signer</span>, who being by me duly sworn, upon oath states the following:</p>
+          <p class="follows">Paragraphs 1 to 7, the signature and the jurat follow as on a job under a general contractor, or 1 to 4 on a job contracted with the owner.</p>
+        </div>
+      </div>
     </div>
+    <p class="sub">The notice sits at the top of the page, above the title, in bold at 12 point. The statute asks for at least 10 point. Nothing else on the affidavit changes.</p>
+    <p class="sub">What § 53.254(a) to (e) and (g) ask for is not text on the affidavit. The lien needs a written contract with the owner, signed before any work, signed by both spouses when the owner is married, and recorded with the county clerk. A subcontractor relies on the original contractor's contract. The notice to the owner must carry the homestead statement, which our § 53.056 notice already prints on a residence.</p>
   </section>
 
   <section aria-labelledby="k-h">
