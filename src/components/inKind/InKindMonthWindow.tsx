@@ -9,7 +9,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { inKindTotals, lastDayOfMonth, monthMemo, monthName, monthYear, noCreditMemo, type InKindAddResult } from '../../lib/inKind/inKindLedger'
-import { monthChoices, type MonthChoiceKey } from '../../lib/inKind/inKindMonthChoices'
+import { monthChoices, monthNotOver, type MonthChoiceKey } from '../../lib/inKind/inKindMonthChoices'
 import type { BankPaidLine } from '../../lib/inKind/inKindBank'
 import { addInKindLine, type InKindLedgerData, type InKindLineInput } from '../../lib/inKind/inKindIo'
 import {
@@ -19,6 +19,7 @@ import {
   dayShort,
   heldWords,
   jobLine,
+  monthEarlyWords,
   monthSavePress,
   monthSavedWords,
   parseAmount,
@@ -56,9 +57,11 @@ export default function InKindMonthWindow({
   const { arrangement, jobs, lines, payments } = data
   const totals = useMemo(() => inKindTotals(jobs, lines, payments), [jobs, lines, payments])
   const bankPaid = useMemo(() => (bankLines == null ? null : Math.round(bankLines.reduce((s, l) => s + l.amount, 0) * 100) / 100), [bankLines])
+  // Ahead of the bank: the month is not over and nothing has left the bank in it, so the usual credit leads.
+  const early = useMemo(() => monthNotOver(month, todayYmdInAppTz()) && (bankLines == null || bankLines.length === 0), [month, bankLines])
   const choices = useMemo(
-    () => monthChoices({ monthlyAmount: arrangement.monthly_amount ?? 0, monthlyDue: arrangement.monthly_due, bankPaid, left: totals.left }),
-    [arrangement.monthly_amount, arrangement.monthly_due, bankPaid, totals.left],
+    () => monthChoices({ monthlyAmount: arrangement.monthly_amount ?? 0, monthlyDue: arrangement.monthly_due, bankPaid, left: totals.left, early }),
+    [arrangement.monthly_amount, arrangement.monthly_due, bankPaid, totals.left, early],
   )
   const [picked, setPicked] = useState<MonthChoiceKey>(() => choices[0]?.key ?? 'other')
   const [otherRaw, setOtherRaw] = useState('')
@@ -147,9 +150,16 @@ export default function InKindMonthWindow({
           {bankLines == null
             ? 'The bank was not read for this arrangement. Pick the amount below.'
             : bankLines.length === 0
-              ? `Nothing left the bank to ${arrangement.bank_payee || 'them'} in ${monthName(month)}.`
+              ? early
+                ? `Nothing has left the bank to ${arrangement.bank_payee || 'them'} in ${monthName(month)} yet.`
+                : `Nothing left the bank to ${arrangement.bank_payee || 'them'} in ${monthName(month)}.`
               : bankLines.map((l) => `${dayShort(l.day)}, ${l.name}, ${usd(l.amount)} left the account.`).join(' ')}
         </div>
+        {early ? (
+          <div style={amberStrip} data-testid="in-kind-month-early">
+            {monthEarlyWords(month)}
+          </div>
+        ) : null}
         <div>
           <div style={fieldLabel}>This month’s credit</div>
           <div style={{ display: 'grid', gap: 6 }}>

@@ -209,6 +209,13 @@ export function dueStripWords(dueMonthsOldestFirst: readonly string[], bankPaid:
 /** The press that opens a month. */
 export const monthOpenPress = (month: string): string => `Enter ${monthName(month)}’s credit`
 
+/** The quiet press on a month that is not due yet. */
+export const monthEarlyPress = 'Enter it early'
+
+/** The strip in the window of a month entered before it is over. */
+export const monthEarlyWords = (month: string): string =>
+  `${monthName(month)} is not over. Enter it now if the amount is settled. If it changes, take the line back and enter it again.`
+
 /** The press that saves a month. It names the month and the amount, or says the month has none. */
 export const monthSavePress = (month: string, amount: number): string => (amount > 0.005 ? `Record ${monthName(month)}’s credit of ${usd(amount)}` : `Settle ${monthName(month)} with no credit`)
 
