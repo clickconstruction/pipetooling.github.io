@@ -12,6 +12,7 @@
  */
 import { daysBetween } from './permitSkim'
 import { reachDay } from './permitReach'
+import { builderKeyOf } from '../../../supabase/functions/_shared/permitLookup'
 
 /** An address in the shape both sides are compared in. */
 export type SiteCanon = {
@@ -48,7 +49,8 @@ const TYPE_SET = new Set(Object.values(TYPES))
 
 /** Words that name a kind of route and add nothing once the number is there: "US Hwy 281" is 281. */
 const ROUTE_WORDS = new Set(['us', 'state', 'sh', 'tx', 'texas', 'hwy', 'highway', 'ih', 'i', 'interstate', 'loop'])
-const SIDE_ROAD_WORDS = new Set(['frontage', 'access', 'service', 'feeder'])
+// Austin writes a service road as "SVRD" with the side it runs on: "10000 RESEARCH BLVD SVRD SB".
+const SIDE_ROAD_WORDS = new Set(['frontage', 'access', 'service', 'feeder', 'svrd', 'sb', 'nb', 'eb', 'wb'])
 const UNIT_WORDS = '(?:suite|ste|unit|apt|bldg|building|space|spc|lot|room|floor)'
 const CROSSING_WORDS = new Set(['and', 'at', '&', '@'])
 
@@ -96,7 +98,11 @@ function splitType(tokens: readonly string[]): { words: string[]; type: string |
 
 /** A street line ("4120 Mill Street", a feed's "4120 mill st") in the shape both sides compare in, or null when it has no house number or no street. */
 export function canonOfStreet(street: string | null | undefined): SiteCanon | null {
-  const line = (street ?? '').replace(/\s+/g, ' ').trim()
+  // A unit is not part of the street: a bid writes "Suite 255", Austin's feed "UNIT 143" or "BLDG 3 UNIT 347".
+  const line = (street ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(new RegExp(`\\s+(?:${UNIT_WORDS}\\b|#).*$`, 'i'), '')
   const m = line.match(/^(\d+[a-z]?)(?:\s*-\s*\d+)?\s+(.+)$/i)
   if (!m) return null
   const { words, type } = splitType(streetTokens(m[2] as string))
@@ -186,6 +192,8 @@ export function readBidAddress(address: string | null | undefined, readCities: r
 /** What the kernel needs of a permit: the feed's street, what it is, its days, the project name and who the city lists. */
 export type BidSitePermit = {
   id: string
+  /** The feed's own number. One permit can sit in both feeds, applied and issued; it is one permit. */
+  permit_number?: string | null
   address: string | null
   kind: string
   stage: string
@@ -196,26 +204,53 @@ export type BidSitePermit = {
   contact: string | null
 }
 
-/** The permits of one city that sit on a bid's site. A read narrows by the house number; this decides. */
-export function permitsOnSite<P extends Pick<BidSitePermit, 'address'>>(site: BidSite, permits: readonly P[]): P[] {
+/**
+ * The permits of one city that sit on a bid's site, each once. A read narrows by the house
+ * number; this decides. The city's two feeds can both carry one permit (the application and the
+ * issued permit share a number and a type): the issued row stands for it.
+ */
+export function permitsOnSite<P extends Pick<BidSitePermit, 'address' | 'id'> & Partial<Pick<BidSitePermit, 'permit_number' | 'permit_type' | 'stage'>>>(site: BidSite, permits: readonly P[]): P[] {
   if (site.kind !== 'site') return []
-  return permits.filter((p) => {
+  const byPermit = new Map<string, P>()
+  for (const p of permits) {
     const canon = canonOfStreet(p.address)
-    return canon != null && sameSite(site.canon, canon)
-  })
+    if (canon == null || !sameSite(site.canon, canon)) continue
+    const key = p.permit_number ? `${p.permit_number}|${p.permit_type ?? ''}` : p.id
+    const held = byPermit.get(key)
+    if (!held || (held.stage !== 'issued' && p.stage === 'issued')) byPermit.set(key, p)
+  }
+  return [...byPermit.values()]
+}
+
+/**
+ * Who a general plumbing permit lists, read against the building permit beside it. In this feed
+ * a job's plumbing permit is often filed under the building permit's own contact, which names no
+ * plumber: `same` says so. Else the name the city lists, or null when it lists nobody.
+ */
+export function plumbingListing(general: Pick<BidSitePermit, 'contact'>, building: Pick<BidSitePermit, 'contact'> | null): { same: boolean; name: string | null } {
+  const name = general.contact?.replace(/\s+/g, ' ').trim() || null
+  const same = name != null && building?.contact != null && builderKeyOf(name) != null && builderKeyOf(name) === builderKeyOf(building.contact)
+  return { same, name }
 }
 
 export type PlumbingType = 'general' | 'gas' | 'irrigation' | 'sewer' | 'other'
 
-/** The feed files irrigation, gas and sewer under plumbing. Only a general plumbing permit says a plumber has the building's work. */
+/**
+ * A feed files irrigation, gas and sewer under plumbing. Only a general plumbing permit says a
+ * plumber has the building's work. San Antonio names each type ("Plumbing General Permit");
+ * the other cities have one plumbing type with no qualifier ("Plumbing Permit", "Plumbing",
+ * "Commercial Plumbing"), and their pull already leaves the irrigation and fire-line ones out:
+ * a plumbing type with no qualifier is the building's plumbing.
+ */
 export function plumbingTypeOf(permitType: string | null | undefined): PlumbingType | null {
   const t = (permitType ?? '').toLowerCase()
-  if (!/^(lsr )?plumbing\b/.test(t)) return null
+  if (!/\bplumbing\b/.test(t)) return null
   if (t.includes('irrigation')) return 'irrigation'
   if (t.includes('gas')) return 'gas'
   if (t.includes('sewer')) return 'sewer'
   if (t.includes('general')) return 'general'
-  return 'other'
+  const qualifiers = (t.match(/[a-z]+/g) ?? []).filter((w) => !['plumbing', 'permit', 'commercial', 'residential'].includes(w))
+  return qualifiers.length === 0 ? 'general' : 'other'
 }
 
 /** Words a project name carries that say nothing about which project it is. */
@@ -311,7 +346,10 @@ export function bidSiteWords(
   }
   const general = [...onSite].sort(newestFirst).find((p) => plumbingTypeOf(p.permit_type) === 'general')
   if (!general) parts.push('No general plumbing permit seen on it.')
-  else parts.push(general.contact ? `A general plumbing permit is on this address. The city lists ${general.contact}.` : 'A general plumbing permit is on this address.')
+  else {
+    const listing = plumbingListing(general, lead && lead.kind === 'building' ? lead : null)
+    parts.push(listing.same ? 'A general plumbing permit is on this address, under the building permit’s own name.' : listing.name ? `A general plumbing permit is on this address. The city lists ${listing.name}.` : 'A general plumbing permit is on this address.')
+  }
   return { state, main: parts.filter(Boolean).join(' '), detail: null }
 }
 

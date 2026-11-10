@@ -2,9 +2,9 @@
 name: "Bids and permits: what the city knows about this site and this GC, on the bid"
 number: 307
 group: gated
-status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit
-mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html)
-ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count)
+status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit · his word after that: build it all · PR 2 and 3, the bid window's two blocks, built together as v2.6866 with one read · PR 5, permit news on the Bid Board, built as v2.6870 · PR 6 and 7, the answer on a name and the names tied to a GC, built together as v2.6872 with one table · the rest of PR 4, the read back as history, built as v2.6873 · PR 8, Austin, came with #292's revision 4 the same day (v2.6859, v2.6861), with New Braunfels, San Marcos and Seguin, so the bid's panels read all five cities · his word on the first screenshots: let a person link one of our customers to a name on permits and see what the two share · drawn as link-a-name.html with a second look, twelve GCs probed on real rows, not built
+mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html; linking a customer to its names: link-a-name.html)
+ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC) · v2.6870 (PR 5, permit news on the Bid Board) · v2.6872 (PR 6 and 7, the answer on a name) · v2.6873 (the rest of PR 4, the read back)
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
   a person bidding. The test on real rows says the name is the weak join and the address is the
@@ -19,8 +19,8 @@ summary: >
   its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
   small table of answers. San Antonio covers about three bid sites in ten, so every line says
   what it can see: the city, the first day of the records, and what a count is out of.
-next: PR 2, this site's permits in the bid window, which is the first thing on a screen and needs one read. The owner's word on the seven calls; his start on PR 1 took call 1's pick, site first.
-size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 and the words half of PR 4; left: PR 2 to 8 (M · M · S · M · M · S · M)
+next: The owner's go on linking a customer to its names on permits (PR 9, then PR 10). The read back to January 2025 is run from Builders, a step at a time, once v2.6873 is live. Left unbuilt and named under each PR: the Ours chip, Mark lost on a news line, the likely name grade, Builders' column reading the answers. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
+size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 8; left: PR 9 and 10 (M · M) and the four small pieces named in next (S)
 blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
@@ -305,6 +305,54 @@ this job* is a hint that can be wrong; seven sites in ten have no records until 
 read; knowing a plumbing permit is ours needs the office to say which names are us; and the
 names tied to a GC stay few until people have answered a few dozen times.
 
+## Linking a customer to its names on permits (asked 2026-11-10, drawn, not built)
+
+The owner, on the first real screenshots of the bid's window:
+
+> I think our names for customers may not perfectly match the permits so it would be cool to be
+> able to link one of our customers to a known customer name on bids to see similarities.
+
+Drawn in [`link-a-name.html`](link-a-name.html), desk and phone, every name made up.
+
+**What the data says.** Twelve of the GCs on recent bids, each searched by its one telling word
+across the contact line of every permit on hand (2026-11-10, counts only). One has the same
+name on a permit, which the app already joins. Three have a look-alike: a name sharing the
+telling word that may or may not be them. One matched only by accident, the word sitting inside
+a longer, unrelated word. Seven have nothing like them. So a likeness is a question for a
+person, it will be asked of about a quarter of GCs today, and the rest need a search.
+
+**The link already exists.** It is a `works_for`, every-permit row in `builder_customer_answers`
+(v2.6872). Linking a customer to a name writes the same row from another door. No new table.
+A tied company reads *Same company*, a tied person *Works for them*, told apart by
+`contactParts`.
+
+**Direction 1, from the customer (the pick, built first).** A press, *Find their names on
+permits*, under the GC's card in a bid's window and on the customer's own page. One sheet:
+
+- **Names that may be them**, each with its reasons, the strongest first. The strongest is not
+  the name: it is a permit on an address we bid to that customer. Then one name begins the
+  other, one letter apart, a shared telling word, initials. The common trade words
+  (construction, builders, contracting, group) count for little.
+- Two presses on a name: **Same company** and **Not them**. A No is kept, so the name is not
+  offered again.
+- **Compare** puts ours beside the city's and marks what the two truly share: the addresses we
+  bid to them against the permits on those addresses, the zips, the people listed with the
+  name, and a phone once one has been looked up.
+- **A search** over every name on permits, for the customers nothing resembles.
+- **Tied to them**, with whose word it is and Take back.
+
+**Is this the best we can do?** Not by itself. A look-alike is a question and never an answer:
+one of the three was a different company. The name is the weakest evidence, so Compare draws a
+shared word as the least of them. And one customer at a time leaves most unlinked, since nobody
+opens forty bids to tie forty names.
+
+**Direction 2, from the permits (built second).** A chip on Builders, *Looks like a customer*,
+with its count. Every look-alike pair in one list, the strongest reason first, each answered in
+one press. One sitting ties most of what can be tied, and the Needs you card can carry the count.
+
+**Never:** a tie made by the app on a likeness. Only the exact same name is joined without a
+person, as it is today.
+
 ## The recommendation
 
 Worth building, in the order the evidence gives: the site first, the jobs priced for the GC
@@ -331,6 +379,8 @@ Each with the pick drawn.
    GC half says the bid names no builder* and offers the press to pick one.
 7. **What one answer ties.** *Pick: nothing until the list is shown.* Then *Show all 7 under
    Ridgeway* or *This permit only*, the person's choice each time.
+8. **May the app tie a look-alike name by itself?** *Pick: never.* It suggests with its reasons
+   and a person presses. Only the exact same name is joined without one.
 
 ## The plan
 
@@ -357,29 +407,58 @@ fences when they make a table, and are pushed from a checkout of main after the 
    and area, for the kernel to decide and to read the plumbing line by type. The
    Location section's verdict line and its list, opening `PermitBuildingSheet` for a permit. The
    four states. The robot copies left out. The city's value and area beside the bid's.
+   **Built 2026-11-10 with PR 3 as v2.6866** (`docs/recent-features/v2.6866.md`). The read is
+   `bid_site_permits(city, numbers[])`. A row does not open the building's sheet yet. One permit
+   in both of the city's feeds is counted once, and a plumbing permit filed under the building
+   permit's own contact reads *under the building permit's own name*.
 3. **The jobs we priced for this GC (M, PR 2's read, no table).** Under the GC card: the scope
    line, the verdict with what it is out of, and each bid to that customer with what the city
    shows on its address, folded behind a press on a phone. The bids in towns with no records
    are counted and named. A setting holds the names that are us on a plumbing permit.
+   **Built 2026-11-10 with PR 2 as v2.6866.** Not built: the setting and the *Ours* chip. A
+   plumbing permit is marked only when it lists a name other than the building permit's contact.
 4. **A year and more of history, and the live tab's words (S, the function redeployed).**
    `permit-pull` takes a first day for a one-time run back to January 2025 and fills
    `builder_key` on the plumbing rows. **The words were built 2026-11-10 as v2.6857**
    (`docs/recent-features/v2.6857.md`, [`before-after-live-words.html`](before-after-live-words.html)):
    every count on Permits says the day the records start, read from `permit_pulls` by
    `permitReach.ts`, and goes back to *in the last year* by itself once the run back has been
-   made. Left: the run back and the plumbing keys.
+   made. **The run back was built 2026-11-10 as v2.6873** (`docs/recent-features/v2.6873.md`):
+   `permits.backfilled` keeps a row read as history off the skim, `permit-pull` takes `since`
+   with `until`, and Builders carries the press *Read back to …*, 92 days a step.
 5. **Permit news on the Bid Board (M).** One read for every open and sent bid, never one per
    row. The strip, the chips on the row and the phone card, the line on a follow-up, and
    *Mark lost…* opening the outcome the board already has.
+   **Built 2026-11-10 as v2.6870** (`docs/recent-features/v2.6870.md`). Not built: *Mark lost…*
+   and the follow-up's line. The news line has one press, Open the bid.
 6. **The answer on a name (M, a migration).** The answers table, the read that folds a
    customer's names, and `builderMatch.ts`, pure: the three grades, what each asks, and what an
    answer would tie. The question under a site's permit with its list and two presses, the same
    question on a builder's sheet, the take-back, and Builders' *our bids* column reading the
    answers.
+   **Built 2026-11-10 with PR 7 as v2.6872** (`docs/recent-features/v2.6872.md`): the table
+   `builder_customer_answers`, `nameAnswers.ts`, and the question under the site's lead permit.
+   Not built: the *likely* grade, the question on a builder's sheet, Builders' column reading
+   the answers, and dropping `builders.customer_id`, which stays unwritten.
 7. **Other permits under names tied to them (S).** The second half of the GC's panel: each name
    with how it was tied and its permits, opening #302's builder sheet.
+   **Built 2026-11-10 with PR 6 as v2.6872.** The permits open in the panel, not in the sheet.
 8. **Austin (M).** A second feed in `_shared/permitFeed.ts` with the contractor's company as the
    builder and the phone kept, which makes the phone a second way to grade a name.
+   **Came with #292's revision 4 on 2026-11-10** (v2.6859 and v2.6861, `_shared/permitCities.ts`):
+   Austin, New Braunfels, San Marcos and Seguin beside San Antonio. The bid's panels read every
+   city the pull reads (v2.6866): a unit on Austin's street is left off the comparison, and a
+   city's one plumbing type is read as the building's plumbing. The read back is San Antonio's
+   alone so far, and the phone is not kept.
+
+9. **Find their names on permits (M, no migration).** `src/lib/research/nameLikeness.ts`, pure:
+   two names graded with the reason for each grade and the words they share, the trade words
+   counted for little, an accidental substring refused. The sheet with its suggestions, its
+   search over `research_builders` for each city read, Compare, and the two presses, writing
+   `builder_customer_answers`. Mounted under the GC's card and on the customer's page.
+10. **Looks like a customer (M).** The same row as a list on Builders behind a chip with its
+    count, every customer against every name through one index of telling words, and a Needs
+    you line while the count is above zero.
 
 **Held:** the same phone or web domain as a grade (it needs Places lookups on hand); the suburbs'
 weekly file (#292); a Permits tab on the customer's page; merging customer rows that are one GC.

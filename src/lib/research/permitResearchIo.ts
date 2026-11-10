@@ -13,6 +13,7 @@ import { leadFromPermit, ymdPlusDays, type BuilderMarkValue, type ContactHistory
 import type { BuilderKind, BuilderRow, PermitFunnel } from './permitBuilders'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { BUILDER_PERMIT_DAYS, type SitePermit } from './permitPublic'
+import { recordsStartOf } from './permitReach'
 
 function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
@@ -35,22 +36,22 @@ export async function loadResearchPermits(city: string, sinceYmd: string, reside
 }
 
 /**
- * The day a city's records start: the earliest day any pull that ran clean read back to. The
- * counts on Permits say it (punch list #307), so nothing reads as a year on ten weeks of rows.
+ * The day a city's records start: the earliest day every one of its feeds was read back to by a
+ * pull that ran clean. The counts on Permits say it (punch list #307), so nothing reads as a
+ * year on ten weeks of rows. One feed read further back than another does not move the day.
  * Null when no pull is on record.
  */
 export async function loadRecordsStart(city: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('permit_pulls' as never)
-    .select('since')
+    .select('source, since')
     .eq('city', city)
     .is('error', null)
     .not('since', 'is', null)
     .order('since', { ascending: true })
-    .limit(1)
+    .limit(1000)
   if (error) failed(error, 'read where the records start')
-  const first = ((data ?? []) as Array<{ since: string | null }>)[0]
-  return first?.since ?? null
+  return recordsStartOf((data ?? []) as Array<{ source: string; since: string | null }>)
 }
 
 export type LatestPull = { ranAt: string | null; error: string | null }
@@ -218,6 +219,21 @@ export async function pullPermitsNow(city: string): Promise<PullNowOutcome> {
   if (error) failed(error, 'run the pull')
   const body = (data ?? {}) as Partial<PullNowOutcome>
   return { ok: body.ok === true, feeds: body.feeds ?? [] }
+}
+
+/**
+ * A read back as history (punch list #307): the days from `since` up to `until`, flagged so they
+ * count for a builder and a bid's site and never sit on the skim. Returns how many permits it
+ * kept. A feed that stopped short is a failure, with its reason: the records' start must not move.
+ */
+export async function pullPermitsBack(city: string, sinceYmd: string, untilYmd: string): Promise<number> {
+  const { data, error } = await supabase.functions.invoke('permit-pull', { body: { city, since: sinceYmd, until: untilYmd } })
+  if (error) failed(error, 'read the permits back')
+  const body = (data ?? {}) as Partial<PullNowOutcome> & { error?: string }
+  if (body.error) throw new Error(body.error)
+  const stopped = (body.feeds ?? []).find((f) => f.error)
+  if (stopped) throw new Error(`The read back stopped: ${stopped.error}`)
+  return (body.feeds ?? []).reduce((n, f) => n + (f.kept ?? 0), 0)
 }
 
 /** The bid history behind the hint, by normalized name key, in one read. */

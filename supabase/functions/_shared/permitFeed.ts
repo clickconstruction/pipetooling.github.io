@@ -169,15 +169,18 @@ export function permitRowFromSanAntonio(record: Record<string, unknown>, feed: P
 
 /**
  * The SQL one page of a feed reads: the kept building types and every plumbing type filed on or after
- * `sinceDay`, oldest first so a page boundary never skips a day, `limit` rows from `offset`.
+ * `sinceDay`, oldest first so a page boundary never skips a day, `limit` rows from `offset`. With
+ * `untilDay` (punch list #307, a read back as history) only the days before it.
  */
-export function feedPageSql(feed: PermitFeed, sinceDay: string, limit: number, offset: number): string {
+export function feedPageSql(feed: PermitFeed, sinceDay: string, limit: number, offset: number, untilDay: string | null = null): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(sinceDay)) throw new Error(`feedPageSql: sinceDay must be YYYY-MM-DD, got ${sinceDay}`)
+  if (untilDay != null && !/^\d{4}-\d{2}-\d{2}$/.test(untilDay)) throw new Error(`feedPageSql: untilDay must be YYYY-MM-DD, got ${untilDay}`)
   const col = `"${feed.dateColumn}"`
+  const before = untilDay ? ` AND ${col} < '${untilDay}'` : ''
   return (
     `SELECT "PERMIT TYPE","PERMIT #","PROJECT NAME","WORK TYPE","ADDRESS","X_COORD","Y_COORD","DATE SUBMITTED","DATE ISSUED","DECLARED VALUATION","AREA (SF)","PRIMARY CONTACT" ` +
     `FROM "${feed.resourceId}" ` +
-    `WHERE ${col} >= '${sinceDay}' AND ("PERMIT TYPE" IN (${keptTypesSql()}) OR "PERMIT TYPE" LIKE 'Plumbing %' OR "PERMIT TYPE" LIKE 'LSR Plumbing%') ` +
+    `WHERE ${col} >= '${sinceDay}'${before} AND ("PERMIT TYPE" IN (${keptTypesSql()}) OR "PERMIT TYPE" LIKE 'Plumbing %' OR "PERMIT TYPE" LIKE 'LSR Plumbing%') ` +
     `ORDER BY ${col} ASC, "_id" ASC LIMIT ${Math.max(1, Math.floor(limit))} OFFSET ${Math.max(0, Math.floor(offset))}`
   )
 }
