@@ -263,9 +263,26 @@ function AppContent() {
         <Route path="/sub" element={<SubPortal />} />
         <Route path="/pay/:id" element={<PayLink />} />
         {/* #294 (v2.6797): a box label's code, prts.co/b/<code>. Signed out it is the public box page; signed in it opens the box on the On site tab. Outside the Layout so the sign-in gate never swallows a scan. */}
-        <Route path="/b/:code" element={<BoxCode />} />
+        {/* v2.6868: each of the two box routes sits in its own Suspense. They are lazy, and a press on one opens the other
+            (Open the box, Scan another label, Type the code): with no boundary that press suspended in a click and
+            React blanked the page. */}
+        <Route
+          path="/b/:code"
+          element={
+            <Suspense fallback={null}>
+              <BoxCode />
+            </Suspense>
+          }
+        />
         {/* #294 (v2.6799): bare prts.co lands here, Scan a label: type the code, or find a part on the site this phone last scanned. */}
-        <Route path="/b" element={<BoxScan />} />
+        <Route
+          path="/b"
+          element={
+            <Suspense fallback={null}>
+              <BoxScan />
+            </Suspense>
+          }
+        />
         <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
