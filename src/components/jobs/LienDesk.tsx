@@ -111,6 +111,7 @@ import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
+import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
@@ -851,7 +852,7 @@ export default function LienDesk({
       const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
-        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd })
+        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd, form: lienAffidavitFormForItem(e?.item), filings: data.filingsByJob[jobId] ?? [] })
         const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
         return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }

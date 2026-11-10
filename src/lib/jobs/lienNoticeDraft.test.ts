@@ -99,9 +99,10 @@ describe('retainage inside the claim (v2.3753)', () => {
   })
 })
 
-describe('buildLienAffidavitFieldsForJob · the period paragraph 5 swears (v2.6061)', () => {
+describe('buildLienAffidavitFieldsForJob · the period the earlier form’s paragraph 5 swears (v2.6061)', () => {
   const base = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-07', contactPerson: 'R', issuer: null, noticesRecorded: true }
-  const aff = { ...base, todayYmd: '2026-10-29' }
+  // The period prints on the earlier form alone; the short form (punch list #305) names months, not days.
+  const aff = { ...base, todayYmd: '2026-10-29', form: 'long' as const }
   const paragraph5 = (fields: LienAffidavitFields) => filingDocText(buildLienAffidavitBlocks(fields))
   it('a job with sessions swears the first approved day through the last', () => {
     const fields = buildLienAffidavitFieldsForJob({ ...aff, workDays: { first_work_date: '2026-05-04', last_work_date: '2026-07-17' } })

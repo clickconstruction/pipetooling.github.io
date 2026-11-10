@@ -162,3 +162,24 @@ describe('a signature travels with its statement and the notary’s block (v2.68
     expect(FakeJsPDF.last!.pages).toBe(1)
   })
 })
+
+describe('the short lien affidavit in PDF (punch list #305)', () => {
+  it('draws the notary’s printed-name line and no commission line, with nothing above the title, on one page', async () => {
+    const { buildLienAffidavitBlocks } = await import('./lienFilingDocuments')
+    const blocks = buildLienAffidavitBlocks(
+      { county: 'Bexar', claimantPersonName: 'Rey Master', claimantCompany: 'Sample Plumbing LLC', claimantAddress: '1 Shop Rd, San Antonio, TX 78201', legalDescription: 'CB 1 BLK B LOT 7', propertyAddress: '12 Sample Rd, San Antonio, TX 78209', contractedWithName: 'Harborline Builders', workDescription: 'Plumbing labor and materials', workStart: '', workEnd: '', ownerName: 'Pat Owner', ownerAddress: '4 Owner Ct, San Antonio, TX 78209', originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016', contractAmount: '5000.00', paidAmount: '0.00', unpaidAmount: '2000.00', includeNoticesSworn: true, form: 'short', isSub: true, workMonthsWords: 'July and August 2026', noticesSentWords: 'certified mail on September 14, 2026' },
+      { letterhead: { company: 'Sample Plumbing LLC', licenseLine: '', contactLines: ['(210) 555-0100'] }, refItems: ['Job #700', 'Work month 2026-08'] },
+    )
+    FakeJsPDF.made = 0
+    await filingDocPdfBlob(blocks)
+    const pdf = FakeJsPDF.last!
+    expect(pdf.texts[0]).toBe("MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT")
+    expect(pdf.texts).toContain('COUNTY OF ___________')
+    expect(pdf.texts).not.toContain('COUNTY OF BEXAR')
+    expect(pdf.texts.some((t) => t.includes('Job #700') || t.includes('JOB #700') || t.includes('(210) 555-0100'))).toBe(false)
+    expect(pdf.texts).toContain('Printed name: ______________________________')
+    expect(pdf.texts.some((t) => t.includes('My commission expires'))).toBe(false)
+    expect(pdf.texts.some((t) => t.includes('7. The amount of the claim is $2,000.00.'))).toBe(true)
+    expect(pdf.pages).toBe(1)
+  })
+})

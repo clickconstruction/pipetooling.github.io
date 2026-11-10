@@ -4,6 +4,8 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienClaimCorrection } from './lienClaimCorrection'
 import { buildLienAffidavitFieldsForJob } from './lienNoticeDraft'
 import type { LienWorkSpanJob } from './lienWorkSpan'
+import type { LienAffidavitForm } from './lienAffidavitForm'
+import type { LienAffidavitNoticeRow } from './lienAffidavitNotices'
 
 /**
  * The § 53.054 affidavit as the Lien desk fills it. Pure. The desk draws the paper in three places: the Affidavits
@@ -32,6 +34,10 @@ export type LienDeskAffidavitFacts = {
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
   todayYmd: string
+  /** The form the job's paper is on (`lienAffidavitFormForItem` of its desk item); absent, the short form. */
+  form?: LienAffidavitForm
+  /** The job's recorded filings (`data.filingsByJob`): the short form names the months and the sends of the § 53.056 notices among them. */
+  filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
 }
 
 export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAffidavitFields {
@@ -58,5 +64,7 @@ export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAff
     noticesRecorded: entry?.gates.find((g) => g.key === 'notice')?.ok ?? false,
     contactPerson: f.contactPerson,
     issuer: f.issuer,
+    form: f.form,
+    filings: f.filings,
   })
 }
