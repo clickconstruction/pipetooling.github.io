@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: gated
-status: parked 2026-11-09 by the owner, not to build now · nothing designed · the first arrangement is already recorded in the app
+status: mock-up drawn 2026-11-10 · the owner picked the card on the customer and the Needs you line first, the list second, and a ledger of lines entered as needed (amount, date, memo; overhead unless put on a job) · nothing built · the first arrangement is already recorded in the app
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -10,15 +10,15 @@ summary: >
   fourteen payment rows on fifteen bills and a memo on each. Nothing in the app says "this customer pays in
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. This card holds the ask and that first ledger until the owner wants the page.
-next: the owner's word to start; then a mock-up of the arrangement's strip on the customer page and of the list, with made-up data
-size: M as a train of three (S · M · S)
-blocker: the owner parked it
-opinion: build the arrangement as a thing the app knows (a row with its terms), shown on the customer page first; a page that lists every arrangement comes second, since there is one today
+next: the owner's word to start PR 1; the four small calls still open can be answered along the way
+size: L as a train of four (S · M · S · M)
+blocker: the owner's word to start
+opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
 
 # One place for work paid in kind (#301)
 
-Parked 2026-11-09. Diane, after the landlord's credits went in: *where in the app could that fourteen thousand dollars of in kind payments be shown? Perhaps we should make an in kind page?* Then: *I don't want to make it in kind page right now, but I would like to add this as a punch list item for this exact reason the notes of the ledger with Tom. So this could be the first entry.*
+Parked 2026-11-09. Diane, after the landlord's credits went in: *where in the app could that fourteen thousand dollars of in kind payments be shown? Perhaps we should make an in kind page?* Then: *I don't want to make it in kind page right now, but I would like to add this as a punch list item for this exact reason the notes of the ledger with [the landlord]. So this could be the first entry.*
 
 The repo and the `/to-dos/` pages are public, so this card names the customer only as *the landlord customer*. The ledger below is the real one; the customer's name, the two houses and the bank lines stay in the app and in the office's own notes.
 
@@ -48,11 +48,35 @@ November was not settled when this was written. At $1,000 a month the rest takes
 - **Nothing says the next credit is due.** Someone has to remember each month. The bank feed already shows the $1,000 rent payment leaving Mercury, so the app could notice it and propose the matching credit.
 - **The agreement itself is nowhere.** The terms (who, how much a month, from when, against what total) live in people's heads and in the payment memos.
 
-## The shape, if the owner picks it up
+## The mock-up
 
-1. **The arrangement as a row (S).** A table for an in-kind arrangement: the customer, what is given (rent credit), the amount a month, the start month, the total it pays off, a note. A migration with the repo's four fences. Nothing on screen yet.
-2. **Its strip on the customer page (M).** *Pays in kind: rent credit, $1,000 a month since April 2026. $8,000 of $22,643.46 credited, $14,643.46 left, about 15 months. Next credit: November.* The open bills under it read *scheduled in kind* instead of late; Accounts Receivable, the chase flow and the payment forecast treat them that way; pay speed leaves in-kind payments out. A press records this month's credit on the oldest open bill with the memo filled.
-3. **The list (S).** Every arrangement in one place (a section of Billing, or its own page if there are several by then), with credited, left and the next month due. Optionally a Needs-you line when a month's rent left Mercury and no credit followed.
+[`in-kind-arrangements-mockup.html`](in-kind-arrangements-mockup.html), drawn 2026-11-10 with made-up names and amounts. Frames A to H: today's reading, the card on the customer's page, the ledger for one partner, a month's credit in one press, the Needs you line, a ledger of lines as things are delivered, the list, and the smallest alternative. It ends with a second look and the owner's calls.
+
+The owner widened the ask the same day: *sometimes we trade with others for gravel or other things and I still need to enter each month's credit*. So the design holds two cases. One is a standing arrangement with a credit each month. The other is a partner who gives things as they come, such as concrete by the load.
+
+## Decided 2026-11-10
+
+**Where it lives: the card on the customer's page and a line on Needs you first, the list second.** November's credit was missed because nobody was told, and a page only helps a person who already remembered. The ledger window and the entry window are the same from every door.
+
+**Entered as needed, never by itself.** The owner: *The monthly credit needs to be entered on an as-needed basis, some jobs don't have recurring things like that. It's someone delivers concrete and I need to list the days they deliver concrete and the amount.* So an arrangement is a ledger of lines, and a line is added the day something is given. Most arrangements have no schedule and no reminder. The rent credit keeps its monthly reminder and its suggested amount, which the owner liked as drawn, and still takes a person's press. That last sentence is the drawing session's reading of the two answers together.
+
+**A line records the amount, the date and a memo of the details.** Nothing else must be filled: no ticket photo, no quantity box.
+
+**A line counts as overhead, unless that line is put on a job.** The owner: *an individual gives us things and we record those as line items and sometimes they do need to apply to a job*. Put on a job, the line counts as that job's material.
+
+## The calls still the owner's
+
+1. **When the rent reminder speaks.** The day the rent leaves the bank and the last day of a month with no rent, or a fixed day each month.
+2. **A partner who gave first.** Whether goods taken before any work is done is a real case (frame F6). If not, every arrangement starts from a bill.
+3. **Who may see and enter.** The people who can record a payment today, or the owner only.
+4. **The words.** The page is called In kind and each row an arrangement, since trade already means plumbing or electrical in the app.
+
+## The shape
+
+1. **The arrangement and its lines as rows (S).** A table for an in-kind arrangement: the customer, what is given, the bills it pays and their order, a note, and for a monthly one the amount a month, the start month and the name the rent goes out under at the bank. A table for its lines: the date, the amount, the memo, and overhead or the job it is put on. A month marked *no credit* is a line too, so a month with full rent paid never reads as forgotten. A migration with the repo's four fences. Nothing on screen yet.
+2. **The card, the ledger and Add a line (M).** On the customer page, *Pays in kind*: the terms in a sentence, given so far, what is left, and for a monthly one the month that is due (frame B). The open bills read *scheduled in kind* instead of late; Accounts Receivable, the chase flow and the payment forecast treat them that way; the collected line says how much came in kind; pay speed leaves in-kind payments out. The ledger window shows each line with what it counts as and the bills it went to (frames C and F). *Add a line* takes the amount, the date and the memo, counts as overhead unless a job is picked, and writes today's In kind payments across the oldest open bills (frame F).
+3. **The monthly press and the Needs you line (S).** For an arrangement with a monthly amount, one press records the month's credit with the amount read from the rent that left the bank (frame D). A Needs you line appears when a month has rent at the bank and no credit, or has ended with neither, naming every month behind (frame E).
+4. **The cost side and the list (M).** A line's amount reaches the overhead numbers, or the job's material cost when it is put on a job. Then every arrangement on one page with what is owed each way (frame G). `/accounts-receivable` has no tabs today, so the list is a page of its own with a door from there.
 
 ## Where it plugs in
 
@@ -65,4 +89,4 @@ November was not settled when this was written. At $1,000 a month the rest takes
 
 ## How to verify
 
-The landlord customer's record is the live case: fifteen bills, fourteen In kind payments, $14,643.46 open as of 2026-11-09. Any mock-up uses made-up names and amounts.
+The landlord customer's record is the live case: fifteen bills, fourteen In kind payments, $14,643.46 open as of 2026-11-09, and November 2026's credit not entered as of 2026-11-10. The mock-up uses made-up names and amounts.
