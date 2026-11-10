@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls, and the chip beside a customer's name (mock-up 2, waiting on the owner)
+status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -13,7 +13,7 @@ summary: >
   that is due, and the In kind page lists every one. This card holds what is left.
 next: The sweep of the readers under Left. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
@@ -58,7 +58,7 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 
 ### Mock-up 2: the chip beside a customer's name
 
-[`in-kind-arrangements-chip-mockup.html`](in-kind-arrangements-chip-mockup.html), drawn 2026-11-10 with made-up names. The owner, once the first arrangement was live: *where in the app should a user be able to see the in kind balance due or credit for a customer, such as next to a customer's name?* It draws one chip with three things to say (on schedule with what is to come, a month due, they gave first) and where it goes: the Customers list with its total split, the customer's page, a job and the Bill window, then *Who owes what*. It leaves the chip off what the customer sees, the crew's screens, search and Messages. Not built. It waits on the owner's five calls at the foot of the page.
+[`in-kind-arrangements-chip-mockup.html`](in-kind-arrangements-chip-mockup.html), drawn 2026-11-10 with made-up names. The owner, once the first arrangement was live: *where in the app should a user be able to see the in kind balance due or credit for a customer, such as next to a customer's name?* It draws one chip with three things to say (on schedule with what is to come, a month due, they gave first) and where it goes: the Customers list with its total split, the customer's page, a job and the Bill window, then *Who owes what*. It leaves the chip off what the customer sees, the crew's screens, search and Messages. The owner said *Yes, build it* on 2026-11-10, with the five calls as drawn. Built: the chip and one shared read (v2.6845), the Customers list with its total split and its *In kind* filter, the customer's page, the job window's chip and strip, and Bill Customer's question (v2.6848). A job already on the deal skips the question and records in kind. Left from this mock-up: frame E, *Who owes what* and the other receivables readers, which is the sweep under Left.
 
 ## Decided 2026-11-10
 
@@ -87,7 +87,7 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 
 ## Left
 
-- **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again.
+- **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again. The customer's one job that was off the deal was put on it and its bill recorded in kind the same day, on the owner's word.
 - **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, the Customers list's open balance. Each has its own row list and select.
 - **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
