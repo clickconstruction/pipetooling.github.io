@@ -8,11 +8,13 @@ describe('the box code', () => {
     expect(boxCode(ID)).toBe('7D759246')
   })
 
-  it('makes an address short enough for a 21-module code, in the letters a QR packs tight', () => {
+  it('carries the scheme so a phone opens it, short enough for a 25-module code, in the letters a QR packs tight', () => {
     const url = boxUrl(ID)
-    expect(url).toBe('PRTS.CO/B/7D759246')
-    // a version-1 QR at level M holds 20 characters of its letter mode
-    expect(url.length).toBeLessThanOrEqual(20)
+    // v2.6862: with no scheme an iPhone's camera searched the web for the words.
+    expect(url).toBe('HTTPS://PRTS.CO/B/7D759246')
+    expect(new URL(url.toLowerCase()).pathname).toBe('/b/7d759246')
+    // a version-2 QR at level M holds 38 characters of its letter mode
+    expect(url.length).toBeLessThanOrEqual(38)
     expect(url).toMatch(/^[0-9A-Z $%*+\-./:]+$/)
     expect(boxAddress(ID)).toBe('prts.co/b/7D759246')
   })
@@ -29,14 +31,15 @@ describe('the box code', () => {
     expect(dashedCode('7d759246')).toBe('7D75-9246')
     expect(dashedCode('7D75-9246')).toBe('7D75-9246')
     expect(normalizeBoxCode(boxCodeWords(ID))).toBe(boxCode(ID))
-    // the QR keeps the bare address; the dashed one would still fit a 21-module code at level M (20 characters)
+    // the QR keeps the code with no dash; the dashed address with its scheme still fits a 25-module code at level M (38 characters)
     expect(boxUrl(ID)).not.toContain('-')
-    expect(boxAddressWords(ID).toUpperCase().length).toBeLessThanOrEqual(20)
+    expect(boxClipboardWords(ID).length).toBeLessThanOrEqual(38)
   })
 
   it('Copy the label code puts the dashed address in capitals on the clipboard and says so (v2.6800)', () => {
-    expect(boxClipboardWords(ID)).toBe('PRTS.CO/B/7D75-9246')
-    expect(copiedLabelWords(ID)).toBe('Copied PRTS.CO/B/7D75-9246. Paste it into the Brother app as a QR code.')
+    expect(boxClipboardWords(ID)).toBe('HTTPS://PRTS.CO/B/7D75-9246')
+    expect(boxClipboardWords(ID)).toMatch(/^[0-9A-Z $%*+\-./:]+$/)
+    expect(copiedLabelWords(ID)).toBe('Copied HTTPS://PRTS.CO/B/7D75-9246. Paste it into the Brother app as a QR code.')
     expect(normalizeBoxCode(boxClipboardWords(ID).split('/').pop() ?? '')).toBe(boxCode(ID))
   })
 })

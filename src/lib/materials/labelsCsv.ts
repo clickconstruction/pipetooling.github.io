@@ -1,7 +1,7 @@
 /**
  * The labels as a CSV (punch list #294, v2.6800): one row per live cage or box, for Brother's P-touch Editor, which
  * merges a CSV into a saved label template and prints the run on tape. The stencil, the kind, the place, the where-note,
- * the code as a person reads it, the address as a person types it, and the bare address the QR carries. Pure.
+ * the code as a person reads it, the address as a person types it, and the address the QR carries, with its scheme. Pure.
  */
 import { csvEscapeField } from '../bids/bidCsvExport'
 import { boxAddressWords, boxCodeWords, boxUrl } from './labels'
