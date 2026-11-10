@@ -33,6 +33,11 @@ import { lienMonthLines } from '../../lib/jobs/lienMonthLines'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { JobWindowCostMovePanel } from './JobWindowCostMovePanel'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import InKindChip from '../inKind/InKindChip'
+import { isOfficeRole } from '../../lib/doorRoles'
+import JobInKindStrip from '../inKind/JobInKindStrip'
+import { useInKindStandings } from '../../hooks/useInKindStandings'
+import { jobIsOffTheDeal } from '../../lib/inKind/inKindChip'
 
 /**
  * The tabbed Job window (v2.1675, owner-approved mockup): ONE modal for a job
@@ -188,6 +193,8 @@ export function JobWindowModal({
   // The ? and its card (punch list #187 PR 3): what each tab holds, at the end of the tab bar.
   const [legendOpen, setLegendOpen] = useState(false)
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
+  // Who pays in kind (punch list #301): the chip beside the customer's name, and the strip on a job the deal does not pay yet.
+  const inKindStandings = useInKindStandings(isOfficeRole(authRole))
   // The job's lien timeline for the History tab (v2.3879; lifted here v2.4707): one read, two readers — the box above and the calendar's month lines.
   const lien = useJobLienTimeline(fullJob, historyMounted)
   const lienShown = !!fullJob && !!lien.timeline && showJobHistoryLienTimeline({ openBalance: jobOpenBalance(fullJob), hasPaper: lien.hasPaper })
@@ -245,6 +252,7 @@ export function JobWindowModal({
   const titleParts = headJob ? formatJobDetailModalTitleParts(headJob.hcp_number, headJob.job_name) : { num: null, name: 'Job' }
   const headNumber = (headJob?.hcp_number ?? '').trim() || (headJob?.click_number ?? '').trim()
   const headStatus = headJob?.status ? (headJob.collections_at ? 'Collections' : (JOB_STEPPER_LABELS[headJob.status as JobStepperStatus] ?? headJob.status)) : null
+  const headStanding = headJob?.customer_id ? inKindStandings.get(headJob.customer_id) : undefined
   const quietParts = [headJob?.development?.name?.trim() || null, headJob?.customer_name?.trim() || null, priorNumbersBare(headJob?.prior_numbers) || null].filter((p): p is string => !!p)
   const closeButton = (
     <button
@@ -369,6 +377,7 @@ export function JobWindowModal({
                     </span>
                   ))}
                   <JobKindChip read={jobKindOfRow(headJob)} size="sm" />
+                  {headStanding ? <InKindChip standing={headStanding} form="short" plain /> : null}
                 </div>
               ) : null}
             </div>
@@ -433,6 +442,14 @@ export function JobWindowModal({
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
         <div className="job-window-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}>
+          {headJob && headStanding && jobIsOffTheDeal(headJob, headStanding) ? (
+            <JobInKindStrip
+              jobId={headJob.id}
+              customerName={headJob.customer_name ?? ''}
+              standing={headStanding}
+              onAdded={(arrangementId) => setFullJob((prev) => (prev ? { ...prev, in_kind_arrangement_id: arrangementId } : prev))}
+            />
+          ) : null}
           {/* Job pane — ALWAYS visible (v2.1676): its title, action icons, and
               Street View / map band are the window's shared header on every
               tab. Only its read-view body hides on Edit/Bill (paneBodyHidden),

@@ -78,6 +78,11 @@ import {
 } from '../../lib/physicalInvoiceDocument'
 import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
+import { useInKindStandings } from '../../hooks/useInKindStandings'
+import { isOfficeRole } from '../../lib/doorRoles'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, jobIsOffTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
+import { addJobToInKindArrangement } from '../../lib/inKind/inKindStandingIo'
+import InKindBillQuestion from '../inKind/InKindBillQuestion'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
 import { buildLocalStripeBillPreview, stripePreviewBlocker, stripePreviewBlockerHint } from '../../lib/billing/localStripeBillPreview'
 import { BillCustomerDiscountStrip } from './BillCustomerDiscountStrip'
@@ -454,6 +459,10 @@ export default function SendRecordInvoiceModal({
    * the rare job that still needs it (owner request: keep it, but further away).
    */
   const [hcpTabRevealed, setHcpTabRevealed] = useState(false)
+  // A customer who pays in kind (punch list #301, mock-up 2): a job the deal does not pay yet asks, once, how this
+  // bill is paid. In kind puts the job on the deal as the bill is recorded, on the one channel that sends nothing.
+  const [inKindAnswer, setInKindAnswer] = useState<InKindBillAnswer | null>(null)
+  const inKindStandings = useInKindStandings(isOfficeRole(authRole))
   const [sentDate, setSentDate] = useState(todayIsoDate)
   const [externalNote, setExternalNote] = useState('')
   const [billAmountStr, setBillAmountStr] = useState('')
@@ -942,6 +951,7 @@ export default function SendRecordInvoiceModal({
     // (Previously no-email jobs landed on HouseCall Pro first.)
     setTab('stripe')
     setHcpTabRevealed(false)
+    setInKindAnswer(null)
     const billCustomerOpenYmd = todayIsoDate()
     setSentDate(billCustomerOpenYmd)
     setStripeDueDate(billCustomerOpenYmd)
@@ -1630,6 +1640,15 @@ export default function SendRecordInvoiceModal({
     }
     setOutsideSubmitting(true)
     setOutsideError(null)
+    if (billInKind && billStanding) {
+      try {
+        await addJobToInKindArrangement(billStanding.arrangementIds[0]!, job.id)
+      } catch (e) {
+        setOutsideError(formatErrorMessage(e, 'The job was not put on the arrangement, so the bill was not recorded.'))
+        setOutsideSubmitting(false)
+        return
+      }
+    }
     const sentAt = sentDate.trim() ? new Date(sentDate + 'T12:00:00').toISOString() : new Date().toISOString()
     let sentInvoiceId: string | null = null
     try {
@@ -2186,7 +2205,12 @@ export default function SendRecordInvoiceModal({
     )
   }
 
+  const billStanding = job?.customer_id ? inKindStandings.get(job.customer_id) : undefined
+  const inKindQuestion = billStanding != null && billStanding.arrangementIds.length === 1 && billCustomerJobDetailsLoaded && jobIsOffTheDeal(billCustomerJobDetails, billStanding)
+  const inKindUnanswered = inKindQuestion && inKindAnswer == null
+  const billInKind = inKindQuestion && inKindAnswer === 'in_kind'
   const outsideReady =
+    !inKindUnanswered &&
     !paidJobBlocked &&
     (kind === 'invoice'
       ? invoice != null
@@ -2443,7 +2467,23 @@ export default function SendRecordInvoiceModal({
           )}
         </div>
 
-        {!(job.customer_email ?? '').trim() ? (
+        {inKindQuestion ? (
+          <InKindBillQuestion
+            customerName={job.customer_name ?? ''}
+            answer={inKindAnswer}
+            disabled={busy}
+            onAnswer={(next) => {
+              setInKindAnswer(next)
+              if (next === 'in_kind') {
+                setHcpTabRevealed(true)
+                setTab('housecallpro')
+              } else if (inKindAnswer === 'in_kind') {
+                setTab('stripe')
+              }
+            }}
+          />
+        ) : null}
+        {!billInKind && !(job.customer_email ?? '').trim() ? (
           <div
             role="group"
             aria-label="Customer email missing"
@@ -2580,7 +2620,12 @@ export default function SendRecordInvoiceModal({
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
+        {billInKind ? (
+          <div style={{ marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }} data-testid="bill-in-kind-channel-note">
+            {BILL_IN_KIND_CHANNEL_NOTE}
+          </div>
+        ) : null}
+        <div style={{ display: billInKind ? 'none' : 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>
             Stripe bill
           </button>
@@ -2744,7 +2789,7 @@ export default function SendRecordInvoiceModal({
                   cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
                 }}
               >
-                {busy ? '…' : 'Save'}
+                {busy ? '…' : billInKind ? BILL_IN_KIND_RECORD_PRESS : 'Save'}
               </button>
             </div>
           </>
