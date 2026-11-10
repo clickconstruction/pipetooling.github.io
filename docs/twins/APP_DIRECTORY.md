@@ -26,7 +26,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Ask the GC a plans question (RFI) / see what's unanswered → `/bids?tab=rfi`
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
-- Create a bid → the header's **Bid** press (dev, master, assistant, controller, estimator and superintendent, off in Farm Mode, since v2.6167; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
+- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Farm Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
 - Search a bid's plans, ask the robot what they say and make an RFI of what they do not → the **Plans** button at the end of the bid tabs' row while a bid is picked (`&plans=1` on the Followup tab opens it; v2.5736, v2.5737; guide `search-the-plans-on-a-bid`)
 - Everything new for an estimator in two minutes: the robots' ring, the Plans button, the Dashboard's lines and Messages → `/help?g=use-the-robots-and-the-new-bid-tools-as-an-estimator`
 

@@ -1198,7 +1198,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showHeaderNewBidButton(role, farmModeActive) && (
+          {showHeaderNewBidButton(role, farmModeActive, location.pathname) && (
             <button
               type="button"
               onClick={() => navigate('/bids?new=true')}
