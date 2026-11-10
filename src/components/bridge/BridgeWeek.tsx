@@ -6,9 +6,10 @@ import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_HOW, movesToRecord, type W
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
- * The Bridge's first screen (punch list #303, PR 1): three tiles, the week's call with its
- * moves, and the doors to everything behind it. The words are `buildWeekCall`'s; this draws
- * them and holds what the owner changes before the press: a move taken off, a person renamed.
+ * The Bridge's first screen (punch list #303, PR 1): three tiles and the week's call with its
+ * moves. The words are `buildWeekCall`'s; this draws them and holds what the owner changes
+ * before the press: a move taken off, a person renamed. The doors to everything behind it are
+ * `BridgeDoors`, drawn by the page under this since PR 2.
  *
  * Before a call: the page proposes and one press records. Once a call stands: the same card
  * shows each move against today. From Friday: it asks whether the step moved.
@@ -23,7 +24,7 @@ const doneColor = (d: MoveDone | null): string => (d === 'yes' ? 'var(--text-gre
 const pressBase: CSSProperties = { font: 'inherit', fontSize: '0.95rem', fontWeight: 700, minHeight: 48, borderRadius: 10, border: 'none', padding: '0.5rem 0.9rem', cursor: 'pointer', width: '100%' }
 const smallPress: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 36, borderRadius: 8, padding: '0.25rem 0.8rem', cursor: 'pointer' }
 
-function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
+function Tile({ tile, narrow, onNote }: { tile: WeekTile; narrow: boolean; onNote: () => void }) {
   const red = tile.tone === 'red'
   return (
     <div
@@ -57,11 +58,11 @@ function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
         </div>
       )}
       <div style={{ fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }}>{tile.sub}</div>
-      {/* The accounts left out of cash on hand (v2.6838): the list and its switches sit behind the link. */}
+      {/* The accounts left out of cash on hand (v2.6838): the list and its switches sit behind Money. */}
       {tile.note && (
-        <a href="#bridge-money" data-testid="bridge-week-tile-note" style={{ display: 'block', fontSize: narrow ? '0.72rem' : '0.8rem', color: 'var(--text-amber-800)', lineHeight: 1.3, marginTop: 2, textDecoration: 'underline' }}>
+        <button type="button" onClick={onNote} data-testid="bridge-week-tile-note" style={{ display: 'block', font: 'inherit', textAlign: 'left', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: narrow ? '0.72rem' : '0.8rem', color: 'var(--text-amber-800)', lineHeight: 1.3, marginTop: 2, textDecoration: 'underline' }}>
           {tile.note}
-        </a>
+        </button>
       )}
     </div>
   )
@@ -69,19 +70,22 @@ function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
 
 export function BridgeWeek({
   model,
-  softCount,
   recording,
   answering,
   onRecord,
   onAnswer,
+  onPickStep,
+  onCashNote,
 }: {
   model: WeekCallModel
-  /** The rows on Fix the reading: what makes these numbers soft. */
-  softCount: number
   recording: boolean
   answering: boolean
   onRecord: (link: CallLink, moves: CallMove[]) => void
   onAnswer: (outcome: CallOutcome) => void
+  /** Opens The flow, where a press on a step makes it the proposal. */
+  onPickStep: () => void
+  /** Opens Money at the bank's accounts, from the sentence that names what is left out. */
+  onCashNote: () => void
 }) {
   const narrow = useIsNarrowScreen()
   const shown = useMemo(() => model.card.moves.slice(0, narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES), [model.card.moves, narrow])
@@ -194,10 +198,10 @@ export function BridgeWeek({
   // At a desk, until a first call exists, the side panel says how the week runs.
   const how = !narrow && !last && proposing && model.link != null
   return (
-    <section aria-label="This week on the Bridge" data-testid="bridge-week" style={{ marginBottom: '0.9rem' }}>
+    <section id="bridge-week" aria-label="This week on the Bridge" data-testid="bridge-week" style={{ scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: narrow ? 8 : 12 }}>
         {model.tiles.map((t) => (
-          <Tile key={t.id} tile={t} narrow={narrow} />
+          <Tile key={t.id} tile={t} narrow={narrow} onNote={onCashNote} />
         ))}
       </div>
 
@@ -228,9 +232,9 @@ export function BridgeWeek({
               {proposing && model.link != null && (
                 <>
                   {' '}
-                  <a href="#bridge-flow" style={{ color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  <button type="button" onClick={onPickStep} data-testid="bridge-week-pick" style={{ font: 'inherit', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     Pick another step ›
-                  </a>
+                  </button>
                 </>
               )}
             </div>
@@ -268,27 +272,6 @@ export function BridgeWeek({
           </div>
         )}
       </div>
-
-      <nav aria-label="Behind the first screen" style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(3, minmax(0, 1fr))' : `repeat(${softCount > 0 ? 4 : 3}, minmax(0, 1fr))`, gap: narrow ? 8 : 12, marginTop: narrow ? 8 : 12 }}>
-        {[
-          { href: '#bridge-flow', name: 'The flow', sub: narrow ? 'five steps' : 'five steps and their desks' },
-          { href: '#bridge-money', name: 'Money', sub: narrow ? 'cash, owed' : 'cash, net position, what is owed' },
-          { href: '#bridge-people', name: 'People', sub: narrow ? 'who moved it' : 'who moved the number' },
-        ].map((d) => (
-          <a key={d.href} href={d.href} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 46, padding: '0.4rem 0.65rem', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', textDecoration: 'none', fontSize: '0.86rem', fontWeight: 700 }}>
-            {d.name} ↓<span style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)', lineHeight: 1.25 }}>{d.sub}</span>
-          </a>
-        ))}
-        {softCount > 0 && (
-          <a
-            href="#bridge-soft"
-            data-testid="bridge-week-soft"
-            style={{ gridColumn: narrow ? '1 / -1' : undefined, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: narrow ? 36 : 46, padding: '0.4rem 0.65rem', borderRadius: 10, border: '1px dashed var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', textDecoration: 'none', fontSize: narrow ? '0.78rem' : '0.86rem', fontWeight: 700 }}
-          >
-            {softCount} soft {softCount === 1 ? 'number' : 'numbers'} ↓{!narrow && <span style={{ fontSize: '0.68rem', fontWeight: 500, lineHeight: 1.25 }}>what makes the reading unsure</span>}
-          </a>
-        )}
-      </nav>
     </section>
   )
 }

@@ -20,18 +20,17 @@ import type { VectorReading } from '../lib/bridge/vectorReading'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
 import type { MercuryCash } from '../lib/bridge/mercuryCash'
-import { buildCashAccounts, countedCash, flipAccountOut, loadBankRead, saveAccountsOut } from '../lib/bridge/cashAccounts'
+import { buildCashAccounts, flipAccountOut, loadBankRead, saveAccountsOut } from '../lib/bridge/cashAccounts'
 import { carryingDay, carryingSentence, receiptsConfidence } from '../lib/bridge/cashConfidence'
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
-import { buildReadingGaps } from '../lib/bridge/readingGaps'
-import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
-import { buildThisWeek } from '../lib/bridge/thisWeek'
-import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
-import { peopleSummary, readPeopleOpen, writePeopleOpen } from '../lib/bridge/peopleStrip'
+import { buildSoftNumbers } from '../lib/bridge/softNumbers'
+import { BridgeSoftNumbers } from '../components/bridge/BridgeSoftNumbers'
+import { WEEKLY_EMAIL_WORDS, doorFromSearch, searchAfterDoor, type DoorId } from '../lib/bridge/doors'
+import { BRIDGE_DOOR_PANEL_ID, BridgeDoors } from '../components/bridge/BridgeDoors'
+import { MONEY_LIST_DAYS, laterPress, listWindow } from '../lib/bridge/moneyLists'
+import { peopleSummary } from '../lib/bridge/peopleStrip'
 import { BridgePeople } from '../components/bridge/BridgePeople'
-import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../lib/bridge/mondaySheet'
-import { DEFAULT_PAY_DAYS, SUB_LABOR_DEFAULT_DAYS, buildBills, buildCollectDeskFrom, buildReceipts, buildSheetFromReads, md } from '../lib/bridge/sheetBuild'
-import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
+import { DEFAULT_PAY_DAYS, SUB_LABOR_DEFAULT_DAYS, buildBills, buildCollectDeskFrom, buildReceipts, md } from '../lib/bridge/sheetBuild'
 import { BridgeWeeklySend } from '../components/bridge/BridgeWeeklySend'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
@@ -46,7 +45,7 @@ import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall, firstName, topPerson } from '../lib/bridge/weekCall'
-import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { arRowInvoiceId } from '../lib/bridge/collect/collectBills'
@@ -82,8 +81,6 @@ import { buildReflexes, otherLevers, reflexLine, type ReflexId } from '../lib/br
 import { BridgeWaits } from '../components/bridge/BridgeWaits'
 import { buildWeekCards } from '../lib/bridge/weekCard'
 import { formatWeekRangeLabel } from '../lib/people/approvalsQueue'
-import { buildProfitPanel } from '../lib/bridge/profitPanel'
-import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 import { buildOwedPanel } from '../lib/bridge/owedPanel'
 import { BridgeOwedPanel } from '../components/bridge/BridgeOwedPanel'
 import { buildHoursPanel } from '../lib/bridge/hoursPanel'
@@ -121,7 +118,6 @@ const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpaci
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 /** Where a door on the first screen lands: clear of the app's top bar. */
-const anchor: CSSProperties = { scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 5rem)' }
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
@@ -159,21 +155,22 @@ export default function Bridge() {
   const accountsOutUnsavedRef = useRef(false)
   const [bankError, setBankError] = useState<string | null>(null)
   const [bankLoading, setBankLoading] = useState(false)
-  // The People strip (v2.5222): Vectors and the day grid fold under it, closed by default and remembered per browser.
-  const [peopleOpen, setPeopleOpen] = useState<boolean>(() => readPeopleOpen())
-  // The Monday sheet (v2.5224): `?view=monday` draws the one-screen sheet; Email me this sheet mails it to the caller.
+  // The doors (punch list #303, PR 2): which part of the page is open under the first screen rides in the address.
+  // The Monday sheet's `?view=monday` (v2.5224) retired with it: the first screen is the sheet.
   const [searchParams, setSearchParams] = useSearchParams()
-  const sheetView = searchParams.get('view') === 'monday'
-  const [emailing, setEmailing] = useState(false)
-  const [mailNote, setMailNote] = useState<string | null>(null)
+  const doorParam = searchParams.get('door')
+  // Where to land after a door opens: the doors row, or a part inside the door.
+  const [doorScroll, setDoorScroll] = useState<{ id: string; n: number } | null>(null)
+  // Bills and receipts show fourteen days until this is pressed.
+  const [listsAll, setListsAll] = useState(false)
   // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
   const [pickedStage, setPickedStage] = useState<CallLink | null>(null)
   // The order (link PR 6): the badge pressed, if any; null closes the modal.
   const [orderFor, setOrderFor] = useState<CallLink | null>(null)
   // Everything else waits (link PR 7): the usual fix pressed, if any; it sets the dial, and dragging the dial clears it.
   const [reflexId, setReflexId] = useState<ReflexId | null>(null)
-  // The card panels (link PR 9): which of the three cards is open under the row, if any.
-  const [openCard, setOpenCard] = useState<'profit' | 'owed' | 'hours' | null>(null)
+  // The card panels (link PR 9): which card's panel is open, if any. Money owed sits behind Money, Crew hours behind People.
+  const [openCard, setOpenCard] = useState<'owed' | 'hours' | null>(null)
   // The breakdowns behind the two charts (link PR 11).
   const [netOpen, setNetOpen] = useState(false)
   const [cashOpen, setCashOpen] = useState(false)
@@ -283,7 +280,6 @@ export default function Bridge() {
   }, [data])
   // Cash on hand is the accounts switched on; `bank` stays the whole bank for the lines that compare it with the ledger.
   const cashAccounts = useMemo(() => (bank ? buildCashAccounts({ bank, names: bankNames, out: accountsOut }) : null), [bank, bankNames, accountsOut])
-  const bankCounted = useMemo(() => (bank ? countedCash(bank, accountsOut) : null), [bank, accountsOut])
   const cashToday = useMemo(() => (cashAccounts ? cashAccounts.countedUsd : typedRolled), [cashAccounts, typedRolled])
 
   const history = useMemo(() => {
@@ -800,7 +796,6 @@ export default function Bridge() {
     const c = scoreCall(calls, thisWeekStart)
     return c ? buildScorecard({ call: c, calls, now: nowReading, todayYmd: data.todayYmd, dayLabel: md }) : null
   }, [data, calls, thisWeekStart, nowReading])
-  const chip = callChip(scorecard)
   const deskReading = useMemo(() => {
     if (litLink && !isStageLink(litLink)) {
       const r = resources?.find((x) => x.id === litLink)
@@ -1014,7 +1009,7 @@ export default function Bridge() {
   // Vectors by the day (v2.4217): the period's sessions + rates per zoom and anchor, loaded once the Bridge data is in.
   const daysRange = useMemo(() => (data ? vectorRangeFor(daysZoom, daysAnchor ?? data.todayYmd) : null), [data, daysZoom, daysAnchor])
   useEffect(() => {
-    if (!data || !daysRange || !peopleOpen) return
+    if (!data || !daysRange || doorParam !== 'people') return
     const key = `${daysRange.start}:${daysRange.end}:${zzKey}`
     const cached = daysCacheRef.current.get(key)
     if (cached) {
@@ -1039,7 +1034,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, daysRange, peopleOpen, zzKey, readZzTestJobIds])
+  }, [data, daysRange, doorParam, zzKey, readZzTestJobIds])
   const daysGrid = useMemo(() => {
     if (!data || !daysRange || !daysInputs || !vectorInputs) return null
     return buildVectorGrid({
@@ -1057,27 +1052,6 @@ export default function Bridge() {
     })
   }, [data, daysZoom, daysMode, daysRange, daysInputs, vectorInputs])
 
-
-  // The Daily profit rate panel (link PR 9): the trend by week, the waterfall, the sources, break-even.
-  const profitPanel = useMemo(() => {
-    if (!data || !profit) return null
-    return buildProfitPanel({
-      windowStart: data.windowStart,
-      todayYmd: data.todayYmd,
-      earnedByDay: data.earnedByDay,
-      directByDay: data.directByDay,
-      overheadByDay: data.overheadByDay,
-      speed: profit.speed,
-      contributionMargin: profit.contributionMargin,
-      totals: data.totals,
-      waitingWeeks: new Set((headline?.weeks ?? []).filter((w) => w.waiting).map((w) => w.start)),
-      pendingClosedHours: data.crew.pendingClosedHours,
-      unlinkedCard: data.hygiene.unlinkedCard,
-      unattributedNoncard: data.hygiene.unattributedNoncard,
-      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
-      weekLabel: md,
-    })
-  }, [data, profit, headline])
 
   // The Money owed and Crew hours panels (link PR 10).
   const owedPanel = useMemo(() => {
@@ -1145,7 +1119,6 @@ export default function Bridge() {
 
   const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
   const speed = profit?.speed
-  const climbColor = speed && speed.climbPerDay >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
   const windowStartLabel = data ? md(data.windowStart) : ''
   const netToday = history ? (history[history.length - 1]?.netUsd ?? 0) : null
   const netStart = history ? (history[0]?.netUsd ?? 0) : null
@@ -1157,11 +1130,12 @@ export default function Bridge() {
   const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
   const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
   const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
-  const readingGaps = useMemo(() => {
+  // Soft numbers (PR 2): the one list of what makes the reading unsure, where Fix the reading and This week stood.
+  const softNumbers = useMemo(() => {
     if (!data) return []
     const assumedHalfEarnedUsd = data.earned.assumedHalfJobs.reduce((s, id) => s + (data.earned.earnedByJob.get(id) ?? 0), 0)
     const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
-    return buildReadingGaps({
+    return buildSoftNumbers({
       pendingClosedHours: data.crew.pendingClosedHours,
       pendingClosedSessions: data.crew.pendingClosedSessions,
       headlineRecordedUsd: headline?.thisWeek.recordedUsd ?? null,
@@ -1180,27 +1154,23 @@ export default function Bridge() {
     })
   }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
 
-  const thisWeek = useMemo(() => {
-    if (!data) return []
-    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
-    const late = receipts.filter((r) => r.basis === 'late')
-    return buildThisWeek({
-      unbilledUsd: billPile?.knownUsd ?? 0,
-      unbilledCount: billPile?.knownJobs ?? 0,
-      lateReceipts: { count: late.length, usd: late.reduce((sum, r) => sum + r.usd, 0) },
-      pendingClosedHours: data.crew.pendingClosedHours,
-      pendingClosedSessions: data.crew.pendingClosedSessions,
-      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
-      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
-      assumedHalfJobs: data.earned.assumedHalfJobs.length,
-      assumedHalfEarnedUsd: data.earned.assumedHalfJobs.reduce((sum, id) => sum + (data.earned.earnedByJob.get(id) ?? 0), 0),
-      fieldEarnedPerHour: data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
-      contributionMargin: profit?.contributionMargin ?? null,
-      overheadPerDayUsd: profit?.speed.overheadPerDay ?? 0,
-      bidsDue: data.levers.bidsDue,
-      dayLabel: md,
-    })
-  }, [data, billPile, receipts, profit])
+  // The open door. Soft numbers has none when nothing is soft, so a stale link opens nothing.
+  const door = doorFromSearch(doorParam, softNumbers.length)
+  const softCount = softNumbers.length
+  const pressDoor = useCallback(
+    (id: DoorId, opts?: { keepOpen?: boolean; scrollTo?: string }) => {
+      setSearchParams((prev) => new URLSearchParams(searchAfterDoor(prev.toString(), id, doorFromSearch(prev.get('door'), softCount), opts?.keepOpen)), { replace: true })
+      setDoorScroll((d) => ({ id: opts?.scrollTo ?? 'bridge-doors', n: (d?.n ?? 0) + 1 }))
+    },
+    [setSearchParams, softCount],
+  )
+  useEffect(() => {
+    if (!doorScroll) return
+    // After the door's part is drawn, and at once: a smooth scroll was dropped when a long part (The flow) was still laying out.
+    // jsdom has no scrollIntoView, so the call is optional.
+    const t = window.setTimeout(() => document.getElementById(doorScroll.id)?.scrollIntoView?.({ block: 'start' }), 80)
+    return () => window.clearTimeout(t)
+  }, [doorScroll])
 
   const netPanel = useMemo(() => {
     if (!history || !data) return null
@@ -1235,45 +1205,6 @@ export default function Bridge() {
     })
   }, [forecast, data, cashToday, bank, confidence, bills, receipts, doubtful, fin.data])
 
-  // The Monday sheet (v2.5224) is one kernel since v2.5881, `buildSheetFromReads`: the weekly send builds the same sheet from the
-  // same reads on Monday morning, so the mail and this view never drift. The page passes its state: the stepped pay week,
-  // the pressed stage, a moved dial, and what it could not read.
-  const sheet = useMemo(() => {
-    if (!data) return null
-    const gaps = [
-      fin.error ? 'the money owed and due' : null,
-      bankError ? 'the bank' : null,
-      vectorError ? 'the people' : null,
-      weeksError ? 'the eight weeks' : null,
-      buildError ? 'the build pace' : null,
-      demandError ? 'the asks and the bids' : null,
-      callsError ? 'the calls' : null,
-    ].filter((g): g is string => !!g)
-    return buildSheetFromReads(
-      { data, fin: fin.data, bank: bankCounted, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads: collectReads && collectReads.forKey === collectReadKey ? collectReads.reads : null, gaps },
-      { weekStart: vectorWeekStart, pickedStage, dialUsd },
-    )
-  }, [data, fin.data, fin.error, bankCounted, bankError, vectorInputs, vectorError, weeksInputs, weeksError, buildInputs, buildError, billJobs, demandInputs, demandError, calls, callsError, collectReads, collectReadKey, vectorWeekStart, pickedStage, dialUsd])
-
-  const emailSheet = useCallback(async () => {
-    if (!sheet || emailing) return
-    setEmailing(true)
-    setMailNote(null)
-    try {
-      const url = `${window.location.origin}/bridge`
-      const { data: res, error: err } = await supabase.functions.invoke('bridge-sheet-email', { body: { subject: mondaySheetSubject(sheet), html: mondaySheetHtml(sheet, url), text: mondaySheetText(sheet, url) } })
-      if (err) throw new Error(err.message)
-      const r = res as { error?: string; to?: string } | null
-      if (r && typeof r.error === 'string') throw new Error(r.error)
-      setMailNote(`sent to ${r?.to ?? 'you'}`)
-      showToast('The Monday sheet is in your inbox', 'success', 2500)
-    } catch (e) {
-      showToast(formatErrorMessage(e), 'error', 4000)
-    } finally {
-      setEmailing(false)
-    }
-  }, [sheet, emailing, showToast])
-
   // A hard load waits for the role before it decides (`pageGate`).
   // Punch list #188 row 69 (v2.6763): it is his chart table, so the owner opens the Bridge with a dev.
   const gate = pageGate({ loading: authLoading, user, role }, (r) => isOwnerOrDev(r))
@@ -1282,6 +1213,12 @@ export default function Bridge() {
 
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)
+  // Fourteen days on the page, the rest of the eight weeks behind one press (punch list #303, cut 4).
+  const listLast = data ? ymdAddDays(data.todayYmd, MONEY_LIST_DAYS) : ''
+  const billsList = listWindow(billsByDay, listLast, listsAll)
+  const receiptsList = listWindow(receiptsByDay, listLast, listsAll)
+  const billsPress = laterPress(billsList.later, listsAll, shortK)
+  const receiptsPress = laterPress(receiptsList.later, listsAll, shortK)
 
   return (
     <div style={{ padding: '0.25rem 0 3rem' }}>
@@ -1293,64 +1230,45 @@ export default function Bridge() {
             {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
           </span>
         ) : (
-          <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
+          <span style={det}>Where we stand, where cash is going, what would change it.</span>
         )}
-        {chip && (
-          <a
-            href="#bridge-last-call"
-            data-testid="bridge-call-chip"
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              padding: '3px 10px',
-              borderRadius: 999,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-              border: `1px solid ${chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--border)'}`,
-              color: chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)',
-            }}
-          >
-            {chip.text}
-          </a>
-        )}
-        {!sheetView && (
-          <button type="button" onClick={() => setSearchParams({ view: 'monday' })} disabled={!sheet} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
-            Monday sheet
-          </button>
-        )}
-        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: sheetView ? 'auto' : undefined, borderRadius: 6, padding: '0.25rem 0.7rem' }}>
+        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
-      ) : sheetView && sheet ? (
-        <>
-          <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
-          {/* The weekly email's switch (v2.5883): Monday 6 AM Central to every dev, off as it ships. */}
-          <div style={{ marginTop: '0.6rem' }}>
-            <BridgeWeeklySend />
-          </div>
-        </>
       ) : (
         <>
-          {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. Everything under it is the page as it was. */}
-          {weekModel && (
-            <>
-              <BridgeWeek model={weekModel} softCount={readingGaps.length} recording={recording} answering={answering} onRecord={(link, moves) => void recordCall(moves, null, link)} onAnswer={(o) => void answerCall(o, null)} />
-              <div style={{ ...label, borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginBottom: '0.5rem' }}>Behind the first screen</div>
-            </>
+          {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. */}
+          {weekModel ? (
+            <BridgeWeek
+              model={weekModel}
+              recording={recording}
+              answering={answering}
+              onRecord={(link, moves) => void recordCall(moves, null, link)}
+              onAnswer={(o) => void answerCall(o, null)}
+              onPickStep={() => pressDoor('flow', { keepOpen: true })}
+              onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
+            />
+          ) : (
+            <p style={{ ...det, color: callsError ? 'var(--text-amber-800)' : undefined }} data-testid="bridge-week-wait">
+              {callsError ? `The week’s call could not be read. ${callsError}` : 'Reading the week’s call…'}
+            </p>
           )}
 
-          {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
+          {/* The doors (PR 2): everything else the page had, one part open at a time under the first screen. */}
+          <BridgeDoors door={door} softCount={softNumbers.length} onDoor={(id) => pressDoor(id)} />
+
+          {door && (
+            <div id={BRIDGE_DOOR_PANEL_ID} data-testid={`bridge-door-panel-${door}`}>
+              {door === 'flow' && (
+                <>
+          {/* The rule (link PR 1): one line, the longer reading behind its ? */}
           <BridgeRule />
 
-          {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
-          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
-
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          <div id="bridge-flow" style={anchor} />
           {shownFlow && (
             <BridgeStages
               flow={shownFlow}
@@ -1366,8 +1284,6 @@ export default function Bridge() {
               }}
             />
           )}
-          {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
-          {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
           {dialReading && litStage && (
             <BridgeDial
               reading={dialReading}
@@ -1387,27 +1303,296 @@ export default function Bridge() {
             />
           )}
 
+
           {/* What throttles the link (link PR 6): the three resources */}
           {resources && <BridgeResources resources={resources} pickedId={litLink && !isStageLink(litLink) ? (litLink as ResourceId) : null} onPick={setPickedStage} onOrder={setOrderFor} />}
 
-          {/* The link's desk and the call (link PR 2): what the pressed link is, the moves with owners, the record; then last week's call against what moved */}
+          {/* The link's desk (link PR 2): what the pressed link is and today's reading. The call on it is made on the first screen (cut 5). */}
           {stageFlow && litLink && (
             <BridgeLinkDesk
               link={litLink}
               status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litLink })}
               todayReading={deskReading}
-              moveNumbers={moveNumbers}
               thisWeekCall={thisWeekCall}
-              recording={recording}
-              onRecord={(moves, note) => void recordCall(moves, note)}
               dayLabel={md}
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
+              onGoToCall={() => setDoorScroll((d) => ({ id: 'bridge-week', n: (d?.n ?? 0) + 1 }))}
             />
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
             {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
             {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           </div>
+          {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
+          {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
+          {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
+
+          {/* The weekly email's switch (v2.5883): Monday 6 AM Central, off as it ships. It sat on the Monday sheet until that view retired. */}
+          <div style={{ marginTop: '0.6rem' }}>
+            <BridgeWeeklySend words={WEEKLY_EMAIL_WORDS} />
+          </div>
+                </>
+              )}
+
+              {door === 'money' && (
+                <>
+          {/* Cash forecast */}
+          {/* Cash forecast */}
+          <div style={{ ...panel, marginTop: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span style={label}>Cash — next 8 weeks</span>
+              <span style={det}>bank balance today, then every bill on the day it's due and every receipt on the day it's expected</span>
+              {cashPanel && (
+                <button type="button" onClick={() => setCashOpen((o) => !o)} aria-expanded={cashOpen} data-testid="bridge-cash-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {cashOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
+              {forecast && (
+                <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: forecast.clearsFloor ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{cashRead}</span>
+              )}
+            </div>
+            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>{bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to start the forecast.'}</div>}
+            {forecast && <BridgeCashConfidence confidence={confidence} carry={carry} />}
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.3rem', ...det }}>
+              <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dashed #8b5cf6', marginRight: 5, verticalAlign: 3 }} />Cash forecast</span>
+              <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dotted var(--text-red-600)', marginRight: 5, verticalAlign: 3 }} />Cash floor</span>
+              <span style={{ color: 'var(--text-red-600)' }}>▼ bill due</span>
+              <span style={{ color: 'var(--text-green-700)' }}>▲ receipt expected</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="bridge-cash-source">
+                {bank ? (
+                  <>
+                    <span style={det}>
+                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(cashToday ?? bank.usd)}</b> · the bank's balance at {bankReadAt}
+                    </span>
+                    {data.cashSetting && typedRolled != null && Math.abs(typedRolled - bank.usd) >= 1000 && (
+                      <span style={{ ...det, color: 'var(--text-amber-800)' }} data-testid="bridge-cash-typed-drift">
+                        the figure typed {md(data.cashSetting.asOfYmd)} rolled through the ledger would read {shortK(typedRolled)}: {shortK(Math.abs(typedRolled - bank.usd))} of flows since are not in the app
+                      </span>
+                    )}
+                    <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={bankLoading} style={btnStyle}>
+                      {bankLoading ? 'Reading…' : 'Read again'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
+                    <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
+                    <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
+                    {bankError && <span style={{ ...det, color: 'var(--text-amber-800)' }}>the bank could not be read ({bankError}) — the typed figure stands for now</span>}
+                    {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
+                      <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
+                    )}
+                  </>
+                )}
+                <label htmlFor="bridge-floor" style={{ ...det, marginLeft: '0.6rem' }}>Floor</label>
+                <input id="bridge-floor" value={floorDraft} onChange={(e) => setFloorDraft(e.target.value)} inputMode="numeric" style={{ ...inputStyle, width: 80 }} />
+                <button type="button" onClick={() => void saveFloor()} style={btnStyle}>Set</button>
+              </span>
+            </div>
+            {cashAccounts && <BridgeCashAccounts accounts={cashAccounts} onFlip={(id) => void flipAccount(id)} />}
+            {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <div style={panel}>
+              <div style={label}>Bills coming due · next {listsAll ? '8 weeks' : `${MONEY_LIST_DAYS} days`}</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>payroll ≈ {money(data.payrollWeeklyEstUsd)}/week (8-week labor average{data.crew.pendingClosedHours > 0 ? ' — reads low while hours await approval' : ''}) · sub labor owed on a {SUB_LABOR_DEFAULT_DAYS}-day horizon · other spend ≈ {money(data.dailyDrainUsd)}/day (office parts, 90-day rate)</div>
+              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
+                {billsList.shown.map((b) => (
+                  <li key={b.ymd} style={listRow}>
+                    <span>
+                      {md(b.ymd)} · {b.labels.join(' + ')}
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }}>−{money(b.usd)}</span>
+                  </li>
+                ))}
+              </ul>
+              {billsPress && (
+                <button type="button" onClick={() => setListsAll((a) => !a)} aria-expanded={listsAll} data-testid="bridge-bills-later" style={{ ...btnStyle, marginTop: '0.4rem', minHeight: 36 }}>
+                  {billsPress}
+                </button>
+              )}
+              <div style={{ ...det, marginTop: '0.4rem' }}>Insurance, rent, and card bills aren't scheduled yet — they arrive as bank transfers and only show once sorted.</div>
+            </div>
+            <div style={panel}>
+              <div style={label}>Receipts expected · next {listsAll ? '8 weeks' : `${MONEY_LIST_DAYS} days`}</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → the GC pace here, or their segment's → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
+              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
+                {receiptsList.shown.map((r) => (
+                  <li key={r.ymd} style={listRow}>
+                    <span>
+                      {md(r.ymd)} · {r.labels.slice(0, 2).join(', ')}
+                      {r.labels.length > 2 ? ` +${r.labels.length - 2}` : ''}
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.sources.join(' · ')}</span>
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums' }}>+{money(r.usd)}</span>
+                  </li>
+                ))}
+                {doubtful.length > 0 && (
+                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
+                    <span>
+                      {doubtful.length} invoice{doubtful.length === 1 ? '' : 's'} more than {DOUBTFUL_AFTER_DAYS}d past expected — not counted
+                      <span style={{ display: 'block', fontSize: '0.72rem' }}>{doubtful.slice(0, 3).map((d) => `${d.label} (${d.daysLate}d)`).join(' · ')}{doubtful.length > 3 ? ` +${doubtful.length - 3}` : ''}</span>
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(doubtful.reduce((acc, d) => acc + d.usd, 0))}</span>
+                  </li>
+                )}
+                {fin.data && fin.data.arCollections.count > 0 && (
+                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
+                    <span>Collections ({fin.data.arCollections.count}) — not counted</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(fin.data.arCollections.total)}</span>
+                  </li>
+                )}
+              </ul>
+              {receiptsPress && (
+                <button type="button" onClick={() => setListsAll((a) => !a)} aria-expanded={listsAll} data-testid="bridge-receipts-later" style={{ ...btnStyle, marginTop: '0.4rem', minHeight: 36 }}>
+                  {receiptsPress}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Net position */}
+          {/* Net position */}
+          <div style={{ ...panel, marginTop: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span style={label}>Net position — last 8 weeks</span>
+              <span style={det}>cash + owed to you (collections excluded) − owed by you</span>
+              {(netPanel || truth) && (
+                <button type="button" onClick={() => setNetOpen((o) => !o)} aria-expanded={netOpen} data-testid="bridge-net-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {netOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
+              {netToday != null && netStart != null && (
+                <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: netToday - netStart >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
+                  Today: {shortK(netToday)} · {netToday - netStart >= 0 ? 'up' : 'down'} {shortK(Math.abs(netToday - netStart))} since {windowStartLabel}
+                </span>
+              )}
+            </div>
+            {history ? (
+              <BridgeNetPositionChart history={history} />
+            ) : (
+              <div style={{ ...det, padding: '1.2rem 0' }}>{!fin.data ? 'Loading money owed…' : bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to anchor this line.'}</div>
+            )}
+            <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
+            {/* The truth check (v2.3335) explains this line, so it opens with the line's breakdown (punch list #303, cut 3). */}
+            {netOpen && netPanel && <BridgeBreakdownPanel title={`What moved it, ${netPanel.startLabel} to today`} sub="the three parts of net position, each by how much it changed over the window" bars={netPanel.waterfall} sources={netPanel.sources} closing={netPanel.paper} testId="bridge-net-panel" />}
+            {netOpen && truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
+          </div>
+
+          {/* Money owed, both ways */}
+          <div style={{ marginTop: '0.6rem' }}>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Money owed</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'owed' ? '▴ close' : '▾ chart'}</span>
+              </div>
+              {fin.data ? (
+                <>
+                  <div style={big}>
+                    {shortK(fin.data.ar.total)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>owed to you</span>
+                  </div>
+                  <div style={det}>
+                    owed by you <b style={{ color: 'var(--text)' }}>{shortK(fin.data.ap.total)}</b> · finished work not yet billed <b style={{ color: 'var(--text)' }}>{billPile ? shortK(billPile.knownUsd) : '…'}</b> · collections {shortK(fin.data.arCollections.total)} ({fin.data.arCollections.count}) written off for planning
+                  </div>
+                </>
+              ) : (
+                <div style={det}>{fin.loading ? 'Loading…' : fin.error ?? '—'}</div>
+              )}
+            </button>
+          </div>
+          {openCard === 'owed' && owedPanel && <BridgeOwedPanel panel={owedPanel} onClose={() => setOpenCard(null)} />}
+
+          {/* The eight weeks, full size (v2.5216): contribution per week, the two constraints as lights */}
+          <div style={{ marginTop: '0.6rem' }}>
+          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+          </div>
+
+          <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>
+            <b>How it's counted</b> is in the guide <Link to="/help/the-bridge">read the Bridge</Link>. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
+          </p>
+                </>
+              )}
+
+              {door === 'people' && (
+                <>
+          {/* People (v2.5222): Vectors (v2.3344) and Vectors by the day (v2.4217), open behind their door */}
+          <BridgePeople
+            summary={peopleSummary(vectorInputs ? vectors : null, vectorWeek ? formatPayWeekLabel(vectorWeek) : '', vectorWeek ? vectorWeek.end >= data.todayYmd : false)}
+            open
+          >
+          {vectors && vectorWeek && (
+            <BridgeVectorsPanel
+              vectors={vectors}
+              weekLabel={formatPayWeekLabel(vectorWeek)}
+              isCurrentWeek={vectorWeek.end >= data.todayYmd}
+              canPrev={ymdAddDays(vectorWeek.start, -7) >= data.windowStart}
+              canNext={vectorWeek.end < data.todayYmd}
+              onPrev={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, -7))}
+              onNext={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, 7))}
+              loading={vectorInputs == null && vectorError == null}
+              error={vectorError}
+            />
+          )}
+
+          {/* Vectors by the day (v2.4217) */}
+          {daysRange && (
+            <BridgeVectorDaysPanel
+              grid={daysGrid}
+              zoom={daysZoom}
+              onZoom={(z) => {
+                setDaysZoom(z)
+                setDaysAnchor(null)
+              }}
+              mode={daysMode}
+              onMode={(m) => {
+                setDaysMode(m)
+                writeVectorDaysMode(m)
+              }}
+              reading={daysReading}
+              onReading={setDaysReading}
+              periodLabel={vectorRangeLabel(daysZoom, daysRange)}
+              isCurrent={daysRange.end >= data.todayYmd}
+              canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
+              canNext={daysRange.end < data.todayYmd}
+              onPrev={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, -1))}
+              onNext={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, 1))}
+              loading={daysGrid == null && daysError == null}
+              error={daysError ?? vectorError}
+            />
+          )}
+          </BridgePeople>
+
+          {/* Crew hours, and what waits on approval */}
+          <div style={{ marginTop: '0.6rem' }}>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'hours' ? null : 'hours'))} aria-expanded={openCard === 'hours'} data-testid="bridge-card-hours" style={{ ...panel, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'hours' ? '2px solid #2563eb' : panel.border, padding: openCard === 'hours' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Crew hours · last 7 days</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'hours' ? '▴ close' : '▾ chart'}</span>
+              </div>
+              <div style={big}>
+                {hrs(data.crew.fieldHours7d)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>approved field</span>
+              </div>
+              <div style={det}>
+                office + bid <b style={{ color: 'var(--text)' }}>{hrs(data.crew.officeBidHours7d)}</b> · awaiting approval <b style={{ color: data.crew.pendingClosedHours > 0 ? 'var(--text-amber-800)' : 'var(--text)' }}>{hrs(data.crew.pendingClosedHours)}</b> ({data.crew.pendingClosedSessions}) · {data.jobsWorked} jobs worked in 8 weeks
+              </div>
+            </button>
+          </div>
+          {openCard === 'hours' && hoursPanel && <BridgeHoursPanel panel={hoursPanel} onClose={() => setOpenCard(null)} />}
+                </>
+              )}
+
+              {door === 'soft' && (
+                <>
+          <BridgeSoftNumbers rows={softNumbers} />
+          {/* The percents prompt (v2.5245): the jobs with no %, set from the page */}
+          {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* The desks open over the page from the stage cards and the link's desk. */}
           {collectOpen && data && (
             collectDesk ? (
               <BridgeCollectDesk
@@ -1485,257 +1670,6 @@ export default function Bridge() {
             />
           )}
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
-          {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
-          {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
-          {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
-          {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
-
-          {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
-          <div id="bridge-soft" style={{ ...anchor, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
-            <BridgeThisWeek moves={thisWeek} />
-            <BridgeReadingGaps gaps={readingGaps} />
-          </div>
-
-          <div id="bridge-money" style={{ ...anchor, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
-            <button type="button" onClick={() => setOpenCard((c) => (c === 'profit' ? null : 'profit'))} aria-expanded={openCard === 'profit'} data-testid="bridge-card-profit" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'profit' ? '2px solid #2563eb' : panel.border, padding: openCard === 'profit' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={label}>Daily profit rate</div>
-                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'profit' ? '▴ close' : '▾ chart'}</span>
-              </div>
-              <div style={{ ...big, color: climbColor }}>
-                {speed.climbPerDay >= 0 ? '+' : '−'}
-                {money(Math.abs(speed.climbPerDay))} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>/day · {speed.days}-day avg</span>
-              </div>
-              <div style={det}>
-                earned <b style={{ color: 'var(--text)' }}>{money(speed.earnedPerDay)}</b>/day · costs <b style={{ color: 'var(--text)' }}>{money(speed.burnPerDay)}</b>/day (jobs {money(speed.directPerDay)} + overhead {money(speed.overheadPerDay)} at the 90-day rate)
-                {profit.contributionMargin != null && <> · {Math.round(profit.contributionMargin * 100)}% of earned is margin</>}
-              </div>
-            </button>
-            <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={label}>Money owed</div>
-                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'owed' ? '▴ close' : '▾ chart'}</span>
-              </div>
-              {fin.data ? (
-                <>
-                  <div style={big}>
-                    {shortK(fin.data.ar.total)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>owed to you</span>
-                  </div>
-                  <div style={det}>
-                    owed by you <b style={{ color: 'var(--text)' }}>{shortK(fin.data.ap.total)}</b> · finished work not yet billed <b style={{ color: 'var(--text)' }}>{billPile ? shortK(billPile.knownUsd) : '…'}</b> · collections {shortK(fin.data.arCollections.total)} ({fin.data.arCollections.count}) written off for planning
-                  </div>
-                </>
-              ) : (
-                <div style={det}>{fin.loading ? 'Loading…' : fin.error ?? '—'}</div>
-              )}
-            </button>
-            <button type="button" onClick={() => setOpenCard((c) => (c === 'hours' ? null : 'hours'))} aria-expanded={openCard === 'hours'} data-testid="bridge-card-hours" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'hours' ? '2px solid #2563eb' : panel.border, padding: openCard === 'hours' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={label}>Crew hours · last 7 days</div>
-                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'hours' ? '▴ close' : '▾ chart'}</span>
-              </div>
-              <div style={big}>
-                {hrs(data.crew.fieldHours7d)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>approved field</span>
-              </div>
-              <div style={det}>
-                office + bid <b style={{ color: 'var(--text)' }}>{hrs(data.crew.officeBidHours7d)}</b> · awaiting approval <b style={{ color: data.crew.pendingClosedHours > 0 ? 'var(--text-amber-800)' : 'var(--text)' }}>{hrs(data.crew.pendingClosedHours)}</b> ({data.crew.pendingClosedSessions}) · {data.jobsWorked} jobs worked in 8 weeks
-              </div>
-            </button>
-          </div>
-          {openCard === 'profit' && profitPanel && <BridgeProfitPanel panel={profitPanel} onClose={() => setOpenCard(null)} />}
-          {openCard === 'owed' && owedPanel && <BridgeOwedPanel panel={owedPanel} onClose={() => setOpenCard(null)} />}
-          {openCard === 'hours' && hoursPanel && <BridgeHoursPanel panel={hoursPanel} onClose={() => setOpenCard(null)} />}
-
-          {/* Net position */}
-          <div style={{ ...panel, marginTop: '0.6rem' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <span style={label}>Net position — last 8 weeks</span>
-              <span style={det}>cash + owed to you (collections excluded) − owed by you</span>
-              {netPanel && (
-                <button type="button" onClick={() => setNetOpen((o) => !o)} aria-expanded={netOpen} data-testid="bridge-net-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
-                  {netOpen ? '▴ close' : '▾ break it down'}
-                </button>
-              )}
-              {netToday != null && netStart != null && (
-                <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: netToday - netStart >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
-                  Today: {shortK(netToday)} · {netToday - netStart >= 0 ? 'up' : 'down'} {shortK(Math.abs(netToday - netStart))} since {windowStartLabel}
-                </span>
-              )}
-            </div>
-            {history ? (
-              <BridgeNetPositionChart history={history} />
-            ) : (
-              <div style={{ ...det, padding: '1.2rem 0' }}>{!fin.data ? 'Loading money owed…' : bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to anchor this line.'}</div>
-            )}
-            <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
-            {netOpen && netPanel && <BridgeBreakdownPanel title={`What moved it, ${netPanel.startLabel} to today`} sub="the three parts of net position, each by how much it changed over the window" bars={netPanel.waterfall} sources={netPanel.sources} closing={netPanel.paper} testId="bridge-net-panel" />}
-          </div>
-
-          {/* Truth check (v2.3335) */}
-          {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
-
-          {/* People (v2.5222): Vectors (v2.3344) and Vectors by the day (v2.4217) under one strip */}
-          <div id="bridge-people" style={anchor} />
-          <BridgePeople
-            summary={peopleSummary(vectorInputs ? vectors : null, vectorWeek ? formatPayWeekLabel(vectorWeek) : '', vectorWeek ? vectorWeek.end >= data.todayYmd : false)}
-            open={peopleOpen}
-            onToggle={() => {
-              setPeopleOpen((o) => {
-                writePeopleOpen(!o)
-                return !o
-              })
-            }}
-          >
-          {vectors && vectorWeek && (
-            <BridgeVectorsPanel
-              vectors={vectors}
-              weekLabel={formatPayWeekLabel(vectorWeek)}
-              isCurrentWeek={vectorWeek.end >= data.todayYmd}
-              canPrev={ymdAddDays(vectorWeek.start, -7) >= data.windowStart}
-              canNext={vectorWeek.end < data.todayYmd}
-              onPrev={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, -7))}
-              onNext={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, 7))}
-              loading={vectorInputs == null && vectorError == null}
-              error={vectorError}
-            />
-          )}
-
-          {/* Vectors by the day (v2.4217) */}
-          {daysRange && (
-            <BridgeVectorDaysPanel
-              grid={daysGrid}
-              zoom={daysZoom}
-              onZoom={(z) => {
-                setDaysZoom(z)
-                setDaysAnchor(null)
-              }}
-              mode={daysMode}
-              onMode={(m) => {
-                setDaysMode(m)
-                writeVectorDaysMode(m)
-              }}
-              reading={daysReading}
-              onReading={setDaysReading}
-              periodLabel={vectorRangeLabel(daysZoom, daysRange)}
-              isCurrent={daysRange.end >= data.todayYmd}
-              canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
-              canNext={daysRange.end < data.todayYmd}
-              onPrev={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, -1))}
-              onNext={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, 1))}
-              loading={daysGrid == null && daysError == null}
-              error={daysError ?? vectorError}
-            />
-          )}
-          </BridgePeople>
-
-          {/* Cash forecast */}
-          <div style={{ ...panel, marginTop: '0.6rem' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <span style={label}>Cash — next 8 weeks</span>
-              <span style={det}>bank balance today, then every bill on the day it's due and every receipt on the day it's expected</span>
-              {cashPanel && (
-                <button type="button" onClick={() => setCashOpen((o) => !o)} aria-expanded={cashOpen} data-testid="bridge-cash-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
-                  {cashOpen ? '▴ close' : '▾ break it down'}
-                </button>
-              )}
-              {forecast && (
-                <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: forecast.clearsFloor ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{cashRead}</span>
-              )}
-            </div>
-            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>{bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to start the forecast.'}</div>}
-            {forecast && <BridgeCashConfidence confidence={confidence} carry={carry} />}
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.3rem', ...det }}>
-              <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dashed #8b5cf6', marginRight: 5, verticalAlign: 3 }} />Cash forecast</span>
-              <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dotted var(--text-red-600)', marginRight: 5, verticalAlign: 3 }} />Cash floor</span>
-              <span style={{ color: 'var(--text-red-600)' }}>▼ bill due</span>
-              <span style={{ color: 'var(--text-green-700)' }}>▲ receipt expected</span>
-              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="bridge-cash-source">
-                {bank ? (
-                  <>
-                    <span style={det}>
-                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(cashToday ?? bank.usd)}</b> · the bank's balance at {bankReadAt}
-                    </span>
-                    {data.cashSetting && typedRolled != null && Math.abs(typedRolled - bank.usd) >= 1000 && (
-                      <span style={{ ...det, color: 'var(--text-amber-800)' }} data-testid="bridge-cash-typed-drift">
-                        the figure typed {md(data.cashSetting.asOfYmd)} rolled through the ledger would read {shortK(typedRolled)}: {shortK(Math.abs(typedRolled - bank.usd))} of flows since are not in the app
-                      </span>
-                    )}
-                    <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={bankLoading} style={btnStyle}>
-                      {bankLoading ? 'Reading…' : 'Read again'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
-                    <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
-                    <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
-                    {bankError && <span style={{ ...det, color: 'var(--text-amber-800)' }}>the bank could not be read ({bankError}) — the typed figure stands for now</span>}
-                    {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
-                      <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
-                    )}
-                  </>
-                )}
-                <label htmlFor="bridge-floor" style={{ ...det, marginLeft: '0.6rem' }}>Floor</label>
-                <input id="bridge-floor" value={floorDraft} onChange={(e) => setFloorDraft(e.target.value)} inputMode="numeric" style={{ ...inputStyle, width: 80 }} />
-                <button type="button" onClick={() => void saveFloor()} style={btnStyle}>Set</button>
-              </span>
-            </div>
-            {cashAccounts && <BridgeCashAccounts accounts={cashAccounts} onFlip={(id) => void flipAccount(id)} />}
-            {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
-            <div style={panel}>
-              <div style={label}>Bills coming due · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>payroll ≈ {money(data.payrollWeeklyEstUsd)}/week (8-week labor average{data.crew.pendingClosedHours > 0 ? ' — reads low while hours await approval' : ''}) · sub labor owed on a {SUB_LABOR_DEFAULT_DAYS}-day horizon · other spend ≈ {money(data.dailyDrainUsd)}/day (office parts, 90-day rate)</div>
-              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
-                {billsByDay.slice(0, 10).map((b) => (
-                  <li key={b.ymd} style={listRow}>
-                    <span>
-                      {md(b.ymd)} · {b.labels.join(' + ')}
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }}>−{money(b.usd)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div style={{ ...det, marginTop: '0.4rem' }}>Insurance, rent, and card bills aren't scheduled yet — they arrive as bank transfers and only show once sorted.</div>
-            </div>
-            <div style={panel}>
-              <div style={label}>Receipts expected · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → the GC pace here, or their segment's → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
-              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
-                {receiptsByDay.slice(0, 10).map((r) => (
-                  <li key={r.ymd} style={listRow}>
-                    <span>
-                      {md(r.ymd)} · {r.labels.slice(0, 2).join(', ')}
-                      {r.labels.length > 2 ? ` +${r.labels.length - 2}` : ''}
-                      <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.sources.join(' · ')}</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums' }}>+{money(r.usd)}</span>
-                  </li>
-                ))}
-                {doubtful.length > 0 && (
-                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
-                    <span>
-                      {doubtful.length} invoice{doubtful.length === 1 ? '' : 's'} more than {DOUBTFUL_AFTER_DAYS}d past expected — not counted
-                      <span style={{ display: 'block', fontSize: '0.72rem' }}>{doubtful.slice(0, 3).map((d) => `${d.label} (${d.daysLate}d)`).join(' · ')}{doubtful.length > 3 ? ` +${doubtful.length - 3}` : ''}</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(doubtful.reduce((acc, d) => acc + d.usd, 0))}</span>
-                  </li>
-                )}
-                {fin.data && fin.data.arCollections.count > 0 && (
-                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
-                    <span>Collections ({fin.data.arCollections.count}) — not counted</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(fin.data.arCollections.total)}</span>
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
-
-          <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>
-            <b>How it's counted</b> is in the guide <Link to="/help/the-bridge">read the Bridge</Link>. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
-          </p>
         </>
       )}
     </div>
