@@ -18297,6 +18297,183 @@ export type Database = {
           },
         ]
       }
+      in_kind_arrangements: {
+        Row: {
+          bank_payee: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          monthly_amount: number | null
+          monthly_due: number | null
+          note: string
+          partner_name: string
+          starts_on: string | null
+          updated_at: string
+          what_given: string
+        }
+        Insert: {
+          bank_payee?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          monthly_amount?: number | null
+          monthly_due?: number | null
+          note?: string
+          partner_name?: string
+          starts_on?: string | null
+          updated_at?: string
+          what_given: string
+        }
+        Update: {
+          bank_payee?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          monthly_amount?: number | null
+          monthly_due?: number | null
+          note?: string
+          partner_name?: string
+          starts_on?: string | null
+          updated_at?: string
+          what_given?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_kind_arrangements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_arrangements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_arrangements_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      in_kind_line_payments: {
+        Row: {
+          created_at: string
+          line_id: string
+          payment_id: string
+        }
+        Insert: {
+          created_at?: string
+          line_id: string
+          payment_id: string
+        }
+        Update: {
+          created_at?: string
+          line_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_kind_line_payments_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "in_kind_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_line_payments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      in_kind_lines: {
+        Row: {
+          amount: number
+          arrangement_id: string
+          cost_job_id: string | null
+          created_at: string
+          created_by: string | null
+          for_month: string | null
+          given_on: string
+          id: string
+          memo: string
+          removed_at: string | null
+          removed_by: string | null
+        }
+        Insert: {
+          amount: number
+          arrangement_id: string
+          cost_job_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          for_month?: string | null
+          given_on: string
+          id?: string
+          memo: string
+          removed_at?: string | null
+          removed_by?: string | null
+        }
+        Update: {
+          amount?: number
+          arrangement_id?: string
+          cost_job_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          for_month?: string | null
+          given_on?: string
+          id?: string
+          memo?: string
+          removed_at?: string | null
+          removed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_kind_lines_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "in_kind_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_lines_cost_job_id_fkey"
+            columns: ["cost_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_kind_lines_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_portal_credentials: {
         Row: {
           created_at: string
@@ -21709,6 +21886,7 @@ export type Database = {
           hcp_number: string
           hourly_charge_rate: number | null
           id: string
+          in_kind_arrangement_id: string | null
           job_address: string
           job_name: string
           job_pictures_link: string | null
@@ -21786,6 +21964,7 @@ export type Database = {
           hcp_number?: string
           hourly_charge_rate?: number | null
           id?: string
+          in_kind_arrangement_id?: string | null
           job_address?: string
           job_name?: string
           job_pictures_link?: string | null
@@ -21863,6 +22042,7 @@ export type Database = {
           hcp_number?: string
           hourly_charge_rate?: number | null
           id?: string
+          in_kind_arrangement_id?: string | null
           job_address?: string
           job_name?: string
           job_pictures_link?: string | null
@@ -21959,6 +22139,13 @@ export type Database = {
             columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_in_kind_arrangement_id_fkey"
+            columns: ["in_kind_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "in_kind_arrangements"
             referencedColumns: ["id"]
           },
           {
@@ -41922,6 +42109,27 @@ export type Database = {
       }
       humanize_job_status: { Args: { p: string }; Returns: string }
       import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
+      in_kind_arrangement_set_jobs: {
+        Args: { p_arrangement_id: string; p_job_ids: string[] }
+        Returns: Json
+      }
+      in_kind_line_add: {
+        Args: {
+          p_amount: number
+          p_arrangement_id: string
+          p_cost_job_id?: string
+          p_dry_run?: boolean
+          p_for_month?: string
+          p_given_on: string
+          p_memo: string
+        }
+        Returns: Json
+      }
+      in_kind_line_remove: { Args: { p_line_id: string }; Returns: Json }
+      in_kind_line_set_cost: {
+        Args: { p_cost_job_id: string; p_line_id: string }
+        Returns: Json
+      }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
         Returns: number
