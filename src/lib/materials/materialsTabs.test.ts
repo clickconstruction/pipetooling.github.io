@@ -19,16 +19,22 @@ describe('materialsTabsFor', () => {
     }
   })
 
-  it('gives estimators the books, the PO lanes and the Supply houses directory, never the AP ledgers', () => {
-    expect(materialsTabsFor('estimator')).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses'])
+  it('gives estimators the books, the PO lanes, the Supply houses directory and On site, never the AP ledgers', () => {
+    expect(materialsTabsFor('estimator')).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'on-site'])
     expect(canOpenMaterialsTab('estimator', 'supply-houses')).toBe(true)
     expect(canOpenMaterialsTab('estimator', 'job-accounts')).toBe(false)
     expect(canOpenMaterialsTab('estimator', 'po-generator')).toBe(false)
   })
 
-  it('gives primaries and superintendents the two books only', () => {
-    expect(materialsTabsFor('primary')).toEqual(['parts-book', 'assembly-book'])
-    expect(materialsTabsFor('superintendent')).toEqual(['parts-book', 'assembly-book'])
+  it('gives primaries and superintendents the two books and On site', () => {
+    expect(materialsTabsFor('primary')).toEqual(['parts-book', 'assembly-book', 'on-site'])
+    expect(materialsTabsFor('superintendent')).toEqual(['parts-book', 'assembly-book', 'on-site'])
+  })
+
+  it('keeps the strip order: Plan, then Purchase, then On site last (punch list #304)', () => {
+    expect([...MATERIALS_TABS]).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'po-generator', 'supply-houses', 'job-accounts', 'on-site'])
+    expect(resolveMaterialsTab('primary', 'on-site')).toEqual({ tab: 'on-site', redirect: false })
+    expect(resolveMaterialsTab('helpers', 'on-site')).toEqual({ tab: 'parts-book', redirect: true })
   })
 
   it('gives field roles and unknown roles nothing', () => {
@@ -47,7 +53,7 @@ describe('materialsTabsFor', () => {
 
 describe('isOfficeMaterialsTab', () => {
   it('names the three office lanes', () => {
-    expect(MATERIALS_TABS.filter(isOfficeMaterialsTab)).toEqual(['supply-houses', 'job-accounts', 'po-generator'])
+    expect(MATERIALS_TABS.filter(isOfficeMaterialsTab)).toEqual(['po-generator', 'supply-houses', 'job-accounts'])
   })
 })
 

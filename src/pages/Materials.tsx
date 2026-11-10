@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { pageTabStyle } from '../lib/pageTabStyle'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
@@ -9,7 +8,17 @@ import {
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
-import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, isOfficeMaterialsTab, materialsTabsFor, resolveMaterialsTab, supplyHousesPaneFor } from '../lib/materials/materialsTabs'
+import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, resolveMaterialsTab, supplyHousesPaneFor, type MaterialsTab } from '../lib/materials/materialsTabs'
+import { materialsGroupsFor, materialsPressesFor, trackBadges, type MaterialsPress } from '../lib/materials/materialsGroups'
+import { boxPagePath } from '../lib/materials/boxPage'
+import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
+import MaterialsOnSiteTab from '../components/materials/MaterialsOnSiteTab'
+import PrintLabelsWindow from '../components/materials/PrintLabelsWindow'
+import ScanLabelWindow from '../components/materials/ScanLabelWindow'
+import { useMatchMedia } from '../hooks/useMatchMedia'
+import { useMaterialsOnSiteNeeds } from '../hooks/useMaterialsOnSiteNeeds'
+import { useOnSiteDeskJobs } from '../hooks/useOnSiteDeskJobs'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { useAuth } from '../hooks/useAuth'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { Database } from '../types/database'
@@ -62,9 +71,16 @@ export default function Materials() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [activeTab, setActiveTab] = useState<
-    'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
-  >('parts-book')
+  const [activeTab, setActiveTab] = useState<MaterialsTab>('parts-book')
+  // The strip's third group (punch list #304): the on-site desk loads once for the caption's badge, the search and Print labels.
+  const canTrack = canOpenMaterialsTab(myRole, 'on-site')
+  const hideZzTestJobs = useZzTestJobsHidden(myRole)
+  const { needs: onSiteNeeds } = useMaterialsOnSiteNeeds(canTrack, { hideZzTestJobs, userId: authUser?.id })
+  const onSiteDesk = useOnSiteDeskJobs(canTrack)
+  const phoneStrip = useMatchMedia('(max-width: 640px)')
+  const [scanLabelOpen, setScanLabelOpen] = useState(false)
+  /** The labels window: null closed, else the job it opens on (null = ask which job). */
+  const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
@@ -1385,7 +1401,22 @@ export default function Materials() {
   }
 
 
-  const visibleTabs = materialsTabsFor(myRole)
+  const stripGroups = materialsGroupsFor(myRole)
+  const stripPresses = materialsPressesFor(myRole)
+  const openTab = (tab: MaterialsTab) => {
+    setActiveTab(tab)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', tab)
+      // A job belongs to On site's desk; leaving the tab leaves the job.
+      if (tab !== 'on-site') next.delete('job')
+      return next
+    })
+  }
+  const onStripPress = (press: MaterialsPress) => {
+    if (press === 'scan-label') setScanLabelOpen(true)
+    else setPrintLabels({ jobId: null })
+  }
 
   // For estimators or primaries with restrictions, only show allowed service types
   const visibleServiceTypes = (myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
@@ -1404,8 +1435,8 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Service Type Filter — hidden on Supply Houses and Held for suppliers, which don't filter by service type */}
-      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && (
+      {/* Service Type Filter — hidden on Supply Houses, Held for suppliers and On site, which don't filter by service type */}
+      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && activeTab !== 'on-site' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {visibleServiceTypes.map(st => (
             <button
@@ -1428,126 +1459,36 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: '2rem', overflow: 'hidden' }}>
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ display: 'flex', gap: '1rem', width: 'max-content', alignItems: 'center' }}>
-        {visibleTabs.some(isOfficeMaterialsTab) && (
-          <>
-          {visibleTabs.includes('supply-houses') && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('supply-houses')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'supply-houses')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'supply-houses')}
-          >
-            Supply houses
-          </button>
-          )}
-          {visibleTabs.includes('job-accounts') && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('job-accounts')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'job-accounts')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'job-accounts')}
-          >
-            Held for suppliers
-          </button>
-          )}
-          {visibleTabs.includes('po-generator') && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('po-generator')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'po-generator')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'po-generator')}
-          >
-            PO Generator
-          </button>
-          )}
-          <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-          </>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('parts-book')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'parts-book')
-              return next
-            })
-          }}
-          style={pageTabStyle(activeTab === 'parts-book')}
-        >
-          Parts Book
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('assembly-book')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'assembly-book')
-              return next
-            })
-          }}
-          style={pageTabStyle(activeTab === 'assembly-book')}
-        >
-          Assembly Book
-        </button>
-        {(visibleTabs.includes('assemblies-po') || visibleTabs.includes('purchase-orders')) && (
-          <>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('assemblies-po')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'assemblies-po')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'assemblies-po')}
-          >
-            PO Builder
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('purchase-orders')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'purchase-orders')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'purchase-orders')}
-          >
-            Purchase Orders
-          </button>
-          </>
-        )}
-          </div>
-        </div>
-      </div>
+      {/* Tabs — three named groups (punch list #304): Plan, Purchase and what is on site, with Print labels and Scan a label as presses */}
+      <MaterialsGroupStrip
+        groups={stripGroups}
+        activeTab={activeTab}
+        onTab={openTab}
+        presses={stripPresses}
+        onPress={onStripPress}
+        badges={{ track: trackBadges(onSiteNeeds, myRole) }}
+        phone={phoneStrip}
+      />
+
+      {/* On site Tab (punch list #304) — the cages and boxes on every job; renders null when inactive */}
+      <MaterialsOnSiteTab
+        active={activeTab === 'on-site'}
+        role={myRole}
+        userId={authUser?.id ?? null}
+        userName={authProfileName ?? 'the office'}
+        onLabels={(jobId) => setPrintLabels({ jobId })}
+      />
+      {scanLabelOpen ? <ScanLabelWindow onClose={() => setScanLabelOpen(false)} onOpen={(code) => { setScanLabelOpen(false); navigate(boxPagePath(code)) }} /> : null}
+      {printLabels ? (
+        <PrintLabelsWindow
+          jobs={onSiteDesk.jobs}
+          loading={onSiteDesk.loading && !onSiteDesk.loaded}
+          failure={{ error: onSiteDesk.error, raw: onSiteDesk.raw, retry: onSiteDesk.retry }}
+          jobId={printLabels.jobId}
+          onAddFirst={() => { setPrintLabels(null); openTab('on-site') }}
+          onClose={() => setPrintLabels(null)}
+        />
+      ) : null}
 
       {/* Parts Book Tab — always mounted so expansion state survives tab switches */}
       <MaterialsPartsBookTab
