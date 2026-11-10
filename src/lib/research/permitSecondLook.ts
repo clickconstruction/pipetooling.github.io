@@ -81,3 +81,16 @@ export function secondLookCaughtUpWords(kept: number, passed: number): string {
   const n = kept + passed
   return n === 0 ? 'Every permit someone else passed has had a second look.' : `You answered ${n} just now: ${kept} kept, ${passed} passed again.`
 }
+
+/**
+ * The strip's second-look segment, joined to the right of Skim: drawn when something waits on a
+ * second look, and while that deck is open so the reader sees where they are. Nothing at zero.
+ */
+export function showsSecondLookSegment(left: number, open: boolean): boolean {
+  return open || left > 0
+}
+
+/** The segment's words, "12 passed", and what a screen reader hears for the press. */
+export function secondLookSegmentWords(left: number): { words: string; label: string } {
+  return { words: `${left} passed`, label: `Second look: ${left} passed by someone else` }
+}

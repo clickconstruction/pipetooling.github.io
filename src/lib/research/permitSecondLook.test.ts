@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ResearchPermitRow } from './permitResearch'
 import type { SkimContext } from './permitSkim'
-import { firstPassReason, isSecondLookCode, passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from './permitSecondLook'
+import { firstPassReason, isSecondLookCode, passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookSegmentWords, secondLookVerdict, showsSecondLookSegment, waitsOnSecondLook } from './permitSecondLook'
 
 // Every name, street and number here is made up.
 function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
@@ -115,5 +115,12 @@ describe('the two answers of a second look', () => {
     expect(secondLookAnsweredWords('pass')).toBe('Passed again. Why?')
     expect(secondLookCaughtUpWords(0, 0)).toBe('Every permit someone else passed has had a second look.')
     expect(secondLookCaughtUpWords(2, 5)).toBe('You answered 7 just now: 2 kept, 5 passed again.')
+  })
+
+  it('the strip draws its segment beside Skim only when something waits, or while the deck is open', () => {
+    expect(showsSecondLookSegment(0, false)).toBe(false)
+    expect(showsSecondLookSegment(3, false)).toBe(true)
+    expect(showsSecondLookSegment(0, true)).toBe(true)
+    expect(secondLookSegmentWords(12)).toEqual({ words: '12 passed', label: 'Second look: 12 passed by someone else' })
   })
 })

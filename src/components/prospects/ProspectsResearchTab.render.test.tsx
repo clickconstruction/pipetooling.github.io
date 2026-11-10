@@ -371,7 +371,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       it('deals what someone else passed, says who and why, and a second pass closes it for good', async () => {
         io.loadResearchPermits.mockResolvedValue([samPassed()])
         renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-        fireEvent.click(await screen.findByRole('button', { name: 'Second look 1' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Second look: 1 passed by someone else' }))
         expect(screen.getByText(/^Passed by Sam, .*: too far$/)).toBeTruthy()
         expect(screen.getByText('60 MILLRACE ROW, 78245')).toBeTruthy()
 
@@ -379,25 +379,25 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
         expect(screen.getByText('Passed again. Why?')).toBeTruthy()
         expect(screen.getByText('Nothing waiting on a second look.')).toBeTruthy()
         // The chip is the count: the card left the deck, and a pass moves nothing between the places.
-        expect(screen.getByRole('button', { name: 'Second look 0' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Second look: 0 passed by someone else' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
         expect(io.recordVerdict).not.toHaveBeenCalled()
         fireEvent.click(screen.getByRole('button', { name: 'Not our work' }))
         fireEvent.click(screen.getByRole('button', { name: 'Closed 1' }))
         await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'c1', verdict: 'not_for_us', reason: 'Passed on a second look: not our work.', reasonCode: 'sl_not_our_work' })))
-        // Two people have said no: it waits on nobody's second look now.
-        await waitFor(() => expect(screen.getByRole('button', { name: 'Second look 0' })).toBeTruthy())
+        // Two people have said no: it waits on nobody's second look now, and off the deck the segment is gone.
+        await waitFor(() => expect(screen.queryByRole('button', { name: /^Second look:/ })).toBeNull())
       })
 
       it('a keep sends it to Kept under the second person, and Undo takes it back first', async () => {
         io.loadResearchPermits.mockResolvedValue([samPassed()])
         renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-        fireEvent.click(await screen.findByRole('button', { name: 'Second look 1' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Second look: 1 passed by someone else' }))
         fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
         expect(screen.getByRole('button', { name: 'Kept 1' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'Closed 0' })).toBeTruthy()
         fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-        expect(screen.getByRole('button', { name: 'Second look 1' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Second look: 1 passed by someone else' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
         expect(io.recordVerdict).not.toHaveBeenCalled()
 
@@ -410,9 +410,9 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       it('my own pass and a permit passed twice wait on nothing, and the caught-up skim offers the deck', async () => {
         io.loadResearchPermits.mockResolvedValue([passed({ verdict_by: 'u1' }), passed({ id: 'c2', permit_number: 'COM-4', verdict_by: 'u2', verdict_reason_code: 'sl_none', verdict_reason: 'Passed on a second look.' })])
         renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-        fireEvent.click(await screen.findByRole('button', { name: 'Second look 0' }))
-        expect(screen.getByText('Nothing waiting on a second look.')).toBeTruthy()
-        expect(screen.getByText('Every permit someone else passed has had a second look.')).toBeTruthy()
+        // Nothing waits, so Skim stands alone on the strip: no grey segment beside it.
+        await screen.findByRole('button', { name: 'Skim 0' })
+        expect(screen.queryByRole('button', { name: /^Second look:/ })).toBeNull()
         cleanup()
 
         io.loadResearchPermits.mockResolvedValue([samPassed()])

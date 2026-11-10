@@ -43,7 +43,7 @@ Type a street, a builder or a permit number in the search. Press **Put back** to
 
 ## Take a second look at what someone else passed
 
-Press **Second look** on the strip. It deals the permits someone else passed, best first. The number on it is how many wait on you.
+A grey count sits beside **Skim** when someone else has passed permits. It reads like *12 passed*. Press it. It deals those permits one card at a time, best first. The number is how many wait on you.
 
 The amber line on the card says who passed and when. It gives their reason when they tapped one.
 

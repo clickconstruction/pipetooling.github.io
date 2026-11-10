@@ -52,7 +52,7 @@ import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
-import { secondLookCount } from '../../lib/research/permitSecondLook'
+import { secondLookCount, secondLookSegmentWords, showsSecondLookSegment } from '../../lib/research/permitSecondLook'
 import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
@@ -378,14 +378,15 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             { v: 'kept', words: 'Kept', n: strip.kept },
             { v: 'pursuing', words: 'Pursuing', n: strip.pursuing },
             { v: 'closed', words: 'Closed', n: strip.closed },
-            { v: 'second', words: 'Second look', n: secondLeft },
             { v: 'builders', words: 'Builders', n: null },
             { v: 'ledger', words: 'Ledger', n: null },
             { v: 'map', words: 'Map', n: null },
           ] as const
         ).map((step) => {
           const on = view === step.v
-          return (
+          // What someone else passed rides on Skim as a grey segment to its right: a phone shows it without a scroll.
+          const joined = step.v === 'skim' && !allLoading && showsSecondLookSegment(secondLeft, view === 'second')
+          const chip = (
             <button
               key={step.v}
               type="button"
@@ -395,11 +396,29 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                 if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
                 setView(step.v)
               }}
-              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined }}
+              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined, ...(joined ? { borderRadius: '999px 0 0 999px', paddingRight: 10 } : null) }}
             >
               {step.words}
               {step.n != null && !allLoading ? ` ${step.n}` : ''}
             </button>
+          )
+          if (!joined) return chip
+          const second = secondLookSegmentWords(secondLeft)
+          const secondOn = view === 'second'
+          return (
+            <span key="skim-and-second" style={{ display: 'inline-flex', flex: '0 0 auto' }}>
+              {chip}
+              <button
+                type="button"
+                aria-pressed={secondOn}
+                aria-label={second.label}
+                title="Second look: the permits someone else passed, once each"
+                onClick={() => setView('second')}
+                style={{ background: secondOn ? 'var(--text-strong)' : 'var(--bg-200)', color: secondOn ? 'var(--surface)' : 'var(--text-700)', border: 0, borderLeft: '1px solid var(--border)', borderRadius: '0 999px 999px 0', padding: '6px 12px 6px 10px', fontSize: '0.8125rem', fontWeight: secondOn ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {second.words}
+              </button>
+            </span>
           )
         })}
       </div>
@@ -632,7 +651,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. <strong>Second look</strong> deals the permits someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {digRow && !closing && !whoRow && (
