@@ -81,6 +81,18 @@ The first draft of this page (eight questions, a redline that added to the paper
 return address, the job number at the foot, the notices as an exhibit and the certified mail
 numbers. None is required, so none is in the short form.
 
+## Checked against the statute's own text (2026-11-10)
+
+The owner asked whether too much came out. § 53.054 was read in full that day: subsection (a) is
+the eight items above, to be contained *substantially*; (b) lets the claimant attach the contract
+and each notice; (c) says items of work need not be listed. Nothing on the list was cut. Outside
+that section the paper must be sworn with a jurat (kept), must meet the clerk's format rules in
+Local Government Code § 191.007 (a heading at the top of the first page and a name printed under
+each signature, or that page pays twice the fee; never a refusal), and on a homestead must carry
+the § 53.254(f) notice (the desk holds every homestead today). Two details went onto the short
+form from this pass: the county under STATE OF TEXAS is the county where the affidavit is signed,
+where today's paper prints the property's county, and a line for the notary's printed name.
+
 ## The short form
 
 On a job under a GC, seven paragraphs: the signer's authority and the claimant's addresses; the
