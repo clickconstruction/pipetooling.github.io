@@ -40353,6 +40353,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dev_on_site_move_job: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_on_site_part: {
         Args: { p_line: Json; p_n: number; p_number_key: string }
         Returns: {
@@ -44046,6 +44050,11 @@ export type Database = {
         Returns: string
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
+      on_site_carry_job: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      on_site_job_counts: { Args: { p_job_id: string }; Returns: Json }
       on_site_job_summary: {
         Args: { p_job_id: string; p_since?: string }
         Returns: Json
