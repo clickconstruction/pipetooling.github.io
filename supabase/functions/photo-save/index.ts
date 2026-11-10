@@ -905,8 +905,8 @@ async function sweepTickets(admin: SupabaseClient): Promise<{ saved: number; fai
 
 type BidPhotoRow = { id: string; bid_id: string; storage_path: string; by_name: string; taken_at: string; name: string }
 
-/** A bid's photo folder for this run, with the token that may put a file in it. */
-type BidLanding = { into: string; token: string; fallback: string | null } | { why: string }
+/** A bid's photo folder for this run, and whether the app files there as itself (the shared Drive) or as the person. */
+type BidLanding = { into: string; asApp: boolean } | { why: string }
 
 async function sweepBidPhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
   const dueBefore = new Date(Date.now() - BID_PHOTO_RETRY_MS).toISOString()
@@ -962,14 +962,15 @@ async function sweepBidPhotos(admin: SupabaseClient): Promise<{ saved: number; f
     if (!bid) return { why: 'That bid is gone.' }
     const folder: BidPhotoFolder = await ensureBidPhotoFolder(ctx, bid)
     if ('why' in folder) return folder
-    // In the shared Drive the app files as itself; in a personal Drive, as the person. A quota refusal the folder's
-    // own facts did not foretell falls back to the person once.
-    if (folder.seen === 'outside_drive') return { into: folder.id, token: (await asPerson())!, fallback: null }
-    return { into: folder.id, token: google, fallback: await asPerson() }
+    // In the shared Drive the app files as itself; in a personal Drive, as the person.
+    return { into: folder.id, asApp: folder.seen !== 'outside_drive' }
   }
   for (const r of rows) {
     try {
-      if (!landings.has(r.bid_id)) landings.set(r.bid_id, await landingOf(r.bid_id))
+      // A bid whose folder did not read is not asked again for its other photos this run.
+      if (!landings.has(r.bid_id)) {
+        landings.set(r.bid_id, await landingOf(r.bid_id).catch((e): BidLanding => ({ why: bidPhotoFailWords(e instanceof Error ? e.message : String(e)) })))
+      }
       const landing = landings.get(r.bid_id)!
       if ('why' in landing) {
         await fail(r, landing.why)
@@ -987,12 +988,20 @@ async function sweepBidPhotos(admin: SupabaseClient): Promise<{ saved: number; f
       const name = await freeName(google, landing.into, (taken) => namedPhotoFileName(r.name, mime, taken) ?? photoDriveName(nameInput, taken))
       const marks = { bid_photo_id: r.id }
       let put: { id: string }
-      try {
-        put = await uploadBytes(landing.token, landing.into, bytes, name, mime, marks)
-      } catch (e) {
-        const raw = e instanceof Error ? e.message : String(e)
-        if (!isQuotaRefusal(raw) || !landing.fallback) throw e
-        put = await uploadBytes(landing.fallback, landing.into, bytes, name, mime, marks)
+      if (landing.asApp) {
+        try {
+          put = await uploadBytes(google, landing.into, bytes, name, mime, marks)
+        } catch (e) {
+          // A quota refusal the folder's own facts did not foretell: once more as the person, when there is one.
+          const raw = e instanceof Error ? e.message : String(e)
+          const theirs = isQuotaRefusal(raw) ? await asPerson().catch(() => null) : null
+          if (!theirs) throw e
+          put = await uploadBytes(theirs, landing.into, bytes, name, mime, marks)
+        }
+      } else {
+        const theirs = await asPerson()
+        if (!theirs) throw new Error('storage quota')
+        put = await uploadBytes(theirs, landing.into, bytes, name, mime, marks)
       }
       const { error: kept } = await admin
         .from('bid_photos')
