@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 v2.6817 on main and pushed, then PR 2 and the measure) and the screens (1b v2.6819 on main, its migration pushed, walked live 2026-11-09 on a ZZ test house: a made-up bill filled from its PDF read *7 lines · The subtotal with tax and freight is $36.00 short of the total*, Look drew the paper beside the lines, Count it as read turned the row to *counted as read by Robert*) · left: step 0, PR 2, the measure, then 2a, 2b and the views
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 v2.6817 on main and pushed, then PR 2 and the measure) and the screens (1b v2.6819 on main, its migration pushed, walked live 2026-11-09 on a ZZ test house: a made-up bill filled from its PDF read *7 lines · The subtotal with tax and freight is $36.00 short of the total*, Look drew the paper beside the lines, Count it as read turned the row to *counted as read by Robert*) · step 0 done 2026-11-10 (the bills' folder, kept apart from the jobs Shared Drive by the owner's call, is shared with the app's account as a viewer) · left: PR 2, the measure, then 2a, 2b and the views
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,9 +14,9 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive. Then PR 2 and the measure on the pipe side; the office's first real bill saved from its PDF shows the Lines cell on a real paper.
+next: PR 2 on the pipe side, now that step 0 is done (2026-11-10): the Drive read as the service account, a bill opened by its link's file id, and the sweep. Then the measure; the office's first real bill saved from its PDF shows the Lines cell on a real paper.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
-blocker: For PR 2 and the backfill, step 0, the owner's door: the bills' folder is private to an office login and the app cannot open one of them today.
+blocker: None since 2026-11-10. The bills' folder is shared with the app's account as a viewer, so PR 2's sweep can open a bill on file.
 opinion: build PR 1 and PR 2 first — the reader, the sum check and the PDFs all exist, and the real lines are what the matching list and the views should be designed from; the rest after a week of measured data
 ver: v2.6817 · v2.6819 (PR 1 and 1b) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
@@ -110,13 +110,13 @@ Read 2026-11-09. Prod figures are counts through the dev seat, read-only.
 - **One file often stands behind several rows.** Twice, a single Drive file is the link on 19 rows.
   A scan of a stack of bills, or a statement's worth of invoices, is one PDF. The reader must
   expect several bills in a file.
-- **The linked PDFs are private files the app cannot open.** Eight sampled Drive ids have no
+- **The linked PDFs are outside the jobs Shared Drive.** Eight sampled Drive ids have no
   `file_index` row: the index walks the jobs Shared Drive
   (`supabase/functions/file-index-sweep/index.ts`), a person's HR file and a legal matter, and the
   bills are elsewhere. A measurement run on the evening of 2026-11-09 settled where: a folder in
-  an office login's My Drive, shared with five named office users and **not with the app's
-  service account**. So the backfill cannot read a single bill on file today. That is step 0,
-  below, and it is the one thing that blocks the backfill.
+  an office login's My Drive, shared with the office users and, until 2026-11-10, **not with the
+  app's service account**. Step 0, below, shared it, so the backfill can open a bill on file; the
+  index still never lists one.
 - **Mail.** `gmail-sync` puts each mail that reaches the one mailbox it reads on its sender's
   thread, with our copy of each attachment. `src/lib/materials/bills/billsToRecord.ts` offers a
   thread's PDFs under *Start from* on the Add invoice window. Bills that suppliers' billing
@@ -329,19 +329,27 @@ price view reads the lines.
 
 ### Step 0: the owner's door
 
-The bills' PDFs are private files in an office login's My Drive folder, shared with five office
-users and not with the app's service account. Until that changes the app cannot open one of them,
-and PR 2's sweep has nothing to read. **This is the one thing that blocks the backfill**, and it is
-a press of the owner's, not code: share that folder with the app's account, or move the bills into
-the jobs Shared Drive, where the file index already walks. The sweep's probe (below) reads yes the
-moment either is done.
+**Done 2026-11-10.** The bills' PDFs were private files in an office login's My Drive folder,
+shared with the office users and not with the app's service account, so the app could not open one
+of them. The owner first chose the move into the jobs Shared Drive, then kept the bills apart from
+the jobs: the folder stays in that My Drive, renamed `_Bills` so it sorts first, and is shared with
+`drive-intake@pipetooling-drive.iam.gserviceaccount.com` as a **viewer** (the sweep only reads),
+beside the office users who already had it. Read back the same day from Drive's own permission
+list: the folder, two of the newest bills and one of the oldest (March 2026) each name the service
+account as a reader. The sweep's probe (below) has not run, since PR 2 is not built.
+
+Two things follow for PR 2. The bills are not in the jobs Shared Drive, so `file-index-sweep` never
+lists one and the sweep opens each bill by the file id in its `link`. And the files are owned by an
+office login, so they last as long as that account does; a Shared Drive of their own is the move if
+that ever matters, and it changes no file id.
 
 ### Stage 3: the backfill
 
 The bills on file, read by the sweep PR 2 built, as a batch that does what is ready.
 
 - **First, a probe.** Before any reading: try to open 20 of the linked files as the service
-  account. While step 0 is not done, the probe reads no, and the screen says so with the door.
+  account. A file it cannot open (one filed outside the shared folder) reads no, and the screen
+  says so with the door.
 - **A sweep, not a browser loop.** A cron reads a few files each run inside a time budget, as
   `file-index-sweep` does, newest bills first. The reader's daily cap of 150 is a tripwire for the
   office's fill; the backfill gets its own, higher, stated cap.
@@ -466,8 +474,8 @@ Later:
 9. **Ask the houses for a file of lines.** *Default:* not now. Ask the house with the most bills
    once the views show what a feed would save.
 
-And step 0, which is not a call but a press: the bills' folder shared with the app's account, or
-the bills moved into the Shared Drive.
+And step 0, which was not a call but a press, is done: the bills' folder is shared with the app's
+account (2026-11-10).
 
 ## Where it plugs in
 
@@ -522,11 +530,14 @@ short of the total · Look*, Look drew the PDF beside the seven lines with the s
 *Save 7 lines* dead, and *Count it as read anyway* → *Count it as read* turned the row to *7 lines ·
 counted as read by Robert*. No console error. What the walk left and found:
 
-- **A made-up test bill stays on the ZZ test house** (S1183455, $1,284.10, accepted). It is not
-  deleted because `supply_papers.invoice_id` is ON DELETE SET NULL: deleting the bill would leave an
-  accepted paper with no bill, and the purchase view would still count it. The pipe side should
-  either cascade the delete or have the view require a bill for an invoice or a credit; the test
-  row goes once that rule is in. The views of stage 4 leave ZZ test houses out either way.
+- **The made-up test bill is gone** (S1183455, $1,284.10, accepted). It stayed on the ZZ test
+  house after the walk because `supply_papers.invoice_id` is ON DELETE SET NULL: deleting the bill
+  left an accepted paper with no bill, and the purchase view still counted it. v2.6824 made the
+  view require a bill, and the bill was deleted through its own Edit window on 2026-11-10. Read
+  back: the house holds no bill, the paper keeps its row and its seven lines with no bill, and
+  `supply_purchase_lines` counts none of them. No screen deletes a paper, so that row stays. The
+  ZZ test house itself is kept on purpose, as its own note says, and the views of stage 4 leave ZZ
+  test houses out either way.
 - **The made-up fixtures print no part codes** (they were drawn before PR 1's schema), so the Code
   and Unit columns of Look were empty on the walk. A real bill fills them; the fixtures should
   gain codes when the pipe side next touches `scripts/bills-fixtures.mjs`.
