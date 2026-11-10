@@ -57,7 +57,7 @@ import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountSt
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import { BidBoardPermitNews } from './BidBoardPermitNews'
-import { PermitChip } from './BidSitePermits'
+import { PermitChip } from './PermitChip'
 import { useBidPermitNews } from '../../hooks/useBidPermitNews'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'

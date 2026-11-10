@@ -1241,7 +1241,13 @@ export function BidFormModal(props: BidFormModalProps) {
                   ) : null}
                 </div>
                 {/* What the city holds on this address (punch list #307), for the people who read Permits. */}
-                {canResearchPermits(myRole as Parameters<typeof canResearchPermits>[0]) && <BidSitePermits address={address} projectName={projectName} bidValue={bidValue} />}
+                {canResearchPermits(myRole as Parameters<typeof canResearchPermits>[0]) &&
+                  (() => {
+                    // The question under the site's permit is about the bid's GC: every customer row of its name, read as one.
+                    const gc = customers.find((c) => c.id === gcCustomerId) ?? null
+                    const gcIds = gc ? [gc.id, ...customers.filter((c) => c.id !== gc.id && nameKey(c.name) != null && nameKey(c.name) === nameKey(gc.name)).map((c) => c.id)] : []
+                    return <BidSitePermits address={address} projectName={projectName} bidValue={bidValue} customerIds={gcIds} customerName={gc?.name ?? null} />
+                  })()}
               </div>
               <div style={FORM_SECTION_STYLE}>
                 <div style={FORM_SECTION_LABEL_STYLE}>Files &amp; links</div>
@@ -1350,7 +1356,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       {primaryCustomer && canResearchPermits(myRole as Parameters<typeof canResearchPermits>[0]) && (
                         <div style={{ marginTop: '0.6rem' }}>
                           <BidGcPermits
-                            customerIds={customers.filter((c) => c.id === primaryCustomer.id || (nameKey(c.name) != null && nameKey(c.name) === nameKey(primaryCustomer.name))).map((c) => c.id)}
+                            customerIds={[primaryCustomer.id, ...customers.filter((c) => c.id !== primaryCustomer.id && nameKey(c.name) != null && nameKey(c.name) === nameKey(primaryCustomer.name)).map((c) => c.id)]}
                             customerName={primaryCustomer.name}
                             currentBidId={editingBid?.id ?? null}
                           />

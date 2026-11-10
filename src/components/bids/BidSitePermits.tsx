@@ -4,9 +4,11 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { ROBOT_BID_RE } from '../../lib/bids/bidPursuit'
 import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
-import { bidSiteWords, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
-import { siteCountWords, sitePermitLines, siteTiles, type Chip, type SitePermitRow } from '../../lib/research/bidSitePanel'
+import { bidSiteWords, leadPermit, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
+import { siteCountWords, sitePermitLines, siteTiles, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
+import { PermitChip } from './PermitChip'
+import { BidNameQuestion } from './BidNameQuestion'
 
 /**
  * This site (punch list #307, PR 2): what the city holds on a bid's address, under the address
@@ -17,18 +19,6 @@ import { loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
  * bid shows nothing.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
-const CHIP_TONES: Record<Chip['tone'], CSSProperties> = {
-  green: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
-  amber: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
-  red: { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' },
-  grey: { background: 'var(--bg-200)', color: 'var(--text-700)' },
-  blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
-}
-
-export function PermitChip({ chip }: { chip: Chip }) {
-  return <span style={{ display: 'inline-block', borderRadius: 999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap', ...CHIP_TONES[chip.tone] }}>{chip.words}</span>
-}
-
 const DOT: Record<string, string> = { found: '#059669', none_seen: 'var(--text-muted)', not_read: '#d97706', unreadable: '#d97706' }
 
 /** How many permits show before the rest fold behind a press. */
@@ -36,7 +26,20 @@ const FIRST_LINES = 5
 
 type Loaded = { state: 'idle' } | { state: 'loading' } | { state: 'done'; rows: SitePermitRow[] } | { state: 'waiting' } | { state: 'failed'; message: string }
 
-export function BidSitePermits({ address, projectName, bidValue }: { address: string; projectName: string; bidValue: string }) {
+export function BidSitePermits({
+  address,
+  projectName,
+  bidValue,
+  customerIds,
+  customerName,
+}: {
+  address: string
+  projectName: string
+  bidValue: string
+  /** The bid's GC, as every customer row of its name: the question under the site's permit is about them. None, and nothing is asked. */
+  customerIds?: readonly string[]
+  customerName?: string | null
+}) {
   // The address is typed a letter at a time: read it once it has rested.
   const [rested, setRested] = useState(address)
   useEffect(() => {
@@ -101,6 +104,9 @@ export function BidSitePermits({ address, projectName, bidValue }: { address: st
   const value = bidValue.trim() ? parseFloat(bidValue.replace(/[$,]/g, '')) : NaN
   const tiles = siteTiles(onSite, projectName, Number.isFinite(value) ? value : null)
   const lines = sitePermitLines(onSite, projectName)
+  // The one permit the name question rides on: the building permit the verdict speaks of.
+  const lead = leadPermit(projectName, onSite)
+  const asked = lead && lead.kind === 'building' && customerIds && customerIds.length > 0 && customerName ? lead : null
   const shown = openAll ? lines : lines.slice(0, FIRST_LINES)
 
   return (
@@ -135,6 +141,7 @@ export function BidSitePermits({ address, projectName, bidValue }: { address: st
                   ))}
                 </div>
                 {l.detail && <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{l.detail}</div>}
+                {asked && asked.id === l.id && site.kind === 'site' && <BidNameQuestion permit={asked} city={site.city} customerIds={customerIds ?? []} customerName={customerName ?? ''} />}
               </div>
             ))}
           </div>

@@ -11,7 +11,7 @@ const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCust
 vi.mock('../../lib/research/bidSiteIo', () => io)
 
 import { BidBoardPermitNews } from './BidBoardPermitNews'
-import { PermitChip } from './BidSitePermits'
+import { PermitChip } from './PermitChip'
 import { useBidPermitNews } from '../../hooks/useBidPermitNews'
 
 // Every name, address and number here is made up.

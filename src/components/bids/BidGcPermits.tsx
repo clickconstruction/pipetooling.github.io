@@ -7,8 +7,9 @@ import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
 import { reachDay } from '../../lib/research/permitReach'
 import { gcJobsView, numbersToAsk, type GcBid, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadBidsOfCustomers, loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
-import { PermitChip } from './BidSitePermits'
+import { PermitChip } from './PermitChip'
 import { EmptyState } from '../EmptyState'
+import { BidGcTiedNames } from './BidGcTiedNames'
 
 /**
  * What we can see about a GC (punch list #307, PR 3): under the GC's card in a bid's window, the
@@ -121,6 +122,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
       )}
       {view.elsewhere && <div style={muted}>{view.elsewhere}</div>}
       {view.unreadable && <div style={muted}>{view.unreadable}</div>}
+      <BidGcTiedNames customerIds={customerIds} customerName={customerName} />
     </div>
   )
 }
