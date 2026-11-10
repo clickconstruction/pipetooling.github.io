@@ -3,8 +3,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { SAN_ANTONIO_PERMIT_PORTAL, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { deedsDoor, feedRowFields, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
+import { historyWords } from '../../lib/research/permitHistory'
 import { loadPermitFeedRow, loadPermitHistory, loadSitePermits, lookupParcel, type LookupAnswer, type PermitFeedRow, type PermitVerdictEvent } from '../../lib/research/permitResearchIo'
-import { VERDICT_WORDS, isPermitVerdict } from '../../lib/research/permitResearch'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
 /**
@@ -63,11 +63,9 @@ export function PermitBuildingSheet({
   const [showAll, setShowAll] = useState(false)
   const [copied, setCopied] = useState(false)
   const [events, setEvents] = useState<PermitVerdictEvent[] | null>(null)
-  const showHistory = closeOut != null
 
-  // What was done on the permit, newest first: shown on a kept permit, where the next person picks it up.
+  // What was done on the permit, newest first, on every permit: who moved it, where to, when and why.
   useEffect(() => {
-    if (!showHistory) return
     let live = true
     loadPermitHistory(row.id)
       .then((list) => live && setEvents(list))
@@ -75,7 +73,7 @@ export function PermitBuildingSheet({
     return () => {
       live = false
     }
-  }, [showHistory, row.id])
+  }, [row.id])
 
   const load = useCallback(
     async (refresh: boolean) => {
@@ -266,26 +264,20 @@ export function PermitBuildingSheet({
           )}
         </section>
 
-        {showHistory && (
-          <section>
-            <div style={sectionTitle}>What we did</div>
-            {events == null && <div style={muted}>Reading what was done…</div>}
-            {events != null && events.length === 0 && <div style={muted}>Kept, with nothing written since.</div>}
-            {events != null && events.length > 0 && (
-              <div style={{ ...facts, gridTemplateColumns: '64px minmax(0, 1fr)' }}>
-                {events.map((ev) => (
-                  <Fragment key={ev.id}>
-                    <span style={factName}>{new Date(ev.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                      <strong>{ev.by_name ?? 'Someone'}</strong>: {ev.verdict === 'back' ? 'Put back' : isPermitVerdict(ev.verdict) ? VERDICT_WORDS[ev.verdict].chip : ev.verdict}
-                      {ev.for_name ? ` for ${ev.for_name}` : ''}. <span style={muted}>{ev.reason}</span>
-                    </span>
-                  </Fragment>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+        <section>
+          <div style={sectionTitle}>What we did</div>
+          {events == null && <div style={muted}>Reading what was done…</div>}
+          {events != null && events.length === 0 && <div style={muted}>{closeOut ? 'Kept, with nothing written since.' : 'Nobody has answered this permit yet.'}</div>}
+          {events != null && events.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {events.map((ev) => (
+                <div key={ev.id} style={{ ...line, overflowWrap: 'anywhere' }}>
+                  {historyWords(ev)}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section>
           <div style={sectionTitle}>More, one press away</div>

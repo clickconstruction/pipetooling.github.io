@@ -24,7 +24,8 @@ import {
   type SkimAnswer,
   type SkimCard,
 } from '../../lib/research/permitSkim'
-import { loadContactHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
+import { cardHistory, earlierWords, type HistoryEvent } from '../../lib/research/permitHistory'
+import { loadContactHistory, loadPermitHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
 import { passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from '../../lib/research/permitSecondLook'
 import { swipeAnswer, swipeIsScroll, swipeMayStart, swipeProgress } from '../../lib/research/permitLook'
 import { GoogleSearchPress } from './GoogleSearchPress'
@@ -124,6 +125,7 @@ export function PermitSkimDeck({
   const [pending, setPending] = useState<Pending | null>(null)
   const pendingRef = useRef<Pending | null>(null)
   const [parcels, setParcels] = useState<Map<string, Parcel>>(new Map())
+  const [histories, setHistories] = useState<Map<string, HistoryEvent[]>>(new Map())
   const [sheet, setSheet] = useState<{ kind: 'who' | 'site'; card: SkimCard } | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{ id: number; x: number; y: number; width: number; live: boolean } | null>(null)
@@ -279,6 +281,18 @@ export function PermitSkimDeck({
     }
   }, [topId, topAddress, city])
 
+  // What was done on the top card before: who moved it, where to and when. Fail-soft, the card stands without it.
+  useEffect(() => {
+    if (!topId) return
+    let live = true
+    loadPermitHistory(topId)
+      .then((list) => live && setHistories((prev) => new Map(prev).set(topId, list)))
+      .catch(() => live && setHistories((prev) => new Map(prev).set(topId, [])))
+    return () => {
+      live = false
+    }
+  }, [topId])
+
   // The desk's keys. They rest while a sheet is open or a field has the caret.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -410,6 +424,9 @@ export function PermitSkimDeck({
   const asks = googleAsksForContact(row.contact, row.city)
   const where = [row.address ?? row.permit_number, row.zip].filter(Boolean).join(', ')
   const far = milesWords(top.miles)
+  // A second-look card says the pass in its amber line, so its history starts one answer earlier.
+  const past = cardHistory(histories.get(row.id) ?? [], 2, mode === 'second' ? 1 : 0)
+  const earlier = earlierWords(past.earlier)
 
   const pull = swipeProgress(dx, drag.current?.width ?? 320)
   const stamp: CSSProperties = { position: 'absolute', top: 16, zIndex: 6, fontWeight: 800, fontSize: '1.375rem', letterSpacing: '0.08em', padding: '2px 12px', borderRadius: 8, border: '3px solid', background: 'var(--surface)', pointerEvents: 'none' }
@@ -490,6 +507,25 @@ export function PermitSkimDeck({
           </span>
           <span />
         </div>
+
+        {past.lines.length > 0 && (
+          <div style={factRow}>
+            <span style={factName}>{mode === 'second' ? 'Before' : 'History'}</span>
+            <span style={{ minWidth: 0 }}>
+              {past.lines.map((l) => (
+                <span key={l.id} style={{ display: 'block', overflowWrap: 'anywhere', fontSize: '0.8125rem', lineHeight: 1.45 }}>
+                  {l.words}
+                </span>
+              ))}
+              {earlier && (
+                <button type="button" onClick={() => setSheet({ kind: 'site', card: top })} style={{ background: 'transparent', border: 0, padding: 0, marginTop: 2, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', cursor: 'pointer' }} title="The building: everything that was done on this permit">
+                  {earlier}
+                </button>
+              )}
+            </span>
+            <span />
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '12px 16px 16px', ...(isMobile ? stickyAnswers : null) }}>

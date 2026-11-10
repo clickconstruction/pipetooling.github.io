@@ -52,6 +52,7 @@ import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
+import { keepFromPassedReason } from '../../lib/research/permitHistory'
 import { secondLookCount, secondLookSegmentWords, showsSecondLookSegment } from '../../lib/research/permitSecondLook'
 import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
@@ -228,6 +229,10 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   }
   const putBack = (row: ResearchPermitRow) => {
     void runOn(row, () => putBackPermit(row.id, authUserId), `${row.address ?? row.permit_number} is back on the skim.`)
+  }
+  /** A closed permit goes to Kept, by anyone. The words say whose answer it overturned, for the history. */
+  const keepFromPassed = (row: ResearchPermitRow) => {
+    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: keepFromPassedReason(row), lookAgainOn: null, prospectId: null, userId: authUserId }), `${row.address ?? row.permit_number} is kept.`)
   }
   const closeOut = async (row: ResearchPermitRow, out: PermitCloseOut) => {
     setSaving(true)
@@ -463,7 +468,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ) : allLoading ? (
           <div style={mutedStyle}>Reading the permits…</div>
         ) : (
-          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onSkim={() => setView('skim')} />
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} />
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}

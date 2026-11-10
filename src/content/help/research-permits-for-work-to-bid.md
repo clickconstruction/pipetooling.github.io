@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, second look, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, second look, history, who moved, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -40,6 +40,14 @@ Press **Put back** on a kept row to send it to the skim again.
 Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has a plumber** holds the ones a plumber took. **Not pursuing** holds the ones dropped after a look.
 
 Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
+
+Anyone can press **Keep** on a passed row. It moves the permit to **Kept** under your name. It works on your own pass too.
+
+## See who moved a permit
+
+Every answer is kept with a name and a day. A card that was answered before shows a **History** row. It lists the last two moves, newest first.
+
+Open the permit to read all of it. The sheet lists every move under **What we did**. A line reads like *Sam passed, Nov 9: too far*.
 
 ## Take a second look at what someone else passed
 

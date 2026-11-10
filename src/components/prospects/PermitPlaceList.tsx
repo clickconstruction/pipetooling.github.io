@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { leadDoor, shortDay, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
+import { mayKeepFromClosed } from '../../lib/research/permitHistory'
 import {
   CLOSED_WORDS,
   PURSUE_FOR_WORDS,
@@ -83,6 +84,7 @@ export function PermitPlaceList({
   onOpen,
   onHandTo,
   onPutBack,
+  onKeep,
   onSkim,
 }: {
   place: 'kept' | 'pursuing' | 'closed'
@@ -96,6 +98,8 @@ export function PermitPlaceList({
   onOpen: (row: ResearchPermitRow) => void
   onHandTo: (row: ResearchPermitRow, userId: string | null) => void
   onPutBack: (row: ResearchPermitRow) => void
+  /** A closed permit goes to Kept: anyone may overturn a pass or a drop. */
+  onKeep?: (row: ResearchPermitRow) => void
   /** Back to the skim, for the press an empty list offers. */
   onSkim: () => void
 }) {
@@ -224,6 +228,12 @@ export function PermitPlaceList({
                     </span>
                     <span style={pill('grey')}>{row.verdict_reason ?? 'no reason given'}</span>
                   </>
+                )}
+                {/* Anyone may keep a pass or a drop, their own included, until a plumber has the permit. */}
+                {onKeep && mayKeepFromClosed(row) && (
+                  <button type="button" disabled={busy} onClick={() => onKeep(row)} style={{ ...linkPress, fontSize: '0.78rem', fontWeight: 700 }}>
+                    Keep
+                  </button>
                 )}
                 {/* A put-back only moves a permit the feed has not paired with a plumbing permit. */}
                 {row.verdict != null && !row.plumber && !row.plumber_permit_on && (
