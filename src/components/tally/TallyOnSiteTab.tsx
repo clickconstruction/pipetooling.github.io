@@ -5,8 +5,14 @@
  * Short writes a movement row through the store; nothing types a number over another. Short
  * (v2.6742) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The rows live in
  * the on-site tables, read and written through `lib/materials/onSiteStore.ts`.
+ *
+ * Since punch list #304 the tab reaches past one job: the search has *This job · Every job* (the store's desk load,
+ * `useOnSiteDeskJobs`, searched by `lib/materials/onSiteFind.ts`), a job with no box names the other jobs that hold
+ * one, **Scan a label** takes a typed code, and a box's label and manifest print here, where they used to open the
+ * office's page and send everyone outside the office away.
  */
-import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -14,6 +20,7 @@ import type { OnSiteMapPin } from '../materials/OnSiteMap'
 import { requestMyLocation, type LatLng } from '../../lib/materials/myLocation'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
+import { useOnSiteDeskJobs } from '../../hooks/useOnSiteDeskJobs'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -29,6 +36,11 @@ import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unreti
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
 import { boxClipboardWords, copiedLabelWords } from '../../lib/materials/labels'
+import { boxPagePath } from '../../lib/materials/boxPage'
+import { findOnSite, otherJobsWithBoxes, otherJobsWords, type OnSiteFindHit } from '../../lib/materials/onSiteFind'
+import LabelsPrintModal from '../materials/LabelsPrintModal'
+import ManifestPrintModal from '../materials/ManifestPrintModal'
+import ScanLabelWindow from '../materials/ScanLabelWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
@@ -63,8 +75,10 @@ const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, m
 const card: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }
 const input: CSSProperties = { width: '100%', minHeight: TOUCH_MIN, padding: '0.6rem 0.9rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
-/** A print the box's page offers: a pill at thumb height with the printer glyph, drawn as a link because it opens the office page in a new tab. */
+/** A print the box's page offers: a pill at thumb height with the printer glyph. It opens the print window here, on the rows the tab already holds (punch list #304). */
 const paperPress: CSSProperties = { ...btn, borderRadius: 999, justifyContent: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.9rem', padding: '0 0.6rem', whiteSpace: 'nowrap' }
+/** The search's reach: this job, or every job the viewer may open. */
+const scopePill = (on: boolean): CSSProperties => ({ minHeight: 40, padding: '0 0.8rem', border: 'none', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' })
 function PrinterGlyph() {
   return (
     <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}>
@@ -109,6 +123,19 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [view, setView] = useState<View>({ kind: 'containers' })
   const [sheet, setSheet] = useState<Sheet>(null)
   const [query, setQuery] = useState('')
+  const navigate = useNavigate()
+  /** The search's reach (punch list #304): this job, or every job the viewer may open. */
+  const [scope, setScope] = useState<'job' | 'all'>('job')
+  const [scanOpen, setScanOpen] = useState(false)
+  /** A box's paper, printed here: its label or its manifest. */
+  const [paper, setPaper] = useState<{ kind: 'label' | 'manifest'; id: string } | null>(null)
+  /** The box to open once another job's boxes are on screen (a hit on another job was pressed). */
+  const pendingContainerRef = useRef<string | null>(null)
+  // Every job with a box loads only when it is asked for: the search set to Every job, or a job with no box of its own.
+  const emptyJob = jobId != null && load.loaded && containers.length === 0
+  const desk = useOnSiteDeskJobs(scope === 'all' || emptyJob, jobs)
+  // Only the jobs this tab can open: a press on another job's box has to land.
+  const reachable = desk.jobs.filter((j) => jobs.some((x) => x.id === j.jobId))
   /** The place chips on a big site: 'all', a place id, or 'none' for boxes with no place yet. */
   const [placeFilter, setPlaceFilter] = useState<string>('all')
   /** The flow row's two filters (#209): the boxes Used was pressed on today, or the boxes due a count. */
@@ -156,9 +183,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   ) : null
 
   useEffect(() => {
-    setView(initialContainerId ? { kind: 'container', id: initialContainerId } : { kind: 'containers' })
+    const pending = pendingContainerRef.current
+    pendingContainerRef.current = null
+    const open = pending ?? initialContainerId
+    setView(open ? { kind: 'container', id: open } : { kind: 'containers' })
     setSheet(null)
     setQuery('')
+    setScope('job')
     setPlaceFilter('all')
   }, [jobId, initialContainerId])
 
@@ -194,6 +225,18 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       .filter((g) => g.containers.length > 0)
     const grouped = new Map<string, ContainerLine[]>()
     for (const h of hits) grouped.set(h.partKey, [...(grouped.get(h.partKey) ?? []), h])
+    // Every job (punch list #304): the same words searched on the other jobs with a box, this job's own hits first above.
+    const everyJob = scope === 'all' || emptyJob
+    const otherFound = everyJob ? findOnSite(reachable.filter((j) => j.jobId !== jobId), query) : { hits: [], total: 0 }
+    const otherByJob = new Map<string, OnSiteFindHit[]>()
+    for (const h of otherFound.hits) otherByJob.set(h.jobId, [...(otherByJob.get(h.jobId) ?? []), h])
+    const lookingElsewhere = everyJob && desk.loading && !desk.loaded
+    const others = otherJobsWithBoxes(reachable, jobId)
+    const openElsewhere = (h: Pick<OnSiteFindHit, 'jobId'> & { containerId: string | null }) => {
+      pendingContainerRef.current = h.containerId
+      setQuery('')
+      onPickJob(h.jobId)
+    }
     return (
       <div style={{ display: 'grid', gap: '0.75rem' }}>
         {jobButton}
@@ -216,9 +259,20 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <div style={{ display: 'flex', gap: '0.5rem' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
           <span aria-hidden style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '1.15rem', lineHeight: 1 }}>⌕</span>
-          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a part on this job" aria-label="Find a part on this job" style={{ ...input, borderRadius: 999, background: 'var(--bg-subtle)', paddingLeft: '2.4rem' }} />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={everyJob ? 'Find a part on any job' : 'Find a part on this job'} aria-label={everyJob ? 'Find a part on any job' : 'Find a part on this job'} style={{ ...input, borderRadius: 999, background: 'var(--bg-subtle)', paddingLeft: '2.4rem' }} />
         </div>
         <button type="button" aria-label="Site map" title="The site map: every pinned box" onClick={() => setSheet({ kind: 'map', focusId: null })} style={{ ...btn, borderRadius: 999, padding: '0 0.9rem', flex: '0 0 auto', gap: '0.35rem' }}><span aria-hidden>◎</span>Map</button>
+        </div>
+        {/* The search's reach and the scan (punch list #304): one row, so a part on another job and a label in the hand are both one press away. */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', minWidth: 0 }}>
+          {/* A job with no box has no "this job" to search: the search already looks on every job, so the choice is not drawn. */}
+          {emptyJob ? null : (
+            <span role="group" aria-label="Where to look" style={{ display: 'inline-flex', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 999, overflow: 'hidden', flex: '0 0 auto' }}>
+              <button type="button" aria-pressed={!everyJob} style={scopePill(!everyJob)} onClick={() => setScope('job')}>This job</button>
+              <button type="button" aria-pressed={everyJob} style={scopePill(everyJob)} onClick={() => setScope('all')}>Every job</button>
+            </span>
+          )}
+          <button type="button" style={{ ...btn, minHeight: 40, borderRadius: 999, padding: '0 0.9rem', fontSize: '0.85rem', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => setScanOpen(true)} data-testid="on-site-scan-label">Scan a label</button>
         </div>
         {!query.trim() && chips.length > 2 ? (
           /* The row is a grid item, so without minWidth: 0 it takes the chips' full width and lays the whole page out wider than a phone; iOS Safari then lets a pinch zoom the app out (v2.6286). */
@@ -246,9 +300,12 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
               </div>
             ) : null}
             {hits.length === 0 && boxHits.length === 0 ? (
-              <div style={{ ...card, borderStyle: 'dashed' }}>
+              otherFound.total > 0 || lookingElsewhere ? null : (
+              <div style={{ ...card, borderStyle: 'dashed', display: 'grid', gap: '0.5rem' }}>
                 <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on site', query: query.trim() }), { onPress: () => setQuery('') })} />
+                {!everyJob ? <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setScope('all')} data-testid="on-site-look-everywhere">Look on every job</button> : null}
               </div>
+              )
             ) : (
               [...grouped.entries()].map(([pk, ls]) => (
                 <div key={pk} style={{ display: 'grid', gap: '0.5rem' }}>
@@ -267,12 +324,44 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                 </div>
               ))
             )}
+            {lookingElsewhere ? <p style={{ ...muted, margin: 0 }}>Looking on every job…</p> : null}
+            {everyJob ? <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The other jobs’ boxes did not load.') : null} onRetry={desk.retry} surface="materials-on-site-phone-every-job" idempotent /> : null}
+            {[...otherByJob.entries()].map(([otherId, hs]) => (
+              <div key={otherId} style={{ display: 'grid', gap: '0.5rem' }} data-testid="on-site-other-job">
+                <div style={{ ...muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.72rem', marginTop: '0.25rem' }}>{hs[0]!.jobLabel} · another job</div>
+                {hs.map((h) => (
+                  <button key={`${h.container.id}:${h.line?.partKey ?? ''}`} type="button" onClick={() => openElsewhere({ jobId: h.jobId, containerId: h.container.id })} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', font: 'inherit', textAlign: 'left', minHeight: TOUCH_MIN, color: 'var(--text-strong)' }}>
+                    <span style={{ fontSize: '1.35rem', fontWeight: 800 }}>{h.container.label}</span>
+                    <span style={{ display: 'grid', minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.line ? h.line.partName : 'The box itself'}</span>
+                      <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : h.container.kind}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span>
+                    </span>
+                    {h.line ? <span style={{ marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 800 }}>{h.line.onHand}</span> : <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
           </>
         ) : (
           <>
             {containers.length === 0 ? (
-              <div style={card}>
-                <EmptyState main="No containers on this site yet." next={{ label: 'Add a container', onPress: () => setSheet({ kind: 'add-container', moveAfter: null }) }} tail="adds the first with its stencil. A delivery the office lands shows here as Unsorted." />
+              <div style={{ ...card, display: 'grid', gap: '0.6rem' }}>
+                {/* An empty job says where the boxes are (punch list #304): it used to read as if no box existed anywhere. */}
+                {others.length > 0 ? (
+                  <div style={{ display: 'grid', gap: '0.5rem' }} data-testid="on-site-other-jobs">
+                    <div><strong>No containers on this job yet.</strong> {otherJobsWords(others.length)}</div>
+                    {others.map((o) => (
+                      <button key={o.jobId} type="button" onClick={() => openElsewhere({ jobId: o.jobId, containerId: null })} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', font: 'inherit', textAlign: 'left', minHeight: TOUCH_MIN, color: 'var(--text-strong)', padding: '0.5rem 0.75rem' }}>
+                        <span style={{ display: 'grid', minWidth: 0 }}>
+                          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.label}</span>
+                          <span style={muted}>{o.boxes === 1 ? '1 container' : `${o.boxes} containers`}</span>
+                        </span>
+                        <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <EmptyState compact={others.length > 0} main={others.length > 0 ? 'To start one here,' : 'No containers on this site yet.'} next={{ label: 'Add a container', onPress: () => setSheet({ kind: 'add-container', moveAfter: null }) }} tail="adds the first with its stencil. A delivery the office lands shows here as Unsorted." />
               </div>
             ) : (
               groups.map((g) => (
@@ -344,6 +433,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {sheet?.kind === 'pick-box' ? <PickBoxSheet containers={containers.filter((c) => c.kind !== 'unsorted')} places={places} onClose={closeSheet} onPick={(c) => { setPinCenter(null); setSheet({ kind: 'pin', container: c }) }} /> : null}
         {pinSheet}
         {jobSheet}
+        {scanOpen ? <ScanLabelWindow onClose={() => setScanOpen(false)} onOpen={(code) => { setScanOpen(false); navigate(boxPagePath(code)) }} /> : null}
       </div>
     )
   }
@@ -452,12 +542,12 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       ))}
       <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
       {container.kind !== 'unsorted' ? (
-        /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print from the office page, which opens on this box. */
+        /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print here since punch list #304: the office page they used to open is not every role's. */
         <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
           <span style={muted}>Paper for {container.label}</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.4rem' }}>
-            <a href={`/jobs?tab=materials&job=${jobId}&label=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the label for ${container.label}`} style={paperPress}><PrinterGlyph />Print the label</a>
-            <a href={`/jobs?tab=materials&job=${jobId}&manifest=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the manifest for ${container.label}`} style={paperPress}><PrinterGlyph />Print the manifest</a>
+            <button type="button" aria-label={`Print the label for ${container.label}`} style={paperPress} onClick={() => setPaper({ kind: 'label', id: container.id })}><PrinterGlyph />Print the label</button>
+            <button type="button" aria-label={`Print the manifest for ${container.label}`} style={paperPress} onClick={() => setPaper({ kind: 'manifest', id: container.id })}><PrinterGlyph />Print the manifest</button>
           </div>
           {/* v2.6800 (punch list #294): the label's address on the clipboard, for a QR typed into Brother's phone app at the cage; the printer reads the dash either way. */}
           <button type="button" aria-label={`Copy the label code for ${container.label}`} style={{ ...paperPress, width: '100%' }} onClick={() => { void navigator.clipboard.writeText(boxClipboardWords(container.id)).then(() => showToast(copiedLabelWords(container.id), 'success'), (e: unknown) => showToast(`The code did not copy: ${formatErrorMessage(e)}`, 'error')) }}>Copy the label code</button>
@@ -491,6 +581,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           }}
         />
       ) : null}
+      {paper?.kind === 'label' ? <LabelsPrintModal jobLabel={`${job.hcp_number || '—'} · ${job.job_name || '—'}`} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
+      {paper?.kind === 'manifest' ? <ManifestPrintModal jobLabel={`${job.hcp_number || '—'} · ${job.job_name || '—'}`} site={job.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
       {sheet?.kind === 'qty' ? (
         <QtySheet title={sheet.reason === 'used' ? 'How many did you use?' : "How many can't you find?"} sub={`${sheet.line.partName} from ${sheet.container.label}. ${sheet.container.label} has ${sheet.line.onHand}.`} max={sheet.line.onHand} quick={sheet.reason === 'used'} note label={(n) => pressLabel(sheet.reason, n)} after={(n) => leftWords(sheet.container.label, sheet.line.onHand, n)} onClose={() => setSheet(null)} onSave={(n, note) => { write(sheet.reason, sheet.line, n, sheet.container.id, null, note); setSheet(null); showToast(sheet.reason === 'used' ? `${n} used from ${sheet.container.label}. ${sheet.container.label} ${sheet.line.onHand - n <= 0 ? 'has none left' : `has ${sheet.line.onHand - n} left`}.` : `${n} marked can't find in ${sheet.container.label}. The office sees it.`, 'success') }} />
       ) : null}

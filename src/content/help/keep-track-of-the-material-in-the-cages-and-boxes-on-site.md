@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, your jobs with boxes, find a part on any job, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, materials page, track, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -22,6 +22,14 @@ Under the search, **Recent** lists the last three jobs you clocked in on, newest
 **All jobs** follows under its own heading with its count. The same sheet opens from the Materials Estimate tab.
 
 The row under the job reads your day left to right: {{chip:blue|Unsorted 2}} → {{chip:gray|Used 6}} → {{chip:green|Count 25}}. A dot marks the one that needs you now.
+
+A job with no cage or box names the other jobs that hold one. Tap a job in that list and its boxes open. Tap **Add a container** to start one on this job.
+
+## Find a part on any job
+
+Type a part, its maker or a stencil in the search under the job. It looks on this job first. Tap **Every job** and the same words are searched on your other jobs too. A match on another job sits under that job's name. Tap it and that job opens on the box.
+
+When nothing on this job matches, the screen offers **Look on every job**.
 
 ## Put away a delivery
 
@@ -60,7 +68,11 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 
 ## Scan a label
 
-A printed label carries a code. Point your camera at it and the box opens. The office prints labels from Jobs → Materials. Each label prints on its own sheet.
+A printed label carries a code. Point your camera at it and the box opens. Each label prints on its own sheet.
+
+A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job.
+
+To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. The office can print a whole job's labels from Materials, with **Print labels** beside On site.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
@@ -72,7 +84,7 @@ Signed out, the scan still opens a page. The page shows what is in the box, the 
 
 Looking for a part that is not in that box? Press **Find a part on this site**. Type the part, the maker or a stencil and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
 
-A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
+A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 
 ## Retire a box
 

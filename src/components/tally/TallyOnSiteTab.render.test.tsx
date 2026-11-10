@@ -5,7 +5,7 @@
  * Tally's request in the presser's name through `sendShortRequest` and says where the office reads it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 const store = vi.hoisted(() => ({
@@ -35,6 +35,14 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: true, loading: false, error: null, raw: null, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
+// Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.
+const desk = vi.hoisted(() => ({ jobs: [] as unknown[], asked: [] as boolean[] }))
+vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
+  useOnSiteDeskJobs: (enabled: boolean) => {
+    desk.asked.push(enabled)
+    return { jobs: enabled ? desk.jobs : [], rows: [], loading: false, loaded: enabled, error: null, raw: null, retry: () => {} }
+  },
+}))
 const io = vi.hoisted(() => ({ send: vi.fn(async () => ({ kind: 'request' as const })) }))
 vi.mock('../../lib/materials/shortRequestIo', () => ({ sendShortRequest: io.send }))
 
@@ -42,12 +50,17 @@ import TallyOnSiteTab from './TallyOnSiteTab'
 
 const box = { id: 'a2', jobId: 'j1', label: 'A2', kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-10-01T00:00:00Z' }
 const mv = (over: Record<string, unknown>) => ({ id: String(Math.random()), jobId: 'j1', partId: null, partName: 'ZZ test elbow', manufacturer: null, fromContainerId: null, toContainerId: null, note: '', byUserId: null, byName: 'Mateo', source: null, itemId: null, ...over })
-const jobs = [{ id: 'j1', hcp_number: '972', job_name: 'ZZ Test', job_address: '1 Test St' }]
+const jobs = [{ id: 'j1', hcp_number: '972', job_name: 'ZZ Test', job_address: '1 Test St' }, { id: 'j2', hcp_number: '973', job_name: 'ZZ Test Two', job_address: '2 Test St' }]
+const otherBox = { ...box, id: 'b1', jobId: 'j2', label: 'B1', kind: 'box' }
+const otherLine = { containerId: 'b1', partKey: 'text:zz test tee', partId: null, partName: 'ZZ test tee', manufacturer: null, onHand: 6, lastTouchedAt: null, lastTouchedBy: null, lastCountAt: null, lastCountBy: null, lastCountDiff: null, cannotFindSinceCount: 0 }
+const otherJob = { jobId: 'j2', label: '973 · ZZ Test Two', containers: [otherBox], lines: [otherLine], places: [] }
 
 beforeEach(() => {
   store.containers = [box]
   store.movements = [mv({ reason: 'delivered', quantity: 10, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' }), mv({ reason: 'counted', quantity: 8, at: '2026-11-08T10:00:00Z', fromContainerId: 'a2' })]
   io.send.mockClear()
+  desk.jobs = [otherJob]
+  desk.asked = []
 })
 afterEach(() => cleanup())
 
@@ -84,5 +97,70 @@ describe('TallyOnSiteTab · the Short press', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Short' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ask the office for 1' }))
     await waitFor(() => expect(screen.getByText('Only the office can file a parts request on this job. Tell them: 1 more ZZ test elbow.')).toBeTruthy())
+  })
+})
+
+describe('TallyOnSiteTab · past one job (punch list #304)', () => {
+  function list(onPickJob: (id: string) => void = () => {}) {
+    renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={onPickJob} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
+  }
+
+  it('searches this job until asked, then finds the part on another job and opens that job on its box', async () => {
+    const onPickJob = vi.fn()
+    list(onPickJob)
+    const search = screen.getByRole('searchbox', { name: 'Find a part on this job' })
+    expect(desk.asked.every((a) => a === false)).toBe(true)
+    fireEvent.change(search, { target: { value: 'tee' } })
+    expect(screen.queryByTestId('on-site-other-job')).toBeNull()
+    fireEvent.click(screen.getByTestId('on-site-look-everywhere'))
+    expect(screen.getByRole('searchbox', { name: 'Find a part on any job' })).toBeTruthy()
+    const other = await screen.findByTestId('on-site-other-job')
+    expect(other.textContent).toContain('973 · ZZ Test Two · another job')
+    expect(other.textContent).toContain('ZZ test tee')
+    fireEvent.click(within(other).getByRole('button'))
+    expect(onPickJob).toHaveBeenCalledWith('j2')
+  })
+
+  it('Every job is a press beside the search, and Scan a label opens its window', () => {
+    list()
+    const reach = screen.getByRole('group', { name: 'Where to look' })
+    expect(within(reach).getByRole('button', { name: 'This job' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(reach).getByRole('button', { name: 'Every job' }))
+    expect(within(reach).getByRole('button', { name: 'Every job' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByTestId('on-site-scan-label'))
+    expect(screen.getByRole('dialog', { name: 'Scan a label' })).toBeTruthy()
+  })
+
+  it('a job with no box names the other jobs that hold one, and a press opens that job', () => {
+    store.containers = []
+    store.movements = []
+    const onPickJob = vi.fn()
+    list(onPickJob)
+    const others = screen.getByTestId('on-site-other-jobs')
+    expect(others.textContent).toContain('No containers on this job yet. Your boxes are on 1 other job.')
+    expect(others.textContent).toContain('973 · ZZ Test Two')
+    fireEvent.click(within(others).getByRole('button'))
+    expect(onPickJob).toHaveBeenCalledWith('j2')
+    expect(screen.getByRole('button', { name: 'Add a container' })).toBeTruthy()
+  })
+
+  it('a job with no box and no other job with one reads as before', () => {
+    store.containers = []
+    store.movements = []
+    desk.jobs = []
+    list()
+    expect(screen.queryByTestId('on-site-other-jobs')).toBeNull()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toContain('No containers on this site yet.')
+  })
+
+  it('a box prints its label and its manifest here, with no link to the office page', async () => {
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Print the label for A2' }))
+    expect(screen.getAllByTestId('labels-sheet')).toHaveLength(1)
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 1 label')
+    expect(document.querySelector('a[href*="/jobs?tab=materials"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Print the manifest for A2' }))
+    expect(screen.getByRole('dialog', { name: /manifest/i })).toBeTruthy()
   })
 })
