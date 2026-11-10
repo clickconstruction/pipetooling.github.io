@@ -130,6 +130,21 @@ export function feedRowFields(raw: unknown): FeedField[] {
   return out
 }
 
+/**
+ * The city's own page for this one permit, when the feed's row carries its address: Seguin sends
+ * one on every row and Austin sends one as a link. Only an https address is offered.
+ */
+export function permitOwnPage(raw: unknown): string | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const record = raw as Record<string, unknown>
+  const link = record['link']
+  const candidates = [record['USER_URL'], typeof link === 'object' && link !== null ? (link as Record<string, unknown>)['url'] : link]
+  for (const c of candidates) {
+    if (typeof c === 'string' && /^https:\/\/[^\s]+$/.test(c.trim())) return c.trim()
+  }
+  return null
+}
+
 /** A permit as the two lists read it off `permits`. */
 export type SitePermit = {
   id: string

@@ -1,7 +1,7 @@
 /**
  * Permits (punch list #292, revision 4): the cities the pull reads, and each city's feed as one
  * shape. A city publishes its permits through its own door (San Antonio's CKAN datastore, Austin's
- * Socrata dataset), names its kinds of work in its own words, and keeps its own search pages. A
+ * Socrata dataset, a map layer in New Braunfels, San Marcos and Seguin), names its kinds of work in its own words, and keeps its own search pages. A
  * `FeedReader` hides the door: the URL of one page, the records in the door's answer, and the
  * `permits` row one record makes. `permit-pull` runs the readers; the app reads the city list and
  * each city's doors. No I/O here; `src/lib/research/permitCities.test.ts` holds it.
@@ -21,6 +21,8 @@ export type FeedReader = {
   recordsOf: (body: unknown) => Record<string, unknown>[]
   /** One record as a `permits` row, or null when the pull does not keep it. */
   rowOf: (record: Record<string, unknown>) => PermitRow | null
+  /** The most rows the door hands over in one page, when that is fewer than the pull asks for. */
+  pageSize?: number
 }
 
 function assertDay(sinceDay: string, who: string): void {
@@ -180,6 +182,285 @@ export const AUSTIN_READER: FeedReader = {
   rowOf: permitRowFromAustin,
 }
 
+// ---- A city's map layer (ArcGIS): New Braunfels, San Marcos and Seguin each publish one. ----
+
+/** A day from a map layer's date, which is a count of milliseconds: the day it names in UTC, as the layer wrote it. */
+export function dayFromMs(value: unknown): string | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
+  const d = new Date(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+}
+
+/** A day from "10/17/2026 8:07:43 AM", the way Seguin writes an issue date. */
+export function dayFromUsDate(value: unknown): string | null {
+  const m = (textOf(value) ?? '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\b/)
+  return m ? `${m[3]}-${m[1]!.padStart(2, '0')}-${m[2]!.padStart(2, '0')}` : null
+}
+
+/** A status that says the permit is not going ahead. */
+const DEAD_STATUS = /void|withdrawn|cancel|denied|expired|rejected/i
+
+type MapLayer = {
+  source: string
+  city: string
+  /** The layer's address, without `/query`. */
+  layerUrl: string
+  pageSize: number
+  /** The layer's SQL for the kinds the pull keeps, filed or issued on or after a day. */
+  where: (sinceDay: string) => string
+  orderBy: string
+  rowOf: (record: Record<string, unknown>) => PermitRow | null
+}
+
+/** A reader over one map layer: its attributes are the record, and its point rides along as `_lat` and `_lng`. */
+function mapLayerReader(layer: MapLayer): FeedReader {
+  return {
+    source: layer.source,
+    city: layer.city,
+    // The layer is read by the day a permit was applied for; a row says for itself whether it is issued.
+    stage: 'applied',
+    pageSize: layer.pageSize,
+    pageUrl: (sinceDay, limit, offset) => {
+      assertDay(sinceDay, layer.source)
+      const q = new URLSearchParams({
+        where: layer.where(sinceDay),
+        outFields: '*',
+        returnGeometry: 'true',
+        outSR: '4326',
+        orderByFields: layer.orderBy,
+        resultOffset: String(Math.max(0, Math.floor(offset))),
+        resultRecordCount: String(Math.max(1, Math.min(Math.floor(limit), layer.pageSize))),
+        f: 'json',
+      })
+      return `${layer.layerUrl}/query?${q.toString()}`
+    },
+    recordsOf: (body) => {
+      const b = body as { error?: { message?: unknown }; features?: Array<{ attributes?: Record<string, unknown>; geometry?: { x?: unknown; y?: unknown } | null }> } | null
+      if (!b || b.error) throw new Error(`the feed refused the read: ${String(b?.error?.message ?? JSON.stringify(b?.error ?? {})).slice(0, 300)}`)
+      return (b.features ?? []).map((f) => ({ ...(f.attributes ?? {}), _lat: f.geometry?.y ?? null, _lng: f.geometry?.x ?? null }))
+    },
+    rowOf: layer.rowOf,
+  }
+}
+
+/** The record as the ledger keeps it: the layer's dates as days, and none of the reader's own keys. */
+function rawOf(record: Record<string, unknown>, dateFields: readonly string[], drop: readonly string[] = []): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(record)) {
+    if (k.startsWith('_') || drop.includes(k)) continue
+    out[k] = dateFields.includes(k) ? dayFromMs(v) : v
+  }
+  return out
+}
+
+function sqlList(words: readonly string[]): string {
+  return words.map((w) => `'${w.replace(/'/g, "''")}'`).join(', ')
+}
+
+/** The five-digit zip an address ends on, when it carries one. */
+function zipOfTail(address: string | null): string | null {
+  return (address ?? '').match(/\b(\d{5})(?:-\d{4})?\s*$/)?.[1] ?? null
+}
+
+// San Marcos: the city's building-permits layer. It names no one; it carries the kind, the land use, the days and the square feet.
+
+export const SAN_MARCOS_LAYER = 'https://smgis.sanmarcostx.gov/arcgis/rest/services/Planning/CoSM_BuildingPermits/FeatureServer/0'
+const SAN_MARCOS_HOUSE_USES = ['Single Family', 'Townhouse', 'Duplex', 'Manufactured Home']
+const SAN_MARCOS_KINDS = ['New Commercial', 'New', 'Shell', 'Tenant Finish Out', 'Commercial Remodel', 'Remodel', 'Addition', 'Site Prep.', 'New Residential', 'Plumbing']
+
+/** A San Marcos record as a kind. Apartments are filed as New Residential on multi-family land: commercial work. */
+export function classifySanMarcos(record: Record<string, unknown>): PermitTypeClass | null {
+  const type = textOf(record['TYPE'])
+  const use = textOf(record['LANDUSE']) ?? ''
+  const house = SAN_MARCOS_HOUSE_USES.includes(use)
+  if (type === 'Plumbing') return { kind: 'plumbing', residential: false, work: 'Plumbing' }
+  if (type === 'New Commercial' || type === 'Shell') return { kind: 'building', residential: false, work: 'New commercial' }
+  if (type === 'New Residential') return house || use === '' ? { kind: 'building', residential: true, work: 'New house' } : { kind: 'building', residential: false, work: 'New commercial' }
+  if (type === 'New') return house ? { kind: 'building', residential: true, work: 'New house' } : use === '' ? null : { kind: 'building', residential: false, work: 'New commercial' }
+  if (type === 'Tenant Finish Out' || type === 'Commercial Remodel') return { kind: 'building', residential: false, work: 'Commercial remodel' }
+  if (type === 'Remodel') return house || use === '' ? null : { kind: 'building', residential: false, work: 'Commercial remodel' }
+  if (type === 'Addition') return use === '' ? null : house ? { kind: 'building', residential: true, work: 'Home addition' } : { kind: 'building', residential: false, work: 'Commercial addition' }
+  if (type === 'Site Prep.') return house || use === '' ? null : { kind: 'building', residential: false, work: 'Commercial site work' }
+  return null
+}
+
+export function permitRowFromSanMarcos(record: Record<string, unknown>): PermitRow | null {
+  const cls = classifySanMarcos(record)
+  if (!cls || DEAD_STATUS.test(textOf(record['STATUS']) ?? '')) return null
+  const number = textOf(record['PROJECTNUMBER']) ?? textOf(record['PERMITID'])
+  if (!number) return null
+  const address = textOf(record['ADDRESS'])
+  const point = texasPoint(record['_lat'], record['_lng'])
+  const issued = dayFromMs(record['ISSUED'])
+  return {
+    city: 'San Marcos',
+    source: 'sm-permits',
+    permit_number: number,
+    permit_type: textOf(record['TYPE']) ?? '',
+    kind: cls.kind,
+    stage: issued ? 'issued' : 'applied',
+    residential: cls.residential,
+    work_type: cls.work,
+    project_name: shortDescription(record['ProjectName']),
+    address,
+    address_key: addressKeyOf(address),
+    zip: null,
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
+    submitted_on: dayFromMs(record['APPLIED']),
+    issued_on: issued,
+    declared_value: null,
+    area_sf: positive(record['SQUAREFEET']),
+    contact: null,
+    builder_key: null,
+    raw: rawOf(record, ['APPLIED', 'ISSUED', 'created_date', 'last_edited_date'], ['created_user', 'last_edited_user', 'GlobalID']),
+  }
+}
+
+export const SAN_MARCOS_READER = mapLayerReader({
+  source: 'sm-permits',
+  city: 'San Marcos',
+  layerUrl: SAN_MARCOS_LAYER,
+  pageSize: 1000,
+  where: (since) => `(APPLIED >= DATE '${since}' OR ISSUED >= DATE '${since}') AND TYPE IN (${sqlList(SAN_MARCOS_KINDS)})`,
+  orderBy: 'APPLIED ASC, OBJECTID ASC',
+  rowOf: permitRowFromSanMarcos,
+})
+
+// Seguin: the city's permits layer. Its name column is the desk that issued the permit, so it names no one;
+// each row links to the city's own page for the permit, which does.
+
+export const SEGUIN_LAYER = 'https://gis.seguintexas.gov/arcgis/rest/services/Permits/Permits/FeatureServer/0'
+const SEGUIN_KINDS: ReadonlyArray<{ starts: string; cls: PermitTypeClass }> = [
+  { starts: 'Commercial Building New', cls: { kind: 'building', residential: false, work: 'New commercial' } },
+  { starts: 'Commercial Remodel', cls: { kind: 'building', residential: false, work: 'Commercial remodel' } },
+  { starts: 'Commercial Add On', cls: { kind: 'building', residential: false, work: 'Commercial addition' } },
+  { starts: 'Commercial Plumbing', cls: { kind: 'plumbing', residential: false, work: 'Plumbing' } },
+  { starts: 'Residential Plumbing', cls: { kind: 'plumbing', residential: false, work: 'Plumbing' } },
+  { starts: 'Building Residental', cls: { kind: 'building', residential: true, work: 'New house' } },
+  { starts: 'Building Duplex', cls: { kind: 'building', residential: true, work: 'New house' } },
+  { starts: 'Residential Add On', cls: { kind: 'building', residential: true, work: 'Home addition' } },
+]
+
+export function classifySeguin(record: Record<string, unknown>): PermitTypeClass | null {
+  const d = textOf(record['USER_DESCRIPTION']) ?? ''
+  return SEGUIN_KINDS.find((k) => d.startsWith(k.starts))?.cls ?? null
+}
+
+export function permitRowFromSeguin(record: Record<string, unknown>): PermitRow | null {
+  const cls = classifySeguin(record)
+  if (!cls || DEAD_STATUS.test(textOf(record['USER_PERMITSTATUS']) ?? '')) return null
+  const number = textOf(record['USER_PERMITNUMBER'])
+  if (!number) return null
+  const address = textOf(record['USER_Address'])
+  const point = texasPoint(record['_lat'], record['_lng'])
+  const issued = dayFromUsDate(record['USER_DATEISSUED'])
+  // The city's name for the kind runs to a paragraph on the newer ones: the words before the dash or the bracket are the kind.
+  const type = (textOf(record['USER_DESCRIPTION']) ?? '').split(/ - | \(/)[0]!.trim()
+  return {
+    city: 'Seguin',
+    source: 'seguin-permits',
+    permit_number: number,
+    permit_type: type,
+    kind: cls.kind,
+    stage: issued ? 'issued' : 'applied',
+    residential: cls.residential,
+    work_type: cls.work,
+    project_name: shortDescription(record['USER_DESCRIPTION1']),
+    address,
+    address_key: addressKeyOf(address),
+    zip: zipOfTail(address),
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
+    submitted_on: dayFromMs(record['USER_APPLYDATE']),
+    issued_on: issued,
+    declared_value: null,
+    area_sf: null,
+    contact: null,
+    builder_key: null,
+    raw: rawOf(record, ['USER_APPLYDATE'], ['Last7Days']),
+  }
+}
+
+export const SEGUIN_READER = mapLayerReader({
+  source: 'seguin-permits',
+  city: 'Seguin',
+  layerUrl: SEGUIN_LAYER,
+  pageSize: 1000,
+  where: (since) => `USER_APPLYDATE >= DATE '${since}' AND (${SEGUIN_KINDS.map((k) => `USER_DESCRIPTION LIKE '${k.starts}%'`).join(' OR ')})`,
+  orderBy: 'USER_APPLYDATE ASC, OBJECTID ASC',
+  rowOf: permitRowFromSeguin,
+})
+
+// New Braunfels: the Permits layer of the city's open-data map service, with the applicant, the owner and the contractor.
+
+export const NEW_BRAUNFELS_LAYER = 'https://gismaps.newbraunfels.gov/arcserverwa22/rest/services/OpenData/PlanningZoning/MapServer/10'
+const NEW_BRAUNFELS_TYPES = ['Commercial  EPR', 'Commercial', 'Residential  EPR', 'Commercial Plumbing', 'Residential Plumbing']
+
+/** A New Braunfels record as a kind, from its type and its subtype; a subtype copied in the city's system carries "(clone)". */
+export function classifyNewBraunfels(record: Record<string, unknown>): PermitTypeClass | null {
+  const type = (textOf(record['Permit_TYPE_DESC']) ?? '').replace(/\s+/g, ' ')
+  const sub = (textOf(record['Permit_SUBTYPE_DESC']) ?? '').replace(/\s*\(clone\)\s*$/i, '').trim()
+  if (type === 'Commercial Plumbing' || type === 'Residential Plumbing') return { kind: 'plumbing', residential: false, work: 'Plumbing' }
+  if (type === 'Commercial EPR' || type === 'Commercial') {
+    if (sub === 'New Build') return { kind: 'building', residential: false, work: 'New commercial' }
+    if (sub === 'Alteration-Remodel' || sub === 'Finish Out') return { kind: 'building', residential: false, work: 'Commercial remodel' }
+    if (sub === 'Addition') return { kind: 'building', residential: false, work: 'Commercial addition' }
+    return null
+  }
+  if (type === 'Residential EPR') {
+    if (sub === 'New Build') return { kind: 'building', residential: true, work: 'New house' }
+    if (sub === 'Addition') return { kind: 'building', residential: true, work: 'Home addition' }
+  }
+  return null
+}
+
+export function permitRowFromNewBraunfels(record: Record<string, unknown>): PermitRow | null {
+  const cls = classifyNewBraunfels(record)
+  if (!cls || DEAD_STATUS.test(textOf(record['Permit_Status']) ?? '')) return null
+  const number = textOf(record['CoNB_Permit_Number'])
+  if (!number) return null
+  const address = textOf(record['Permit_Address'])
+  const point = texasPoint(record['_lat'], record['_lng'])
+  const issued = dayFromMs(record['Permit_Issue_Date'])
+  // Who pulled it: the contractor once the city has one on the permit, else the applicant.
+  const contact = textOf(record['Contractor_Name']) ?? textOf(record['Applicant_Name'])
+  return {
+    city: 'New Braunfels',
+    source: 'nb-permits',
+    permit_number: number,
+    permit_type: textOf(record['Permit_Type_Name']) ?? textOf(record['Permit_TYPE_DESC']) ?? '',
+    kind: cls.kind,
+    stage: issued ? 'issued' : 'applied',
+    residential: cls.residential,
+    work_type: cls.work,
+    project_name: shortDescription(record['Permit_Label']),
+    address,
+    address_key: addressKeyOf(address),
+    zip: null,
+    lat: point?.lat ?? null,
+    lng: point?.lng ?? null,
+    submitted_on: dayFromMs(record['Permit_Submit_Date']),
+    issued_on: issued,
+    declared_value: null,
+    area_sf: null,
+    contact,
+    builder_key: builderKeyOf(contact),
+    raw: rawOf(record, ['Permit_Submit_Date', 'Permit_Issue_Date', 'Permit_Status_Date', 'LOADDTT'], ['GlobalID', 'UID', 'uniquePMT_ID', 'GISAddrKey', 'Shape']),
+  }
+}
+
+export const NEW_BRAUNFELS_READER = mapLayerReader({
+  source: 'nb-permits',
+  city: 'New Braunfels',
+  layerUrl: NEW_BRAUNFELS_LAYER,
+  pageSize: 1000,
+  where: (since) => `(Permit_Submit_Date >= DATE '${since}' OR Permit_Issue_Date >= DATE '${since}') AND Permit_Group = 'Building' AND Permit_TYPE_DESC IN (${sqlList(NEW_BRAUNFELS_TYPES)})`,
+  orderBy: 'Permit_Submit_Date ASC, OBJECTID ASC',
+  rowOf: permitRowFromNewBraunfels,
+})
+
 // ---- The cities. ----
 
 /** A city the office researches: where it is, whose county keeps its land records, and its public search pages. */
@@ -215,6 +496,33 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     deeds: 'https://www.tccsearch.org/',
     parcels: false,
     feeds: [AUSTIN_READER],
+  },
+  {
+    name: 'New Braunfels',
+    county: 'Comal',
+    center: { lat: 29.703, lng: -98.1245 },
+    permitSearch: 'https://nbpermits.nbtexas.org/publicaccess',
+    deeds: null,
+    parcels: false,
+    feeds: [NEW_BRAUNFELS_READER],
+  },
+  {
+    name: 'San Marcos',
+    county: 'Hays',
+    center: { lat: 29.8833, lng: -97.9414 },
+    permitSearch: 'https://www.mygovernmentonline.org/',
+    deeds: null,
+    parcels: false,
+    feeds: [SAN_MARCOS_READER],
+  },
+  {
+    name: 'Seguin',
+    county: 'Guadalupe',
+    center: { lat: 29.5688, lng: -97.9647 },
+    permitSearch: 'https://eportal.seguintexas.gov/EnerGov_Prod/SelfService',
+    deeds: null,
+    parcels: false,
+    feeds: [SEGUIN_READER],
   },
 ]
 

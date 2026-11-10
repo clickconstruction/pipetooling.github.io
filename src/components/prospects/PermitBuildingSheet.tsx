@@ -4,7 +4,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { appraisalDoor, askingCountyWords, cityReadsParcels, noParcelWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
-import { deedsDoor, feedRowFields, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
+import { deedsDoor, feedRowFields, permitOwnPage, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
 import { historyWords } from '../../lib/research/permitHistory'
 import { loadPermitFeedRow, loadPermitHistory, loadSitePermits, lookupParcel, type LookupAnswer, type PermitFeedRow, type PermitVerdictEvent } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
@@ -114,6 +114,8 @@ export function PermitBuildingSheet({
   const maps = mapsDoor(row)
   const deeds = deedsDoor(row.city)
   const cityPermitSearch = permitSearchDoor(row.city)
+  // Some cities send the address of their own page for the permit on its row: one press, nothing to paste.
+  const ownPage = feed.state === 'done' && feed.value ? permitOwnPage(feed.value.raw) : null
   // Offered only where the county's own record is not read: Bexar's answer carries its own link.
   const appraisal = cityReadsParcels(row.city) ? null : appraisalDoor(row.city)
   const parcelFacts = parcel.state === 'done' ? parcel.value.facts : null
@@ -303,6 +305,11 @@ export function PermitBuildingSheet({
                 <button type="button" onClick={() => void copyNumber()} style={smallPress}>
                   {copied ? 'Copied' : `Copy ${row.permit_number}`}
                 </button>
+                {ownPage && (
+                  <a href={ownPage} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                    Open this permit at the city
+                  </a>
+                )}
                 {cityPermitSearch && (
                   <a href={cityPermitSearch} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
                     Open the city’s permit search

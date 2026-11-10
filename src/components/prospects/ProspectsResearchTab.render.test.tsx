@@ -372,7 +372,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
         io.lookupParcel.mockResolvedValue({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
         renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
         const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
-        expect([...picker.options].map((o) => o.value)).toEqual(expect.arrayContaining(['San Antonio', 'Austin']))
+        expect([...picker.options].map((o) => o.value)).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
         fireEvent.change(picker, { target: { value: 'Austin' } })
         await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledWith('Austin', '2000-01-01', false))
         expect(await screen.findByText('100 SAMPLE LN, 78245')).toBeTruthy()

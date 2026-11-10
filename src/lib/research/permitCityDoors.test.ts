@@ -25,6 +25,12 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(cityDeedsDoor('San Antonio')).toBe('https://bexar.tx.publicsearch.us/')
     expect(cityDeedsDoor('Austin')).toBe('https://www.tccsearch.org/')
     expect(appraisalDoor('Austin')).toMatch(/^https:\/\//)
+    for (const city of ['New Braunfels', 'San Marcos', 'Seguin']) {
+      expect(appraisalDoor(city)).toMatch(/^https:\/\//)
+      expect(permitSearchDoor(city)).toMatch(/^https:\/\//)
+      expect(cityReadsParcels(city)).toBe(false)
+    }
+    expect(noParcelWords('Seguin')).toBe('Guadalupe County’s record is not read here yet. Its appraisal district has it.')
     expect(appraisalDoor('Nowhere')).toBeNull()
   })
 

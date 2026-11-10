@@ -11,7 +11,7 @@ summary: >
   get two lenses: a building permit with no plumbing permit yet is work we can still bid, and a
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
-next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 asked 2026-11-10 for Austin, New Braunfels, San Marcos and Seguin: Austin is v2.6859 (the city list, the readers, the per-city doors); the three suburbs each publish a live map layer of permits (found and read that day), so they are readers too and the weekly file is not needed; the digest when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
+next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 asked 2026-11-10 for Austin, New Braunfels, San Marcos and Seguin: Austin is v2.6859 (the city list, the readers, the per-city doors) and New Braunfels, San Marcos and Seguin are v2.6861 (one reader over a city's map layer, three field maps), so the weekly file is not needed; the digest when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
 size: L as a train of four (M · S · M · S); shipped: revisions 1 to 3 (M · S · S); left: revision 4 (S)
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
@@ -162,12 +162,13 @@ Prospects, open to every estimator; the guide `research-permits-for-work-to-bid`
    - **Austin** (v2.6859): the city's Socrata dataset of issued permits, with the contractor, the
      applicant, a valuation, square feet and plumbing permits. Issued only, so a permit shows later
      in its life than San Antonio's applications do.
-   - **New Braunfels**: a layer on the city's open-data map service with applicant, owner and
+   - **New Braunfels** (v2.6861): a layer on the city's open-data map service with applicant, owner and
      contractor names, submit and issue days, and plumbing permits; no valuation.
-   - **San Marcos**: the city's building-permits map layer with type, land use, applied and issued
+   - **San Marcos** (v2.6861): the city's building-permits map layer with type, land use, applied and issued
      days, square feet and a project name; no names and no valuation.
-   - **Seguin**: the city's permits map layer with one name per permit, apply and issue days and a
-     link to the city's own page for the permit; no valuation.
+   - **Seguin** (v2.6861): the city's permits map layer with apply and issue days, a description
+     and a link to the city's own page for the permit; no valuation, and its name column is the
+     desk that issued the permit, so it names no one.
    The three map layers are one more door (a reader over an ArcGIS feature layer) and three field
    maps. The dropped-file import below is no longer needed for these cities.
    What is not built: the county parcel record outside Bexar (cards open the appraisal district),

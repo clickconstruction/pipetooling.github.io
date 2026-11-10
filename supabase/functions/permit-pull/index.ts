@@ -8,7 +8,7 @@ import { builderKeyOf } from '../_shared/permitLookup.ts'
 /**
  * Research (punch list #292, v2.6782): pull a city's permits into `permits`. Each city's feeds
  * are readers in `_shared/permitCities.ts` (San Antonio's two CKAN datastores, Austin's Socrata
- * dataset): the kept building kinds and the plumbing permits since ten days before the newest row
+ * dataset, a map layer each for New Braunfels, San Marcos and Seguin): the kept building kinds and the plumbing permits since ten days before the newest row
  * held (75 days back on a feed's first run), paged oldest first, upserted on (city, source,
  * number, type) so a re-read changes nothing. Each feed's run lands in `permit_pulls`, error and
  * all. Runs nightly from pg_cron (migration 20261109070000, 11:30 UTC) over every city, and on
@@ -40,8 +40,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 type FeedOutcome = { source: string; since: string; seen: number; kept: number; pages: number; error: string | null }
 
-async function readPage(feed: FeedReader, since: string, offset: number): Promise<Record<string, unknown>[]> {
-  const res = await fetch(feed.pageUrl(since, PAGE, offset), { headers: { Accept: 'application/json' } })
+async function readPage(feed: FeedReader, since: string, size: number, offset: number): Promise<Record<string, unknown>[]> {
+  const res = await fetch(feed.pageUrl(since, size, offset), { headers: { Accept: 'application/json' } })
   const body = await res.json().catch(() => null)
   // A door that refuses a read says why in its body; its words beat the bare status.
   if (!res.ok && body == null) throw new Error(`the feed answered ${res.status}`)
@@ -106,12 +106,14 @@ serve(async (req) => {
       }
       outcome.since = since
       let offset = 0
+      // A door that hands over fewer rows a page than the pull asks for sets the page.
+      const size = Math.min(PAGE, feed.pageSize ?? PAGE)
       for (let page = 0; page < MAX_PAGES_PER_FEED; page++) {
         if (Date.now() - started > BUDGET_MS) {
           outcome.error = 'stopped on the time budget; the next run carries on'
           break
         }
-        const records = await readPage(feed, since, offset)
+        const records = await readPage(feed, since, size, offset)
         outcome.pages++
         outcome.seen += records.length
         const rows: PermitRow[] = []
@@ -136,8 +138,8 @@ serve(async (req) => {
           }
         }
         outcome.kept += unique.length
-        if (records.length < PAGE) break
-        offset += PAGE
+        if (records.length < size) break
+        offset += size
       }
     } catch (e) {
       outcome.error = e instanceof Error ? e.message : String(e)

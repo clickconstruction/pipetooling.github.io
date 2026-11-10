@@ -5,6 +5,7 @@ import {
   builderSearchWord,
   builderWords,
   deedsDoor,
+  permitOwnPage,
   feedRowFields,
   googleAskForAddress,
   googleAskForCompany,
@@ -175,6 +176,16 @@ describe("a name's other permits", () => {
 })
 
 describe('the public doors', () => {
+  it("finds the city's own page for one permit when the feed's row carries it", () => {
+    expect(permitOwnPage({ USER_URL: 'https://city.example/permit/1' })).toBe('https://city.example/permit/1')
+    expect(permitOwnPage({ link: { url: 'https://city.example/folder?id=2' } })).toBe('https://city.example/folder?id=2')
+    expect(permitOwnPage({ link: 'https://city.example/3' })).toBe('https://city.example/3')
+    expect(permitOwnPage({ USER_URL: 'javascript:alert(1)' })).toBeNull()
+    expect(permitOwnPage({ USER_URL: 'http://city.example/plain' })).toBeNull()
+    expect(permitOwnPage({ 'PERMIT #': 'X' })).toBeNull()
+    expect(permitOwnPage(null)).toBeNull()
+  })
+
   it("knows the county clerk's deed search for the cities the pull reads, and no other", () => {
     expect(deedsDoor('San Antonio')).toBe('https://bexar.tx.publicsearch.us/')
     expect(deedsDoor('Austin')).toBe('https://www.tccsearch.org/')
