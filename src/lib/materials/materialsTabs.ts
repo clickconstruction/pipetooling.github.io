@@ -18,9 +18,10 @@ export const MATERIALS_TABS = [
   'assembly-book',
   'assemblies-po',
   'purchase-orders',
+  'po-generator',
   'supply-houses',
   'job-accounts',
-  'po-generator',
+  'on-site',
 ] as const
 
 export type MaterialsTab = (typeof MATERIALS_TABS)[number]
@@ -36,6 +37,22 @@ const READER_TABS: readonly MaterialsTab[] = ['parts-book', 'assembly-book']
 /** Buyer tabs — estimators build and track POs; primaries and superintendents only read the books. */
 const BUYER_TABS: readonly MaterialsTab[] = ['assemblies-po', 'purchase-orders']
 
+/**
+ * On site (punch list #304): the cages and boxes on every job, for every Materials reader. The rows
+ * under it are gated by `on_site_can_touch_job`, so a role sees the jobs it can reach and no more.
+ */
+const ON_SITE_TABS: readonly MaterialsTab[] = ['on-site']
+
+/** The office: dev, master and the assistant-like roles. They get every tab and the desk on On site. */
+export function isMaterialsOfficeRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+}
+
+/** The tabs in `MATERIALS_TABS`' order, which is the strip's: Plan, then Purchase, then Track. */
+function inStripOrder(tabs: readonly MaterialsTab[]): MaterialsTab[] {
+  return MATERIALS_TABS.filter((t) => tabs.includes(t))
+}
+
 export function isMaterialsTab(value: string | null | undefined): value is MaterialsTab {
   return value != null && (MATERIALS_TABS as readonly string[]).includes(value)
 }
@@ -48,20 +65,20 @@ export function canAccessMaterials(role: string | null | undefined): boolean {
 /**
  * Tabs the role may open, in the page's canonical order. Office roles (dev,
  * master, assistant-like) get everything; estimators get the books, the PO
- * lanes and the Supply houses directory; primaries and superintendents get
- * the books only.
+ * lanes, the Supply houses directory and On site; primaries and
+ * superintendents get the books and On site.
  */
 export function materialsTabsFor(role: string | null | undefined): readonly MaterialsTab[] {
   if (!role) return []
-  if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) {
+  if (isMaterialsOfficeRole(role)) {
     return MATERIALS_TABS
   }
   if (role === 'estimator') {
     // The estimator door (PR 2): the Supply houses tab renders the Directory pane alone.
-    return [...READER_TABS, ...BUYER_TABS, 'supply-houses']
+    return inStripOrder([...READER_TABS, ...BUYER_TABS, 'supply-houses', ...ON_SITE_TABS])
   }
   if (role === 'primary' || role === 'superintendent') {
-    return READER_TABS
+    return inStripOrder([...READER_TABS, ...ON_SITE_TABS])
   }
   return []
 }
@@ -104,6 +121,6 @@ export type SupplyHousesPane = 'office' | 'directory'
 
 export function supplyHousesPaneFor(role: string | null | undefined): SupplyHousesPane | null {
   if (!canOpenMaterialsTab(role, 'supply-houses')) return null
-  if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) return 'office'
+  if (isMaterialsOfficeRole(role)) return 'office'
   return 'directory'
 }

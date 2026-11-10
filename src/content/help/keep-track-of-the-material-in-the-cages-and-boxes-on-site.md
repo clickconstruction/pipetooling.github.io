@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: tape label, brother tape, p-touch, test strip, printer setup, paper sheet, materials on site, on site, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, materials page, track, your jobs with boxes, find a part on any job, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.

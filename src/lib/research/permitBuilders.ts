@@ -64,14 +64,16 @@ export function placeCounts(rows: readonly ResearchPermitRow[], floor: ValueFloo
 }
 
 /** What the skim deck knows before the tab does: how many cards are left, and the answer it holds for Undo. */
-export type SkimLive = { left: number; held: SkimAnswer | null }
+export type SkimLive = { mode: 'skim' | 'second'; left: number; held: SkimAnswer | null }
 
 /**
- * The strip's counts while the skim is open. The strip is the one count on the page, so Skim is
+ * The strip's counts while a deck is open. The strip is the one count on the page, so Skim is
  * the deck's own number, and an answer still held for Undo already reads on Kept or on Closed.
  */
 export function stripCounts(places: PlaceCounts, live: SkimLive | null): PlaceCounts {
   if (!live) return places
+  // A second look deals from Closed: a held keep leaves Closed for Kept, and a held pass moves nothing.
+  if (live.mode === 'second') return live.held === 'keep' ? { ...places, kept: places.kept + 1, closed: Math.max(0, places.closed - 1) } : places
   return { ...places, skim: live.left, kept: places.kept + (live.held === 'keep' ? 1 : 0), closed: places.closed + (live.held === 'pass' ? 1 : 0) }
 }
 
@@ -290,6 +292,13 @@ const REASON_WORDS: Record<string, string> = {
   np_not_this_builder: 'not this builder, after a look',
   none: 'no reason given',
 }
+/** A pass reason as the count words it. A second look writes `sl_` and the reason (permitSecondLook). */
+function passReasonWords(code: string | null | undefined): string {
+  const c = code ?? 'none'
+  if (!c.startsWith('sl_')) return REASON_WORDS[c] ?? c
+  const base = c === 'sl_none' ? null : REASON_WORDS[c.slice(3)]
+  return base ? `${base}, on a second look` : 'passed twice, no reason given'
+}
 const PURSUE_WORDS: Record<string, string> = { this_job: 'this job', next_jobs: 'their next jobs', both: 'both', unsaid: 'not said' }
 
 /** The six numbers of the count, in order. */
@@ -314,7 +323,7 @@ export function funnelLines(f: PermitFunnel): Array<{ label: string; words: stri
   const out: Array<{ label: string; words: string }> = []
   const by = counted(f.by_person, (l) => l.name ?? 'someone')
   if (by) out.push({ label: 'Skimmed by', words: by })
-  const why = counted(f.pass_reasons, (l) => REASON_WORDS[l.code ?? 'none'] ?? (l.code ?? 'no reason given'))
+  const why = counted(f.pass_reasons, (l) => passReasonWords(l.code))
   if (why) out.push({ label: 'Passed, why', words: why })
   const what = counted(f.pursue_for, (l) => PURSUE_WORDS[l.code ?? 'unsaid'] ?? (l.code ?? 'not said'))
   if (what) out.push({ label: 'Pursued for', words: what })

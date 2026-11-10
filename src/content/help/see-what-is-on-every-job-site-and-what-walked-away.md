@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
+keywords: materials on site, materials desk, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -10,6 +10,8 @@ The Materials tab on Jobs is the office side of the cages and boxes on a big sit
 ## Open the desk
 
 Open **Jobs** and press **Materials**. The desk lists every job with a container and sorts the ones losing money to the top. Press a job to open its page.
+
+The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week.
 
 The Pipeline's tools menu has a **Materials desk** row with the count of jobs that lost something this week. A job's window has a **Materials** tab with the same facts and **Open the materials page**. A bid's Procure step has the same door once the bid is a job. The line under its four steps reads **Materials on site**.
 
@@ -43,7 +45,7 @@ To land it now, press **Paste the text instead** and paste the invoice's lines. 
 
 ## Print a label
 
-Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
+Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** beside On site and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
 
 ## Print a manifest
 
@@ -64,3 +66,9 @@ The press is withheld when a live box on the job already carries that stencil. T
 ## Find a box from anywhere
 
 Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
+
+## Find a part on any job
+
+Open **Materials** and press **On site**. Type a part, its maker or a stencil in **Find a part or a box on any job**. Each row names the box, its job and how many are on hand. Press **Open the job** to go to that job's page.
+
+A label the camera cannot read has a code printed under it. Press **Scan a label** beside On site and type the eight characters. Press {{button:blue|Open the box}} and the box opens on the phone screen.
