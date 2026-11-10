@@ -52,6 +52,7 @@ import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
+import { secondLookCount, secondLookSegmentWords, showsSecondLookSegment } from '../../lib/research/permitSecondLook'
 import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
@@ -108,9 +109,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const isMobile = useIsMobile()
   // Skim is step one and where the tab opens; Kept, Pursuing and Closed are where an answered permit sits;
   // the ledger and the map are the wide view of a window of the same rows.
-  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'builders' | 'ledger' | 'map'>('skim')
+  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'builders' | 'ledger' | 'map'>('skim')
   const wide = view === 'ledger' || view === 'map'
-  const phoneSkim = isMobile && view === 'skim'
+  // A deck is open: the skim, or the second look at what someone else passed.
+  const onDeck = view === 'skim' || view === 'second'
+  const phoneSkim = isMobile && onDeck
   // Every permit the feed has brought, with no window: the deck, the step strip and the three lists read these.
   const [allRows, setAllRows] = useState<ResearchPermitRow[]>([])
   const [allLoading, setAllLoading] = useState(true)
@@ -192,7 +195,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const places = useMemo(() => placeCounts(allRows, floor), [allRows, floor])
   // The strip is the one count on the page: while the skim is open it reads the deck's own number and held answer.
   const [skimLive, setSkimLive] = useState<SkimLive | null>(null)
-  const strip = useMemo(() => stripCounts(places, view === 'skim' ? skimLive : null), [places, view, skimLive])
+  const strip = useMemo(() => stripCounts(places, onDeck ? skimLive : null), [places, onDeck, skimLive])
+  // What someone else passed and nobody has looked at twice. The open deck's own number while it is open.
+  const secondLeft = useMemo(() => (view === 'second' && skimLive?.mode === 'second' ? skimLive.left : secondLookCount(allRows, floor, authUserId)), [view, skimLive, allRows, floor, authUserId])
   /** An answer was written: the row reads it at once, so the strip and the lists do not wait on a reload. */
   const patchRow = useCallback(
     (permitId: string, patch: AnsweredPatch) => {
@@ -379,7 +384,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
           ] as const
         ).map((step) => {
           const on = view === step.v
-          return (
+          // What someone else passed rides on Skim as a grey segment to its right: a phone shows it without a scroll.
+          const joined = step.v === 'skim' && !allLoading && showsSecondLookSegment(secondLeft, view === 'second')
+          const chip = (
             <button
               key={step.v}
               type="button"
@@ -389,11 +396,29 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                 if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
                 setView(step.v)
               }}
-              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined }}
+              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined, ...(joined ? { borderRadius: '999px 0 0 999px', paddingRight: 10 } : null) }}
             >
               {step.words}
               {step.n != null && !allLoading ? ` ${step.n}` : ''}
             </button>
+          )
+          if (!joined) return chip
+          const second = secondLookSegmentWords(secondLeft)
+          const secondOn = view === 'second'
+          return (
+            <span key="skim-and-second" style={{ display: 'inline-flex', flex: '0 0 auto' }}>
+              {chip}
+              <button
+                type="button"
+                aria-pressed={secondOn}
+                aria-label={second.label}
+                title="Second look: the permits someone else passed, once each"
+                onClick={() => setView('second')}
+                style={{ background: secondOn ? 'var(--text-strong)' : 'var(--bg-200)', color: secondOn ? 'var(--surface)' : 'var(--text-700)', border: 0, borderLeft: '1px solid var(--border)', borderRadius: '0 999px 999px 0', padding: '6px 12px 6px 10px', fontSize: '0.8125rem', fontWeight: secondOn ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {second.words}
+              </button>
+            </span>
           )
         })}
       </div>
@@ -421,7 +446,10 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       {view === 'skim' && (
-        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} />
+        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} onSecondLook={() => setView('second')} />
+      )}
+      {view === 'second' && (
+        <PermitSkimDeck key="second" mode="second" authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} />
       )}
 
       {(view === 'kept' || view === 'pursuing' || view === 'closed') &&
@@ -623,7 +651,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {digRow && !closing && !whoRow && (

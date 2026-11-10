@@ -145,7 +145,12 @@ export function skimDeck(rows: readonly ResearchPermitRow[], ctx: SkimContext, f
   return rowsAboveFloor(rows, floor)
     .filter((r) => rowLens(r) === 'waiting')
     .map((r) => skimScore(r, ctx))
-    .sort((a, b) => b.score - a.score || (b.row.filed_on ?? '').localeCompare(a.row.filed_on ?? '') || a.row.permit_number.localeCompare(b.row.permit_number))
+    .sort(bestFirst)
+}
+
+/** The deck's order: the best score first, the newest filing first among equals, then the permit number. */
+export function bestFirst(a: SkimCard, b: SkimCard): number {
+  return b.score - a.score || (b.row.filed_on ?? '').localeCompare(a.row.filed_on ?? '') || a.row.permit_number.localeCompare(b.row.permit_number)
 }
 
 /** The two answers of the skim. */

@@ -340,7 +340,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
 
   describe('the four places, builders and the count (punch list #302, PR 6 to 8)', () => {
     const kept = () => row({ id: 'k1', address: '77 KILN ST', permit_number: 'COM-2', verdict: 'look', verdict_reason: 'Kept on the skim.', verdict_by: 'u1', verdict_by_name: 'Eve', verdict_at: '2026-11-08T15:00:00Z', builder_key: 'ridgewaybuilders', builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 })
-    const passed = () => row({ id: 'c1', address: '60 MILLRACE ROW', permit_number: 'COM-3', contact: 'Tall Pine Development', verdict: 'not_for_us', verdict_reason: 'Passed on the skim: too far.', verdict_reason_code: 'too_far', verdict_by_name: 'Eve', verdict_at: '2026-11-09T15:00:00Z' })
+    const passed = (over: Partial<ResearchPermitRow> = {}) => row({ id: 'c1', address: '60 MILLRACE ROW', permit_number: 'COM-3', contact: 'Tall Pine Development', verdict: 'not_for_us', verdict_reason: 'Passed on the skim: too far.', verdict_reason_code: 'too_far', verdict_by_name: 'Eve', verdict_at: '2026-11-09T15:00:00Z', ...over })
 
     it('the strip counts the four places, and the deck shows a mark and hands a keep to a person', async () => {
       io.loadResearchPermits.mockResolvedValue([row({ builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 }), kept(), passed()])
@@ -363,6 +363,64 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'look', forUserId: 'u2' })))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Kept 2' })).toBeTruthy())
       expect(screen.getByText(/Kept by Eve for Sam/)).toBeTruthy()
+    })
+
+    describe('the second look at what someone else passed', () => {
+      const samPassed = () => passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })
+
+      it('deals what someone else passed, says who and why, and a second pass closes it for good', async () => {
+        io.loadResearchPermits.mockResolvedValue([samPassed()])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Second look: 1 passed by someone else' }))
+        expect(screen.getByText(/^Passed by Sam, .*: too far$/)).toBeTruthy()
+        expect(screen.getByText('60 MILLRACE ROW, 78245')).toBeTruthy()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Pass' }))
+        expect(screen.getByText('Passed again. Why?')).toBeTruthy()
+        expect(screen.getByText('Nothing waiting on a second look.')).toBeTruthy()
+        // The chip is the count: the card left the deck, and a pass moves nothing between the places.
+        expect(screen.getByRole('button', { name: 'Second look: 0 passed by someone else' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
+        expect(io.recordVerdict).not.toHaveBeenCalled()
+        fireEvent.click(screen.getByRole('button', { name: 'Not our work' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Closed 1' }))
+        await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'c1', verdict: 'not_for_us', reason: 'Passed on a second look: not our work.', reasonCode: 'sl_not_our_work' })))
+        // Two people have said no: it waits on nobody's second look now, and off the deck the segment is gone.
+        await waitFor(() => expect(screen.queryByRole('button', { name: /^Second look:/ })).toBeNull())
+      })
+
+      it('a keep sends it to Kept under the second person, and Undo takes it back first', async () => {
+        io.loadResearchPermits.mockResolvedValue([samPassed()])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Second look: 1 passed by someone else' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+        expect(screen.getByRole('button', { name: 'Kept 1' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Closed 0' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+        expect(screen.getByRole('button', { name: 'Second look: 1 passed by someone else' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Closed 1' })).toBeTruthy()
+        expect(io.recordVerdict).not.toHaveBeenCalled()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Kept 1' }))
+        await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'c1', verdict: 'look', reason: 'Kept on a second look, after Sam passed.', reasonCode: null })))
+        await waitFor(() => expect(screen.getByText(/^Kept by /)).toBeTruthy())
+      })
+
+      it('my own pass and a permit passed twice wait on nothing, and the caught-up skim offers the deck', async () => {
+        io.loadResearchPermits.mockResolvedValue([passed({ verdict_by: 'u1' }), passed({ id: 'c2', permit_number: 'COM-4', verdict_by: 'u2', verdict_reason_code: 'sl_none', verdict_reason: 'Passed on a second look.' })])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        // Nothing waits, so Skim stands alone on the strip: no grey segment beside it.
+        await screen.findByRole('button', { name: 'Skim 0' })
+        expect(screen.queryByRole('button', { name: /^Second look:/ })).toBeNull()
+        cleanup()
+
+        io.loadResearchPermits.mockResolvedValue([samPassed()])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        expect(await screen.findByText('Nothing waiting on a skim.')).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Second look · 1 someone else passed' }))
+        expect(screen.getByText(/^Passed by Sam/)).toBeTruthy()
+      })
     })
 
     it('a kept permit opens with the close-out: Not pursuing takes one tap of why', async () => {
