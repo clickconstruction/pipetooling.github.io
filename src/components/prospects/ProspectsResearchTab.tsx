@@ -238,7 +238,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   }
   /** A closed permit goes to Kept, by anyone. The words say whose answer it overturned, for the history. */
   const keepFromPassed = (row: ResearchPermitRow) => {
-    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: keepFromPassedReason(row), lookAgainOn: null, prospectId: null, userId: authUserId }), `${row.address ?? row.permit_number} is kept.`)
+    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: keepFromPassedReason(row), lookAgainOn: null, prospectId: null, userId: authUserId }), `${row.address ?? row.permit_number} is marked to investigate.`)
   }
   const closeOut = async (row: ResearchPermitRow, out: PermitCloseOut) => {
     setSaving(true)
@@ -386,7 +386,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         {(
           [
             { v: 'skim', words: 'Skim', n: strip.skim },
-            { v: 'kept', words: 'Kept', n: strip.kept },
+            { v: 'kept', words: 'Investigating', n: strip.kept },
             { v: 'pursuing', words: 'Pursuing', n: strip.pursuing },
             { v: 'closed', words: 'Closed', n: strip.closed },
             { v: 'builders', words: 'Builders', n: null },
@@ -662,7 +662,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Investigate or Pass. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {digRow && !closing && !whoRow && (

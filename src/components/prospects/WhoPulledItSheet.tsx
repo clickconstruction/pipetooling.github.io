@@ -304,7 +304,7 @@ export function WhoPulledItSheet({
                 Pass
               </button>
               <button type="button" onClick={answers.onKeep} style={{ background: '#16a34a', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
-                Keep
+                Investigate
               </button>
             </>
           ) : (

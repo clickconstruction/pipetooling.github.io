@@ -120,12 +120,12 @@ export function PermitPlaceList({
   const empty = () => {
     if (place === 'kept') {
       return keptShowing === 'everyone' ? (
-        <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'kept permits', control: 'Keep on the skim' }), { onPress: onSkim })} compact />
+        <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'permits to investigate', control: 'Investigate on the skim' }), { onPress: onSkim })} compact />
       ) : (
-        <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'kept permits', query: '' }), { onPress: () => setKeptShowing('everyone') })} compact />
+        <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits to investigate', query: '' }), { onPress: () => setKeptShowing('everyone') })} compact />
       )
     }
-    if (place === 'pursuing') return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'pursued permits', control: 'Pursue on a kept permit' }), { onPress: onSkim })} compact />
+    if (place === 'pursuing') return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'pursued permits', control: 'Pursue on a permit you are investigating' }), { onPress: onSkim })} compact />
     return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'closed permits', query: search }), { onPress: () => setSearch('') })} compact />
   }
 
@@ -135,7 +135,7 @@ export function PermitPlaceList({
         <>
           {tookPlumber > 0 && (
             <div style={{ margin: '10px 14px 0', padding: '8px 11px', borderRadius: 10, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
-              {tookPlumber === 1 ? '1 kept permit got a plumber since it was kept.' : `${tookPlumber} kept permits got a plumber since they were kept.`} {tookPlumber === 1 ? 'It is' : 'They are'} under Closed, Has a plumber.
+              {tookPlumber === 1 ? '1 permit you were investigating got a plumber since.' : `${tookPlumber} permits you were investigating got a plumber since.`} {tookPlumber === 1 ? 'It is' : 'They are'} under Closed, Has a plumber.
             </div>
           )}
           <div role="group" aria-label="Whose" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '10px 14px' }}>
@@ -232,7 +232,7 @@ export function PermitPlaceList({
                 {/* Anyone may keep a pass or a drop, their own included, until a plumber has the permit. */}
                 {onKeep && mayKeepFromClosed(row) && (
                   <button type="button" disabled={busy} onClick={() => onKeep(row)} style={{ ...linkPress, fontSize: '0.78rem', fontWeight: 700 }}>
-                    Keep
+                    Investigate
                   </button>
                 )}
                 {/* A put-back only moves a permit the feed has not paired with a plumbing permit. */}
