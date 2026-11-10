@@ -6,4 +6,4 @@ The delete policy on `workflow_projections`, restated with the controller: `"Dev
 
 **Shape**: one `DROP POLICY IF EXISTS` and one `CREATE POLICY`; idempotent; no table is created, so no fence call is owed. `SET lock_timeout = '3s'` first.
 
-**Applied**: `supabase db push` after the merge.
+**Applied** to prod by 2026-11-10, read the same day through `supabase migration list` against the linked project: 1217 files on `main` against 1217 remote versions, fully applied, this one among them.

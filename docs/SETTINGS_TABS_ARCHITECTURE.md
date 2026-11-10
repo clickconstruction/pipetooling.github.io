@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-11-07
+last_updated: 2026-11-10
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -161,7 +161,7 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 | What customers see | ✓ | ✓ | ✓ | — | — | — | — |
 | What the team sees (v2.4142; the owner since v2.6753) | ✓ | ✓ | — | — | — | — | — |
 | What everyone sees (v2.5963) | ✓ | — | — | — | — | — | — |
-| Contracts & terms (the doors to the editors on Bids & materials: dev only) | ✓ | ✓ | ✓ | — | — | — | — |
+| Contracts & terms (each door to an editor opens for the role that edits it since v2.6803, `settingsDoorOpens`; dev only before) | ✓ | ✓ | ✓ | — | — | — | — |
 | Contracts and clauses (v2.5285; `GC_CLAUSE_EDIT_TEAM` = the GC office team; Approve · Decline for dev, controller and, since v2.6762, the owner) | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | Phone and texts (v2.5311; `canSeePhoneAndTexts` = the GC office team; the seats, Read bids@ and, since v2.5709, the Office hours saved by the owner or a dev) | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | Flows (v2.5323; `canEditFlows` = `GC_FLOWS_EDIT_TEAM`, the GC office team) | ✓ | ✓ | ✓ | ✓ | — | — | — |

@@ -8,3 +8,5 @@ Punch list #118, PR 1 (`docs/recent-features/v2.6699.md`): the usual number or a
 Additive and idempotent; no CREATE TABLE, so no new fences.
 
 **Order:** push right after the PR merges — the client selects `usual_at` in the Messages view's channel read and calls the function from the send window; `check:calls-ahead` labels the PR. Then `supabase functions deploy messages-nudge-dispatch` (its select adds `usual_at`). Regenerate types afterwards (`npm run gen-types:linked`, its own chore PR).
+
+**Applied** to prod by 2026-11-10, read the same day through `supabase migration list` against the linked project: 1217 files on `main` against 1217 remote versions, fully applied, this one among them.

@@ -8,7 +8,7 @@ covers:
   - src/pages/JobTally.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-10
 ---
 
 ## What this surface is
@@ -118,7 +118,7 @@ Kept as its own dossier entry because it has distinct tables, two gates and test
   |---|---|---|
   | Mark payroll button, `Payroll ✓ / Unmark` banner, payroll chip, `TallyMarkPayrollConfirmModal` | `canMarkPayroll` (dev ∪ `canAccessPay`; `lib/people/payWeekLinks.ts`) | 233, 1685, 1706, 1054, 2370 |
   | `Payroll rules` chip, `TallyPayrollRulesModal`, `applyPayrollRules`, auto-apply effect | `canEditPayrollRules` (`canEditTallyPayrollRules(role)`: the controller and a dev, v2.6761) for the chip, the modal and, since v2.6803, `applyPayrollRules` and the auto-apply effect | 1039, 2348, 408, 466 |
-  | Flag merge (`payrollFlaggedIds`, `payrollDecidedIds`, `r.is_payroll`) | `role === 'dev'` | 348 |
+  | Flag merge (`payrollFlaggedIds`, `payrollDecidedIds`, `r.is_payroll`) | `canMarkPayroll` since v2.3837 (R1 below; `role === 'dev'` before) | 348 |
 
   Server side, `set_tally_payroll_flag` and the `mercury_tally_payroll_flags` RLS policy moved to `has_payroll_access()` in migration `20260906130000`; rules and `bulk_apply_tally_payroll_rule_flags` admit the controller with a dev since v2.6761 (`20261109005000_dev_gates_banking_tally_forms.sql`).
 - **Gate-split defects (found while mapping at a05cef4c4; each fix changes behavior — ship it as its own PR, never inside a move):**
