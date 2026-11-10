@@ -1,11 +1,13 @@
 /**
  * Mercury's accounts, read with the API key: the shape `get-mercury-account-balances` has answered since v2.5218,
  * shared since v2.5883 so the weekly sheet (`bridge-weekly-sheet`) reads the bank the same way without a signed-in
- * caller. Archived accounts are left out; the totals sum what is left.
+ * caller. Archived accounts are left out; the totals sum what is left. Since v2.6838 each account carries `nickname`,
+ * the name its owner gave it in Mercury ("Accounts Payable"), beside Mercury's own `name` ("Mercury Checking ••2222"),
+ * so the Bridge can say which account is which.
  */
 const MERCURY_BASE = 'https://api.mercury.com/api/v1'
 
-export type MercuryAccountRow = { id: string; name: string; kind: string | null; currentBalance: number; availableBalance: number }
+export type MercuryAccountRow = { id: string; name: string; nickname: string | null; kind: string | null; currentBalance: number; availableBalance: number }
 export type MercuryAccountsAnswer =
   | { ok: true; accounts: MercuryAccountRow[]; totalCurrentBalance: number; totalAvailableBalance: number }
   | { ok: false; error: string; detail: string }
@@ -24,6 +26,7 @@ export async function fetchMercuryAccounts(mercuryKey: string): Promise<MercuryA
     .map((a) => ({
       id: a.id as string,
       name: a.name as string,
+      nickname: typeof a.nickname === 'string' && a.nickname.trim() ? a.nickname.trim() : null,
       kind: (a.kind as string | undefined) ?? null,
       currentBalance: Number(a.currentBalance ?? 0),
       availableBalance: Number(a.availableBalance ?? 0),
