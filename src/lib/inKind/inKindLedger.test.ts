@@ -93,6 +93,8 @@ describe('inKindTotals', () => {
       paidInKind: 3000,
       left: 4425.5,
       openJobCount: 2,
+      unbilled: 0,
+      unbilledJobCount: 0,
       given: 3500,
       ahead: 500,
       byHand: 0,
@@ -112,6 +114,14 @@ describe('inKindTotals', () => {
   it('counts a payment whose line was taken back as by hand', () => {
     const t = inKindTotals(jobs, [line({ id: 'l1', removed_at: '2026-06-01T00:00:00Z' })], [pay({ id: 'p1', job_id: 'j1', amount: 100, line_id: 'l1' })])
     expect(t.byHand).toBe(100)
+  })
+  it('counts a job that is not billed yet apart: it is on no bill, so it is not still to come', () => {
+    const t = inKindTotals([...jobs, { id: 'j4', status: 'working', revenue: 250, payments_made: 0 }, { id: 'j5', status: 'ready_to_bill', revenue: 100, payments_made: 40 }], [], [])
+    expect(t.left).toBe(4425.5)
+    expect(t.openJobCount).toBe(2)
+    expect(t.unbilled).toBe(310)
+    expect(t.unbilledJobCount).toBe(2)
+    expect(t.work).toBe(7775.5)
   })
   it('never counts a paid job as open', () => {
     expect(inKindTotals([{ id: 'j', status: 'paid', revenue: 100, payments_made: 40 }], [], []).left).toBe(0)

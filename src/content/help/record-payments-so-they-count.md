@@ -43,6 +43,8 @@ On a bill that went out through **Stripe**, In kind takes the same path as cash.
 
 You can also type **In kind** in the **Type** box of a payment line under ③. The Memo box then asks what was given instead of money.
 
+A customer who pays this way month after month has a card of their own. See [keep track of work paid in kind](/help/keep-track-of-work-paid-in-kind).
+
 ## Where it counts
 
 Each payment on a dated bill gives one bill-to-paid gap. The middle of those gaps over the last 12 months is the customer's pay speed. See [see when a customer will pay](/help/see-when-a-customer-will-pay#where-the-speed-number-comes-from).
