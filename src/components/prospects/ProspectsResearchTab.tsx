@@ -24,6 +24,7 @@ import {
   plumberTally,
   plumberWords,
   plumbingOnFile,
+  pulledAtWords,
   pulledWords,
   rowLens,
   rowsAboveFloor,
@@ -46,6 +47,7 @@ import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
+import { PermitSkimDeck } from './PermitSkimDeck'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -99,7 +101,8 @@ export function HintChip({ hint }: { hint: Hint }) {
 export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
-  const [view, setView] = useState<'ledger' | 'map'>('ledger')
+  // Skim is step one and where the tab opens; the ledger and the map are the wide view of the same rows.
+  const [view, setView] = useState<'skim' | 'ledger' | 'map'>('skim')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
@@ -201,7 +204,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       if (!pull.ranAt) return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'permits', control: 'Pull now' }), { onPress: () => void pullNow() })} />
       return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits', query: '' }), { onPress: () => { setWindowDays(90); setResidential(true); setFloor(0) } })} />
     }
-    if (showing === 'waiting') return <EmptyState main="Nothing waiting on a look." tail={`${counts.taken} already have a plumber, ${counts.approach} approached.`} />
+    if (showing === 'waiting') return <EmptyState main="Nothing waiting on a skim." tail={`${counts.taken} have a plumber, ${counts.approach} pursuing.`} />
     return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'permits', query: '' }), { onPress: () => setShowing('all') })} />
   }
 
@@ -219,6 +222,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             ))}
           </select>
         </label>
+        {view !== 'skim' && (
+          <>
         <select aria-label="Filed window" value={windowDays} onChange={(e) => setWindowDays(Number(e.target.value) as ResearchWindow)} style={selectStyle}>
           {RESEARCH_WINDOWS.map((d) => (
             <option key={d} value={d}>
@@ -233,6 +238,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             </option>
           ))}
         </select>
+          </>
+        )}
         <select aria-label="Declared value" value={floor} onChange={(e) => setFloor(Number(e.target.value) as ValueFloor)} style={selectStyle}>
           {VALUE_FLOORS.map((f) => (
             <option key={f} value={f}>
@@ -240,15 +247,27 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             </option>
           ))}
         </select>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text)' }}>
-          <input type="checkbox" checked={residential} onChange={(e) => setResidential(e.target.checked)} />
-          Include houses
-        </label>
+        {view !== 'skim' && (
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text)' }}>
+            <input type="checkbox" checked={residential} onChange={(e) => setResidential(e.target.checked)} />
+            Include houses
+          </label>
+        )}
         <span style={{ flex: '1 1 auto' }} />
         <div role="group" aria-label="View" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          {(['ledger', 'map'] as const).map((v) => (
-            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} style={{ background: view === v ? 'var(--bg-200)' : 'var(--surface)', color: 'var(--text)', border: 0, borderRight: v === 'ledger' ? '1px solid var(--border)' : 0, padding: '7px 12px', fontSize: '0.8125rem', fontWeight: view === v ? 600 : 400, minHeight: 36, cursor: 'pointer' }}>
-              {v === 'ledger' ? 'Ledger' : 'Map'}
+          {(['skim', 'ledger', 'map'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => {
+                // An answer on the skim changes the rows the ledger and the map show, so they read again.
+                if (view === 'skim' && v !== 'skim') void load()
+                setView(v)
+              }}
+              style={{ background: view === v ? 'var(--bg-200)' : 'var(--surface)', color: 'var(--text)', border: 0, borderRight: v === 'map' ? 0 : '1px solid var(--border)', padding: '7px 12px', fontSize: '0.8125rem', fontWeight: view === v ? 600 : 400, minHeight: 36, cursor: 'pointer' }}
+            >
+              {v === 'skim' ? 'Skim' : v === 'ledger' ? 'Ledger' : 'Map'}
             </button>
           ))}
         </div>
@@ -262,7 +281,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </button>
       </div>
 
-      <div style={mutedStyle}>{loading ? 'Reading the permits…' : line}</div>
+      <div style={mutedStyle}>{loading ? 'Reading the permits…' : view === 'skim' ? pulledAtWords(pull) : line}</div>
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700, var(--text-red-700))', fontSize: '0.875rem' }}>
@@ -273,7 +292,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </div>
       )}
 
-      {tally.length > 0 && (
+      {view !== 'skim' && tally.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', background: 'var(--surface)' }}>
           <strong>Who wins what in {city}, this window</strong> <span style={mutedStyle}>· the plumbers named on a permit, not the applicants who pulled their own:</span>
           {tally.map((t) => (
@@ -284,7 +303,23 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </div>
       )}
 
-      {!loading && !error && visible.length === 0 && emptyState()}
+      {view === 'skim' && (
+        <PermitSkimDeck
+          authUserId={authUserId}
+          city={city}
+          floor={floor}
+          todayYmd={todayYmd}
+          isMobile={isMobile}
+          onDigIn={() => {
+            setShowing('look')
+            setWindowDays(90)
+            setView('ledger')
+            void load()
+          }}
+        />
+      )}
+
+      {view !== 'skim' && !loading && !error && visible.length === 0 && emptyState()}
 
       {view === 'map' && visible.length > 0 && (
         <ResearchMapCard rows={visible} selectedId={selectedId} onSelect={setSelectedId} isMobile={isMobile}>
@@ -444,7 +479,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                       ) : lens === 'taken' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <span>
-                            <span style={chipStyle('grey')}>Already has a plumber</span> <span style={mutedStyle}>· read off the feed</span>
+                            <span style={chipStyle('grey')}>Has a plumber</span> <span style={mutedStyle}>· read off the feed</span>
                           </span>
                           <button type="button" onClick={() => openDecide(row)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer' }}>
                             Decide anyway
@@ -465,7 +500,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-An address opens <strong>The building</strong>: the permit as the city gave it, the property at the county and every permit on the address. The round <strong>G</strong> beside a name searches Google for it in a new tab. <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address names someone other than the applicant; <em>on file, no plumber named</em> means the applicant pulled it under their own name. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {siteRow && !deciding && !whoRow && (
