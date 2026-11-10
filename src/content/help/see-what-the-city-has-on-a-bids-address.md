@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -43,6 +43,22 @@ Another line names the towns where the GC's other bids are. No permit records ar
 
 On a phone the jobs fold behind **See the jobs**.
 
+## See permit news on the Bid Board
+
+Open the **Bid Board**. A strip named **Permit news on your bids** sits above the sections when there is news.
+
+Each line is one bid that is not yet won or lost. It says what is new on the bid's address. Press {{button:outline|Open the bid}} to open that bid.
+
+Three things count as news.
+
+- A permit application was filed in the last 30 days.
+- A building permit was issued in the last 30 days.
+- A general plumbing permit lists a name other than the building permit's contact. This one comes first. It stays until you mark the bid won or lost.
+
+The strip marks nothing for you. Read the line, then decide.
+
+A bid with a permit on its address also carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A {{chip:red|Plumbing permit · another name}} chip matches the first kind of news.
+
 ## Who sees it
 
-The office and estimators see both blocks. They are the same people who see **Prospects → Permits**.
+The office and estimators see the two blocks, the strip and the chips. They are the same people who see **Prospects → Permits**.

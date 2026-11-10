@@ -56,6 +56,9 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountStrips'
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
+import { BidBoardPermitNews } from './BidBoardPermitNews'
+import { PermitChip } from './BidSitePermits'
+import { useBidPermitNews } from '../../hooks/useBidPermitNews'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -103,6 +106,8 @@ type BidsBidBoardTabProps = {
   canSeeEstimatingLabor?: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
   showEstimatingHealth?: boolean
+  /** Permit news (punch list #307): the strip and the row's chip, for the people who read Prospects → Permits. Off when not passed. */
+  showPermitNews?: boolean
   /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
   showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
@@ -246,6 +251,7 @@ export function BidsBidBoardTab({
   isDev,
   canSeeEstimatingLabor = false,
   showEstimatingHealth = true,
+  showPermitNews = false,
   showMap = true,
   jobsByBidId,
   budgetChips,
@@ -291,6 +297,8 @@ export function BidsBidBoardTab({
     selfHighlightStyle,
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
+  // What the city has on each undecided bid's address: one read for the board (punch list #307).
+  const permitNews = useBidPermitNews(bids, showPermitNews)
   // The development on bids (punch list #208, v2.6019): the house filter beside the search, the
   // Pipeline's house filter mirrored — it appears once any bid on the board has a development.
   const [developmentFilter, setDevelopmentFilter] = useState('')
@@ -1434,6 +1442,7 @@ export function BidsBidBoardTab({
               ) : null}
               {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
               {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
+              {permitNews.chips.get(bid.id) ? <span title="What the city has on this bid's address"><PermitChip chip={permitNews.chips.get(bid.id)!} /></span> : null}
             </div>
           </td>
           {/* v2.4264: the value reads at the estimator name's size, in tabular figures — the owner could not read it at the cell's 11px. */}
@@ -1633,6 +1642,7 @@ export function BidsBidBoardTab({
         ) : null}
         {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
         {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
+        {permitNews.chips.get(bid.id) ? <div style={{ margin: '0.15rem 0' }}><PermitChip chip={permitNews.chips.get(bid.id)!} /></div> : null}
         {bidDevelopmentName(bid) ? (
           <div
             title="Development for this bid"
@@ -1830,6 +1840,13 @@ export function BidsBidBoardTab({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <BidBoardPermitNews
+            news={permitNews.news}
+            onOpenBid={(bidId) => {
+              const bid = bids.find((b) => b.id === bidId)
+              if (bid) onEditBid(bid)
+            }}
+          />
           <nav
             aria-label="Bid Board sections"
             style={{
