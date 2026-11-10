@@ -58,7 +58,7 @@ describe('devMcpJobMarks — the verbs on the allowlist', () => {
     }
     expect(planVerbFor('apply_collections_flag')).toBe('plan_collections_flag')
     expect(planVerbFor('apply_contract_ended')).toBe('plan_contract_ended')
-    expect(SERVER).toContain('Writes are seventy-five verbs and nothing else:')
+    expect(SERVER).toContain('Writes are seventy-seven verbs and nothing else:')
     expect(README).toContain('`plan_collections_flag(flag)` · `apply_collections_flag(flag, plan_hash)`')
     expect(README).toContain('`plan_contract_ended(contract)` · `apply_contract_ended(contract, plan_hash)`')
   })
