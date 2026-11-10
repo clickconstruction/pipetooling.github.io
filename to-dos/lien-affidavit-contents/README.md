@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · PR 1 open (v2.6855): the short form for every new draft, a paper already drafted keeps the earlier form until someone redraws it
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -15,10 +15,10 @@ summary: >
   asks five questions. A property where nobody answered the homestead question passes today as not
   a homestead. The owner chose to build before counsel answers, so the wording may change on
   counsel's word.
-next: The owner says whether the 13 affidavits approved on the earlier form stay on it or are redrawn. Then the § 53.254(f) notice on a homestead, then the two holds. The homestead hold needs a column, and on the day it ships it would hold 11 of the 12 papers ready for 2026-11-16, so its timing is his.
+next: The owner said on 2026-11-10 that the liens drafted that week go out on the short form; he redraws and approves them. Then the § 53.254(f) notice on a homestead, then the two holds. The homestead hold needs a column, and on the day it ships it would hold 11 of the 12 papers ready for 2026-11-16, so its timing is his.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
-blocker: The owner's word on the approved papers and on when the homestead hold ships. Counsel's answers may still change the wording.
-opinion: your call — leave the approved papers as approved unless counsel says the earlier form is short; ship the homestead hold after the 16th, the address hold any time
+blocker: The owner's word on when the homestead hold ships. Counsel's answers may still change the wording.
+opinion: your call — ship the homestead hold after the 16th, the address hold any time
 ---
 
 # The lien affidavit, cut to what § 53.054 lists (#305)
@@ -146,7 +146,8 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    and the letterhead gone, the county left for the notary. The desk stored no affidavit words and
    redrew every paper from the job, so a paper now keeps the form it was drafted on: the 13
    affidavits approved on 2026-11-09 and 2026-11-10 stay on the earlier form, and **Redraw on the
-   short form…** on the Affidavits pane moves one, which then needs approval again.
+   short form…** on the Affidavits pane moves one, which then needs approval again. Since v2.6867
+   one press at the top of the Affidavits list redraws every ready one at once.
 2. **The § 53.254(f) notice on a homestead** (S). The paper side only; the desk still holds every
    homestead.
 3. **The homestead hold** (S, with a migration). A column that records the question was answered,
@@ -165,5 +166,5 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
 - **Send the page to counsel?** The pick: yes, as it stands.
 - **Build the homestead hold before counsel answers?** The pick: yes, after 2026-11-16. It only
   makes the desk stricter, and before the 16th it would take ready papers out of Ready.
-- **The 13 affidavits approved on the earlier form: leave them, or redraw them?** The pick: leave
-  them as approved. Redrawing sends each back for approval days before its deadline.
+- **The 13 affidavits approved on the earlier form: leave them, or redraw them?** Decided
+  2026-11-10: redraw them, they go out on the short form.
