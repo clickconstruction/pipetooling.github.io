@@ -4,6 +4,8 @@ import { MessagesButton } from '../messages/MessagesButton'
 import { supabase } from '../../lib/supabase'
 import { telHrefFor } from '../../lib/phoneContact'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import InKindChip from '../inKind/InKindChip'
+import type { InKindStanding } from '../../lib/inKind/inKindChip'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import {
   PHONE_AZ_PAGE,
@@ -52,6 +54,7 @@ export function CustomersPhoneView({
   customers,
   detailsLoading,
   moneyHidden,
+  inKindStandings,
   todayYmd,
   onAddCustomer,
 }: {
@@ -59,6 +62,8 @@ export function CustomersPhoneView({
   /** The counts and money behind the rows are still on their way; the names are already here. */
   detailsLoading: boolean
   moneyHidden: boolean
+  /** Who pays in kind, by customer id: the short chip under the name (punch list #301). */
+  inKindStandings?: ReadonlyMap<string, InKindStanding>
   todayYmd: string
   onAddCustomer: () => void
 }) {
@@ -110,6 +115,11 @@ export function CustomersPhoneView({
         style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'grid', gap: '0.1rem', textAlign: 'left', padding: 0, border: 'none', background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
       >
         <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || 'Unnamed customer'}</strong>
+        {inKindStandings?.get(c.id) ? (
+          <span style={{ justifySelf: 'start' }}>
+            <InKindChip standing={inKindStandings.get(c.id)!} form="short" plain />
+          </span>
+        ) : null}
         {(() => {
           const lines = phoneCustomerLines(c, { todayYmd, moneyHidden, formatMoney })
           const line: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }

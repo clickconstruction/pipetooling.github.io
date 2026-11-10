@@ -8,6 +8,10 @@ import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useAuth } from '../hooks/useAuth'
+import { isOfficeRole } from '../lib/doorRoles'
+import { useInKindStandings } from '../hooks/useInKindStandings'
+import InKindChip from '../components/inKind/InKindChip'
+import { moneyApart, scheduledInKindWords } from '../lib/inKind/inKindChip'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { EmptyState } from '../components/EmptyState'
@@ -87,7 +91,7 @@ function moneyHiddenByRls(role: string | null | undefined): boolean {
 }
 
 /** Money rail (v2.1791): paid · billed · unbilled triplet over a proportion bar. */
-function CustomerMoneyRail({ rollup, hiddenByRls }: { rollup: CustomerListRollup | undefined; hiddenByRls?: boolean }) {
+function CustomerMoneyRail({ rollup, hiddenByRls, paidInKind }: { rollup: CustomerListRollup | undefined; hiddenByRls?: boolean; /** Everything paid was paid in kind. */ paidInKind?: boolean }) {
   if (hiddenByRls) {
     return (
       <span
@@ -139,7 +143,7 @@ function CustomerMoneyRail({ rollup, hiddenByRls }: { rollup: CustomerListRollup
         <span style={cell}>
           <span style={capStyle}>
             <span aria-hidden style={dotStyle('var(--text-green-600)')} />
-            paid
+            {paidInKind ? 'paid in kind' : 'paid'}
           </span>
           <span style={{ display: 'block', ...valStyle('var(--text-green-600)', paid <= 0.5) }}>{fmt(paid)}</span>
         </span>
@@ -212,6 +216,8 @@ export default function Customers() {
    */
   const hideZz = useZzTestJobsHidden(authRole)
   const moneyHidden = moneyHiddenByRls(authRole)
+  // Who pays in kind (punch list #301): the chip beside the name, and the part of a balance nobody chases.
+  const inKindStandings = useInKindStandings(isOfficeRole(authRole))
   // On a phone the page is the search (v2.3886, punch list #30 PR 5a); the list below is the desktop's.
   const phoneView = useNarrowViewport640()
   const location = useLocation()
@@ -493,6 +499,7 @@ export default function Customers() {
   }
   const owesFilterOn = searchParams.get('owes') === '1'
   const active90FilterOn = searchParams.get('active90') === '1'
+  const inKindFilterOn = searchParams.get('inkind') === '1'
 
   const q = searchQuery.trim().toLowerCase()
   const byType = visibleCustomers.filter((c) => {
@@ -502,7 +509,8 @@ export default function Customers() {
     return c.customer_type === 'residential'
   })
   const byLens = byType.filter((c) => {
-    if (owesFilterOn && (rollupByCustomerId[c.id]?.openBalance ?? 0) <= 0.5) return false
+    if (owesFilterOn && moneyApart(rollupByCustomerId[c.id]?.openBalance ?? 0, inKindStandings.get(c.id)).money <= 0.5) return false
+    if (inKindFilterOn && !inKindStandings.has(c.id)) return false
     if (active90FilterOn && !isActive90(c.id)) return false
     return true
   })
@@ -577,7 +585,7 @@ export default function Customers() {
         masterName: c.master_user?.name ?? '',
         masterEmail: c.master_user?.email ?? '',
         lastActivityIso: newest(roll?.lastActivityIso ?? undefined, recentSignalByCustomerId[c.id]),
-        openBalance: roll?.openBalance ?? 0,
+        openBalance: moneyApart(roll?.openBalance ?? 0, inKindStandings.get(c.id)).money,
         openJobs: roll?.openJobs ?? 0,
         jobs: countsByCustomerId[c.id]?.jobs ?? 0,
       }
@@ -587,6 +595,7 @@ export default function Customers() {
         customers={phoneCustomers}
         detailsLoading={detailsLoading}
         moneyHidden={moneyHidden}
+        inKindStandings={inKindStandings}
         todayYmd={todayYmdInAppTz()}
         onAddCustomer={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
       />
@@ -598,18 +607,23 @@ export default function Customers() {
     let commercial = 0
     let owesCount = 0
     let owesSum = 0
+    let inKindSum = 0
+    let inKindCount = 0
     let active = 0
     for (const c of visibleCustomers) {
       if (c.customer_type === 'residential') residential += 1
       else if (c.customer_type === 'commercial') commercial += 1
-      const open = rollupByCustomerId[c.id]?.openBalance ?? 0
-      if (open > 0.5) {
+      // The part an in kind deal pays is scheduled, not owed as money: it is counted apart.
+      const apart = moneyApart(rollupByCustomerId[c.id]?.openBalance ?? 0, inKindStandings.get(c.id))
+      if (apart.money > 0.5) {
         owesCount += 1
-        owesSum += open
+        owesSum += apart.money
       }
+      inKindSum += apart.inKind
+      if (inKindStandings.has(c.id)) inKindCount += 1
       if (isActive90(c.id)) active += 1
     }
-    return { total: visibleCustomers.length, residential, commercial, owesCount, owesSum, active }
+    return { total: visibleCustomers.length, residential, commercial, owesCount, owesSum, inKindSum, inKindCount, active }
   })()
 
   return (
@@ -659,6 +673,11 @@ export default function Customers() {
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
               {detailsLoading ? 'loading balances…' : `across ${statTotals.owesCount} customer${statTotals.owesCount === 1 ? '' : 's'}`}
             </div>
+            {!detailsLoading && scheduledInKindWords(statTotals.inKindSum) ? (
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }} data-testid="customers-in-kind-total">
+                {scheduledInKindWords(statTotals.inKindSum)}
+              </div>
+            ) : null}
           </div>
           {unlinkedJobsCount != null && unlinkedJobsCount > 0 ? (
             <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
@@ -775,6 +794,32 @@ export default function Customers() {
           >
             Owes money ({statTotals.owesCount})
           </button>
+          {statTotals.inKindCount > 0 || inKindFilterOn ? (
+            <button
+              type="button"
+              onClick={() =>
+                setSearchParams((p) => {
+                  const n = new URLSearchParams(p)
+                  if (n.get('inkind') === '1') n.delete('inkind')
+                  else n.set('inkind', '1')
+                  return n
+                })
+              }
+              aria-pressed={inKindFilterOn}
+              title="Only customers who pay in kind"
+              style={{
+                padding: '0.35rem 0.75rem',
+                border: inKindFilterOn ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: inKindFilterOn ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: inKindFilterOn ? 'var(--text-blue-800)' : 'var(--text-700)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              In kind ({statTotals.inKindCount})
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() =>
@@ -1031,6 +1076,7 @@ export default function Customers() {
                       {customerTypeTagLabel(c)}
                     </span>
                   ) : null}
+                  {inKindStandings.get(c.id) ? <InKindChip standing={inKindStandings.get(c.id)!} /> : null}
                   {isCustomerArchived(c) ? (
                     <span
                       style={{
@@ -1155,7 +1201,8 @@ export default function Customers() {
                 {(() => {
                   const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
                   const rollup = rollupByCustomerId[c.id]
-                  const owes = rollup?.openBalance ?? 0
+                  const standing = inKindStandings.get(c.id)
+                  const owes = moneyApart(rollup?.openBalance ?? 0, standing).money
                   const activity = rollup ? lastActivityLabel(rollup.lastActivityIso, rollup.lastActivityKind) : null
                   // v2.5767: two lines — what they have, then where the money stands (owes · the last touch · how fast they pay).
                   const spread = !moneyHidden && paySpeeds ? paySpeedSpread(paySpeeds.receipts[c.id]) : null
@@ -1252,7 +1299,7 @@ export default function Customers() {
                           ) : null}
                         </span>
                       ) : null}
-                      <CustomerMoneyRail rollup={rollup} hiddenByRls={moneyHidden} />
+                      <CustomerMoneyRail rollup={rollup} hiddenByRls={moneyHidden} paidInKind={Boolean(standing) && (rollup?.lifetimePaid ?? 0) > 0.5 && (standing?.paidInKind ?? 0) >= (rollup?.lifetimePaid ?? 0) - 0.5} />
                     </>
                   )
                 })()}

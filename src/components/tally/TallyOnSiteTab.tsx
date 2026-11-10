@@ -3,8 +3,8 @@
  * as big cards, a search across the site, a container's lines with four presses each (Used,
  * Move to…, Can't find, Short), Count this box one line at a time, Add a part. Every press but
  * Short writes a movement row through the store; nothing types a number over another. Short
- * (v2.6742) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The spike keeps the rows on
- * this device (`lib/materials/onSiteStore.ts`) until the tables land.
+ * (v2.6742) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The rows live in
+ * the on-site tables, read and written through `lib/materials/onSiteStore.ts`.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'

@@ -2,7 +2,7 @@
 name: "The Bridge under one story"
 number: 303
 group: ready
-status: asked 2026-11-10 · the October design recovered from history, the page walked at desk and phone width, its loop read through the dev seat · three stories and a pick drawn as thirteen frames the same day · the owner chose the pick the same day and said build it · PR 1, the first screen above the page as it is, shipped as v2.6832 · the owner said the bank is the whole bank and asked for every account, so v2.6838 lists them with a switch on each and turns the cash rule on
+status: asked 2026-11-10 · the October design recovered from history, the page walked at desk and phone width, its loop read through the dev seat · three stories and a pick drawn as thirteen frames the same day · the owner chose the pick the same day and said build it · PR 1, the first screen above the page as it is, shipped as v2.6832 · the owner said the bank is the whole bank and asked for every account, so v2.6838 lists them with a switch on each and turns the cash rule on · PR 2, the doors with the six cuts, shipped as v2.6840
 mockup: to-dos/bridge-one-story/mockup.html
 summary: >
   The Bridge has been drawn three times, each on top of the last: a chart table in September,
@@ -13,9 +13,9 @@ summary: >
   week, cash first, and the flow as one picture. The pick is the first, with the picture as one
   strip and one rule from the second: when cash goes under the floor, cash leads. Nothing built
   is deleted. It moves behind three doors.
-next: PR 2, the doors, with the six cuts. The owner's other five calls can be answered alongside.
-size: L as a train of five (M · M · S · M · S); left: PRs 2 to 5 (M · S · M · S)
-blocker: None for PR 2.
+next: PR 3, the strip of pipe. The owner's other four calls can be answered alongside.
+size: L as a train of five (M · M · S · M · S); left: PRs 3 to 5 (S · M · S)
+blocker: None for PR 3.
 opinion: build the pick, PR 1 first, and give it four Mondays. If the call is still unpressed on the first screen with the moves reaching people, the ritual is the problem and the page falls back to three numbers and one list.
 ---
 
@@ -219,7 +219,7 @@ Each is small and stands alone.
 | PR | What | Touches | Size |
 |---|---|---|---|
 | 1 · shipped v2.6832 | **The first screen.** A kernel builds the three tiles, the proposed call with its moves, people and doors, the cash-leads rule and Friday's state. Drawn above the page as it is, so nothing moves yet. A budget test and the plain words test hold its sentences. | `src/lib/bridge/weekCall.ts` + test, `BridgeWeek.tsx` + render smoke, `Bridge.tsx` | M |
-| 2 | **The doors.** The scroll becomes *The flow*, *Money* and *People*, with *Soft numbers* as one list. The six cuts above. | `Bridge.tsx`, `softNumbers.ts` + test, the guide *read the Bridge* | M |
+| 2 · shipped v2.6840 | **The doors.** The scroll becomes *The flow*, *Money* and *People*, with *Soft numbers* as one list. The six cuts above. | `Bridge.tsx`, `softNumbers.ts` + test, the guide *read the Bridge* | M |
 | 3 | **The strip of pipe.** A geometry kernel and one SVG, with words for a screen reader. A tap opens the desk already built. | `flowStrip.ts` + test, `BridgeFlowStrip.tsx` | S |
 | 4 | **The call reaches people.** A move carries its person's id. Each person reads their own moves in *Needs you*. One migration: a function that hands a caller only their own moves, since office roles cannot read `bridge_calls`. | migration + its doc page, `calls.ts`, the Needs you card | M |
 | 5 | **The Monday email is the first screen.** `?view=monday` retires. The mail carries the screen and a link to make the call. The function is redeployed. | `mondaySheet.ts`, `bridge-weekly-sheet`, `docs/EDGE_FUNCTIONS.md` | S |
@@ -253,10 +253,10 @@ PR 1 ships by itself and is the cheapest way to learn whether the bet is right.
 4. **Who a move reaches.** Each named person gets the move in their *Needs you*. Or the call
    stays on the Bridge.
 5. **The Monday email.** On, to the owner and the devs, carrying the first screen.
-6. **The cuts.** The six above, with or without the rest.
+6. **The cuts.** Answered 2026-11-10: yes, with the doors. Shipped as v2.6840.
 7. **Who else opens it.** Owner and dev today. The call names office people who cannot see the page.
 
 ## Where it stands
 
-Drawn 2026-11-10 and chosen the same day. PR 1 shipped as v2.6832 (`docs/recent-features/v2.6832.md`): the first screen sits above the page as it was, and the tile the frames call *Earned last week* reads *Made last week*, since the number is earned less wages. On a phone the record press is on the first screen and the three doors sit just under it until PR 2 takes the Monday sheet's row out of the header. v2.6838 (`docs/recent-features/v2.6838.md`) answered his call 2: the cash rule is on, and under the cash chart every bank account is listed by its Mercury name with a switch for whether it counts as cash on hand. The weekly email still counts the whole bank until PR 5, and the floor, the typed cash and the account choice save for a dev only, not yet for the owner's role. PR 2 is next. #192's two yes-or-no writes are untouched by this card: its desks
+Drawn 2026-11-10 and chosen the same day. PR 1 shipped as v2.6832 (`docs/recent-features/v2.6832.md`): the first screen sits above the page as it was, and the tile the frames call *Earned last week* reads *Made last week*, since the number is earned less wages. On a phone the record press is on the first screen and the three doors sit just under it until PR 2 takes the Monday sheet's row out of the header. v2.6838 (`docs/recent-features/v2.6838.md`) answered his call 2: the cash rule is on, and under the cash chart every bank account is listed by its Mercury name with a switch for whether it counts as cash on hand. The weekly email still counts the whole bank until PR 5, and the floor, the typed cash and the account choice save for a dev only, not yet for the owner's role. PR 2 shipped as v2.6840 (`docs/recent-features/v2.6840.md`): the first screen is the whole page, the rest sits behind The flow, Money, People and the soft numbers, and the six cuts are made. The three resources stay whole behind The flow for now. After PR 2 the owner asked whether the cuts took tools worth keeping. A second sheet, [`dig-ins.html`](dig-ins.html), draws the three pieces the cuts removed outright put back behind a press (profit after overhead under the eight week chart, a dollar size on the usual fixes with the bids due, every move for a step on its desk) and a note on the call, each before and after. He said yes to all four the same day, and they shipped in the same PR. PR 3 is next. #192's two yes-or-no writes are untouched by this card: its desks
 sit behind *The flow* in every story.

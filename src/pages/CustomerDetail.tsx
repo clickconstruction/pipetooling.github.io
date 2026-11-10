@@ -24,6 +24,8 @@ import { useAuth } from '../hooks/useAuth'
 import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import { isOfficeRole } from '../lib/doorRoles'
 import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
+import InKindChip from '../components/inKind/InKindChip'
+import { useInKindStandings } from '../hooks/useInKindStandings'
 import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInKindWords } from '../lib/inKind/customerInKindStrip'
 import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
 import CustomerAgreementsCard from '../components/customers/CustomerAgreementsCard'
@@ -188,6 +190,8 @@ export default function CustomerDetail() {
    * a ZZ name or the customer's is; no shared read is needed.
    */
   const hideZz = useZzTestJobsHidden(myRole)
+  // The chip beside the name: this customer pays in kind, and where that stands (punch list #301).
+  const inKindStandings = useInKindStandings(isOfficeRole(myRole))
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const editCustomer = useEditCustomerModal()
@@ -324,6 +328,7 @@ export default function CustomerDetail() {
           <TypeChip label="Residential" bg="var(--bg-blue-tint)" fg="var(--text-blue-800)" />
         ) : null}
         {customer.archived_at ? <TypeChip label="Archived" bg="var(--bg-muted)" fg="var(--text-muted)" /> : null}
+        {customerId && inKindStandings.get(customerId) ? <InKindChip standing={inKindStandings.get(customerId)!} /> : null}
         {sinceLabel ? <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Customer since {sinceLabel}</span> : null}
         <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
           {customerProfile ? (

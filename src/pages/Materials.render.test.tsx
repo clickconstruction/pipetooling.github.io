@@ -128,12 +128,14 @@ const PO_GENERATOR_ANCHOR = 'Search by HCP #, job name, or address…'
 const SUPPLY_HOUSES_ANCHOR = /vendor(s)? — houses, reps and websites/
 
 describe('Materials page render smoke — dev sees every tab', () => {
-  it('mounts the default Parts Book tab with all six tab buttons', async () => {
+  it('mounts the default Parts Book tab with every tab button and the two presses', async () => {
     renderMaterialsAt('/materials', 'dev')
     expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
-    for (const label of ['Parts Book', 'Assembly Book', 'PO Builder', 'Purchase Orders', 'PO Generator']) {
+    for (const label of ['Parts Book', 'Assembly Book', 'PO Builder', 'Purchase Orders', 'PO Generator', 'Held for suppliers', 'On site', 'Print labels', 'Scan a label']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
+    // Punch list #304: the strip's three named groups, in the order a part lives.
+    expect(within(screen.getByTestId('materials-group-strip')).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Plan', 'Purchase', 'Track'])
     // One "Supply Houses" button (the tab); the legacy Parts Book toolbar modal
     // opener (preserve-quirk #16) is labelled "Price coverage" since v2.2903.
     expect(screen.getAllByRole('button', { name: 'Supply houses' }).length).toBe(1)
@@ -206,6 +208,35 @@ describe('Materials page render smoke — dev sees every tab', () => {
   })
 })
 
+describe('Materials page render smoke — On site and its presses (punch list #304)', () => {
+  it('the office: ?tab=on-site mounts the search and the Materials desk', async () => {
+    renderMaterialsAt('/materials?tab=on-site', 'dev')
+    expect(await screen.findByPlaceholderText('Find a part or a box on any job')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Materials desk' })).toBeTruthy()
+    // The service type chips do not filter boxes.
+    expect(screen.queryByRole('button', { name: 'Plumbing' })).toBeNull()
+  })
+
+  it('a primary: On site lists their jobs with boxes, with no desk and no Purchase group', async () => {
+    renderMaterialsAt('/materials?tab=on-site', 'primary')
+    expect(await screen.findByText('Your jobs with boxes')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Materials desk' })).toBeNull()
+    expect(within(screen.getByTestId('materials-group-strip')).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Plan', 'Track'])
+    await waitFor(() => expect(document.querySelector('[data-testid="materials-on-site-tab"] [data-empty-state]')?.textContent).toContain('No job you can open has a cage or a box yet.'))
+  })
+
+  it('Scan a label opens its window, and Print labels with no box names the next press', async () => {
+    renderMaterialsAt('/materials', 'estimator')
+    expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Scan a label' }))
+    expect(screen.getByRole('dialog', { name: 'Scan a label' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Print labels' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Print labels' })
+    await waitFor(() => expect(dialog.querySelector('[data-empty-state]')?.textContent).toContain('No job has a cage or a box yet.'))
+  })
+})
+
 describe('Materials page render smoke — role gating', () => {
   it('estimator: no Supply Houses / PO Generator tab buttons; Parts Book renders', async () => {
     renderMaterialsAt('/materials', 'estimator')
@@ -240,12 +271,13 @@ describe('Materials page render smoke — role gating', () => {
     expect(screen.queryByText('Add supply house')).toBeNull()
   })
 
-  it('primary: only Parts Book + Assembly Book tabs; ?tab=purchase-orders redirects', async () => {
+  it('primary: the two books and On site; ?tab=purchase-orders redirects', async () => {
     renderMaterialsAt('/materials?tab=purchase-orders', 'primary')
     expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'PO Builder' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Purchase Orders' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Assembly Book' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'On site' })).toBeTruthy()
   })
 
   it('technician: access denied', async () => {

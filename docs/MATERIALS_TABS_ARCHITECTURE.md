@@ -34,10 +34,10 @@ This map is coupling/refactor-oriented and follows [`PAGE_DECOMPOSITION_PLAYBOOK
 The page is tab-switched on one `activeTab` state (63–65, the seven keys spelled literally rather than as the kernel's `MaterialsTab` type); the canonical list is `MATERIALS_TABS` in [`lib/materials/materialsTabs.ts`](../src/lib/materials/materialsTabs.ts):
 
 ```
-'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
+'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'po-generator' | 'supply-houses' | 'job-accounts' | 'on-site'
 ```
 
-Labels differ from keys: `parts-book` is **Parts Book** (the GLOSSARY's "Price Book"; the `?tab=` guard effect rewrites the legacy `price-book` slug, 368–377), `assemblies-po` is **PO Builder** (the key was `templates-po` until v2.1258; rewritten at 380–389; the label read "Assemblies & Purchase Orders" until v2.1260), `po-generator` is **PO Generator**, `job-accounts` is **Held for suppliers** (v2.3641; it read *Job Accounts* until a job account came to mean the account at the supply house), `supply-houses` is **Supply houses**. Pill order: Supply houses | Held for suppliers | PO Generator ‖ Parts Book | Assembly Book | PO Builder | Purchase Orders. The three PO-named tabs each open with a one-line [`MaterialsPoLaneSignpost`](../src/components/materials/MaterialsPoLaneSignpost.tsx) (v2.2903): PO Generator mints the **counter code**; PO Builder → Purchase Orders is the **line-item** lane (and feeds bid cost estimates via `cost_estimates.purchase_order_id_*`), so neither tab may be hidden — the signpost is the disambiguation.
+Labels differ from keys: `parts-book` is **Parts Book** (the GLOSSARY's "Price Book"; the `?tab=` guard effect rewrites the legacy `price-book` slug, 368–377), `assemblies-po` is **PO Builder** (the key was `templates-po` until v2.1258; rewritten at 380–389; the label read "Assemblies & Purchase Orders" until v2.1260), `po-generator` is **PO Generator**, `job-accounts` is **Held for suppliers** (v2.3641; it read *Job Accounts* until a job account came to mean the account at the supply house), `supply-houses` is **Supply houses**, `on-site` is **On site** (v2.6851, punch list #304: the cages and boxes on every job, [`MaterialsOnSiteTab`](../src/components/materials/MaterialsOnSiteTab.tsx); the office's body is the Materials desk, [`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md)). The strip is three named groups since v2.6851, in the order a part lives ([`materialsGroups.ts`](../src/lib/materials/materialsGroups.ts), drawn by [`MaterialsGroupStrip`](../src/components/materials/MaterialsGroupStrip.tsx)): **Plan** (Parts Book | Assembly Book | PO Builder) ‖ **Purchase** (Purchase Orders | PO Generator | Supply houses | Held for suppliers) ‖ **Track** (On site, with the presses **Print labels** and **Scan a label**, which are windows and never tabs). A caption wears a badge only when its group needs a hand (`trackBadges`: boxes due a count, and for the office what walked away); a phone draws the three words as chips over the open group's tabs. The three PO-named tabs each open with a one-line [`MaterialsPoLaneSignpost`](../src/components/materials/MaterialsPoLaneSignpost.tsx) (v2.2903): PO Generator mints the **counter code**; PO Builder → Purchase Orders is the **line-item** lane (and feeds bid cost estimates via `cost_estimates.purchase_order_id_*`), so neither tab may be hidden — the signpost is the disambiguation.
 
 ### Key structural differences from Bids
 
@@ -85,7 +85,7 @@ Each tab section lists: **parent JSX** (range + prop count), **parent-owned stat
 |---|---|---|---|
 | Error banner | 1354–1358 | 5 | inline |
 | Service-type row (hidden on `supply-houses` and `job-accounts`) | 1361–1382 | 22 | inline |
-| Tab strip — office group (1388–1440, behind `visibleTabs.some(isOfficeMaterialsTab)`), Parts Book (1441–1454), Assembly Book (1455–1468), PO group (1469–1500) | 1384–1503 | 120 | **inline** — 7 identical `setActiveTab` + `setSearchParams` buttons |
+| Tab strip — the three groups, the On site tab's mount and the Scan a label and Print labels windows (v2.6851) | — | ~30 | **extracted** — `MaterialsGroupStrip` over `materialsGroupsFor(myRole)`; one `openTab` writes the state and `?tab=` |
 | `MaterialsPartsBookTab` | 1506–1537 | 32 | extracted, 30 props |
 | `PartFormModal` | 1540–1551 | 12 | extracted, 10 props |
 | Part Prices modal shell — overlay around `PartPricesManager`; `onPricesUpdated` patches `parts`/`allParts`/`templateItems` | 1555–1589 | 35 | **inline shell** |
@@ -255,6 +255,7 @@ The "API surface" any extracted tab is handed.
 | Supply houses | ✅ (Directory + Accounts payable) | ✅ **Directory pane only** (`supplyHousesPaneFor` = `directory`) | ❌ (hidden + redirect) |
 | Held for suppliers | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 | PO Generator | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
+| On site (v2.6851) | ✅ the Materials desk, with a row's **Labels** and **Open on the phone screen** | ✅ their jobs with boxes, as doors to the Tally's On site tab | ✅ the same doors, no money |
 
 The guard effect (365–414) rewrites disallowed `?tab=` values to `parts-book` (`replace: true`), writes `parts-book` when `?tab=` is missing, and rewrites the legacy `price-book` / `templates-po` slugs; while the role is still loading it honours a known slug and decides nothing about access.
 

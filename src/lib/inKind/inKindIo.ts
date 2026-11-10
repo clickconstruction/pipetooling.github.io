@@ -216,9 +216,14 @@ export async function saveInKindTerms(args: { id: string | null; terms: InKindTe
     if (error) throw error
     id = String((data as { id: string }).id)
   }
-  const res = await supabase.rpc('in_kind_arrangement_set_jobs', { p_arrangement_id: id, p_job_ids: args.jobIds })
-  answer(res.data, res.error)
+  await setInKindArrangementJobs(id, args.jobIds)
   return id
+}
+
+/** The jobs a deal pays, whole: a job left out of the list leaves the deal. */
+export async function setInKindArrangementJobs(arrangementId: string, jobIds: string[]): Promise<void> {
+  const res = await supabase.rpc('in_kind_arrangement_set_jobs', { p_arrangement_id: arrangementId, p_job_ids: jobIds })
+  answer(res.data, res.error)
 }
 
 export interface InKindLineInput {

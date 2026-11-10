@@ -225,6 +225,38 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByRole('button', { name: 'Record when Ana Garza expects to pay · 512 PLUM' })).toBeTruthy()
   })
 
+  it('a property’s heading says both piles and their sum, and a lien-gone row offers Worked later? (v2.6849)', () => {
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    const onOpenLastWork = vi.fn()
+    const { onOpen } = mount({ rows: [...rows, closed], onOpenLastWork })
+    const next = screen.getByTestId('lien-cal-bucket-next_month')
+    // 890's $9,800 can still be liened; 226's $650 cannot; the GC's total counts the first only.
+    expect(within(next).getAllByTestId('lien-cal-property-tally').map((p) => p.textContent)).toEqual(['Lien open on 1 job · $9,800 · lien gone on 1 · $650 · $10,450 owed here'])
+    // The heading's own words are unchanged.
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
+    const door = within(rowOf('226 PLUM')).getByRole('button', { name: 'Worked later? Change the last day of work · 226 PLUM' })
+    expect(door.textContent).toBe('Worked later? ›')
+    fireEvent.click(door)
+    expect(onOpenLastWork).toHaveBeenCalledWith('x')
+    expect(onOpen).not.toHaveBeenCalled()
+    // A live row has no such press.
+    expect(within(rowOf('890 PLUM')).queryByTestId('lien-cal-worked-later')).toBeNull()
+  })
+
+  it('without the last-day door a lien-gone row has no Worked later? press; a phone row has it and does not open the Lien window (v2.6849)', () => {
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    mount({ rows: [...rows, closed] })
+    expect(screen.queryByTestId('lien-cal-worked-later')).toBeNull()
+    cleanup()
+    const onOpenLastWork = vi.fn()
+    const { onOpen } = mount({ rows: [...rows, closed], isMobile: true, onOpenLastWork })
+    const next = within(screen.getByTestId('lien-cal-phone')).getByTestId('lien-cal-bucket-next_month')
+    expect(within(next).getByTestId('lien-cal-property-tally').textContent).toBe('$9,800 lien open · $650 lien gone · $10,450 owed')
+    fireEvent.click(within(next).getByRole('button', { name: 'Worked later? Change the last day of work · 226 PLUM' }))
+    expect(onOpenLastWork).toHaveBeenCalledWith('x')
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
   it('a dead row goes grey past the day its lien died, with that day under the flag (v2.4265)', () => {
     mount()
     expect(screen.queryByTestId('lien-cal-gone')).toBeNull()
