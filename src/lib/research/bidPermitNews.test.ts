@@ -21,7 +21,7 @@ describe('bidPermitNews', () => {
   it('says an application was filed, with what it declares', () => {
     const { chips, news } = run([bid()], [permit()])
     expect(chips.get('b1')).toEqual({ words: 'Applied Oct 20', tone: 'amber' })
-    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: 'B512 · Mill Street Lofts, Building C', day: '2026-10-20', words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.' }])
+    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: '512 · Mill Street Lofts, Building C', day: '2026-10-20', words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.' }])
   })
 
   it('says a building permit was issued, with how long since the last contact on a sent bid', () => {

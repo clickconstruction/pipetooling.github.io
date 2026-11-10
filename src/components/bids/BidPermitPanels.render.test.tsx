@@ -115,7 +115,7 @@ describe('BidGcPermits', () => {
     expect(screen.getByText('San Antonio')).toBeTruthy()
     expect(screen.getByText('Austin')).toBeTruthy()
     expect(screen.getByText('2 of your 3 bids with them')).toBeTruthy()
-    expect(screen.getByText('B512 · Mill Street Lofts, Building C')).toBeTruthy()
+    expect(screen.getByText('512 · Mill Street Lofts, Building C')).toBeTruthy()
     expect(screen.getByText('This bid · no general plumbing permit seen')).toBeTruthy()
     expect(screen.getByText('Sent Oct 14 · no permit seen on the address')).toBeTruthy()
     expect(screen.getByText('1 more bid with them is in Kyle. No permit records are read there.')).toBeTruthy()
@@ -126,9 +126,9 @@ describe('BidGcPermits', () => {
     io.loadBidsOfCustomers.mockResolvedValue(bids)
     renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId="b1" />)
     const press = await screen.findByRole('button', { name: 'See the 2 jobs ›' })
-    expect(screen.queryByText('B512 · Mill Street Lofts, Building C')).toBeNull()
+    expect(screen.queryByText('512 · Mill Street Lofts, Building C')).toBeNull()
     fireEvent.click(press)
-    expect(screen.getByText('B512 · Mill Street Lofts, Building C')).toBeTruthy()
+    expect(screen.getByText('512 · Mill Street Lofts, Building C')).toBeTruthy()
   })
 
   it('says so when none of the bids is where permits are read', async () => {

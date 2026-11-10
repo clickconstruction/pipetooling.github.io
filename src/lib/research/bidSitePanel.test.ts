@@ -98,10 +98,10 @@ describe('the jobs we priced for a GC', () => {
   it('reads each site, counts what it is out of, and names the towns it cannot see', () => {
     const view = gcJobsView(bids, permits, READ, 'b1')
     expect(view.lines).toEqual([
-      { bidId: 'b1', title: 'B512 · Mill Street Lofts, Building C', chip: { words: 'Applied Sep 11', tone: 'amber' }, detail: 'This bid · no general plumbing permit seen', current: true },
-      { bidId: 'b2', title: 'B501 · Pecan Grove Pharmacy', chip: { words: 'Plumbing permit · another name', tone: 'red' }, detail: 'Sent Oct 14 · a general plumbing permit, Nov 5, lists Lone Oak Plumbing', current: false },
-      { bidId: 'b3', title: 'B488 · Harbor Street Offices', chip: { words: 'Issued Nov 3', tone: 'green' }, detail: 'Sent Sep 30 · no general plumbing permit seen', current: false },
-      { bidId: 'b4', title: 'B470 · Juniper Court Retail', chip: { words: 'None seen', tone: 'grey' }, detail: 'Lost · no permit seen on the address', current: false },
+      { bidId: 'b1', title: '512 · Mill Street Lofts, Building C', chip: { words: 'Applied Sep 11', tone: 'amber' }, detail: 'This bid · no general plumbing permit seen', current: true },
+      { bidId: 'b2', title: '501 · Pecan Grove Pharmacy', chip: { words: 'Plumbing permit · another name', tone: 'red' }, detail: 'Sent Oct 14 · a general plumbing permit, Nov 5, lists Lone Oak Plumbing', current: false },
+      { bidId: 'b3', title: '488 · Harbor Street Offices', chip: { words: 'Issued Nov 3', tone: 'green' }, detail: 'Sent Sep 30 · no general plumbing permit seen', current: false },
+      { bidId: 'b4', title: '470 · Juniper Court Retail', chip: { words: 'None seen', tone: 'grey' }, detail: 'Lost · no permit seen on the address', current: false },
     ])
     expect(view.verdict).toBe('Of the 4 sites we can see, 3 have a permit. A general plumbing permit lists another name on 1.')
     expect(view.coverage).toBe('4 of your 7 bids with them')

@@ -188,7 +188,7 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
         : 'no permit seen on the address'
     lines.push({
       bidId: bid.id,
-      title: [bid.bid_number ? `B${bid.bid_number.replace(/^B/i, '')}` : null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · '),
+      title: [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · '),
       chip,
       detail: `${statusWords(bid, current)} · ${plumbingWords}`,
       current,

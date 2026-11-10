@@ -64,8 +64,8 @@ describe('permit news on the Bid Board', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'Permit news on your bids' })).toBeTruthy())
     expect(io.loadPermitsByHouseNumber).toHaveBeenCalledTimes(1)
     expect(io.loadPermitsByHouseNumber).toHaveBeenCalledWith('San Antonio', ['4120', '88'])
-    const titles = screen.getAllByText(/^B5\d\d · /).map((e) => e.textContent)
-    expect(titles).toEqual(['B501 · Pecan Grove Pharmacy', 'B512 · Mill Street Lofts, Building C'])
+    const titles = screen.getAllByText(/^5\d\d · /).map((e) => e.textContent)
+    expect(titles).toEqual(['501 · Pecan Grove Pharmacy', '512 · Mill Street Lofts, Building C'])
     expect(screen.getByText('A general plumbing permit was issued on this address Mar 1. It lists Lone Oak Plumbing. The bid is not yet won or lost.')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Open the bid' })[0]!)
     expect(onOpen).toHaveBeenCalledWith('b2')
@@ -93,7 +93,7 @@ describe('permit news on the Bid Board', () => {
   })
 
   it('folds a long list behind a press', () => {
-    const news = Array.from({ length: 6 }, (_, i) => ({ bidId: `b${i}`, kind: 'applied' as const, title: `B60${i} · Sample ${i}`, words: 'A permit application was filed on this address Nov 1.', day: '2026-11-01' }))
+    const news = Array.from({ length: 6 }, (_, i) => ({ bidId: `b${i}`, kind: 'applied' as const, title: `60${i} · Sample ${i}`, words: 'A permit application was filed on this address Nov 1.', day: '2026-11-01' }))
     renderWithProviders(<BidBoardPermitNews news={news} onOpenBid={() => {}} />)
     expect(screen.getAllByRole('button', { name: 'Open the bid' })).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'See 2 more ›' }))
