@@ -21,6 +21,7 @@ import {
   nudgeWords,
   ourBidsWords,
   placeCounts,
+  stripCounts,
   placeOf,
   plumberUsedWords,
   pursueReason,
@@ -68,6 +69,12 @@ describe('the four places (punch list #302)', () => {
     const rows = [row(), row({ id: 'p2', verdict: 'look' }), row({ id: 'p3', verdict: 'approach' }), row({ id: 'p4', verdict: 'not_for_us' }), row({ id: 'p5', plumber_permit_on: '2026-11-07' }), row({ id: 'p6', declared_value: 5_000 })]
     expect(placeCounts(rows, 25_000)).toEqual({ skim: 1, kept: 1, pursuing: 1, closed: 2 })
     expect(placeCounts(rows, 0)).toEqual({ skim: 2, kept: 1, pursuing: 1, closed: 2 })
+    // The strip is the one count while the skim is open: the deck's number, and a held answer already counted.
+    const places = { skim: 10, kept: 2, pursuing: 1, closed: 4 }
+    expect(stripCounts(places, null)).toBe(places)
+    expect(stripCounts(places, { left: 10, held: null })).toEqual(places)
+    expect(stripCounts(places, { left: 9, held: 'keep' })).toEqual({ skim: 9, kept: 3, pursuing: 1, closed: 4 })
+    expect(stripCounts(places, { left: 9, held: 'pass' })).toEqual({ skim: 9, kept: 2, pursuing: 1, closed: 5 })
   })
 
   it('Kept opens on the ones to look at again today, then the longest kept, and sorts by whose they are', () => {

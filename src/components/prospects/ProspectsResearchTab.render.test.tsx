@@ -253,7 +253,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   describe('the skim (punch list #302)', () => {
     it('opens on one card, best first, and holds an answer until the next one so Undo can take it back', async () => {
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
       // The row with a plumbing permit never enters the deck; the one that waits says why it leads.
       expect(screen.getByText('No plumber yet · a builder we won with · $1.4M')).toBeTruthy()
       expect(screen.queryByText('300 HOPKINS ST')).toBeNull()
@@ -266,7 +266,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByText('Kept for a closer look.')).toBeTruthy()
       expect(io.recordVerdict).not.toHaveBeenCalled()
       fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-      expect(screen.getByText('1 to skim')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy()
       expect(io.recordVerdict).not.toHaveBeenCalled()
 
       // A pass offers its reasons in the bar; the answer is written when the deck is left.
@@ -281,7 +281,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
 
     it('answers by arrow key on a desk, and Dig in opens the kept ones', async () => {
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
       fireEvent.keyDown(window, { key: 'ArrowRight' })
       expect(screen.getByText('Nothing waiting on a skim.')).toBeTruthy()
       expect(screen.getByText('You answered 1 just now: 1 kept, 0 passed. The next pull is tomorrow at 5:30 AM.')).toBeTruthy()
@@ -329,12 +329,12 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     it('a write that fails names the permit, says why, and puts the card back', async () => {
       io.recordVerdict.mockRejectedValueOnce({ message: 'new row violates row-level security policy' })
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
-      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
       fireEvent.click(screen.getByRole('button', { name: 'Pass' }))
       fireEvent.click(screen.getByRole('button', { name: 'Map' }))
       await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledTimes(1))
       fireEvent.click(screen.getByRole('button', { name: /^Skim/ }))
-      await waitFor(() => expect(screen.getByText('1 to skim')).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
     })
   })
 
@@ -356,7 +356,10 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
       await waitFor(() => expect(screen.getByText('Kept. For?')).toBeTruthy())
       fireEvent.click(screen.getByRole('button', { name: 'Sam' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Kept 1' }))
+      // The strip is the one count: the held keep has left Skim and reads on Kept before it is written.
+      expect(screen.getByRole('button', { name: 'Skim 0' })).toBeTruthy()
+      expect(io.recordVerdict).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Kept 2' }))
       await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'look', forUserId: 'u2' })))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Kept 2' })).toBeTruthy())
       expect(screen.getByText(/Kept by Eve for Sam/)).toBeTruthy()

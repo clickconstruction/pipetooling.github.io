@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ContactHistory, ResearchPermitRow } from './permitResearch'
-import { answeredWords, caughtUpWords, daysBetween, digInWords, filedWords, milesFromOffice, milesWords, skimDeck, skimKeyAct, skimMoney, skimScore, skimTitle, skimVerdict, toSkimWords, type SkimContext } from './permitSkim'
+import { answeredWords, caughtUpWords, daysBetween, digInWords, filedWords, milesFromOffice, milesWords, skimDeck, skimKeyAct, skimMoney, skimScore, skimTitle, skimVerdict, type SkimContext } from './permitSkim'
 
 // Every name, street and number here is made up.
 function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
@@ -136,8 +136,7 @@ describe('the two answers', () => {
     expect(skimKeyAct('a')).toBeNull()
   })
 
-  it('counts what is left and says so when nothing is', () => {
-    expect(toSkimWords(12)).toBe('12 to skim')
+  it('says so when nothing is left', () => {
     expect(caughtUpWords(9, 32)).toBe('You answered 41 just now: 9 kept, 32 passed. The next pull is tomorrow at 5:30 AM.')
     expect(caughtUpWords(0, 0)).toBe('Every permit the feed brought has an answer. The next pull is tomorrow at 5:30 AM.')
     expect(digInWords(14)).toBe('Dig in · 14 kept')
