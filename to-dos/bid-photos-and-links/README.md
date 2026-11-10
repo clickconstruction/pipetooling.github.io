@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) in work on `claude/bid-photos-drive` · nothing on screen yet
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) in work on `claude/bid-photos-window`
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,9 +17,9 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is eight small PRs with the photos icon first.
-next: PR 2, the Drive leg, then its push and the three function deploys, and a live test on the ZZ Test bid. Then PR 3, the photos icon and its window. The owner's word on who may remove a photo (call 6) before PR 4.
-size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 2 to 8 (M · M · S · M · S · S · S)
-blocker: None for PRs 2 and 3. Call 6 gates PR 4.
+next: PR 3, the photos icon and its window, then a redeploy of `bid-photos` for its by-line fix. The owner's word on who may remove a photo (call 6) before PR 4.
+size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 3 to 8 (M · S · M · S · S · S)
+blocker: None for PR 3. Call 6 gates PR 4.
 opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column, as direction C draws it
 ---
 
@@ -268,6 +268,16 @@ answered.
 9. **Does the Files window replace Files & links in the bid's form?** My pick: not yet. Both write
    the same columns. Retire the form's section after a month of use.
 
+10. **On a won bid with a job, does the row offer the job's side too, with a J on the icon?** The owner's
+    question of 2026-11-10: *should we offer the job folder as well with a "J" on the front of the folder icon*.
+    What the code says: after a win the folder is one folder, since the job folder maker adopts the bid's, so a J
+    folder would open what the folder icon already opens. The photos are what sit in two places: the bid's in
+    Team only › Photos, the job's own in Customer Pictures. My pick: yes, with the J on a second camera and not
+    on the folder. It draws beside the bid's camera on a bid whose job has photos, shows their count and opens
+    the Job photos window. It draws for the roles that already see the job's chip, since an estimator has no
+    door to a job. A J folder draws only where the job's folder is not the bid's, which is a bid whose folder
+    was held in a personal Drive. It would ride PR 8 with one count read for the page's won bids.
+
 ## Where it plugs in
 
 - **Exists**: the cluster and its icons (`BidsBidBoardTab.tsx`); the plan sets kernel and picker
@@ -299,7 +309,7 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - Then `supabase db push` from a main checkout, the `chore(types)` PR, and the dev-mcp catalog
   rebuilt with it.
 
-**PR 2 · the Drive leg (M).** Edge, and one small migration. Nothing calls it yet.
+**PR 2 · the Drive leg (M). Shipped, v2.6856, pushed and deployed 2026-11-10.** Edge, and one small migration.
 - *Migration*: `bid_photos.tried_at` (a photo the sweep could not file is left alone for an hour, since
   a held bid folder is the common case today), the unfiled index remade to leave a removed photo out,
   and the `photo-save` cron re-scheduled with every earlier clause and a tenth for a bid photo due a try.
@@ -317,13 +327,18 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
   section's tenth source); `docs/migrations/`; `docs/ACCESS_CONTROL.md` (who may call it).
 
 **PR 3 · the photos icon and its window (M).** The PR that answers the ask.
-- *Client*: the kernel `bidBoardLinkSlots.ts` with tests, drawing the photos slot only for now
-  (grey, or blue with its count, read with the board's other per-bid maps); the photos window: add
-  by pick, drop and camera through `shrinkPhoto` and `useShotTiles`, the grid, a photo opened
-  large, the held state with its reason; a render smoke.
-- *Migration*: none. *Edge functions*: none.
-- *Docs*: a help guide, `src/content/help/add-photos-to-a-bid.md`; `docs/BIDS_SYSTEM.md` (the
-  Links column); `docs/PROJECT_DOCUMENTATION.md` and `docs/GLOSSARY.md` (the window).
+- *Client*: the photos slot (`photosSlot` in `src/lib/bids/bidPhotoWindow.ts`, tested): a camera first in the Links
+  cluster on the table and the phone's card, grey or blue with its count, read with the board's other per-bid
+  maps (`useBidPhotoCountsByBid`). The photos window, `BidPhotosWindow.tsx`: add by pick, drop and camera through
+  the job photos' shot-tile engine with the bid's io, a name on each tile, the press that names the folder the
+  first time, the grid, a photo opened large, the held state with its reason; a render test.
+- *Migration*: none.
+- *Edge functions*: `bid-photos` adopts a picture the app filed itself under nobody's name, where it read the
+  service account's address. Redeploy `bid-photos` after the merge.
+- *Docs*: a help guide, `src/content/help/add-photos-to-a-bid.md`; `docs/BIDS_SYSTEM.md` (the Links column);
+  `docs/PROJECT_DOCUMENTATION.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md` (the window).
+- *Left for PR 5*: the other four link icons still draw only when the link exists, so the camera does not line up
+  down the column yet.
 
 **PR 4 · rename and remove (S).** Gated by call 6.
 - *Edge functions*: `bid-photos` gains `rename`, `remove` (Drive's trash, `removed_at` on the row)
