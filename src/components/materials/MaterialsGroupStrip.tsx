@@ -1,7 +1,8 @@
 /**
  * The Materials page's strip in three named groups (punch list #304): a quiet caption over each group, a hairline
- * between groups, a badge on a caption only when its group needs a hand. The tabs keep their pill; Print labels and
- * Scan a label are drawn as presses beside On site, since each does one thing and neither is a place. The groups,
+ * between groups, a badge on a caption only when its group needs a hand. The tabs keep their pill; Scan a label and
+ * Print labels are drawn as presses at the right end of On site's row (v2.6871, the owner: Print labels last, both
+ * right-aligned), since each does one thing and neither is a place. The groups,
  * their order and their words are `lib/materials/materialsGroups.ts`.
  *
  * When the whole strip does not fit one row it folds (v2.6871, the owner's idea): the strip measures itself, the group
@@ -23,7 +24,7 @@ type Props = {
   groups: ReadonlyArray<MaterialsGroup>
   activeTab: MaterialsTab
   onTab: (tab: MaterialsTab) => void
-  /** The presses beside On site, in order. */
+  /** The presses at the right end of On site's row, in order. */
   presses: ReadonlyArray<MaterialsPress>
   onPress: (press: MaterialsPress) => void
   /** What a caption wears, by group; a group with nothing to say wears nothing. */
@@ -125,19 +126,25 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
     </button>
   )
   const pressButtons = (group: MaterialsGroup, live: boolean): ReactNode =>
-    group.key === 'track'
-      ? presses.map((p) => (
+    group.key === 'track' && presses.length > 0 ? (
+      // Pushed to the row's right end: the tab is the place, the presses are what you do there.
+      <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: 'auto', paddingLeft: '0.5rem' }}>
+        {presses.map((p) => (
           <button key={p} type="button" tabIndex={live ? undefined : -1} onClick={live ? () => onPress(p) : undefined} style={pressStyle} data-testid={live ? `materials-press-${p}` : undefined}>
             <PressGlyph press={p} />
             {MATERIALS_PRESS_LABELS[p]}
           </button>
-        ))
-      : null
+        ))}
+      </span>
+    ) : null
   const badgeChips = (key: MaterialsGroupKey): ReactNode => (badges[key] ?? []).map((b) => <span key={b.text} style={badge(b.tone)}>{b.text}</span>)
 
-  /** A group drawn open: its caption, its tabs, its presses. `live` is false for the copy the strip measures. */
-  const openGroup = (g: MaterialsGroup, live: boolean, withCaption = true): ReactNode => (
-    <div style={{ display: 'grid', gap: 2, flex: '0 0 auto' }} {...(live ? { role: 'group', 'aria-label': g.word, 'data-strip-group': g.key } : { 'data-rule': `open:${g.key}` })}>
+  /**
+   * A group drawn open: its caption, its tabs, its presses. `live` is false for the copy the strip measures. `grow`
+   * lets the last group take the rest of the row, so its presses reach the right edge.
+   */
+  const openGroup = (g: MaterialsGroup, live: boolean, withCaption = true, grow = false): ReactNode => (
+    <div style={{ display: 'grid', gap: 2, flex: grow ? '1 1 auto' : '0 0 auto' }} {...(live ? { role: 'group', 'aria-label': g.word, 'data-strip-group': g.key } : { 'data-rule': `open:${g.key}` })}>
       {withCaption ? <div style={caption(g.key === hereKey)}>{g.word}{badgeChips(g.key)}</div> : null}
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
         {g.tabs.map((t) => tabButton(t, live))}
@@ -199,7 +206,7 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
         </div>
         {open ? (
           <div style={{ borderBottom: '2px solid var(--border)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <div style={{ width: 'max-content' }}>{openGroup(open, true, false)}</div>
+            <div style={{ display: 'flex', width: 'max-content', minWidth: '100%' }}>{openGroup(open, true, false, true)}</div>
           </div>
         ) : null}
       </div>
@@ -212,8 +219,8 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
       {groups.map((g, i) => {
         const last = i === groups.length - 1
         return (
-          <div key={g.key} style={{ display: 'flex', alignItems: 'flex-end', flex: '0 0 auto', ...(last ? {} : { paddingRight: '0.6rem', marginRight: '0.6rem', borderRight: '1px solid var(--border)' }) }}>
-            {isOpen(g.key) ? openGroup(g, true) : foldedGroup(g, true)}
+          <div key={g.key} style={{ display: 'flex', alignItems: 'flex-end', flex: last && isOpen(g.key) ? '1 1 auto' : '0 0 auto', ...(last ? {} : { paddingRight: '0.6rem', marginRight: '0.6rem', borderRight: '1px solid var(--border)' }) }}>
+            {isOpen(g.key) ? openGroup(g, true, true, last) : foldedGroup(g, true)}
           </div>
         )
       })}

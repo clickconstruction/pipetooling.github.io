@@ -45,7 +45,7 @@ To land it now, press **Paste the text instead** and paste the invoice's lines. 
 
 ## Print a label
 
-Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** beside On site and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
+Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
 
 ## Print a manifest
 
@@ -71,4 +71,4 @@ Open the search box at the top of the app and type a stencil, a part or a place.
 
 Open **Materials** and press **On site**. Type a part, its maker or a stencil in **Find a part or a box on any job**. Each row names the box, its job and how many are on hand. Press **Open the job** to go to that job's page.
 
-A label the camera cannot read has a code printed under it. Press **Scan a label** beside On site and type the eight characters. Press {{button:blue|Open the box}} and the box opens on the phone screen.
+A label the camera cannot read has a code printed under it. Press **Scan a label** at the right end of the tabs and type the eight characters. Press {{button:blue|Open the box}} and the box opens on the phone screen.

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for the Materials strip's three groups (punch list #304): a caption over each group, the tabs under
- * it, a badge only where one is handed in, Print labels and Scan a label as presses beside On site. And the folds
+ * it, a badge only where one is handed in, Scan a label and Print labels as presses at the right end of On site's row. And the folds
  * (v2.6871): a strip too wide for its row folds the groups that do not fit to their name, a folded name opens its
  * group without changing the page, and on a phone the names take a row with the open group's tabs under them. A test's
  * DOM has no layout, so the widths are handed in (`measured`); with none the strip draws every group open.
@@ -43,7 +43,7 @@ describe('MaterialsGroupStrip', () => {
     expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Plan', 'Purchase', 'Track'])
     expect(within(groups[0]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['Parts Book', 'Assembly Book', 'PO Builder'])
     expect(within(groups[1]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers'])
-    expect(within(groups[2]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Print labels', 'Scan a label'])
+    expect(within(groups[2]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Scan a label', 'Print labels'])
     expect(groups[2]!.textContent).toContain('3 due a count')
     expect(groups[0]!.textContent).not.toContain('due a count')
     expect(screen.getByRole('button', { name: 'Parts Book' }).getAttribute('aria-current')).toBe('page')
@@ -124,7 +124,7 @@ describe('MaterialsGroupStrip', () => {
     expect(screen.getByTestId('materials-group-strip').getAttribute('data-strip-shape')).toBe('rows')
     const track = screen.getByRole('button', { name: 'Track, 3 due a count' })
     expect(track.getAttribute('aria-expanded')).toBe('true')
-    expect(within(screen.getByRole('group', { name: 'Track' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Print labels', 'Scan a label'])
+    expect(within(screen.getByRole('group', { name: 'Track' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Scan a label', 'Print labels'])
     expect(screen.queryByRole('button', { name: 'Parts Book' })).toBeNull()
 
     const purchase = screen.getByRole('button', { name: 'Purchase. Show its tabs.' })
