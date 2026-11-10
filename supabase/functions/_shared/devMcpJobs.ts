@@ -288,11 +288,14 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
   const row = newJobRow(p, world)
   const master = jobMasterUser(world, p)
   const email = row.customer_email as string | null
+  // A Stripe bill is numbered from the HCP number, else the Click number, and needs digits in it (create-stripe-invoice, v2.6826).
+  const jobNumber = String(row.hcp_number ?? '').trim() || String(row.click_number ?? '').trim()
   const readiness: Json = {
     status: 'working — a new job starts there (the table\'s default since 20260722264000); plan_job_update { status: "ready_to_bill" } when the work is done',
     revenue: (row.revenue as number) > 0 ? `${row.revenue} — the amount a bill will carry` : 'none — set revenue (the price) before a bill, or the bill has nothing to carry',
     customer_email: email ? `${email} — a Stripe bill goes here` : 'none — a Stripe bill needs the customer\'s email (customer_email, or on the customer)',
     customer_phone: row.customer_phone ? `${row.customer_phone}` : 'none on the job; a text goes to a number on the customer\'s contact (plan_bill reads it)',
+    number: /\d/.test(jobNumber) ? jobNumber : 'none — a Stripe bill is numbered from the HCP or Click number; give the job one (hcp_number or click_number) before plan_bill',
     kind: p.kind ?? 'not set — the signals read it until the office presses one',
   }
   return {

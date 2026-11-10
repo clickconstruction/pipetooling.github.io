@@ -23,6 +23,7 @@ import { TEXTS_SWITCH_KEY, textsAreOn } from './gcKernels/lib/quo/textsSwitch.ts
 import { normalizeChannel } from './gcKernels/lib/contacts/kernel.ts'
 import { customerLang } from './gcKernels/lib/messages/customerLang.ts'
 import { letterheadFor } from './messagesEmail.ts'
+import { buildPipetoolingStripeInvoiceNumber } from './pipetoolingStripeInvoiceNumber.ts'
 
 export const BILL_VERBS = ['plan_bill', 'apply_bill'] as const
 export type BillVerb = (typeof BILL_VERBS)[number]
@@ -312,6 +313,18 @@ export type BillSendPlan = {
 
 export type DryRun = { ok: true; reply: Json } | { ok: false; refused: string }
 
+/** The number create-stripe-invoice builds the Stripe invoice number from: the HCP number, else the Click number (its `effectiveJobNumber`). */
+export function stripeJobNumber(job: Pick<BillJobRow, 'hcp_number' | 'click_number'>): string | null {
+  return ((job.hcp_number ?? '').trim() || (job.click_number ?? '').trim()) || null
+}
+
+/** The plan's refusal when the bill could not be numbered: the function's reason, and the press that fixes it. */
+export function billNumberRefusal(jobLabel: string, why: string): string {
+  return /HCP or Click number/.test(why)
+    ? `${jobLabel} has no HCP or Click number with digits, and a Stripe bill is numbered from it: ${why} Give the job its number first: plan_job_update { job_id, set: { click_number } } (or hcp_number).`
+    : `The Stripe bill could not be numbered: ${why}`
+}
+
 const label = (job: BillJobRow): string => {
   const n = (job.click_number ?? '').trim() || (job.hcp_number ?? '').trim()
   if (n) return /^\d+$/.test(n) ? `JP${n}` : n
@@ -335,6 +348,11 @@ export function billDryRun(p: BillPayload, world: BillWorld): DryRun {
     if (!job) return { ok: false, refused: `No job ${p.job_id} is visible to you — find_job resolves a number or a name.` }
     if (job.status !== 'ready_to_bill') return { ok: false, refused: `${label(job)} is at ${job.status ?? 'no status'}, not Ready to Bill: Bill Customer bills a Ready to Bill job. plan_job_update { job_id, status: "ready_to_bill" } moves it.` }
     if (!(job.customer_email ?? '').trim()) return { ok: false, refused: `Customer email is required for Stripe invoices. Add it on Edit Job (plan_job_update { set: { customer_email } }).` }
+    // v2.6826: create-stripe-invoice numbers the bill from the HCP number, else the Click number, and refuses one with no digits
+    // (buildPipetoolingStripeInvoiceNumber, the function's own rule, run here on the same inputs with a fixed clock). The first
+    // seat walk met it at Stripe; the plan says it first.
+    const numbered = buildPipetoolingStripeInvoiceNumber(stripeJobNumber(job), p.due_date, 0)
+    if (!numbered.ok) return { ok: false, refused: billNumberRefusal(label(job), numbered.error) }
     if (!job.customer_id) return { ok: false, refused: `${label(job)} has no customer: a Stripe bill needs one (plan_job_update { set: { customer_id } }).` }
     const primaries = world.invoices.filter(isRtbPrimaryBundle).length
     if (primaries > 1) return { ok: false, refused: `${label(job)} has ${primaries} primary Ready to Bill rows; the app refuses to bill until one is fixed (is_primary_rtb_bundle).` }
