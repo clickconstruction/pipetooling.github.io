@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) in work on `claude/bid-photos-window` · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: PR 3, the photos icon and its window, then a redeploy of `bid-photos` for its by-line fix. The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6.
-size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 3 to 9 (M · S · M · M · S · S · S)
-blocker: None for PR 3. Call 6 gates PR 4 and call 11 gates PR 6.
-opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column, as direction C draws it
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 4 to 9 (S · M · M · S · S · S)
+blocker: None for PR 5. Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — PR 5 next, so every link has its place in the column; then the job's pair
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -338,7 +338,7 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
 - *Docs*: `docs/EDGE_FUNCTIONS.md` (a new `bid-photos` section and its TOC line; the `photo-save`
   section's tenth source); `docs/migrations/`; `docs/ACCESS_CONTROL.md` (who may call it).
 
-**PR 3 · the photos icon and its window (M).** The PR that answers the ask.
+**PR 3 · the photos icon and its window (M). Shipped, v2.6860, 2026-11-10; `bid-photos` redeployed.** The PR that answers the ask.
 - *Client*: the photos slot (`photosSlot` in `src/lib/bids/bidPhotoWindow.ts`, tested): a camera first in the Links
   cluster on the table and the phone's card, grey or blue with its count, read with the board's other per-bid
   maps (`useBidPhotoCountsByBid`). The photos window, `BidPhotosWindow.tsx`: add by pick, drop and camera through
@@ -346,7 +346,7 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
   first time, the grid, a photo opened large, the held state with its reason; a render test.
 - *Migration*: none.
 - *Edge functions*: `bid-photos` adopts a picture the app filed itself under nobody's name, where it read the
-  service account's address. Redeploy `bid-photos` after the merge.
+  service account's address.
 - *Docs*: a help guide, `src/content/help/add-photos-to-a-bid.md`; `docs/BIDS_SYSTEM.md` (the Links column);
   `docs/PROJECT_DOCUMENTATION.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md` (the window).
 - *Left for PR 5*: the other four link icons still draw only when the link exists, so the camera does not line up
