@@ -128,6 +128,21 @@
   .sub { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .sub span { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; color: var(--text-700); font-weight: 600; }
   .sub span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  /* D: the owner's three groups, as quiet captions over the strip */
+  .gstrip { display: flex; align-items: flex-end; border-bottom: 2px solid var(--border); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .g { display: grid; gap: 3px; padding: 0 20px 0 2px; margin-right: 18px; border-right: 1px solid var(--border); flex: 0 0 auto; }
+  .g:last-child { padding-right: 0; margin-right: 0; border-right: 0; }
+  .g .gc { font-size: 10.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 6px; align-items: center; min-height: 18px; }
+  .g.on .gc { color: var(--text-blue-700); }
+  .g .gb { font-size: 10.5px; font-weight: 700; letter-spacing: 0; text-transform: none; padding: 0 6px; border-radius: 999px; background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .g .gb.red { background: var(--bg-red-100); color: var(--text-red-700); }
+  .g .gt { display: flex; gap: 16px; align-items: flex-end; }
+  .act { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; margin-bottom: 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-strong); font-size: 12.5px; font-weight: 600; flex: 0 0 auto; }
+  .act i { font-style: normal; color: var(--text-muted); font-size: 12px; }
+  .gchips { display: flex; gap: 6px; }
+  .gchips > span { flex: 1; text-align: center; padding: 7px 4px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; font-weight: 700; color: var(--text-700); display: inline-flex; gap: 5px; align-items: center; justify-content: center; }
+  .gchips > span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .gchips em { font-style: normal; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); display: inline-block; }
   /* three places */
   .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
   .three .card .pad { display: grid; gap: 6px; font-size: 13px; }
@@ -158,7 +173,7 @@
   .empty { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
   .sheet { background: var(--surface); border-top-left-radius: 16px; border-top-right-radius: 16px; border: 1px solid var(--border); padding: 14px; display: grid; gap: 10px; margin-top: 8px; }
   .code { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 12px; display: flex; align-items: center; padding: 0 14px; font-family: ui-monospace, Menlo, monospace; font-size: 20px; letter-spacing: .12em; color: var(--text-muted); background: var(--surface); }
-  .verdict { border-collapse: collapse; width: 100%; min-width: 820px; margin-top: 12px; background: var(--surface); }
+  .verdict { border-collapse: collapse; width: 100%; min-width: 1040px; margin-top: 12px; background: var(--surface); }
   .verdict th, .verdict td { border: 1px solid var(--border); padding: 8px 10px; font-size: 13px; text-align: left; vertical-align: top; }
   .verdict th { background: var(--bg-subtle); font-size: 12px; }
   .verdict td.pick, .verdict th.pick { background: var(--bg-green-100); }
@@ -173,16 +188,17 @@
 <header class="top">
   <p class="eyebrow">Punch list #304 · mock-up · nothing here is built</p>
   <h1>Materials: the whole life of a part on one page</h1>
-  <p>The word <b>Materials</b> names three places today. The Materials page prices, buys and pays. Jobs → Materials is the office's desk for cages and boxes. The Tally's On site tab is the crew's phone. No press on the Materials page leads to the other two, and label printing lives only on the desk. Three directions follow, each at desktop and phone width, then the phone's On site tab, then a second look.</p>
+  <p>The word <b>Materials</b> names three places today. The Materials page prices, buys and pays. Jobs → Materials is the office's desk for cages and boxes. The Tally's On site tab is the crew's phone. No press on the Materials page leads to the other two, and label printing lives only on the desk. Four directions follow, each at desktop and phone width, then the phone's On site tab, then a second look. <b>D</b> is the owner's own idea of 2026-11-10: three named groups, Purchase, Plan and Sort.</p>
   <div class="stamp">Drawn 2026-11-10 from main at v2.6842. Every job, name, count and price is made up. Green dashes mark what a direction adds. The role switch below redraws every Materials page frame for that role.</div>
 </header>
 
 <div class="controls">
   <span class="grp"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
   <span class="grp"><span class="lbl">Viewing as</span><button type="button" data-role-pick="office" aria-pressed="true">Office</button><button type="button" data-role-pick="estimator" aria-pressed="false">Estimator</button><button type="button" data-role-pick="reader" aria-pressed="false">Primary or superintendent</button></span>
+  <span class="grp"><span class="lbl">D's third word</span><button type="button" data-word-pick="Sort" aria-pressed="true">Sort</button><button type="button" data-word-pick="Track" aria-pressed="false">Track</button><button type="button" data-word-pick="Stock" aria-pressed="false">Stock</button></span>
 </div>
 <nav class="jump">
-  <a href="#today">Today</a><a href="#a">A · doors only</a><a href="#b">B · in the order a part lives</a><a href="#c" class="pick">C · the story strip</a><a href="#phone">The phone's On site tab</a><a href="#second">Is this the best we can do?</a><a href="#calls">The owner's calls</a>
+  <a href="#today">Today</a><a href="#a">A · doors only</a><a href="#b">B · in the order a part lives</a><a href="#c">C · the story strip</a><a href="#d" class="pick">D · Purchase, Plan, Sort</a><a href="#phone">The phone's On site tab</a><a href="#second">Is this the best we can do?</a><a href="#calls">The owner's calls</a>
 </nav>
 
 <!-- ───────────────────────────── TODAY ───────────────────────────── -->
@@ -351,7 +367,7 @@
 </div>
 
 <!-- ───────────────────────────── C ───────────────────────────── -->
-<h2 id="c"><span class="num pick">C</span>The story strip <span class="tag">the pick</span></h2>
+<h2 id="c"><span class="num">C</span>The story strip</h2>
 <p class="lede">Four stages across the top, each with its one live figure and a badge where a hand is needed. Press a stage and its tabs sit under it. <b>On site</b> is the fourth stage and it is one page: the boxes on every job, one search across them, and the two things done to a box as presses in its head. The app already draws this row on the desk and the phone for one job (came in, on site, used, missing). This is the same row, one level up.</p>
 
 <div class="row"><div class="col desk">
@@ -446,9 +462,76 @@
   </div></div>
 </div>
 
+<!-- ───────────────────────────── D ───────────────────────────── -->
+<h2 id="d"><span class="num pick">D</span>Purchase, Plan, <span class="w3">Sort</span> <span class="tag">the owner's idea · the pick</span></h2>
+<p class="lede">The owner, 2026-11-10: name the three groups the strip already has. Each word sits over its group as a quiet caption, with a hairline between groups in place of the bar. A caption wears a badge only when its group needs a hand. <b>On site</b> is a tab that stays on the page. <b>Print labels</b> and <b>Scan a label</b> are drawn as presses, since each does one thing and neither is a place to stay.</p>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">D1 · the three words on today's strip · nothing moves · desktop<span class="m">label printing from here: 3 presses, 2 from On site</span></div>
+  <div class="frame"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=parts-book</span></div>
+    <div class="page">
+      <div class="svc"><span class="on">Plumbing</span><span>Electrical</span></div>
+      <div class="gstrip"><span class="g" data-show="office estimator"><span class="gc">Purchase<span class="gb" data-show="office">2 to move</span></span><span class="gt"><span class="tab" data-show="office estimator">Supply houses</span><span class="tab" data-show="office">Held for suppliers</span><span class="tab" data-show="office">PO Generator</span></span></span><span class="g on" data-show="office estimator reader"><span class="gc">Plan<span class="gb">212 old prices</span></span><span class="gt"><span class="tab on">Parts Book</span><span class="tab">Assembly Book</span><span class="tab" data-show="office estimator">PO Builder</span><span class="tab" data-show="office estimator">Purchase Orders</span></span></span><span class="g" data-show="office estimator reader"><span class="gc"><span class="w3">Sort</span><span class="gb">3 due a count</span><span class="gb red" data-show="office">$444.95 walked away</span></span><span class="gt"><span class="tab">On site</span><span class="act" data-show="office"><i>▤</i>Print labels</span><span class="act"><i>⌗</i>Scan a label</span></span></span></div>
+      <div class="card"><h4>What your materials cost<span class="r"><span class="chip amber">212 prices checked over 90 days ago</span></span></h4>
+        <table class="t"><thead><tr><th>Part</th><th>Manufacturer</th><th class="n">Best price</th><th>Checked</th></tr></thead><tbody>
+          <tr><td>3/4" copper 90</td><td>Mueller</td><td class="n">$4.70 · Pecan Supply</td><td>12 days ago</td></tr>
+          <tr><td>3/4" ball valve</td><td>Apollo</td><td class="n">$18.60 · Pecan Supply</td><td><span class="chip amber">104 days ago</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div></div>
+  <div class="foot">Today's order with names on it. One snag shows at once: the tab named <b>Purchase Orders</b> sits under Plan, not under Purchase.</div>
+</div></div>
+
+<div class="row"><div class="col desk">
+  <div class="cap opt">D2 · the same words in the order a part lives · On site open · desktop</div>
+  <div class="frame"><div class="screen w1248">
+    <div class="appbar"><b>PipeTooling</b><span>Dashboard</span><span>Jobs</span><span>Bids</span><span class="here">Materials</span><span>Tally</span><span class="sp"></span><span class="url">/materials?tab=on-site</span></div>
+    <div class="page">
+      <div class="gstrip"><span class="g" data-show="office estimator reader"><span class="gc">Plan<span class="gb">212 old prices</span></span><span class="gt"><span class="tab">Parts Book</span><span class="tab">Assembly Book</span><span class="tab" data-show="office estimator">PO Builder</span></span></span><span class="g" data-show="office estimator"><span class="gc">Purchase<span class="gb" data-show="office">2 to move</span></span><span class="gt"><span class="tab" data-show="office estimator">Purchase Orders</span><span class="tab" data-show="office">PO Generator</span><span class="tab" data-show="office estimator">Supply houses</span><span class="tab" data-show="office">Held for suppliers</span></span></span><span class="g on" data-show="office estimator reader"><span class="gc"><span class="w3">Sort</span><span class="gb">3 due a count</span><span class="gb red" data-show="office">$444.95 walked away</span></span><span class="gt"><span class="tab on">On site</span><span class="act" data-show="office"><i>▤</i>Print labels</span><span class="act"><i>⌗</i>Scan a label</span></span></span></div>
+      <div class="bar"><span class="find">⌕ <b>Find a part or a box on any job</b></span><span class="btn sm" data-show="office">Print the material location report</span></div>
+      <div class="card"><h4><span data-show="office">Every job with a container</span><span data-show="estimator reader">Your jobs with boxes</span><span class="muted" style="font-weight:400">sorted by what walked away, then by boxes due a count</span></h4>
+        <table class="t"><thead><tr><th>Job</th><th class="n">Containers</th><th class="n">On site, lines</th><th class="n" data-show="office">Missing this week</th><th>Counts</th><th></th></tr></thead><tbody>
+          <tr class="warn"><td><a>JP1042 · Oak Hollow Apartments Building C</a></td><td class="n">6</td><td class="n">41</td><td class="n" data-show="office"><b>$444.95</b></td><td><span class="chip amber">2 due a count</span></td><td class="n"><span class="btn sm" data-show="office">Labels</span> <span class="btn sm" data-show="office">Open on the phone screen</span><span class="btn sm" data-show="estimator reader">Open the boxes</span></td></tr>
+          <tr><td><a>JP1063 · Mill Street Lofts</a></td><td class="n">2</td><td class="n">14</td><td class="n" data-show="office">$0.00</td><td><span class="chip amber">1 due a count</span></td><td class="n"><span class="btn sm" data-show="office">Labels</span> <span class="btn sm" data-show="office">Open on the phone screen</span><span class="btn sm" data-show="estimator reader">Open the boxes</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div></div>
+  <div class="foot">Plan comes first, so the page opens on its first tab. Purchase Orders and PO Generator sit together under Purchase, ahead of the two supply house tabs. No address changes.</div>
+</div></div>
+
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">D · Materials page · phone</div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><b>Materials</b><span class="sp"></span><span class="url">☰</span></div>
+      <div class="page">
+        <div class="gchips"><span>Plan<em></em></span><span data-show="office estimator">Purchase<em data-show="office"></em></span><span class="on"><span class="w3">Sort</span><em></em></span></div>
+        <div class="tabs" style="align-items:center"><span class="tab on">On site</span><span class="act" data-show="office" style="margin-bottom:0"><i>▤</i>Print labels</span><span class="act" style="margin-bottom:0"><i>⌗</i>Scan a label</span></div>
+        <span class="find">⌕ <b>Find a part or a box on any job</b></span>
+        <div class="box"><span class="d"><b>JP1042 · Oak Hollow Bldg C</b><span>6 containers · 2 due a count</span></span><span class="q" style="font-size:14px;color:var(--text-red-700)" data-show="office">$444.95</span></div>
+        <div class="box"><span class="d"><b>JP1063 · Mill Street Lofts</b><span>2 containers · 1 due a count</span></span></div>
+      </div>
+    </div></div>
+    <div class="foot">Three words fit one row at 375. The dot says a group needs a hand. The open group's tabs sit under it.</div>
+  </div>
+  <div class="col" style="flex:1 1 320px"><div class="say">
+    <p class="gain">Three words in place of my four. Buy and Pay were the weak split in B and C. Purchase holds both, and Supply houses lands where an estimator looks for it.</p>
+    <p class="gain">Every tab stays one press away. C's four tiles hid a stage's tabs behind a press.</p>
+    <p class="gain">Nothing to read when the page opens. A badge appears only where a hand is needed, which is the one thing C's figures were for.</p>
+    <p class="gain">A tab stays, a press acts. Print labels and Scan a label no longer look like places.</p>
+    <p class="gain">Plan is a truer word than Price for the two books and PO Builder.</p>
+    <p class="lose">D1 leaves Purchase Orders under Plan. D2 moves four tabs, so the office's first tab changes from Supply houses to Parts Book.</p>
+    <p class="lose"><b>Sort</b> already means something else here. On the Tally and in Banking it is sorting card purchases onto jobs. Beside Purchase it can read as that. On site it fits the first step only, where a delivery waits as Unsorted, and less the counting and what walked away.</p>
+    <p class="rule">Use the switch at the top to read the page with Track or Stock in its place. The owner's own words for this tool on 2026-10-28 were <i>a material tracking system</i>.</p>
+  </div></div>
+</div>
+
 <!-- ───────────────────────────── THE PHONE ───────────────────────────── -->
 <h2 id="phone"><span class="num">P</span>The phone's On site tab</h2>
-<p class="lede">The crew never opens the Materials page, so their side gets the same three answers where they already are: a press to scan, a way from this job to every job, and an empty job that says where the boxes are. These frames stand under any of A, B or C.</p>
+<p class="lede">The crew never opens the Materials page, so their side gets the same three answers where they already are: a press to scan, a way from this job to every job, and an empty job that says where the boxes are. These frames stand under any of A, B, C or D.</p>
 
 <div class="row">
   <div class="col p375">
@@ -515,23 +598,24 @@
 
 <!-- ───────────────────────────── SECOND LOOK ───────────────────────────── -->
 <h2 id="second"><span class="num">?</span>Is this the best we can do?</h2>
-<p class="lede">A answers the question the owner asked. B answers the one under it. Neither answers the one he did not ask: which part of this page needs me today. C is B with that answer, and with two of B's tabs folded back into the place they act on.</p>
+<p class="lede">A answers the question the owner asked. B answers the one under it. C adds which part of the page needs a hand today, at the cost of a row of tiles. D, the owner's three words, gets the same answer from a badge on a caption and keeps every tab one press away. D is the pick. It keeps C's On site page and its search.</p>
 
 <div class="scrollx"><table class="verdict">
-  <thead><tr><th></th><th>Today</th><th>A · doors only</th><th>B · in life order</th><th class="pick">C · the story strip</th></tr></thead>
+  <thead><tr><th></th><th>Today</th><th>A · doors only</th><th>B · in life order</th><th>C · the story strip</th><th class="pick">D · Purchase, Plan, <span class="w3">Sort</span></th></tr></thead>
   <tbody>
-    <tr><th>Presses to Print labels from the Materials page</th><td>No door. Five after leaving: Jobs, Materials, the job, Print labels, Print 6 labels.</td><td>3: Print labels, the job, Print 6 labels.</td><td>3: Labels, the job, Print 6 labels.</td><td class="pick">3: On site, the job's Labels, Print 6 labels. 2 when On site is open.</td></tr>
-    <tr><th>What the strip's order says</th><td>Who may open a tab.</td><td>The same, plus three ways out.</td><td>The order a part lives.</td><td class="pick">The order a part lives, and where a hand is needed.</td></tr>
-    <tr><th>Names for the on-site tool</th><td>Three: Materials, Materials desk, On site.</td><td>Three.</td><td>One, with two homes.</td><td class="pick">One: On site. The Jobs tab stays as a door until the owner retires it.</td></tr>
-    <tr><th>A primary or a superintendent</th><td>Two books. The Tally for boxes, found by memory.</td><td>Two books and two doors to the Tally.</td><td>Price it and Track it.</td><td class="pick">Price and On site. Their jobs' boxes in one press, no money.</td></tr>
-    <tr><th>Find one part across every job</th><td>Go anywhere, for a part the store has read.</td><td>The same.</td><td>The same.</td><td class="pick">The page's own search, and the phone's Every job.</td></tr>
-    <tr><th>On a phone</th><td>A strip that scrolls.</td><td>The doors sit past the scroll.</td><td>Four chips, then a row of tabs.</td><td class="pick">Four stages, two by two, on the first screen.</td></tr>
-    <tr><th>What it costs</th><td></td><td>S. One PR.</td><td>M. The strip, the desk's second mount.</td><td class="pick">M as a train. The doors PR first, so A ships inside C.</td></tr>
-    <tr><th>What can go wrong</th><td></td><td>It papers over the order. The page grows a second kind of tab.</td><td>Ten tabs. Two homes for the desk.</td><td class="pick">Four figures to read at page open. Each has one existing source.</td></tr>
+    <tr><th>Presses to Print labels from the Materials page</th><td>No door. Five after leaving: Jobs, Materials, the job, Print labels, Print 6 labels.</td><td>3: Print labels, the job, Print 6 labels.</td><td>3: Labels, the job, Print 6 labels.</td><td>3: On site, the job's Labels, Print 6 labels. 2 when On site is open.</td><td class="pick">The same as C. Print labels is also a press on the strip.</td></tr>
+    <tr><th>What the strip's order says</th><td>Who may open a tab.</td><td>The same, plus three ways out.</td><td>The order a part lives.</td><td>The order a part lives, and where a hand is needed.</td><td class="pick">Three named groups in that order, with a badge where a hand is needed.</td></tr>
+    <tr><th>Names for the on-site tool</th><td>Three: Materials, Materials desk, On site.</td><td>Three.</td><td>One, with two homes.</td><td>One: On site. The Jobs tab stays as a door until the owner retires it.</td><td class="pick">One: On site, under the third word.</td></tr>
+    <tr><th>A primary or a superintendent</th><td>Two books. The Tally for boxes, found by memory.</td><td>Two books and two doors to the Tally.</td><td>Price it and Track it.</td><td>Price and On site. Their jobs' boxes in one press, no money.</td><td class="pick">Plan and the third group. The same boxes, no money.</td></tr>
+    <tr><th>Find one part across every job</th><td>Go anywhere, for a part the store has read.</td><td>The same.</td><td>The same.</td><td>The page's own search, and the phone's Every job.</td><td class="pick">The same search, on the On site tab.</td></tr>
+    <tr><th>On a phone</th><td>A strip that scrolls.</td><td>The doors sit past the scroll.</td><td>Four chips, then a row of tabs.</td><td>Four stages, two by two, on the first screen.</td><td class="pick">Three chips in one row, the open group's tabs under them.</td></tr>
+    <tr><th>What it costs</th><td></td><td>S. One PR.</td><td>M. The strip, the desk's second mount.</td><td>L as a train. The doors PR first.</td><td class="pick">L as a train, with a smaller strip PR than C. The doors PR first.</td></tr>
+    <tr><th>What can go wrong</th><td></td><td>It papers over the order. The page grows a second kind of tab.</td><td>Ten tabs. Two homes for the desk.</td><td>Four figures to read at page open. A stage's tabs sit behind a press.</td><td class="pick">The third word. Sort has a second meaning in the app.</td></tr>
   </tbody>
 </table></div>
 <div class="say">
   <p class="rule"><b>What the second look changed.</b> My first C was B with figures on the captions. Asking again took Labels and Scan a label out of the strip, since neither is a place. It also added the search, because "where is this part" was the owner's real trouble, and the row for a primary, who had no way in at all.</p>
+  <p class="rule"><b>What the owner's idea changed.</b> His three words beat my four stages. The strip already has three groups, so naming them moves nothing, and a badge on a caption does the work of C's tiles. I kept from C the On site page, its search and the presses for labels and the scan. I would change two things in his list: put Plan first, and weigh the third word.</p>
   <p class="rule"><b>What I did not draw.</b> A single Materials page that swallows the Tally's On site tab. The crew's phone screen is one column with 48 px presses for a reason, and it stays where the crew already is.</p>
   <p class="rule"><b>The first PR is A either way.</b> The three doors go on today's strip so the owner can find label printing this week. The strip is redrawn around them after his pick.</p>
 </div>
@@ -539,14 +623,15 @@
 <!-- ───────────────────────────── CALLS ───────────────────────────── -->
 <h2 id="calls"><span class="num">!</span>The owner's calls</h2>
 <ol class="calls">
-  <li><b>Which direction?</b> <span class="mine">My pick: C, with A's doors shipped first.</span></li>
+  <li><b>Which direction?</b> <span class="mine">My pick: D, your three groups, with A's doors shipped first.</span></li>
   <li><b>Does the desk move to the Materials page, or live in both places?</b> <span class="mine">My pick: both for one release, then Jobs → Materials becomes a door to the Materials page.</span></li>
   <li><b>May anyone who can open a job's boxes print its labels?</b> Today only the office can, and the phone's Print the label press sends everyone else away. <span class="mine">My pick: yes. A label shows a stencil and a code, no money.</span></li>
   <li><b>Is Scan a label the camera app plus a typed code, or a camera inside the app?</b> <span class="mine">My pick: the camera app and the typed code first. A camera inside the app only if the crew asks.</span></li>
   <li><b>Does Every job on the phone mean every job the person may open, or only jobs they are on?</b> <span class="mine">My pick: every job they may open, the gate the boxes already use.</span></li>
-  <li><b>Do the stage words read Price · Buy · Pay · On site, or Price it · Buy it · Pay for it · Track it?</b> <span class="mine">My pick: the short four. On site is the name the crew already knows.</span></li>
+  <li><b>Is the third word Sort, Track or Stock?</b> Sort already names sorting card purchases on the Tally and in Banking. <span class="mine">My pick: Track, your own word for this tool. Sort is drawn as you asked, and the switch at the top swaps it.</span></li>
   <li><b>Does the missing money show on the On site stage for the office only?</b> <span class="mine">My pick: yes, office only, as the desk does today.</span></li>
   <li><b>Where it is now on a Parts Book row: build it, or stop at the search?</b> <span class="mine">My pick: build it last, after a week with the search.</span></li>
+  <li><b>Do the groups keep today's order (Purchase · Plan · <span class="w3">Sort</span>) or follow a part (Plan · Purchase · <span class="w3">Sort</span>)?</b> <span class="mine">My pick: Plan first, with Purchase Orders under Purchase. The page then opens on its first tab.</span></li>
 </ol>
 
 </div>
@@ -558,6 +643,9 @@
   }
   document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
     b.addEventListener('click', function () { var t = b.getAttribute('data-theme-pick'); root.setAttribute('data-theme', t); press('data-theme-pick', t); });
+  });
+  document.querySelectorAll('[data-word-pick]').forEach(function (b) {
+    b.addEventListener('click', function () { var w = b.getAttribute('data-word-pick'); document.querySelectorAll('.w3').forEach(function (e) { e.textContent = w; }); press('data-word-pick', w); });
   });
   document.querySelectorAll('[data-role-pick]').forEach(function (b) {
     b.addEventListener('click', function () { var r = b.getAttribute('data-role-pick'); root.setAttribute('data-role', r); press('data-role-pick', r); });
