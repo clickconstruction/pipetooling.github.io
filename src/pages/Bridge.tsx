@@ -48,6 +48,8 @@ import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCa
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 import { buildFixSizes } from '../lib/bridge/fixSizes'
+import { buildFlowStrip } from '../lib/bridge/flowStrip'
+import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -74,7 +76,7 @@ import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
-import { buildDialReading, dialSpec } from '../lib/bridge/dial'
+import { buildDialReading, dialSpec, todayPace } from '../lib/bridge/dial'
 import type { StageFlowInput } from '../lib/bridge/stageFlow'
 import { BridgeDial } from '../components/bridge/BridgeDial'
 import { buildResources, type ResourceId } from '../lib/bridge/resources'
@@ -1195,6 +1197,12 @@ export default function Bridge() {
     })
   }, [data, profit])
 
+  // The strip of pipe (PR 3): today's flow and each step's pace today, never the dial's what-if.
+  const flowStrip = useMemo(() => {
+    if (!stageFlow || !stageInput) return null
+    return buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') })
+  }, [stageFlow, stageInput])
+
   // Every move for the pressed step (v2.6840), for its desk: which of them the card at the top holds.
   const deskList = useMemo(() => {
     if (!weekInput || !weekModel || !litLink) return { moves: [], foot: '' }
@@ -1213,6 +1221,18 @@ export default function Bridge() {
       setDoorScroll((d) => ({ id: opts?.scrollTo ?? 'bridge-doors', n: (d?.n ?? 0) + 1 }))
     },
     [setSearchParams, softCount],
+  )
+  // A press on a section of the strip opens that step's desk, the window its card's Break it down opens. A step whose
+  // desk cannot be read yet opens The flow, where its card says why.
+  const openStageDesk = useCallback(
+    (id: StageId) => {
+      if (id === 'collect' && fin.data) setCollectOpen(true)
+      else if (id === 'bill' && billPile) setBillOpen(true)
+      else if (id === 'build' && buildInputs && weeksInputs) setBuildOpen(true)
+      else if ((id === 'market' || id === 'sales') && demand) (id === 'market' ? setMarketOpen : setSalesOpen)(true)
+      else pressDoor('flow', { keepOpen: true })
+    },
+    [fin.data, billPile, buildInputs, weeksInputs, demand, pressDoor],
   )
   useEffect(() => {
     if (!doorScroll) return
@@ -1301,6 +1321,7 @@ export default function Bridge() {
               onAnswer={(o) => void answerCall(o, null)}
               onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
+              strip={flowStrip ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : null}
             />
           ) : (
             <p style={{ ...det, color: callsError ? 'var(--text-amber-800)' : undefined }} data-testid="bridge-week-wait">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import { buildFlowStrip, stripWords } from './flowStrip'
 import { buildCashForecast } from './cashForecast'
 import type { BridgeCall } from './calls'
 import type { Headline, HeadlineWeek } from './headline'
@@ -261,6 +262,14 @@ describe('the first screen’s words', () => {
   it('pass the plain-words rule, every sentence of every state', () => {
     for (const s of screens) for (const line of weekCallWords(s, WEEK_CALL_MOVES)) expect(plainWordsFailures(line), line).toEqual([])
     expect(plainWordsFailures(WEEK_HOW.join(' '))).toEqual([])
+  })
+
+  it('stay inside a phone’s first screen with the strip of pipe on it (PR 3)', () => {
+    // The strip adds its legend, five names, five paces and the lit step's weeks to the usual week's screen.
+    const strip = stripWords(buildFlowStrip(flow, { market: 44_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 26_000 }), true).join(' ')
+    const b = weekCallBudget(buildWeekCall(base))
+    expect(b.words + strip.split(/\s+/).length).toBeLessThanOrEqual(WEEK_FIRST_SCREEN_WORDS)
+    expect(b.numbers + (strip.match(/\$?\d[\d,.]*\s?(k|M|h|%)?/g) ?? []).length).toBeLessThanOrEqual(WEEK_FIRST_SCREEN_NUMBERS)
   })
 
   it('stay inside a phone’s first screen', () => {

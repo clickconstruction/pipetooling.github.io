@@ -122,6 +122,18 @@ describe('BridgeWeek', () => {
     expect(onPickStep).toHaveBeenCalledTimes(1)
   })
 
+  it('draws the strip of pipe under the tiles in a usual week, and under the card in a week cash leads (PR 3)', () => {
+    const strip = <div data-testid="the-strip">pipe</div>
+    const { unmount } = renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
+    const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    expect(before(screen.getByTestId('bridge-week-tile-step'), screen.getByTestId('the-strip'))).toBe(true)
+    expect(before(screen.getByTestId('the-strip'), screen.getByTestId('bridge-week-card'))).toBe(true)
+    unmount()
+    renderWithProviders(<BridgeWeek model={{ ...propose, cashLeads: true }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
+    expect(screen.getAllByTestId('the-strip').length).toBe(1)
+    expect(before(screen.getByTestId('bridge-week-card'), screen.getByTestId('the-strip'))).toBe(true)
+  })
+
   it('never records an empty call', () => {
     const onRecord = vi.fn()
     renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
