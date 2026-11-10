@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { TicketWindow } from './TicketWindow'
@@ -47,11 +47,16 @@ export function MyTickets({ userId, io = ticketScreensIo, onMatched, charges = l
   const [asks, setAsks] = useState<ReadonlyMap<string, TicketMatch>>(new Map())
   const [answering, setAnswering] = useState<string | null>(null)
   const [answerError, setAnswerError] = useState<string | null>(null)
+  /** A read that another read overtook (a removal's reload while the first load was in flight) never lands its stale rows. */
+  const loadSeq = useRef(0)
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current
+    const stale = () => seq !== loadSeq.current
     setRead((r) => ({ ...r, status: 'loading', failure: null }))
     try {
       let tickets = await io.list(userId)
+      if (stale()) return
       setRead({ status: 'ready', tickets, failure: null })
       void io
         .jobFacts(tickets.flatMap(ticketJobIds), prefixMap)
@@ -59,16 +64,19 @@ export function MyTickets({ userId, io = ticketScreensIo, onMatched, charges = l
         .catch(() => undefined)
       // The matcher over the holder's own card: a match it makes is written here, a question is drawn on the row.
       const rows = await charges()
+      if (stale()) return
       setChargeRows(new Map(rows.map((r) => [r.mercury_transaction_id, r])))
       if (rows.length > 0 && tickets.some((t) => !t.mercury_transaction_id)) {
         const held = new Map(tickets.filter((t) => t.mercury_transaction_id).map((t) => [t.mercury_transaction_id!, { id: t.id }]))
         const list = rows.map((r) => matchChargeFromLinkedRow(r, userId)).map((c) => ({ ...c, ticketId: held.get(c.id)?.id ?? null }))
         const { matches, written } = await runTicketMatches(tickets, list)
+        if (stale()) return
         const askOnly = new Map<string, TicketMatch>()
         for (const [id, m] of matches) if (m.kind === 'ask') askOnly.set(id, m)
         setAsks(askOnly)
         if (written > 0) {
           tickets = await io.list(userId)
+          if (stale()) return
           setRead({ status: 'ready', tickets, failure: null })
           onMatched?.()
         }

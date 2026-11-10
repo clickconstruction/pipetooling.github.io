@@ -76,6 +76,10 @@ The **Tickets** tab holds every ticket that is not sitting on its charge.
 
 Once you sort a charge with its ticket in front, the ticket is used. The tech can no longer move it or remove it.
 
+A tech hands you the paper instead? Press **+ Ticket** on the charge's line and pick the scan, the photo or the PDF. The paper lands on that charge with the tech named as its taker.
+
+A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
+
 ## Undo a sort in Job Parts Tally
 
 Picked the wrong job? Press **Undo** on the message that says the day is sorted. The purchases go back to sort.

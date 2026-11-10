@@ -2,7 +2,7 @@
 // waiting in the team's queue, one bar per card. The owner, 2026-10-09: the bar shows only to the
 // roles that may mark payroll (dev, controller, a pay-approved master: `canMarkTallyPayroll`, the
 // same gate `set_tally_payroll_flag` holds on the server), with no migration. It marks the sends as
-// payroll; it does not widen a payroll rule, which stays dev-only configuration (`20260906130000`). The owner,
+// payroll; it does not widen a payroll rule, which stays the controller's and a dev's configuration (`canEditTallyPayrollRules`). The owner,
 // the same day: only sends to a person. A send whose note reads as an expense (gas, Home Depot, materials, a
 // reimbursement: `classifyCashAppNote`, the Cash App lane's own words) stays off the bar, counted, to sort by hand.
 // Pure: the writes are in `TallyTeamQueue.tsx`.

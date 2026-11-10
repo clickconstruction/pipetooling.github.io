@@ -12,6 +12,7 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../subcontractorLikeRole'
+import { isControllerOrDev, isEstimatorOrDev, isOfficeRole, isOwnerOrDev } from '../doorRoles'
 import type { Journey, JourneyId } from '../customerJourneys'
 import type { SurfaceEntry } from '../customerSurfaceRegistry'
 import {
@@ -101,12 +102,21 @@ export type ContractTextSource =
   /** A paper the office added to a step of a flow: its Contract library document, and the words `flowPaperEntries` read. */
   | { kind: 'flow_paper'; doc: ContractBookDoc; text: string; format: 'plain' | 'html' | 'markdown'; status: 'yours' | 'blank' | 'theirs'; versionLabel: string | null }
 
+/**
+ * Who is mounted the editor a Settings door lands on, in the audit table's words (`doorRoles.ts`, punch list #188):
+ * the door opens for that audience and says who edits the text to everyone else. The Bids & materials blocks are the
+ * owner's (the estimate's wording, rows 28 and 29) and the estimators' (the cover letter, row 27); the two Jobs, bills
+ * and liens cards read the same audience their card does, which `customerContractCatalog.test.ts` holds against
+ * `jobsBillingCardVisible`.
+ */
+export type SettingsDoorEditors = 'dev' | 'owner' | 'estimator' | 'office' | 'controller'
+
 /** Where the wording is changed. */
 export type ContractEditDoor =
   /** The Book document's own editor, opened on the card. */
   | { kind: 'standard_terms' }
   /** A section on another Settings tab. */
-  | { kind: 'settings'; tabId: string; anchorId: string; label: string; devOnly: boolean }
+  | { kind: 'settings'; tabId: string; anchorId: string; label: string; editors: SettingsDoorEditors }
   /** A page of the app. */
   | { kind: 'page'; to: string; label: string }
   /** Nowhere in the app. */
@@ -191,7 +201,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The public terms page every estimate links to, and the page the electronic-signature disclosure sits on.',
     customerAction: 'Agrees to it with the checkbox when accepting an estimate or a change order.',
     source: { kind: 'app_setting', key: ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY, builtIn: null },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_PUBLIC_TERMS, label: 'Settings → Bids & materials → Public estimate Terms and Conditions', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_PUBLIC_TERMS, label: 'Settings → Bids & materials → Public estimate Terms and Conditions', editors: 'owner' },
     copyKept: null,
     seenOn: [H('estimate-terms'), H('estimate-page')],
     routes: ['/estimate/terms'],
@@ -221,7 +231,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The sentence beside the checkbox a customer ticks to accept an estimate.',
     customerAction: 'Ticks it, then types or draws a signature.',
     source: { kind: 'app_setting', key: ESTIMATE_APP_SETTING_KEYS.accept_checkbox_label, builtIn: CX_BUILTIN.accept_checkbox_label },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_CX_DEFAULTS, label: 'Settings → Bids & materials → Estimate customer experience defaults', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_CX_DEFAULTS, label: 'Settings → Bids & materials → Estimate customer experience defaults', editors: 'owner' },
     copyKept: 'Frozen on the estimate when it is sent. One estimate can carry its own wording.',
     seenOn: [H('estimate-page')],
     routes: ['/estimate/accept', '/e/:code'],
@@ -237,7 +247,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The terms paragraph on the bid cover letter and the Terms section of the bid room.',
     customerAction: 'Signs the proposal in the bid room, or signs the printed letter.',
     source: { kind: 'app_setting', key: APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT, builtIn: DEFAULT_TERMS_AND_WARRANTY },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', editors: 'estimator' },
     copyKept: 'In the bid room, frozen in each published revision and filed on the signed proposal. A printed letter keeps no copy.',
     seenOn: [G('bid-room'), G('bid-room-email')],
     routes: ['/bid-room'],
@@ -252,7 +262,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The exclusions list on the bid cover letter and the Exclusions section of the bid room.',
     customerAction: 'Signs the proposal in the bid room, or signs the printed letter.',
     source: { kind: 'app_setting', key: APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT, builtIn: DEFAULT_EXCLUSIONS },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', editors: 'estimator' },
     copyKept: 'In the bid room, frozen in each published revision and filed on the signed proposal. A printed letter keeps no copy.',
     seenOn: [G('bid-room')],
     routes: ['/bid-room'],
@@ -267,7 +277,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The closing lines of the printed cover letter, before "Respectfully submitted". Not shown in the bid room.',
     customerAction: 'Signs the printed letter.',
     source: { kind: 'app_setting', key: APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING, builtIn: DEFAULT_COVER_LETTER_CLOSING },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_BID_COVER_LETTER_DEFAULTS, label: 'Settings → Bids & materials → Bid Cover Letter Defaults', editors: 'estimator' },
     copyKept: null,
     seenOn: [],
     guide: 'send-a-bid-for-signature',
@@ -456,7 +466,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The notice of a biohazard fee. It quotes clause 11 of the Estimate Terms and Conditions, word for word.',
     customerAction: 'Receives it with the bill.',
     source: { kind: 'settings_block', where: 'Clause 11 of the Estimate Terms and Conditions; the rest of the notice is written in the app' },
-    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_PUBLIC_TERMS, label: 'The clause is part of the Estimate Terms and Conditions', devOnly: true },
+    edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_PUBLIC_TERMS, label: 'The clause is part of the Estimate Terms and Conditions', editors: 'owner' },
     copyKept: 'The clause as quoted is kept on each notice.',
     seenOn: [H('hazmat-notice')],
     routes: ['/hazmat-notice'],
@@ -470,7 +480,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The license and regulator lines, and the payment lines, at the foot of a bill.',
     customerAction: 'Receives them on every bill.',
     source: { kind: 'settings_block', where: 'Footer presets in Settings → Jobs, bills and liens, one set for Stripe bills and one for paper bills' },
-    edit: { kind: 'settings', tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-footer', label: 'Settings → Jobs, bills and liens → invoice footers', devOnly: true },
+    edit: { kind: 'settings', tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-footer', label: 'Settings → Jobs, bills and liens → invoice footers', editors: 'controller' },
     copyKept: 'Each Stripe bill keeps the footer it was sent with.',
     seenOn: [H('bill-email'), H('bill-by-email')],
   },
@@ -483,7 +493,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     what: 'The "I hereby certify" statement on a test report.',
     customerAction: 'Receives the report by email and on the portal.',
     source: { kind: 'settings_block', where: 'The test report settings in Settings → Jobs, bills and liens' },
-    edit: { kind: 'settings', tabId: 'settings-jobs', anchorId: 'settings-jobs-test-reports', label: 'Settings → Jobs, bills and liens → Test reports', devOnly: true },
+    edit: { kind: 'settings', tabId: 'settings-jobs', anchorId: 'settings-jobs-test-reports', label: 'Settings → Jobs, bills and liens → Test reports', editors: 'office' },
     copyKept: 'The PDF as sent is kept on the report.',
     seenOn: [G('test-report-email')],
   },
@@ -611,6 +621,31 @@ export function canEditStandardTerms(role: UserRole | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
+/** Whether the role is mounted the editor a Settings door lands on. */
+export function settingsDoorOpens(editors: SettingsDoorEditors, role: UserRole | null): boolean {
+  switch (editors) {
+    case 'dev':
+      return role === 'dev'
+    case 'owner':
+      return isOwnerOrDev(role)
+    case 'estimator':
+      return isEstimatorOrDev(role)
+    case 'office':
+      return isOfficeRole(role)
+    case 'controller':
+      return isControllerOrDev(role)
+  }
+}
+
+/** Who edits it, for everyone the door stays shut to. */
+const SETTINGS_DOOR_WHO: Record<SettingsDoorEditors, string> = {
+  dev: 'A dev edits this',
+  owner: 'The owner edits this',
+  estimator: 'The estimators edit this',
+  office: 'The office edits this',
+  controller: 'The controller edits this',
+}
+
 export type ContractEditAction =
   | { kind: 'modal'; label: string }
   | { kind: 'settings'; label: string; tabId: string; anchorId: string }
@@ -628,7 +663,7 @@ export function contractEditAction(entry: ContractCatalogEntry, text: ResolvedCo
     return { kind: 'modal', label: 'Edit the wording' }
   }
   if (d.kind === 'settings') {
-    if (d.devOnly && role !== 'dev') return { kind: 'note', text: `A dev edits this: ${d.label}.` }
+    if (!settingsDoorOpens(d.editors, role)) return { kind: 'note', text: `${SETTINGS_DOOR_WHO[d.editors]}: ${d.label}.` }
     return { kind: 'settings', label: 'Open where it is edited', tabId: d.tabId, anchorId: d.anchorId }
   }
   if (d.kind === 'page') return { kind: 'page', label: d.label, to: d.to }

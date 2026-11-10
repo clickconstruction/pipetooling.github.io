@@ -120,4 +120,21 @@ describe('TicketPress', () => {
     expect(await screen.findByText('Your account is in training mode.')).toBeTruthy()
     expect(screen.getByText('Which job is this ticket for?')).toBeTruthy()
   })
+
+  it('draws as a one-line door on the Job Mode card, with the card’s job picked first (PR 4)', async () => {
+    const io = makeIo({
+      jobFacts: () => Promise.resolve(new Map([['elm', { jobId: 'elm', label: 'JP1050', name: 'Elm Street repipe' }]])),
+      sheetFacts: () => Promise.resolve({ facts: { poEntries: [], clockedJob: oak, dayJobs: [cedar] }, fresh: true }),
+    })
+    renderWithProviders(<TicketPress variant="line" jobId="elm" userId="u1" byName="Jordan" io={io} captureIo={{ shrink }} />)
+    await settle()
+    expect(screen.getByText('Ticket · take its photo ▸')).toBeTruthy()
+    expect(screen.queryByText('Photo of a ticket')).toBeNull()
+    // The line reads the day's jobs on the press, not as it is drawn.
+    fireEvent.click(screen.getByText('Ticket · take its photo ▸'))
+    await settle()
+    await takeShot()
+    expect(screen.getByText('Save the ticket to JP1050')).toBeTruthy()
+    expect(screen.getByText('JP1042, Oak Hollow Bldg C')).toBeTruthy()
+  })
 })

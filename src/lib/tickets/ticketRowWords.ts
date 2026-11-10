@@ -42,3 +42,12 @@ export function ticketSavedWords(outcome: { kind: 'sent' | 'kept' }, words: { la
   if (words.label) return `Ticket saved to ${words.label}.`
   return words.noOneJob ? 'Ticket saved. The office places it.' : 'Ticket saved. Pick its job when you can.'
 }
+
+/** The chip Add invoice offers for a tech's ticket on account: *Jordan's ticket, Nov 4, PO 41207*. */
+export function ticketStartChipWords(t: Pick<CounterTicket, 'taken_by_name' | 'taken_at'>, poCode: number | string | null): string {
+  const who = t.taken_by_name.trim() ? `${t.taken_by_name.trim()}'s ticket` : 'A ticket'
+  const ms = Date.parse(t.taken_at)
+  const day = Number.isFinite(ms) ? `, ${formatDenverCalendarDayShort(ms)}` : ''
+  const po = poCode !== null && poCode !== '' ? `, PO ${poCode}` : ''
+  return `${who}${day}${po}`
+}

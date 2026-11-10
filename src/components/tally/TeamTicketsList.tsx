@@ -31,6 +31,8 @@ export type TeamTicketsListProps = {
   onChangeCharge: (ticket: TicketWithPages, toJobId: string) => void
   onLeave: (ticket: TicketWithPages) => void
   onPickJob: (ticket: TicketWithPages) => void
+  /** An account ticket becomes a bill on Add invoice (PR 4); absent when the ticket's house is not known. */
+  onRecordBill?: (ticket: TicketWithPages) => void
 }
 
 const press: CSSProperties = { padding: '0.3rem 0.55rem', minHeight: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit' }
@@ -104,6 +106,11 @@ export function TeamTicketsList(p: TeamTicketsListProps) {
               {r.why === 'no_job' || r.why === 'not_one_job' ? (
                 <button type="button" style={lead} disabled={busy} onClick={() => p.onPickJob(t)}>
                   Pick a job
+                </button>
+              ) : null}
+              {r.why === 'on_account' && p.onRecordBill ? (
+                <button type="button" style={lead} disabled={busy} onClick={() => p.onRecordBill!(t)}>
+                  Record as a bill
                 </button>
               ) : null}
               {r.why === 'no_charge' || r.why === 'no_job' || r.why === 'not_one_job' || r.why === 'on_account' ? (

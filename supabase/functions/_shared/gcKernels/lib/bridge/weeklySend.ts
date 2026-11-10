@@ -7,7 +7,7 @@
  * page.
  *
  * The switch is `app_settings` `bridge_weekly_sheet_on_v1`, 'false' as it ships (migration `bridge_weekly_sheet`);
- * only a dev may change it. The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while the switch is on;
+ * the owner or a dev may change it (v2.6763). The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while the switch is on;
  * one tick is 6 AM Central in summer, the other in winter, and the function runs only the tick that is 6 AM. The
  * last run is `bridge_weekly_sheet_last_run_v1`, written by the function, so the card says when the sheet last went
  * and to how many people, and a second tick the same day sends nothing twice.
@@ -84,11 +84,23 @@ export interface RecipientRow {
   is_walk_tester?: boolean | null
 }
 
-/** Every dev with a real account and an address, each once, in the order read: never anyone else. */
+/**
+ * Who the Bridge is for: the owner and a dev, the page's own gate (`isOwnerOrDev`, punch list #188 row 69, v2.6763).
+ * One list for who hears the weekly send, who may ask `bridge-weekly-sheet` for a dry run and who `bridge-sheet-email`
+ * mails the sheet they pressed for, so whoever opens the page is served by the functions under it;
+ * `weeklySend.test.ts` holds it to `isOwnerOrDev`.
+ */
+export const BRIDGE_ROLES: readonly string[] = ['dev', 'master_technician']
+
+export function isBridgeRole(role: string | null | undefined): boolean {
+  return role != null && BRIDGE_ROLES.includes(role)
+}
+
+/** The owner and every dev with a real account and an address, each once, in the order read: never anyone else. */
 export function weeklySendRecipients(rows: ReadonlyArray<RecipientRow>): string[] {
   const out: string[] = []
   for (const r of rows) {
-    if (r.role !== 'dev' || r.archived_at || r.is_sample || r.is_digital_twin || r.is_walk_tester) continue
+    if (!isBridgeRole(r.role) || r.archived_at || r.is_sample || r.is_digital_twin || r.is_walk_tester) continue
     const email = (r.email ?? '').trim().toLowerCase()
     if (!email || out.includes(email)) continue
     out.push(email)
@@ -97,19 +109,19 @@ export function weeklySendRecipients(rows: ReadonlyArray<RecipientRow>): string[
 }
 
 export const WEEKLY_SEND_TITLE = 'Weekly email'
-export const WEEKLY_SEND_WHAT = 'Every Monday at 6 AM Central the app builds this sheet. Every dev gets it at their own address.'
+export const WEEKLY_SEND_WHAT = 'Every Monday at 6 AM Central the app builds this sheet. The owner and every dev get it at their own address.'
 export const WEEKLY_SEND_CONFIRM = {
   title: 'Turn on the weekly email?',
-  message: 'Every Monday morning the sheet goes to every dev with an account. You can turn it off here any time.',
+  message: 'Every Monday morning the sheet goes to the owner and every dev with an account. You can turn it off here any time.',
   confirmLabel: 'Turn it on',
 } as const
 export const WEEKLY_SEND_ON_TOAST = 'The weekly email is on. The sheet goes out Monday at 6 AM Central.'
 export const WEEKLY_SEND_OFF_TOAST = 'The weekly email is off. Nothing goes out on Monday.'
-export const WEEKLY_SEND_NOT_SAVED = 'The switch did not change. Only a dev can turn the weekly email on or off.'
+export const WEEKLY_SEND_NOT_SAVED = 'The switch did not change. Only the owner or a dev can turn the weekly email on or off.'
 
 /** The line under the switch: what happens while it is on, or that nothing does while it is off. */
 export function weeklySendStateWords(on: boolean): string {
-  return on ? 'On: the sheet goes to every dev on Monday at 6 AM Central.' : 'Off: nothing goes out on Monday. Email me this sheet still works.'
+  return on ? 'On: the sheet goes to the owner and every dev on Monday at 6 AM Central.' : 'Off: nothing goes out on Monday. Email me this sheet still works.'
 }
 
 /** "Last sent Oct 27 to 2 people", with what failed and what was not read. */
