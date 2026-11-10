@@ -30,6 +30,10 @@ With **All** picked, each month is a section with a bar on top. The bar says the
 
 An overdue job is listed with its property when that property has a date still ahead. It sits under the property's address, greyed, after the jobs that are still on the clock. Its amount reads *still owed*. So one property reads in one place. The Overdue bar says how many of its jobs are listed that way. The Overdue count and its dollars do not change. Press the {{chip:red|Overdue}} pill to see every overdue job in one list.
 
+A property with an overdue job says its money in two piles on its heading. The heading reads like *Lien open on 5 jobs · $13,439 · lien gone on 3 · $4,608 · $18,047 owed here*. The first pile is what a lien can still cover. The second pile is owed, and no lien covers it. The GC's total counts the first pile only.
+
+Sometimes the app is the one that is wrong. The work may have run later than the day the app holds. Press **Worked later? ›** on the greyed row. The job's Lien window opens with the last day of work ready to change. Set the day and press {{button:blue|Save the day}}. Every window is counted from that day, so a later day can put the job back on the lien.
+
 :::example the bar on top of this month
 This month by Oct 15, in 14 days. 24 notices across 9 GCs.
 :::

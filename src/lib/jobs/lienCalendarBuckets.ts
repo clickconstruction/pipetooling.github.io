@@ -1,5 +1,6 @@
 import { buildLienCalendar, kindsQueue, lienAddressKey, lienCalendarRowMatches, type LienCalendarGroup, type LienCalendarJob, type LienCalendarPropertyRows } from './lienCalendar'
 import { formatYmdMonthDay } from './billedExpectedPay'
+import { formatUsdNoCents } from './jobFormatting'
 import { daysBetweenYmd } from './lienPayRunway'
 import { LIEN_DESK_LEAD_DAYS } from './lienDesk'
 
@@ -327,13 +328,55 @@ export function placeOverdueWithProperty(buckets: ReadonlyArray<LienCalendarBuck
   })
 }
 
+/**
+ * A property's money in two piles (v2.6849): what a lien can still cover and what closed its
+ * window unsent. A group's total counts only the first pile, so the office read $13,439 on the
+ * desk against $18,046.50 owed at 628 Terrell Rd and could not see the three jobs between them.
+ * The heading now says both and their sum. Null when nothing at the property closed: the rows
+ * already add up to the group's total there.
+ */
+export type LienPropertyTally = {
+  open: { jobs: number; total: number }
+  gone: { jobs: number; total: number }
+  owed: number
+  /** "Lien open on 5 jobs · $13,439 · lien gone on 3 · $4,608 · $18,047 owed here" */
+  words: string
+  /** The phone's line: "$13,439 lien open · $4,608 lien gone · $18,047 owed". */
+  short: string
+  /** The hover: why the piles differ, and the press that fixes a day set too early. */
+  title: string
+}
+
+export function lienPropertyTally(p: Pick<LienCalendarPropertyRows, 'jobs' | 'closed'>): LienPropertyTally | null {
+  if (p.closed.length === 0) return null
+  const sum = (list: ReadonlyArray<LienCalendarJob>) => list.reduce((s, j) => s + j.openBalance, 0)
+  const open = { jobs: p.jobs.length, total: sum(p.jobs) }
+  const gone = { jobs: p.closed.length, total: sum(p.closed) }
+  const owed = open.total + gone.total
+  return {
+    open,
+    gone,
+    owed,
+    words: `Lien open on ${plural(open.jobs, 'job', 'jobs')} · ${formatUsdNoCents(open.total)} · lien gone on ${gone.jobs} · ${formatUsdNoCents(gone.total)} · ${formatUsdNoCents(owed)} owed here`,
+    short: `${formatUsdNoCents(open.total)} lien open · ${formatUsdNoCents(gone.total)} lien gone · ${formatUsdNoCents(owed)} owed`,
+    title: `A lien can still cover ${plural(open.jobs, 'job', 'jobs')} here. ${gone.jobs === 1 ? 'One more closed its window' : `${gone.jobs} more closed their windows`} with nothing sent, so that money is owed and no lien covers it. The desk’s totals count the first pile only. If the work ran later than the app thinks, press Worked later? on the row.`,
+  }
+}
+
+/** The press on a lien-gone row (v2.6849): the Lien window with the last day of work open to change. A later day reopens the windows counted from it. */
+export const LIEN_WORKED_LATER = 'Worked later? ›'
+export function lienWorkedLaterLabel(number: string): string {
+  return `Worked later? Change the last day of work · ${number}`
+}
+export const LIEN_WORKED_LATER_TITLE = 'Did the work run later than this? Set the last day of work. The windows are counted from it, so a later day can put this job back on the lien.'
+
 /** A group's rows as the board draws them: a heading per property and its overdue jobs greyed, when the group lists any; else its jobs. */
-export type LienCalendarRow = { kind: 'label'; key: string; label: string } | { kind: 'job'; key: string; job: LienCalendarJob; closed: boolean }
+export type LienCalendarRow = { kind: 'label'; key: string; label: string; tally: LienPropertyTally | null } | { kind: 'job'; key: string; job: LienCalendarJob; closed: boolean }
 
 export function lienGroupRows(g: Pick<LienCalendarGroup, 'jobs' | 'byProperty'>): LienCalendarRow[] {
   if (!g.byProperty) return g.jobs.map((job) => ({ kind: 'job', key: job.jobId, job, closed: false }))
   return g.byProperty.flatMap((p): LienCalendarRow[] => [
-    { kind: 'label', key: p.key, label: p.label ?? 'Other properties' },
+    { kind: 'label', key: p.key, label: p.label ?? 'Other properties', tally: lienPropertyTally(p) },
     ...p.jobs.map((job): LienCalendarRow => ({ kind: 'job', key: job.jobId, job, closed: false })),
     ...p.closed.map((job): LienCalendarRow => ({ kind: 'job', key: job.jobId, job, closed: true })),
   ])

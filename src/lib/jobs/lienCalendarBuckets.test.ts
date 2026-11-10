@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienCalendarJob } from './lienCalendar'
-import { buildLienCalendarBoard, lienBucketOf, lienGroupRows, lienNextDate, lienNextDateCounts, lienPhoneLine, lienSameProperty } from './lienCalendarBuckets'
+import { buildLienCalendarBoard, lienBucketOf, lienGroupRows, lienNextDate, lienNextDateCounts, lienPhoneLine, lienPropertyTally, lienSameProperty, lienWorkedLaterLabel } from './lienCalendarBuckets'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 
 // Today is Thursday 2026-10-01 unless a test says otherwise: Oct 15 is 14 days out, Nov 16 46, Dec 15 75.
@@ -252,6 +252,30 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
       '# Other properties',
       '868',
     ])
+  })
+
+  it('a property’s heading says both piles and their sum, which the group’s total leaves out (v2.6849)', () => {
+    const g = thisMonth!.groups[0]!
+    const labels = lienGroupRows(g).flatMap((r) => (r.kind === 'label' ? [r] : []))
+    const terrell = labels.find((r) => r.label.startsWith('628 Terrell'))!.tally!
+    expect(terrell.open).toEqual({ jobs: 1, total: 1710 })
+    expect(terrell.gone).toEqual({ jobs: 2, total: 2245 + 650 })
+    expect(terrell.owed).toBe(1710 + 2245 + 650)
+    expect(terrell.words).toBe('Lien open on 1 job · $1,710 · lien gone on 2 · $2,895 · $4,605 owed here')
+    expect(terrell.short).toBe('$1,710 lien open · $2,895 lien gone · $4,605 owed')
+    expect(terrell.title).toContain('2 more closed their windows')
+    const lenox = labels.find((r) => r.label.startsWith('9703 Lenox'))!.tally!
+    expect(lenox.words).toBe('Lien open on 2 jobs · $25,487 · lien gone on 1 · $1,050 · $26,537 owed here')
+    expect(lenox.title).toContain('One more closed its window')
+    // Nothing closed among the group's other properties: the rows already add up.
+    expect(labels.find((r) => r.label === 'Other properties')!.tally).toBeNull()
+    // The piles are the property's, so every tally's open money is part of the group's total and no gone money is.
+    expect(g.total).toBe(terrell.open.total + lenox.open.total + 2650)
+  })
+
+  it('a property with nothing closed has no tally, and the row’s press names the job', () => {
+    expect(lienPropertyTally({ jobs: [job({ jobId: 'a' })], closed: [] })).toBeNull()
+    expect(lienWorkedLaterLabel('608')).toBe('Worked later? Change the last day of work · 608')
   })
 
   it('a group that lists none draws its jobs as before', () => {
