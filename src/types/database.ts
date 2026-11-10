@@ -5223,6 +5223,86 @@ export type Database = {
           },
         ]
       }
+      builder_marks: {
+        Row: {
+          builder_key: string
+          id: string
+          mark: string
+          marked_at: string
+          marked_by: string
+          reason: string
+        }
+        Insert: {
+          builder_key: string
+          id?: string
+          mark: string
+          marked_at?: string
+          marked_by: string
+          reason?: string
+        }
+        Update: {
+          builder_key?: string
+          id?: string
+          mark?: string
+          marked_at?: string
+          marked_by?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builders: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          key: string
+          kind: string | null
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          key: string
+          kind?: string | null
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          key?: string
+          kind?: string | null
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builders_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_tasks: {
         Row: {
           bid_id: string | null
@@ -29368,37 +29448,53 @@ export type Database = {
         Row: {
           decided_at: string
           decided_by: string
+          for_user_id: string | null
           id: string
           look_again_on: string | null
           permit_id: string
           prospect_id: string | null
+          pursue_for: string | null
           reason: string
+          reason_code: string | null
           verdict: string
         }
         Insert: {
           decided_at?: string
           decided_by: string
+          for_user_id?: string | null
           id?: string
           look_again_on?: string | null
           permit_id: string
           prospect_id?: string | null
+          pursue_for?: string | null
           reason: string
+          reason_code?: string | null
           verdict: string
         }
         Update: {
           decided_at?: string
           decided_by?: string
+          for_user_id?: string | null
           id?: string
           look_again_on?: string | null
           permit_id?: string
           prospect_id?: string | null
+          pursue_for?: string | null
           reason?: string
+          reason_code?: string | null
           verdict?: string
         }
         Relationships: [
           {
             foreignKeyName: "permit_verdicts_decided_by_fkey"
             columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_verdicts_for_user_id_fkey"
+            columns: ["for_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -29424,6 +29520,7 @@ export type Database = {
           address: string | null
           address_key: string | null
           area_sf: number | null
+          builder_key: string | null
           city: string
           contact: string | null
           declared_value: number | null
@@ -29449,6 +29546,7 @@ export type Database = {
           address?: string | null
           address_key?: string | null
           area_sf?: number | null
+          builder_key?: string | null
           city: string
           contact?: string | null
           declared_value?: number | null
@@ -29474,6 +29572,7 @@ export type Database = {
           address?: string | null
           address_key?: string | null
           area_sf?: number | null
+          builder_key?: string | null
           city?: string
           contact?: string | null
           declared_value?: number | null
@@ -44382,6 +44481,18 @@ export type Database = {
         Returns: undefined
       }
       people_phones_from_accounts: { Args: never; Returns: number }
+      permit_funnel: {
+        Args: { p_city: string; p_since: string }
+        Returns: Json
+      }
+      permit_set_builder_keys: { Args: { p_pairs: Json }; Returns: number }
+      permit_skim_wait: {
+        Args: { p_city: string; p_floor?: number }
+        Returns: {
+          oldest_on: string
+          waiting: number
+        }[]
+      }
       person_counsel_only_count: {
         Args: { p_person_id: string }
         Returns: number
@@ -44783,6 +44894,28 @@ export type Database = {
         Returns: string
       }
       request_is_dev_seat: { Args: never; Returns: boolean }
+      research_builders: {
+        Args: { p_city: string }
+        Returns: {
+          bids: number
+          customer_id: string
+          key: string
+          kind: string
+          last_bid_on: string
+          last_permit_on: string
+          mark: string
+          mark_at: string
+          mark_by_name: string
+          mark_reason: string
+          name: string
+          open: number
+          permits: number
+          plumber: string
+          plumber_jobs: number
+          sample_contact: string
+          won: number
+        }[]
+      }
       research_contact_history: {
         Args: { p_keys: string[] }
         Returns: {
@@ -44823,6 +44956,52 @@ export type Database = {
           verdict_look_again_on: string
           verdict_prospect_id: string
           verdict_reason: string
+          work_type: string
+          zip: string
+        }[]
+      }
+      research_permits_v2: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          builder_key: string
+          builder_kind: string
+          builder_mark: string
+          builder_mark_at: string
+          builder_mark_by_name: string
+          builder_mark_reason: string
+          builder_name: string
+          builder_open: number
+          builder_permits: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_permit_on: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_for_name: string
+          verdict_for_user: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_pursue_for: string
+          verdict_reason: string
+          verdict_reason_code: string
           work_type: string
           zip: string
         }[]
