@@ -12,8 +12,9 @@ import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils.ts'
 import { withSupabaseRetry, type SupabaseClientResult } from '../utils/errorHandling.ts'
 import { fetchAllRows } from './supabasePaging.ts'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard.ts'
+import { IN_KIND_COST_SELECT, inKindCostLabel, inKindCostLines } from './inKind/inKindCost.ts'
 
-export type OverheadPartsSource = 'mercury' | 'supply' | 'tally'
+export type OverheadPartsSource = 'mercury' | 'supply' | 'tally' | 'in_kind'
 
 export type OverheadPartsDetailLine = {
   source: OverheadPartsSource
@@ -231,6 +232,21 @@ export async function readOverheadOfficePartsByDay(db: SupabaseClient<Database>,
     }
   }
 
+  {
+    // v2.6836 (punch list #301): what a partner gave instead of money, with no job on it, is overhead on the day it was
+    // given. So is a line put on the office job itself. No card and no supply house bill will ever carry it.
+    const rows = await withSupabaseRetry(
+      () => {
+        const q = db.from('in_kind_lines').select(IN_KIND_COST_SELECT).is('removed_at', null).gt('amount', 0).gte('given_on', startYmd).lte('given_on', endYmd)
+        // With no office job named, only the lines on no job are overhead.
+        const scoped = officeJobLedgerId ? q.or(`cost_job_id.is.null,cost_job_id.eq.${officeJobLedgerId}`) : q.is('cost_job_id', null)
+        return scoped.order('given_on', { ascending: true }).limit(2000) as unknown as PromiseLike<SupabaseClientResult<Parameters<typeof inKindCostLines>[0]>>
+      },
+      'overhead office parts in kind',
+    )
+    for (const l of inKindCostLines(rows)) addLine(l.givenOn, { source: 'in_kind', amountUsd: l.amount, label: inKindCostLabel(l), sortKey: `in_kind:${l.id}` })
+  }
+
   for (const [k, list] of partsDetailByDay) {
     list.sort((a, b) => {
       const sd = a.source.localeCompare(b.source)
@@ -365,6 +381,19 @@ export async function readOtherJobsPartsByDay(db: SupabaseClient<Database>, args
       const label = partName ? `${fixture} — ${partName}` : fixture
       addLine(ymd, { source: 'tally', amountUsd: lineTotal, label, sortKey: `tally:${row.id}` })
     }
+  }
+
+  {
+    // v2.6836 (punch list #301): a line put on a job is that job's material.
+    const rows = await withSupabaseRetry(
+      () => {
+        let q = db.from('in_kind_lines').select(IN_KIND_COST_SELECT).is('removed_at', null).gt('amount', 0).not('cost_job_id', 'is', null).gte('given_on', startYmd).lte('given_on', endYmd)
+        if (officeJobLedgerId) q = q.neq('cost_job_id', officeJobLedgerId)
+        return q.order('given_on', { ascending: true }).limit(2000) as unknown as PromiseLike<SupabaseClientResult<Parameters<typeof inKindCostLines>[0]>>
+      },
+      'overhead other jobs parts in kind',
+    )
+    for (const l of inKindCostLines(rows)) addLine(l.givenOn, { source: 'in_kind', amountUsd: l.amount, label: inKindCostLabel(l), sortKey: `in_kind:${l.id}` })
   }
 
   for (const [k, list] of partsDetailByDay) {

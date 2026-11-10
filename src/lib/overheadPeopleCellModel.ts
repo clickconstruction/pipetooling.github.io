@@ -54,7 +54,7 @@ export type OverheadCellPurchaseLine = {
   person: string | null
   usd: number
   label: string
-  source: 'mercury' | 'supply' | 'tally' | 'unknown'
+  source: 'mercury' | 'supply' | 'tally' | 'in_kind' | 'unknown'
   cardLabel: string | null
   bucket: string | null
 }
@@ -171,7 +171,7 @@ function purchaseLine(p: OverheadPeoplePartsInput, idx: number): OverheadCellPur
     ymd: p.workDate,
     person,
     usd: p.amountUsd,
-    label: p.line?.label?.trim() || (p.line?.source === 'supply' ? 'Supply-house invoice' : p.line?.source === 'tally' ? 'Tally line' : 'Purchase'),
+    label: p.line?.label?.trim() || (p.line?.source === 'supply' ? 'Supply-house invoice' : p.line?.source === 'tally' ? 'Tally line' : p.line?.source === 'in_kind' ? 'Given in kind' : 'Purchase'),
     source: p.line?.source ?? 'unknown',
     cardLabel: p.cardLabel?.trim() || null,
     bucket: p.bucket ?? null,

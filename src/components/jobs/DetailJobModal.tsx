@@ -37,6 +37,7 @@ import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
 import JobKindChip from './JobKindChip'
 import { jobCardChargesCountedFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { inKindCostTotal } from '../../lib/inKind/inKindCost'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -1056,10 +1057,10 @@ export default function DetailJobModal({
       supplyInvoiceTotal: materialsSnapshot.supplyInvoiceTotal,
       cardChargesTotal: jobCardChargesCountedFromLines(materialsSnapshot.mercuryAllocLines, materialsSnapshot.cardExclusions),
       tallyPartsTotal: tallyPartsTotalFromLines(materialsSnapshot.tallyPartLines),
-      otherChargesTotal: (fullJob.materials ?? []).reduce(
-        (s: number, m: { amount: number | string | null }) => s + (Number(m.amount) || 0),
-        0,
-      ),
+      // v2.6836: what a partner gave instead of money and the office put on this job counts with the other charges (punch list #301).
+      otherChargesTotal:
+        (fullJob.materials ?? []).reduce((s: number, m: { amount: number | string | null }) => s + (Number(m.amount) || 0), 0) +
+        inKindCostTotal(materialsSnapshot.inKindLines ?? []),
       laborJobs: profitLaborData.laborJobs,
       mileageCost: profitLaborData.mileageCost,
       timePerMile: profitLaborData.timePerMile,

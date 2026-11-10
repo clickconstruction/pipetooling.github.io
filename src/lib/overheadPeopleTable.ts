@@ -40,7 +40,7 @@ export type OverheadPeoplePartsInput = {
   /** Resolved person (card nickname) or null when the purchase has no person. */
   person: string | null
   /** The purchase itself (v2.3264, the cell modal): source + description, the accounting section, the card label. */
-  line?: { source: 'mercury' | 'supply' | 'tally'; label: string; mercuryTransactionId?: string | null }
+  line?: { source: 'mercury' | 'supply' | 'tally' | 'in_kind'; label: string; mercuryTransactionId?: string | null }
   bucket?: string | null
   cardLabel?: string | null
 }

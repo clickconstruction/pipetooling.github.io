@@ -2,7 +2,7 @@
 title: keep track of work paid in kind
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: in kind, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord, monthly credit, credit every month, not entered, no credit this month, needs you
+keywords: in kind, in kind page, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord, monthly credit, credit every month, not entered, no credit this month, needs you
 ---
 Some customers pay for finished work with something other than money. A landlord takes it off the rent. A supplier sends concrete. The customer's page keeps that deal in one place.
 
@@ -102,11 +102,21 @@ Pick the job the goods were used on. The line counts as that job's material.
 
 A line on a job can go back to overhead. Open the ledger and press **Count as overhead** on that line.
 
+An overhead line shows in the overhead pool on the day it was given. A line on a job shows on that job's **Costs** tab as *Given in kind*, and it counts in the job's profit.
+
 ## Read the ledger
 
 Press **Open the ledger** on the card. The ledger shows each line with what it counts as and the bills it went to. Under the lines are the bills the deal pays, oldest first. The next bill in line is marked.
 
 An In kind payment typed on a bill by hand still counts as paid. The ledger says how many there are, and **Show them** lists them.
+
+## See every arrangement
+
+Open [Accounts Receivable](/accounts-receivable) and press **In kind** at the top. The [In kind](/in-kind) page lists every customer who pays this way.
+
+Each row says what is given, how far along it is and what is still to come. A row with a month due comes first. Press the row's press to open that deal on the customer's page.
+
+**Set up paying in kind** on that page finds a customer by name. Use it for a customer with nothing open yet.
 
 ## Take a line back
 

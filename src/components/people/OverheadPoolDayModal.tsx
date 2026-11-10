@@ -171,7 +171,7 @@ export function OverheadPoolDayModal({
                   ) : null}
                   {cn ? <div style={{ ...note, textDecoration: 'none' }}>{cn}</div> : null}
                 </td>
-                <td style={{ ...td, ...muted }}>{card || (l.source === 'supply' ? <span style={note}>supply house invoice</span> : l.source === 'tally' ? <span style={note}>tally entry</span> : <span style={note}>no card (ACH, wire or check)</span>)}</td>
+                <td style={{ ...td, ...muted }}>{card || (l.source === 'supply' ? <span style={note}>supply house invoice</span> : l.source === 'tally' ? <span style={note}>tally entry</span> : l.source === 'in_kind' ? <span style={note}>given in kind, no money</span> : <span style={note}>no card (ACH, wire or check)</span>)}</td>
                 <td style={{ ...td, ...amt, ...muted }}>{money(l.amountUsd, true)}</td>
               </tr>
             )

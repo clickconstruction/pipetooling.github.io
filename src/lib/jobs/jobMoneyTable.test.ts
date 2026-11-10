@@ -33,4 +33,10 @@ describe('buildMoneyRows', () => {
     expect(failed.some((r) => r.key.startsWith('tag:'))).toBe(false)
     expect(buildMoneyRows({ ...base, cardCostLines: [{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 0 }] }).some((r) => r.key.startsWith('tag:'))).toBe(false)
   })
+  it('shows what was given in kind as its own row only when there is some, and counts it in the total (punch list #301)', () => {
+    expect(buildMoneyRows(base).some((r) => r.key === 'inkind')).toBe(false)
+    const rows = buildMoneyRows({ ...base, inKindUsd: 1_475, inKindCount: 1 })
+    expect(rows.find((r) => r.key === 'inkind')).toMatchObject({ label: 'Given in kind', sub: '1 line', usd: 1_475, state: 'ok', accordion: null })
+    expect(rows[rows.length - 1]).toMatchObject({ key: 'total', usd: 42_599.49 + 32_814.43 + 3_776.72 + 1_408.97 + 1_475 })
+  })
 })

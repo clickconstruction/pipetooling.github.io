@@ -96,7 +96,7 @@ function DayRow({ d, showPerson, bidLabelById }: { d: OverheadCellDay; showPerso
 }
 
 function PurchaseRow({ l, showPerson }: { l: Extract<OverheadCellLine, { kind: 'purchase' }>; showPerson: boolean }) {
-  const src = l.cardLabel ? `card · ${l.cardLabel}` : l.source === 'supply' ? 'supply invoice' : l.source === 'tally' ? 'tally' : l.source === 'mercury' ? 'bank (no card)' : 'purchase'
+  const src = l.cardLabel ? `card · ${l.cardLabel}` : l.source === 'supply' ? 'supply invoice' : l.source === 'tally' ? 'tally' : l.source === 'in_kind' ? 'given in kind' : l.source === 'mercury' ? 'bank (no card)' : 'purchase'
   return (
     <tr>
       <td style={{ ...td, textAlign: 'left', color: 'var(--text-700)' }}>{formatStagesNextDateLabel(l.ymd)}</td>

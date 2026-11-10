@@ -1,0 +1,56 @@
+/**
+ * One place for work paid in kind (punch list #301, PR 4): the cost side of a line.
+ *
+ * What a partner gave is a cost that never touched a card or a supply house bill. A line with no job counts as
+ * overhead on the day it was given; a line put on a job counts as that job's material. A line taken back, and a line
+ * of zero, count as nothing. The readers of overhead and of a job's cost call these.
+ */
+import { money2 } from './inKindLedger'
+
+/** A live line with an amount, as a cost reader needs it. */
+export interface InKindCostLine {
+  id: string
+  /** YYYY-MM-DD */
+  givenOn: string
+  amount: number
+  memo: string
+  /** Who gave it. */
+  partner: string
+  /** The job it counts on; null is overhead. */
+  costJobId: string | null
+}
+
+export const IN_KIND_COST_NAME = 'Given in kind'
+
+/** "Lone Oak Concrete: 6 yards of 3000 psi" for a cost line's label. */
+export function inKindCostLabel(l: Pick<InKindCostLine, 'partner' | 'memo'>): string {
+  const who = l.partner.trim()
+  const what = l.memo.trim()
+  return who && what ? `${who}: ${what}` : who || what || IN_KIND_COST_NAME
+}
+
+export const inKindCostTotal = (lines: readonly Pick<InKindCostLine, 'amount'>[]): number => money2(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0))
+
+type CostRow = {
+  id: string
+  given_on: string
+  amount: number | string | null
+  memo: string | null
+  cost_job_id: string | null
+  removed_at?: string | null
+  arrangement?: { partner_name: string | null } | Array<{ partner_name: string | null }> | null
+}
+
+/** The select every cost reader uses, and the rows it returns as cost lines. */
+export const IN_KIND_COST_SELECT = 'id, given_on, amount, memo, cost_job_id, removed_at, arrangement:in_kind_arrangements(partner_name)'
+
+export function inKindCostLines(rows: readonly CostRow[] | null | undefined): InKindCostLine[] {
+  const out: InKindCostLine[] = []
+  for (const r of rows ?? []) {
+    const amount = Number(r.amount ?? 0)
+    if (r.removed_at || !(amount > 0) || !r.given_on) continue
+    const arr = Array.isArray(r.arrangement) ? r.arrangement[0] : r.arrangement
+    out.push({ id: r.id, givenOn: r.given_on.slice(0, 10), amount: money2(amount), memo: (r.memo ?? '').trim(), partner: (arr?.partner_name ?? '').trim(), costJobId: r.cost_job_id })
+  }
+  return out
+}

@@ -91,7 +91,22 @@ export default function CustomerInKindCard({
   // A door from Needs you: ?inKind=<deal>&month=YYYY-MM-01 opens that month's window, or the ledger when the month is settled.
   const doorDeal = searchParams.get('inKind')
   const doorMonth = searchParams.get('month')
+  const doorNew = searchParams.get('inKindNew')
   useEffect(() => {
+    // The list page's set-up press lands here with ?inKindNew=1: the terms window opens for a new deal, unless one is open already.
+    if (doorNew && deals != null) {
+      const live = deals.find((d) => !d.arrangement.ended_at)
+      setOpen(live ? { kind: 'ledger', id: live.arrangement.id } : { kind: 'new' })
+      setSearchParams(
+        (p) => {
+          const n = new URLSearchParams(p)
+          n.delete('inKindNew')
+          return n
+        },
+        { replace: true },
+      )
+      return
+    }
     if (!doorDeal || deals == null) return
     const d = deals.find((x) => x.arrangement.id === doorDeal)
     if (d) {
@@ -107,7 +122,7 @@ export default function CustomerInKindCard({
       },
       { replace: true },
     )
-  }, [doorDeal, doorMonth, deals, monthsById, setSearchParams])
+  }, [doorDeal, doorMonth, doorNew, deals, monthsById, setSearchParams])
 
   if (failed) {
     return (

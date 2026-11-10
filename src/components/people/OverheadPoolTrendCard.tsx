@@ -360,7 +360,7 @@ export function OverheadPoolTrendCard({
                     const what =
                       l.kind === 'parts' ? (
                         <>
-                          <span style={srcBadgeStyle}>{l.source === 'mercury' ? 'card' : l.source === 'supply' ? 'supply invoice' : 'tally'}</span>
+                          <span style={srcBadgeStyle}>{l.source === 'mercury' ? 'card' : l.source === 'supply' ? 'supply invoice' : l.source === 'in_kind' ? 'given in kind' : 'tally'}</span>
                           {l.label}
                           {cardLabelForLine && cardLabelForLine(l) ? <span style={{ color: 'var(--text-muted)' }}> · {cardLabelForLine(l)}</span> : null}
                         </>

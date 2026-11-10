@@ -103,6 +103,8 @@ export function overheadPartsCounterparty(line: Pick<OverheadPartsDetailLine, 's
   const t = line.label.trim()
   if (line.source === 'supply') return t.split(' · #')[0]?.trim() || 'Supply invoice'
   if (line.source === 'tally') return t || 'Tally entry'
+  // "Lone Oak Concrete: 6 yards" → "Lone Oak Concrete": who gave it is the counterparty.
+  if (line.source === 'in_kind') return t.split(':')[0]?.trim() || 'Given in kind'
   return t || 'Card purchase'
 }
 

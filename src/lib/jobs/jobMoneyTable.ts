@@ -8,7 +8,7 @@
 import type { MaterialsAccordionKey } from '../../components/jobs/useJobCostSnapshot'
 
 /** `tag:<id>` is a cost-line slice of the card charges (⛽ Fuel & gas, punch list #52). */
-export type MoneyRowKey = 'supply' | 'team' | 'card' | 'sub' | 'tally' | 'other' | 'total' | `tag:${string}`
+export type MoneyRowKey = 'supply' | 'team' | 'card' | 'sub' | 'tally' | 'other' | 'inkind' | 'total' | `tag:${string}`
 export type MoneyRow = {
   key: MoneyRowKey
   label: string
@@ -29,6 +29,8 @@ export type MoneyInputs = {
   subUsd: number; subCount: number; subLoading: boolean; subFailed: boolean
   tallyUsd: number; tallyCount: number; tallyFailed: boolean
   otherUsd: number; otherCount: number
+  /** What a partner gave instead of money and the office put on this job (punch list #301); the row shows only when there is some. */
+  inKindUsd?: number; inKindCount?: number
 }
 
 const n = (v: number): number => (Number.isFinite(v) ? v : 0)
@@ -46,6 +48,7 @@ export function buildMoneyRows(i: MoneyInputs): MoneyRow[] {
     { key: 'sub', label: 'Sub labor', sub: plural(i.subCount, 'sheet'), hours: null, usd: n(i.subUsd), sharePct: null, state: i.subLoading ? 'loading' : i.subFailed ? 'failed' : 'ok', accordion: null },
     { key: 'tally', label: 'Parts from tally', sub: plural(i.tallyCount, 'part'), hours: null, usd: n(i.tallyUsd), sharePct: null, state: i.tallyFailed ? 'failed' : 'ok', accordion: 'tally' },
     { key: 'other', label: 'Other job charges', sub: i.otherCount > 0 ? plural(i.otherCount, 'line') : '+ Add other charge below', hours: null, usd: n(i.otherUsd), sharePct: null, state: 'ok', accordion: 'billed' },
+    ...((i.inKindCount ?? 0) > 0 ? [{ key: 'inkind', label: 'Given in kind', sub: plural(i.inKindCount ?? 0, 'line'), hours: null, usd: n(i.inKindUsd ?? 0), sharePct: null, state: 'ok', accordion: null } satisfies MoneyRow] : []),
   ]
   const total = rows.reduce((s, r) => s + (r.state === 'ok' ? r.usd : 0), 0)
   for (const r of rows) r.sharePct = total > 0 && r.state === 'ok' && r.usd > 0 ? (r.usd / total) * 100 : null

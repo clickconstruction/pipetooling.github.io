@@ -18,6 +18,7 @@ import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import AcceptInvite from './pages/AcceptInvite'
 const Customers = lazy(() => import('./pages/Customers'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
+const InKind = lazy(() => import('./pages/InKind'))
 const DevelopmentPage = lazy(() => import('./pages/DevelopmentPage'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
@@ -379,6 +380,7 @@ function AppContent() {
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
+          <Route path="in-kind" element={<ErrorBoundary><InKind /></ErrorBoundary>} />
           <Route path="legal-desk" element={<LegalDeskPage />} />
           <Route path="lien-desk" element={<LienDeskPage />} />
           <Route path="projects-board" element={<ErrorBoundary><ProjectsBoard /></ErrorBoundary>} />

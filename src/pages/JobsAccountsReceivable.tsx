@@ -103,6 +103,10 @@ export default function JobsAccountsReceivable() {
               Jobs
             </Link>
           ) : null}
+          {/* v2.6836: work paid with something other than money has its own list (punch list #301). */}
+          <Link to="/in-kind" style={{ color: 'var(--text-link)' }}>
+            In kind
+          </Link>
           <Link to="/dashboard" style={{ color: 'var(--text-link)' }}>
             Dashboard
           </Link>

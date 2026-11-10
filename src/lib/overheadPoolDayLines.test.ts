@@ -107,6 +107,9 @@ describe('buildOverheadPoolDayIndex', () => {
   it('keys counterparties by name, not invoice number', () => {
     expect(overheadPartsCounterparty({ source: 'supply', label: 'Ferguson · #4471' })).toBe('Ferguson')
     expect(overheadPartsCounterparty({ source: 'supply', label: '' })).toBe('Supply invoice')
+    // v2.6836: who gave it is the counterparty of a line given in kind (punch list #301).
+    expect(overheadPartsCounterparty({ source: 'in_kind', label: 'Lone Oak Concrete: 6 yards of 3000 psi' })).toBe('Lone Oak Concrete')
+    expect(overheadPartsCounterparty({ source: 'in_kind', label: '' })).toBe('Given in kind')
     expect(overheadPartsCounterparty({ source: 'mercury', label: ' Home Depot ' })).toBe('Home Depot')
     expect(overheadPartsCounterparty({ source: 'tally', label: 'Lav — 1/2" copper' })).toBe('Lav — 1/2" copper')
   })

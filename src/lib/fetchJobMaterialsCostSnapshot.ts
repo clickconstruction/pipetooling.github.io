@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import { fetchAllRows } from './supabasePaging'
+import type { InKindCostLine } from './inKind/inKindCost'
+import { loadInKindCostLinesForJob } from './inKind/inKindIo'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
 import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
@@ -45,6 +47,11 @@ export type JobMaterialsCostSnapshot = SharedJobMaterialsCostSnapshot & {
   cardTagByTxId?: ReadonlyMap<string, CategoryTagRow>
   /** The job's card transactions in the fuel family's tag — the cost timeline's ⛽ stream. */
   cardFuelTxIds?: ReadonlySet<string>
+  /**
+   * What a partner gave instead of money and the office put on this job (punch list #301, v2.6836): a material cost
+   * no card and no supply house bill carries. Empty when there is none, or when the reader is not the office.
+   */
+  inKindLines?: InKindCostLine[]
 }
 
 /**
@@ -173,6 +180,15 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
     tallyLines = []
   }
 
+  // In kind (punch list #301): the lines put on this job. The office's read; anyone else gets none, and a failed read
+  // leaves the cost as it was before.
+  let inKindLines: InKindCostLine[] = []
+  try {
+    inKindLines = await loadInKindCostLinesForJob(jobId)
+  } catch {
+    inKindLines = []
+  }
+
   return {
     supplyInvoiceTotal: supplyTotal,
     supplyInvoiceRpcFailed: supplyRpcFailed,
@@ -185,5 +201,6 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
     cardFuelTxIds,
     tallyPartLines: tallyLines,
     tallyFetchFailed: tallyFailed,
+    inKindLines,
   }
 }
