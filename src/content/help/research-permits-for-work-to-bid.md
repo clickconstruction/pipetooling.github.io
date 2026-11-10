@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, second look, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, second look, history, who moved, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -41,11 +41,19 @@ Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has 
 
 Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
 
+Anyone can press **Keep** on a passed row. Keep moves the permit to **Kept** under your name. Keep works on your own pass too.
+
+## See who moved a permit
+
+Every answer is kept with a name and a day. A card that was answered before shows a **History** row. The row lists the last two moves, newest first.
+
+Open the permit to read all of it. The sheet lists every move under **What we did**. A line reads like *Sam passed, Nov 9: too far*.
+
 ## Take a second look at what someone else passed
 
-A grey count sits beside **Skim** when someone else has passed permits. It reads like *12 passed*. Press it. It deals those permits one card at a time, best first. The number is how many wait on you.
+A grey count sits beside **Skim** when someone else has passed permits. The count reads like *12 passed*. Press the count. The deck deals those permits one card at a time, best first. The number is how many wait on you.
 
-The amber line on the card says who passed and when. It gives their reason when they tapped one.
+The amber line on the card says who passed and when. The line gives their reason when they tapped one.
 
 Press **Keep** to move the permit to **Kept** under your name. Press **Pass** to agree with the first pass. Undo works the same as on the skim.
 

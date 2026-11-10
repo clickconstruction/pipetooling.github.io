@@ -431,7 +431,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'New commercial, 6,200 sq ft' }))
       const sheet = await screen.findByRole('dialog')
       await waitFor(() => expect(within(sheet).getByText('What we did')).toBeTruthy())
-      await waitFor(() => expect(within(sheet).getByText('Kept on the skim.')).toBeTruthy())
+      await waitFor(() => expect(within(sheet).getByText('Eve kept it, Nov 8')).toBeTruthy())
       fireEvent.click(within(sheet).getByRole('button', { name: 'Not pursuing…' }))
       // The press says what it will do, and rests until a reason is picked.
       const rest = screen.getByRole('button', { name: 'Pick a reason' })
@@ -466,6 +466,71 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.change(screen.getByLabelText('Search closed permits'), { target: { value: 'millrace' } })
       fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
       await waitFor(() => expect(io.putBackPermit).toHaveBeenCalledWith('c1', 'u1'))
+    })
+
+    describe('anyone moves a pass to Kept, and every card says who moved what and when', () => {
+      it('a passed row has Keep for anyone, the one who passed included, and the words say whose pass it was', async () => {
+        io.loadResearchPermits.mockResolvedValue([passed({ verdict_by: 'u1' })])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Closed 1' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Keep' }))
+        await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'c1', verdict: 'look', reason: 'Kept from Passed, after Eve passed.' })))
+      })
+
+      it('a permit passed twice can still be kept from the list, and one a plumber has cannot', async () => {
+        io.loadResearchPermits.mockResolvedValue([passed({ verdict_reason_code: 'sl_none', verdict_reason: 'Passed on a second look.' })])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Closed 1' }))
+        expect(await screen.findByRole('button', { name: 'Keep' })).toBeTruthy()
+        cleanup()
+
+        io.loadResearchPermits.mockResolvedValue([passed({ plumber_permit_on: '2026-11-08' })])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Closed 1' }))
+        fireEvent.click(await screen.findByRole('button', { name: /^Has a plumber/ }))
+        await screen.findByText('60 MILLRACE ROW · Tall Pine Development')
+        expect(screen.queryByRole('button', { name: 'Keep' })).toBeNull()
+      })
+
+      const twoMoves = [
+        { id: 'e2', verdict: 'back', reason: 'Put back on the skim.', reason_code: null, decided_at: '2026-11-09T16:00:00Z', by_name: 'Eve', for_name: null, pursue_for: null },
+        { id: 'e1', verdict: 'not_for_us', reason: 'Passed on the skim: too far.', reason_code: 'too_far', decided_at: '2026-11-08T16:00:00Z', by_name: 'Sam', for_name: null, pursue_for: null },
+      ]
+
+      it('a skim card that was moved before says so, newest first, and its sheet holds the same lines', async () => {
+        io.loadPermitHistory.mockResolvedValue(twoMoves)
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        expect(await screen.findByText('Eve put it back on the skim, Nov 9')).toBeTruthy()
+        expect(screen.getByText('Sam passed, Nov 8: too far')).toBeTruthy()
+        expect(screen.getByText('History')).toBeTruthy()
+        expect(io.loadPermitHistory).toHaveBeenCalledWith('p1')
+        fireEvent.click(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' }))
+        const sheet = await screen.findByRole('dialog')
+        await waitFor(() => expect(within(sheet).getByText('Sam passed, Nov 8: too far')).toBeTruthy())
+        expect(within(sheet).getByText('What we did')).toBeTruthy()
+      })
+
+      it('a card nobody has answered draws no history row, and its sheet says nobody has', async () => {
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        await waitFor(() => expect(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' })).toBeTruthy())
+        expect(screen.queryByText('History')).toBeNull()
+        fireEvent.click(screen.getByRole('button', { name: 'SAMPLE HOLDINGS LLC' }))
+        const sheet = await screen.findByRole('dialog')
+        await waitFor(() => expect(within(sheet).getByText('Nobody has answered this permit yet.')).toBeTruthy())
+      })
+
+      it('a second-look card leaves out the pass its amber line says and shows what came before', async () => {
+        io.loadResearchPermits.mockResolvedValue([passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })])
+        io.loadPermitHistory.mockResolvedValue([
+          { id: 'e3', verdict: 'not_for_us', reason: 'Passed on the skim: too far.', reason_code: 'too_far', decided_at: '2026-11-09T15:00:00Z', by_name: 'Sam', for_name: null, pursue_for: null },
+          { id: 'e2', verdict: 'back', reason: 'Put back on the skim.', reason_code: null, decided_at: '2026-11-08T15:00:00Z', by_name: 'Eve', for_name: null, pursue_for: null },
+        ])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Second look: 1 passed by someone else' }))
+        expect(await screen.findByText('Eve put it back on the skim, Nov 8')).toBeTruthy()
+        expect(screen.getByText('Before')).toBeTruthy()
+        expect(screen.queryByText('Sam passed, Nov 9: too far')).toBeNull()
+      })
     })
 
     it('Builders lists who is building, and a mark needs its reason', async () => {
