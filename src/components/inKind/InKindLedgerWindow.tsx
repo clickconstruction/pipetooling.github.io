@@ -9,7 +9,7 @@ import ConfirmDialog from '../ConfirmDialog'
 import { EmptyState } from '../EmptyState'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { inKindTotals, liveLines, lineStanding, type InKindLine } from '../../lib/inKind/inKindLedger'
+import { inKindTotals, liveLines, lineStanding, monthYearShort, type InKindLine, type InKindMonth } from '../../lib/inKind/inKindLedger'
 import { removeInKindLine, setInKindLineCost, type InKindLedgerData, type InKindLedgerJob } from '../../lib/inKind/inKindIo'
 import {
   IN_KIND_ADD_LINE,
@@ -25,6 +25,8 @@ import {
   leftWords,
   lineWentWords,
   linesWord,
+  monthOpenPress,
+  monthStateWords,
   takeBackWords,
   termsSentence,
   unbilledWords,
@@ -47,6 +49,8 @@ export default function InKindLedgerWindow({
   onChanged,
   onAddLine,
   onChangeTerms,
+  months = [],
+  onEnterMonth,
   io = REAL_IO,
 }: {
   data: InKindLedgerData
@@ -55,6 +59,10 @@ export default function InKindLedgerWindow({
   onChanged: () => void
   onAddLine: () => void
   onChangeTerms: () => void
+  /** A monthly deal's months, newest first; empty for a deal with no schedule. */
+  months?: InKindMonth[]
+  /** Opens the window that enters a month with no line. */
+  onEnterMonth?: (month: string) => void
   io?: InKindLedgerIo
 }) {
   const toast = useToastContext()
@@ -196,6 +204,28 @@ export default function InKindLedgerWindow({
         </div>
         {unbilledWords(totals) ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{unbilledWords(totals)}</div> : null}
         {ahead ? <div style={amberStrip}>{ahead}</div> : null}
+
+        {months.length > 0 ? (
+          <div data-testid="in-kind-months">
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }}>Month by month</div>
+            {months.map((m) => (
+              <div key={m.month} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '7px 8px', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', background: m.state === 'due' ? 'var(--bg-amber-tint)' : 'transparent' }}>
+                <span style={{ color: 'var(--text-strong)' }}>
+                  <b>{monthYearShort(m.month)}</b>
+                  {m.bankPaid != null ? <span style={{ color: 'var(--text-muted)' }}> · {usd(m.bankPaid)} left the bank</span> : null}
+                </span>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center', color: m.state === 'due' ? 'var(--text-amber-800)' : 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+                  {monthStateWords(m.state, m.line?.amount ?? 0)}
+                  {m.state === 'due' && onEnterMonth && !ended ? (
+                    <button type="button" onClick={() => onEnterMonth(m.month)} style={bluePress()}>
+                      {monthOpenPress(m.month)}
+                    </button>
+                  ) : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div>
           <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }}>What was given</div>

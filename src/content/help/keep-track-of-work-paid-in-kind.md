@@ -2,7 +2,7 @@
 title: keep track of work paid in kind
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: in kind, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord
+keywords: in kind, paid in kind, pays in kind, trade, barter, rent credit, credit instead of money, concrete, gravel, arrangement, ledger, add a line, overhead, counts on a job, scheduled in kind, take back a line, landlord, monthly credit, credit every month, not entered, no credit this month, needs you
 ---
 Some customers pay for finished work with something other than money. A landlord takes it off the rent. A supplier sends concrete. The customer's page keeps that deal in one place.
 
@@ -49,6 +49,40 @@ One line can pay two bills. The app writes one In kind payment on each, and each
 :::example A load of concrete
 A supplier owes $6,800.00 for a wash rack job. They send 6 yards of concrete worth $885.00. You add one line for $885.00. The wash rack bill now has $885.00 less open.
 :::
+
+## A credit every month
+
+Some deals have a credit each month, such as rent. Tick **It has a credit every month** when you set the deal up, or under **Change the terms**.
+
+:::steps
+
+Type the usual credit a month.
+
+Pick the first month to enter. Months before it were typed by hand and stay as they are.
+
+If the credit comes off a bill you pay, type the whole monthly bill and its name at the bank. Both are optional.
+
+:::
+
+The app then watches each month. A month is due once it is over, or once its bill has left the bank. The card shows an amber line, and the Dashboard's **Needs you** card shows one too.
+
+:::steps
+
+Press the blue press on that line. It names the month, for example *Enter November's credit*.
+
+Read **What the bank shows**. The window picks the credit from it.
+
+Pick another answer if the bank is wrong. **No credit this month** settles a month when the whole bill was paid.
+
+Press the blue press. It names the month and the amount.
+
+:::
+
+:::example Half the rent
+The rent is $3,000.00 and the usual credit is $1,500.00. In a month $1,500.00 left the bank, the window picks $1,500.00. In a month nothing left the bank, it picks $3,000.00. In a month the whole rent was paid, it picks no credit.
+:::
+
+Nothing is entered by itself. The app suggests, and you press.
 
 ## Overhead or a job
 

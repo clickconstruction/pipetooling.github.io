@@ -45,6 +45,7 @@ export type NeedsYouSource =
   | 'contracts'
   | 'unpricedWorkOrders'
   | 'jobKindGaps'
+  | 'inKindCredits'
   | 'baselineGaps'
   | 'lineBudgetsReview'
   // Materials on site (punch list #209, v2.6728): the boxes due a count and the week's shortfalls, the office's.
@@ -102,6 +103,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'contracts',
   'unpricedWorkOrders',
   'jobKindGaps',
+  'inKindCredits',
   'baselineGaps',
   'lineBudgetsReview',
   'materialsOnSite',
@@ -180,6 +182,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'contracts':
     case 'unpricedWorkOrders':
     case 'jobKindGaps':
+    case 'inKindCredits':
     case 'baselineGaps':
     case 'materialsOnSite':
     case 'jobFollowups':

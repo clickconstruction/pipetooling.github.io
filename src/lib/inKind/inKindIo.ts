@@ -8,7 +8,9 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { isInKindPaymentType } from '../jobs/inKindPayment'
-import { parseInKindAddResult, type InKindAddResult, type InKindArrangement, type InKindJob, type InKindLine, type InKindPayment } from './inKindLedger'
+import { addMonths, parseInKindAddResult, type InKindAddResult, type InKindArrangement, type InKindJob, type InKindLine, type InKindPayment } from './inKindLedger'
+import { bankPaidLines, type BankLine, type BankPaidLine } from './inKindBank'
+import type { InKindDealForDue } from './inKindCreditsDue'
 
 export interface InKindBill {
   id: string
@@ -278,4 +280,66 @@ export async function searchInKindCostJobs(text: string): Promise<Array<InKindCo
     job_name: r.job_name,
     job_address: r.job_address,
   }))
+}
+
+// ---------- the bank, for a monthly deal (PR 3) ----------
+
+
+/**
+ * The bank's lines to a deal's payee since its first month, oldest first. Empty for a deal with no payee. The office
+ * reads the feed under its own RLS; a role that cannot read it gets an error, and the caller goes on without the bank.
+ */
+export async function loadInKindBankLines(payee: string, firstMonth: string): Promise<BankPaidLine[]> {
+  const name = payee.trim()
+  if (!name) return []
+  // A day early on the low side: a line's day is read in the company's calendar, not UTC.
+  const lowIso = `${addMonths(firstMonth, 0).slice(0, 8)}01T00:00:00Z`
+  const low = new Date(new Date(lowIso).getTime() - 86_400_000).toISOString()
+  const pattern = `%${name.replace(/[%_,()]/g, ' ').replace(/\s+/g, '%')}%`
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('mercury_transactions')
+        .select('id, amount, posted_at, created_at, status, counterparty_name, duplicate_of_transaction_id')
+        .lt('amount', 0)
+        .ilike('counterparty_name', pattern)
+        .gte('created_at', low)
+        .order('created_at', { ascending: true })
+        .limit(1000),
+    'read the bank for the in kind credit',
+  )
+  return bankPaidLines((rows ?? []) as unknown as BankLine[], name)
+}
+
+/** Every open monthly deal with what the Needs you line needs: its scheduled lines, its jobs' balances and the bank. */
+export async function loadInKindDealsForDue(): Promise<InKindDealForDue[]> {
+  const rows = await withSupabaseRetry(
+    () => supabase.from('in_kind_arrangements').select(ARRANGEMENT_COLS).is('ended_at', null).not('monthly_amount', 'is', null).order('created_at', { ascending: true }),
+    'read the monthly in kind arrangements',
+  )
+  const arrangements = ((rows ?? []) as unknown as Record<string, unknown>[]).map(toArrangement)
+  if (arrangements.length === 0) return []
+  const ids = arrangements.map((a) => a.id)
+  const [lineRows, jobRows] = await Promise.all([
+    withSupabaseRetry(
+      () => supabase.from('in_kind_lines').select('id, arrangement_id, given_on, amount, memo, cost_job_id, for_month, removed_at').in('arrangement_id', ids).is('removed_at', null).not('for_month', 'is', null),
+      'read the months already entered',
+    ),
+    withSupabaseRetry(() => supabase.from('jobs_ledger').select('id, status, revenue, payments_made, in_kind_arrangement_id').in('in_kind_arrangement_id', ids), 'read the in kind balances'),
+  ])
+  const lines = ((lineRows ?? []) as unknown as InKindLine[]).map((l) => ({ ...l, amount: Number(l.amount ?? 0) }))
+  const jobs = (jobRows ?? []) as unknown as Array<InKindJob & { in_kind_arrangement_id: string | null }>
+  return Promise.all(
+    arrangements.map(async (arrangement) => {
+      let bank: BankPaidLine[] | null | undefined
+      if (arrangement.bank_payee.trim() && arrangement.starts_on) {
+        try {
+          bank = await loadInKindBankLines(arrangement.bank_payee, arrangement.starts_on)
+        } catch {
+          bank = null
+        }
+      }
+      return { arrangement, lines: lines.filter((l) => l.arrangement_id === arrangement.id), jobs: jobs.filter((j) => j.in_kind_arrangement_id === arrangement.id), bank }
+    }),
+  )
 }
