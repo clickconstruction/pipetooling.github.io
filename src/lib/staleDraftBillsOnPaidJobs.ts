@@ -1,5 +1,5 @@
 /**
- * Settings → Data & recovery → "Draft bills on paid jobs (dev)" — pure kernel.
+ * Settings → Data & recovery → "Draft bills on paid jobs" — pure kernel.
  *
  * The one-time sweep behind the J3-1 fix: `jobs_ledger_invoices` rows still in
  * `ready_to_bill` whose job is already `paid`. Once the Dashboard stops listing

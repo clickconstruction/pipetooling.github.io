@@ -9,6 +9,7 @@ import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } f
 import { invoiceBilledYmd, type BilledDayRow } from './billedDay'
 import { upcomingFridays } from './cashForecast'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay'
+import { bridgeCollections, bridgeReadyToBill, withoutZzBridgeBids, withoutZzBridgeMoney, withoutZzFieldSessions, type BridgeZzTestJobIds } from './zzTestJobs'
 
 /**
  * Bridge data loader (v2.2677) — every number the Chart Table shows, from the
@@ -30,6 +31,9 @@ import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type Pr
  * - Levers: Ready-to-bill revenue, collections balance, bids due within 14
  *   days (bid_value, estimated start). Hazards: unpaid supply invoices by due
  *   date. Target: app_settings `bridge_target_usd_v1`.
+ * - ZZ test jobs (v2.6807): the sessions clocked on one, its bills and payments, and its row in the Ready-to-bill
+ *   and Collections reads stay out for everyone but a dev who shows them, as on the Bill pile. The caller passes
+ *   their ids, or null to keep them (`zzTestJobs.ts`). Since v2.6823 a ZZ bid is no bid due either (`isZzBidName`).
  */
 
 export const BRIDGE_TARGET_SETTING_KEY = 'bridge_target_usd_v1'
@@ -170,7 +174,8 @@ export async function loadEarnedJobs(db: SupabaseClient<Database>, jobIds: strin
   return { jobs, earnedJobs, lifetimeHoursAsOf }
 }
 
-export async function loadBridgeData(db: SupabaseClient<Database>): Promise<BridgeData> {
+export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTestJobIds: BridgeZzTestJobIds }): Promise<BridgeData> {
+  const zzTestJobIds = opts.zzTestJobIds
   const todayYmd = denverCalendarDayKey(Date.now())
   const windowStart = ymdAddDays(todayYmd, -BRIDGE_DAYS_BACK)
   const inputs = await readOverheadPoolSnapshotInputs(db)
@@ -178,7 +183,7 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
   const snapPromise = readOverheadPoolSnapshot(db, inputs)
 
   // Approved field sessions in the window (earned-revenue numerator + crew hours).
-  const fieldSessions = await fetchAllRows(
+  const fieldSessionRows = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(async () => {
         let q = db
@@ -198,6 +203,7 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
     }),
     'bridge field sessions',
   )
+  const fieldSessions = withoutZzFieldSessions(fieldSessionRows, zzTestJobIds)
   const jobIds = [...new Set(fieldSessions.map((s) => s.job_ledger_id).filter((v): v is string => !!v))]
   const { jobs, earnedJobs } = await loadEarnedJobs(db, jobIds)
   const earned = buildEarnedRevenue({
@@ -353,19 +359,19 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
   const supplyDatedByDay = new Map<string, number>()
   const supplyPaidByDay = new Map<string, number>()
   for (const inv of invRows) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
-  type SentRow = { amount: number | null } & BilledDayRow
-  type PaidRow = { amount: number | null; paid_on: string | null }
+  type SentRow = { id: string; job_id: string; amount: number | null } & BilledDayRow
+  type PaidRow = { job_id: string | null; invoice_id: string | null; amount: number | null; paid_on: string | null }
   type SupplyPaidRow = { amount: number | null; paid_at: string | null }
   // A day before the window start: the company day of a UTC stamp can fall the day before.
   const billedSinceIso = `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`
-  const [sentRows, paidRows, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
+  const [sentRead, paidRead, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(
           async () =>
             db
               .from('jobs_ledger_invoices')
-              .select('amount, sent_to_customer_at, billed_at')
+              .select('id, job_id, amount, sent_to_customer_at, billed_at')
               .or(`sent_to_customer_at.gte.${billedSinceIso},billed_at.gte.${billedSinceIso}`)
               .or('stripe_mode.is.null,stripe_mode.neq.test')
               .order('id')
@@ -380,7 +386,7 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
       async (from, to) => ({
         data: (await withSupabaseRetry(
           async () =>
-            db.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd).order('id').range(from, to),
+            db.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd).order('id').range(from, to),
           'bridge payments',
         )) as PaidRow[] | null,
         error: null,
@@ -419,11 +425,12 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
       }
     })(),
   ])
-  for (const r of sentRows ?? []) {
+  const { bills: sentRows, payments: paidRows } = withoutZzBridgeMoney({ bills: sentRead ?? [], payments: paidRead ?? [] }, zzTestJobIds)
+  for (const r of sentRows) {
     const d = invoiceBilledYmd(r)
     if (d && d >= windowStart && d <= todayYmd) addTo(invoicesSentByDay, d, Number(r.amount ?? 0))
   }
-  for (const r of paidRows ?? []) if (r.paid_on) addTo(paymentsReceivedByDay, r.paid_on, Number(r.amount ?? 0))
+  for (const r of paidRows) if (r.paid_on) addTo(paymentsReceivedByDay, r.paid_on, Number(r.amount ?? 0))
   for (const r of supplyPaidRows ?? []) {
     if (!r.paid_at) continue
     const d = calendarYmdInAppTzFromIso(r.paid_at)
@@ -450,18 +457,18 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
 
   // Levers, hazards, hygiene counts, target — small independent reads.
   const [rtbRows, collRows, bidRows, dueRows, ncCount, cardCount, targetRow] = await Promise.all([
-    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue').eq('status', 'ready_to_bill'), 'bridge rtb') as Promise<Array<{ id: string; revenue: number | null }> | null>,
-    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue, payments_made').not('collections_at', 'is', null), 'bridge collections') as Promise<Array<{ id: string; revenue: number | null; payments_made: number | null }> | null>,
+    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue, job_name, customer_name').eq('status', 'ready_to_bill'), 'bridge rtb') as Promise<Array<{ id: string; revenue: number | null; job_name: string | null; customer_name: string | null }> | null>,
+    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue, payments_made, job_name, customer_name').not('collections_at', 'is', null), 'bridge collections') as Promise<Array<{ id: string; revenue: number | null; payments_made: number | null; job_name: string | null; customer_name: string | null }> | null>,
     withSupabaseRetry(
       async () =>
         db
           .from('bids')
-          .select('id, bid_number, address, bid_value, bid_due_date, estimated_job_start_date')
+          .select('id, project_name, bid_number, address, bid_value, bid_due_date, estimated_job_start_date')
           .gte('bid_due_date', todayYmd)
           .lte('bid_due_date', ymdAddDays(todayYmd, 14))
           .is('bid_date_sent', null),
       'bridge bids due',
-    ) as Promise<Array<{ id: string; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
+    ) as Promise<Array<{ id: string; project_name: string | null; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
     withSupabaseRetry(
       async () => db.from('supply_house_invoices').select('amount, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
       'bridge supply due',
@@ -542,9 +549,9 @@ export async function loadBridgeData(db: SupabaseClient<Database>): Promise<Brid
     overheadPerDayBaseline: snap.avg.avg90,
     hygiene: { unattributedNoncard: ncCount, unlinkedCard: cardCount },
     levers: {
-      rtb: { count: (rtbRows ?? []).length, revenueUsd: (rtbRows ?? []).reduce((acc: number, r: { revenue: number | null }) => acc + Number(r.revenue ?? 0), 0) },
-      collections: { count: (collRows ?? []).length, openUsd: (collRows ?? []).reduce((acc: number, r: { revenue: number | null; payments_made: number | null }) => acc + Math.max(0, Number(r.revenue ?? 0) - Number(r.payments_made ?? 0)), 0) },
-      bidsDue: (bidRows ?? [])
+      rtb: bridgeReadyToBill(rtbRows ?? [], zzTestJobIds),
+      collections: bridgeCollections(collRows ?? [], zzTestJobIds),
+      bidsDue: withoutZzBridgeBids(bidRows ?? [], zzTestJobIds)
         .filter((b) => (b.bid_value ?? 0) > 0)
         .map((b) => ({
           id: b.id,

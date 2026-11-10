@@ -26,6 +26,7 @@ import {
   unlinkLeavesStripeBillUntouched,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { heldStripeMarkLineWords, paymentRowOnHeldStripeMark } from '../../lib/jobs/heldStripeMark'
+import { IN_KIND_MEMO_LABEL, IN_KIND_MEMO_PLACEHOLDER, PAYMENT_KIND_CHOICES, inKindMemoMissing, isInKindPayment } from '../../lib/jobs/inKindPayment'
 import { applyToStripeOffered } from '../../lib/jobs/applyPaymentToStripeBill'
 import { stripeHeldMoveOffered } from '../../lib/jobs/stripeHeldPaymentMove'
 import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
@@ -125,6 +126,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
     bank,
   })
   const readOnly = source.kind !== 'hand'
+  const inKind = isInKindPayment(row)
   const stripeInv = stripeBillInvoiceForPaymentRow(row, job)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState<boolean>(!readOnly && !persisted)
@@ -387,11 +389,18 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
             <input
               id={`edit-job-payment-type-${row.id}`}
               type="text"
+              list={`edit-job-payment-type-choices-${row.id}`}
               value={row.payment_type ?? ''}
               onChange={(e) => actions.updatePaymentRow(row.id, { payment_type: e.target.value === '' ? null : e.target.value })}
-              placeholder="check, cash, card"
+              placeholder="check, cash, card, in kind"
               aria-label="Payment type"
             />
+            {/* v2.6816: the same kinds the Record a cash or check payment window offers, In kind among them. */}
+            <datalist id={`edit-job-payment-type-choices-${row.id}`}>
+              {PAYMENT_KIND_CHOICES.map((k) => (
+                <option key={k} value={k} />
+              ))}
+            </datalist>
           </label>
           <label>
             Check number or ref
@@ -405,14 +414,17 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
             />
           </label>
           <label className={linkable.length > 0 ? '' : 'wide'}>
-            Memo
+            {inKind ? IN_KIND_MEMO_LABEL : 'Memo'}
             <input
               id={`edit-job-payment-note-${row.id}`}
               type="text"
               value={row.note ?? ''}
               onChange={(e) => actions.updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
-              placeholder="Optional"
+              placeholder={inKind ? IN_KIND_MEMO_PLACEHOLDER : 'Optional'}
               aria-label="Payment memo"
+              // v2.6816: an in-kind row asks for its memo — what was given instead of money.
+              style={inKindMemoMissing(row) ? { borderColor: 'var(--border-amber)' } : undefined}
+              data-testid={inKindMemoMissing(row) ? 'in-kind-memo-missing' : undefined}
             />
           </label>
           {linkable.length > 0 ? (

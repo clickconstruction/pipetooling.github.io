@@ -368,17 +368,78 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
   return out.join('\n\n')
 }
 
-/** Full standalone print document — pinned light like all customer-facing paper. */
+/**
+ * The runs of blocks a page must not split (v2.6810), as `[first, last]` indexes: a signature with the statement just
+ * above it (the last numbered item, paragraph or form line) and the notary's block under it. A printed affidavit put
+ * item 10 at the foot of page 1 and the signature alone at the head of page 2, away from what it swears to.
+ */
+export function filingKeepTogetherRuns(blocks: ReadonlyArray<FilingDocBlock>): Array<[number, number]> {
+  const runs: Array<[number, number]> = []
+  let taken = -1
+  for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i]!.kind !== 'signature') continue
+    const above = blocks[i - 1]?.kind
+    const first = i - 1 > taken && (above === 'numbered' || above === 'paragraph' || above === 'formLine') ? i - 1 : i
+    let last = i
+    while (blocks[last + 1]?.kind === 'notarial' || blocks[last + 1]?.kind === 'signature') last++
+    runs.push([first, last])
+    taken = last
+    i = last
+  }
+  return runs
+}
+
+/** Where the paper ends inside the print sheet: pages added behind it go in here, inside the sheet's own page margins. */
+const FILING_PRINT_END = '<!--filing-print-end-->'
+
+/** Add pages behind a printed paper (the notice's pay page and invoices): inside the sheet, so they keep its page margins. */
+export function appendToFilingPrintHtml(html: string, extra: string): string {
+  if (!extra) return html
+  return html.includes(FILING_PRINT_END) ? html.replace(FILING_PRINT_END, `${extra}${FILING_PRINT_END}`) : html.replace('</body>', `${extra}</body>`)
+}
+
+/** The white band at the head and foot of every printed page; nothing on screen. */
+const FILING_PAGE_GAP = '<tr><td><div class="filing-page-gap"></div></td></tr>'
+
+/**
+ * Full standalone print document — pinned light like all customer-facing paper.
+ *
+ * The page (v2.6810): `@page { margin: 0 }` leaves the browser no room for its own header and footer (the date and
+ * time, the title, "about:blank", the page count), which it printed on every sheet of a paper a county clerk records.
+ * The margins are the sheet's own instead: the side ones are the body's padding, and the head and foot of every page
+ * are a table header and footer the print engine repeats. A signature, the statement above it and the notary's block
+ * under it are one run a page does not split (`filingKeepTogetherRuns`); the footer line stays with the last run.
+ */
 export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, footer?: string): string {
   const footerHtml = footer
-    ? `<div style="${HTML_LABEL_FONT};margin-top:1.8em;padding-top:0.5em;border-top:1px solid ${HTML_RULE};font-size:0.68em;color:${HTML_MUTED}">${esc(footer)}</div>`
+    ? `<div style="${HTML_LABEL_FONT};margin-top:1.8em;padding-top:0.5em;border-top:1px solid ${HTML_RULE};font-size:0.68em;color:${HTML_MUTED};break-before:avoid;page-break-before:avoid">${esc(footer)}</div>`
     : ''
-  const body = filingDocHtml(blocks)
+  const parts: string[] = []
+  let at = 0
+  let footerPlaced = false
+  for (const [first, last] of filingKeepTogetherRuns(blocks)) {
+    if (first > at) parts.push(filingDocHtml(blocks.slice(at, first)))
+    const closes = last === blocks.length - 1
+    parts.push(`<div class="filing-keep">${filingDocHtml(blocks.slice(first, last + 1))}${closes ? footerHtml : ''}</div>`)
+    if (closes) footerPlaced = true
+    at = last + 1
+  }
+  if (at < blocks.length) parts.push(filingDocHtml(blocks.slice(at)))
+  const body = parts.join('') + (footerPlaced ? '' : footerHtml)
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(docTitle)}</title>${filingHtmlHasTypedSignature(body) ? FILING_SIGNATURE_FONT_LINK : ''}
 <style>
+  @page { size: letter; margin: 0; }
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
-  @media print { body { margin: 0.5in auto; } }
-</style></head><body>${body}${footerHtml}</body></html>`
+  .filing-page { width: 100%; border-collapse: collapse; border-spacing: 0; }
+  .filing-page td { padding: 0; vertical-align: top; }
+  .filing-page-gap { height: 0; }
+  .filing-keep { break-inside: avoid; page-break-inside: avoid; }
+  @media print {
+    html { margin: 0; padding: 0; }
+    body { max-width: none; margin: 0; padding: 0 0.85in; }
+    .filing-page-gap { height: 0.6in; }
+  }
+</style></head><body><table class="filing-page" role="presentation"><thead>${FILING_PAGE_GAP}</thead><tbody><tr><td>${body}${FILING_PRINT_END}</td></tr></tbody><tfoot>${FILING_PAGE_GAP}</tfoot></table></body></html>`
 }
 
 const PAGE_MARGIN = 22
@@ -394,9 +455,31 @@ const MUTED: [number, number, number] = [122, 117, 108]
 const CONTACT: [number, number, number] = [95, 90, 82]
 const RULE: [number, number, number] = [207, 203, 194]
 
+/**
+ * The paper as a PDF. A signature travels with the statement above it and the notary's block under it (v2.6810,
+ * `filingKeepTogetherRuns`): the paper is drawn, and where a run fell across two pages it is drawn again with the run
+ * starting a page. A run taller than a page still splits.
+ */
 export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer?: string }): Promise<Blob> {
   const JsPDF = await loadJsPDF()
+  const runs = filingKeepTogetherRuns(blocks)
+  const breakBefore = new Set<number>()
+  let drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, opts)
+  // Each pass can only push later blocks down, so a run is broken before at most once and the passes end.
+  for (let pass = 0; pass < runs.length; pass++) {
+    const split = runs.find(([first, last]) => !breakBefore.has(first) && drawn.pageAtStart[first] !== drawn.pageAtEnd[last])
+    if (!split) break
+    breakBefore.add(split[0])
+    drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, opts)
+  }
+  return drawn.doc.output('blob')
+}
+
+function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: FilingDocBlock[], breakBefore: ReadonlySet<number>, opts?: { footer?: string }) {
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
+  // The page each block starts and ends on, for the keep-together passes.
+  const pageAtStart: number[] = []
+  const pageAtEnd: number[] = []
   let y = PAGE_MARGIN
   const ensureRoom = (needed: number) => {
     if (y + needed > PAGE_CONTENT_MAX_Y) {
@@ -416,7 +499,13 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
       y += lh
     }
   }
-  for (const b of blocks) {
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const b = blocks[bi]!
+    if (breakBefore.has(bi) && y > PAGE_MARGIN) {
+      doc.addPage()
+      y = PAGE_MARGIN
+    }
+    pageAtStart[bi] = doc.getNumberOfPages()
     switch (b.kind) {
       case 'letterhead': {
         doc.setFont('helvetica', 'bold')
@@ -739,6 +828,7 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
         break
       }
     }
+    pageAtEnd[bi] = doc.getNumberOfPages()
   }
   // Page footer: statute citation left, page number right, on every page.
   const pages = doc.getNumberOfPages()
@@ -753,7 +843,7 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
     if (opts?.footer) doc.text(opts.footer, PAGE_MARGIN, 272)
     doc.text(`Page ${p} of ${pages}`, RIGHT_EDGE, 272, { align: 'right' })
   }
-  return doc.output('blob')
+  return { doc, pageAtStart, pageAtEnd }
 }
 
 // ---------- 1 · § 53.056 notice ----------

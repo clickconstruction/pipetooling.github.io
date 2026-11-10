@@ -2,7 +2,7 @@
 title: record a supply-house bill from its PDF
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: supply house, bill, invoice, PDF, scan, counter ticket, photo, fill, autofill, read, credit memo, record this bill, bills to record, thread, messages, drive link
+keywords: supply house, bill, invoice, PDF, scan, counter ticket, photo, fill, autofill, read, credit memo, record this bill, bills to record, thread, messages, drive link, lines, line items, adds up, look, count it as read, what we buy
 ---
 A supply-house bill comes as a PDF in the mail, or as a photo of the counter ticket. The Add invoice window can read that file and fill its own fields. You check the fields beside the paper and press Save, as you always have.
 
@@ -12,6 +12,7 @@ Nothing is written until you press {{button:blue|Save invoice}}. The form never 
 
 1. Open **Materials → Supply houses**, open the house and press {{button:blue|Add Invoice}}.
 2. The first section is **The bill**. After *Start from:* you see each PDF or picture from the house's thread that is not on an invoice yet. Press one.
+   A tech's ticket bought on a PO code at this house shows there too. The chip reads like **Jordan's ticket, Nov 4, PO 41207**. Press it and the fields fill from the ticket's photo. Save ties the ticket to the bill.
 3. The fields fill in. A line under the picker says how many things are left to check.
 4. Press {{button:outline|Another file…}} to pick a PDF or a picture from your computer or phone instead. The file is kept with the invoice.
 5. Press {{button:outline|No PDF, I will type it}} to type the whole bill as before.
@@ -57,3 +58,30 @@ A bill from an address nobody has named gets no offer yet. Press {{button:blue|W
 ## When the fill cannot read
 
 The form says why in one line and stays typeable. The owner or a dev turns the fill on from the Supply houses tab. The model key lives on **Settings → Phone and texts → Model keys**. The fill reads a PDF or a JPEG, PNG, GIF or WebP picture up to 10 MB.
+
+## The lines on the bill
+
+A bill you save from its PDF keeps every line the reader saw. The **Lines** cell on the bill's row says what came of them.
+
+- {{chip:green|6 lines · adds up}} means the lines sum to the paper's subtotal and the total matches the row.
+- {{chip:yellow|5 lines · $12.40 short of the subtotal}} means a sum is off. Press {{button:outline|Look}}.
+- *No lines yet* means the PDF has not been read yet.
+- *No PDF on this bill* means there is nothing to read.
+
+Only bills that add up count toward what the company buys. A bill with a gap waits for a person.
+
+:::steps
+
+1. Press {{button:outline|Look}} on the bill's row. The paper opens on the left and the lines read on the right.
+
+2. Read the strip at the top. It says which sum is off and by how much.
+
+3. Fix a number in any line, or type the missing line in the last row. The strip turns green when the lines add up.
+
+4. Press {{button:blue|Save 1 line}}. The press names how many lines you changed.
+
+:::
+
+A line whose own arithmetic fails is marked with an exclamation point. Fix its quantity, its price or its extension.
+
+If you have checked the paper and the gap is the paper's own, press {{button:outline|Count it as read anyway}}. Confirm with {{button:blue|Count it as read}}. The lines then count, and the gap stays beside them with your name.

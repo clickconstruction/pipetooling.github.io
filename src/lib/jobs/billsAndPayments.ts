@@ -17,6 +17,7 @@ import { attributeJobPayments, type PaymentSlice } from './paymentAttribution'
 import { mercuryLinkedPaymentRow, stripeOwnsPaymentRow } from './jobFormPaymentPredicates'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 
 /** What the bank synced about the deposit behind a bank-linked row. */
 export type MercuryDepositFacts = {
@@ -45,7 +46,7 @@ const BANK_KIND_WORDS: Record<string, string> = {
   internalTransfer: 'transfer',
 }
 
-/** "Cheque", "Check", "checkDeposit", "Card (external)", "ACH", "other" → one lower-case word, or null. */
+/** "Cheque", "Check", "checkDeposit", "Card (external)", "ACH", "In kind" (v2.6816), "other" → one lower-case word, or null. */
 export function instrumentWord(paymentType: string | null | undefined): string | null {
   const t = (paymentType ?? '').trim().toLowerCase()
   if (!t) return null
@@ -54,6 +55,7 @@ export function instrumentWord(paymentType: string | null | undefined): string |
   if (/wire/.test(t)) return 'wire'
   if (/ach|transfer/.test(t)) return 'ach'
   if (/cash/.test(t)) return 'cash'
+  if (isInKindPaymentType(t)) return 'in kind'
   return null
 }
 

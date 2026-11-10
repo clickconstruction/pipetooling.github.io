@@ -2,7 +2,24 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { billChecks, checksToLook, duplicateCheck, statementCheck, sumCheck } from './billChecks'
-import { readBillAnswer, type BillRead } from './billRead'
+import { readBillAnswer, type BillLine, type BillRead } from './billRead'
+
+/** A line as the reader shapes it, from the four figures these tests care about (the paper's own columns empty, v2.6817). */
+const L = (description: string, quantity: number | null, unitPriceCents: number | null, extendedCents: number | null): BillLine => ({
+  description,
+  quantity,
+  unitPriceCents,
+  extendedCents,
+  lineKind: 'part',
+  houseCode: '',
+  mfrNumber: '',
+  unit: '',
+  qtyOrdered: null,
+  qtyShipped: null,
+  qtyBackordered: null,
+  unitPrice: unitPriceCents == null ? null : unitPriceCents / 100,
+  pricingUnit: 'each',
+})
 
 const FIXTURES = resolve(__dirname, '../../../test/fixtures/bills')
 const readOf = (slug: string): BillRead => readBillAnswer(JSON.parse(readFileSync(resolve(FIXTURES, `${slug}.answer.json`), 'utf8'))!)!
@@ -21,13 +38,13 @@ describe('sumCheck', () => {
     expect(sumCheck(readOf('ridgeway-S1183455-wrong-total'))).toEqual({ kind: 'off', lineCount: 7, sumCents: 124810, totalCents: 128410, withTax: true })
   })
   it('lines that already hold the tax, or a paper with no tax, are right on the lines alone', () => {
-    expect(sumCheck({ lines: [{ description: 'a', quantity: 1, unitPriceCents: 100, extendedCents: 100 }, { description: 'b', quantity: 1, unitPriceCents: 250, extendedCents: 250 }], taxCents: 29, totalCents: 350 })).toMatchObject({ kind: 'right', withTax: false })
-    expect(sumCheck({ lines: [{ description: 'a', quantity: 1, unitPriceCents: 100, extendedCents: 100 }], taxCents: null, totalCents: 100 })).toMatchObject({ kind: 'right', withTax: false })
+    expect(sumCheck({ lines: [L('a', 1, 100, 100), L('b', 1, 250, 250)], taxCents: 29, totalCents: 350 })).toMatchObject({ kind: 'right', withTax: false })
+    expect(sumCheck({ lines: [L('a', 1, 100, 100)], taxCents: null, totalCents: 100 })).toMatchObject({ kind: 'right', withTax: false })
   })
   it('has nothing to add up without lines or a total', () => {
     expect(sumCheck(readOf('ridgeway-statement-oct-2026'))).toEqual({ kind: 'none' })
-    expect(sumCheck({ lines: [{ description: 'a', quantity: null, unitPriceCents: null, extendedCents: null }], taxCents: null, totalCents: 500 })).toEqual({ kind: 'none' })
-    expect(sumCheck({ lines: [{ description: 'a', quantity: 1, unitPriceCents: 100, extendedCents: 100 }], taxCents: null, totalCents: null })).toEqual({ kind: 'none' })
+    expect(sumCheck({ lines: [L('a', null, null, null)], taxCents: null, totalCents: 500 })).toEqual({ kind: 'none' })
+    expect(sumCheck({ lines: [L('a', 1, 100, 100)], taxCents: null, totalCents: null })).toEqual({ kind: 'none' })
   })
 })
 

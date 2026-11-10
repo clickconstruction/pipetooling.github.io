@@ -5,7 +5,7 @@ import { googleAccessToken } from '../_shared/driveUpload.ts'
 import { driveMedia } from '../_shared/driveJobFolder.ts'
 import { ESTIMATE_LINK_LOCKED_CODE, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
-import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
+import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
@@ -15,6 +15,9 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPagePhotoUrl, buildBoxPagePayloa
  *                                             the live container by its code, its lines from `on_site_job_summary` (the
  *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
  *                                             Never the job, the customer, a price or a person's name.
+ *   GET ?code=<code>&find=<words>            → (v2.6799, PR 3) the live boxes of the same job whose stencil, place or lines
+ *                                             hold every word, each with the lines that matched: the search a scanned code
+ *                                             opens, that site and no other. No code, no search.
  *   GET ?code=<code>&photo=<photo id>        → the photo's bytes: streamed from Drive by `drive_file_id` through the service
  *                                             account once the sweep has filed it, else from the box-photos bucket while it
  *                                             waits, with an hour's cache. No Drive link ever reaches the page.
@@ -126,6 +129,23 @@ serve(async (req) => {
         if (!dl && blob) return new Response(blob, { status: 200, headers: imgHeaders })
       }
       return json({ error: 'not_found' }, 404)
+    }
+
+    // Find a part on this site (PR 3): the same job's live boxes, the words typed, nothing of another job.
+    const findRaw = url.searchParams.get('find')
+    if (findRaw != null) {
+      const words = boxPageFindWords(findRaw)
+      const [boxesRes, placesRes, sumRes] = await Promise.all([
+        admin.from('job_containers').select('id, job_id, label, kind, where_note, place_id, retired_at, code').eq('job_id', row.job_id).is('retired_at', null),
+        admin.from('job_places').select('id, name').eq('job_id', row.job_id),
+        admin.rpc('on_site_job_summary', { p_job_id: row.job_id }),
+      ])
+      if (boxesRes.error) throw new Error(boxesRes.error.message)
+      if (sumRes.error) throw new Error(sumRes.error.message)
+      const sum = (sumRes.data ?? {}) as { lines?: BoxPageServerLine[] }
+      const find = boxPageFind({ thisCode: code, words, containers: (boxesRes.data ?? []) as BoxPageContainerRow[], places: (placesRes.data ?? []) as Array<{ id: string; name: string }>, lines: sum.lines ?? [] })
+      console.log(JSON.stringify({ event: 'box_page_find', code, words: words.length, boxes: find.total }))
+      return json({ ok: true, find })
     }
 
     const [placeRes, summaryRes, photoRes] = await Promise.all([

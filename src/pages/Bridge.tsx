@@ -172,8 +172,11 @@ export default function Bridge() {
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
   const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
-  /** ZZ test jobs leave the Bill pile for everyone but a dev who shows them, as on the Dashboard (v2.5834). */
+  /** ZZ test jobs leave the Bridge's own reads, the Bill pile and the Bill desk for everyone but a dev who shows them, as on the Dashboard (v2.5834, v2.6807). */
   const hideZz = useZzTestJobsHidden(role)
+  /** The ids every Bridge read takes (v2.6813): the shared read while ZZ jobs are hidden, null for a dev who shows them. */
+  const readZzTestJobIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
+  const zzKey = hideZz ? 'hide' : 'show'
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -201,7 +204,9 @@ export default function Bridge() {
     setError(null)
     void (async () => {
       try {
-        const d = await loadBridgeData(supabase)
+        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        if (cancelled) return
+        const d = await loadBridgeData(supabase, { zzTestJobIds })
         if (cancelled) return
         setData(d)
         setCashDraft(d.cashSetting ? String(d.cashSetting.usd) : '')
@@ -215,7 +220,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey])
+  }, [role, user?.id, refreshKey, hideZz])
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -347,7 +352,9 @@ export default function Bridge() {
     setBuildError(null)
     void (async () => {
       try {
-        const v = await loadBuildPaceInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadBuildPaceInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         if (!cancelled) setBuildInputs(v)
       } catch (e) {
         if (!cancelled) setBuildError(formatErrorMessage(e))
@@ -356,7 +363,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data])
+  }, [data, readZzTestJobIds])
   const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
   // The Bill pile (v2.5834): finished work less what is billed on the working and ready-to-bill jobs, read with Build's percent points.
   const [billJobs, setBillJobs] = useState<BillPileJob[] | null>(null)
@@ -400,7 +407,9 @@ export default function Bridge() {
     setDemandError(null)
     void (async () => {
       try {
-        const v = await loadDemandInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadDemandInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds })
         if (!cancelled) setDemandInputs(v)
       } catch (e) {
         if (!cancelled) setDemandError(formatErrorMessage(e))
@@ -409,7 +418,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data])
+  }, [data, readZzTestJobIds])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
 
   // The Bill desk (punch list #192, v2.5930): the leaks, the fast lane and the scorecard, read once when the window first opens.
@@ -417,7 +426,7 @@ export default function Bridge() {
   const [billOpen, setBillOpen] = useState(false)
   const [billReads, setBillReads] = useState<{ forKey: string; reads: BillDeskReads } | null>(null)
   const [billReadsError, setBillReadsError] = useState<string | null>(null)
-  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}` : ''
+  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${hideZz ? 'hide' : 'show'}` : ''
   useEffect(() => {
     if (!billOpen || !data || !billPile) return
     if (billReads && billReads.forKey === billReadKey) return
@@ -426,7 +435,9 @@ export default function Bridge() {
     setBillReadsError(null)
     void (async () => {
       try {
-        const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id) })
+        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        if (cancelled) return
+        const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id), zzTestJobIds })
         if (!cancelled) setBillReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setBillReadsError(formatErrorMessage(e))
@@ -435,7 +446,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [billOpen, data, billPile, billReads, billReadKey])
+  }, [billOpen, data, billPile, billReads, billReadKey, hideZz, user?.id])
 
   // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
   const [buildOpen, setBuildOpen] = useState(false)
@@ -468,7 +479,7 @@ export default function Bridge() {
   const [marketOpen, setMarketOpen] = useState(false)
   const [marketReads, setMarketReads] = useState<{ forKey: string; reads: MarketDeskReads } | null>(null)
   const [marketError, setMarketError] = useState<string | null>(null)
-  const marketReadKey = data ? `${data.todayYmd}:${demand?.market.bidsInvited ?? 0}:${demand?.market.estimatesRequested ?? 0}` : ''
+  const marketReadKey = data ? `${data.todayYmd}:${demand?.market.bidsInvited ?? 0}:${demand?.market.estimatesRequested ?? 0}:${zzKey}` : ''
   useEffect(() => {
     if (!marketOpen || !data) return
     if (marketReads && marketReads.forKey === marketReadKey) return
@@ -477,7 +488,9 @@ export default function Bridge() {
     setMarketError(null)
     void (async () => {
       try {
-        const reads = await loadMarketDeskReads(supabase, { todayYmd: data.todayYmd })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const reads = await loadMarketDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds })
         if (!cancelled) setMarketReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setMarketError(formatErrorMessage(e))
@@ -486,14 +499,14 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [marketOpen, data, marketReads, marketReadKey])
+  }, [marketOpen, data, marketReads, marketReadKey, readZzTestJobIds])
   const marketWinShareNow = useMemo(() => (demand ? marketWinShare(demand.sales) : null), [demand])
 
   // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
   const [salesOpen, setSalesOpen] = useState(false)
   const [salesReads, setSalesReads] = useState<{ forKey: string; reads: SalesDeskReads } | null>(null)
   const [salesError, setSalesError] = useState<string | null>(null)
-  const salesReadKey = data && demand ? `${data.todayYmd}:${demand.sales.awaiting.bids}:${demand.sales.awaiting.bidsUsd}:${demand.sales.awaiting.estimates}:${demand.sales.awaiting.estimatesUsd}` : ''
+  const salesReadKey = data && demand ? `${data.todayYmd}:${demand.sales.awaiting.bids}:${demand.sales.awaiting.bidsUsd}:${demand.sales.awaiting.estimates}:${demand.sales.awaiting.estimatesUsd}:${zzKey}` : ''
   useEffect(() => {
     if (!salesOpen || !data || !demand) return
     if (salesReads && salesReads.forKey === salesReadKey) return
@@ -502,7 +515,9 @@ export default function Bridge() {
     setSalesError(null)
     void (async () => {
       try {
-        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd, zzTestJobIds })
         if (!cancelled) setSalesReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setSalesError(formatErrorMessage(e))
@@ -511,7 +526,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [salesOpen, data, demand, salesReads, salesReadKey])
+  }, [salesOpen, data, demand, salesReads, salesReadKey, readZzTestJobIds])
   const salesDesk = useMemo(() => {
     if (!data || !demand || !salesReads || salesReads.forKey !== salesReadKey) return null
     const est = demand.sales.estimates
@@ -526,7 +541,7 @@ export default function Bridge() {
   const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
   useEffect(() => {
     if (!data || !weeksRange) return
-    const key = `${weeksRange.start}:${weeksRange.end}`
+    const key = `${weeksRange.start}:${weeksRange.end}:${zzKey}`
     const cached = daysCacheRef.current.get(key)
     if (cached) {
       setWeeksInputs(cached)
@@ -538,7 +553,9 @@ export default function Bridge() {
     setWeeksError(null)
     void (async () => {
       try {
-        const v = await loadVectorDaysInputs(supabase, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadVectorDaysInputs(supabase, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         daysCacheRef.current.set(key, v)
         if (!cancelled) setWeeksInputs(v)
       } catch (e) {
@@ -548,7 +565,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, weeksRange])
+  }, [data, weeksRange, zzKey, readZzTestJobIds])
   const headlineAndCards = useMemo(() => {
     if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
     const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
@@ -780,7 +797,7 @@ export default function Bridge() {
   // PR C (v2.5854): the one move per payer with its words and paper, the owner's decisions, the what-if, read from the same pile.
   // PR G (v2.5858): Friday's reads, once a plan is recorded on Collect: the payments since the plan and the lien papers that moved.
   const [collectScoreReads, setCollectScoreReads] = useState<{ forKey: string; reads: CollectScorecardReads } | null>(null)
-  const collectScoreKey = thisWeekCall?.link === 'collect' && collectDesk ? `${thisWeekCall.id}:${thisWeekCall.calledOn}:${refreshKey}:${collectJobIds.join(',')}` : ''
+  const collectScoreKey = thisWeekCall?.link === 'collect' && collectDesk ? `${thisWeekCall.id}:${thisWeekCall.calledOn}:${refreshKey}:${zzKey}:${collectJobIds.join(',')}` : ''
   useEffect(() => {
     if (!collectScoreKey || !thisWeekCall) return
     if (collectScoreReads && collectScoreReads.forKey === collectScoreKey) return
@@ -788,7 +805,9 @@ export default function Bridge() {
     const key = collectScoreKey
     void (async () => {
       try {
-        const reads = await loadCollectScorecardReads(supabase, { sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const reads = await loadCollectScorecardReads(supabase, { sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds, zzTestJobIds })
         if (!cancelled) setCollectScoreReads({ forKey: key, reads })
       } catch {
         if (!cancelled) setCollectScoreReads({ forKey: key, reads: { payments: [], notices: { drafted: 0, signed: 0, mailed: 0, affidavitsFiled: 0 } } })
@@ -797,7 +816,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [collectScoreKey, thisWeekCall, collectScoreReads, collectJobIds])
+  }, [collectScoreKey, thisWeekCall, collectScoreReads, collectJobIds, readZzTestJobIds])
   const collectPlan = useMemo(() => {
     if (!collectDesk || !data) return null
     const chipFor = (p: { bills: ReadonlyArray<{ jobId: string | null }> }) => {
@@ -905,7 +924,9 @@ export default function Bridge() {
     setVectorError(null)
     void (async () => {
       try {
-        const v = await loadBridgeVectorInputs(supabase, data)
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadBridgeVectorInputs(supabase, data, { zzTestJobIds })
         if (!cancelled) setVectorInputs(v)
       } catch (e) {
         if (!cancelled) setVectorError(formatErrorMessage(e))
@@ -914,7 +935,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data])
+  }, [data, readZzTestJobIds])
   const vectorWeek = useMemo(() => {
     if (!data) return null
     return payWeekContaining(vectorWeekStart ?? data.todayYmd)
@@ -929,7 +950,7 @@ export default function Bridge() {
   const daysRange = useMemo(() => (data ? vectorRangeFor(daysZoom, daysAnchor ?? data.todayYmd) : null), [data, daysZoom, daysAnchor])
   useEffect(() => {
     if (!data || !daysRange || !peopleOpen) return
-    const key = `${daysRange.start}:${daysRange.end}`
+    const key = `${daysRange.start}:${daysRange.end}:${zzKey}`
     const cached = daysCacheRef.current.get(key)
     if (cached) {
       setDaysInputs(cached)
@@ -941,7 +962,9 @@ export default function Bridge() {
     setDaysError(null)
     void (async () => {
       try {
-        const v = await loadVectorDaysInputs(supabase, { start: daysRange.start, end: daysRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadVectorDaysInputs(supabase, { start: daysRange.start, end: daysRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         daysCacheRef.current.set(key, v)
         if (!cancelled) setDaysInputs(v)
       } catch (e) {
@@ -951,7 +974,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, daysRange, peopleOpen])
+  }, [data, daysRange, peopleOpen, zzKey, readZzTestJobIds])
   const daysGrid = useMemo(() => {
     if (!data || !daysRange || !daysInputs || !vectorInputs) return null
     return buildVectorGrid({

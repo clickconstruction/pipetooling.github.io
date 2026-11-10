@@ -93,10 +93,12 @@ All four desks shipped, one PR each: Build v2.5929 (`src/lib/bridge/build/`, `Br
 
 ## The owner calls
 
-**Thresholds (his numbers, defaults drawn):** Build's quiet-job days (drawn at 14); Bill's
-day-it-finishes tolerance before a row reads late (drawn at same-day); Sales' aging rule (expected
-dollars fade to zero past twice the asker's answer pace; the no-pace fallback 45 days); Market's
-fading rule (asks this quarter under half the quarterly norm) and new-name span.
+**Thresholds — settled.** The owner picked **"Keep the defaults"**: the drawn numbers are his.
+Build's quiet-job days stay 14; Bill's day-it-finishes tolerance stays same-day; Sales' aging rule
+stays as drawn (expected dollars fade to zero past twice the asker's answer pace, the no-pace
+fallback 45 days); Market's fading rule stays asks this quarter under half the quarterly norm, and
+the new-name span stays 91 days. The exported constants under *Where it stands* are the numbers as
+built; nothing moves.
 
 **New writes to decide:** whether a Build job can be marked *waits, with a reason* so the ledger
 stops counting it (no such write exists); whether desk plans ride `bridge_calls` with a kind

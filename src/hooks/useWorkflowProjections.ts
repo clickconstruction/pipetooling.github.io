@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import {
+  canSeeProjections,
   nextProjectionSequence,
   projectionSaveProblem,
   projectionWriteError,
@@ -51,7 +52,8 @@ export type WorkflowProjections = {
 }
 
 /**
- * Projections are dev / master only: for anyone else nothing is read and the
+ * Projections are the owner's, a dev's and the controller's (`canSeeProjections`,
+ * the gate the page's bar reads): for anyone else nothing is read and the
  * list is empty. The first read waits 100 ms after the workflow and the role
  * are known, to spread the page's opening reads.
  */
@@ -66,7 +68,7 @@ export function useWorkflowProjections({
   const [editingProjection, setEditingProjection] = useState<EditingWorkflowProjection | null>(null)
 
   async function loadProjections(workflowId: string) {
-    if (userRole !== 'dev' && userRole !== 'master_technician') return
+    if (!canSeeProjections(userRole)) return
     const { data: items, error } = await supabase
       .from('workflow_projections')
       .select('*')
@@ -83,7 +85,7 @@ export function useWorkflowProjections({
 
   // Load projections when workflow and userRole are available (staggered)
   useEffect(() => {
-    if (loadedWorkflowId && (userRole === 'dev' || userRole === 'master_technician')) {
+    if (loadedWorkflowId && canSeeProjections(userRole)) {
       const t = setTimeout(() => loadProjections(loadedWorkflowId), 100)
       return () => clearTimeout(t)
     } else {

@@ -115,7 +115,7 @@ export function invoiceSentWords(channel: string | null | undefined, sentYmd: st
   return ['sent', sentYmd, how].filter(Boolean).join(' ')
 }
 
-/** How a payment came in: `check no. 2291`, `ACH`, `card · ref ch_123`; '' when nothing is known. */
+/** How a payment came in: `check no. 2291`, `ACH`, `card · ref ch_123`, `in kind` (v2.6816); '' when nothing is known. */
 export function paymentHowWords(paymentType: string | null | undefined, reference: string | null | undefined): string {
   const word = instrumentWord(paymentType)
   const ref = (reference ?? '').trim()

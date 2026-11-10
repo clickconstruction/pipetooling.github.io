@@ -4,17 +4,21 @@ import type { Database } from '../../types/database'
  * The reads behind Build by percent (link PR 3): the open jobs with their
  * contract, percent and name (the name since v2.5245, for the percents prompt), the hand-set percents and the field reports' percent
  * answers since 90 days before the window (the baseline), and the jobs created
- * in the window. `buildPace.ts` does the arithmetic.
+ * in the window. `buildPace.ts` does the arithmetic. ZZ test jobs stay out for
+ * everyone but a dev who shows them (v2.6813): the caller passes their ids, or
+ * null to keep them, and every job read carries its names, so one leaves by
+ * its own name or its customer's too, with its percent points (`zzTestJobs.ts`).
  */
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { parseReportPct, type BuildJob, type BuildPaceInput, type PctPoint } from './buildPace'
+import { bridgeZzJobIds, withoutZzBridgeJobs, withoutZzJobKeyedRows, type BridgeZzTestJobIds } from './zzTestJobs'
 
-type JobRow = { id: string; job_name: string | null; hcp_number: string | null; click_number: string | null; revenue: number | null; pct_complete: number | null; status: string; created_at: string | null; billing_only: boolean | null }
-/** The job columns every read here takes: the name and numbers label a job on the percents prompt. */
-const JOB_COLS = 'id, job_name, hcp_number, click_number, revenue, pct_complete, status, created_at, billing_only'
+type JobRow = { id: string; job_name: string | null; customer_name: string | null; hcp_number: string | null; click_number: string | null; revenue: number | null; pct_complete: number | null; status: string; created_at: string | null; billing_only: boolean | null }
+/** The job columns every read here takes: the name and numbers label a job on the percents prompt, and the two names say whether it is a ZZ test job. */
+const JOB_COLS = 'id, job_name, customer_name, hcp_number, click_number, revenue, pct_complete, status, created_at, billing_only'
 type PctRow = { job_id: string; pct: number | null; changed_at: string; source: string }
 type ReportRow = { job_ledger_id: string | null; created_at: string; field_values: Record<string, unknown> | null }
 
@@ -28,7 +32,7 @@ const toJob = (r: JobRow): BuildJob => {
   return { id: r.id, label: [hcpNumber, jobName].filter(Boolean).join(' · ') || 'Job with no name', hcpNumber, jobName, revenueUsd: r.revenue, pctComplete: r.pct_complete, status: r.status, createdYmd: r.created_at ? ymdOf(r.created_at) : null }
 }
 
-export async function loadBuildPaceInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string; officeJobLedgerId: string | null }): Promise<BuildPaceInput> {
+export async function loadBuildPaceInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string; officeJobLedgerId: string | null; zzTestJobIds: BridgeZzTestJobIds }): Promise<BuildPaceInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -BASELINE_DAYS)
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const [openRows, pctRows, reportRows, createdRows] = await Promise.all([
@@ -53,23 +57,26 @@ export async function loadBuildPaceInputs(db: SupabaseClient<Database>, opts: { 
   ])
 
   const skip = (r: JobRow): boolean => !!r.billing_only || r.id === opts.officeJobLedgerId
-  const openJobs = (openRows ?? []).filter((r) => !skip(r)).map(toJob)
+  // A ZZ test job is no open job, no job sold and no work built: by the shared ids, or by the names these rows carry.
+  const zzSeen = bridgeZzJobIds([...(openRows ?? []), ...(createdRows ?? [])], opts.zzTestJobIds)
+  const openJobs = withoutZzBridgeJobs(openRows ?? [], zzSeen).filter((r) => !skip(r)).map(toJob)
 
-  const points: PctPoint[] = []
-  for (const r of pctRows) if (r.pct != null) points.push({ jobId: r.job_id, atYmd: ymdOf(r.changed_at), pct: Math.max(0, Math.min(100, Number(r.pct))), source: 'hand' })
+  const readPoints: PctPoint[] = []
+  for (const r of pctRows) if (r.pct != null) readPoints.push({ jobId: r.job_id, atYmd: ymdOf(r.changed_at), pct: Math.max(0, Math.min(100, Number(r.pct))), source: 'hand' })
   for (const r of reportRows) {
     if (!r.job_ledger_id) continue
     const raw = r.field_values ? ((r.field_values['How complete is the job?'] ?? r.field_values['Who was on the job?']) as string | null | undefined) : null
     const pct = parseReportPct(raw)
-    if (pct != null) points.push({ jobId: r.job_ledger_id, atYmd: ymdOf(r.created_at), pct, source: 'report' })
+    if (pct != null) readPoints.push({ jobId: r.job_ledger_id, atYmd: ymdOf(r.created_at), pct, source: 'report' })
   }
 
   // The jobs the points touch, open or finished, with their contract.
   const jobsByPoint = new Map<string, BuildJob>()
   for (const j of openJobs) jobsByPoint.set(j.id, j)
-  const missing = [...new Set(points.map((p) => p.jobId))].filter((id) => !jobsByPoint.has(id))
+  const missing = [...new Set(withoutZzJobKeyedRows(readPoints, (p) => p.jobId, zzSeen).map((p) => p.jobId))].filter((id) => !jobsByPoint.has(id))
+  let touchedRows: JobRow[] = []
   if (missing.length) {
-    const rows = await fetchAllRowsChunkedIn<JobRow, string>(
+    touchedRows = await fetchAllRowsChunkedIn<JobRow, string>(
       missing,
       async (chunk, from, to) => ({
         data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_COLS).in('id', chunk).order('id').range(from, to), 'bridge build touched jobs')) as JobRow[] | null,
@@ -77,10 +84,15 @@ export async function loadBuildPaceInputs(db: SupabaseClient<Database>, opts: { 
       }),
       'bridge build touched jobs',
     )
-    for (const r of rows) if (!skip(r)) jobsByPoint.set(r.id, toJob(r))
   }
+  // The touched jobs carry their names too: a finished ZZ job the ids missed leaves here, and its points with it.
+  const zz = bridgeZzJobIds(touchedRows, zzSeen)
+  for (const r of withoutZzBridgeJobs(touchedRows, zz)) if (!skip(r)) jobsByPoint.set(r.id, toJob(r))
+  const points = withoutZzJobKeyedRows(readPoints, (p) => p.jobId, zz)
 
-  const createdInWindow = (createdRows ?? []).filter((r) => !skip(r)).map((r) => ({ id: r.id, revenueUsd: r.revenue }))
+  const createdInWindow = withoutZzBridgeJobs(createdRows ?? [], zz)
+    .filter((r) => !skip(r))
+    .map((r) => ({ id: r.id, revenueUsd: r.revenue }))
 
   return { windowStart: opts.windowStart, todayYmd: opts.todayYmd, openJobs, jobsByPoint, points, createdInWindow }
 }

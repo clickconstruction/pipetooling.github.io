@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { tallyHistoryMadeAt, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
+import { ticketAskWords, ticketChipWords } from '../../lib/tickets/ticketOffice'
+import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
 import { tallyUndoLineFromWindowRow, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
 import type { TallyChoice, TallyLineSuggestion, TallySuggestion } from '../../lib/tally/tallySortSuggestion'
 import {
@@ -36,6 +38,14 @@ export type TallyTeamDayCardProps = {
   onBackcharge: (row: StaleStaffRow) => void
   /** Put a sorted line that went to jobs back on the card to sort. */
   onUndo: (line: TallyUndoLine) => void
+  /** Counter tickets (punch list #295, PR 3): the ticket on a charge, with its first job's label, by charge id. */
+  ticketByCharge?: ReadonlyMap<string, { ticket: TicketWithPages; jobLabel: string | null }>
+  /** A ticket the matcher can only ask about, by the charge it asks about. */
+  asksByCharge?: ReadonlyMap<string, TicketWithPages>
+  onAnswerAsk?: (ticket: TicketWithPages, chargeId: string, yes: boolean) => void
+  onOpenTicket?: (ticket: TicketWithPages) => void
+  /** A paper handed in at the desk (PR 4): a scan, a photo or a PDF tied to this charge. */
+  onAddTicket?: (row: StaleStaffRow) => void
 }
 
 const money = (n: number) =>
@@ -155,6 +165,11 @@ export function TallyTeamDayCard({
   onInvoices,
   onBackcharge,
   onUndo,
+  ticketByCharge,
+  asksByCharge,
+  onAnswerAsk,
+  onOpenTicket,
+  onAddTicket,
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
@@ -201,6 +216,8 @@ export function TallyTeamDayCard({
           const line = lineById.get(charge.id)
           const sel = selections.get(charge.id)
           const error = lineErrors.get(charge.id)
+          const ticketOn = ticketByCharge?.get(charge.id) ?? null
+          const asked = ticketOn ? null : (asksByCharge?.get(charge.id) ?? null)
           const options: TallySuggestion[] = [...(line?.own ?? []), ...card.suggestion.chips]
           const seen = new Set<string>()
           const uniqueOptions = options.filter((o) => {
@@ -222,11 +239,36 @@ export function TallyTeamDayCard({
                   {charge.category ? (
                     <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{tallyCategoryWords(charge.category)}</span>
                   ) : null}
+                  {ticketOn ? (
+                    <button
+                      type="button"
+                      data-testid="tally-team-ticket-chip"
+                      onClick={() => onOpenTicket?.(ticketOn.ticket)}
+                      style={{ marginLeft: 6, border: 'none', background: 'var(--bg-green-100)', color: 'var(--text-green-700)', borderRadius: 999, padding: '0.05rem 0.5rem', fontSize: '0.6875rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      {ticketChipWords(ticketOn.jobLabel)}
+                    </button>
+                  ) : null}
                 </div>
                 <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                   {charge.amount > 0 ? `${money(charge.amount)} back` : money(charge.amount)}
                 </div>
               </div>
+
+              {asked ? (
+                <div data-testid="tally-team-ticket-ask" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                  <span>{ticketAskWords({ takerName: asked.taken_by_name, takenAtWords: formatDenverTimeOnly(Date.parse(asked.taken_at)), charge: { amount: charge.amount, counterparty_name: charge.counterparty } })}</span>
+                  <button type="button" style={{ ...smallButton, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }} onClick={() => onAnswerAsk?.(asked, charge.id, true)}>
+                    It is
+                  </button>
+                  <button type="button" style={smallButton} onClick={() => onAnswerAsk?.(asked, charge.id, false)}>
+                    It is not
+                  </button>
+                  <button type="button" style={linkButton} onClick={() => onOpenTicket?.(asked)}>
+                    See the ticket
+                  </button>
+                </div>
+              ) : null}
 
               {line && line.own.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
@@ -273,6 +315,11 @@ export function TallyTeamDayCard({
                 >
                   {backchargeBusyId === charge.id ? '…' : 'Backcharge'}
                 </button>
+                {onAddTicket && !ticketOn ? (
+                  <button type="button" style={smallButton} data-testid="tally-team-add-ticket" onClick={() => onAddTicket(row)}>
+                    + Ticket
+                  </button>
+                ) : null}
               </div>
 
               {sel && line ? (

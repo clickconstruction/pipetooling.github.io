@@ -113,7 +113,7 @@ Press {{button:outline|Monday sheet}} at the top of the page. The page becomes o
 
 ## The weekly email
 
-Under the sheet sits the **Weekly email** switch. Turn it on and the app builds this sheet every Monday at 6 AM Central. Every dev gets it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday. {{button:outline|Email me this sheet}} works either way.
+Under the sheet sits the **Weekly email** switch. Turn it on and the app builds this sheet every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday. {{button:outline|Email me this sheet}} works either way.
 
 ## Cash on hand comes from the bank
 

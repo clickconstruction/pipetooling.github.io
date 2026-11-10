@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { alreadySentToday, lastRunWords, parseWeeklySendRun, weeklySendRecipients, weeklySendStateWords, weeklySendTickNow, weeklySheetIsOn, WEEKLY_SEND_CRON } from './weeklySend'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import type { UserRole } from '../../hooks/useAuth'
+import { isOwnerOrDev } from '../doorRoles'
+import { BRIDGE_ROLES, alreadySentToday, isBridgeRole, lastRunWords, parseWeeklySendRun, weeklySendRecipients, weeklySendStateWords, weeklySendTickNow, weeklySheetIsOn, WEEKLY_SEND_CRON } from './weeklySend'
 
 const md = (ymd: string) => ymd
 
@@ -41,8 +45,8 @@ describe('the switch and the last run', () => {
   })
 })
 
-describe('weeklySendRecipients — every dev with a real account and an address, nobody else', () => {
-  it('keeps devs, drops the rest, trims and dedupes', () => {
+describe('weeklySendRecipients — the owner and every dev with a real account and an address, nobody else', () => {
+  it('keeps the owner and devs, drops the rest, trims and dedupes', () => {
     expect(
       weeklySendRecipients([
         { role: 'dev', email: ' Owner@X.com ', archived_at: null },
@@ -55,13 +59,29 @@ describe('weeklySendRecipients — every dev with a real account and an address,
         { role: 'master_technician', email: 'boss@x.com', archived_at: null },
         { role: 'assistant', email: 'office@x.com', archived_at: null },
       ]),
-    ).toEqual(['owner@x.com'])
+    ).toEqual(['owner@x.com', 'boss@x.com'])
+  })
+
+  it('reads the Bridge’s own audience, the page’s gate, so the functions serve whoever opens the page (punch list #188 row 69)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'primary', 'helpers', 'subcontractor'] as UserRole[]) {
+      expect(isBridgeRole(role), role).toBe(isOwnerOrDev(role))
+    }
+    expect(isBridgeRole(null)).toBe(false)
+    expect([...BRIDGE_ROLES].sort()).toEqual(['dev', 'master_technician'])
+  })
+
+  it('the two functions under the page gate on that list and on no role of their own', () => {
+    const fn = (name: string) => readFileSync(join(process.cwd(), 'supabase', 'functions', name, 'index.ts'), 'utf8')
+    expect(fn('bridge-sheet-email')).toContain('!isBridgeRole(row.role)')
+    expect(fn('bridge-weekly-sheet')).toContain("in('role', [...BRIDGE_ROLES])")
+    expect(fn('bridge-weekly-sheet')).toContain('isBridgeRole(who?.role)')
+    for (const name of ['bridge-sheet-email', 'bridge-weekly-sheet']) expect(fn(name)).not.toMatch(/role\s*[!=]==\s*'dev'/)
   })
 })
 
 describe('the words', () => {
   it('say what the switch does', () => {
-    expect(weeklySendStateWords(true)).toBe('On: the sheet goes to every dev on Monday at 6 AM Central.')
+    expect(weeklySendStateWords(true)).toBe('On: the sheet goes to the owner and every dev on Monday at 6 AM Central.')
     expect(weeklySendStateWords(false)).toBe('Off: nothing goes out on Monday. Email me this sheet still works.')
   })
   it('read the last run', () => {

@@ -58,6 +58,28 @@ On a day with two jobs, {{chip:blue|Split evenly}} splits each purchase between 
 
 If a purchase cannot be saved, it stays picked and says why. The rest of the day is saved. {{chip:gray|Sorted}} at the top is the same 30-day list as in the window. {{chip:gray|My card}} shows only the purchases on your own card.
 
+## A ticket on the charge
+
+A tech can photograph the supply house ticket at the counter. Read [take a photo of a supply house ticket](/help/take-a-photo-of-a-supply-house-ticket) for that press. The app ties the ticket to the charge by the minute of the swipe.
+
+On the Team queue, a charge with a ticket wears a green chip, like {{chip:green|Ticket · JP1042 first}}. The ticket's job is the first choice on that line. Press the chip to see the photo.
+
+When one charge fits loosely, the line asks a question. The question reads like **is it $228.58 at Ridgeway Supply?** Press {{button:blue|It is}} or {{button:outline|It is not}}.
+
+The **Tickets** tab holds every ticket that is not sitting on its charge.
+
+- A ticket the app can only ask about. Answer the question, or pick the charge from the list.
+- A ticket whose job is not where you sent the charge. Press {{button:blue|Change it to JP1042}} to move the charge, or {{button:outline|Leave it on JP1038}} to keep it.
+- A ticket with no job, or for no one job. Press {{button:blue|Pick a job}}.
+- A ticket with no charge. Pick the charge from the holder's charges, or press **Paid another way…** and say how.
+- A ticket on a PO code. The bill closes it.
+
+Once you sort a charge with its ticket in front, the ticket is used. The tech can no longer move it or remove it.
+
+A tech hands you the paper instead? Press **+ Ticket** on the charge's line and pick the scan, the photo or the PDF. The paper lands on that charge with the tech named as its taker.
+
+A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
+
 ## Undo a sort in Job Parts Tally
 
 Picked the wrong job? Press **Undo** on the message that says the day is sorted. The purchases go back to sort.

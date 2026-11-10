@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landCounterTicket, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -110,5 +110,34 @@ describe('landTaskPhoto', () => {
     expect(failed.kind).toBe('failed')
     const refused = await landTaskPhoto(press, { attach: async () => Promise.reject(new DatabaseError('Failed to add the photo: Not your card.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add the photo', serverMessage: 'Not your card.' })) })
     expect(refused.kind).toBe('refused')
+  })
+})
+
+// Punch list #295, PR 2: a counter ticket lands without the RPC; the row is written again, then the Save press.
+describe('landCounterTicket', () => {
+  const page = (id: string, sent: boolean) => ({ id, sent, pageNo: 1, mime: 'image/jpeg', takenAt: '2026-11-04T16:02:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Jordan' })
+  const payload = (photos: ReturnType<typeof page>[]) => ({ ticketId: 'tk-1', takenAt: '2026-11-04T16:02:00Z', takenAtFrom: 'press' as const, source: 'camera' as const, jobId: 'j1', alsoJobIds: [], noOneJob: false, poEntryId: null, total: null, note: '', byName: 'Jordan', photos })
+
+  it('names the ticket, its job and its pages for the record, writes the row and then lands it', async () => {
+    const press = newPress({ id: 'ct', seq: 1, kind: 'counter-ticket', userId: 'u', pressedAt: T, payload: payload([page('a', true)]) })
+    expect(rpcPayload(press)).toEqual({ ticket_id: 'tk-1', job_id: 'j1', page_ids: ['a'] })
+    const calls: string[] = []
+    const out = await landCounterTicket(press, { row: async (p) => void calls.push(`row:${p.id}`), land: async (id) => (calls.push(`land:${id}`), { landed: 1 }) })
+    expect(out).toEqual({ kind: 'landed', result: { ticket_id: 'tk-1', landed: 1 } })
+    expect(calls).toEqual(['row:ct', 'land:tk-1'])
+  })
+
+  it('lands a ticket whose pages were lost with the phone, as a ticket with no page', async () => {
+    const press = newPress({ id: 'ct2', seq: 1, kind: 'counter-ticket', userId: 'u', pressedAt: T, payload: payload([]) })
+    const out = await landCounterTicket(press, { row: async () => undefined, land: async () => ({ landed: 1 }) })
+    expect(out.kind).toBe('landed')
+  })
+
+  it('a lost signal fails and waits; a refusal keeps the server’s reason', async () => {
+    const press = newPress({ id: 'ct3', seq: 1, kind: 'counter-ticket', userId: 'u', pressedAt: T, payload: payload([page('a', true)]) })
+    const lost = await landCounterTicket(press, { row: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(lost.kind).toBe('failed')
+    const refused = await landCounterTicket(press, { row: async () => undefined, land: async () => Promise.reject(new DatabaseError('Failed to save the ticket: Your account is in training mode.', '42501', undefined, { kind: 'server', status: 403, operationName: 'save the ticket', serverMessage: 'Your account is in training mode.' })) })
+    expect(refused).toEqual({ kind: 'refused', refusal: { message: 'Your account is in training mode.', code: '42501' } })
   })
 })

@@ -57,6 +57,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
   { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: what is in a cage or box on a job site, for whoever scans its QR. Not a customer surface.' },
+  { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
@@ -139,7 +140,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
   { kind: 'sender', ref: 'gc-money-monday-email', audience: 'staff', exempt: 'The money team\'s Monday email about our GC jobs.' },
   { kind: 'sender', ref: 'people-week-email', audience: 'staff', exempt: 'The Monday email of your people’s week, to the staff member who asked for it (v2.6603).' },
-  { kind: 'sender', ref: 'bridge-sheet-email', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to the dev who pressed Email me this sheet (v2.5224).' },
+  { kind: 'sender', ref: 'bridge-sheet-email', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to the owner or the dev who pressed Email me this sheet (v2.5224).' },
   { kind: 'sender', ref: 'bridge-weekly-sheet', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to every dev on Monday morning by the weekly send (v2.5883).' },
   { kind: 'sender', ref: 'your-week-email', audience: 'staff', exempt: 'Your week\'s Monday email, last week\'s card mailed to each of our own people the office picked a signal for (v2.6607, punch list #255).' },
   // The office's GC notices (O10b): the architect's reminder is outside; the project manager's two are staff mail. The

@@ -14,7 +14,14 @@ import { searchCase } from '../_shared/devMcpCaseSearch.ts'
 import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
 import { PERSON_MATTER_PERSON_SELECT, PERSON_MATTER_STANDING_SELECT, personMatterAppliedWords, personMatterDryRun, personMatterRpc, type PersonMatterPayload, type PersonMatterPersonRow, type PersonMatterStandingRow } from '../_shared/devMcpPersonMatter.ts'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
-import { jobAppliedWords, newJobDryRun, readNewJobWorld, type JobReads, type NewJobPayload } from '../_shared/devMcpJobs.ts'
+import { BILL_TIE_COLUMN, billAppliedWords, billDryRun, billInput, fullyInvoiced, readBillWorld, withBillLink, type BillPayload, type BillReads, type InvoiceRow, type PaymentRow, type SendOutcome } from '../_shared/devMcpBill.ts'
+import { billTextLink } from '../_shared/gcKernels/lib/billing/billTextLink.ts'
+import { billDollars } from '../_shared/gcKernels/lib/billing/newestBill.ts'
+import { moneyCents } from '../_shared/gcKernels/lib/billing/openLineAllocation.ts'
+import { COLLECTIONS_RPC, collectionsRpcBody, contractEndedPatch, jobLabelOf, jobMarkAppliedWords, jobMarkDryRun, readMarkJob, type JobMarkPayload, type JobMarkReads } from '../_shared/devMcpJobMarks.ts'
+import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload } from '../_shared/devMcpJobs.ts'
+import { getSubmittals, readSubmittalWorld, submittalAppliedWords, submittalDryRun, submittalWrites, type SubmittalPayload } from '../_shared/devMcpSubmittals.ts'
+import { activityNoteAppliedWords, activityNoteDryRun, activityNoteRow, readActivityNoteWorld, type ActivityNotePayload } from '../_shared/devMcpActivityNote.ts'
 import { EVIDENCE_FILE_MAX_BYTES, evidenceLinkProblem, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
 import { getHoursStatement, hoursStatementClockLabel, prepareHoursStatementWrite, sendHoursStatementAsDev, type HoursStatementPrepared } from '../_shared/devMcpHoursStatement.ts'
 import { hoursStatementLongDate } from '../_shared/hoursStatement.ts'
@@ -27,7 +34,7 @@ import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } 
 import { GmailError, gmailAttachment, gmailMessage, gmailMessageHeaders, gmailMessagePage } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
 import { base64UrlBytes, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
-import { MAIL_FILE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadReply, pickMailFile, type MailFileBytes, type MailFileJobRef } from '../_shared/devMcpMailFile.ts'
+import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadReply, mailFileWhole, pickMailFile, type MailFileBytes, type MailFileJobRef, type MailFileRaw } from '../_shared/devMcpMailFile.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import { driveDocArgs, driveDocChangedWords, driveDocPlanExtra, driveDocSource, readDriveDoc, serviceAccountEmail, type DriveDocFacts } from '../_shared/devMcpDriveDoc.ts'
 import { mailTagAppliedWords, mailTagArgs, mailTagChangedWords, personTagApplyReply, personTagCommitment, personTagPlanReply, tagApplyReply, tagCommitment, tagPlanReply } from '../_shared/devMcpMailTag.ts'
@@ -99,10 +106,14 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // role is used for, timestamps by id and nothing else, since no other door reads auth.users. A password never comes back and never
 // reaches the log (argsWithoutPasswords).
 //
+// read_mail_file in pieces (v2.6806 / 0.52.0, numbered behind v2.6804's 0.51.0, which merged first): the door cuts a reply at 80,000 characters, so a file over about 59 KB came back as
+// base64 cut mid-string. A reply now carries at most MAIL_FILE_SLICE_MAX_BYTES of the file with offset, length and next_offset, the
+// size and the sha256 of the whole, and the words that name the argument that reads on (devMcpMailFile.ts → mailFileReadReply).
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.50.0'
+const SERVER_VERSION = '0.56.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -194,6 +205,11 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b482'" } }, required: ['bid'] },
   },
   {
+    name: 'get_submittals',
+    description: "Where a bid's submittals stand, in one call (v2.6804), as Bids → Submittals reads them: every revision with its line (Rev 2 · shared with the GC · 6 rows · 2 approved, 1 sent back), the working revision's rows (tag, what the plans specified, what is submitted, the status against the plans in words, the reason, lead time, supply house, cut sheet pages, their answer), and the order log from the tab's own kernels — the four steps with their counts (Waiting on the GC · To order · On order · On site), the Next line, and every line with its key, step, status, order-by, ordered, PO, expected and delivered dates. Also the review room and who opened it, the updates sent to the GC, what is missing before anything can be ordered, the log's delivered count beside Materials on site's own rows (two facts that do not write each other), and status_text: the whole status in plain words, ready to read back or paste. Reads only; nothing is sent to anyone. `bid` is an id, or text that matches exactly one bid.",
+    inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b398'" } }, required: ['bid'] },
+  },
+  {
     name: 'check_sampler',
     description: "Was the database frozen? Gaps over 90 s in the per-minute health sampler (each one is a freeze window) and the slowest sample (over ~250 ms is the early warning), over the last `hours`. Survives a restart — docs/DB_FREEZE_RUNBOOK.md Step 2. Devs only.",
     inputSchema: { type: 'object', properties: { hours: { type: 'number', description: 'Look back this many hours (1–336, default 24)' } } },
@@ -255,8 +271,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'read_mail_file',
-    description: "One file off a search_mail hit, whole (server 0.29.0): read from Gmail on the server by its name as read_mail lists it, handed back as content_base64 with its mime, size and sha256, up to 10 MB. Read-only. When the file belongs on a job, a person's file or a matter, plan_mail_file files it there without the bytes passing through you.",
-    inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" }, name: { type: 'string', description: "The file's name as read_mail lists it" } }, required: ['account', 'id', 'name'] },
+    description: `One file off a search_mail hit (server 0.29.0; in pieces since 0.52.0): read from Gmail on the server by its name as read_mail lists it, up to 10 MB, handed back as content_base64 with its mime, its size_bytes and the sha256 of the whole file. A reply carries at most ${MAIL_FILE_SLICE_MAX_BYTES} bytes, since the door cuts a reply at 80,000 characters: a file that fits comes whole, and a larger one comes a piece at a time with offset, length and next_offset. Call again with offset set to next_offset until it is null, decode each piece, join the bytes in order and check them against sha256; the reply's read_next says so in words. Read-only. When the file belongs on a job, a person's file or a matter, plan_mail_file files it there without the bytes passing through you.`,
+    inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" }, name: { type: 'string', description: "The file's name as read_mail lists it" }, offset: { type: 'number', description: "The byte to start at: 0 when left out, then each reply's next_offset" }, length: { type: 'number', description: `How many bytes to hand back, for a caller that wants smaller pieces; at most ${MAIL_FILE_SLICE_MAX_BYTES}, which is also what a reply carries when this is left out` } }, required: ['account', 'id', 'name'] },
   },
   {
     name: 'plan_mail_file',
@@ -545,8 +561,78 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'apply_job',
-    description: 'Make the job you planned: the same job plus the plan_hash from plan_job. Reads the world again first and writes only when it still matches: one insert into jobs_ledger as you (training mode, a twin and an archived account are refused by the table, as on the screen), then the kind when you gave one. Replies with the job id, its label and the next press. The Pipeline shows it at Waiting at once; plan_job_update moves it, plan_bill bills it.',
+    description: 'Make the job you planned: the same job plus the plan_hash from plan_job. Reads the world again first and writes only when it still matches: one insert into jobs_ledger as you (training mode, a twin and an archived account are refused by the table, as on the screen), then the kind when you gave one. Replies with the job id, its label and the next press. The Pipeline shows it at Working at once, where a new job starts; plan_job_update moves it, plan_bill bills it.',
     inputSchema: { type: 'object', properties: { job: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['job', 'plan_hash'] },
+  },
+  {
+    name: 'plan_job_update',
+    description: "Dry-run a change to a job (v2.6793, punch list #293): the Edit Job form's columns — name, address, the office's numbers, customer, customer name / email / phone, service type, development, project, bid, who the bill goes to, the links, the account manager, the price (revenue), the percent complete, the kind — as one write under the form's own RLS, and the status as the Pipeline moves it, through update_job_status one step at a time (waiting → working → ready_to_bill → billed → paid, and each step back; a step back from Ready to Bill deletes the job's Ready to Bill lines, as the Pipeline's send-back does). The dry run reads the job and every row a new id names, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the status steps in order, and what the verb does not do, under a plan_hash committed to the columns' before values, the status and updated_at; nothing is written.",
+    inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ job_id (find_job), set? ({ column: value }; null clears a column that may be blank), status? (waiting | working | ready_to_bill | billed | paid), reason? }' } }, required: ['update'] },
+  },
+  {
+    name: 'apply_job_update',
+    description: 'Change the job you planned: the same update plus the plan_hash from plan_job_update. Reads the job again first and writes only when it still matches — a column changed by anyone since refuses. One PATCH on jobs_ledger as you (read back to confirm it landed; a row RLS kept is said), then update_job_status once per step, stopping at the first step the database refuses and saying where the job stands. Replies with what changed, the steps and the next press.',
+    inputSchema: { type: 'object', properties: { update: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['update', 'plan_hash'] },
+  },
+  {
+    name: 'plan_bill',
+    description: "Dry-run a bill (v2.6794, punch list #293): what Bill Customer and the share row do, in their order — the one primary Ready to Bill row sized to the remainder, the Stripe bill through create-stripe-invoice as you (stripe_mode test | live is required; the server bills live when it is left out), the ten-letter pay code, the job to Billed when fully invoiced, then the Billed line texted from the company number through quo-send and the share row's draft emailed through messages-email, each tied to the job. The dry run reads the job, its lines and payments, the customer, their contact and numbers, the texts switch, the office's Billed line and your signature, and replies with the amount the bill will carry, the mode and due date, the number or address picked with the text's exact words (the link a placeholder until the bill exists) and the email's subject, body and signature, and what happens after, under a plan_hash; nothing is written. Refused when the job is not at Ready to Bill (plan_job_update moves it), nothing is left to bill, the customer has no email, or a send was asked for and cannot go (no number, STOP, texts off, no address). action send texts or emails the link of a billed Stripe bill that already exists.",
+    inputSchema: { type: 'object', properties: { bill: { type: 'object', description: "{ job_id (find_job), stripe_mode (test | live), due_date? (YYYY-MM-DD, today when left out), memo?, send?: { text?: true | '<number>', email?: true | '<address>' } } | { action: 'send', invoice_id, send }" } }, required: ['bill'] },
+  },
+  {
+    name: 'apply_bill',
+    description: "Bill the job you planned: the same bill plus the plan_hash from plan_bill. Reads the world again first and acts only when it still matches, then runs the modal's steps in order, each outcome in the reply, never all or nothing: ensure_single_ready_to_bill_invoice_for_job (refused when its amount is not the plan's), create-stripe-invoice as you (a refusal returns its words and the Ready to Bill row stands), the pay code read back, the job to Billed when fully invoiced, the text and the email. A send that is refused leaves the bill standing and names the reason; plan_bill { action: 'send', invoice_id, send } tries again. Replies with the bill, its link, each send's outcome and where the job stands.",
+    inputSchema: { type: 'object', properties: { bill: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['bill', 'plan_hash'] },
+  },
+  {
+    name: 'plan_collections_flag',
+    description: "Dry-run the Collections flag on a Billed job (v2.6795, punch list #293): the Job window's and Stages' own press, through set_job_collections_flag as you — flagged true puts the job in Collections with a note (collections_at now, collections_by you, the note on the job and in its activity), false returns it to Billed Awaiting Payment and lifts an Uncollectible mark too, as the RPC does. The dry run reads the job and replies with the mark before → after, the activity line it will write and where it shows, under a plan_hash; nothing is written. Refused when the job is not at Billed (the RPC's rule) or the flag already reads that way.",
+    inputSchema: { type: 'object', properties: { flag: { type: 'object', description: '{ job_id (find_job), flagged (true | false), note? }' } }, required: ['flag'] },
+  },
+  {
+    name: 'apply_collections_flag',
+    description: 'Set the flag you planned: the same flag plus the plan_hash from plan_collections_flag. Reads the job again first and writes only when it still matches; then POSTs set_job_collections_flag as you and answers what it said.',
+    inputSchema: { type: 'object', properties: { flag: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['flag', 'plan_hash'] },
+  },
+  {
+    name: 'plan_contract_ended',
+    description: "Dry-run the end of our contract on a job, as the Lien contract row on Edit Job and the Lien desk record it (v2.6795, punch list #293): the day it ended (ended_on), how (complete | terminated | abandoned), the retainage held back and whether a payment bond is on the project — one write on the job under the row's own RLS, with the moment and you stamped; clear: true takes the end off again. The Lien desk's clocks and the retainage line read from these. The dry run reads the job and replies with the columns before → after and the clocks' footing, under a plan_hash; nothing is written. Refused when the row already reads that way.",
+    inputSchema: { type: 'object', properties: { contract: { type: 'object', description: '{ job_id (find_job), ended_on (YYYY-MM-DD), how (complete | terminated | abandoned), retainage_held?, payment_bond? (yes | no | unknown) } | { job_id, clear: true }' } }, required: ['contract'] },
+  },
+  {
+    name: 'apply_contract_ended',
+    description: 'Record the end you planned: the same contract plus the plan_hash from plan_contract_ended. Reads the job again first and writes only when it still matches: one PATCH on jobs_ledger as you, read back to confirm it landed (a row RLS kept is said).',
+    inputSchema: { type: 'object', properties: { contract: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['contract', 'plan_hash'] },
+  },
+  {
+    name: 'plan_submittal_rows',
+    description: "Dry-run submittal rows onto a bid (v2.6804): one row per fixture tag, one or many, as Bids → Submittals' Add a row and Edit write them, as you under the tab's own RLS. Rows land on the bid's newest revision while it is a draft, or on a Rev 1 the apply makes when the bid has none; a revision the GC holds refuses the plan and names the tab's press. A tag already on the draft is changed, the fields you name only (null clears one); a new tag is added after the last row. Each row takes what the plans specified, what you submit, a status (worked out from the two products by the tab's rule when left out: Proposed when the plans named nothing), a reason, a lead time, a supply house by name or id, and order_only. The plan replies with the revision, each row as add, change or unchanged with how it will read, what it holds and why (a row the GC answered, a row that carries parts, a house it cannot find) while the rest goes on, warnings (an alternate with no reason), the writes and what the verb does not do, under a plan_hash; nothing is written. get_submittals reads the bid first.",
+    inputSchema: { type: 'object', properties: { submittal: { type: 'object', description: '{ bid (id or text that finds one bid), rows: [{ tag, specified?: { manufacturer?, model?, description? }, submitted?: { manufacturer?, model?, label? }, status? (as_specified | superseded | equal | alternate | design_change | missing | accessory | proposed), reason_kind? (lead_time | discontinued | in_stock | equal | cost | other), reason_note?, lead_time_days?, supply_house? (name or id), order_only? }] } — up to 100 rows' } }, required: ['submittal'] },
+  },
+  {
+    name: 'apply_submittal_rows',
+    description: 'Load the rows you planned: the same submittal plus the plan_hash from plan_submittal_rows. Reads the bid again first and writes only when it still matches: Rev 1 as a draft when the bid had no revision, the new rows in one insert into bid_submittal_items, then each changed row, all as you (training mode, a twin and an archived account are refused by the tables, as on the tab). Replies with what landed, anything that failed with its reason, and the read that shows it. Nothing is shared with the GC and nobody is told.',
+    inputSchema: { type: 'object', properties: { submittal: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['submittal', 'plan_hash'] },
+  },
+  {
+    name: 'plan_submittal_log',
+    description: "Dry-run facts onto a bid's order log (v2.6804): ordered_on, po_ref, expected_on, delivered_on and the note for the GC on one line or many, as the Procure step's date boxes write them, as you under the tab's own RLS. Name a line by its key as get_submittals lists it, or by its row's tag (all_parts: true for every part line under the tag). A date is YYYY-MM-DD and null clears it; an ordered or delivered day after today is held, since it has not happened. The plan draws the log again with the facts in and replies with each line's step and status before and after (To order → On order: Arrives 11/20), the four steps' counts before and after, the Next line after, what it holds and why, warnings (a part the GC has not approved, a delivery before its order), the writes and what the verb does not do, under a plan_hash; nothing is written. A Delivered date here puts nothing in Materials on site: plan_delivery does that.",
+    inputSchema: { type: 'object', properties: { log: { type: 'object', description: '{ bid (id or text that finds one bid), lines: [{ line (the key get_submittals lists) | tag (+ all_parts?), ordered_on?, po_ref?, expected_on?, delivered_on?, note? }] } — up to 100 lines' } }, required: ['log'] },
+  },
+  {
+    name: 'apply_submittal_log',
+    description: 'Write the log facts you planned: the same log plus the plan_hash from plan_submittal_log. Reads the bid again first and writes only when it still matches: each line\'s record in bid_procurement_items updated, or made with the next sort order when the line had none, as you. Replies with what landed, anything that failed with its reason, and the read that shows it. No update is sent to the GC and nobody is told.',
+    inputSchema: { type: 'object', properties: { log: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['log', 'plan_hash'] },
+  },
+  {
+    name: 'plan_activity_note',
+    description: "Dry-run a note onto a job's Activity or a bid's notes (v2.6822): one line of your words where the team reads it in the app — a job's Job activity / notes (the Pipeline row's thread, the job window's Activity; the row the Note press writes) or a bid's Notes on the Bid Board (the bid's own, or about one GC on it), as you, under the same RLS as the screen. The plan names the job or the bid as it reads, shows the latest lines already there, the row as it will land and where it shows. It tells nobody: no email, text or push. Use it after a submittal or an order moved to leave the word on the job; the customer's own thread is the job window's Note · Text · Email. Replies with plan_hash.",
+    inputSchema: { type: 'object', properties: { note: { type: 'object', description: '{ job (an id, or text that finds one job — find_job) OR bid (an id, or text that finds one bid — find_bid), text (the note, under 4,000 characters), on? (YYYY-MM-DD, the day it is about when not today, never ahead; stamped noon that day), gc_customer_id? (a bid note about one GC on the bid, a customers.id; left out, the bid\'s own note) }' } }, required: ['note'] },
+  },
+  {
+    name: 'apply_activity_note',
+    description: "Write the note you planned: the same note plus the plan_hash from plan_activity_note. Reads the job or the bid again first and writes only when it still matches (a new line on the thread since the plan moves the hash): one insert as you into jobs_ledger_thread_notes or bids_submission_entries. Replies with the row's id, where it shows and the read that lists it. One apply per plan.",
+    inputSchema: { type: 'object', properties: { note: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['note', 'plan_hash'] },
   },
   {
     name: 'plan_plan_set',
@@ -641,7 +727,7 @@ const TOOLS: McpTool[] = [
       properties: {
         role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
         user: { type: 'string', description: 'A user id (find_person)' },
-        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid, get_history, read_on_site (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid, get_submittals, get_history, read_on_site (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
         args: { type: 'object', description: "The inner verb's arguments" },
       },
       required: ['verb'],
@@ -650,7 +736,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are fifty-nine verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text or a section at a time against its own headings, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, a piece at a time past 54,000 bytes (offset, then each reply's next_offset), and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are seventy-three verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text or a section at a time against its own headings, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.53.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.55.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.56.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.56.0), plan_submittal_rows → apply_submittal_rows (submittal rows onto a bid's draft revision, one or many, added or changed by tag, as Bids → Submittals writes them; Rev 1 is made when the bid has none) and plan_submittal_log → apply_submittal_log (the order log's facts on a line: ordered, PO, expected, delivered, a note for the GC) — get_submittals reads where every row and line stands first, with the status in plain words to read back; nothing in the three shares with the GC or tells anyone (since 0.51.0), plan_activity_note → apply_activity_note (one line of your words on a job's Job activity / notes or on a bid's Notes, as the Note press and the Bid Board write them — where the team reads what moved; it tells nobody; since 0.54.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -743,9 +829,10 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
 /**
  * The plan-part verbs' table writes (v2.6317): a POST that returns the row, or a PATCH by query — plan_sets,
  * plan_parts, a lane's requests table — as the dev, the rows the job window's Plans section writes under the same
- * RLS. Reached only from that branch and apply_file_plans' part leg; every other write is restPost to a named RPC.
+ * RLS. Reached only from that branch, apply_file_plans' part leg, apply_job (v2.6790) and the submittal branch
+ * (v2.6804, which sends the new rows as one array); every other write is restPost to a named RPC.
  */
-async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>, prefer?: string): Promise<{ ok: boolean; status: number; body: unknown }> {
+async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown> | Record<string, unknown>[], prefer?: string): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
     method,
     headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: prefer ?? (method === 'POST' ? 'return=representation' : 'return=minimal') },
@@ -1293,6 +1380,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return composite(await getCustomer(readerAs(await jwt()), String(args.customer ?? ''), todayYmdInAppTz()), 'customers')
     case 'get_bid':
       return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
+    case 'get_submittals':
+      // v2.6804: the bid's submittals as Bids → Submittals reads them, through the tab's own kernels (devMcpSubmittals.ts).
+      return composite(await getSubmittals(readerAs(await jwt()), String(args.bid ?? ''), todayYmdInAppTz()), 'bid_submittals')
     case 'search_mail':
     case 'read_mail':
     case 'read_mail_file':
@@ -1330,7 +1420,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         }
       }
       // A file off a mail, by its name as read_mail lists it, never over the cap: the bytes come from the part itself or attachments.get.
-      const fileOff = async (account: string, id: string, fileName: string): Promise<MailFileBytes | { error: string }> => {
+      const fileOff = async (account: string, id: string, fileName: string): Promise<MailFileRaw | { error: string }> => {
         const token = await tokenFor(account)
         const email = readGmailMessage(await gmailMessage(token, id))
         const picked = pickMailFile(email.files, fileName)
@@ -1343,7 +1433,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         if (bytes.length < 1) return { error: `${f.name} came back empty from Gmail.` }
         if (bytes.length > MAIL_FILE_MAX_BYTES) return { error: over(bytes.length) }
         const sha256 = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('')
-        return { name: f.name, mime: f.mime, size_bytes: bytes.length, sha256, content_base64: bytesToBase64(bytes) }
+        return { name: f.name, mime: f.mime, sha256, bytes }
       }
       if (name === 'read_mail_file') {
         const parsed = mailFileReadArgs(args, known)
@@ -1351,7 +1441,10 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         try {
           const file = await fileOff(parsed.account.email, parsed.id, parsed.name)
           if ('error' in file) return refused(file.error, { target: parsed.account.email })
-          return ok(mailFileReadReply(parsed.account.email, parsed.id, file), { target: parsed.account.email })
+          // A piece that fits the door's reply, never base64 cut mid-string: offset reads on (0.52.0).
+          const piece = mailFileReadReply(parsed.account.email, parsed.id, file, { offset: parsed.offset, length: parsed.length })
+          if (!piece.ok) return refused(piece.error, { target: parsed.account.email })
+          return ok(piece.reply, { target: parsed.account.email })
         } catch (e) {
           if (e instanceof GmailError && e.status === 404) return refused(`Gmail has no mail ${parsed.id} in ${parsed.account.email}.`, { target: parsed.account.email })
           return refused(mailRefusal(parsed.account.email, reason(e)), { target: parsed.account.email })
@@ -1368,7 +1461,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         try {
           const read = await fileOff(parsed.value.account.email, parsed.value.id, parsed.value.name)
           if ('error' in read) return refused(read.error, { target: parsed.value.target })
-          file = read
+          file = mailFileWhole(read)
         } catch (e) {
           if (e instanceof GmailError && e.status === 404) return refused(`Gmail has no mail ${parsed.value.id} in ${parsed.value.account.email}.`, { target: parsed.value.target })
           return refused(mailRefusal(parsed.value.account.email, reason(e)), { target: parsed.value.target })
@@ -1663,6 +1756,334 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         kind = k.ok ? { asked: p.kind, saved: true } : { asked: p.kind, saved: false, why: restError(k.status, k.body) }
       }
       return ok(jobAppliedWords(job, kind), { target: job.id })
+    }
+    case 'plan_job_update':
+    case 'apply_job_update': {
+      // v2.6793 / 0.52.0 (punch list #293, PR 2): a job changed as Edit Job and the Pipeline change it — the identity slice's
+      // columns, the price, the percent and the kind as one PATCH under RLS as the dev, then the status through the
+      // Pipeline's own update_job_status one step at a time. No wrapper RPC: the dry run is this server's read of the job
+      // and of every row a new id names (devMcpJobs.ts), hashed with the payload; apply reads again and writes only when
+      // the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as JobUpdatePayload
+      const reads: JobReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readJobUpdateWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = jobUpdateDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const job = world.job!
+      const patch = dry.reply.patch as Record<string, unknown>
+      const planned = dry.reply.changes as Array<{ column: string; before: unknown; after: unknown }>
+      let landed: { changes: Array<{ column: string; before: unknown; after: unknown }>; held: string | null } = { changes: [], held: null }
+      if (Object.keys(patch).length) {
+        const res = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)
+        if (!res.ok) return errored(restError(res.status, res.body))
+        // return=minimal says nothing about rows RLS kept: read the columns back and say what landed.
+        const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${job.id}`)
+        const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
+        const stuck = planned.filter((c) => row && String(row[c.column] ?? '') !== String(c.after ?? ''))
+        landed = { changes: planned.filter((c) => !stuck.includes(c)), held: stuck.length ? `This account could not change ${stuck.map((c) => c.column).join(', ')} on this job (RLS let no row through).` : null }
+      }
+      let status: { from: JobStatus; steps: Array<{ to: JobStatus; ok: boolean; error?: string | null; deleted_ready_to_bill_invoices?: number }> } | null = null
+      if (p.status) {
+        const from = ((JOB_STATUSES as readonly string[]).includes(job.status ?? '') ? job.status : 'waiting') as JobStatus
+        const planSteps = ((dry.reply.status as { steps?: Array<{ to: JobStatus }> } | null)?.steps ?? []).map((s) => s.to)
+        status = { from, steps: [] }
+        for (const to of planSteps) {
+          const res = await restPost(session, 'rpc/update_job_status', { p_job_id: job.id, p_to_status: to })
+          const body = (res.body && typeof res.body === 'object' ? res.body : {}) as { ok?: boolean; error?: string; deleted_ready_to_bill_invoices?: number }
+          if (!res.ok || body.error) {
+            status.steps.push({ to, ok: false, error: body.error ?? restError(res.status, res.body) })
+            break
+          }
+          status.steps.push({ to, ok: true, ...(body.deleted_ready_to_bill_invoices ? { deleted_ready_to_bill_invoices: body.deleted_ready_to_bill_invoices } : {}) })
+        }
+      }
+      return ok(jobUpdateAppliedWords(job, landed, status), { target: job.id })
+    }
+    case 'plan_bill':
+    case 'apply_bill': {
+      // v2.6794 (punch list #293, PR 3): a bill as Bill Customer and the share row make and hand it over — the app's own
+      // RPCs and functions in the modal's order, as the dev. No wrapper RPC: the dry run is this server's read of the job,
+      // its lines, the customer, their contact and the sends (devMcpBill.ts), hashed with the payload; apply reads again
+      // and acts only when the hash still matches, each step's outcome in the reply. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const shaped = billInput(name, args, todayYmdInAppTz())
+      if (!shaped.ok) return refused(shaped.error)
+      const p = shaped.p
+      const target = shaped.target
+      const session = await jwt()
+      const reads: BillReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readBillWorld(reads, p, { userId: who.userId, name: who.name })
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = billDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (name === 'plan_bill') return ok(planReply(name, dry.reply, fresh), { target })
+      if (fresh !== shaped.planHash) return refused(planMismatch(name, shaped.planHash ?? '', fresh), { target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      const job = world.job!
+      const jobLabel = String((dry.reply.job as { label: string }).label)
+      const planned = dry.reply as { text: { channel_id: string; to: string; words: string } | null; email: { channel_id: string; to: string; subject: string; body: string; signature: string[] } | null; bill: { amount_cents?: number; amount: string } }
+      let invoice: InvoiceRow
+      let status: { moved: boolean; now: string | null; why?: string | null } | null = null
+      if (p.action === 'make') {
+        // (1) The one primary Ready to Bill row sized to the remainder — the modal's only write before the send.
+        const ensured = await restPost(session, 'rpc/ensure_single_ready_to_bill_invoice_for_job', { p_job_id: job.id })
+        const e = (ensured.body && typeof ensured.body === 'object' ? ensured.body : {}) as { ok?: boolean; error?: string; invoice_id?: string; amount?: number | string; fully_allocated?: boolean }
+        if (!ensured.ok || e.error) return errored(e.error ?? restError(ensured.status, ensured.body))
+        if (e.fully_allocated === true) return refused(`Nothing left to bill for ${jobLabel} — every dollar is already on an invoice.`, { target })
+        if (e.ok !== true || typeof e.invoice_id !== 'string') return errored('ensure_single_ready_to_bill_invoice_for_job answered without an invoice_id.')
+        const cents = moneyCents(e.amount)
+        if (cents !== planned.bill.amount_cents) return refused(`The amount left to bill changed to ${billDollars(cents / 100)} since the plan (the plan said ${planned.bill.amount}) — review the bill, then plan again.`, { target })
+        // (2) The Stripe bill, as the dev, in the mode the plan named.
+        const made = await invokeAsDev(session, 'create-stripe-invoice', {
+          jobs_ledger_invoice_id: e.invoice_id,
+          customer_id: job.customer_id,
+          amount_dollars: cents / 100,
+          customer_email: (job.customer_email ?? '').trim(),
+          customer_name: (job.customer_name ?? '').trim() || 'Customer',
+          due_date: p.due_date,
+          ...(p.memo ? { memo: p.memo } : {}),
+          stripe_mode: p.stripe_mode,
+        })
+        const m = (made.body && typeof made.body === 'object' ? made.body : {}) as { error?: string; stripe_invoice_id?: string; hosted_invoice_url?: string }
+        if (!made.ok || m.error) return errored(`create-stripe-invoice refused: ${m.error ?? restError(made.status, made.body)}. The Ready to Bill row stands, as in the app.`)
+        // (3) The row as it landed, with its code.
+        const back = await restGet(session, 'jobs_ledger_invoices', `select=id,job_id,status,amount,is_primary_rtb_bundle,stripe_invoice_id,hosted_invoice_url,pay_code,stripe_mode,billed_at,created_at&id=eq.${e.invoice_id}`)
+        const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as InvoiceRow | null
+        if (!row) return errored(`The bill was made in Stripe (${m.stripe_invoice_id ?? 'id unknown'}) but its row could not be read back: ${back.ok ? 'no row' : restError(back.status, back.body)}.`)
+        invoice = row
+        // (4) The job to Billed when fully invoiced — the modal's promotion, best effort.
+        const [invRes, payRes] = await Promise.all([restGet(session, 'jobs_ledger_invoices', `select=id,status,amount,is_primary_rtb_bundle&job_id=eq.${job.id}`), restGet(session, 'jobs_ledger_payments', `select=invoice_id,amount&job_id=eq.${job.id}`)])
+        const invoices = (invRes.ok && Array.isArray(invRes.body) ? invRes.body : []) as InvoiceRow[]
+        const payments = (payRes.ok && Array.isArray(payRes.body) ? payRes.body : []) as PaymentRow[]
+        if (fullyInvoiced(job, invoices, payments)) {
+          const moved = await restPost(session, 'rpc/update_job_status', { p_job_id: job.id, p_to_status: 'billed' })
+          const mb = (moved.body && typeof moved.body === 'object' ? moved.body : {}) as { error?: string }
+          status = moved.ok && !mb.error ? { moved: true, now: 'billed' } : { moved: false, now: job.status, why: mb.error ?? restError(moved.status, moved.body) }
+        } else status = { moved: false, now: job.status, why: 'another Ready to Bill line remains' }
+      } else invoice = world.invoice!
+      // The code the share row mints on its first draw, when the function did not.
+      if (!(invoice.pay_code ?? '').trim()) {
+        const minted = await restPost(session, 'rpc/bill_pay_code', { p_invoice_id: invoice.id })
+        if (minted.ok && typeof minted.body === 'string') invoice = { ...invoice, pay_code: minted.body }
+      }
+      const link = billTextLink({ invoiceId: invoice.id, payCode: invoice.pay_code, hostedInvoiceUrl: invoice.hosted_invoice_url ?? '' })
+      // (5) and (6): the sends, each as the share row sends it, each refusal named and the bill left standing.
+      let contactId = world.contactId
+      const outcomes: { text: SendOutcome | null; email: SendOutcome | null } = { text: null, email: null }
+      const needContact = planned.text || planned.email
+      if (needContact && !contactId && job.customer_id) {
+        const made = await restPost(session, 'rpc/contact_for_customer', { p_customer_id: job.customer_id })
+        if (made.ok && typeof made.body === 'string') contactId = made.body
+      }
+      const tie = { jobId: job.id, column: BILL_TIE_COLUMN }
+      if (planned.text) {
+        if (!contactId) outcomes.text = { sent: false, to: planned.text.to, why: 'their contact could not be opened (contact_for_customer answered no id)' }
+        else {
+          const sent = await invokeAsDev(session, 'quo-send', { contactId, channelId: planned.text.channel_id, tie, body: withBillLink(planned.text.words, link), held: false })
+          const b = (sent.body && typeof sent.body === 'object' ? sent.body : {}) as { ok?: boolean; messageId?: string | null; words?: string; error?: string }
+          outcomes.text = sent.ok && b.ok !== false ? { sent: true, to: planned.text.to, message_id: b.messageId ?? null } : { sent: false, to: planned.text.to, why: b.words ?? b.error ?? restError(sent.status, sent.body) }
+        }
+      }
+      if (planned.email) {
+        if (!contactId) outcomes.email = { sent: false, to: planned.email.to, why: 'their contact could not be opened (contact_for_customer answered no id)' }
+        else {
+          const sent = await invokeAsDev(session, 'messages-email', { contactId, channelId: planned.email.channel_id, tie, subject: planned.email.subject, body: withBillLink(planned.email.body, link), signature: planned.email.signature })
+          const b = (sent.body && typeof sent.body === 'object' ? sent.body : {}) as { ok?: boolean; messageId?: string | null; words?: string; error?: string }
+          outcomes.email = sent.ok && b.ok !== false ? { sent: true, to: planned.email.to, message_id: b.messageId ?? null } : { sent: false, to: planned.email.to, why: b.words ?? b.error ?? restError(sent.status, sent.body) }
+        }
+      }
+      return ok(billAppliedWords(p, jobLabel, { invoice_id: invoice.id, stripe_invoice_id: invoice.stripe_invoice_id, stripe_mode: invoice.stripe_mode, amount: billDollars(moneyCents(invoice.amount) / 100), link, pay_code: invoice.pay_code }, outcomes, status), { target: invoice.id })
+    }
+    case 'plan_collections_flag':
+    case 'apply_collections_flag':
+    case 'plan_contract_ended':
+    case 'apply_contract_ended': {
+      // v2.6795 (punch list #293, PR 4): two marks on a job — the Collections flag through the Job window's own
+      // set_job_collections_flag, the contract's end as the Lien contract row saves it (one PATCH under RLS). No wrapper
+      // RPC: the dry run is this server's read of the job (devMcpJobMarks.ts), hashed with the payload; apply reads again
+      // and writes only when the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as JobMarkPayload
+      const reads: JobMarkReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let job
+      try {
+        job = await readMarkJob(reads, p.job_id)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = jobMarkDryRun(p, job, { userId: who.userId })
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const label = jobLabelOf(job!)
+      if (p.action === 'collections_flag') {
+        const res = await restPost(session, `rpc/${COLLECTIONS_RPC}`, collectionsRpcBody(p))
+        const body = (res.body && typeof res.body === 'object' ? res.body : {}) as { ok?: boolean; error?: string; flagged?: boolean }
+        if (!res.ok || body.error) return errored(body.error ?? restError(res.status, res.body))
+        return ok(jobMarkAppliedWords(p, label, { ok: true, detail: { rpc: body } }), { target: p.job_id })
+      }
+      const patch = contractEndedPatch(p, { userId: who.userId }, new Date().toISOString())
+      const res = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${p.job_id}`, patch)
+      if (!res.ok) return errored(restError(res.status, res.body))
+      // return=minimal says nothing about rows RLS kept: read the columns back.
+      const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${p.job_id}`)
+      const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
+      const landed = !!row && Object.entries(patch).every(([k, v]) => k === 'lien_contract_ended_set_at' || k === 'lien_retainage_held' ? row[k] != null || v == null : String(row[k] ?? '') === String(v ?? ''))
+      if (!landed) return ok(jobMarkAppliedWords(p, label, { ok: false, error: 'This account could not change this job (RLS let no row through).' }), { target: p.job_id })
+      return ok(jobMarkAppliedWords(p, label, { ok: true, detail: { row } }), { target: p.job_id })
+    }
+    case 'plan_submittal_rows':
+    case 'apply_submittal_rows':
+    case 'plan_submittal_log':
+    case 'apply_submittal_log': {
+      // v2.6804: submittal rows and the order log's facts, as Bids → Submittals writes them (BidsSubmittalsTab saveItem,
+      // SubmittalProcurementPanel write) — rows of bid_submittals, bid_submittal_items and bid_procurement_items under
+      // RLS as the dev. No RPC: the dry run is this server's read of the bid's submittal world through the tab's own
+      // kernels (devMcpSubmittals.ts), hashed with the payload; apply reads again and writes only when the hash still
+      // matches. The writes are rows, one at a time, as on the tab: what lands stays and what fails is named.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as SubmittalPayload
+      let world
+      try {
+        world = await readSubmittalWorld(readerAs(session), p.bid)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      if ('refused' in world) return refused(world.refused, { target: built.target })
+      const target = world.bid.id
+      const dry = submittalDryRun(p, world, todayYmdInAppTz())
+      if (!dry.ok) return refused(dry.refused, { target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      const landed: string[] = []
+      const failed: Array<{ what: string; why: string }> = []
+      let revisionId = ((dry.reply.revision as { id?: string | null } | undefined)?.id as string | null | undefined) ?? null
+      for (const w of submittalWrites(dry.reply, { userId: who.userId })) {
+        if (w.kind === 'make_revision') {
+          const made = await restRows(session, 'POST', w.table, 'select=id,rev_number', w.body)
+          const row = (Array.isArray(made.body) ? made.body[0] : made.body) as { id?: string } | null
+          if (!made.ok || !row || typeof row.id !== 'string') {
+            // No revision, no rows: nothing after this could land, so the apply stops here and says why.
+            const message = made.ok ? 'The insert answered with no row — RLS let nothing through. This account cannot start a submittal on this bid.' : restError(made.status, made.body)
+            return { log: { status: 'error', target, error: message }, text: message, isError: true }
+          }
+          revisionId = row.id
+          landed.push('Rev 1 made as a draft')
+        } else if (w.kind === 'insert_rows') {
+          if (!revisionId) {
+            failed.push({ what: `${w.body.length} rows`, why: 'no revision to put them on' })
+            continue
+          }
+          const res = await restRows(session, 'POST', w.table, 'select=id,tag', w.body.map((r) => ({ ...r, submittal_id: revisionId })))
+          const rows = Array.isArray(res.body) ? (res.body as Array<{ tag?: string }>) : []
+          if (res.ok && rows.length === w.body.length) landed.push(`${rows.length} ${rows.length === 1 ? 'row' : 'rows'} added: ${rows.map((r) => r.tag).join(', ')}`)
+          else failed.push({ what: `${w.body.length} new rows`, why: res.ok ? `the insert answered with ${rows.length} of ${w.body.length} rows — RLS let the rest through as nothing` : restError(res.status, res.body) })
+        } else if (w.kind === 'insert_line') {
+          const res = await restRows(session, 'POST', w.table, 'select=id', w.body)
+          if (res.ok && Array.isArray(res.body) && res.body.length === 1) landed.push(`${w.what}: its line made`)
+          else failed.push({ what: w.what, why: res.ok ? 'the insert answered with no row — RLS let nothing through' : restError(res.status, res.body) })
+        } else {
+          const res = await restRows(session, 'PATCH', w.table, `id=eq.${w.id}`, w.body)
+          if (res.ok) landed.push(`${w.what}: ${Object.keys(w.body).join(', ')}`)
+          else failed.push({ what: w.what, why: restError(res.status, res.body) })
+        }
+      }
+      const words = submittalAppliedWords(dry.reply, { landed, failed, revisionId })
+      if (landed.length === 0) return { log: { status: 'error', target, error: failed.map((f) => `${f.what}: ${f.why}`).join('; ') }, text: replyText(words), isError: true }
+      return ok(words, { target })
+    }
+    case 'plan_activity_note':
+    case 'apply_activity_note': {
+      // v2.6822: a note where the team reads it — a job's Job activity / notes (jobs_ledger_thread_notes, as the
+      // Pipeline's Note press and useJobThreadNotes write it) or a bid's notes (bids_submission_entries with notes, as
+      // the Bid Board's Notes popover writes it) — one row under RLS as the dev. No RPC: the dry run is this server's
+      // read of the job or the bid and its latest lines (devMcpActivityNote.ts), hashed with the payload; apply reads
+      // again and writes only when the hash still matches. It tells nobody. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as ActivityNotePayload
+      let world
+      try {
+        world = await readActivityNoteWorld(readerAs(session), p)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      if ('refused' in world) return refused(world.refused, { target: built.target })
+      const target = world.on === 'job' ? world.job.id : world.bid.id
+      const me = { userId: who.userId, name: who.name }
+      const dry = activityNoteDryRun(p, world, me, todayYmdInAppTz(), new Date().toISOString())
+      if (!dry.ok) return refused(dry.refused, { target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      const write = activityNoteRow(p, world, me, new Date().toISOString())
+      const made = await restRows(session, 'POST', write.table, `select=${write.select}`, write.row)
+      if (!made.ok) {
+        const message = restError(made.status, made.body)
+        return { log: { status: 'error', target, error: message }, text: message, isError: true }
+      }
+      const row = (Array.isArray(made.body) ? made.body[0] : made.body) as { id?: string; created_at?: string; occurred_at?: string } | null
+      if (!row || typeof row.id !== 'string') return { log: { status: 'error', target, error: `${write.table} returned no row` }, text: 'The insert answered with no row — RLS let nothing through. This account cannot write on this thread.', isError: true }
+      return ok(activityNoteAppliedWords(world, { id: row.id, at: row.created_at ?? row.occurred_at ?? null }), { target })
     }
     case 'plan_plan_set':
     case 'apply_plan_set':

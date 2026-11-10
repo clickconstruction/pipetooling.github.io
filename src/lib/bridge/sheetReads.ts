@@ -24,7 +24,7 @@ import type { MondaySheetReads } from './sheetBuild'
 export type MondaySheetReadOptions = {
   /** Cash on hand from the bank, read by the caller; null falls back to the typed figure. */
   bank: MercuryCash | null
-  /** ZZ test jobs to leave out of the Bill pile and the financials; null keeps them. */
+  /** ZZ test jobs to leave out of the Bridge data, the people, the build pace, the Bill pile, the jobs the bids became and the financials; null keeps them. */
   zzTestJobIds: ReadonlySet<string> | null
   /** Whether the client may read the Payment Chase touches (a dev, or the service role). */
   canReadTouches: boolean
@@ -43,15 +43,15 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
       return null
     }
   }
-  const data = await loadBridgeData(db)
+  const data = await loadBridgeData(db, { zzTestJobIds: opts.zzTestJobIds })
   const weeksRange = vectorRangeFor('weeks', data.todayYmd)
   const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls] = await Promise.all([
     soft('the money owed and due', () => loadDashboardFinancials(db, { assistantAggregates: false, zzTestJobIds: opts.zzTestJobIds })),
-    soft('the people', () => loadBridgeVectorInputs(db, data)),
-    soft('the eight weeks', () => loadVectorDaysInputs(db, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })),
-    soft('the build pace', () => loadBuildPaceInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })),
+    soft('the people', () => loadBridgeVectorInputs(db, data, { zzTestJobIds: opts.zzTestJobIds })),
+    soft('the eight weeks', () => loadVectorDaysInputs(db, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
+    soft('the build pace', () => loadBuildPaceInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
-    soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd })),
+    soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
     soft('the calls', () => loadBridgeCalls(db)),
   ])
   const items = fin ? [...fin.ar.items, ...fin.arCollections.items] : []

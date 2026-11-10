@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
-import { isControllerOrDev } from '../lib/doorRoles'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -19,6 +18,8 @@ import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransacti
 import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
 import { TallySortModeCardList } from '../components/tally/TallySortModeCardList'
 import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
+import { TicketPress } from '../components/tickets/TicketPress'
+import { MyTickets } from '../components/tickets/MyTickets'
 import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
 import TallyOnSiteTab, { type OnSitePart } from '../components/tally/TallyOnSiteTab'
@@ -38,12 +39,13 @@ import {
   tallyUniqueJobSplitEntries,
 } from '../lib/mercuryTxRowFromTally'
 import { fetchTallyLinkedMercuryRows } from '../lib/tally/fetchTallyLinkedMercuryRows'
+import { listMyTicketJobsByCharge } from '../lib/tickets/ticketMatchIo'
 import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
-import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
+import { buildTallyPayrollRuleFlagsToInsert, canEditTallyPayrollRules, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
 import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
 import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
@@ -249,7 +251,7 @@ export default function JobTally() {
   const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')
   const [role, setRole] = useState<string | null>(null)
   // Punch list #188 row 62 (v2.6761): the rules decide what counts as payroll, her chore, so the controller holds them with a dev.
-  const canEditPayrollRules = isControllerOrDev(role)
+  const canEditPayrollRules = canEditTallyPayrollRules(role)
   // #72 PR 2a: office roles land on the team's queue (Team); My card is their own card's table.
   const isTallyOffice = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const tallyTxView: 'team' | 'mine' = searchParams.get('view') === 'mine' ? 'mine' : 'team'
@@ -302,6 +304,8 @@ export default function JobTally() {
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [tallyTxRows, setTallyTxRows] = useState<TallyLinkedMercuryRow[]>([])
+  /** Counter tickets (punch list #295, PR 3): the holder's own ticket on each charge, by charge id. */
+  const [tallyTicketByTx, setTallyTicketByTx] = useState<ReadonlyMap<string, { ticketId: string; jobId: string | null }>>(() => new Map())
   const [linkedDebitCards, setLinkedDebitCards] = useState<TallyLinkedDebitCardRow[]>([])
   const [tallyTxLoading, setTallyTxLoading] = useState(false)
   /** The transactions read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
@@ -401,6 +405,7 @@ export default function JobTally() {
       }
       setTallyTxRows(rows)
       setLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
+      if (authUser?.id) void listMyTicketJobsByCharge(authUser.id).then(setTallyTicketByTx).catch(() => undefined)
     } catch (e) {
       setTallyTxError(recoveryFailureFromError(e, "Couldn't load transactions"))
       setTallyTxRows([])
@@ -432,7 +437,8 @@ export default function JobTally() {
 
   const applyPayrollRules = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (role !== 'dev') return
+      // The rules window's gate: whoever is shown Apply now runs it (the RPC admits the same two roles, 20261109005000).
+      if (!canEditPayrollRules) return
       try {
         const rulesData = await withSupabaseRetry(
           () => supabase.from('mercury_tally_payroll_rules').select('id, enabled, sort_order, criteria').eq('enabled', true),
@@ -483,14 +489,14 @@ export default function JobTally() {
         if (!opts?.silent) showToast(formatErrorMessage(e, 'Could not apply payroll rules'), 'error')
       }
     },
-    [role, tallyTxRows, payrollDecidedIds, loadTallyTransactions, showToast],
+    [canEditPayrollRules, tallyTxRows, payrollDecidedIds, loadTallyTransactions, showToast],
   )
 
-  // Auto-apply payroll rules on load (dev opt-in). Signature = undecided tx ids, so a pass that
+  // Auto-apply payroll rules on load (the rules window's switch, so its two roles). Signature = undecided tx ids, so a pass that
   // flags/decides transactions shrinks the set and won't re-fire for the same ones.
   const payrollAutoApplySigRef = useRef<string>('')
   useEffect(() => {
-    if (role !== 'dev' || !payrollAutoApply || tallyTxLoading) return
+    if (!canEditPayrollRules || !payrollAutoApply || tallyTxLoading) return
     const undecided = tallyTxRows
       .map((r) => r.mercury_transaction_id)
       .filter((id) => !payrollDecidedIds.has(id))
@@ -499,7 +505,7 @@ export default function JobTally() {
     if (sig === '' || sig === payrollAutoApplySigRef.current) return
     payrollAutoApplySigRef.current = sig
     void applyPayrollRules({ silent: true })
-  }, [role, payrollAutoApply, tallyTxLoading, tallyTxRows, payrollDecidedIds, applyPayrollRules])
+  }, [canEditPayrollRules, payrollAutoApply, tallyTxLoading, tallyTxRows, payrollDecidedIds, applyPayrollRules])
 
   const tallyTxRowsGlobalFiltered = useMemo(() => {
     if (!tallyGlobalMinPostedYmd) return tallyTxRows
@@ -526,6 +532,18 @@ export default function JobTally() {
     }
     return m
   }, [jobs, tallyTxRowsGlobalFiltered])
+
+  /** The ticket chips on the purchase cards and the ticket's job first in the sort window (punch list #295, PR 3). */
+  const tallyTicketChips = useMemo(() => {
+    const out = new Map<string, { jobLabel: string | null }>()
+    for (const [txId, t] of tallyTicketByTx) out.set(txId, { jobLabel: t.jobId ? (tallyJobLabelById[t.jobId] ?? null) : null })
+    return out
+  }, [tallyTicketByTx, tallyJobLabelById])
+  const tallyTicketJobs = useMemo(() => {
+    const out = new Map<string, { jobId: string; main: string }>()
+    for (const [txId, t] of tallyTicketByTx) if (t.jobId) out.set(txId, { jobId: t.jobId, main: tallyJobLabelById[t.jobId] ?? 'The job on your ticket' })
+    return out
+  }, [tallyTicketByTx, tallyJobLabelById])
 
   const tallyNicknameByDebitCard = useMemo(() => {
     const m: Record<string, string> = {}
@@ -1022,6 +1040,9 @@ export default function JobTally() {
         </button>
       </div>
 
+      {/* A photo of a supply house ticket, from every tab (punch list #295): the camera first, the job after. */}
+      {authUser?.id ? <TicketPress userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
+
       {activeTab === 'transactions' && isTallyOffice ? (
         <div role="group" aria-label="Whose card charges" style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.25rem' }}>
           {(['team', 'mine'] as const).map((v) => (
@@ -1049,6 +1070,8 @@ export default function JobTally() {
       ) : null}
 
       {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue canMarkPayroll={canMarkPayroll} />}
+
+      {activeTab === 'transactions' && !showTallyTeam && authUser?.id ? <MyTickets userId={authUser.id} onMatched={() => void loadTallyTransactions()} /> : null}
 
       {activeTab === 'transactions' && !showTallyTeam && (
         <div style={{ padding: '0.5rem 0 1rem' }}>
@@ -1391,6 +1414,7 @@ export default function JobTally() {
                     }}
                     onOpenAllocations={(row) => setTallyAllocModalRow(row)}
                     onSaveMyNote={saveTallyUserNoteForCard}
+                    ticketByTx={tallyTicketChips}
                   />
                 ) : (
                 <div
@@ -2366,6 +2390,7 @@ export default function JobTally() {
             setTallySortModeOpen(false)
             setTallyAllocModalRow(row)
           }}
+          ticketJobByTx={tallyTicketJobs}
         />
       ) : null}
 

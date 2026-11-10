@@ -4,22 +4,29 @@
  * (`supabase/functions/_shared/boxPage.ts`); tests live beside this file.
  */
 export {
+  BOX_PAGE_FIND_MAX,
   BOX_PAGE_LOCKED_WORDS,
   boxPageCode,
   boxPageCodeWords,
+  boxPageFind,
+  boxPageFindWords,
   boxPageKind,
   boxPageLines,
   boxPageNoun,
   boxPagePhotoUrl,
   buildBoxPagePayload,
+  compareStencils,
+  parseBoxPageFindResponse,
   parseBoxPageResponse,
+  type BoxPageFindBox,
+  type BoxPageFindPayload,
   type BoxPageKind,
   type BoxPageLine,
   type BoxPagePayload,
   type BoxPagePhoto,
   type BoxPageRefusal,
 } from '../../../supabase/functions/_shared/boxPage'
-import { parseBoxPageResponse, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
+import { parseBoxPageFindResponse, parseBoxPageResponse, type BoxPageFindPayload, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
 import { portalFailureCause, type PortalFailureCause } from '../portal/portalFailure'
 
 /** The page's state from the function's answer. */
@@ -54,4 +61,30 @@ export function boxPageDayWords(ymd: string): string {
 /** Where the sign-in comes back to: the same box. */
 export function boxPagePath(code: string): string {
   return `/b/${code.toLowerCase()}`
+}
+
+/** The search's state from the function's answer (PR 3, v2.6799). */
+export type BoxPageFindView =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'found'; payload: BoxPageFindPayload }
+  | { kind: 'error'; failure: PortalFailureCause }
+
+export function boxPageFindView(status: number, body: unknown): BoxPageFindView {
+  const payload = parseBoxPageFindResponse(body)
+  if (!payload || status >= 400) return { kind: 'error', failure: portalFailureCause(status, body, 'open') }
+  return { kind: 'found', payload }
+}
+
+/** *3 boxes hold a line that matches.* / *1 box holds a line that matches.* */
+export function boxPageFoundWords(total: number, max: number): string {
+  if (total === 0) return ''
+  const n = Math.min(total, max)
+  const head = n === 1 ? '1 box holds' : `${n} boxes hold`
+  return total > max ? `${head} a line that matches, the first ${max} of ${total}. Type one more word to narrow it.` : `${head} a line that matches.`
+}
+
+/** The page's own address with the search open, for the Scan a label page's press. */
+export function boxPageFindPath(code: string): string {
+  return `${boxPagePath(code)}?find=1`
 }

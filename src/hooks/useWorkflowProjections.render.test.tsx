@@ -109,9 +109,9 @@ afterEach(() => {
 })
 
 describe('useWorkflowProjections', () => {
-  it('reads nothing for a role that is not dev or master, or before the workflow is known', async () => {
+  it('reads nothing for a role that is not the owner, a dev or the controller, or before the workflow is known', async () => {
     world([row('a', 1)])
-    for (const userRole of ['assistant', 'superintendent', 'subcontractor', null]) {
+    for (const userRole of ['assistant', 'estimator', 'superintendent', 'subcontractor', null]) {
       await renderSettled(<Probe workflowId="w1" userRole={userRole} />, { loaded: () => screen.findByTestId('p') })
       expect(screen.getByTestId('p').textContent).toBe('list:- window:closed')
       cleanup()
@@ -133,7 +133,13 @@ describe('useWorkflowProjections', () => {
     ])
   })
 
-  it('empties the list when the role stops being dev or master', async () => {
+  it('reads them for the controller, who is shown the bar since v2.6760 (punch list #188 row 48)', async () => {
+    world([row('a', 1), row('b', 2)])
+    renderWithProviders(<Probe workflowId="w1" userRole="controller" />)
+    await screen.findByText('list:a=100,b=100 window:closed')
+  })
+
+  it('empties the list when the role stops being one that reads them', async () => {
     world([row('a', 1)])
     const { rerender } = renderWithProviders(<Probe workflowId="w1" userRole="dev" />)
     await screen.findByText('list:a=100 window:closed')

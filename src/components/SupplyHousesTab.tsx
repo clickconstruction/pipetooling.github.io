@@ -13,6 +13,12 @@ import { applyPlan, billTint, emptyFields, fillCounts, planBillFill, settle, typ
 import { billRowRead, field as billField, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
 import { billCountsByHouse, billsForHouse, type BillCandidate } from '../lib/materials/bills/billsToRecord'
 import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from '../lib/materials/bills/billsToRecordIo'
+import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
+import { paperSaveFromBillRead, rowLinesWords, type PaperRow } from '../lib/materials/lines/paperRows'
+import { PaperLookModal } from './materials/PaperLookModal'
+import { linkTicketToInvoice, listAccountTicketsForHouse, type TicketPoFacts } from '../lib/tickets/ticketMatchIo'
+import { ticketPageUrl, type TicketWithPages } from '../lib/tickets/ticketsIo'
+import { ticketStartChipWords } from '../lib/tickets/ticketRowWords'
 import { LEGEND, NO_PDF_LINE, PDF_PANE_NOTE, START_WORDS, STATUS_YOURS, billsToRecordWords, countLine, dueWords, duplicateWords, houseWords, jobAccountGuessWords, jobFromPairWords, jobGuessWords, jobSettledWords, pairGuessWords, pairMissingWords, paperworkWords, statementWords, sumWords } from '../lib/materials/bills/billWords'
 import { PdfPageCanvas } from './contracts/formStudio/PdfPageCanvas'
 import { useAuth } from '../hooks/useAuth'
@@ -303,9 +309,38 @@ export function SupplyHousesTab({
    */
   const billsIo = useMemo<BillsIo>(() => supabaseBillsIo(), [])
   const { on: billFillOn, refresh: refreshBillSwitch } = useBillReadSwitch(myRole)
+  /**
+   * Supply house bill lines (punch list #298 PR 1b, v2.6819): the paper read from each bill's PDF, by invoice id, for
+   * the row's Lines cell; the Look window beside its paper. A bill saved from a fill writes its paper at Save.
+   */
+  const paperIo = useMemo<PaperIo>(() => supabasePaperIo(), [])
+  const [papersByInvoice, setPapersByInvoice] = useState<Map<string, PaperRow>>(() => new Map())
+  const [paperNames, setPaperNames] = useState<Map<string, string>>(() => new Map())
+  const [paperLook, setPaperLook] = useState<{ paper: PaperRow; invoice: SupplyHouseInvoice; bytes: ArrayBuffer | null } | null>(null)
+  async function loadPapersFor(invoices: ReadonlyArray<{ id: string }>) {
+    const papers = await paperIo.loadForInvoices(invoices.map((i) => i.id))
+    setPapersByInvoice(papers)
+    const who = [...new Set([...papers.values()].map((p) => p.acceptedBy).filter((v): v is string => !!v))]
+    if (who.length > 0) setPaperNames(await paperIo.namesOf(who))
+  }
+  async function openPaperLook(inv: SupplyHouseInvoice) {
+    const paper = papersByInvoice.get(inv.id)
+    if (!paper) return
+    let bytes: ArrayBuffer | null = null
+    if (paper.filePath) {
+      const url = await billsIo.fileUrl(paper.filePath).catch(() => null)
+      if (url) bytes = await fetch(url).then((r) => r.arrayBuffer()).catch(() => null)
+    }
+    setPaperLook({ paper, invoice: inv, bytes })
+  }
   const [billCandidates, setBillCandidates] = useState<BillCandidate[]>([])
   const billCounts = useMemo(() => billCountsByHouse(billCandidates), [billCandidates])
-  const [billPick, setBillPick] = useState<{ source: 'thread'; attachmentId: string } | { source: 'upload'; name: string } | 'none' | null>(null)
+  const [billPick, setBillPick] = useState<{ source: 'thread'; attachmentId: string } | { source: 'upload'; name: string } | { source: 'ticket'; ticketId: string } | 'none' | null>(null)
+  /** A tech's account tickets at the open house (punch list #295, PR 4): the form's Start from offers them beside the thread's files. */
+  const [ticketBills, setTicketBills] = useState<(TicketWithPages & { po: TicketPoFacts })[]>([])
+  const billTicketRef = useRef<string | null>(null)
+  /** `/materials?tab=supply-houses&house=<id>&ticket=<id>`: the Tickets tab's Record as a bill lands here. */
+  const pendingTicketRef = useRef<string | null>(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('ticket'))
   const [billBusy, setBillBusy] = useState(false)
   const [billRefusal, setBillRefusal] = useState<string | null>(null)
   const [billRead, setBillRead] = useState<{ read: BillRead; file: Extract<BillReadAnswer, { ok: true }>['file']; model: string; readId: string | null; readAt: string } | null>(null)
@@ -565,6 +600,7 @@ export function SupplyHousesTab({
       job_allocations: byInvoice.get(inv.id) ?? [],
     }))
     setSupplyHouseInvoices(invoicesWithAllocations)
+    void loadPapersFor(invoicesWithAllocations)
     const jobIds = [...new Set(allocations.map((a) => a.job_id))]
     if (jobIds.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
@@ -658,6 +694,38 @@ export function SupplyHousesTab({
     void reloadBillCandidates()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [billFillOn, supplyHouseSummary])
+
+  // A tech's account tickets at the house (punch list #295, PR 4), read as the house opens; a read that fails offers none.
+  useEffect(() => {
+    const houseId = selectedSupplyHouseForDetail?.id
+    if (!billFillOn || !houseId) {
+      setTicketBills([])
+      return
+    }
+    let live = true
+    void listAccountTicketsForHouse(houseId)
+      .then((rows) => {
+        if (live) setTicketBills(rows)
+      })
+      .catch(() => {
+        if (live) setTicketBills([])
+      })
+    return () => {
+      live = false
+    }
+  }, [billFillOn, selectedSupplyHouseForDetail?.id])
+
+  // The Tickets tab's Record as a bill: the house opens through ?house=; the form opens on the ticket once its tickets have read.
+  useEffect(() => {
+    const ticketId = pendingTicketRef.current
+    if (!ticketId || !billFillOn || !selectedSupplyHouseForDetail) return
+    const t = ticketBills.find((x) => x.id === ticketId)
+    if (!t) return
+    pendingTicketRef.current = null
+    openAddInvoice()
+    setTimeout(() => void pickTicketBill(t), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketBills, billFillOn, selectedSupplyHouseForDetail])
 
   // The thread's Record this bill: the house opens through autoOpenHouseId; the form opens on the file once it has.
   useEffect(() => {
@@ -1204,6 +1272,28 @@ export function SupplyHousesTab({
     void fillFromBill({ supply_house_id: selectedSupplyHouseForDetail.id, file: upload })
   }
 
+  /** A tech's ticket (punch list #295, PR 4): its first page, read as a dropped-in file; the ticket takes the bill at Save. */
+  async function pickTicketBill(t: TicketWithPages) {
+    if (!selectedSupplyHouseForDetail) return
+    const page = t.counter_ticket_pages[0]
+    if (!page?.storage_path) {
+      setError('That ticket has no page to read.')
+      return
+    }
+    setBillPick({ source: 'ticket', ticketId: t.id })
+    billTicketRef.current = t.id
+    try {
+      const url = await ticketPageUrl(page.storage_path)
+      if (!url) throw new Error('The ticket’s page did not open.')
+      const blob = await (await fetch(url)).blob()
+      const ext = page.mime === 'application/pdf' ? 'pdf' : 'jpg'
+      const upload = await fileToUpload(new File([blob], `${t.taken_by_name || 'ticket'} ticket.${ext}`, { type: page.mime }))
+      void fillFromBill({ supply_house_id: selectedSupplyHouseForDetail.id, file: upload })
+    } catch (e) {
+      setError(formatErrorMessage(e, 'The ticket’s page did not read.'))
+    }
+  }
+
   /** No PDF, I will type it: the fields the fill wrote go back to blank; the ones the person typed stay. */
   function pickNoPdf() {
     const typed = billTypedRef.current
@@ -1338,6 +1428,20 @@ export function SupplyHousesTab({
       return
     }
     if (saved.allocationProblem) setError(saved.allocationProblem)
+    if (billRead && billPlan && !editingInvoice) {
+      // Supply house bill lines (punch list #298 PR 1b): the paper and its lines, checked against the amount just
+      // saved, written beside the row. A refusal here never undoes the save; the row then reads *No lines yet*.
+      const amount = Number(invoiceAmount.replace(/[^0-9.]/g, ''))
+      const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: Number.isFinite(amount) ? Math.round(amount * 100) : 0, filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
+      await paperIo.save(saved.id, out.paper, out.lines).catch((e) => showToast(formatErrorMessage(e, 'The bill saved, but its lines were not kept.'), 'error'))
+    }
+    if (billTicketRef.current) {
+      // The ticket became this bill (punch list #295, PR 4): a refusal here never undoes the save.
+      const ticketId = billTicketRef.current
+      billTicketRef.current = null
+      await linkTicketToInvoice(ticketId, saved.id).catch(() => undefined)
+      setTicketBills((cur) => cur.filter((t) => t.id !== ticketId))
+    }
     if (billRead?.file.attachmentId) {
       // The thread file is on a row now: the offer and the count let it go. A refusal here never undoes the save.
       await billsIo.markRecorded(billRead.file.attachmentId).catch(() => undefined)
@@ -1918,6 +2022,7 @@ export function SupplyHousesTab({
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid On</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
+                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Lines</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                                           </tr>
                                         </thead>
@@ -1928,7 +2033,7 @@ export function SupplyHousesTab({
                                               : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                                             return invoicesToShow.length === 0 ? (
                                               <tr>
-                                                <td colSpan={10} style={{ padding: 0 }}>
+                                                <td colSpan={11} style={{ padding: 0 }}>
                                                   <EmptyState
                                                     compact
                                                     {...supplyHouseInvoicesEmptyWords({
@@ -2045,6 +2150,29 @@ export function SupplyHousesTab({
                                                   ) : (
                                                     '—'
                                                   )}
+                                                </td>
+                                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }} data-testid="supply-lines-cell">
+                                                  {(() => {
+                                                    // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
+                                                    const paper = papersByInvoice.get(inv.id) ?? null
+                                                    const w = rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null)
+                                                    const pill =
+                                                      w.tone === 'ok' || w.tone === 'accepted'
+                                                        ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
+                                                        : w.tone === 'off'
+                                                          ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)' }
+                                                          : { color: 'var(--text-muted)' }
+                                                    return (
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <span style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, ...pill }}>{w.words}</span>
+                                                        {w.look ? (
+                                                          <button type="button" onClick={(e) => { e.stopPropagation(); void openPaperLook(inv) }} style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>
+                                                            Look
+                                                          </button>
+                                                        ) : null}
+                                                      </span>
+                                                    )
+                                                  })()}
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                                   <button type="button" onClick={(e) => { e.stopPropagation(); openEditInvoice(inv) }} title="Edit" aria-label="Edit" style={{ padding: '0.25rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2760,6 +2888,14 @@ export function SupplyHousesTab({
                         </button>
                       )
                     })}
+                    {ticketBills.map((t) => {
+                      const on = billPick !== null && billPick !== 'none' && billPick.source === 'ticket' && billPick.ticketId === t.id
+                      return (
+                        <button key={t.id} type="button" data-ticket-chip={t.id} disabled={billBusy} onClick={() => void pickTicketBill(t)} style={billChipStyle(on)}>
+                          {ticketStartChipWords(t, t.po?.po_code ?? null)}
+                        </button>
+                      )
+                    })}
                     <button type="button" disabled={billBusy} onClick={() => billFileInputRef.current?.click()} style={billChipStyle(billPick !== null && billPick !== 'none' && billPick.source === 'upload')}>
                       {billPick !== null && billPick !== 'none' && billPick.source === 'upload' ? billPick.name : START_WORDS.anotherFile}
                     </button>
@@ -3355,6 +3491,17 @@ export function SupplyHousesTab({
         </div>
       )}
 
+      {paperLook ? (
+        <PaperLookModal
+          paper={paperLook.paper}
+          invoice={paperLook.invoice}
+          io={paperIo}
+          fileBytes={paperLook.bytes}
+          acceptedByName={paperLook.paper.acceptedBy ? paperNames.get(paperLook.paper.acceptedBy) : null}
+          onClose={() => setPaperLook(null)}
+          onChanged={() => void loadPapersFor(supplyHouseInvoices)}
+        />
+      ) : null}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { BridgeData } from './loadBridgeData'
+import { withoutZzBridgeBids, withoutZzFieldSessions, withoutZzJobKeyedRows, type BridgeZzTestJobIds } from './zzTestJobs'
 import { ratePerHourByJob, type VectorBid, type VectorCount, type VectorEvent, type VectorPerson, type VectorSession, type VectorWage } from './vectors'
 
 /**
@@ -22,6 +23,11 @@ import { ratePerHourByJob, type VectorBid, type VectorCount, type VectorEvent, t
  * - % reports: `job_pct_events` (not the seed rows) + `reports` by author.
  * - Bids: sent by `bid_date_sent`, won by `bid_versions.outcome_at`, both
  *   credited to the bid's estimator.
+ * - ZZ test jobs (v2.6813): a session clocked on one, a bill sent or a payment
+ *   recorded on one, and a percent or a report filed on one are nobody's
+ *   hours, dollars or reports, for everyone but a dev who shows them. The
+ *   caller passes their ids, or null to keep them (`zzTestJobs.ts`). Since
+ *   v2.6823 a ZZ bid (`isZzBidName`) is nobody's bid sent or won either.
  */
 
 export type BridgeVectorInputs = {
@@ -49,15 +55,15 @@ type UserRow = { id: string; name: string | null; role: string | null; archived_
 type PersonRow = { id: string; name: string | null; account_user_id: string | null }
 type PayRow = { person_id: string | null; person_name: string | null; hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null }
 type SessionRow = { user_id: string; work_date: string; clocked_in_at: string; clocked_out_at: string | null; job_ledger_id: string | null; bid_id: string | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null }
-type EventRow = { event_type: string; actor_user_id: string | null; occurred_at: string; detail: Record<string, unknown> | null }
-type PctRow = { changed_by_user_id: string | null; changed_at: string }
-type ReportRow = { created_by_user_id: string | null; created_at: string }
+type EventRow = { job_id: string | null; event_type: string; actor_user_id: string | null; occurred_at: string; detail: Record<string, unknown> | null }
+type PctRow = { job_id: string | null; changed_by_user_id: string | null; changed_at: string }
+type ReportRow = { job_ledger_id: string | null; created_by_user_id: string | null; created_at: string }
 type VersionRow = { bid_id: string; outcome_at: string | null }
 type BidRow = { id: string; bid_number: string | null; project_name: string | null; estimator_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null }
 
-/** Every closed clock session in [start, end] with its approval state, as the kernels read it. Shared with Vectors by the day (`loadVectorDays.ts`). */
-export async function loadVectorSessions(db: SupabaseClient<Database>, start: string, end: string, officeJobLedgerId: string | null): Promise<VectorSession[]> {
-  const sessionRows = await fetchAllRows(
+/** Every closed clock session in [start, end] with its approval state, as the kernels read it, without the ones clocked on a ZZ test job (null keeps them). Shared with Vectors by the day (`loadVectorDays.ts`). */
+export async function loadVectorSessions(db: SupabaseClient<Database>, start: string, end: string, officeJobLedgerId: string | null, zzTestJobIds: BridgeZzTestJobIds): Promise<VectorSession[]> {
+  const sessionRead = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
@@ -75,6 +81,7 @@ export async function loadVectorSessions(db: SupabaseClient<Database>, start: st
     }),
     'vectors sessions',
   )
+  const sessionRows = withoutZzFieldSessions(sessionRead, zzTestJobIds)
   const sessions: VectorSession[] = sessionRows.map((s) => ({
     userId: s.user_id,
     workDate: s.work_date,
@@ -88,8 +95,9 @@ export async function loadVectorSessions(db: SupabaseClient<Database>, start: st
   return sessions
 }
 
-export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data: BridgeData): Promise<BridgeVectorInputs> {
+export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data: BridgeData, opts: { zzTestJobIds: BridgeZzTestJobIds }): Promise<BridgeVectorInputs> {
   const { windowStart, todayYmd, officeJobLedgerId } = data
+  const zzTestJobIds = opts.zzTestJobIds
   const fromIso = `${windowStart}T00:00:00-06:00`
 
   const [userRows, personRows, payRows] = await Promise.all([
@@ -111,15 +119,15 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     wages.push({ userId, fieldWage: r.hourly_wage == null ? null : Number(r.hourly_wage), officeWage: r.office_hourly_wage == null ? null : Number(r.office_hourly_wage), isSalary: !!r.is_salary })
   }
 
-  const sessions = await loadVectorSessions(db, windowStart, todayYmd, officeJobLedgerId)
+  const sessions = await loadVectorSessions(db, windowStart, todayYmd, officeJobLedgerId, zzTestJobIds)
 
-  const eventRows = await fetchAllRows(
+  const eventRead = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
           db
             .from('job_activity_events')
-            .select('event_type, actor_user_id, occurred_at, detail')
+            .select('job_id, event_type, actor_user_id, occurred_at, detail')
             .in('event_type', ['invoice_sent', 'payment_added'])
             .gte('occurred_at', fromIso)
             .order('id')
@@ -130,6 +138,7 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     }),
     'vectors events',
   )
+  const eventRows = withoutZzJobKeyedRows(eventRead, (e) => e.job_id, zzTestJobIds)
   const invoiceIds = [...new Set(eventRows.filter((e) => e.event_type === 'invoice_sent').map((e) => String(e.detail?.invoice_id ?? '')).filter(Boolean))]
   const invoiceAmountRows = await fetchAllRowsChunkedIn(
     invoiceIds,
@@ -149,11 +158,11 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     else payments.push({ userId: e.actor_user_id, ymd, usd: Number(e.detail?.amount ?? 0) })
   }
 
-  const [pctRows, reportRows, versionRows, sentBidRows] = await Promise.all([
+  const [pctRead, reportRead, versionRows, sentBidRows] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(
-          async () => db.from('job_pct_events').select('changed_by_user_id, changed_at').neq('source', 'seed').gte('changed_at', fromIso).order('id').range(from, to),
+          async () => db.from('job_pct_events').select('job_id, changed_by_user_id, changed_at').neq('source', 'seed').gte('changed_at', fromIso).order('id').range(from, to),
           'vectors pct events',
         )) as PctRow[] | null,
         error: null,
@@ -162,7 +171,7 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     ),
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => db.from('reports').select('created_by_user_id, created_at').gte('created_at', fromIso).order('id').range(from, to), 'vectors reports')) as ReportRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('reports').select('job_ledger_id, created_by_user_id, created_at').gte('created_at', fromIso).order('id').range(from, to), 'vectors reports')) as ReportRow[] | null,
         error: null,
       }),
       'vectors reports',
@@ -173,12 +182,14 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
       'vectors bids sent',
     ) as Promise<BidRow[] | null>,
   ])
+  const pctRows = withoutZzJobKeyedRows(pctRead, (r) => r.job_id, zzTestJobIds)
+  const reportRows = withoutZzJobKeyedRows(reportRead, (r) => r.job_ledger_id, zzTestJobIds)
   const pctUpdates: VectorCount[] = pctRows.map((r) => ({ userId: r.changed_by_user_id, ymd: ymdOf(r.changed_at) }))
   const fieldReports: VectorCount[] = reportRows.map((r) => ({ userId: r.created_by_user_id, ymd: ymdOf(r.created_at) }))
 
   const wonAtByBid = new Map<string, string>()
   for (const v of versionRows ?? []) if (v.outcome_at) wonAtByBid.set(v.bid_id, ymdOf(v.outcome_at))
-  const wonBidRows = await fetchAllRowsChunkedIn(
+  const wonBidRead = await fetchAllRowsChunkedIn(
     [...wonAtByBid.keys()],
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
@@ -190,9 +201,10 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     'vectors won bids',
     { chunkSize: 200 },
   )
+  const wonBidRows = withoutZzBridgeBids(wonBidRead, zzTestJobIds)
   const bidLabel = (b: BidRow): string => `${b.bid_number ?? ''} ${b.project_name ?? ''}`.trim()
   const bidsWon: VectorBid[] = wonBidRows.map((b) => ({ userId: b.estimator_id, ymd: wonAtByBid.get(b.id) ?? '', usd: Number(b.agreed_value ?? b.bid_value ?? 0), label: bidLabel(b) }))
-  const bidsSent: VectorBid[] = (sentBidRows ?? []).filter((b) => b.bid_date_sent).map((b) => ({ userId: b.estimator_id, ymd: ymdOf(b.bid_date_sent as string), usd: Number(b.bid_value ?? 0), label: bidLabel(b) }))
+  const bidsSent: VectorBid[] = withoutZzBridgeBids(sentBidRows ?? [], zzTestJobIds).filter((b) => b.bid_date_sent).map((b) => ({ userId: b.estimator_id, ymd: ymdOf(b.bid_date_sent as string), usd: Number(b.bid_value ?? 0), label: bidLabel(b) }))
 
   return {
     people,

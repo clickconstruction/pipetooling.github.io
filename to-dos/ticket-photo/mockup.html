@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A photo of the supply house ticket, taken at the counter</title>
+<style>
+  /* Punch list #295. Everything here is made up: Jordan and Sam, Ridgeway Builders' Oak Hollow Building C (JP1042),
+     the Cedar Bend water heater (JP1038), Ridgeway Supply, PO 41207, every amount, time and count. The screens are
+     drawn from the app's own components (JobTally.tsx's header and tab row, TallySortModeCardList's purchase card,
+     TallyTeamDayCard's day card and its chips, PhoneSheet) in the light theme's values. The blue press is #2563eb
+     under white words, the green one #16a34a. Phone frames are 375 wide; the office's Team queue is 760. */
+  :root { color-scheme: light; --page: #eceae4; --strong: #111827; --ink: #1f2937; --muted: #6b7280; --slate: #64748b; --border: #e5e7eb; --surface: #ffffff; --bg: #f9fafb; --blue: #2563eb; --blue-50: #eff6ff; --green: #16a34a; --green-100: #dcfce7; --green-700: #15803d; --amber-50: #fffbeb; --amber-700: #b45309; --amber-200: #fde68a; --red-700: #b91c1c; --link: #2563eb; --copper: #9a5b2b; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 72px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 20px; margin: 46px 0 6px; color: var(--strong); }
+  .lede { margin: 0 0 6px; color: #374151; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; } .col.p760 { flex: 0 1 760px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .cap b { color: var(--copper); }
+  .say { margin: 0; font-size: 13px; color: #374151; max-width: 46ch; }
+  .frame { max-width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+  ol.calls { margin: 10px 0 0; padding-left: 20px; max-width: 104ch; color: #374151; }
+  ol.calls li { margin: 0 0 6px; }
+
+  /* ---- the app, light theme ---- */
+  .screen { width: 375px; font-size: 16px; line-height: 1.45; color: var(--ink); background: var(--surface); position: relative; }
+  .screen.w760 { width: 760px; }
+  .pad { padding: 14px 14px 18px; }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .hdr a { color: var(--link); text-decoration: none; font-size: .875rem; }
+  .hdr h3 { margin: 0; font-size: 1.25rem; color: var(--strong); }
+  .tabs { display: flex; gap: 4px; margin: 12px 0 0; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .tabs span { flex: 1; text-align: center; padding: .45rem .3rem; font-size: .8125rem; color: var(--muted); border-radius: 6px; line-height: 1.2; display: flex; align-items: center; justify-content: center; }
+  .tabs span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .press { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border-radius: 10px; border: none; font: inherit; font-weight: 700; font-size: .9375rem; padding: .55rem .8rem; cursor: pointer; text-align: center; }
+  .press.blue { background: var(--blue); color: #fff; }
+  .press.green { background: var(--green); color: #fff; }
+  .press.line { background: var(--surface); color: var(--blue); border: 1.5px solid var(--blue); }
+  .press.dead { background: var(--border); color: var(--muted); cursor: default; }
+  .press.sm { min-height: 40px; font-size: .8125rem; font-weight: 600; border-radius: 8px; }
+  .new { outline: 2px dashed var(--copper); outline-offset: 3px; border-radius: 12px; }
+  .ticketpress { margin-top: 12px; }
+  .ticketpress small { display: block; margin: 5px 2px 0; font-size: .75rem; color: var(--muted); line-height: 1.35; }
+  .glyph { width: 18px; height: 18px; flex: 0 0 auto; }
+  .card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: .7rem; margin-top: .6rem; }
+  .card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card .who { font-weight: 600; font-size: .875rem; color: var(--strong); }
+  .card .amt { font-weight: 700; font-size: .9375rem; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .card .day { font-size: .6875rem; color: var(--muted); margin-top: 1px; }
+  .lnk { background: none; border: none; color: var(--link); font: inherit; font-size: .6875rem; padding: 0; cursor: pointer; margin-top: .3rem; }
+  .lnk + .lnk { margin-left: 12px; }
+  .count { margin: 12px 0 0; font-size: .8125rem; color: var(--slate); }
+  .h4 { margin: 16px 0 0; font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: .6875rem; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+  .pill.wait { background: var(--amber-50); color: var(--amber-700); border: 1px solid var(--amber-200); }
+  .pill.ok { background: var(--green-100); color: var(--green-700); }
+  .pill.grey { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .pill.blue { background: var(--blue-50); color: var(--blue); }
+  /* a shot: grey counter, white paper */
+  .shot { position: relative; flex: 0 0 auto; width: 56px; height: 72px; border-radius: 6px; background: linear-gradient(155deg, #8d9197 0%, #b9b3a6 55%, #77726a 100%); overflow: hidden; }
+  .shot::before { content: ''; position: absolute; left: 13px; right: 13px; top: 6px; bottom: 6px; background: #fff; border-radius: 1px; box-shadow: 0 1px 2px rgba(0,0,0,.25); background-image: repeating-linear-gradient(#fff 0 5px, #c8ccd2 5px 6px); background-origin: content-box; padding: 6px 3px; background-clip: content-box, padding-box; }
+  .shot.big { width: 100%; height: 300px; border-radius: 10px; }
+  .shot.big::before { left: 34%; right: 34%; top: 14px; bottom: 14px; background-image: repeating-linear-gradient(#fff 0 9px, #c2c7ce 9px 10px); padding: 16px 8px; }
+  .shot.mid { width: 84px; height: 108px; }
+  .trow { display: flex; gap: 10px; align-items: flex-start; padding: .6rem 0; border-top: 1px solid var(--border); }
+  .trow:first-of-type { border-top: 0; }
+  .trow .t { min-width: 0; flex: 1; }
+  .trow .t b { display: block; font-size: .875rem; color: var(--strong); }
+  .trow .t span.sub { display: block; font-size: .75rem; color: var(--muted); margin: 1px 0 4px; }
+  .ask { margin-top: 5px; font-size: .8125rem; color: var(--ink); }
+  .ask .yn { display: flex; gap: 8px; margin-top: 6px; }
+  .ask .yn .press { width: auto; min-width: 84px; }
+  .strip { margin-top: 10px; padding: .55rem .7rem; border-radius: 10px; background: var(--amber-50); border: 1px solid var(--amber-200); color: var(--amber-700); font-size: .8125rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .strip .press { width: auto; min-width: 96px; }
+  .saved { margin-top: 10px; padding: .55rem .7rem; border-radius: 10px; background: var(--green-100); color: var(--green-700); font-size: .8125rem; }
+  /* the sheet */
+  .dim { background: rgba(17,24,39,.45); padding-top: 64px; }
+  .sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 14px 18px; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #d1d5db; margin: 0 auto 10px; }
+  .sheet h4 { margin: 0; font-size: 1.0625rem; color: var(--strong); }
+  .sheet .lead { display: flex; gap: 12px; align-items: center; }
+  .sheet .lead p { margin: 2px 0 0; font-size: .8125rem; color: var(--muted); }
+  .chips { display: grid; gap: 8px; margin-top: 12px; }
+  .chip { display: block; width: 100%; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: .55rem .7rem; min-height: 48px; font: inherit; cursor: pointer; }
+  .chip b { display: block; font-size: .875rem; color: var(--strong); }
+  .chip span { display: block; font-size: .75rem; color: var(--muted); }
+  .chip.on { border-color: var(--blue); background: var(--blue-50); box-shadow: inset 0 0 0 1px var(--blue); }
+  .chip .tag { display: inline-block; font-size: .625rem; font-weight: 700; letter-spacing: .06em; color: var(--blue); margin-left: 6px; vertical-align: 1px; }
+  .chip.plain b { font-weight: 600; color: var(--ink); }
+  .field { margin-top: 12px; }
+  .field label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 3px; }
+  .field .in { border: 1px solid #d1d5db; border-radius: 8px; padding: .55rem .7rem; font-size: 1rem; color: var(--strong); min-height: 44px; background: var(--surface); font-variant-numeric: tabular-nums; }
+  .field .in.ph { color: #9ca3af; }
+  .field .in.read { border-color: #86efac; background: #f0fdf4; }
+  .sheet .foot { margin-top: 14px; display: grid; gap: 8px; }
+  .two { margin: 8px 2px 0; font-size: .75rem; color: var(--muted); }
+  .more { margin-top: 2px; display: flex; gap: 16px; }
+  .more .lnk { font-size: .75rem; min-height: 32px; margin: 0; }
+  .acts2 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .acts2 .press { width: auto; }
+  .tkr { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: .6rem 0; border-top: 1px solid var(--border); align-items: start; }
+  .tkr:first-of-type { border-top: 0; }
+  .tkr .shot { width: 44px; height: 58px; }
+  .tkr b { font-size: .8125rem; color: var(--strong); }
+  .tkr .sub { display: block; font-size: .75rem; color: var(--muted); margin: 1px 0 5px; }
+  .conf { margin-top: 12px; padding: .6rem .75rem; border: 1px solid var(--amber-200); background: var(--amber-50); border-radius: 10px; font-size: .8125rem; color: var(--ink); }
+  /* the office, Team queue */
+  .sub2 { display: flex; gap: 8px; margin-top: 12px; }
+  .sub2 span { flex: 0 0 auto; padding: .45rem 1.6rem; border-radius: 6px; font-size: .8125rem; color: var(--muted); }
+  .sub2 span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .daylabel { margin: 16px 0 6px; font-size: .75rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+  .dcard { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: .75rem; }
+  .dcard .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .9375rem; }
+  .dcard .top span { color: var(--muted); }
+  .dcard .top b.amt { font-variant-numeric: tabular-nums; }
+  .dcard p.ev { margin: .35rem 0 .6rem; font-size: .8125rem; color: var(--slate); line-height: 1.45; }
+  .sugs { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .sug { border: 1px solid var(--border); border-radius: 8px; padding: .35rem .6rem; background: var(--surface); }
+  .sug b { display: block; font-size: .8125rem; color: var(--strong); }
+  .sug span { display: block; font-size: .6875rem; color: var(--muted); }
+  .sug .tag { display: inline-block; font-size: .625rem; font-weight: 700; letter-spacing: .06em; color: var(--blue); margin-left: 6px; }
+  .sug.tk { border-color: var(--copper); background: #fbf6ee; }
+  .sug.tk .tag { color: var(--copper); }
+  .line { border-top: 1px solid var(--border); padding-top: .5rem; margin-top: .6rem; }
+  .line .l1 { display: flex; justify-content: space-between; gap: .5rem; font-size: .8125rem; }
+  .line .l1 .tm { color: var(--muted); margin-right: 6px; }
+  .line .l1 .cat { color: var(--muted); margin-left: 6px; }
+  .line .l1 .a { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .line .with { display: flex; gap: 10px; align-items: flex-start; margin-top: .4rem; }
+  .line .with .words { font-size: .75rem; color: var(--ink); min-width: 0; }
+  .line .with .words i { font-style: normal; color: var(--muted); }
+  .sbs { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; align-items: center; }
+  .sb { border: 1px solid #d1d5db; border-radius: 6px; background: var(--surface); padding: .3rem .6rem; font-size: .75rem; color: var(--ink); }
+  .none { font-size: .75rem; color: var(--muted); margin-top: .35rem; }
+  .sortday { display: flex; justify-content: flex-end; margin-top: .6rem; }
+  .sortday .press { width: auto; min-height: 40px; border-radius: 8px; padding: .5rem .9rem; }
+  /* the ticket window */
+  .win { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 16px; }
+  .win h4 { margin: 0 0 2px; font-size: 1.0625rem; color: var(--strong); }
+  .win dl { margin: 10px 0 0; display: grid; grid-template-columns: 92px 1fr; gap: 6px 10px; font-size: .8125rem; }
+  .win dt { color: var(--muted); } .win dd { margin: 0; color: var(--ink); }
+  .win .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .win .acts .press { width: auto; }
+  .fromrow { padding: 14px 16px; }
+  .fromrow h4 { margin: 0 0 8px; font-size: .9375rem; color: var(--strong); }
+  .fromrow .from { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .8125rem; color: var(--muted); }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d1d5db; border-radius: 8px; padding: .35rem .6rem; font-size: .8125rem; color: var(--ink); background: var(--surface); }
+  .fchip.new2 { border-color: var(--copper); background: #fbf6ee; }
+  @media (max-width: 420px) { .col.p375 { flex-basis: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #295 · mock-up · every name and number is made up</p>
+  <h1>A photo of the supply house ticket, taken at the counter</h1>
+  <p>Two papers leave a counter. A card receipt is the only list of what was bought, and no invoice ever follows it. An account ticket is followed days later by the bill in the mail. Neither reaches the app from the tech today. In the last 90 days the company cards were swiped about 176 times at material houses, and 2 of those charges have a receipt behind them. The office sorts each charge to a job from the clock and the schedule, without seeing what was bought.</p>
+  <p>The shape drawn here: one <b>Photo of a ticket</b> press on Job Parts Tally, pressed before the tech leaves the counter. The tech names the job in one tap. The photo goes to the job's folder. The app ties it to the card charge by the minute of the swipe, often within the hour, or to the PO code and later the bill. A dashed copper outline marks what is new on a screen that exists today.</p>
+</header>
+
+<h2>1 · Today</h2>
+<p class="lede">The tech's Transactions tab. A purchase waits for a job and takes a memo. Nothing takes the ticket. The charge is not even on this list at the counter: the bank holds it as pending for a day or two, and more than half of a day's purchases are still hidden at clock-out.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap">Today · the tech's purchases</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <p class="count">1 unlinked · 14 linked</p>
+      <button class="press blue" style="margin-top:10px">Sort 1 purchase →</button>
+      <div class="card">
+        <div class="top"><span class="who">The Home Depot</span><span class="amt">$163.96</span></div>
+        <div class="day">Sat Nov 7</div>
+        <button class="press blue sm" style="margin-top:.5rem">Sort to job</button>
+        <button class="lnk">+ memo</button>
+      </div>
+      <div class="card" style="opacity:.82">
+        <div class="top"><span class="who">Ridgeway Supply</span><span class="amt">$228.58</span></div>
+        <div class="day">Thu Nov 5</div>
+        <button class="press sm" style="margin-top:.5rem;background:var(--green-100);color:var(--green);min-height:36px">✓ JP1038 · Cedar Bend water heater</button>
+        <button class="lnk">+ memo</button>
+      </div>
+    </div></div></div>
+  </div>
+  <div class="col" style="flex:1 1 320px">
+    <p class="note" style="margin-top:22px"><b>Why the press cannot sit on the purchase.</b> At the counter there is no purchase card to press on yet. A camera chip beside the charge would ask the tech to come back two days later, when the receipt is under the truck seat. So the ticket is taken first and matched to its charge afterwards.</p>
+  </div>
+</div>
+
+<h2>2 · At the counter</h2>
+<p class="lede">Three taps: the press, the shutter, the job. The job the tech is clocked in on is first. A PO code the office made for this tech today is offered above it, since it already names the job and the house. A second tap adds a second job. Nothing is typed: the swipe's own minute usually finds the charge, so the total and a note sit behind two small links.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>A</b> · the press, on every tab of Tally</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <div class="ticketpress new">
+        <button class="press line"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo of a ticket</button>
+        <small>A receipt or a counter ticket. Take it before you leave the counter.</small>
+        <button class="lnk" style="font-size:.75rem;margin:4px 2px 0">or choose a photo or a PDF you already have</button>
+      </div>
+      <p class="count">1 unlinked · 14 linked</p>
+      <button class="press blue" style="margin-top:10px">Sort 1 purchase →</button>
+      <div class="card">
+        <div class="top"><span class="who">The Home Depot</span><span class="amt">$163.96</span></div>
+        <div class="day">Sat Nov 7</div>
+        <button class="press blue sm" style="margin-top:.5rem">Sort to job</button>
+        <button class="lnk">+ memo</button>
+      </div>
+    </div></div></div>
+    <p class="say">The press opens the phone's camera. It sits under the tab row, so it is there on On site too, where the page opens. The small link is for a receipt the store emailed, or a photo already in the phone. The grey line shows until the first ticket is saved.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>B</b> · after the shutter: which job</span>
+    <div class="frame"><div class="screen dim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="lead">
+          <div class="shot"></div>
+          <div><h4>Which job is this ticket for?</h4><p>Taken 9:52 AM. 310 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button><button class="lnk" style="font-size:.75rem">Retake</button></div>
+        </div>
+        <div class="chips">
+          <button class="chip on"><b>JP1042 · Oak Hollow Bldg C</b><span>You are clocked in on it now.</span></button>
+          <button class="chip"><b>JP1038 · Cedar Bend water heater</b><span>You are scheduled on it today.</span></button>
+          <button class="chip plain"><b>Another job…</b></button>
+          <button class="chip plain"><b>Not for one job</b><span>Stock, tools, the shop.</span></button>
+        </div>
+        <p class="two">For two jobs? Tap the second one too.</p>
+        <div class="more"><button class="lnk">+ total</button><button class="lnk">+ note</button></div>
+        <div class="foot"><button class="press blue">Save the ticket to JP1042</button></div>
+      </div>
+    </div></div>
+    <p class="say">Nothing is picked until the tech taps. Before a tap the button is grey and reads <i>Pick a job to save</i>. With two jobs picked it reads <i>Save the ticket to 2 jobs</i>, and the office splits the charge.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>C</b> · the same sheet when the office made a PO code</span>
+    <div class="frame"><div class="screen dim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="lead">
+          <div class="shot"></div>
+          <div><h4>Which job is this ticket for?</h4><p>Taken 1:40 PM. 284 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button><button class="lnk" style="font-size:.75rem">Retake</button></div>
+        </div>
+        <div class="chips">
+          <button class="chip on"><b>PO 41207 · Ridgeway Supply<span class="tag">YOUR PO CODE</span></b><span>For JP1042 · Oak Hollow Bldg C. Made for you at 1:12 PM.</span></button>
+          <button class="chip"><b>JP1042 · Oak Hollow Bldg C</b><span>You are clocked in on it now.</span></button>
+          <button class="chip plain"><b>Another job…</b></button>
+          <button class="chip plain"><b>Not for one job</b><span>Stock, tools, the shop.</span></button>
+        </div>
+        <p class="two">For two jobs? Tap the second one too.</p>
+        <div class="more"><button class="lnk">+ total</button><button class="lnk">+ note</button></div>
+        <div class="foot"><button class="press blue">Save the ticket to PO 41207</button></div>
+      </div>
+    </div></div>
+    <p class="say">One tap carries the job, the house and the code. The bill that follows in the mail prints the same code.</p>
+  </div>
+</div>
+
+<h2>3 · After the save, and with no signal</h2>
+<p class="lede">The shot is shrunk and kept on the phone before anything is sent, as a job photo is today. With no signal it waits and goes by itself when the signal returns. <b>My tickets</b> under the press says where each one stands, in the tech's words.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>D</b> · saved, and the tech's tickets</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <div class="ticketpress">
+        <button class="press line"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo of a ticket</button>
+      </div>
+      <div class="saved new">Ticket saved to JP1042. It is in the job's folder.</div>
+      <div class="new" style="margin-top:14px">
+        <p class="h4" style="margin-top:0">My tickets</p>
+        <div class="trow">
+          <div class="shot"></div>
+          <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Today 9:52 AM</span><span class="pill wait">Waiting for its charge or its bill</span></div>
+        </div>
+        <div class="trow">
+          <div class="shot"></div>
+          <div class="t"><b>PO 41207 · Ridgeway Supply</b><span class="sub">Wed Nov 4 · JP1042</span><span class="pill blue">On account · waiting for the bill</span></div>
+        </div>
+        <div class="trow">
+          <div class="shot"></div>
+          <div class="t"><b>JP1038 · Cedar Bend water heater</b><span class="sub">Tue Nov 3</span><span class="pill ok">Matched · $228.58 at Ridgeway Supply</span></div>
+        </div>
+        <div class="trow">
+          <div class="shot"></div>
+          <div class="t"><b>JP1038 · Cedar Bend water heater</b><span class="sub">Mon Nov 2 · a return</span><span class="pill ok">Matched · $41.17 back from Cedar Bend Hardware</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="say">A swipe a few minutes before the photo usually ties the ticket within the hour, while the bank still holds the charge as pending. A return matches the money that came back. The list keeps two weeks. With none it reads <i>No tickets yet. Take a photo of the ticket before you leave the counter.</i></p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>E</b> · no signal in the parking lot</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <div class="ticketpress">
+        <button class="press line"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo of a ticket</button>
+      </div>
+      <div class="strip new"><span>1 ticket is on this phone. It sends when the signal is back.</span><button class="press sm line" style="min-height:36px">Send now</button></div>
+      <p class="h4">My tickets</p>
+      <div class="trow">
+        <div class="shot"></div>
+        <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Today 9:52 AM</span><span class="pill grey">On this phone</span></div>
+      </div>
+    </div></div></div>
+    <p class="say">The tech can close the app and drive off. The same waiting presses bar the clock uses counts it at the top of every page. A ticket still on the phone the next morning says so in red and offers <i>Share instead</i>, so the photo can go by text.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>F</b> · a ticket taken hours later, and one charge that fits</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <p class="h4" style="margin-top:0">My tickets</p>
+      <div class="trow new">
+        <div class="shot"></div>
+        <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Sat Nov 7 · 4:10 PM</span>
+          <div class="ask">Is this the ticket for <b style="display:inline">$163.96 at The Home Depot</b> at 9:41 AM?
+            <div class="yn"><button class="press sm blue">Yes</button><button class="press sm line">No</button></div>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="say">Two matches make themselves. One is the only swipe on that person's card in the half hour before the photo. The other is a typed total equal to the charge within a day. Anything looser is a question, to the tech here or to the office on the Team queue.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>G</b> · the tech opens one of their tickets</span>
+    <div class="frame"><div class="screen dim">
+      <div class="sheet new" style="outline-offset:-4px">
+        <div class="grab"></div>
+        <div class="shot big" style="height:190px"></div>
+        <h4 style="margin-top:10px">JP1042 · Oak Hollow Bldg C</h4>
+        <p style="margin:2px 0 6px;font-size:.8125rem;color:var(--muted)">Taken today at 9:52 AM. 1 page.</p>
+        <span class="pill wait">Waiting for its charge or its bill</span>
+        <div class="foot"><button class="press line sm">Change the job</button><button class="press line sm">Add a page</button><button class="press line sm" style="color:var(--red-700);border-color:var(--red-700)">Remove this ticket</button></div>
+        <p class="two">You can remove a ticket until the office has used it.</p>
+      </div>
+    </div></div>
+    <p class="say">A wrong job or a ticket taken twice is the tech's to fix. A removed ticket is kept out of sight, never deleted.</p>
+  </div>
+</div>
+
+<h2>4 · When the charge settles</h2>
+<p class="lede">The tech's purchase card wears its ticket, and the job the tech already named is one press. A purchase that has no ticket offers the late door.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>H</b> · the tech's purchases, two days later</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <p class="count">2 unlinked · 14 linked</p>
+      <div class="card">
+        <div class="top"><span class="who">The Home Depot</span><span class="amt">$163.96</span></div>
+        <div class="day">Sat Nov 7</div>
+        <div class="new" style="display:flex;gap:10px;align-items:center;margin-top:.5rem">
+          <div class="shot" style="width:40px;height:52px"></div>
+          <div style="font-size:.75rem;color:var(--ink)">Your ticket names <b>JP1042 · Oak Hollow Bldg C</b>.</div>
+        </div>
+        <button class="press blue sm new" style="margin-top:.6rem">Sort to JP1042</button>
+        <button class="lnk">Another job</button><button class="lnk">+ memo</button>
+      </div>
+      <div class="card">
+        <div class="top"><span class="who">Cedar Bend Hardware</span><span class="amt">$41.17</span></div>
+        <div class="day">Sat Nov 7</div>
+        <button class="press blue sm" style="margin-top:.5rem">Sort to job</button>
+        <button class="lnk">+ memo</button><button class="lnk new" style="outline-offset:2px;border-radius:4px">+ ticket</button>
+      </div>
+    </div></div></div>
+    <p class="say"><i>+ ticket</i> opens the camera for this purchase. The job is asked only if the purchase has none. When a helper took the photo and the lead's card paid, the lead's purchase reads <i>Sam's ticket names JP1042</i>.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>I</b> · a second door: the Job Mode card on the Dashboard</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="card" style="margin-top:0">
+        <div style="font-size:.6875rem;font-weight:700;letter-spacing:.06em;color:var(--muted)">YOUR JOB TODAY</div>
+        <div style="font-weight:700;color:var(--strong);margin-top:2px">JP1042 · Oak Hollow Bldg C</div>
+        <div style="font-size:.8125rem;color:var(--muted)">214 Oak Hollow Ln, Bldg C</div>
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:4px;display:grid">
+          <span style="display:inline-flex;align-items:center;gap:.4rem;min-height:44px;color:var(--link);font-weight:600;font-size:.875rem"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photos · 14 ▸</span>
+          <span class="new" style="display:inline-flex;align-items:center;gap:.4rem;min-height:44px;color:var(--link);font-weight:600;font-size:.875rem;justify-self:start;padding-right:6px;border-radius:6px"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Ticket · take its photo ▸</span>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="say">The field opened the Tally page on few days. The Job Mode card is where a tech's day already is, and it knows the job. From here the sheet opens with this job picked.</p>
+  </div>
+</div>
+
+<h2>5 · What the office sees</h2>
+<p class="lede">The Team queue's day card. A charge with a ticket shows it, and the job on the ticket is the first choice, ahead of the clock's guess. It is still a choice: nothing is picked until the sorter taps. The card says how many of the day's charges have a ticket.</p>
+<div class="row">
+  <div class="col p760">
+    <span class="cap"><b>J</b> · Team queue · one person's day</span>
+    <div class="frame"><div class="screen w760"><div class="pad">
+      <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
+      <div class="tabs" style="max-width:420px"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
+      <div class="sub2"><span class="on">Team</span><span>My card</span></div>
+      <div class="sbs" style="margin-top:10px"><span class="sb" style="border-color:var(--blue);color:var(--blue);border-radius:999px;padding:.3rem .8rem">To sort (3)</span><span class="sb" style="border-radius:999px;padding:.3rem .8rem">Sorted (300)</span><span class="sb new" style="border-radius:999px;padding:.3rem .8rem;outline-offset:2px">Tickets (3)</span></div>
+      <p class="daylabel">SAT, NOV 7</p>
+      <div class="dcard">
+        <div class="top"><div><b>Jordan</b><span> · 3 charges · <span class="new" style="color:var(--ink);outline-offset:2px;border-radius:4px">1 with a ticket</span></span></div><b class="amt">$263.53</b></div>
+        <p class="ev">Clocked on JP1038 Cedar Bend water heater from 7:30 AM to 9:20 AM. Clocked on JP1042 Oak Hollow Bldg C from 10:05 AM to 4:00 PM.</p>
+        <div class="sugs">
+          <div class="sug"><b>JP1042 · Oak Hollow Bldg C</b><span>clocked that day</span></div>
+          <div class="sug"><b>JP1038 · Cedar Bend water heater</b><span>clocked that day</span></div>
+          <div class="sug"><b>Split evenly</b><span>both jobs clocked that day</span></div>
+          <div class="sug"><b>JP000 · Office</b></div>
+        </div>
+        <div class="line">
+          <div class="l1"><div><span class="tm">9:52 AM</span><b>The Home Depot</b><span class="cat">Retail</span></div><div class="a">$163.96</div></div>
+          <div class="with new">
+            <div class="shot" style="width:44px;height:58px"></div>
+            <div>
+              <div class="sugs"><div class="sug tk"><b>JP1042 · Oak Hollow Bldg C<span class="tag">TICKET</span></b><span>Jordan's ticket names this job</span></div></div>
+              <div class="words" style="margin-top:4px"><i>Ticket taken 9:52 AM at the counter. Total typed: $163.96.</i></div>
+            </div>
+          </div>
+          <div class="sbs"><span class="sb">Pick a job ▾</span><span class="sb">Another job…</span><span class="sb">Invoices</span><span class="sb">Backcharge</span></div>
+        </div>
+        <div class="line">
+          <div class="l1"><div><span class="tm">12:18 PM</span><b>Cedar Bend Hardware</b><span class="cat">Retail</span></div><div class="a">$41.17</div></div>
+          <div class="with new">
+            <div class="shot" style="width:44px;height:58px"></div>
+            <div class="words">Jordan took a ticket at 2:40 PM for JP1042. Is it this charge?
+              <div class="sbs"><span class="sb" style="border-color:var(--blue);color:var(--blue);font-weight:600">It is</span><span class="sb">It is not</span></div>
+            </div>
+          </div>
+          <div class="sbs"><span class="sb">Pick a job ▾</span><span class="sb">Another job…</span><span class="sb">Invoices</span><span class="sb">Backcharge</span></div>
+        </div>
+        <div class="line">
+          <div class="l1"><div><span class="tm">3:05 PM</span><b>Ridgeway Supply</b><span class="cat">Retail</span></div><div class="a">$58.40</div></div>
+          <div class="none">No ticket yet.</div>
+          <div class="sbs"><span class="sb">Pick a job ▾</span><span class="sb">Another job…</span><span class="sb">Invoices</span><span class="sb">Backcharge</span><span class="sb new" style="outline-offset:2px">+ Ticket</span></div>
+        </div>
+        <div class="sortday"><button class="press dead">Sort the day</button></div>
+      </div>
+    </div></div></div>
+    <p class="say" style="max-width:96ch">The small photo opens the ticket window below. The ticket's job matters most on the day the clock cannot tell: here Jordan bought between two jobs, clocked on neither, and the ticket says which one it was for. <i>+ Ticket</i> on a line is for the paper a tech hands in at the office: a scan, a photo or a PDF.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col p760">
+    <span class="cap"><b>K</b> · the ticket window</span>
+    <div class="frame"><div class="screen w760">
+      <div class="win">
+        <div class="shot big"></div>
+        <div>
+          <h4>Ticket · The Home Depot</h4>
+          <span class="pill ok">Matched to the $163.96 charge</span>
+          <dl>
+            <dt>Taken</dt><dd>Sat Nov 7, 9:52 AM, by Jordan</dd>
+            <dt>Job</dt><dd>JP1042 · Oak Hollow Bldg C</dd>
+            <dt>Total</dt><dd>$163.96, typed by Jordan</dd>
+            <dt>Charge</dt><dd>Jordan's card, Sat Nov 7, The Home Depot</dd>
+            <dt>File</dt><dd>2026-11-07 Jordan · ticket The Home Depot.jpg, in the job's folder under Team only › Tickets</dd>
+          </dl>
+          <div class="acts">
+            <button class="press sm line">Open in Drive</button>
+            <button class="press sm line">Not this charge</button>
+            <button class="press sm line">Record as a bill</button>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:96ch"><i>Not this charge</i> takes the match off and the ticket waits again. <i>Record as a bill</i> opens Add invoice on this photo. The same window opens from the job's Documents tab and from a card charge on the job's cost rows. A ticket shows prices, so it is filed under Team only and never in Customer Pictures, where a job's other phone photos go.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col p760">
+    <span class="cap"><b>L</b> · Team queue · Tickets: the ones with no charge, and the ones that disagree</span>
+    <div class="frame"><div class="screen w760"><div class="pad new" style="outline-offset:-6px">
+      <div class="sbs" style="margin-top:0"><span class="sb" style="border-radius:999px;padding:.3rem .8rem">To sort (3)</span><span class="sb" style="border-radius:999px;padding:.3rem .8rem">Sorted (300)</span><span class="sb" style="border-color:var(--blue);color:var(--blue);border-radius:999px;padding:.3rem .8rem">Tickets (3)</span></div>
+      <p class="count">3 tickets have no charge yet. 1 ticket disagrees with where its charge went.</p>
+      <div class="conf">The $228.58 at Ridgeway Supply on Tue Nov 3 went to JP1038, sorted by the office. Sam's ticket names <b>JP1042 · Oak Hollow Bldg C</b>.
+        <div class="acts2"><button class="press sm line">Change it to JP1042</button><button class="press sm line">Leave it on JP1038</button></div></div>
+      <div style="margin-top:12px">
+        <div class="tkr"><div class="shot"></div><div><b>Jordan · PO 41207 · Ridgeway Supply · JP1042</b><span class="sub">Wed Nov 4, 1:40 PM</span><span class="pill blue">On account · waiting for the bill</span>
+          <div class="acts2"><button class="press sm line">Record as a bill</button></div></div></div>
+        <div class="tkr"><div class="shot"></div><div><b>Sam · JP1038 · Cedar Bend water heater</b><span class="sub">Mon Nov 2, 4:15 PM · note: paid cash, the card was declined</span><span class="pill wait">No charge fits · 5 days</span>
+          <div class="acts2"><button class="press sm line">Pick the charge</button><button class="press sm line">Paid another way…</button></div></div></div>
+        <div class="tkr"><div class="shot"></div><div><b>Jordan · Not for one job</b><span class="sub">Tue Nov 3, 11:20 AM · note: drill bits for the shop</span><span class="pill grey">Waiting for the office to place it</span>
+          <div class="acts2"><button class="press sm line">Pick a job</button><button class="press sm line">It is stock</button></div></div></div>
+      </div>
+    </div></div></div>
+    <p class="say" style="max-width:96ch">The queue is built on charges, so a ticket with no charge needs a home of its own: an account ticket, cash, a card the app cannot see. A sort is never changed behind the office's back. A ticket that lands after its charge was sorted somewhere else is shown here as a disagreement, with both choices.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col p760">
+    <span class="cap"><b>M</b> · an account ticket meets its bill: Add invoice, The bill</span>
+    <div class="frame"><div class="screen w760">
+      <div class="fromrow">
+        <h4>The bill</h4>
+        <div class="from">Start from:
+          <span class="fchip">Inv_8841207.pdf · from the thread</span>
+          <span class="fchip new2 new" style="outline-offset:2px">Jordan's ticket · Nov 4 · PO 41207</span>
+          <span class="fchip">Another file…</span>
+          <span class="fchip">No PDF, I will type it</span>
+        </div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:96ch">The form already reads a picture of a counter ticket. A ticket nobody has recorded shows beside the house's mail, and it leaves the row once a bill carries its PO code. Many account tickets carry a job's name where the PO goes and no code at all, so the row also offers the tickets taken for that job in the days before the bill.</p>
+  </div>
+</div>
+
+<h2>6 · Later, not in the first build: the app reads the ticket</h2>
+<p class="lede">The bill reader behind Add invoice costs about a cent a read. Pointed at a tech's ticket it fills the house, the total, the day and the PO code, so the tech types nothing and the match is exact. Its lines can then be offered to the job's Materials on site as a delivery. This waits for the owner's word, since a field press would spend a read.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>N</b> · the sheet once the ticket is read</span>
+    <div class="frame"><div class="screen dim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="lead">
+          <div class="shot"></div>
+          <div><h4>Which job is this ticket for?</h4><p>Read from the ticket: The Home Depot, Nov 7, 6 lines.</p></div>
+        </div>
+        <div class="chips">
+          <button class="chip on"><b>JP1042 · Oak Hollow Bldg C</b><span>You are clocked in on it now.</span></button>
+          <button class="chip plain"><b>Another job…</b></button>
+        </div>
+        <div class="field"><label>Total on the ticket · read from the paper</label><div class="in read">$163.96</div></div>
+        <div class="foot"><button class="press blue">Save the ticket to JP1042</button></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col" style="flex:1 1 320px">
+    <p class="note" style="margin-top:22px"><b>What the first build leaves out on purpose.</b> No reading. No reminder to a tech whose charge has no ticket. No copy of the photo sent to the bank. Each is a later step once the office has used the photos for a few weeks.</p>
+  </div>
+</div>
+
+<h2>The calls that are the owner's</h2>
+<ol class="calls">
+  <li><b>Not for one job.</b> Does such a ticket go to the Office job by itself, or wait for the office to place it, as frame L draws?</li>
+  <li><b>The matches that make themselves.</b> The only swipe on that person's card in the half hour before the photo. A typed total equal to the charge within a day. Are both sure enough to tie the photo to the charge with no press? The sort to a job takes the sorter's tap either way.</li>
+  <li><b>Who may see a ticket.</b> The tech who took it, the office, and whoever can open the job's Team only folder. Anyone else, or fewer?</li>
+  <li><b>Any receipt, or material only.</b> The press takes whatever is photographed: fuel, a meal, a tool. Is that wanted, or should the words say supply house only?</li>
+  <li><b>The second door.</b> The Job Mode card's Ticket line beside Photos. In the first build, or after the Tally press has been used for a while?</li>
+  <li><b>A ticket that never meets a charge.</b> The tech paid cash, or with their own money. <i>Paid another way…</i> in frame L records which. Does the office then read it as money owed to the tech?</li>
+</ol>
+
+</div>
+</body>
+</html>

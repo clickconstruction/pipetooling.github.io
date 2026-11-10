@@ -314,6 +314,7 @@ export type LienAffidavitJobFacts = {
   jobName: string | null | undefined
   jobAddress: string | null | undefined
   isSub: boolean
+  /** The GC's name and address as its customer row holds them. Read on a job under a GC alone: with no GC the paper names our own company (`lienOriginalContractor`). */
   originalContractorName: string
   originalContractorAddress: string
   ownerName: string
@@ -329,6 +330,8 @@ export type LienAffidavitJobFacts = {
   openBalance?: number
   /** 'YYYY-MM' — the last month worked, as the desk's RPC names it; the span's fallback when the job carries no day — its first to its last day (v2.6061). */
   lastMonth: string
+  /** 'YYYY-MM' — the first month with a session, when the caller knows it (the Lien window's months, v2.6809); the start's fallback while the job has no first day. */
+  firstMonth?: string | null
   /** The job's work days (v2.6061): the first and last approved clock day as the ledger keeps them (`first_work_date`, `last_work_date`) and the last day set by hand (`lien_last_work_on`); paragraph 5 swears the span from them. Absent, the month's. */
   workDays?: LienWorkSpanJob | null
   /** Today, 'YYYY-MM-DD' — a month still running ends today on the paper. */
@@ -340,10 +343,24 @@ export type LienAffidavitJobFacts = {
   serviceTypeName?: string | null
 }
 
+/**
+ * Who the original contractor is on a lien paper, and where. Pure, the one rule the desk and the Lien window share.
+ * The original contractor is whoever contracted with the owner (§ 53.001(7)). On a job under a GC that is the GC:
+ * its name and address as the customer row holds them, blank when none is on file, which the desk lists as a blank
+ * to fill. On a job with no GC we contracted with the owner, so it is our own company at its own address, the
+ * claimant the paper already names. The desk's draft read the GC's row alone and printed a blank there.
+ */
+export function lienOriginalContractor(f: { isSub: boolean; gcName: string | null | undefined; gcAddress?: string | null; issuer: PhysicalInvoiceIssuer | null }): { name: string; address: string } {
+  if (f.isSub) return { name: f.gcName ?? '', address: f.gcAddress ?? '' }
+  return { name: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME, address: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim() }
+}
+
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
   const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
+  // One rule for paragraph 7: the GC on a job under one, our own company on a job contracted with the owner, whatever the caller handed over.
+  const originalContractor = lienOriginalContractor({ isSub: f.isSub, gcName: f.originalContractorName, gcAddress: f.originalContractorAddress, issuer: f.issuer })
   // The period paragraph 5 swears (v2.6061): the first approved day through the last, or the day set by hand; the month's first to last day as the fallback. Until v2.6061 both ends were the 28th of the last month.
-  const span = lienWorkSpan(f.workDays, { lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
   return {
     county: f.county,
     claimantPersonName: f.contactPerson,
@@ -358,8 +375,8 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     workEnd: span.workEnd,
     ownerName: f.ownerName,
     ownerAddress: f.ownerAddress,
-    originalContractorName: f.originalContractorName,
-    originalContractorAddress: f.originalContractorAddress,
+    originalContractorName: originalContractor.name,
+    originalContractorAddress: originalContractor.address,
     contractAmount: f.revenue.toFixed(2),
     paidAmount: f.paymentsMade.toFixed(2),
     unpaidAmount: unpaid.toFixed(2),

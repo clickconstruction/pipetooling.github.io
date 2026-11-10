@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
+import { CLAUSE_APPROVER_ROLES, MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
 import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_SCHEDULE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
@@ -273,5 +273,12 @@ describe('canEditClause and canApproveClause (Messages, cut 4c)', () => {
 
   it('names the same approvers as the database’s gc_clause_approve_team(), so the two copies cannot drift', () => {
     expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(teamInSql('gc_clause_approve_team').sort())
+  })
+
+  it('messages-notify tells the same approvers a change waits, so nobody who can approve goes without the push', () => {
+    expect([...CLAUSE_APPROVER_ROLES].sort()).toEqual([...GC_CLAUSE_APPROVE_TEAM].sort())
+    const fn = readFileSync(join(process.cwd(), 'supabase', 'functions', 'messages-notify', 'index.ts'), 'utf8')
+    expect(fn).toContain(".in('role', [...CLAUSE_APPROVER_ROLES])")
+    expect(fn).not.toMatch(/APPROVER_ROLES = \[/)
   })
 })

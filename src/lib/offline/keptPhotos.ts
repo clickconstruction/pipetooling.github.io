@@ -1,4 +1,4 @@
-import type { FieldReportPayload, JobPhotosPayload, KeptShot, KeptTaskPhoto, OutboxPress, TaskPhotoPayload } from './outbox'
+import type { CounterTicketPayload, FieldReportPayload, JobPhotosPayload, KeptShot, KeptTaskPhoto, KeptTicketPage, OutboxPress, TaskPhotoPayload } from './outbox'
 import type { OutboxStateStore } from './outboxState'
 import { KEPT_PHOTOS_STORE_NAME, openOutboxDb } from './outboxStore'
 
@@ -122,11 +122,12 @@ export function createKeptPhotos(io: { open?: () => Promise<IDBDatabase | null> 
 /** The app's one store of kept bytes. */
 export const keptPhotos: KeptPhotosStore = createKeptPhotos()
 
-/** The photos riding with a press: a field report's, a job photos press's (punch list #244) or a task photo press's (punch list #273); none for any other kind. */
+/** The photos riding with a press: a field report's, a job photos press's (punch list #244), a task photo press's (punch list #273) or a counter ticket's pages (punch list #295); none for any other kind. */
 export function keptPhotosOf(press: OutboxPress): KeptShot[] {
   if (press.kind === 'field-report') return (press.payload as FieldReportPayload).photos ?? []
   if (press.kind === 'job-photos') return (press.payload as JobPhotosPayload).photos ?? []
   if (press.kind === 'task-photo') return (press.payload as TaskPhotoPayload).photos ?? []
+  if (press.kind === 'counter-ticket') return (press.payload as CounterTicketPayload).photos ?? []
   return []
 }
 
@@ -139,7 +140,7 @@ export function unsentKeptPhotos(press: OutboxPress): KeptShot[] {
 export function withPhoto(press: OutboxPress, id: string, change: { sent: true } | { lost: true }): OutboxPress {
   const photos = keptPhotosOf(press)
   const next = 'lost' in change ? photos.filter((p) => p.id !== id) : photos.map((p) => (p.id === id ? { ...p, sent: true } : p))
-  return { ...press, payload: { ...(press.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload), photos: next } } as OutboxPress
+  return { ...press, payload: { ...(press.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload), photos: next } } as OutboxPress
 }
 
 export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byUserId: string; byName: string; takenAt: string; originalBytes: number; width: number; height: number }) => Promise<unknown>
@@ -147,10 +148,35 @@ export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byU
 /** A task card's shot (punch list #273): the same row `sendTaskPhoto` writes live, under the kept id. */
 export type SendKeptTaskPhoto = (input: Omit<KeptTaskPhoto, 'sent' | 'bytes'> & { instanceId: string; blob: Blob; byUserId: string }) => Promise<unknown>
 
+/** A counter ticket (punch list #295): its row first, since a page joins only a ticket that is there, then each page. */
+export type SendKeptTicketRow = (press: OutboxPress) => Promise<unknown>
+export type SendKeptTicketPage = (input: { ticketId: string; uploaderId: string; page: Omit<KeptTicketPage, 'sent' | 'bytes' | 'byName'> & { blob: Blob } }) => Promise<unknown>
+
 export interface SendKeptIo {
   bytes?: KeptPhotosStore
   send?: SendKeptPhoto
   sendTask?: SendKeptTaskPhoto
+  sendTicketRow?: SendKeptTicketRow
+  sendTicketPage?: SendKeptTicketPage
+}
+
+/** The ticket's row as `sendTicketRow` takes it, from the kept press. */
+export function ticketDraftOf(press: OutboxPress): { id: string; takenBy: string; takenByName: string; takenAt: string; takenAtFrom: 'press' | 'photo' | 'none'; source: 'camera' | 'file' | 'office'; jobId: string | null; alsoJobIds: string[]; noOneJob: boolean; poEntryId: string | null; total: number | null; note: string } {
+  const p = press.payload as CounterTicketPayload
+  return {
+    id: p.ticketId,
+    takenBy: press.userId,
+    takenByName: p.byName,
+    takenAt: p.takenAt,
+    takenAtFrom: p.takenAtFrom,
+    source: p.source,
+    jobId: p.jobId,
+    alsoJobIds: p.alsoJobIds ?? [],
+    noOneJob: p.noOneJob === true,
+    poEntryId: p.poEntryId,
+    total: p.total,
+    note: p.note ?? '',
+  }
 }
 
 /**
@@ -162,9 +188,19 @@ export interface SendKeptIo {
 export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore, io: SendKeptIo = {}): Promise<{ ok: true } | { ok: false; error: unknown }> {
   const bytes = io.bytes ?? keptPhotos
   const task = press.kind === 'task-photo'
-  // What the shot belongs to: a task photo's card (punch list #273), else the job of a report or a job photos press.
-  const owner = task ? (press.payload as TaskPhotoPayload).instanceId : (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
+  const ticket = press.kind === 'counter-ticket'
+  // What the shot belongs to: a task photo's card (punch list #273), a ticket's own id (punch list #295), else the job of a report or a job photos press.
+  const owner = task ? (press.payload as TaskPhotoPayload).instanceId : ticket ? (press.payload as CounterTicketPayload).ticketId : (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
   let current = press
+  if (ticket && owner && unsentKeptPhotos(press).length > 0) {
+    // The ticket's row goes first: a page joins only a ticket that is there. The same write on every try.
+    try {
+      const sendRow = io.sendTicketRow ?? (async (p: OutboxPress) => (await import('../tickets/ticketsIo')).sendTicketRow(ticketDraftOf(p)))
+      await sendRow(press)
+    } catch (error) {
+      return { ok: false, error }
+    }
+  }
   for (const photo of unsentKeptPhotos(press)) {
     if (!owner) {
       current = withPhoto(current, photo.id, { lost: true })
@@ -179,7 +215,14 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
     }
     try {
       const facts = { id: photo.id, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height }
-      if (task) {
+      if (ticket) {
+        // A ticket's page goes to the counter-tickets bucket and its own row (punch list #295), under the kept id.
+        const t = photo as KeptTicketPage
+        const sendPage =
+          io.sendTicketPage ??
+          (async (a: Parameters<SendKeptTicketPage>[0]) => (await import('../tickets/ticketsIo')).sendTicketPage({ id: a.ticketId, uploaderId: a.uploaderId }, { ...a.page, mime: a.page.mime }))
+        await sendPage({ ticketId: owner, uploaderId: press.userId, page: { id: t.id, pageNo: t.pageNo, mime: t.mime, blob, originalBytes: t.originalBytes, width: t.width, height: t.height, takenAt: t.takenAt } })
+      } else if (task) {
         // A task card's shot goes to the task-photos bucket and its own row (punch list #273), the line it proves on the row.
         const t = photo as KeptTaskPhoto
         const sendTask = io.sendTask ?? (await import('../photos/taskPhotosIo')).sendTaskPhoto

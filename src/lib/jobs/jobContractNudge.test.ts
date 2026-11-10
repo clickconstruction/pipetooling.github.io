@@ -23,6 +23,23 @@ function contract(p: Partial<JobContractRowLike>): JobContractRowLike {
 }
 
 describe('summarizeContractNudge', () => {
+  it('leaves ZZ test jobs out of every count when told to hide them (v2.6805); rows without names always count', () => {
+    const jobs = [
+      { id: 'a', bid_id: null, status: 'ready_to_bill', revenue: 215, job_name: 'Locks', customer_name: 'A Customer' },
+      { id: 'z', bid_id: null, status: 'ready_to_bill', revenue: 7, job_name: 'ZZ TEST dispute walk', customer_name: 'A Tester' },
+      { id: 'y', bid_id: null, status: 'working', revenue: 50, job_name: 'Job', customer_name: 'ZZ Test Customer' },
+      { id: 'n', bid_id: null, status: 'waiting', revenue: 100 },
+    ]
+    const hidden = summarizeContractNudge(jobs, [], [], NOW, { hideZzTestJobs: true })
+    expect(hidden.missing).toEqual({ count: 2, jobIds: ['a', 'n'], revenueTotal: 315 })
+    expect(hidden.liveTotal).toBe(2)
+    expect(hidden.byStage.ready_to_bill).toEqual({ total: 1, missing: 1, revenueMissing: 215 })
+    expect(hidden.byStage.working.total).toBe(0)
+    const shown = summarizeContractNudge(jobs, [], [], NOW)
+    expect(shown.missing.count).toBe(4)
+    expect(shown.byStage.ready_to_bill).toEqual({ total: 2, missing: 2, revenueMissing: 222 })
+  })
+
   it('counts live jobs with nothing on file and sums their revenue; paid jobs are out of scope', () => {
     const s = summarizeContractNudge(
       [

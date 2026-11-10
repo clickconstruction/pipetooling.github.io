@@ -27,6 +27,8 @@ export type TallySortPurchaseModalProps = {
   onSaved: () => void
   /** "Another job…" — parent closes this modal and opens the full Assign modal for the row. */
   onOpenFullAssign: (row: TallyLinkedMercuryRow) => void
+  /** Counter tickets (punch list #295, PR 3): the job the holder's ticket on a charge names, by charge id; it goes first. */
+  ticketJobByTx?: ReadonlyMap<string, { jobId: string; main: string }>
 }
 
 type UndoState = {
@@ -64,6 +66,7 @@ export function TallySortPurchaseModal({
   onClose,
   onSaved,
   onOpenFullAssign,
+  ticketJobByTx,
 }: TallySortPurchaseModalProps) {
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
@@ -117,7 +120,9 @@ export function TallySortPurchaseModal({
     setSaveError(null)
     void fetchSortModeDayJobs(userId, mercurySwipeAtIso(row.raw, row.posted_at) ?? row.posted_at, ledgerPrefixMap).then(({ data, error }) => {
       if (cancelled) return
-      setDayJobs(data)
+      // The ticket the holder took at the counter names the job: it goes first, and the day's jobs follow.
+      const ticket = ticketJobByTx?.get(row.mercury_transaction_id)
+      setDayJobs(ticket ? [{ id: ticket.jobId, main: ticket.main, address: 'Your ticket says so' }, ...data.filter((j) => j.id !== ticket.jobId)] : data)
       setDayJobsError(error)
       setDayJobsLoading(false)
     })

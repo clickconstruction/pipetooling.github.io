@@ -41,6 +41,7 @@ export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
  */
 export const IMPORTERS = [
   'ar-returned-checks',
+  'bridge-sheet-email',
   'bridge-weekly-sheet',
   'customer-portal',
   'dev-mcp',
@@ -118,6 +119,13 @@ export const ENTRIES = {
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
   // The dev seat's job verbs (punch list #293, v2.6790): the address saved as the New Job form saves it.
   'lib/addressTitleCase.ts': { values: ['titleCaseAddress'], types: [] },
+  // The dev seat's bill verb (punch list #293, v2.6794): the Billed line the sheet sends, the share row's copy, the bill's
+  // short link and the remainder arithmetic Bill Customer bills.
+  'lib/tellCustomer/billedLine.ts': { values: ['BILLED_LINE', 'billedLineWords', 'billedText'], types: ['BilledLineWords'] },
+  'lib/stripeInvoiceShareCopy.ts': { values: ['buildStripeInvoiceEmailSubject', 'buildStripeInvoiceEmailBody', 'buildStripeInvoiceSmsText'], types: ['StripeInvoiceShareCopyInput'] },
+  'lib/billing/billTextLink.ts': { values: ['billTextLink'], types: ['BillTextLinkInput'] },
+  'lib/billing/newestBill.ts': { values: ['billDollars', 'newestBill'], types: ['NewestBill'] },
+  'lib/billing/openLineAllocation.ts': { values: ['allocatedOpenCents', 'moneyCents', 'isRtbPrimaryBundle', 'isOpenLine'], types: ['OpenLineInvoice', 'LinkedPayment'] },
   // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
   'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },
   'lib/photos/photoSave.ts': { values: ['photosToSave', 'PHOTO_SAVE_BATCH'], types: ['PhotoRow', 'PhotoSwitch'] },
@@ -133,6 +141,16 @@ export const ENTRIES = {
   'lib/charges/adjustments.ts': { values: ['chargeAdjustmentFromRow', 'indexAdjustments'], types: ['ChargeAdjustment'] },
   'lib/charges/chargeStandings.ts': { values: ['standingsById'], types: ['ChargeStandingRow'] },
   'lib/people/hoursStatementSheets.ts': { values: ['hoursStatementSheetCounts', 'hoursStatementSheetPayGroups', 'hoursStatementSheetRows'], types: ['HoursStatementSheet', 'HoursStatementSheetLine', 'HoursStatementSheetPayment'] },
+  // Submittals through the dev seat (v2.6804): get_submittals reads a bid's rows and its order log through the tab's own
+  // kernels — the rows that stand, each row as the log's lines, the log, its four steps and the Next line, the status
+  // against the plans — so where a part stands on the seat is where it stands on Bids → Submittals. The index exports
+  // nothing of them: the seat imports each file by its path, so the portals and the other functions that read the index
+  // do not carry twenty files they never call (customer-portal went over the 5 MB a deploy may upload).
+  'lib/submittals/standingRows.ts': { values: [], types: [] },
+  'lib/submittals/procurementItemSources.ts': { values: [], types: [] },
+  'lib/submittals/procurementLog.ts': { values: [], types: [] },
+  'lib/submittals/procurementBoard.ts': { values: [], types: [] },
+  'lib/submittals/productStatus.ts': { values: [], types: [] },
   // v2.6406's way back from a retire: read_on_site lists a job's retired boxes with the screens' own Bring back verdict.
   'lib/materials/unretire.ts': { values: ['retiredContainers', 'unretireVerdict'], types: ['UnretireVerdict'] },
   // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,
