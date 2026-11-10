@@ -37,7 +37,7 @@ export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
 /** A filled dot is a fact behind us, the money, or the row that asks; a ring is a deadline still ahead. */
 export type LedgerDot = 'filled' | 'ring'
 
-export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'notice' | 'lien' | 'filed' | 'closed'
+export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'inkind' | 'notice' | 'lien' | 'filed' | 'closed'
 
 export type LedgerRow = {
   key: LedgerRowKey
@@ -106,6 +106,12 @@ export type BilledDatesLedgerInput = {
    * something landed against is not open and draws nothing. Null or absent: the money row as before.
    */
   claim?: LedgerPaidClaim | null
+  /**
+   * An in-kind deal pays this job (v2.6834, punch list #301): the money row is **Scheduled in kind** with no day, since
+   * no pay history says when a credit comes, and nobody is asked for a date. The lien rows stand: a credit does not
+   * move a deadline.
+   */
+  inKind?: boolean
 }
 
 /** What the ledger reads of a paid claim. */
@@ -121,7 +127,7 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null, inKind = false }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
   /** The state line under a lien row (v2.5491), when the desk has one. */
   const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
@@ -137,8 +143,9 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   // A word that they already paid (v2.6695) takes the row: nobody expects a day once the customer says the money is on its way.
   const said = row && claim && !uncollectible && claimOpen(claim) ? claim : null
   const saidStale = said ? claimStale(said, todayYmd) : false
-  const stat = row && !uncollectible && !said ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
-  const promised = row && promise && !uncollectible && !said ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
+  const scheduledInKind = inKind && !uncollectible && !said
+  const stat = row && !uncollectible && !said && !scheduledInKind ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
+  const promised = row && promise && !uncollectible && !said && !scheduledInKind ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0
@@ -163,6 +170,21 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       sub: saidStale ? staleWords(said, todayYmd) : how,
       subTone: saidStale ? 'amber' : undefined,
       subTitle: saidStale ? `${how} · ${staleWords(said, todayYmd)}` : undefined,
+    })
+  }
+  if (scheduledInKind) {
+    rows.push({
+      key: 'inkind',
+      label: 'Scheduled in kind',
+      joiner: '',
+      date: '',
+      far: '',
+      tone: 'green',
+      bold: false,
+      dot: 'filled',
+      action: null,
+      title: 'An in kind arrangement pays this bill. It is not chased, and it is not money coming.',
+      sub: '',
     })
   }
   if (moneyYmd && moneyTo != null) {
@@ -232,6 +254,8 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
           verdict = saidStale ? { label: 'Nothing landed', value: dWord(daysSinceClaim(said, todayYmd)), tone: 'amber', action: 'they-said', title: `They said they paid ${formatYmdMonthDay(said.paidYmd)} and nothing has landed on the job since — ask whether it went out` } : null
         } else if (moneyPast && moneyTo != null) {
           verdict = { label: 'Ask for a date', value: `${dWord(-moneyTo)} past`, tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${moneyTitle} — the date has gone by with the balance still open` }
+        } else if (scheduledInKind) {
+          verdict = null // a credit comes as it comes: nobody is asked for a date
         } else {
           verdict = { label: 'Ask for a date', value: '', tone: 'plain', action: moneyAction, title: 'Nobody has said when this will be paid' }
         }

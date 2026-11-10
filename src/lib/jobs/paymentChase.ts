@@ -13,6 +13,7 @@
  * own — there is no cleanup state.
  */
 import type { StageRow } from '../jobsStagesBoard'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 import { BROKEN_PROMISE_GRACE_DAYS, TOUCH_QUIET_DAYS, type ChaseTouch } from './paymentChaseTouches'
 
 // The touches' rules, type and parse live in `paymentChaseTouches.ts` (v2.5881), re-exported here for their readers.
@@ -141,6 +142,8 @@ export function buildPaymentChaseQueue(
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
     const job = r.job
+    // v2.6834: a bill an in-kind deal pays is scheduled, never chased (punch list #301).
+    if (jobIsScheduledInKind(job)) continue
     // v2.4367: the call goes to whoever the bill went to (the builder on a GC-billed bill),
     // judged late against that payer's own pace (v2.4365).
     const payer = listPayer(job, r.inv)

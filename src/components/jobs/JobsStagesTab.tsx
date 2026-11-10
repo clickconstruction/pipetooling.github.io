@@ -75,6 +75,7 @@ import {
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
+import { jobIsScheduledInKind } from '../../lib/inKind/inKindLedger'
 import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/payPace'
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
 import BilledDatesLedger from './BilledDatesLedger'
@@ -1068,6 +1069,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         promise,
         // v2.6695: the customer's word that they paid takes the money row (They say paid).
         claim: paidClaimsByJob?.get(row.job.id) ?? null,
+        // v2.6834: a bill an in-kind deal pays reads Scheduled in kind, with no expected day (punch list #301).
+        inKind: jobIsScheduledInKind(row.job),
         runway,
         inCollections: jobInCollections(row.job),
         uncollectible: jobUncollectible(row.job),
@@ -2551,7 +2554,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const inv = row && row.kind !== 'job' ? row.inv : null
     const payer = inv ? paySpeedPayer(job, inv) : null
     const expectedPay =
-      (stage === 'billed' || stage === 'collections') && inv && payer
+      (stage === 'billed' || stage === 'collections') && inv && payer && !jobIsScheduledInKind(job)
         ? billedExpectedPayModel(
             { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
             billedPaySpeeds,

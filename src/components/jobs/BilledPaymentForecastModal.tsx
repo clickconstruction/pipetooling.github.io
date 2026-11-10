@@ -505,6 +505,7 @@ export default function BilledPaymentForecastModal({
         <p style={{ margin: '0.9rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {forecast.rowCount} open {forecast.rowCount === 1 ? 'bill' : 'bills'} · {formatUsdNoCents(forecast.openTotal)} total
           {forecast.skippedNoMoney > 0 ? ` · ${forecast.skippedNoMoney} paid-to-zero ${forecast.skippedNoMoney === 1 ? 'row' : 'rows'} not shown` : ''}
+          {forecast.inKind.count > 0 ? ` · ${formatUsdNoCents(forecast.inKind.dollars)} on ${forecast.inKind.count} ${forecast.inKind.count === 1 ? 'bill' : 'bills'} is scheduled in kind, not money coming` : ''}
           {paySpeeds == null ? ' · pay speeds unavailable — dates need the pay-speed lookup' : ''}
           {workMonths === null ? ' · loading the months worked…' : ''}
         </p>
