@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) in work on `claude/bid-photos-window`
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -16,11 +16,11 @@ summary: >
   A's presses, so a blue link still goes straight out and only a grey icon or the photos icon
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
-  train is eight small PRs with the photos icon first.
-next: PR 3, the photos icon and its window, then a redeploy of `bid-photos` for its by-line fix. The owner's word on who may remove a photo (call 6) before PR 4.
-size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 3 to 8 (M · S · M · S · S · S)
-blocker: None for PR 3. Call 6 gates PR 4.
-opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column, as direction C draws it
+  train is nine small PRs with the photos icon first.
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 4 to 9 (S · M · M · S · S · S)
+blocker: None for PR 5. Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — PR 5 next, so every link has its place in the column; then the job's pair
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -148,6 +148,8 @@ people and counts. The photos are drawn tiles. Green dashes mark what is new.
 - **3 · The same window when photos are there**: the grid, a rename in place, the ⋯ menu, Remove
   with its Undo, and Select on the phone.
 - **4 · The other four links under the same rule**: one small window each.
+- **5 · A bid with a job: B and J**: the owner's call of 2026-11-10, a Won table with a lettered pair for the
+  bid and one for the job, on a desk and a phone.
 - **Is this the best we can do?**, then **B · one window per bid** and **C · the pick**, a table
   side by side, and **The owner's calls**.
 
@@ -268,15 +270,25 @@ answered.
 9. **Does the Files window replace Files & links in the bid's form?** My pick: not yet. Both write
    the same columns. Retire the form's section after a month of use.
 
-10. **On a won bid with a job, does the row offer the job's side too, with a J on the icon?** The owner's
-    question of 2026-11-10: *should we offer the job folder as well with a "J" on the front of the folder icon*.
-    What the code says: after a win the folder is one folder, since the job folder maker adopts the bid's, so a J
-    folder would open what the folder icon already opens. The photos are what sit in two places: the bid's in
-    Team only › Photos, the job's own in Customer Pictures. My pick: yes, with the J on a second camera and not
-    on the folder. It draws beside the bid's camera on a bid whose job has photos, shows their count and opens
-    the Job photos window. It draws for the roles that already see the job's chip, since an estimator has no
-    door to a job. A J folder draws only where the job's folder is not the bid's, which is a bid whose folder
-    was held in a personal Drive. It would ride PR 8 with one count read for the page's won bids.
+10. **On a won bid with a job, does the row offer the job's side too?** The owner's question of 2026-11-10:
+    *should we offer the job folder as well with a "J" on the front of the folder icon*, then *J is short for
+    the job folder, B would be the bid folder, should we instead combine them?* I picked one combined folder
+    icon and one combined camera. **Answered 2026-11-10: keep J and B.** The bid's icons wear a B and the job's
+    wear a J, each in its own slot. The same day: **estimators should be able to see job photos as well.**
+    - What the code says, for whoever builds it: for a job made from a bid the two folders are one folder, since
+      the job folder maker adopts the bid's (`FolderTree.placeJob`). They differ when a job had a folder of its
+      own before it was linked to the bid (the board's *matches by value · Link* press). The photos are in two
+      places either way: the bid's in Team only › Photos, the job's own in Customer Pictures.
+    - What an estimator can do today: `job-photos` already answers one (`can_report_stage_progress` names the
+      role), so the job's photos read in the app. What an estimator cannot do is learn which job a bid became:
+      the board's job index reads `jobs_ledger` for dev, master, assistant and controller only
+      (`canSeeBidBoardJobLinks`), and no `jobs_ledger` policy lets an estimator read a row.
+    - A J folder opens Drive as the person. An estimator who is not a member of the shared Drive is asked by
+      Drive to request access. The J camera reads through the app and works without Drive access.
+11. **Do the cameras wear the letters too, or only the folders?** The owner asked for a J on the folder. My
+    pick: both pairs wear them, a B camera and folder and a J camera and folder, since the J camera is the door
+    that shows an estimator the job's photos whatever their Drive access. The smaller build is the two folders
+    alone, with the job's photos reached through Drive.
 
 ## Where it plugs in
 
@@ -292,7 +304,7 @@ answered.
 
 ## The plan
 
-Eight PRs, the photos icon first. Each client PR ships its release note and
+Nine PRs, the photos icon first. Each client PR ships its release note and
 `docs/recent-features/` fragment, with a version from `npm run claim`.
 
 **PR 1 · the photo table and its bucket (S). Shipped, v2.6854, pushed 2026-11-10.** No client code.
@@ -326,7 +338,7 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - *Docs*: `docs/EDGE_FUNCTIONS.md` (a new `bid-photos` section and its TOC line; the `photo-save`
   section's tenth source); `docs/migrations/`; `docs/ACCESS_CONTROL.md` (who may call it).
 
-**PR 3 · the photos icon and its window (M).** The PR that answers the ask.
+**PR 3 · the photos icon and its window (M). Shipped, v2.6860, 2026-11-10; `bid-photos` redeployed.** The PR that answers the ask.
 - *Client*: the photos slot (`photosSlot` in `src/lib/bids/bidPhotoWindow.ts`, tested): a camera first in the Links
   cluster on the table and the phone's card, grey or blue with its count, read with the board's other per-bid
   maps (`useBidPhotoCountsByBid`). The photos window, `BidPhotosWindow.tsx`: add by pick, drop and camera through
@@ -334,7 +346,7 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
   first time, the grid, a photo opened large, the held state with its reason; a render test.
 - *Migration*: none.
 - *Edge functions*: `bid-photos` adopts a picture the app filed itself under nobody's name, where it read the
-  service account's address. Redeploy `bid-photos` after the merge.
+  service account's address.
 - *Docs*: a help guide, `src/content/help/add-photos-to-a-bid.md`; `docs/BIDS_SYSTEM.md` (the Links column);
   `docs/PROJECT_DOCUMENTATION.md`, `docs/GLOSSARY.md` and `docs/ACCESS_CONTROL.md` (the window).
 - *Left for PR 5*: the other four link icons still draw only when the link exists, so the camera does not line up
@@ -355,19 +367,38 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - *Migration*: none. *Edge functions*: none.
 - *Docs*: `docs/BIDS_SYSTEM.md`; the guide; `docs/GLOSSARY.md` (Files window).
 
-**PR 6 · set or change a link from the window (S).**
+**PR 6 · B and J: the job's pair beside the bid's (M).** Gated by call 11. The owner's calls of 2026-11-10.
+- *Migration*: a read for the board that an estimator may call, `bid_board_job_doors(p_bid_ids uuid[])`,
+  a definer that answers only for bids the caller can read (the same sub-select on `bids` the photo table
+  uses, run as the caller before the definer part) and returns, for each, its job's id, number, Drive folder
+  link and how many photos the job has. Nothing else of the job leaves it: no money, no customer. No policy on
+  `jobs_ledger` changes, so an estimator still opens no job.
+- *Client*: the kernel's slots become Photos B · Folder B · Photos J · Folder J · Plans · CountTooling · Bid
+  submission; the B letter on the bid's pair, the J pair once the bid has a job and empty until then; the J
+  camera opens the Job photos window (`JobPhotosWindow.tsx`, its Drive read through `job-photos`), the J
+  folder opens the job's folder; the board's job index for every role that reads the board comes from the new
+  read, and the job's green chip keeps its own gate, since it opens the Jobs page.
+- *To settle in the build*: the Job photos window lays its own rows (`uploaded_photos`) over the Drive
+  listing, and that view joins `jobs_ledger` under the reader's policies, so an estimator sees the job's
+  photos by file name, without the words. Widening the view is a second decision.
+- *Edge functions*: none. `job-photos` already answers an estimator.
+- *Docs*: `docs/migrations/`; `docs/ACCESS_CONTROL.md` (the estimator and job photos: the line that says the
+  crews' photos are for the office is amended); `docs/BIDS_SYSTEM.md`; the guides `add-photos-to-a-bid` and
+  `add-a-photo-to-a-job`.
+
+**PR 7 · set or change a link from the window (S).**
 - *Client*: Project folder (paste, or **Make the project folder**), Plans (**Add a set**, the form's
   own field reused), CountTooling and Bid submission (paste). Writes the columns the form writes.
 - *Edge functions*: `bid-photos make` is reused for the project folder. No new function.
 - *Docs*: the guide `keep-more-than-one-set-of-plans-on-a-bid` and a new one for the window;
   `docs/BIDS_SYSTEM.md`.
 
-**PR 7 · a photo taken with no signal (S).**
+**PR 8 · a photo taken with no signal (S).**
 - *Client*: `photoBlobs` holds the photo on the phone and sends it when the signal is back, as a
   box photo does.
 - *Docs*: the guide.
 
-**PR 8 · the bid's photos after the win, and on Documents → Photos (S).**
+**PR 9 · the bid's photos after the win, and on Documents → Photos (S).**
 - *Migration*: `CREATE OR REPLACE VIEW uploaded_photos` with a `bid_photos` branch (the live
   definition dumped first, never rebuilt from the baseline). The branch leaves out a
   row whose Drive file a text's attachment already carries, since the window adopts those too.
@@ -388,7 +419,7 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - **Roles** (PR 3): the office and an estimator add; a primary adds on a bid of their own and
   does not see another's; a training account sees the photos and a dead Add with its reason; a
   twin reads its own bid's photos.
-- **The win** (PR 8): make a ZZ Test job from the bid and see the folder adopted, with Team only ›
+- **The win** (PR 9): make a ZZ Test job from the bid and see the folder adopted, with Team only ›
   Photos inside the job's folder.
 - **The column** (PR 5): at 1,400 wide and at 375, in both themes, a bid with nothing shows five
   grey icons and every row's icons line up.
@@ -398,5 +429,5 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - **A superintendent and the Bid Board.** `canOpenBids` lets the role open the page, and no policy
   on `bids` names it. What the board shows them was not walked live.
 - **`drive-intake` has no caller on a screen.** The form's Project Folder is paste only, so every
-  hand-made bid folder lands where the estimator made it. PR 6's **Make the project folder** is
+  hand-made bid folder lands where the estimator made it. PR 7's **Make the project folder** is
   the first press for it.
