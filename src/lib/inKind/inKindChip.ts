@@ -88,6 +88,11 @@ export function jobIsOffTheDeal(job: { in_kind_arrangement_id?: string | null; s
   return Boolean(job && s && s.arrangementIds.length > 0 && !job.in_kind_arrangement_id && job.status !== 'paid')
 }
 
+/** A job an open deal of its customer already pays, and that is not paid off. */
+export function jobIsOnTheDeal(job: { in_kind_arrangement_id?: string | null; status?: string | null } | null | undefined, s: InKindStanding | null | undefined): boolean {
+  return Boolean(job && s && job.in_kind_arrangement_id && s.arrangementIds.includes(job.in_kind_arrangement_id) && job.status !== 'paid')
+}
+
 /** The strip on such a job. */
 export const jobOffTheDealWords = (customerName: string): { lead: string; rest: string } => ({
   lead: `${customerName.trim() || 'This customer'} pays in kind.`,
@@ -107,3 +112,9 @@ export const BILL_MONEY_CHOICE = { title: 'With money', why: 'It is sent and cha
 export const BILL_PICK_FIRST = 'Pick how this bill is paid first.'
 export const BILL_IN_KIND_CHANNEL_NOTE = 'Paid in kind. Record the bill below. Nothing is sent to the customer.'
 export const BILL_IN_KIND_RECORD_PRESS = 'Record the bill in kind'
+
+/** Bill Customer on a job the deal already pays: no question, the one channel that sends nothing. */
+export const billOnDealWords = (customerName: string): { lead: string; rest: string } => ({
+  lead: `${customerName.trim() || 'This customer'} pays in kind.`,
+  rest: 'This job is on the arrangement. To bill it for money, take it off the arrangement first.',
+})

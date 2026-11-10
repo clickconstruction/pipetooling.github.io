@@ -132,6 +132,8 @@ Pick **In kind, on the arrangement** to put the job on the deal. Then press **Re
 
 Pick **With money** to bill it like any other job. It is sent and chased as usual.
 
+A job that is already on the arrangement gets no question. Bill Customer opens ready to record the bill in kind. To bill that job for money, take it off the arrangement first under **Change the terms**.
+
 ## See every arrangement
 
 Open [Accounts Receivable](/accounts-receivable) and press **In kind** at the top. The [In kind](/in-kind) page lists every customer who pays this way.

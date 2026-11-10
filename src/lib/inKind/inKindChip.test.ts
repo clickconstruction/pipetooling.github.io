@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billQuestionWords, inKindChipHref, inKindChipTitle, inKindChipWords, inKindStandings, jobIsOffTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billQuestionWords, inKindChipHref, inKindChipTitle, inKindChipWords, billOnDealWords, inKindStandings, jobIsOffTheDeal, jobIsOnTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
 import type { InKindListRow } from './inKindList'
 import { plainWordsFailures } from '../plainWords'
 
@@ -92,6 +92,16 @@ describe('a job of a customer who pays in kind', () => {
     expect(jobIsOffTheDeal({ in_kind_arrangement_id: null, status: 'paid' }, s)).toBe(false)
     expect(jobIsOffTheDeal({ in_kind_arrangement_id: null, status: 'billed' }, undefined)).toBe(false)
     expect(jobIsOffTheDeal(null, s)).toBe(false)
+  })
+  it('is on the deal when an open deal of the customer pays it and it is not paid off', () => {
+    expect(jobIsOnTheDeal({ in_kind_arrangement_id: 'a1', status: 'ready_to_bill' }, s)).toBe(true)
+    expect(jobIsOnTheDeal({ in_kind_arrangement_id: 'a1', status: 'paid' }, s)).toBe(false)
+    expect(jobIsOnTheDeal({ in_kind_arrangement_id: 'gone', status: 'billed' }, s)).toBe(false)
+    expect(jobIsOnTheDeal({ in_kind_arrangement_id: null, status: 'billed' }, s)).toBe(false)
+    expect(jobIsOnTheDeal({ in_kind_arrangement_id: 'a1', status: 'billed' }, undefined)).toBe(false)
+    const w = billOnDealWords('Calloway Holdings')
+    expect(plainWordsFailures(w.lead)).toEqual([])
+    expect(plainWordsFailures(w.rest)).toEqual([])
   })
   it('says it all in plain words', () => {
     const w = jobOffTheDealWords('Calloway Holdings')

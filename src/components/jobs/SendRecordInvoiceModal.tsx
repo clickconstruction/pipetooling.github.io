@@ -80,7 +80,7 @@ import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPrevi
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
 import { isOfficeRole } from '../../lib/doorRoles'
-import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, jobIsOffTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, billOnDealWords, jobIsOffTheDeal, jobIsOnTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
 import { addJobToInKindArrangement } from '../../lib/inKind/inKindStandingIo'
 import InKindBillQuestion from '../inKind/InKindBillQuestion'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
@@ -1640,7 +1640,7 @@ export default function SendRecordInvoiceModal({
     }
     setOutsideSubmitting(true)
     setOutsideError(null)
-    if (billInKind && billStanding) {
+    if (answeredInKind && billStanding) {
       try {
         await addJobToInKindArrangement(billStanding.arrangementIds[0]!, job.id)
       } catch (e) {
@@ -2157,6 +2157,16 @@ export default function SendRecordInvoiceModal({
       />
     ) : null
 
+  // A job an in kind deal already pays (punch list #301): no question to ask. The window goes to the one channel
+  // that sends nothing, as it does when the question is answered In kind.
+  const billStanding = job?.customer_id ? inKindStandings.get(job.customer_id) : undefined
+  const jobOnDeal = billStanding != null && billCustomerJobDetailsLoaded && jobIsOnTheDeal(billCustomerJobDetails, billStanding)
+  useEffect(() => {
+    if (!open || !jobOnDeal) return
+    setHcpTabRevealed(true)
+    setTab('housecallpro')
+  }, [open, jobOnDeal])
+
   if (!open || !job) return null
 
   const busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting || physicalSubmitting
@@ -2205,10 +2215,10 @@ export default function SendRecordInvoiceModal({
     )
   }
 
-  const billStanding = job?.customer_id ? inKindStandings.get(job.customer_id) : undefined
   const inKindQuestion = billStanding != null && billStanding.arrangementIds.length === 1 && billCustomerJobDetailsLoaded && jobIsOffTheDeal(billCustomerJobDetails, billStanding)
   const inKindUnanswered = inKindQuestion && inKindAnswer == null
-  const billInKind = inKindQuestion && inKindAnswer === 'in_kind'
+  const answeredInKind = inKindQuestion && inKindAnswer === 'in_kind'
+  const billInKind = jobOnDeal || answeredInKind
   const outsideReady =
     !inKindUnanswered &&
     !paidJobBlocked &&
@@ -2467,6 +2477,11 @@ export default function SendRecordInvoiceModal({
           )}
         </div>
 
+        {jobOnDeal ? (
+          <div style={{ marginBottom: '1rem', padding: '8px 11px', borderRadius: 8, fontSize: '0.8125rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-700)' }} data-testid="bill-on-deal-note">
+            <b style={{ color: 'var(--text-strong)' }}>{billOnDealWords(job.customer_name ?? '').lead}</b> {billOnDealWords(job.customer_name ?? '').rest}
+          </div>
+        ) : null}
         {inKindQuestion ? (
           <InKindBillQuestion
             customerName={job.customer_name ?? ''}

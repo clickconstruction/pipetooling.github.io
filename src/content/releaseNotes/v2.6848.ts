@@ -9,7 +9,7 @@ const note: ReleaseNote = {
     'The job window shows an In kind chip beside the customer’s name when that customer pays in kind.',
     'A job that is not on the arrangement says so in a strip. One press, Put it on the arrangement, adds it.',
     'Bill Customer asks once how the bill is paid: in kind on the arrangement, or with money. Nothing is picked for you.',
-    'In kind puts the job on the arrangement and records the bill. Nothing is sent to the customer.',
+    'In kind puts the job on the arrangement and records the bill. Nothing is sent to the customer. A job already on the arrangement skips the question.',
   ],
 }
 
