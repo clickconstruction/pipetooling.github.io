@@ -1,4 +1,4 @@
--- Bid photos (punch list #306 PR 1, migration *_bid_photos): the table's gate is the bid's own, read through bids
+-- Bid photos (punch list #306 PRs 1 and 2, migrations *_bid_photos and *_photo_save_bid_photos): the table's gate is the bid's own, read through bids
 -- under the caller's RLS. Whoever reads a bid reads its photos and adds one as themselves; a primary only on a bid
 -- they estimate, manage or made; a subcontractor, a superintendent and a primary on no bid read nothing and add
 -- nothing. The adder and the office change a photo; an estimator does not change another's. Only an un-added shot of
@@ -88,6 +88,21 @@ SELECT bp.same('the twin fence and the archived fence are on the table', (
     AND policyname IN ('digital_twin_write_fence_insert', 'digital_twin_write_fence_update', 'digital_twin_write_fence_delete', 'archived_fence')
 ), '4');
 SELECT bp.same('the bucket is private, 2 MB, images only', (SELECT public::text || ' ' || file_size_limit::text || ' ' || array_to_string(allowed_mime_types, ',') FROM storage.buckets WHERE id = 'bid-photos'), 'false 2097152 image/jpeg,image/png,image/webp');
+
+-- The sweep's ground (PR 2, migration *_photo_save_bid_photos): the column it stamps, the index it reads by, and one
+-- cron row that still names every source and now a bid photo due a try.
+SELECT bp.same('bid_photos carries tried_at', (SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bid_photos' AND column_name = 'tried_at'), 'timestamp with time zone');
+SELECT bp.same('the unfiled index leaves a removed photo out', (SELECT (indexdef LIKE '%removed_at IS NULL%')::text FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'bid_photos_unfiled_idx'), 'true');
+SELECT bp.same('one photo-save cron, every five minutes', (SELECT count(*)::text || ' ' || min(schedule) FROM cron.job WHERE jobname = 'photo-save'), '1 */5 * * * *');
+SELECT bp.same('it still names the nine sources before this one', (
+  SELECT bool_and(j.command LIKE '%public.' || t || ' %')::text
+  FROM cron.job j, unnest(ARRAY['photo_saves', 'job_box_photos', 'report_photos', 'stage_checklist_answers', 'job_photo_notes', 'machine_check_photos', 'stage_checklist_records', 'task_photos', 'counter_ticket_pages']) t
+  WHERE j.jobname = 'photo-save'
+), 'true');
+SELECT bp.same('and a bid photo that is added, in the bucket, not removed and due a try', (
+  SELECT (command LIKE '%public.bid_photos%' AND command LIKE '%added_at IS NOT NULL AND removed_at IS NULL%' AND command LIKE '%tried_at IS NULL OR tried_at < now() - interval ''1 hour''%')::text
+  FROM cron.job WHERE jobname = 'photo-save'
+), 'true');
 
 SET ROLE authenticated;
 

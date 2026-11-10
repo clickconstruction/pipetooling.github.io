@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 (the photo table and its bucket) in work on `claude/bid-photos-table` · nothing on screen yet
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) in work on `claude/bid-photos-drive` · nothing on screen yet
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,9 +17,9 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is eight small PRs with the photos icon first.
-next: PR 1, the photo table and its bucket, then its push. The owner's word on where the folder lives (call 3) before PR 2, and on who may remove a photo (call 6) before PR 4.
-size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask
-blocker: None for PR 1. Call 3 gates PR 2 and call 6 gates PR 4.
+next: PR 2, the Drive leg, then its push and the three function deploys, and a live test on the ZZ Test bid. Then PR 3, the photos icon and its window. The owner's word on who may remove a photo (call 6) before PR 4.
+size: L as a train of eight (S · M · M · S · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 2 to 8 (M · M · S · M · S · S · S)
+blocker: None for PRs 2 and 3. Call 6 gates PR 4.
 opinion: build — PRs 1 to 3 first, so a site walk's photos have a home on the bid; then the column, as direction C draws it
 ---
 
@@ -247,6 +247,7 @@ answered.
    shared Drive, as the robots' intake does. The other choice is a Photos folder of the app's own
    in the shared Drive, apart from the estimator's folder, which works for every bid today and
    leaves a bid with two folders.
+   **Answered 2026-11-10: the bid's project folder.**
 4. **The hand-made bid folders in a personal Drive.** This is card #240's call 4, and it now
    gates this card's Drive leg for most plumbing bids. Until the folders move into the shared
    Drive, a bid photo files through `DRIVE_IMPERSONATE_USER` where that is set, or waits in the
@@ -254,6 +255,8 @@ answered.
 5. **When a bid is won, what happens to its photos?** My pick: nothing moves. The folder is the
    job's by then, and the photos are in its Team only › Photos. A later PR shows them in the job's
    photo window as *from the bid*. Customer Pictures stays the job's own.
+   One thing to know: a job whose Customer Pictures link is not set lands its own photos in the same
+   Team only › Photos, and the bid's window adopts whatever pictures that folder holds.
 6. **Who may add a photo, and who may remove one?** My pick: anyone who can edit the bid may add,
    a primary on their own bids included. The person who added it and the office (dev, master,
    assistant, controller) may remove. A removal goes to Drive's trash with an Undo. It would be
@@ -282,7 +285,7 @@ answered.
 Eight PRs, the photos icon first. Each client PR ships its release note and
 `docs/recent-features/` fragment, with a version from `npm run claim`.
 
-**PR 1 · the photo table and its bucket (S).** No client code.
+**PR 1 · the photo table and its bucket (S). Shipped, v2.6854, pushed 2026-11-10.** No client code.
 - *Migration* (stamp from `npm run claim -- --migration`, opened with `SET lock_timeout = '3s';`,
   idempotent): `CREATE TABLE bid_photos` (`id`, `bid_id` → `bids`, `storage_path`, `name`,
   `bytes`, `by_user_id`, `taken_at`, `drive_file_id`, `filed_at`, `fail_why`, `removed_at`,
@@ -296,19 +299,22 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 - Then `supabase db push` from a main checkout, the `chore(types)` PR, and the dev-mcp catalog
   rebuilt with it.
 
-**PR 2 · the Drive leg (M).** Edge, and one line of cron. Nothing calls it yet.
-- *Migration*: the `photo-save` cron's guard gains a clause for a waiting `bid_photos` row, with every
-  earlier clause written again from the newest definition. No table changes.
-- *Edge functions*: new **`bid-photos`** (`make`: the bid's folder by `drive-intake`'s rule, moved
-  into `_shared`, then Team only › Photos; `list`: the table's rows, and any picture in the folder
-  with no row is adopted as one, so a file dragged in through Drive or saved from a text counts;
-  `thumb` and `full`, as `job-photos` streams them). Gate: the caller can read the bid, checked
-  with the caller's own token; twins and training accounts read only. **`photo-save`** gains its
-  tenth source, `bid_photos`, with `{ bid_id }` as the job, the impersonated token when the folder
-  is outside the shared Drive, and `fail_why` when it cannot file. `supabase functions deploy` for
-  both after the merge.
+**PR 2 · the Drive leg (M).** Edge, and one small migration. Nothing calls it yet.
+- *Migration*: `bid_photos.tried_at` (a photo the sweep could not file is left alone for an hour, since
+  a held bid folder is the common case today), the unfiled index remade to leave a removed photo out,
+  and the `photo-save` cron re-scheduled with every earlier clause and a tenth for a bid photo due a try.
+- *Edge functions*: new **`bid-photos`** (`list`: where the photos go, why they are held if they are,
+  and the bid's photos, after any picture in the folder with no row is adopted as one, so a file
+  dragged in through Drive or saved from a text counts; `make`: the bid's folder by `drive-intake`'s
+  rule, now in `_shared/bidFolder.ts`, then Team only › Photos; `thumb` and `full`, as `job-photos`
+  streams them). Gate: the caller can read the bid, checked with the caller's own token; twins and
+  training accounts read only. **`photo-save`** gains its tenth source, `bid_photos`: it files as itself
+  in the shared Drive and as the person in `DRIVE_IMPERSONATE_USER` in a personal Drive, marks each
+  file with its row's id so the listing never adopts it twice, and writes `fail_why` when it cannot
+  file. **`drive-intake`** names its folder through the shared rule. `supabase functions deploy` for
+  the three after the push.
 - *Docs*: `docs/EDGE_FUNCTIONS.md` (a new `bid-photos` section and its TOC line; the `photo-save`
-  section's count of sources amended); `docs/ACCESS_CONTROL.md` (who may call it).
+  section's tenth source); `docs/migrations/`; `docs/ACCESS_CONTROL.md` (who may call it).
 
 **PR 3 · the photos icon and its window (M).** The PR that answers the ask.
 - *Client*: the kernel `bidBoardLinkSlots.ts` with tests, drawing the photos slot only for now
@@ -348,7 +354,8 @@ Eight PRs, the photos icon first. Each client PR ships its release note and
 
 **PR 8 · the bid's photos after the win, and on Documents → Photos (S).**
 - *Migration*: `CREATE OR REPLACE VIEW uploaded_photos` with a `bid_photos` branch (the live
-  definition dumped first, never rebuilt from the baseline).
+  definition dumped first, never rebuilt from the baseline). The branch leaves out a
+  row whose Drive file a text's attachment already carries, since the window adopts those too.
 - *Client*: the job's photo window lists the bid's photos as *from the bid*.
 - *Docs*: `docs/migrations/`, `docs/ACCESS_CONTROL.md` (the view's line), the guide
   `find-every-photo-that-was-uploaded`.

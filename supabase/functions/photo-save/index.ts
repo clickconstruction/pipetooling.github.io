@@ -14,6 +14,8 @@ import { moveFolder } from '../_shared/jobFolders.ts'
 import { COUNTER_TICKETS_BUCKET, ticketDriveName } from '../_shared/ticketNames.ts'
 import { NO_TASKS_FOLDER_WORDS, driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
+import { ensureBidPhotoFolder, readBidForFolder, type BidFolderContext, type BidPhotoFolder } from '../_shared/bidFolder.ts'
+import { BID_PHOTOS_BUCKET, BID_PHOTO_BATCH, BID_PHOTO_PLAIN_CAPTION, BID_PHOTO_RETRY_MS, bidPhotoFailWords, isQuotaRefusal, namedPhotoFileName } from '../_shared/bidPhotos.ts'
 import {
   PHOTO_ROWS_SELECT,
   PHOTO_SAVE_BATCH,
@@ -39,7 +41,7 @@ import {
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
  *     checklists: { saved, failed }, jobPhotos: { saved, failed }, machines: { saved, failed }, records: { saved, failed },
- *     taskPhotos: { saved, failed }, tickets: { saved, failed } }
+ *     taskPhotos: { saved, failed }, tickets: { saved, failed }, bidPhotos: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -77,10 +79,23 @@ import {
  * ticket moved to another job has its pages' filed_at cleared by a trigger, and the sweep moves the Drive file to the
  * new job's folder instead of copying it again. The bucket copy stays, the app's own picture of the ticket.
  *
+ * Bid photos (punch list #306, PR 2): a tenth source after the tickets. A photo added to a bid from the Bid Board waits
+ * in the bid-photos bucket with a `bid_photos` row; once the person pressed Add (added_at set) and while it is not
+ * removed, the sweep files it into the bid's project folder under Team only › Photos, where a text's photo saved onto a
+ * bid already lands. A bid with no project folder gets one made under the jobs root by the office's bid pattern, and
+ * its link written on the bid (`ensureBidPhotoFolder`, `_shared/bidFolder.ts`, the rule drive-intake uses). The file is
+ * named as the person named it (*Mechanical room north.jpg*), else by day and sender as a text's photo is, and carries
+ * the row's id as an app property, so the folder's listing never adopts it as a second row. Most hand-made bid folders
+ * sit in a personal Drive, where a service account cannot own a file: there the sweep files as the Workspace person in
+ * DRIVE_IMPERSONATE_USER when that secret is set, and without it writes the reason on the row. A row it could not file
+ * keeps fail_why and tried_at, and is left alone for an hour (the cron's clause holds the same hour), since a held bid
+ * folder is common and stays held until someone moves it. The bucket copy is deleted once the file is in Drive.
+ *
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
  * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
  *
- * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
+ * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON; DRIVE_IMPERSONATE_USER
+ * (optional) lets a bid photo reach a folder in a personal Drive. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
  */
 
@@ -886,6 +901,127 @@ async function sweepTickets(admin: SupabaseClient): Promise<{ saved: number; fai
   return { saved, failed }
 }
 
+/* ------------------------------------------------------------------ a tenth source: a bid's photos */
+
+type BidPhotoRow = { id: string; bid_id: string; storage_path: string; by_name: string; taken_at: string; name: string }
+
+/** A bid's photo folder for this run, and whether the app files there as itself (the shared Drive) or as the person. */
+type BidLanding = { into: string; asApp: boolean } | { why: string }
+
+async function sweepBidPhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const dueBefore = new Date(Date.now() - BID_PHOTO_RETRY_MS).toISOString()
+  const { data, error } = await admin
+    .from('bid_photos')
+    .select('id, bid_id, storage_path, by_name, taken_at, name')
+    .is('filed_at', null)
+    .not('storage_path', 'is', null)
+    .not('added_at', 'is', null)
+    .is('removed_at', null)
+    .or(`tried_at.is.null,tried_at.lt.${dueBefore}`)
+    .order('taken_at', { ascending: true })
+    .limit(BID_PHOTO_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the bid photos did not read: ${error.message}` }] }
+  const rows = (data ?? []) as BidPhotoRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: BidPhotoRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('bid_photos').update({ fail_why: why.slice(0, 300), tried_at: new Date().toISOString() }).eq('id', r.id).is('filed_at', null)
+  }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  // Filing as a person is how a file reaches a folder in a personal Drive; the token is made the first time one is needed.
+  const person = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim() || null
+  let personToken: string | null = null
+  const asPerson = async (): Promise<string | null> => {
+    if (!person) return null
+    if (!personToken) personToken = await googleAccessToken(saJson, person)
+    return personToken
+  }
+  const ctx: BidFolderContext = {
+    admin,
+    token: google,
+    settings: await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID')),
+    appEmail: String((JSON.parse(saJson) as { client_email?: string }).client_email ?? ''),
+    canActAsPerson: !!person,
+  }
+  const landings = new Map<string, BidLanding>()
+  const landingOf = async (bidId: string): Promise<BidLanding> => {
+    const bid = await readBidForFolder(admin, bidId)
+    if (!bid) return { why: 'That bid is gone.' }
+    const folder: BidPhotoFolder = await ensureBidPhotoFolder(ctx, bid)
+    if ('why' in folder) return folder
+    // In the shared Drive the app files as itself; in a personal Drive, as the person.
+    return { into: folder.id, asApp: folder.seen !== 'outside_drive' }
+  }
+  for (const r of rows) {
+    try {
+      // A bid whose folder did not read is not asked again for its other photos this run.
+      if (!landings.has(r.bid_id)) {
+        landings.set(r.bid_id, await landingOf(r.bid_id).catch((e): BidLanding => ({ why: bidPhotoFailWords(e instanceof Error ? e.message : String(e)) })))
+      }
+      const landing = landings.get(r.bid_id)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
+        continue
+      }
+      const { data: blob, error: dl } = await admin.storage.from(BID_PHOTOS_BUCKET).download(r.storage_path)
+      if (dl || !blob) {
+        await fail(r, 'Our copy of that photo did not read.')
+        continue
+      }
+      const mime = blob.type || 'image/jpeg'
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      // The person's own name for it, else the day, the sender and *Bid photo*, as a text's photo is named.
+      const nameInput = { at: r.taken_at, sender: r.by_name, fileName: 'photo', mime, words: BID_PHOTO_PLAIN_CAPTION, place: 1 }
+      const name = await freeName(google, landing.into, (taken) => namedPhotoFileName(r.name, mime, taken) ?? photoDriveName(nameInput, taken))
+      const marks = { bid_photo_id: r.id }
+      let put: { id: string }
+      if (landing.asApp) {
+        try {
+          put = await uploadBytes(google, landing.into, bytes, name, mime, marks)
+        } catch (e) {
+          // A quota refusal the folder's own facts did not foretell: once more as the person, when there is one.
+          const raw = e instanceof Error ? e.message : String(e)
+          const theirs = isQuotaRefusal(raw) ? await asPerson().catch(() => null) : null
+          if (!theirs) throw e
+          put = await uploadBytes(theirs, landing.into, bytes, name, mime, marks)
+        }
+      } else {
+        const theirs = await asPerson()
+        if (!theirs) throw new Error('storage quota')
+        put = await uploadBytes(theirs, landing.into, bytes, name, mime, marks)
+      }
+      const { error: kept } = await admin
+        .from('bid_photos')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null, tried_at: null })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      await admin.storage.from(BID_PHOTOS_BUCKET).remove([r.storage_path])
+      saved += 1
+    } catch (e) {
+      await fail(r, bidPhotoFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some bid photos were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -903,8 +1039,9 @@ serve(async (req) => {
     const records = await sweepRecords(admin)
     const taskPhotos = await sweepTaskPhotos(admin)
     const tickets = await sweepTickets(admin)
+    const bidPhotos = await sweepBidPhotos(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets, bidPhotos }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)
