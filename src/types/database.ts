@@ -1507,6 +1507,7 @@ export type Database = {
           removed_by: string | null
           storage_path: string | null
           taken_at: string
+          tried_at: string | null
           width: number
         }
         Insert: {
@@ -1527,6 +1528,7 @@ export type Database = {
           removed_by?: string | null
           storage_path?: string | null
           taken_at?: string
+          tried_at?: string | null
           width?: number
         }
         Update: {
@@ -1547,6 +1549,7 @@ export type Database = {
           removed_by?: string | null
           storage_path?: string | null
           taken_at?: string
+          tried_at?: string | null
           width?: number
         }
         Relationships: [
