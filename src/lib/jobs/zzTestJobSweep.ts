@@ -13,11 +13,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
-import { isZzTestJob, isZzTestName } from '../../../supabase/functions/_shared/zzTestJob'
+import { isZzBidName, isZzTestJob, isZzTestName } from '../../../supabase/functions/_shared/zzTestJob'
 
 // The name rule lives on the edge since v2.6127 (`supabase/functions/_shared/zzTestJob.ts`), so a saved report's two
 // sends hold a ZZ job's report back by the rule the Pipeline hides it by; the app reads it from here as before.
-export { isZzTestJob, isZzTestName }
+export { isZzBidName, isZzTestJob, isZzTestName }
 
 /** The word in a ZZ job's name that marks it as the sink (any case). */
 export const ZZ_SWEEP_SINK_WORD = 'sink'

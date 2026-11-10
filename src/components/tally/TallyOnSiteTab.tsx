@@ -28,6 +28,7 @@ import { addContainer, addMovement, addPlace, listContainers, listMovements, lis
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
+import { boxClipboardWords, copiedLabelWords } from '../../lib/materials/labels'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
@@ -458,6 +459,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
             <a href={`/jobs?tab=materials&job=${jobId}&label=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the label for ${container.label}`} style={paperPress}><PrinterGlyph />Print the label</a>
             <a href={`/jobs?tab=materials&job=${jobId}&manifest=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the manifest for ${container.label}`} style={paperPress}><PrinterGlyph />Print the manifest</a>
           </div>
+          {/* v2.6800 (punch list #294): the label's address on the clipboard, for a QR typed into Brother's phone app at the cage; the printer reads the dash either way. */}
+          <button type="button" aria-label={`Copy the label code for ${container.label}`} style={{ ...paperPress, width: '100%' }} onClick={() => { void navigator.clipboard.writeText(boxClipboardWords(container.id)).then(() => showToast(copiedLabelWords(container.id), 'success'), (e: unknown) => showToast(`The code did not copy: ${formatErrorMessage(e)}`, 'error')) }}>Copy the label code</button>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', ...muted }}>
             <span>Done with this {container.kind === 'cage' ? 'cage' : 'box'}?</span>
             <button type="button" style={{ ...quiet, color: 'var(--text-muted)', fontSize: '0.9rem' }} onClick={() => setSheet({ kind: 'retire', container })}>Retire {container.label}</button>

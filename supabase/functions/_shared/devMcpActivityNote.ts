@@ -113,7 +113,7 @@ export type ActivityNoteWorld =
     }
   | {
       on: 'bid'
-      bid: { id: string; label: string; projectName: string; status: string | null }
+      bid: { id: string; label: string; projectName: string; outcome: string | null }
       gc: { id: string; name: string | null } | null
       latest: LatestLine[]
     }
@@ -154,7 +154,8 @@ export async function readActivityNoteWorld(reader: Reader, p: ActivityNotePaylo
   if ('refused' in resolved) return resolved
   const id = resolved.id
   const [bidRows, entryRows, gcRows] = await Promise.all([
-    reader.rows('bids', { select: 'id,bid_number,project_name,status,service_type_id', filters: by('id', id), limit: 1 }),
+    // A bid has no status column: its standing is `outcome` (won, lost, …, null while open).
+    reader.rows('bids', { select: 'id,bid_number,project_name,outcome,service_type_id', filters: by('id', id), limit: 1 }),
     // The door has no "is not null", so the newest few come whole and the ones with words are kept (a Log contact
     // row with no note is a date, not a line).
     reader.rows('bids_submission_entries', {
@@ -170,7 +171,7 @@ export async function readActivityNoteWorld(reader: Reader, p: ActivityNotePaylo
   if (p.gc_customer_id && !gcRows[0]) return { refused: `No customer ${p.gc_customer_id} is visible to you — find_customer resolves a GC's name.` }
   return {
     on: 'bid',
-    bid: { id, label: formatBidLedgerNumberLabel(strOrNull(prefixOf(bid.service_type_id)?.ledger_bid_prefix), str(bid.bid_number)), projectName: str(bid.project_name), status: strOrNull(bid.status) },
+    bid: { id, label: formatBidLedgerNumberLabel(strOrNull(prefixOf(bid.service_type_id)?.ledger_bid_prefix), str(bid.bid_number)), projectName: str(bid.project_name), outcome: strOrNull(bid.outcome) },
     gc: gcRows[0] ? { id: str(gcRows[0].id), name: strOrNull(gcRows[0].name) } : null,
     latest: entryRows
       .filter((r) => strOrNull(r.notes))
@@ -234,7 +235,7 @@ export function activityNoteDryRun(p: ActivityNotePayload, world: ActivityNoteWo
     on: world.on,
     ...(world.on === 'job'
       ? { job: { id: world.job.id, label: world.job.label, name: world.job.name, status: world.job.status, customer: world.job.customer } }
-      : { bid: { id: world.bid.id, label: world.bid.label, project_name: world.bid.projectName, status: world.bid.status }, gc: world.gc }),
+      : { bid: { id: world.bid.id, label: world.bid.label, project_name: world.bid.projectName, outcome: world.bid.outcome }, gc: world.gc }),
     reads: p.text,
     by: me.name ?? 'you',
     at: at ? `${p.on_day} (noon, the app's calendar)` : 'now',

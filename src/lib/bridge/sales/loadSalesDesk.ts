@@ -15,14 +15,16 @@ import type { Database } from '../../../types/database'
  * `salesDesk.ts` does the arithmetic and the words. A ZZ test job is no job
  * a bid became (v2.6813): it is no win in the span, and it takes no bid out
  * of the open pile. The caller passes the ZZ ids, or null to keep them, and
- * the job rows carry their names (`../zzTestJobs.ts`). The bids and the
- * estimates themselves are not touched.
+ * the job rows carry their names (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid
+ * (`isZzBidName`: the robots' and the office's test bids) is in neither the
+ * open pile nor the decided set, for the same viewer. The estimates are not
+ * touched: they have no ZZ rule.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
 import { AWAITING_DAYS } from '../demandPace'
-import { withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
+import { withoutZzBridgeBids, withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
 import { SALES_DECIDED_DAYS, type SalesDecidedBid, type SalesEstimateHistory, type SalesOpenBid, type SalesOpenEstimate } from './salesDesk'
 
 export type SalesDeskReads = {
@@ -58,7 +60,7 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
   const decidedSinceIso = `${ymdAddDays(opts.todayYmd, -SALES_DECIDED_DAYS)}T00:00:00Z`
   const awaitingSinceIso = `${ymdAddDays(opts.todayYmd, -AWAITING_DAYS)}T00:00:00Z`
   // Two reads make the open set exactly: an outcome of null, and an outcome outside the decided three (NOT IN drops nulls).
-  const [openNull, openOther, decidedRows, spanJobRead, estimateRows, historyRows] = await Promise.all([
+  const [openNullRead, openOtherRead, decidedRead, spanJobRead, estimateRows, historyRows] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(OPEN_SELECT).not('bid_date_sent', 'is', null).is('outcome', null).order('id').range(from, to), 'sales desk open bids')) as OpenBidRow[] | null, error: null }),
       'sales desk open bids',
@@ -86,8 +88,9 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
     ),
   ])
   const spanJobs = withoutZzBridgeJobs(spanJobRead, opts.zzTestJobIds)
+  const decidedRows = withoutZzBridgeBids(decidedRead, opts.zzTestJobIds)
   const openById = new Map<string, OpenBidRow>()
-  for (const r of [...openNull, ...openOther]) if (r.bid_date_sent) openById.set(r.id, r)
+  for (const r of withoutZzBridgeBids([...openNullRead, ...openOtherRead], opts.zzTestJobIds)) if (r.bid_date_sent) openById.set(r.id, r)
   const openIds = [...openById.keys()]
   const jobRead = openIds.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(
@@ -125,14 +128,15 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
   const decidedById = new Map<string, DecidedBidRow>()
   for (const r of decidedRows) decidedById.set(r.id, r)
   const jobOnlyIds = [...spanJobByBid.keys()].filter((id) => !decidedById.has(id))
-  const jobOnlyRows = jobOnlyIds.length
+  const jobOnlyRead = jobOnlyIds.length
     ? await fetchAllRowsChunkedIn<DecidedBidRow, string>(
         jobOnlyIds,
         async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(DECIDED_SELECT).in('id', chunk).order('id').range(from, to), 'sales desk bids behind the span jobs')) as DecidedBidRow[] | null, error: null }),
         'sales desk bids behind the span jobs',
       )
     : []
-  for (const r of jobOnlyRows) decidedById.set(r.id, r)
+  // A ZZ bid's job in the span is no win either: the bid leaves before it is decided.
+  for (const r of withoutZzBridgeBids(jobOnlyRead, opts.zzTestJobIds)) decidedById.set(r.id, r)
   const decidedBids: SalesDecidedBid[] = []
   for (const r of decidedById.values()) {
     const job = spanJobByBid.get(r.id) ?? null
