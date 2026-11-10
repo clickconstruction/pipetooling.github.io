@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { SAN_ANTONIO_PERMIT_PORTAL, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
@@ -267,7 +268,9 @@ export function PermitBuildingSheet({
         <section>
           <div style={sectionTitle}>What we did</div>
           {events == null && <div style={muted}>Reading what was done…</div>}
-          {events != null && events.length === 0 && <div style={muted}>{closeOut ? 'Kept, with nothing written since.' : 'Nobody has answered this permit yet.'}</div>}
+          {events != null && events.length === 0 && closeOut && <div style={muted}>Kept, with nothing written since.</div>}
+          {/* The next step is the answers at the foot of this sheet, so the words stand alone. */}
+          {events != null && events.length === 0 && !closeOut && <EmptyState main="Nobody has answered this permit yet." compact />}
           {events != null && events.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {events.map((ev) => (
