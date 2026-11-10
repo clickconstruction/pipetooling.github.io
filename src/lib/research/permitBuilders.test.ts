@@ -17,8 +17,8 @@ import {
   markHold,
   neverBid,
   notPursuingVerdict,
+  nudgeAsks,
   nudgeWords,
-  oldestWaitDays,
   ourBidsWords,
   placeCounts,
   placeOf,
@@ -156,14 +156,18 @@ describe('builders', () => {
 })
 
 describe('the nudge and the count', () => {
-  it('says how many wait and how long the oldest has', () => {
-    const rows = [row({ filed_on: '2026-11-07' }), row({ id: 'p2', filed_on: '2026-11-01' }), row({ id: 'p3', verdict: 'look', filed_on: '2026-10-01' })]
-    expect(oldestWaitDays(rows, 25_000, '2026-11-10')).toBe(9)
-    expect(oldestWaitDays([row({ verdict: 'look' })], 25_000, '2026-11-10')).toBeNull()
-    expect(nudgeWords(14, 3)).toEqual({ title: '14 permits wait on a skim', detail: 'The oldest was filed 3 days ago.' })
-    expect(nudgeWords(1, 1)).toEqual({ title: '1 permit waits on a skim', detail: 'The oldest was filed 1 day ago.' })
-    expect(nudgeWords(2, 0)?.detail).toBe('The oldest was filed today.')
+  it('says how many wait and how long the oldest has, and asks the Leader first', () => {
+    expect(nudgeWords(14, 3)).toEqual({ title: '14 permits wait on a skim', detail: 'The oldest has waited 3 days. About a minute.' })
+    expect(nudgeWords(1, 1)).toEqual({ title: '1 permit waits on a skim', detail: 'The oldest has waited 1 day. About a minute.' })
+    expect(nudgeWords(2, 0)?.detail).toBe('The oldest arrived today. About a minute.')
+    expect(nudgeWords(2, null)?.detail).toBe('About a minute.')
     expect(nudgeWords(0, null)).toBeNull()
+    expect(nudgeAsks('master_technician', 0)).toBe(true)
+    expect(nudgeAsks('dev', null)).toBe(true)
+    expect(nudgeAsks('estimator', 1)).toBe(false)
+    expect(nudgeAsks('estimator', 2)).toBe(true)
+    expect(nudgeAsks('assistant', 5)).toBe(true)
+    expect(nudgeAsks('assistant', null)).toBe(false)
   })
 
   it('reads the count as six numbers and the lines under them', () => {

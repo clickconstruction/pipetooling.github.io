@@ -152,6 +152,8 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href(d.priceMatrixReadyBidId ? `/bids?tab=pricing&bidId=${d.priceMatrixReadyBidId}` : '/bids?tab=pricing')
     case 'gc-follow-up':
       return href(GC_FOLLOW_UP_HREF)
+    case 'permits-to-skim':
+      return href('/prospects?tab=permits')
     case 'customer-messages':
       return href(CUSTOMER_MESSAGES_HREF)
     case 'contract-clauses':

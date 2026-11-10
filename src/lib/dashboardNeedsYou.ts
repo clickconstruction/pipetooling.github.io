@@ -50,6 +50,7 @@ import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
 import { STALE_COUNT_DAYS } from './materials/onSite'
+import { nudgeWords } from './research/permitBuilders'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -159,6 +160,7 @@ export type NeedsYouItem = {
     | 'price-matrix-ready'
     | 'price-requests-late'
     | 'gc-follow-up'
+    | 'permits-to-skim'
     | 'contract-clauses'
     | 'robot-backlog'
     | 'test-reports-ready'
@@ -287,6 +289,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'price-requests-late': 40,
   // Revenue chasing tier: a trade partner's quote we need for our own bid (GC mode, Follow up).
   'gc-follow-up': 40,
+  // Revenue chasing tier: permits nobody has answered are work nobody has looked at (punch list #302).
+  'permits-to-skim': 40,
   // A clause change the office made waits on a controller or a dev (Messages, cut 4c); the next paper sent carries it.
   'contract-clauses': 40,
   'robot-backlog': 60,
@@ -703,6 +707,12 @@ export type NeedsYouInputs = {
    */
   gcFollowUpEnabled?: boolean
   gcFollowUp?: GcNeedsYou | null
+  /**
+   * The Permits skim (punch list #302): how many permits wait on a keep or a pass and how long the oldest has, from
+   * `usePermitSkimNudge` over `permit_skim_wait`. The hook asks the Leader first and the team after two days.
+   */
+  permitSkimEnabled?: boolean
+  permitSkim?: { waiting: number; oldestDays: number | null } | null
   /**
    * The Customers line (residential build, R8 · 14): customers who need a reply, what we owe them, and senders to sort,
    * from `useCustomerMessagesCounts` over Follow up's queue (`followUp/customerCounts.ts`). The GC office team, as the GC
@@ -1949,6 +1959,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: String(f.count),
       actionLabel: 'Follow up',
     })
+  }
+
+  if (inputs.permitSkimEnabled && inputs.permitSkim && inputs.permitSkim.waiting > 0) {
+    const words = nudgeWords(inputs.permitSkim.waiting, inputs.permitSkim.oldestDays)
+    if (words) {
+      items.push({
+        key: 'permits-to-skim',
+        severity: 'amber',
+        kicker: 'Permits',
+        title: words.title,
+        detail: words.detail,
+        figure: String(inputs.permitSkim.waiting),
+        actionLabel: 'Skim them',
+      })
+    }
   }
 
   if (inputs.contractClausesEnabled && inputs.contractClauses && inputs.contractClauses.length > 0) {

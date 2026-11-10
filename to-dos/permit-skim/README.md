@@ -17,8 +17,8 @@ summary: >
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
   and one count says whether any of it turns into bids. The first build is eight small PRs, one
   built, then two weeks of use before more.
-next: After the merges: push the migration, deploy street-view-preview and permit-pull, Pull now once, put the walk's one kept permit back. Left to build: the Needs you line. The six calls stand on the picks drawn until the owner overturns one.
-size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 7 and the count; left: the nudge (S)
+next: After the merges: push the migration, deploy street-view-preview and permit-pull, Pull now once, put the walk's one kept permit back. The first build is whole. The six calls stand on the picks drawn until the owner overturns one.
+size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 8; left: two weeks of use, then the look at the count
 blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork
 ---
@@ -272,7 +272,7 @@ merge.
    for, what a pursue is for, the put-back, the read with no window; Kept with Mine and Nobody's
    yet; Closed with its search and Put back; the dig in as the two sheets with What we did and
    the close-out; the lead landing on the deck the builder's kind points to.
-8. **The nudge and the count (S).** The month's strip was built with v2.6835 (`PermitCountStrip` over `permit_funnel`), and `permit_skim_wait` is in the migration for the nudge. Left: the Needs you line and when it widens.
+8. **The nudge and the count (S).** The month's strip was built with v2.6835 (`PermitCountStrip` over `permit_funnel`), and `permit_skim_wait` is in the migration for the nudge. The Needs you line was built with it too (`permits-to-skim`, `usePermitSkimNudge`): the Leader is asked every day there is something to skim, the team once a permit has waited two days from the day the feed brought it.
 
 Then two weeks of use, and a look at the count and the reasons before anything else.
 

@@ -495,7 +495,8 @@ COMMENT ON FUNCTION public.permit_funnel(text, date) IS
 REVOKE ALL ON FUNCTION public.permit_funnel(text, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.permit_funnel(text, date) TO authenticated;
 
--- 9. The nudge: how many permits wait on a skim and the day the oldest was filed, as one row.
+-- 9. The nudge: how many permits wait on a skim and the day the oldest arrived, as one row. Arrived, not
+-- filed: the feed runs days behind the city, and a permit cannot wait on us before we hold it.
 CREATE OR REPLACE FUNCTION public.permit_skim_wait(p_city text, p_floor numeric DEFAULT 25000)
 RETURNS TABLE (waiting integer, oldest_on date)
 LANGUAGE sql
@@ -503,13 +504,14 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  SELECT count(*)::integer, min(r.filed_on)
+  SELECT count(*)::integer, min((p.first_seen_at AT TIME ZONE 'America/Chicago')::date)
   FROM public.research_permits(p_city, DATE '2000-01-01', false) r
+  JOIN public.permits p ON p.id = r.id
   WHERE r.verdict IS NULL AND r.plumber IS NULL AND r.plumber_permit_on IS NULL
     AND (r.declared_value IS NULL OR r.declared_value >= p_floor);
 $$;
 COMMENT ON FUNCTION public.permit_skim_wait(text, numeric) IS
-  'Permits (punch list #302): how many commercial building permits wait on a skim (no answer, no plumbing permit, at or above the value floor or with no value declared) and the day the oldest was filed. The Needs you line reads it.';
+  'Permits (punch list #302): how many commercial building permits wait on a skim (no answer, no plumbing permit, at or above the value floor or with no value declared) and the day the oldest arrived from the feed. The Needs you line reads it.';
 REVOKE ALL ON FUNCTION public.permit_skim_wait(text, numeric) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.permit_skim_wait(text, numeric) TO authenticated;
 

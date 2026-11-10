@@ -23,7 +23,7 @@ Nothing is typed. After a pass a dark bar offers four reasons. Tap one if you li
 
 Press the name beside **Who** to see who pulled it. Press the line beside **Property** to see the building. Both have **Keep** and **Pass** at the foot.
 
-The count says how many are left. A permit stays in the deck until someone answers it. When none are left the card says so. Press **Dig in** to open the ones you kept.
+The count says how many are left. A permit stays in the deck until someone answers it. The Dashboard's **Needs you** card says when permits wait. The Leader is asked first. The rest of the team is asked once a permit has waited two days. When none are left the card says so. Press **Dig in** to open the ones you kept.
 
 ## Work the ones you kept
 

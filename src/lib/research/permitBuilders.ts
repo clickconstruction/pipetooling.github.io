@@ -226,23 +226,25 @@ export function skimBuilderContext(rows: readonly ResearchPermitRow[]): Pick<Ski
 
 // ---------- the nudge and the count ----------
 
-/** The oldest permit still waiting on a skim, in days. Null when nothing waits. */
-export function oldestWaitDays(rows: readonly ResearchPermitRow[], floor: ValueFloor, todayYmd: string): number | null {
-  let oldest: number | null = null
-  for (const r of rowsAboveFloor(rows, floor)) {
-    if (placeOf(r).place !== 'skim') continue
-    const d = daysBetween(r.filed_on, todayYmd)
-    if (d != null && (oldest == null || d > oldest)) oldest = d
-  }
-  return oldest
-}
-
 /** The nudge's words: how many wait and how long the oldest has. Null when nothing waits. */
 export function nudgeWords(waiting: number, oldestDays: number | null): { title: string; detail: string } | null {
   if (waiting <= 0) return null
   const title = `${waiting} permit${waiting === 1 ? '' : 's'} wait${waiting === 1 ? 's' : ''} on a skim`
-  const detail = oldestDays == null ? '' : oldestDays <= 0 ? 'The oldest was filed today.' : `The oldest was filed ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago.`
-  return { title, detail }
+  const waited = oldestDays == null ? '' : oldestDays <= 0 ? 'The oldest arrived today.' : `The oldest has waited ${oldestDays} day${oldestDays === 1 ? '' : 's'}.`
+  return { title, detail: [waited, 'About a minute.'].filter(Boolean).join(' ') }
+}
+
+/** How long a permit may wait before the whole team is asked. */
+export const NUDGE_WIDENS_AFTER_DAYS = 2
+
+/**
+ * Who the nudge asks. The Leader (and a dev) every day there is something to skim; the rest of
+ * the people who may skim once a permit has waited two days. The owner's answer of 2026-11-10:
+ * the Leader's in time, the assistants' and estimators' more likely.
+ */
+export function nudgeAsks(role: string | null | undefined, oldestDays: number | null): boolean {
+  if (role === 'master_technician' || role === 'dev') return true
+  return oldestDays != null && oldestDays >= NUDGE_WIDENS_AFTER_DAYS
 }
 
 /** One counted line of the funnel's lists. */

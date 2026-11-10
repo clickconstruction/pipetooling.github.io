@@ -24,6 +24,9 @@ INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, 
   ('00000000-0000-0000-0000-0000003020b4', 'Skim City', 'bed', 'RES-1', 'Res New Building Permit', 'building', 'applied', true, 'New house', '9 LARKSPUR CT', '9 larkspur ct', CURRENT_DATE - 3, 'Ridgeway Builders'),
   ('00000000-0000-0000-0000-0000003020c2', 'Skim City', 'bed', 'COM-2', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '77 KILN ST', '77 kiln st', CURRENT_DATE - 4, 'Blue Heron Plumbing');
 
+-- COM-1 arrived three days ago; the rest arrived now.
+UPDATE public.permits SET first_seen_at = now() - interval '3 days' WHERE id = '00000000-0000-0000-0000-0000003020b1';
+
 CREATE SCHEMA ps;
 GRANT USAGE ON SCHEMA ps TO authenticated, service_role;
 CREATE FUNCTION ps.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -57,8 +60,8 @@ DO $$ BEGIN
 EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: only the service role sets builder keys';
 END $$;
 
--- The nudge's read: two wait (the third has a plumber), the oldest filed five days ago.
-SELECT ps.same('two permits wait on a skim, the oldest five days', (SELECT waiting || ' since ' || (CURRENT_DATE - oldest_on) FROM public.permit_skim_wait('Skim City')), '2 since 5');
+-- The nudge's read: two wait (the third has a plumber), the oldest since the day the feed brought it.
+SELECT ps.same('two permits wait on a skim, the oldest for three days', (SELECT waiting || ' for ' || ((now() AT TIME ZONE 'America/Chicago')::date - oldest_on) FROM public.permit_skim_wait('Skim City')), '2 for 3');
 
 -- The read: three commercial rows, the builder beside each, the taken one paired.
 SELECT ps.same('v2 lists the commercial permits, newest first',
