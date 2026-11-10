@@ -100,3 +100,4 @@ counter-tickets
 in-kind
 permit-skim
 theme-review
+bid-photos
