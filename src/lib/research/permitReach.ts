@@ -22,6 +22,60 @@ export function recordsReach(recordsStartYmd: string | null, todayYmd: string, d
   return recordsStartYmd <= windowStart ? { sinceYmd: windowStart, whole: true } : { sinceYmd: recordsStartYmd, whole: false }
 }
 
+/** The latest of each feed's earliest clean read: the day all of a city's feeds reach. */
+export function recordsStartOf(runs: ReadonlyArray<{ source: string; since: string | null }>): string | null {
+  const earliest = new Map<string, string>()
+  for (const r of runs) {
+    if (!r.since) continue
+    const held = earliest.get(r.source)
+    if (!held || r.since < held) earliest.set(r.source, r.since)
+  }
+  let start: string | null = null
+  for (const day of earliest.values()) if (start == null || day > start) start = day
+  return start
+}
+
+/** How far back the records are worth reading: the first day of the city's current datastore. */
+export const HISTORY_GOAL_YMD = '2025-01-01'
+/** How much one read back takes: about three months, a run the pull finishes inside its time budget. */
+export const HISTORY_STEP_DAYS = 92
+
+export type HistoryAsk = {
+  /** The window one press reads: from `since` up to, not including, `until`. */
+  since: string
+  until: string
+  /** "San Antonio's records here start Aug 26." */
+  words: string
+  /** "Read back to May 26" */
+  press: string
+  /** "Reading May 26 to Aug 26…" */
+  busy: string
+}
+
+/**
+ * The next read back as history (punch list #307), or null when the records already reach the
+ * goal or their start is not known. One press reads one step further back, so the day the
+ * records start moves a step at a time and every count says the new day.
+ */
+export function historyAsk(city: string, recordsStartYmd: string | null, todayYmd: string): HistoryAsk | null {
+  if (!recordsStartYmd || !/^\d{4}-\d{2}-\d{2}$/.test(recordsStartYmd) || recordsStartYmd <= HISTORY_GOAL_YMD) return null
+  const step = ymdPlusDays(recordsStartYmd, -HISTORY_STEP_DAYS)
+  const since = step < HISTORY_GOAL_YMD ? HISTORY_GOAL_YMD : step
+  const owner = /s$/i.test(city) ? `${city}'` : `${city}'s`
+  return {
+    since,
+    until: recordsStartYmd,
+    words: `${owner} records here start ${reachDay(recordsStartYmd, todayYmd)}.`,
+    press: `Read back to ${reachDay(since, todayYmd)}`,
+    busy: `Reading ${reachDay(since, todayYmd)} to ${reachDay(recordsStartYmd, todayYmd)}…`,
+  }
+}
+
+/** "6,412 permits read back to May 26." after a read back. */
+export function historyDoneWords(kept: number, sinceYmd: string, todayYmd: string): string {
+  return `${kept.toLocaleString('en-US')} permit${kept === 1 ? '' : 's'} read back to ${reachDay(sinceYmd, todayYmd)}.`
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** "Aug 26", with the year when it is not today's: "Aug 26, 2025". */

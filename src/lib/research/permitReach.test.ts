@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { permitsColumnWords, reachDay, reachWords, recordsReach, recordsStartLine, theirPermitsTitle } from './permitReach'
+import { HISTORY_GOAL_YMD, historyAsk, historyDoneWords, permitsColumnWords, reachDay, reachWords, recordsReach, recordsStartLine, recordsStartOf, theirPermitsTitle } from './permitReach'
 
 const TODAY = '2026-11-10'
 
@@ -61,5 +61,48 @@ describe('the Builders page', () => {
     expect(recordsStartLine('Corpus', recordsReach('2026-08-26', TODAY), TODAY)).toBe("Corpus' records here start Aug 26. Every count is what we can see since then.")
     expect(recordsStartLine('San Antonio', recordsReach('2025-01-01', TODAY), TODAY)).toBeNull()
     expect(recordsStartLine('San Antonio', recordsReach(null, TODAY), TODAY)).toBeNull()
+  })
+})
+
+describe('a read back as history', () => {
+  it('asks for one step further back, up to the day the records start', () => {
+    expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toEqual({
+      since: '2026-05-26',
+      until: '2026-08-26',
+      words: "San Antonio's records here start Aug 26.",
+      press: 'Read back to May 26',
+      busy: 'Reading May 26 to Aug 26…',
+    })
+  })
+
+  it('stops at the goal, and asks nothing once the records reach it or their start is not known', () => {
+    expect(historyAsk('San Antonio', '2025-02-10', TODAY)).toMatchObject({ since: HISTORY_GOAL_YMD, until: '2025-02-10', press: 'Read back to Jan 1, 2025', busy: 'Reading Jan 1, 2025 to Feb 10, 2025…' })
+    expect(historyAsk('San Antonio', HISTORY_GOAL_YMD, TODAY)).toBeNull()
+    expect(historyAsk('San Antonio', '2024-06-01', TODAY)).toBeNull()
+    expect(historyAsk('San Antonio', null, TODAY)).toBeNull()
+  })
+
+  it('says what a read back kept', () => {
+    expect(historyDoneWords(6412, '2026-05-26', TODAY)).toBe('6,412 permits read back to May 26.')
+    expect(historyDoneWords(1, '2025-01-01', TODAY)).toBe('1 permit read back to Jan 1, 2025.')
+  })
+})
+
+describe('where a city’s records start', () => {
+  it('is the day every feed reaches: the latest of each feed’s earliest clean read', () => {
+    const runs = [
+      { source: 'sa-issued', since: '2026-08-26' },
+      { source: 'sa-applied', since: '2026-08-26' },
+      { source: 'sa-issued', since: '2026-10-27' },
+      { source: 'sa-issued', since: '2026-05-26' },
+    ]
+    // The applications were not read back yet, so the day does not move.
+    expect(recordsStartOf(runs)).toBe('2026-08-26')
+    expect(recordsStartOf([...runs, { source: 'sa-applied', since: '2026-05-26' }])).toBe('2026-05-26')
+  })
+
+  it('is nothing with no run on record', () => {
+    expect(recordsStartOf([])).toBeNull()
+    expect(recordsStartOf([{ source: 'sa-issued', since: null }])).toBeNull()
   })
 })
