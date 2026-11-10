@@ -34,7 +34,7 @@ function TileStill({ lat, lng, zoom, kind }: { lat: number; lng: number; zoom: n
 
 const pin: CSSProperties = { position: 'absolute', left: '50%', top: '50%', width: 14, height: 14, margin: '-7px 0 0 -7px', borderRadius: '50%', background: '#2563eb', border: '2px solid #ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }
 
-export function PermitSkimLook({ row, milesWords }: { row: ResearchPermitRow; milesWords: string | null }) {
+export function PermitSkimLook({ row, milesWords, compact = false }: { row: ResearchPermitRow; milesWords: string | null; /** A phone: a shorter strip, so more of the card is above the answers. */ compact?: boolean }) {
   const [street, setStreet] = useState<Street>({ state: 'loading' })
   const location = streetViewLocation(row)
 
@@ -72,7 +72,7 @@ export function PermitSkimLook({ row, milesWords }: { row: ResearchPermitRow; mi
 
   return (
     // The pictures are light in either theme, so the words on them read the light theme's values.
-    <div data-theme="light" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, height: 124, background: 'var(--border)', borderRadius: '13px 13px 0 0', overflow: 'hidden' }}>
+    <div data-theme="light" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, height: compact ? 104 : 124, background: 'var(--border)', borderRadius: '13px 13px 0 0', overflow: 'hidden' }}>
       <a href={streetHref ?? undefined} target="_blank" rel="noreferrer" aria-label={street.state === 'image' ? 'Open Street View in Google, in a new tab' : 'Open the site in Google Maps, in a new tab'} style={tile}>
         {street.state === 'image' && <img src={street.url} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
         {street.state === 'none' && hasPoint && <TileStill lat={row.lat as number} lng={row.lng as number} zoom={17} kind="satellite" />}

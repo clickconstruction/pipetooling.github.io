@@ -4,7 +4,7 @@ number: 302
 group: gated
 status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830 · PR 3 and 5, the pictures and the swipe, built as v2.6833 · PR 6 and 7 and the count of PR 8, built as v2.6835 with one migration, tested on a local bed
 mockup: to-dos/permit-skim/mockup.html
-ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim) · v2.6833 (PR 3 and 5, the pictures and the swipe) · v2.6835 (PR 6, 7 and the count)
+ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim) · v2.6833 (PR 3 and 5, the pictures and the swipe) · v2.6835 (PR 6, 7, 8) · v2.6837 (the phone layout)
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one. The
   owner asked for two steps. Skim: one permit on one screen with everything needed to decide, a
