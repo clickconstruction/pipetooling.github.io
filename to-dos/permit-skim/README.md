@@ -2,8 +2,9 @@
 name: "Permits: skim every one in a few seconds, dig into the few, and know the builders"
 number: 302
 group: gated
-status: asked 2026-11-10 · the live tab walked the same day at desk and phone width (163 permits wait on a look, none has a verdict) · planned and drawn the same day as eleven frames with a working skim in frame A · the owner's look the same day: good, and better with a map and a street view, so both went onto every card, the desk, the dig in and a bigger look (frame B4) · his second look the same day: much better, and a tap on Who or on the building should show everything public, with a small Google button beside a name, so both were drawn as section L · nothing built, nothing written to prod · waiting on his eight calls
+status: asked 2026-11-10 · the live tab walked the same day at desk and phone width (163 permits wait on a look, none has a verdict) · planned and drawn the same day as eleven frames with a working skim in frame A · the owner's look the same day: good, and better with a map and a street view, so both went onto every card, the desk, the dig in and a bigger look (frame B4) · his second look the same day: much better, and a tap on Who or on the building should show everything public, with a small Google button beside a name, so both were drawn as section L · asked then to fill what the tab lacks today, PR 4 was built first on the ledger and the map (v2.6828): The building, the Google press, a name's other permits, the state's and the clerk's doors · the skim itself not built, nothing written to prod · waiting on his eight calls
 mockup: to-dos/permit-skim/mockup.html
+ver: v2.6828 (PR 4, on today's ledger and map)
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one: a
   verdict takes a sideways scroll on a phone, a sheet, a choice of four and a typed reason, and a
@@ -17,9 +18,9 @@ summary: >
   unseen. The longer view is the builder: a name on a permit becomes a company that later permits
   match to, with a good or avoid mark that keeps who set it and why, our own contacts, and a join
   when two names are one company.
-next: The owner's eight calls under What the owner settles. On his word to build, PR 1 (the kernel), PR 2 (the skim on today's tables, no migration), PR 3 (the street view and the map on the card) and PR 4 (everything public on a tap, and the Google press).
-size: XL as a train of eleven (S · M · S · M · S · M · M · M · M · M · S)
-blocker: The owner's eight calls. PR 1 to PR 4 stand on the defaults drawn if he says build as drawn.
+next: The owner's eight calls under What the owner settles. On his word to build, PR 1 (the kernel), PR 2 (the skim on today's tables, no migration), and PR 3 (the street view and the map on the card). PR 4's two sheets are live on the ledger and open from the skim card once PR 2 draws one.
+size: XL as a train of eleven (S · M · S · M · S · M · M · M · M · M · S); shipped: PR 4 (M)
+blocker: The owner's eight calls. PR 1 to PR 3 stand on the defaults drawn if he says build as drawn.
 opinion: build the skim first — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and a week of real answers and reasons is what the builder work should be designed from
 ---
 
@@ -312,7 +313,11 @@ merge.
    address, the month taken added to `street-view-preview`'s metadata answer (its section in
    `docs/EDGE_FUNCTIONS.md`, deployed after the merge), satellite when there is no picture, the
    map tile with the office ring, and loading for the top two cards only. On the desk, S.
-4. **Everything public, and the Google press (M, no migration).** The Who sheet grown from
+4. **Everything public, and the Google press (M, no migration). Built first, 2026-11-10, as
+   v2.6828, on today's ledger and map.** Shipped: `permitPublic.ts`, `PermitBuildingSheet`,
+   `GoogleSearchPress`, Their other permits and the state's door on the Who card, an address as
+   a press. Left for the skim: both sheets opened from the card with Keep and Pass at the foot,
+   and our books in full on the Who card. As planned: the Who sheet grown from
    `WhoPulledItSheet` (our books in full, the builder's permits, the doors) and a new sheet for
    the building (the feed's full row read from `permits.raw`, the parcel, every permit on the
    address by `address_key`), both opened from the card's Who and Property lines with the two
@@ -401,5 +406,10 @@ mock-up drawn and checked in the browser. Card #302 claimed on `claude/laughing-
 The owner looked the same day: good, and better with a map and a street view. Both were drawn in
 (the cards, frame F, frame H and the new frame B4) and the plan gained PR 3. His second look: much better, with a tap on Who or the building for
 everything public and a Google button by a name; drawn as section L, and the plan gained PR 4.
-Nothing is built and
-nothing was written to prod. Waiting on his eight calls.
+
+The same day he asked for help with what the tab lacks today. PR 4 was built ahead of the skim,
+on the ledger and the map, as v2.6828 (`docs/recent-features/v2.6828.md`): an address opens The
+building, a round G searches Google beside a name or an address, the Who card lists the name's
+other permits and opens the state's search, and the building opens the county clerk's deeds.
+Walked live, read-only, at desk and phone width. The skim (PR 1 to 3) is not built. Waiting on
+his eight calls.
