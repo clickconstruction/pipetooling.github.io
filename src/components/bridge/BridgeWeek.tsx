@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import type { CallLink, CallMove, CallOutcome, MoveDone } from '../../lib/bridge/calls'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_HOW, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_HOW, movesShown, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
@@ -80,7 +80,8 @@ export function BridgeWeek({
   model: WeekCallModel
   recording: boolean
   answering: boolean
-  onRecord: (link: CallLink, moves: CallMove[]) => void
+  /** `note` is the line typed under Add a note, or null. */
+  onRecord: (link: CallLink, moves: CallMove[], note: string | null) => void
   onAnswer: (outcome: CallOutcome) => void
   /** Opens The flow, where a press on a step makes it the proposal. */
   onPickStep: () => void
@@ -88,18 +89,25 @@ export function BridgeWeek({
   onCashNote: () => void
 }) {
   const narrow = useIsNarrowScreen()
-  const shown = useMemo(() => model.card.moves.slice(0, narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES), [model.card.moves, narrow])
-  const movesKey = `${model.link ?? ''}|${shown.map((m) => m.title).join('|')}`
+  const proposing = model.state === 'propose'
+  const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
+  const movesKey = `${model.link ?? ''}|${model.card.moves.map((m) => m.title).join('|')}`
   const [off, setOff] = useState<Set<number>>(new Set())
   const [who, setWho] = useState<Map<number, string>>(new Map())
   const [editing, setEditing] = useState<number | null>(null)
+  // A note on the call (v2.6840): one line, typed before the press, read again under the call on Friday.
+  const [note, setNote] = useState('')
+  const [noteOpen, setNoteOpen] = useState(false)
   useEffect(() => {
     setOff(new Set())
     setWho(new Map())
     setEditing(null)
+    setNote('')
+    setNoteOpen(false)
   }, [movesKey])
+  // While it proposes, the card shows `cap` moves still on the call: one taken off stays, greyed, and the next comes on.
+  const shown = useMemo(() => (proposing ? movesShown(model.card.moves, off, cap) : model.card.moves.slice(0, cap)), [proposing, model.card.moves, off, cap])
 
-  const proposing = model.state === 'propose'
   const toRecord = proposing ? movesToRecord(shown, off, who) : []
   const canRecord = proposing && model.link != null && toRecord.length > 0 && !recording
   const border = model.card.tone === 'lit' ? '#dc2626' : model.card.tone === 'ask' ? '#2563eb' : 'var(--border-strong)'
@@ -212,13 +220,30 @@ export function BridgeWeek({
             {model.card.lead}
           </div>
           {model.card.line && <div style={{ fontSize: '0.86rem', color: 'var(--text-700)' }}>{model.card.line}</div>}
+          {model.card.note && (
+            <div style={{ fontSize: '0.84rem', color: 'var(--text-700)', marginTop: 4 }} data-testid="bridge-week-note">
+              <b>Note.</b> {model.card.note}
+            </div>
+          )}
           {shown.length > 0 && <ol style={{ listStyle: 'none', margin: '7px 0 0', padding: 0 }}>{shown.map(moveRow)}</ol>}
+          {proposing && noteOpen && (
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              aria-label="A note on the call"
+              placeholder="A note for Friday, if any"
+              maxLength={240}
+              autoFocus
+              data-testid="bridge-week-note-input"
+              style={{ font: 'inherit', fontSize: '0.86rem', width: '100%', minHeight: 40, marginTop: 8, padding: '0.3rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }}
+            />
+          )}
           {model.card.press && (
             <button
               type="button"
               disabled={!canRecord}
               title={!recording && toRecord.length === 0 ? 'Put a move on the call first.' : undefined}
-              onClick={() => model.link && onRecord(model.link, toRecord)}
+              onClick={() => model.link && onRecord(model.link, toRecord, note.trim() || null)}
               data-testid="bridge-week-record"
               style={{ ...pressBase, maxWidth: narrow ? undefined : 360, marginTop: 8, display: 'block', background: canRecord ? '#2563eb' : DEAD_PRESS_FILL, color: canRecord ? '#ffffff' : DEAD_PRESS_TEXT, cursor: canRecord ? 'pointer' : 'default' }}
             >
@@ -235,6 +260,14 @@ export function BridgeWeek({
                   <button type="button" onClick={onPickStep} data-testid="bridge-week-pick" style={{ font: 'inherit', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     Pick another step ›
                   </button>
+                  {!noteOpen && (
+                    <>
+                      {' '}
+                      <button type="button" onClick={() => setNoteOpen(true)} data-testid="bridge-week-add-note" style={{ font: 'inherit', padding: 0, marginLeft: 6, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        Add a note ›
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>

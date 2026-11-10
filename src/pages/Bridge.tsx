@@ -44,7 +44,11 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
-import { WEEK_CASH_MAY_LEAD, buildWeekCall, firstName, topPerson } from '../lib/bridge/weekCall'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, deskMovesFoot, firstName, topPerson, type WeekCallInput } from '../lib/bridge/weekCall'
+import { buildProfitPanel } from '../lib/bridge/profitPanel'
+import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
+import { buildFixSizes } from '../lib/bridge/fixSizes'
+import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
@@ -163,6 +167,9 @@ export default function Bridge() {
   const [doorScroll, setDoorScroll] = useState<{ id: string; n: number } | null>(null)
   // Bills and receipts show fourteen days until this is pressed.
   const [listsAll, setListsAll] = useState(false)
+  // What is left after overhead (v2.6840): the breakdown under the eight week chart, closed until pressed.
+  const [profitOpen, setProfitOpen] = useState(false)
+  const narrow = useIsNarrowScreen()
   // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
   const [pickedStage, setPickedStage] = useState<CallLink | null>(null)
   // The order (link PR 6): the badge pressed, if any; null closes the modal.
@@ -901,10 +908,10 @@ export default function Bridge() {
   )
 
   // The first screen (punch list #303, PR 1): three tiles and the week's call, proposed from the readings above.
-  const weekModel = useMemo(() => {
+  const weekInput = useMemo((): WeekCallInput | null => {
     if (!data || !thisWeekStart || !calls) return null
     const late = receipts.filter((r) => r.basis === 'late')
-    return buildWeekCall({
+    return {
       todayYmd: data.todayYmd,
       weekStart: thisWeekStart,
       headline,
@@ -926,8 +933,9 @@ export default function Bridge() {
       calls,
       now: nowReading,
       dayLabel: md,
-    })
+    }
   }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+  const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
 
   // One account's switch: the page follows at once, the row is saved behind it, and a save that is refused says why.
   const flipAccount = useCallback(
@@ -1154,6 +1162,48 @@ export default function Bridge() {
     })
   }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
 
+  // What is left after overhead (v2.6840): the Daily profit rate panel's reading, opened from the eight week chart.
+  const profitPanel = useMemo(() => {
+    if (!data || !profit) return null
+    return buildProfitPanel({
+      windowStart: data.windowStart,
+      todayYmd: data.todayYmd,
+      earnedByDay: data.earnedByDay,
+      directByDay: data.directByDay,
+      overheadByDay: data.overheadByDay,
+      speed: profit.speed,
+      contributionMargin: profit.contributionMargin,
+      totals: data.totals,
+      waitingWeeks: new Set((headline?.weeks ?? []).filter((w) => w.waiting).map((w) => w.start)),
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unlinkedCard: data.hygiene.unlinkedCard,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      weekLabel: md,
+    })
+  }, [data, profit, headline])
+
+  // What a fix is worth (v2.6840): This week's sizes, on the usual fixes' own rows, and the bids due under them.
+  const fixSizes = useMemo(() => {
+    if (!data) return null
+    return buildFixSizes({
+      fieldEarnedPerHour: data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      contributionMargin: profit?.contributionMargin ?? null,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? 0,
+      bidsDue: data.levers.bidsDue,
+      dayLabel: md,
+    })
+  }, [data, profit])
+
+  // Every move for the pressed step (v2.6840), for its desk: which of them the card at the top holds.
+  const deskList = useMemo(() => {
+    if (!weekInput || !weekModel || !litLink) return { moves: [], foot: '' }
+    const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
+    const proposing = weekModel.state === 'propose'
+    const moves = deskMoves(litLink, weekInput, proposing ? weekModel.card.moves.slice(0, cap) : weekModel.card.moves)
+    return { moves, foot: proposing && weekModel.link === litLink ? deskMovesFoot(moves.length, cap) : '' }
+  }, [weekInput, weekModel, litLink, narrow])
+
   // The open door. Soft numbers has none when nothing is soft, so a stale link opens nothing.
   const door = doorFromSearch(doorParam, softNumbers.length)
   const softCount = softNumbers.length
@@ -1247,7 +1297,7 @@ export default function Bridge() {
               model={weekModel}
               recording={recording}
               answering={answering}
-              onRecord={(link, moves) => void recordCall(moves, null, link)}
+              onRecord={(link, moves, note) => void recordCall(moves, note, link)}
               onAnswer={(o) => void answerCall(o, null)}
               onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
@@ -1317,10 +1367,12 @@ export default function Bridge() {
               dayLabel={md}
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
               onGoToCall={() => setDoorScroll((d) => ({ id: 'bridge-week', n: (d?.n ?? 0) + 1 }))}
+              moves={deskList.moves}
+              movesFoot={deskList.foot}
             />
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
-            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
+            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} />}
             {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           </div>
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
@@ -1505,7 +1557,17 @@ export default function Bridge() {
 
           {/* The eight weeks, full size (v2.5216): contribution per week, the two constraints as lights */}
           <div style={{ marginTop: '0.6rem' }}>
-          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead}>
+            {/* What is left after overhead (v2.6840): the chart ends at wages, so its breakdown says what every other cost leaves. */}
+            {profitPanel && (
+              <div style={{ marginTop: '0.6rem' }}>
+                <button type="button" onClick={() => setProfitOpen((o) => !o)} aria-expanded={profitOpen} data-testid="bridge-profit-toggle" style={{ ...btnStyle, fontWeight: 600, minHeight: 36, padding: '0.25rem 0.7rem', borderRadius: 8 }}>
+                  What is left after overhead {profitOpen ? '▴' : '▾'}
+                </button>
+                {profitOpen && <BridgeProfitPanel panel={profitPanel} />}
+              </div>
+            )}
+          </BridgeHeadline>
           </div>
 
           <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>

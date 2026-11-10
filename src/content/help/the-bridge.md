@@ -28,7 +28,8 @@ When cash goes under your floor, cash comes first. The cash tile takes the top r
 Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
 
 - Press a name to change who does the move.
-- Press {{button:outline|take off}} to drop a move from the call. Press {{button:outline|put back}} to return it.
+- Press {{button:outline|take off}} to drop a move from the call. The step's next move comes on in its place. Press {{button:outline|put back}} to return it.
+- Press {{button:outline|Add a note ›}} to type one line with the call. The card shows the note again once the call stands.
 - Press the blue button to record the call. The button waits until one move is on the call.
 
 After you record it, the card shows each move against today. A move reads *done*, *part* or *not yet*. A move the app cannot measure reads *yours*.
@@ -117,13 +118,13 @@ Every card ends in a badge. Press any badge and a list opens. The list puts the 
 
 ## Everything else waits
 
-A card under the desk lists the four fixes people reach for first. Hire another plumber. Push for more bids. Add a field day. Cut overhead. Press one and the dial and the cards above show what it would do. One line under the press says what changed and whether the link moved. Cut overhead moves nothing above. That is the point. Press {{button:outline|back to today}} to put things back. The {{button:outline|?}} in the corner lists the other links' levers.
+A card under the desk lists the four fixes people reach for first. Hire another plumber. Push for more bids. Add a field day. Cut overhead. Two of them show what they are worth in dollars a day. Under them, **Bids due** lists the bids due soon and what a win is worth. Press a fix and the dial and the cards above show what it would do. One line under the press says what changed and whether the link moved. Cut overhead moves nothing above. That is the point. Press {{button:outline|back to today}} to put things back. The {{button:outline|?}} in the corner lists the other links' levers.
 
 ## The week's call
 
 You record the call on [the first screen](#the-first-screen). It is the one place a call is made.
 
-Behind **The flow**, the desk of the pressed stage sits under the three resources. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Press a different stage card and the card at the top proposes that stage. Press {{button:outline|Go to this week's call ↑}} to go back up to it. The call keeps today's numbers, so Friday can read them again.
+Behind **The flow**, the desk of the pressed stage sits under the three resources. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Press {{button:outline|Every move for Bill}} to read every move the stage has. Each row says whether the card at the top holds it. Press a different stage card and the card at the top proposes that stage. Press {{button:outline|Go to this week's call ↑}} to go back up to it. The call keeps today's numbers, so Friday can read them again.
 
 A recorded call holds the red on its stage for the week. Another stage takes it only when it reads clearly longer.
 
@@ -184,6 +185,18 @@ Two lights sit under the bars. **Net position rises over 8 weeks** is green when
 :::example Reading the top line
 +$38.3k ≈ this week so far on 317h recorded, approved only +$9.7k on 80h. The verdict says contribution ran $13.8k to $46.8k a week over the six settled weeks, and the last two read low only because 564h still wait on approval.
 :::
+
+## What is left after overhead
+
+The eight week chart ends at wages. Under its two lights, press {{button:outline|What is left after overhead}}. A breakdown opens.
+
+- When hours still wait on approval, a warning says so first. It also says about what the day reads once they are approved.
+- The big number is what a day keeps after every cost, on the last 14 days.
+- A chart shows where a day's money goes, from earned through job costs and overhead.
+- One line gives break-even. It says what the field must earn a day to cover the office.
+- A second chart shows earned against costs by pay week. A hatched week still has hours waiting.
+
+Press **Where each number comes from** to see each source and what can make it wrong. Each row ends in its door.
 
 ## Net position — last 8 weeks
 
@@ -270,7 +283,7 @@ The amber door on the first screen counts the soft numbers. Press it and one lis
 - bank transfers or card purchases not sorted
 - bids sent with no value
 
-This list took the place of **This week** and **Fix the reading**. The moves that were on This week are on the call card now.
+This list took the place of **This week** and **Fix the reading**. The moves that were on This week are on the call card now. Its dollar sizes are on the usual fixes behind The flow.
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
 

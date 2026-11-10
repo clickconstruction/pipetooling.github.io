@@ -69,10 +69,42 @@ describe('BridgeWeek', () => {
     fireEvent.change(box, { target: { value: 'Jorge' } })
     fireEvent.blur(box)
     fireEvent.click(screen.getByTestId('bridge-week-record'))
-    expect(onRecord).toHaveBeenCalledWith('bill', [
-      { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', then: 142_000 },
-      { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', then: 4 },
-    ])
+    expect(onRecord).toHaveBeenCalledWith(
+      'bill',
+      [
+        { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', then: 142_000 },
+        { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', then: 4 },
+      ],
+      null,
+    )
+  })
+
+  it('takes a note with the call, and shows it under a call that stands (v2.6840)', () => {
+    const onRecord = vi.fn()
+    const { unmount } = renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    expect(screen.queryByTestId('bridge-week-note-input')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a note ›' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'A note on the call' }), { target: { value: '  Ridgeway pays on the 20th if billed by Friday.  ' } })
+    fireEvent.click(screen.getByTestId('bridge-week-record'))
+    expect(onRecord.mock.calls[0]?.[2]).toBe('Ridgeway pays on the 20th if billed by Friday.')
+    unmount()
+    renderWithProviders(<BridgeWeek model={{ ...friday, card: { ...friday.card, note: 'Ridgeway pays on the 20th if billed by Friday.' } }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    expect(screen.getByTestId('bridge-week-note').textContent).toBe('Note. Ridgeway pays on the 20th if billed by Friday.')
+    expect(screen.queryByRole('button', { name: 'Add a note ›' })).toBeNull()
+  })
+
+  it('brings the next move on when one is taken off, and keeps the one taken off with its way back (v2.6840)', () => {
+    const four: WeekCallModel = { ...propose, card: { ...propose.card, moves: [...propose.card.moves, move({ title: 'Mark a job ready to bill the day it finishes.' })] } }
+    const onRecord = vi.fn()
+    renderWithProviders(<BridgeWeek model={four} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    expect(screen.getAllByTestId('bridge-week-move').length).toBe(3)
+    expect(screen.queryByText('Mark a job ready to bill the day it finishes.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Take off the call: Price the 4 jobs/ }))
+    expect(screen.getAllByTestId('bridge-week-move').length).toBe(4)
+    expect(screen.getByText('Mark a job ready to bill the day it finishes.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Put back on the call: Price the 4 jobs/ })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('bridge-week-record'))
+    expect(onRecord.mock.calls[0]?.[1].map((m: { title: string }) => m.title)).toEqual(['Bill the 11 finished jobs.', 'Take bank sorting off whoever bills, so billing is never idle.', 'Mark a job ready to bill the day it finishes.'])
   })
 
   it('says under the cash tile which account is left out, and the sentence opens the list', () => {

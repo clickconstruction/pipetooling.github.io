@@ -8,8 +8,8 @@ const note: ReleaseNote = {
   highlights: [
     'The Bridge now fits on one screen: the three numbers, the week’s call, and a row of doors. Press The flow, Money or People to open that part of the page, and press it again to close it.',
     'One list, Soft numbers, says what makes the reading unsure and what each item moves. It takes the place of This week and Fix the reading.',
-    'The call is made in one place, the card at the top. The link’s desk no longer asks for an owner on every move.',
-    'Bills and receipts show the next 14 days, with the later days one press away. The truth check opens with the net position breakdown. The Daily profit rate card and the Monday sheet view are gone.',
+    'The call is made in one place, the card at the top, and it can carry a note. Take a move off and the step’s next move comes on. The link’s desk lists every move for the step to read.',
+    'Behind Money, a press under the eight week chart shows what is left after overhead, with break-even. The usual fixes say what they are worth in dollars a day. Bills and receipts show the next 14 days. The Daily profit rate card and the Monday sheet view are gone.',
   ],
 }
 
