@@ -101,6 +101,27 @@
   .look .cap2 { padding: 10px 14px 2px; font-size: .9375rem; font-weight: 600; }
   .look .cap3 { padding: 0 14px 4px; font-size: .78rem; color: #cbd5e1; }
   .look .answers { background: #111827; }
+  /* everything public, on a tap */
+  .g { display: inline-flex; align-items: center; gap: 4px; vertical-align: 1px; border: 1px solid #cbd5e1; background: var(--surface); color: var(--ink); border-radius: 999px; padding: 0 8px 0 3px; min-height: 24px; font-size: .6875rem; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .g i { font-style: normal; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--blue-50); color: var(--blue-800); font-weight: 800; font-size: .6875rem; }
+  .g.solo { padding: 0 3px; }
+  .fact.tap { position: relative; padding-right: 18px; cursor: pointer; }
+  .fact.tap::after { content: '\203A'; position: absolute; right: 2px; top: 6px; font-size: 1.125rem; color: #9ca3af; }
+  .dim { background: rgba(17,24,39,.45); padding-top: 36px; }
+  .sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 14px 4px; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #d1d5db; margin: 0 auto 10px; }
+  .sheet h3 { margin: 2px 0 2px; font-size: 1.1875rem; color: var(--strong); line-height: 1.25; }
+  .src { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: .875rem; }
+  .src .from { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+  .src .from b { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .src .from span { font-size: .6875rem; color: #9ca3af; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 108px 1fr; gap: 2px 8px; font-size: .8125rem; }
+  .kv > span:nth-child(odd) { color: var(--muted); }
+  .kv > span:nth-child(even) { color: var(--strong); }
+  .door { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px dotted var(--border); font-size: .8125rem; }
+  .door:first-of-type { border-top: 0; }
+  .door span { color: var(--muted); font-size: .75rem; display: block; }
+  .sheet .answers { margin: 12px -14px 0; border-top: 1px solid var(--border); background: var(--surface); }
   .pcard .body { padding: 12px 14px 4px; }
   .pcard .kind { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pcard h3 { margin: 2px 0 0; font-size: 1.1875rem; line-height: 1.25; color: var(--strong); }
@@ -234,9 +255,9 @@
       <li><b>What.</b> The kind of work, the size and the declared value in the biggest type on the card.</li>
       <li><b>Where.</b> The street, and the miles from the office on the map.</li>
       <li><b>When.</b> Applied or issued, and how many days ago. An application is the early signal.</li>
-      <li><b>Who.</b> The builder, their mark, our bids with them, and how many permits they pulled this year.</li>
+      <li><b>Who.</b> The builder, their mark, our bids with them, and how many permits they pulled this year. A tap opens everything public about them (frame L1), and the small Google press searches the name.</li>
       <li><b>Plumber.</b> None yet, on file with no name, or the plumber's name.</li>
-      <li><b>The property.</b> The county's owner of record and what stands on the lot now.</li>
+      <li><b>The property.</b> The county's owner of record and what stands on the lot now. A tap opens everything public about the address (frame L2).</li>
     </ol>
     <p class="note"><b>The pictures are the app's own.</b> The job window already shows a street view of a job's address, read through the app's own function with the key kept on the server. The On site map already draws satellite. The card reuses both. The date on the street view matters: on a new build an old picture of an empty lot is the signal, and where the car never drove the tile shows satellite and says so.</p>
     <p class="note"><b>Nothing is typed on the skim.</b> Today every verdict needs a typed reason, which is right for a decision and wrong for a glance. A pass offers four one-tap reasons in the dark bar after the card has gone. Tapping one is optional. The bar is also the undo.</p>
@@ -260,9 +281,9 @@
           <h3>Retail shell, 6,200 sq ft</h3>
           <div class="money"><b>$1.4M</b> declared</div>
           <div class="where">2400 Lantern Creek Blvd, 78249</div>
-          <div class="fact"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span><span class="sub">We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g solo" href="#l" title="Search Google for this name"><i>G</i></a><span class="sub">We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
-          <div class="fact"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres</span></span></div>
+          <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres</span></span></div>
         </div>
         <div class="morelink"><a class="lnk" href="#h">Open it now</a></div>
         <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
@@ -284,7 +305,7 @@
           <h3>Retail shell, 6,200 sq ft</h3>
           <div class="money"><b>$1.4M</b> declared</div>
           <div class="where">2400 Lantern Creek Blvd, 78249</div>
-          <div class="fact"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span></span></div>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span></span></div>
         </div>
       </div></div>
       <div class="undo"><span>Kept for a closer look.</span><span class="sp"></span><button class="u">Undo</button></div>
@@ -305,7 +326,7 @@
           <h3>Parking lot and drainage</h3>
           <div class="money">Value not declared</div>
           <div class="where">60 Millrace Row, 78154</div>
-          <div class="fact"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill blue">New name</span></span></div>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill blue">New name</span></span></div>
         </div>
       </div></div>
       <div class="undo new"><span>Passed. Why?</span><button>Too small</button><button class="picked">Too far</button><button>Not our work</button><button>Not this builder</button><span class="sp"></span><button class="u">Undo</button></div>
@@ -343,7 +364,7 @@
           <div class="money"><b>$19.2M</b> declared across the six</div>
           <div class="where">815 Quarry Bend, 78253</div>
           <ul class="sites"><li><span>Buildings 1 to 4, 24 units each</span><span>$3.6M each</span></li><li><span>Building 5, clubhouse</span><span>$2.1M</span></li><li><span>Building 6, 16 units</span><span>$2.7M</span></li></ul>
-          <div class="fact"><span class="k">Who</span><span class="v"><b>Calloway and Finch</b> <span class="pill grey">No mark</span><span class="sub">We bid 2 and won none. Last bid in 2025.</span></span></div>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Calloway and Finch</b> <span class="pill grey">No mark</span><span class="sub">We bid 2 and won none. Last bid in 2025.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet on any of the six</span></span></div>
         </div>
         <div class="morelink"><a class="lnk" href="#c">Answer them one by one</a></div>
@@ -411,9 +432,9 @@
               <h3>Retail shell, 6,200 sq ft</h3>
               <div class="money"><b>$1.4M</b> declared</div>
               <div class="where">2400 Lantern Creek Blvd, 78249 <span class="mut">· permit COM-PRJ-APP26-00000001</span></div>
-              <div class="fact"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span><span class="sub">Dana Whitlock filed it. We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
+              <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a><span class="sub">Dana Whitlock filed it. We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
               <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
-              <div class="fact"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres, appraised $610k</span></span></div>
+              <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres, appraised $610k</span></span></div>
             </div>
             <div class="answers"><button class="press grey"><kbd>←</kbd> Pass</button><button class="press green">Keep <kbd>→</kbd></button></div>
           </div>
@@ -485,7 +506,7 @@
         <div>
           <div class="sec"><h4>The site</h4>
             <div class="pcard new" style="margin-bottom:8px"><div class="media" style="height:170px"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="tag">Map · Satellite</span><span class="miles">14 mi from the office</span></div></div></div>
-            <p><b>Owner of record:</b> Lantern Creek Retail LP</p>
+            <p><b>Owner of record:</b> Lantern Creek Retail LP <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></p>
             <p class="mut">Mailing address 900 Sample Plaza, Suite 4 · vacant land, 2.1 acres · appraised $610k</p>
             <div class="acts"><a class="lnk" href="#h">Walk the street in Google</a><a class="lnk" href="#h">Open in Google Maps</a><a class="lnk" href="#h">Open at the appraisal district</a></div>
           </div>
@@ -503,11 +524,11 @@
           </div>
         </div>
         <div>
-          <div class="sec new"><h4>Ridgeway Builders <span class="pill ok">Good</span></h4>
+          <div class="sec new"><h4>Ridgeway Builders <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></h4>
             <p class="mut">General contractor · a customer of ours since 2024</p>
             <p>We bid 5 and won 3. Last bid in June.</p>
             <p>4 permits this year. Blue Heron Plumbing on 2, nobody yet on 2.</p>
-            <div class="person"><b>Dana Whitlock</b><a class="lnk" href="#h">210 555 0142</a><span class="mut">Project manager · filed this permit · in our contacts</span></div>
+            <div class="person"><b>Dana Whitlock <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></b><a class="lnk" href="#h">210 555 0142</a><span class="mut">Project manager · filed this permit · in our contacts</span></div>
             <div class="person"><b>Marcus Oyelaran</b><a class="lnk" href="#h">210 555 0177</a><span class="mut">Estimating · added by Jordan in March</span></div>
             <div class="acts"><button class="press sm line">Add a person</button><a class="lnk" href="#i" style="align-self:center">The builder's page</a></div>
           </div>
@@ -535,7 +556,7 @@
     <span class="cap"><b>I1</b> · a builder's page, desk</span>
     <div class="frame"><div class="screen w920">
       <div class="head"><a href="#j">← Builders</a>
-        <h3>Ridgeway Builders</h3>
+        <h3>Ridgeway Builders <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></h3>
         <div class="mut">General contractor · 4410 Sample Parkway · 210 555 0100 · ridgewaybuilders.example</div>
       </div>
       <div class="two">
@@ -602,7 +623,7 @@
           <h3>Warehouse office, 4,000 sq ft</h3>
           <div class="money"><b>$310k</b> declared</div>
           <div class="where">18 Drover Road, 78219</div>
-          <div class="fact new"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill bad">Avoid</span><span class="sub">"Slow pay on the Millrace job." Jordan, Nov 3.</span></span></div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill bad">Avoid</span><span class="sub">"Slow pay on the Millrace job." Jordan, Nov 3.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
         </div>
         <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
@@ -620,8 +641,8 @@
           <h3>Restaurant, 3,800 sq ft</h3>
           <div class="money"><b>$900k</b> declared</div>
           <div class="where">7 Cinder Path, 78216</div>
-          <div class="fact new"><span class="k">Who</span><span class="v"><b>Permit Runners of Texas</b> <span class="pill grey">Files for others</span><span class="sub">31 permits this year for 19 owners. Not who builds it.</span></span></div>
-          <div class="fact"><span class="k">Property</span><span class="v"><b>Juniper Hospitality Group</b><span class="sub">The county's owner of record. Read this one.</span></span></div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Permit Runners of Texas</b> <span class="pill grey">Files for others</span><span class="sub">31 permits this year for 19 owners. Not who builds it.</span></span></div>
+          <div class="fact tap"><span class="k">Property</span><span class="v"><b>Juniper Hospitality Group</b><span class="sub">The county's owner of record. Read this one.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
         </div>
         <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
@@ -645,6 +666,73 @@
         <tr><td><b>Permit Runners of Texas</b><br><span class="mut">Files for others</span></td><td><span class="pill grey">No mark</span></td><td class="n">31</td><td class="n">12</td><td>Nov 9</td><td>never</td><td>many</td></tr></table></div></div>
     </div></div>
     <p class="say">The last chip is the list the owner described: people pulling permits again and again whom we have never bid. That is who to build a relationship with.</p>
+  </div>
+</div>
+
+<h2 id="l">L · Tap Who or the building: everything public</h2>
+<p class="lede">Asked on the owner's second look. On the skim card the Who line and the Property line are presses. Each opens one sheet that lays out everything public the app can read about that company or that address, source by source, with the day it was read. A small Google press sits beside every name and searches Google for it in a new tab. The two answers stay at the bottom of the sheet.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>L1</b> · tap Who: the company and the person</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet new">
+      <div class="grab"></div>
+      <div class="h4">Who pulled it</div>
+      <h3>Ridgeway Builders <span class="pill ok">Good</span></h3>
+      <div class="mut">General contractor · filed as RIDGEWAY BUILDERS LLC</div>
+      <div class="acts"><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%22Ridgeway%20Builders%22%20San%20Antonio"><i>G</i>Google the company</a><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%22Dana%20Whitlock%22%20%22Ridgeway%20Builders%22"><i>G</i>Google Dana Whitlock</a></div>
+      <div class="src"><div class="from"><b>On the permit</b><span>the city's feed, Nov 6</span></div>
+        <div class="kv"><span>Filed by</span><span>Dana Whitlock</span><span>Company</span><span>Ridgeway Builders LLC</span><span>Named on</span><span>3 permits this year</span></div></div>
+      <div class="src"><div class="from"><b>On Google</b><span>read Nov 10 · <a class="lnk" style="font-size:inherit" href="#l">Look again</a></span></div>
+        <div class="kv"><span>Phone</span><span><a class="lnk" href="#l">210 555 0100</a></span><span>Website</span><span><a class="lnk" href="#l">ridgewaybuilders.example</a></span><span>Office</span><span>4410 Sample Parkway</span><span>Kind</span><span>General contractor</span><span>Reviews</span><span>4.6 from 38 reviews</span></div></div>
+      <div class="src"><div class="from"><b>In our books</b><span>live</span></div>
+        <div class="kv"><span>Customer</span><span>since 2024 · <a class="lnk" href="#l">Open</a></span><span>Bids</span><span>5 priced, 3 won, last in June</span><span>Jobs</span><span>2 billed, paid in 31 days on average</span><span>People</span><span>Dana Whitlock, Marcus Oyelaran</span></div></div>
+      <div class="src"><div class="from"><b>Their permits</b><span>the city's feed, 12 months</span></div>
+        <div class="kv"><span>Pulled</span><span>4 permits · <a class="lnk" href="#i">See them</a></span><span>No plumber yet</span><span>2</span><span>Plumber used</span><span>Blue Heron Plumbing on 2</span></div></div>
+      <div class="src"><div class="from"><b>More, one press away</b><span>opens in a new tab</span></div>
+        <div class="door"><div>The state's business record<span>Status, registered agent, officers. The name is copied.</span></div><a class="lnk" href="#l">Open</a></div>
+        <div class="door"><div>The plumbing license roll<span>When the name is a plumber.</span></div><a class="lnk" href="#l">Open</a></div>
+      </div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div></div></div>
+    <p class="say">The two Google presses in this frame work. They search for the made-up names. A person is searched with their company, so a common name finds the right one.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>L2</b> · tap the building: the address</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet new">
+      <div class="grab"></div>
+      <div class="h4">The building</div>
+      <h3>2400 Lantern Creek Blvd, 78249</h3>
+      <div class="acts"><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%222400%20Lantern%20Creek%20Blvd%22%20San%20Antonio"><i>G</i>Google the address</a><a class="lnk" href="#b" style="align-self:center">Street view · Satellite · Map</a></div>
+      <div class="src"><div class="from"><b>The permit, as the city gave it</b><span>the city's feed, Nov 6</span></div>
+        <div class="kv"><span>Type</span><span>Commercial Project Application</span><span>Number</span><span>COM-PRJ-APP26-00000001</span><span>Project name</span><span>Lantern Creek Retail, shell</span><span>Work</span><span>New commercial</span><span>Applied</span><span>Nov 6, not issued yet</span><span>Declared</span><span>$1,400,000</span><span>Area</span><span>6,200 sq ft</span></div>
+        <p style="margin:6px 0 0"><a class="lnk" href="#l">Show every field the city sent</a></p></div>
+      <div class="src"><div class="from"><b>At the county</b><span>read Nov 10 · the roll runs behind a sale</span></div>
+        <div class="kv"><span>Owner of record</span><span>Lantern Creek Retail LP <a class="g solo" target="_blank" rel="noreferrer" title="Search Google for this name" href="https://www.google.com/search?q=%22Lantern%20Creek%20Retail%20LP%22"><i>G</i></a></span><span>Mailing</span><span>900 Sample Plaza, Suite 4</span><span>Doing business as</span><span>none given</span><span>Land</span><span>$610,000</span><span>Buildings</span><span>$0</span><span>Use</span><span>Vacant commercial</span><span>Built</span><span>nothing yet</span><span>Lot</span><span>2.1 acres</span></div>
+        <p style="margin:6px 0 0"><a class="lnk" href="#l">Open at the appraisal district</a></p></div>
+      <div class="src"><div class="from"><b>Every permit on this address</b><span>the city's feed</span></div>
+        <div class="kv"><span>Nov 6</span><span>Building, new commercial · Ridgeway Builders</span><span>Oct 21</span><span>Site work · Ridgeway Builders</span><span>Plumbing</span><span>none yet</span></div></div>
+      <div class="src"><div class="from"><b>More, one press away</b><span>opens in a new tab</span></div>
+        <div class="door"><div>The city's own record<span>Applicant, contractor, reviews. The number is copied.</span></div><a class="lnk" href="#l">Open</a></div>
+        <div class="door"><div>The county clerk's deeds<span>Who bought it, and when.</span></div><a class="lnk" href="#l">Open</a></div>
+      </div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div></div></div>
+    <p class="say">The same sheet opens from the dig in and from a row on All permits. From there it has no Keep and Pass.</p>
+  </div>
+  <div class="col" style="flex:1 1 300px;max-width:470px">
+    <span class="cap">where each fact comes from</span>
+    <table class="plain">
+      <tr><th>Fact</th><th>Today</th></tr>
+      <tr><td>Phone, website, office, kind of business</td><td><b>In the app.</b> The Who pulled it card reads Google for it.</td></tr>
+      <tr><td>Owner of record, mailing address, values, use, year built, area, acres</td><td><b>In the app.</b> The same card reads the county's parcel layer.</td></tr>
+      <tr><td>Our bids and wins with the name</td><td><b>In the app</b>, as one word and a count.</td></tr>
+      <tr><td>Every field the city's feed sent</td><td><b>Stored, shown nowhere.</b> The row is kept whole. Showing it costs nothing.</td></tr>
+      <tr><td>Every permit on the address, and by the builder</td><td><b>Stored, shown nowhere</b> except the plumber pairing.</td></tr>
+      <tr><td>Google search for a name or an address</td><td><b>New.</b> A link. No cost and no key.</td></tr>
+      <tr><td>Google's review score</td><td><b>New, to check.</b> The same Google call can return it. It may cost more per call.</td></tr>
+      <tr><td>The state's business record, the plumbing license roll, the county clerk's deeds, the city's own record</td><td><b>Doors.</b> Each is a public search page. Reading one by machine is to check, source by source.</td></tr>
+    </table>
+    <p class="note"><b>So, is there such a flow today?</b> Half of one. The Who pulled it card shows Google, the county and our history for one name, and it opens only from a row on the ledger or the map. There is no sheet for the building, the feed's full row is never shown, and nothing searches Google.</p>
   </div>
 </div>
 
@@ -703,6 +791,7 @@
   <li><b>The first draft put the mark on the skim card as a press.</b> A mark is a judgment about a company, with a reason. It moved to the builder and the dig in. The skim only shows it.</li>
 </ol>
 <p class="note"><b>The owner's look, 2026-11-10.</b> Good as drawn, and better with a map and a street view. Both are now on every skim card (frames A to C and I), bigger on the desk (frame F) and side by side on the dig in (frame H), with a tap to open either one big (frame B4). The first draft had only a small map strip, which said where and nothing about what is there. Two tiles of equal size were chosen over a street view with a small map in its corner, since the miles are read as often as the picture. A swipe between the two pictures was not drawn: it would fight the card's own swipe.</p>
+<p class="note"><b>The owner's second look, 2026-11-10.</b> Much better, and two more asks: a tap on Who or on the building that shows as much public information as there is, and a small Google button beside a name. Both are section L. The first draft made the reader go to the dig in for any of this, which is one step too late: the facts that decide a keep are the ones on these sheets. They are sheets over the card, not pages, so the deck is never left and the two answers stay under the thumb.</p>
 <p class="note"><b>What the render showed.</b> Checked in the browser at desk width and at 375. The live deck in frame A answers by button, by drag and by key, takes a reason, undoes, and ends on the caught-up card. Three things were fixed after seeing them: the stack's blue line broke into two columns, a dashed box sat on top of the address on two cards, and the triage table used K for both keep and move. One thing stays as it is on purpose: the desk card in frame F is short enough that the Up next column, not the card, is where the eye goes first. That may be right. It is the owner's to judge on the frame.</p>
 <p class="note"><b>Still weak, and said plainly.</b> The card can only show what the feed and the county give. On the live tab 137 of the 163 waiting permits are applications whose work reads only Commercial project, 70 declare no value, and the history word reads new name on 162. The first weeks of the skim will be made on the street, the size, the owner of record and the miles. The card gets better as builders collect permits, marks and people, which is the reason the builder work is in the same plan and not a later one. The other weak spot is the swipe itself: a drag that starts at the left edge of a phone is the browser's own Back. The drag starts on the card, the card sits inside the page's gutter, and the buttons never go away.</p>
 
@@ -740,9 +829,9 @@
     return '<span class="stamp keep">KEEP</span><span class="stamp pass">PASS</span>' +
       '<div class="media"><div class="sv ' + p.sv[0] + '"><span class="tag">' + p.sv[1] + '</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:' + p.pin[0] + '%;top:' + p.pin[1] + '%"></span><span class="miles">' + p.miles + '</span></div></div>' +
       '<div class="body"><div class="kind">' + p.kind + '</div><h3>' + p.title + '</h3><div class="money">' + p.money + '</div><div class="where">' + p.where + '</div>' +
-      '<div class="fact"><span class="k">Who</span><span class="v"><b>' + p.who + '</b> <span class="pill ' + p.mark[0] + '">' + p.mark[1] + '</span><span class="sub">' + p.hist + '</span><span class="sub">' + p.perm + '</span></span></div>' +
+      '<div class="fact tap"><span class="k">Who</span><span class="v"><b>' + p.who + '</b> <span class="pill ' + p.mark[0] + '">' + p.mark[1] + '</span> <a class="g solo" target="_blank" rel="noreferrer" title="Search Google for this name" href="https://www.google.com/search?q=' + encodeURIComponent('"' + p.who + '" San Antonio') + '"><i>G</i></a><span class="sub">' + p.hist + '</span><span class="sub">' + p.perm + '</span></span></div>' +
       '<div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ' + p.plumber[0] + '">' + p.plumber[1] + '</span></span></div>' +
-      '<div class="fact"><span class="k">Property</span><span class="v">' + p.owner + '<span class="sub">' + p.lot + '</span></span></div></div>' +
+      '<div class="fact tap"><span class="k">Property</span><span class="v">' + p.owner + '<span class="sub">' + p.lot + '</span></span></div></div>' +
       '<div class="answers"><button class="press grey" data-a="pass">← Pass</button><button class="press green" data-a="keep">Keep →</button></div>';
   }
   function undoHtml() {
@@ -783,7 +872,7 @@
     var startX = 0, dx = 0, on = false;
     var k = card.querySelector('.stamp.keep'), p = card.querySelector('.stamp.pass');
     card.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button, a')) return;
       on = true; startX = e.clientX; dx = 0; card.style.transition = 'none';
       try { card.setPointerCapture(e.pointerId); } catch (err) {}
     });

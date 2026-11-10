@@ -2,7 +2,7 @@
 name: "Permits: skim every one in a few seconds, dig into the few, and know the builders"
 number: 302
 group: gated
-status: asked 2026-11-10 · the live tab walked the same day at desk and phone width (163 permits wait on a look, none has a verdict) · planned and drawn the same day as eleven frames with a working skim in frame A · the owner's look the same day: good, and better with a map and a street view, so both went onto every card, the desk, the dig in and a bigger look (frame B4) · nothing built, nothing written to prod · waiting on his eight calls
+status: asked 2026-11-10 · the live tab walked the same day at desk and phone width (163 permits wait on a look, none has a verdict) · planned and drawn the same day as eleven frames with a working skim in frame A · the owner's look the same day: good, and better with a map and a street view, so both went onto every card, the desk, the dig in and a bigger look (frame B4) · his second look the same day: much better, and a tap on Who or on the building should show everything public, with a small Google button beside a name, so both were drawn as section L · nothing built, nothing written to prod · waiting on his eight calls
 mockup: to-dos/permit-skim/mockup.html
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one: a
@@ -17,9 +17,9 @@ summary: >
   unseen. The longer view is the builder: a name on a permit becomes a company that later permits
   match to, with a good or avoid mark that keeps who set it and why, our own contacts, and a join
   when two names are one company.
-next: The owner's eight calls under What the owner settles. On his word to build, PR 1 (the kernel), PR 2 (the skim on today's tables, no migration) and PR 3 (the street view and the map on the card).
-size: XL as a train of ten (S · M · S · S · M · M · M · M · M · S)
-blocker: The owner's eight calls. PR 1 to PR 3 stand on the defaults drawn if he says build as drawn.
+next: The owner's eight calls under What the owner settles. On his word to build, PR 1 (the kernel), PR 2 (the skim on today's tables, no migration), PR 3 (the street view and the map on the card) and PR 4 (everything public on a tap, and the Google press).
+size: XL as a train of eleven (S · M · S · M · S · M · M · M · M · M · S)
+blocker: The owner's eight calls. PR 1 to PR 4 stand on the defaults drawn if he says build as drawn.
 opinion: build the skim first — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and a week of real answers and reasons is what the builder work should be designed from
 ---
 
@@ -109,6 +109,20 @@ record and what stands on the lot).
   Street view, Satellite and Map as three chips and the two answers still at the bottom; on a desk
   both sit larger beside the card and S opens the big one. Nothing inside the card is dragged
   sideways but the card. Only the top card and the one under it load their pictures.
+- **Everything public, on a tap** (asked for on the owner's second look; frames L1 and L2). The
+  Who line and the Property line are presses. Each opens a sheet over the card, with Keep and Pass
+  still at its foot, that lays out what is public source by source with the day it was read.
+  **Who**: the name as filed and the person who filed it, Google's record (phone, website, office,
+  kind of business), our books (customer, bids, wins, jobs, people), their permits and the plumber
+  they use, and doors to the state's business record and the plumbing license roll. **The
+  building**: the permit as the city gave it with every field the feed sent, the county's parcel
+  (owner of record, mailing address, doing business as, land and building values, use, year
+  built, area, acres), every permit on the address, and doors to the city's own record and the
+  county clerk's deeds. The same sheets open from the dig in and from a row on All permits.
+- **The Google press.** A small round G beside a builder's name, a person's name, an owner of
+  record and an address. It opens a Google search in a new tab: a person is searched with their
+  company, a company and an address with the city. It is a link, so it costs nothing and needs
+  no key.
 - **Two answers.** Keep for a closer look, or Pass. On a phone a drag right keeps and a drag left
   passes; the word appears past a third of the card's width and the card springs back before it.
   The two buttons are always there and are the control; the swipe is the shortcut. On a desk the
@@ -118,7 +132,7 @@ record and what stands on the lot).
   one-tap reasons (Too small, Too far, Not our work, Not this builder) and Undo. Tapping a reason
   is optional and never holds the next card. A keep shows *Kept for a closer look* and Undo. The
   reason earns its keep twice: the next reader of Closed sees why, and a month of counted reasons
-  says which rules to set (PR 10).
+  says which rules to set (PR 11).
 - **A stack** (frame C). Permits from one builder on one street filed within a week draw as one
   card that lists them, with *Pass all 6* and *Keep all 6* and a link to answer them one by one. A
   permit in the group that already has a plumber is left out and the bar says so. A failure on one
@@ -210,6 +224,8 @@ Rough terms; no migration is written.
 | The site's facts | `permit_lookups` (a parcel and a company, cached a month), `permit-lookup` | The county lookup run by the nightly pull for every permit in the deck (free, no key), so the card has the owner without a press |
 | The miles | `estimateDrivingMiles` in `src/lib/bidDistanceToOffice.ts`; the point on the permit | Nothing but the call |
 | The street view | `street-view-preview` proxies Google's Street View picture and its metadata with the key on the server; `src/lib/fetchStreetViewPreview.ts` (`fetchStreetViewImageBlob`, `fetchStreetViewMeta`, `googleStreetViewPanoUrl`) is its client, used by the job window and Job Mode | The metadata answer gains the month the picture was taken. Each picture is a paid Google call, loaded when a card is on top and never stored; the volume is the backlog once and about seven a day after |
+| Everything public about the name | `WhoPulledItSheet`: Google's record, the county's parcel, our history as one word and a count, the city's portal with the number copied. It opens from a name on the ledger or the map only | The sheet opened from the skim card and the dig in, with our books in full and the builder's permits. A Google search link. Google's review score if the same call returns it at a fair cost (to check). Doors to the state's business record and the plumbing license roll; reading either by machine is to check |
+| Everything public about the address | The county's parcel facts, inside the Who card. `permits.raw` keeps every column the feed sent (all but its search text) and no screen shows it. `permits.address_key` already pairs permits on one address | A sheet of its own: the feed's full row, the parcel, every permit on the address, doors to the city's record and the county clerk's deeds |
 | The map and satellite | The pins canvases with the office ring (`PinsMapCanvas`, `PinsMapGoogleCanvas`); satellite tiles in `src/components/materials/OnSiteMap.tsx` | A small still tile of one pin for the card; the full canvas in the bigger look |
 | A builder | Nothing holds one. `customers` are who we bill; `bids_gc_builders` is the legacy name list bids fall back to; `gc_companies` are trade partners; `prospects` are companies on a calling deck. `permits.contact` is free text | `builders` (name, kind, the Google facts promoted from the lookup, and at most one link each to a customer, a prospect and a trade partner) and `builder_names` (one row per name key, unique, so a name can belong to one builder only) |
 | A join of two | `merge_customers` with its preview and its field choices, for customers only | A builder join that moves names, people and notes and can be undone. Smaller than the customer merge: no money hangs off a builder |
@@ -253,6 +269,12 @@ were chosen over a street view with a small map in its corner, since the miles a
 as the picture, and a swipe between the two pictures was not drawn, since it would fight the
 card's own swipe.
 
+On his second look (much better, and two more asks): the first draft sent the reader to the dig in
+for the facts behind a name or an address, which is one step too late, since those are the facts
+that decide a keep. They became two sheets over the card, not pages, so the deck is never left.
+What is drawn as data is what the app can already read (the feed, Google, the county, our own
+books); what it cannot read yet is drawn as a door, not as a promise.
+
 Asked again of the rendered page, at desk width and at 375: the working deck answers by button,
 drag and key, takes a reason, undoes and ends on the caught-up card. Three things were fixed on
 sight (the stack's line broke in two, a dashed box sat on an address, the triage table used one
@@ -290,29 +312,36 @@ merge.
    address, the month taken added to `street-view-preview`'s metadata answer (its section in
    `docs/EDGE_FUNCTIONS.md`, deployed after the merge), satellite when there is no picture, the
    map tile with the office ring, and loading for the top two cards only. On the desk, S.
-4. **The swipe and the stack (S).** The drag on a phone over the same answers, and the stack card
+4. **Everything public, and the Google press (M, no migration).** The Who sheet grown from
+   `WhoPulledItSheet` (our books in full, the builder's permits, the doors) and a new sheet for
+   the building (the feed's full row read from `permits.raw`, the parcel, every permit on the
+   address by `address_key`), both opened from the card's Who and Property lines with the two
+   answers at the foot. `googleSearchDoor` as a pure function with tests: what is searched for a
+   person, a company, an owner and an address. A lookup still runs only when a sheet is opened,
+   and stays cached a month.
+5. **The swipe and the stack (S).** The drag on a phone over the same answers, and the stack card
    with its counted presses through `batchWords`, acting on what is ready and naming what failed.
-5. **The four places (M, a migration).** A reason code on a verdict, the two new states (put back,
+6. **The four places (M, a migration).** A reason code on a verdict, the two new states (put back,
    not pursuing), a read with no window that returns the deck and the four counts in one call, and
    the step strip: Kept (reading the look-again day, with the got-a-plumber strip) and Closed (the
    three chips, the search, Put back). `plumbingOnFile` after a keep closes the permit.
-6. **The dig in (M).** The page at `/prospects/permits/:id` and its route, the sections of frame
+7. **The dig in (M).** The page at `/prospects/permits/:id` and its route, the sections of frame
    H from what the two sheets already load, the notes log, Pursue through today's
    `approachFromPermit`, Not pursuing with its five reasons. The nightly pull asks the county for
    every permit in the deck, so the skim card's Property line fills without a press. The app
    directory and the access matrix get the page.
-7. **Builders, the identity (M, a migration).** `builders` and `builder_names`, the matcher as a
+8. **Builders, the identity (M, a migration).** `builders` and `builder_names`, the matcher as a
    pure kernel shared by the pull and a one-time backfill, `research_permits` returning the
    builder, the skim card's builder line read from it (their permits this year, how many have no
    plumber, the plumber they use), and the Builders list, read-only.
-8. **The builder's page: the mark, the kind, the join (M, a migration).** `builder_marks`, the
+9. **The builder's page: the mark, the kind, the join (M, a migration).** `builder_marks`, the
    mark sheet, the kind (with Files for others changing the skim card's lead), Also filed as,
    Same company as… with its undo, the link to a customer, a prospect or a trade partner. Good
    builders lift to the front of the deck.
-9. **People (M, a migration).** `builder_people`, Add a person on the builder and the dig in, the
+10. **People (M, a migration).** `builder_people`, Add a person on the builder and the dig in, the
    feed's person offered with *Add her number*, a linked customer's people read and written in
    place, and Pursue carrying the people onto the lead.
-10. **Rules from what the reasons say (S).** After a month of answers: the reasons counted on
+11. **Rules from what the reasons say (S).** After a month of answers: the reasons counted on
    Closed, and rules the office turns on (a builder marked Avoid, a kind, a value) that pass a
    permit by themselves, each counted and listed under Closed with Put back. A line in the
    estimators' morning mail: how many wait on a skim.
@@ -350,14 +379,15 @@ one permit and puts it back.
    Answer the walk's permit back from the ledger's Change.
 2. PR 3: the top card shows a street view with its month and the map with the miles; an address
    with no picture shows satellite and says so; a tap opens the bigger look and the answers work
-   from inside it. PR 4: at 375 wide a drag right past a third of the card keeps, a shorter drag springs back, and
+   from inside it. PR 4: a tap on Who and a tap on Property each open their sheet, the G opens a
+   Google search for the name in a new tab, and Keep works from inside a sheet. PR 5: at 375 wide a drag right past a third of the card keeps, a shorter drag springs back, and
    a drag from the left edge of the screen does not answer. A stack's press says its count.
-3. PR 5: the four counts on the strip add up to the rows above the filter under All permits. Put
+3. PR 6: the four counts on the strip add up to the rows above the filter under All permits. Put
    back returns a passed permit to the deck.
-4. PR 6: a kept permit's page opens from Kept and from its link; Pursue makes one lead with the
+4. PR 7: a kept permit's page opens from Kept and from its link; Pursue makes one lead with the
    people and the owner of record on it; the lead is deleted after the walk and the permit put
    back.
-5. PR 7 to 9: two permits with one company name sit on one builder; a mark shows on that builder's
+5. PR 8 to 10: two permits with one company name sit on one builder; a mark shows on that builder's
    skim card with its reason; Same company as joins two and Split a name off undoes it.
 
 No live permit row, address or applicant goes in a test, a doc or this card. The mock-up's names
@@ -369,5 +399,7 @@ counts under What is there today are counts only.
 2026-11-10: asked, the live tab walked read-only at desk and phone width, the plan written and the
 mock-up drawn and checked in the browser. Card #302 claimed on `claude/laughing-hopper-0a3816`.
 The owner looked the same day: good, and better with a map and a street view. Both were drawn in
-(the cards, frame F, frame H and the new frame B4) and the plan gained PR 3. Nothing is built and
+(the cards, frame F, frame H and the new frame B4) and the plan gained PR 3. His second look: much better, with a tap on Who or the building for
+everything public and a Google button by a name; drawn as section L, and the plan gained PR 4.
+Nothing is built and
 nothing was written to prod. Waiting on his eight calls.
