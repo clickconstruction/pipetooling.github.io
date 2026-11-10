@@ -122,6 +122,18 @@ Press the chip to open the deal's ledger.
 
 On the Customers list, **Total open balance** counts money owed only. The part a deal pays is named under it as scheduled in kind. **Owes money** leaves that part out too. Press **In kind** to list everyone who pays this way.
 
+## A new job for a customer who pays in kind
+
+A new job is not on the arrangement until a person puts it there. The job window says so in a strip under the tabs. Press **Put it on the arrangement** to add the job.
+
+Bill Customer asks the same thing once. It says the customer pays in kind and asks how this bill is paid. Nothing is picked for you.
+
+Pick **In kind, on the arrangement** to put the job on the deal. Then press **Record the bill in kind**. The bill is recorded and sent to nobody.
+
+Pick **With money** to bill it like any other job. It is sent and chased as usual.
+
+A job that is already on the arrangement gets no question. Bill Customer opens ready to record the bill in kind. To bill that job for money, take it off the arrangement first under **Change the terms**.
+
 ## See every arrangement
 
 Open [Accounts Receivable](/accounts-receivable) and press **In kind** at the top. The [In kind](/in-kind) page lists every customer who pays this way.
