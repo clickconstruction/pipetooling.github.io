@@ -304,11 +304,15 @@ function AppContent() {
           }
         />
         <Route path="/legal/confirm" element={<LegalConfirm />} />
+        {/* The staff preview is lazy and sits outside the Layout's Suspense, so it carries its own: Back onto it after a
+            reload suspended in a popstate, which React treats as a press, and blanked the page. */}
         <Route
           path="/estimate/customer-accept-preview/:id"
           element={
             <ProtectedRoute>
-              <EstimateAcceptStaffPreview />
+              <Suspense fallback={null}>
+                <EstimateAcceptStaffPreview />
+              </Suspense>
             </ProtectedRoute>
           }
         />
