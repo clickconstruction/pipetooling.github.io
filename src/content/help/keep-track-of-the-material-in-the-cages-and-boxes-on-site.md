@@ -80,9 +80,13 @@ Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with 
 
 The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code.
 
-The first time on a computer, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Add it as a printer with Brother's driver. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm. The browser remembers both.
+The app prints straight to the P-touch from Chrome or Edge on a computer. There is nothing to install. The first time, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Quit Brother's P-touch Editor if it is open. Press **Connect the P-touch** and pick the printer in the browser's list. The browser remembers it.
 
-Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**.
+Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one.
+
+Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
+
+On Windows with Brother's driver, you can press **Use the print window instead**. In the print window, pick the P-touch and the paper that matches your tape, 18 mm or 24 mm.
 
 Untick a box to leave it out. **None** clears them all and **Every box** picks them all again. That is the quick way to print one new cage's strip.
 
