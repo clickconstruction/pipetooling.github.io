@@ -14,7 +14,12 @@ import { builderKeyOf } from '../_shared/permitLookup.ts'
  * Pull now, as a signed-in researcher.
  *
  * Auth: `X-Cron-Secret` = CRON_SECRET, or a bearer JWT whose user passes
- * `user_can_research_permits()`. Body: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`.
+ * `user_can_research_permits()`. Body: `{ since?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', dry_run?: boolean }`.
+ *
+ * With `since` and `until` together the run is a read back as history (punch list #307): only
+ * the days from `since` up to, not including, `until`; every row lands flagged `backfilled`, so it
+ * counts for a builder and a bid's site and never sits on the skim; and a row already held is
+ * left exactly as it is. It needs migration *_permit_history and refuses to run without it.
  */
 
 const corsHeaders = {
@@ -37,8 +42,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 type FeedOutcome = { source: string; since: string; seen: number; kept: number; pages: number; error: string | null }
 
-async function readPage(feed: PermitFeed, since: string, offset: number): Promise<Record<string, unknown>[]> {
-  const url = `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, since, PAGE, offset))}`
+async function readPage(feed: PermitFeed, since: string, offset: number, until: string | null): Promise<Record<string, unknown>[]> {
+  const url = `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, since, PAGE, offset, until))}`
   const res = await fetch(url, { headers: { Accept: 'application/json' } })
   if (!res.ok) throw new Error(`the feed answered ${res.status}`)
   const body = (await res.json()) as { success?: boolean; result?: { records?: Record<string, unknown>[] }; error?: unknown }
@@ -55,7 +60,7 @@ serve(async (req) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
   const cronSecret = Deno.env.get('CRON_SECRET')
 
-  let body: { since?: unknown; dry_run?: unknown } = {}
+  let body: { since?: unknown; until?: unknown; dry_run?: unknown } = {}
   try {
     body = (await req.json()) ?? {}
   } catch {
@@ -77,6 +82,10 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const dryRun = body.dry_run === true
   const sinceOverride = typeof body.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.since) ? body.since : null
+  // A read back as history: a window with both ends, each row flagged, nothing already held touched.
+  const until = typeof body.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.until) ? body.until : null
+  if (until && (!sinceOverride || sinceOverride >= until)) return jsonResponse({ error: 'A read back needs since before until.' }, 400)
+  const history = until != null
   const today = todayYmdInAppTz()
   const started = Date.now()
   const outcomes: FeedOutcome[] = []
@@ -106,7 +115,7 @@ serve(async (req) => {
           outcome.error = 'stopped on the time budget; the next run carries on'
           break
         }
-        const records = await readPage(feed, since, offset)
+        const records = await readPage(feed, since, offset, until)
         outcome.pages++
         outcome.seen += records.length
         const rows: PermitRow[] = []
@@ -120,8 +129,11 @@ serve(async (req) => {
         const unique = [...byKey.values()]
         if (!dryRun) {
           for (let i = 0; i < unique.length; i += UPSERT_BATCH) {
-            const slice = unique.slice(i, i + UPSERT_BATCH).map((row) => ({ ...row, pulled_at: new Date().toISOString() }))
-            let { error } = await admin.from('permits').upsert(slice, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: false })
+            const slice = unique.slice(i, i + UPSERT_BATCH).map((row) => ({ ...row, pulled_at: new Date().toISOString(), ...(history ? { backfilled: true } : {}) }))
+            // History never rewrites a row already held: it would flip a permit on the skim to backfilled.
+            let { error } = await admin.from('permits').upsert(slice, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: history })
+            // A read back without its column would land old permits on the skim: it stops instead.
+            if (error && history && /backfilled/.test(error.message)) throw new Error('the database change for history is not in yet; nothing was read back')
             // Deployed ahead of migration *_permit_skim, the column is not there yet: the rows still land, without their key.
             if (error && /builder_key/.test(error.message)) {
               const bare = slice.map(({ builder_key: _dropped, ...rest }) => rest)
@@ -150,14 +162,14 @@ serve(async (req) => {
     console.log(JSON.stringify({ fn: 'permit-pull', ...outcome }))
   }
 
-  // The builder's key on the rows the table already held (punch list #302): building permits with a
-  // contact and no key yet, read by id so a row whose name keys to nothing is passed once, not forever.
+  // The builder's key on the rows the table already held (punch list #302, and since #307 the plumbing
+  // permits too): a contact and no key yet, read by id so a row whose name keys to nothing is passed once, not forever.
   const keys = { looked: 0, set: 0, error: null as string | null }
   if (!dryRun) {
     try {
       let after = '00000000-0000-0000-0000-000000000000'
       for (let round = 0; round < KEY_ROUNDS && Date.now() - started < BUDGET_MS; round++) {
-        const { data, error } = await admin.from('permits').select('id, contact').eq('kind', 'building').is('builder_key', null).not('contact', 'is', null).gt('id', after).order('id').limit(KEY_BATCH)
+        const { data, error } = await admin.from('permits').select('id, contact').is('builder_key', null).not('contact', 'is', null).gt('id', after).order('id').limit(KEY_BATCH)
         if (error) throw new Error(error.message)
         const batch = (data ?? []) as Array<{ id: string; contact: string | null }>
         if (batch.length === 0) break
@@ -179,5 +191,5 @@ serve(async (req) => {
   }
 
   const failed = outcomes.filter((o) => o.error)
-  return jsonResponse({ ok: failed.length === 0, dryRun, feeds: outcomes, builderKeys: keys, ms: Date.now() - started })
+  return jsonResponse({ ok: failed.length === 0, dryRun, history, feeds: outcomes, builderKeys: keys, ms: Date.now() - started })
 })

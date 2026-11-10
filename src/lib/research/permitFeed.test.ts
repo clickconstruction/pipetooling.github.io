@@ -117,6 +117,10 @@ describe('feedPageSql', () => {
   })
   it('refuses a since-day that is not a day', () => {
     expect(() => feedPageSql(issued, "2026-10-01' OR 1=1 --", 10, 0)).toThrow()
+    // A read back as history takes only the days before its end.
+    expect(feedPageSql(issued, '2026-05-26', 500, 0, '2026-08-26')).toContain(`"DATE ISSUED" >= '2026-05-26' AND "DATE ISSUED" < '2026-08-26' AND (`)
+    expect(feedPageSql(issued, '2026-05-26', 500, 0)).not.toContain(' < ')
+    expect(() => feedPageSql(issued, '2026-05-26', 10, 0, "2026-08-26' OR 1=1 --")).toThrow()
   })
 })
 
