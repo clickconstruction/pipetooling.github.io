@@ -24,10 +24,12 @@ import {
   type SkimAnswer,
   type SkimCard,
 } from '../../lib/research/permitSkim'
+import { noParcelWords, scoresMiles } from '../../lib/research/permitCityDoors'
 import { cardHistory, earlierWords, type HistoryEvent } from '../../lib/research/permitHistory'
 import { loadContactHistory, loadPermitHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
 import { passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from '../../lib/research/permitSecondLook'
 import { swipeAnswer, swipeIsScroll, swipeMayStart, swipeProgress } from '../../lib/research/permitLook'
+import { skimCardSidePadding } from '../../lib/prospects/pagePadding'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { PermitSkimLook } from './PermitSkimLook'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
@@ -150,9 +152,9 @@ export function PermitSkimDeck({
   }, [waitingKeys])
 
   const deck = useMemo(() => {
-    const ctx = { todayYmd, office, history, ...skimBuilderContext(rows) }
+    const ctx = { todayYmd, office, history, scoreMiles: scoresMiles(city, office), ...skimBuilderContext(rows) }
     return (mode === 'second' ? secondLookDeck(rows, ctx, floor, authUserId) : skimDeck(rows, ctx, floor)).filter((c) => !done.has(c.row.id))
-  }, [rows, todayYmd, office, history, floor, done, mode, authUserId])
+  }, [rows, todayYmd, office, history, floor, done, mode, authUserId, city])
   // How far back the builder's count can see (punch list #307): the day the records start, or a year.
   const recordsStart = usePermitRecordsStart(city)
   const reach = reachWords(recordsReach(recordsStart, todayYmd), todayYmd)
@@ -429,6 +431,7 @@ export function PermitSkimDeck({
   const asks = googleAsksForContact(row.contact, row.city)
   const where = [row.address ?? row.permit_number, row.zip].filter(Boolean).join(', ')
   const far = milesWords(top.miles)
+  const side = skimCardSidePadding(isMobile)
   // A second-look card says the pass in its amber line, so its history starts one answer earlier.
   const past = cardHistory(histories.get(row.id) ?? [], 2, mode === 'second' ? 1 : 0)
   const earlier = earlierWords(past.earlier)
@@ -455,8 +458,8 @@ export function PermitSkimDeck({
         </>
       )}
       <PermitSkimLook row={row} milesWords={far} compact={isMobile} />
-      {mode === 'second' && <div style={{ padding: '7px 16px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', fontWeight: 600 }}>{passedByWords(row, todayYmd)}</div>}
-      <div style={{ padding: '14px 16px 4px' }}>
+      {mode === 'second' && <div style={{ padding: `7px ${side}px`, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', fontWeight: 600 }}>{passedByWords(row, todayYmd)}</div>}
+      <div style={{ padding: `14px ${side}px 4px` }}>
         <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {row.work_type ?? 'Permit'} · {filedWords(row, todayYmd)}
         </div>
@@ -507,7 +510,7 @@ export function PermitSkimDeck({
               {parcel?.state === 'done' && parcel.facts?.owner ? parcel.facts.owner : 'The permit and the county’s record'}
             </button>
             <span style={{ ...muted, display: 'block', marginTop: 2 }}>
-              {!parcel || parcel.state === 'loading' ? 'Asking the county…' : parcel.facts ? lotWords(parcel.facts) : 'The county has no parcel under this street address.'}
+              {!parcel || parcel.state === 'loading' ? 'Asking the county…' : parcel.facts ? lotWords(parcel.facts) : noParcelWords(city, true)}
             </span>
           </span>
           <span />
@@ -533,7 +536,7 @@ export function PermitSkimDeck({
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '12px 16px 16px', ...(isMobile ? stickyAnswers : null) }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: `12px ${side}px ${isMobile ? 12 : 16}px`, ...(isMobile ? stickyAnswers : null) }}>
         <button type="button" onClick={() => answer(top, 'pass')} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 10, minHeight: 52, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {!isMobile && (
             <kbd aria-hidden="true" style={keyCap}>

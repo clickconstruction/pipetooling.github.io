@@ -26,10 +26,11 @@ export function BidGcTiedNames({ customerIds, customerName }: { customerIds: rea
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const idsKey = [...customerIds].sort().join(',')
-  const city = RESEARCH_CITIES[0] ?? ''
+  const cities = RESEARCH_CITIES
   const today = todayYmdInAppTz()
-  const recordsStart = usePermitRecordsStart(city)
-  const reach = reachWords(recordsReach(recordsStart, today), today)
+  const recordsStart = usePermitRecordsStart(cities[0] ?? '')
+  // One city's records have one start; across several cities no single day is true, so no span is claimed.
+  const reach = cities.length === 1 ? reachWords(recordsReach(recordsStart, today), today) : null
 
   const load = useCallback(async () => {
     const answers = await loadNameAnswers(idsKey === '' ? [] : idsKey.split(','))
@@ -38,11 +39,11 @@ export function BidGcTiedNames({ customerIds, customerName }: { customerIds: rea
     const names = tiedNames(foldNameAnswers(answers.rows, idsKey.split(',')), customerName, answers.me, (id) => people.get(id) ?? null)
     const rows: Row[] = []
     for (const n of names) {
-      const all = await loadPermitsOfBuilder(city, n.key, today)
+      const all = (await Promise.all(cities.map((c) => loadPermitsOfBuilder(c, n.key, today)))).flat()
       rows.push({ ...n, permits: n.tie === 'permits' ? all.filter((p) => n.permitIds.includes(p.id)) : all })
     }
     setLoaded({ state: 'done', rows })
-  }, [idsKey, customerName, city, today])
+  }, [idsKey, customerName, cities, today])
 
   useEffect(() => {
     let live = true

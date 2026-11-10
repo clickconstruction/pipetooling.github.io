@@ -31,6 +31,9 @@ import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
+import { photosSlot } from '../../lib/bids/bidPhotoWindow'
+import { CameraGlyph } from '../materials/PhotoPress'
+import { BidPhotosWindow } from './BidPhotosWindow'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
@@ -118,6 +121,10 @@ type BidsBidBoardTabProps = {
   countSourcesByBid?: ReadonlyMap<string, ReadonlyArray<{ id: string; link: string; project_name: string | null }>>
   /** v2.6169: the plan sets on each bid — the plans icon opens one set directly and offers two or more in a picker; a bid with no row reads as one set, its own plans link. */
   planSetsByBid?: ReadonlyMap<string, ReadonlyArray<BidPlanSetRow>>
+  /** Punch list #306: how many photos each bid has, for the photos icon; null while the count has not read. Left out, the icon is not drawn. */
+  photoCountsByBid?: ReadonlyMap<string, number> | null
+  /** The photos window added a photo: the page reads the counts again. */
+  onBidPhotosChanged?: () => void
   /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
   onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
   /** PR 1b: the page's one `list_bid_job_account_strip` read, when the page owns it — the board then skips its own. */
@@ -257,6 +264,8 @@ export function BidsBidBoardTab({
   budgetChips,
   countSourcesByBid,
   planSetsByBid,
+  photoCountsByBid,
+  onBidPhotosChanged,
   onLinkJobToBid,
   jobAccountStrips: pageJobAccountStrips,
   onOpenJobAccountsLens,
@@ -350,6 +359,9 @@ export function BidsBidBoardTab({
   const [robotKeyOpen, setRobotKeyOpen] = useState(false)
   // v2.6169: the bid whose plan sets the picker lists (two or more sets; one opens itself).
   const [planSetsModalBid, setPlanSetsModalBid] = useState<BidWithBuilder | null>(null)
+  // Punch list #306: the bid whose Photos window is open.
+  const [photosWindowBid, setPhotosWindowBid] = useState<BidWithBuilder | null>(null)
+  const drawPhotosIcon = photoCountsByBid !== undefined
   const robotKeyButton = (
     <button
       type="button"
@@ -878,8 +890,12 @@ export function BidsBidBoardTab({
     )
   }
 
-  /** Only the artifact links that exist, as an icon cluster ('—' when none). */
-  function renderBidBoardLinksCluster(bid: BidWithBuilder) {
+  /**
+   * The artifact links as an icon cluster. The photos icon comes first and is always there (punch list #306): grey
+   * until the bid has photos, blue with their count after; it opens the Photos window. The other links draw only
+   * when they exist, for now ('—' when the photos icon is not drawn and there is nothing else).
+   */
+  function renderBidBoardLinksCluster(bid: BidWithBuilder, touch = false) {
     const links: Array<{ href: string; title: string; d: string; /** v2.6169: the plans icon with two or more sets opens the picker instead of a link; `count` rides on the icon. */ pick?: () => void; count?: string | null }> = []
     if (bid.drive_link) links.push({ href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
     // v2.6169: the bid's plan sets — one set is the link it always was (its title names the set); two or more open the picker.
@@ -896,7 +912,8 @@ export function BidsBidBoardTab({
     if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
     const job = jobsByBidId?.get(bid.id) ?? null
     const budgetChip = isWonOutcome(bid.outcome) ? (budgetChips?.get(bid.id) ?? null) : null
-    if (links.length === 0 && !job && !budgetChip) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    if (links.length === 0 && !job && !budgetChip && !drawPhotosIcon) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    const photos = drawPhotosIcon ? photosSlot(photoCountsByBid == null ? null : (photoCountsByBid.get(bid.id) ?? 0)) : null
     const chipBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.1rem 0.45rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.3, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
     return (
       <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -955,6 +972,20 @@ export function BidsBidBoardTab({
             <BidBoardIcon d={BID_BOARD_ICON_PATHS.job} size={13} />
             {bidBoardJobLinkLabel(job.hcpNumber)}
           </Link>
+        ) : null}
+        {photos ? (
+          <button
+            type="button"
+            title={photos.title}
+            aria-label={`Photos: ${photos.title}`}
+            data-testid="bid-board-photos-press"
+            data-photos-state={photos.state}
+            onClick={(e) => { e.stopPropagation(); setPhotosWindowBid(bid) }}
+            style={{ color: photos.state === 'blue' ? 'var(--text-blue-500)' : 'var(--text-faint)', opacity: photos.state === 'blue' ? 1 : 0.6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', ...(touch ? { minWidth: 44, minHeight: 40 } : null) }}
+          >
+            <CameraGlyph size={touch ? 24 : 20} />
+            {photos.count ? <span style={{ fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-blue-700)' }}>{photos.count}</span> : null}
+          </button>
         ) : null}
         {links.map((l) =>
           l.pick ? (
@@ -1691,7 +1722,7 @@ export function BidsBidBoardTab({
           ) : null}
           {renderBidFollowupChip(bid, 'full')}
         </div>
-        {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
+        {hasLinks || drawPhotosIcon ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid, true)}</div> : null}
         {bid.outcome === 'lost' ? (
           <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
             {renderLostStripReason(bid)}
@@ -2242,6 +2273,13 @@ export function BidsBidBoardTab({
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
+      {photosWindowBid ? (
+        <BidPhotosWindow
+          bid={{ id: photosWindowBid.id, label: [(photosWindowBid as { bid_number?: string | null }).bid_number?.trim() ? `b${(photosWindowBid as { bid_number?: string | null }).bid_number?.trim()}` : '', bidDisplayName(photosWindowBid)].filter(Boolean).join(' ') || 'This bid' }}
+          onClose={() => setPhotosWindowBid(null)}
+          onChanged={onBidPhotosChanged}
+        />
+      ) : null}
       {planSetsModalBid ? (
         <BidPlanSetsModal
           bid={planSetsModalBid}

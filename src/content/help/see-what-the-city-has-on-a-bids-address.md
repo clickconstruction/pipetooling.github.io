@@ -40,7 +40,7 @@ Every answer keeps your name and the day. Press **Undo** to take one back.
 The block never says a site has no permits. It says one of three things.
 
 - **No permit seen** means the city's records hold nothing on that address since the day they start.
-- **No permit records** means the bid is in a town whose permits we do not read. Today we read San Antonio.
+- **No permit records** means the bid is in a town whose permits we do not read. Today we read San Antonio, Austin, New Braunfels, San Marcos and Seguin.
 - **Cannot be looked up** means the address is not a street address. Add the street number and the city.
 
 ## See the jobs you priced for a GC

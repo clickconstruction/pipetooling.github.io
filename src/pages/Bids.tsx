@@ -352,6 +352,8 @@ export default function Bids() {
     bidBoardBudgetChips,
     bidBoardCountSources,
     bidBoardPlanSets,
+    bidBoardPhotoCounts,
+    refreshBidPhotoCounts,
     jobAccountStrips,
     jobAccountsMissingCount,
     moneyStrips,
@@ -1990,6 +1992,8 @@ export default function Bids() {
           budgetChips={bidBoardBudgetChips}
           countSourcesByBid={bidBoardCountSources}
           planSetsByBid={bidBoardPlanSets}
+          photoCountsByBid={bidBoardPhotoCounts}
+          onBidPhotosChanged={refreshBidPhotoCounts}
           onLinkJobToBid={canSeeBidBoardJobLinks(myRole) ? linkJobToBidFromBoard : undefined}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}

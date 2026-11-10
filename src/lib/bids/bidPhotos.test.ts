@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BID_PHOTO_FOLDER_WORDS,
   BID_PHOTO_RETRY_MS,
+  adoptedByName,
   bidFolderHoldWords,
   bidPhotoDueATry,
   bidPhotoFailWords,
@@ -106,6 +107,14 @@ describe('strayPhotoRows', () => {
   it('adopts nothing when every picture has a row, and one row for a file listed twice', () => {
     expect(strayPhotoRows(BID, listed, new Set(['drive-a', 'drive-b', 'drive-c']), NOW)).toEqual([])
     expect(strayPhotoRows(BID, [listed[0]!, listed[0]!], new Set(), NOW)).toHaveLength(1)
+  })
+
+  it('adopts under a person’s name and never under an address', () => {
+    expect(adoptedByName('Dana Whitfield')).toBe('Dana Whitfield')
+    expect(adoptedByName('filer@app-drive.iam.gserviceaccount.com')).toBe('')
+    expect(adoptedByName(null)).toBe('')
+    const [row] = strayPhotoRows(BID, [{ id: 'drive-e', name: 'A.jpg', mime: 'image/jpeg', bytes: 1, created: null, by: 'filer@app-drive.iam.gserviceaccount.com' }], new Set(), NOW)
+    expect(row!.by_name).toBe('')
   })
 
   it('keeps the sizes inside the column', () => {

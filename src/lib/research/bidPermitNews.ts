@@ -55,7 +55,7 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
     const building = lead && lead.kind === 'building' ? lead : null
     const general = [...onSite].sort((a, b) => dayOf(b).localeCompare(dayOf(a))).find((p) => plumbingTypeOf(p.permit_type) === 'general') ?? null
     const listing = general ? plumbingListing(general, building) : null
-    const title = [bid.bid_number ? `B${bid.bid_number.replace(/^B/i, '')}` : null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · ')
+    const title = [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · ')
     const sent = bid.bid_date_sent != null
 
     if (general && listing && !listing.same && listing.name != null) {

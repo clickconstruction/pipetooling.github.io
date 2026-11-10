@@ -29,10 +29,12 @@ When cash goes under your floor, cash comes first. The cash tile takes the top r
 
 Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
 
-- Press a name to change who does the move.
+- Press a name to change who does the move. Pick a person from the list and the move reaches them. Pick **Type a name…** for someone with no account. A typed name reaches nobody, and its chip has a dashed edge.
 - Press {{button:outline|take off}} to drop a move from the call. The step's next move comes on in its place. Press {{button:outline|put back}} to return it.
 - Press {{button:outline|Add a note ›}} to type one line with the call. The card shows the note again once the call stands.
 - Press the blue button to record the call. The button waits until one move is on the call.
+
+Once the call is recorded, each person finds their move on their own [Needs you card](#the-call-reaches-its-people).
 
 After you record it, the card shows each move against today. A move reads *done*, *part* or *not yet*. A move the app cannot measure reads *yours*.
 
@@ -41,6 +43,19 @@ From Friday the card asks whether the step moved. Press {{button:green|It moved}
 When an earlier call was never answered, **The last call** asks for its answer beside this week's card.
 
 To call a different step, press {{button:outline|Pick another step ›}}. The flow opens. Press a stage card there. The card at the top then proposes that step.
+
+## The call reaches its people
+
+A move goes to the person named on it. They do not need to open the Bridge. Their Dashboard's **Needs you** card shows a line named **The week's call**.
+
+- The line reads the move, and who made the call.
+- Its button opens the page where the work is done, such as Stages or Billing.
+- Press **Done** when the work is finished. The line leaves their card.
+- A move with no page has one button, **Mark it done**.
+
+On the Bridge, the card then says who marked a move done. For a move the app can measure, the numbers still decide whether it reads *done*. For one it cannot measure, the person's word decides.
+
+The line leaves by itself when Friday's question is answered, or when the pay week ends.
 
 ## The doors
 

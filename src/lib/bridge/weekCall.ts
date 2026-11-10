@@ -38,6 +38,7 @@ import { shortK, type Headline } from './headline'
 import { LINK_DESK, type DeskMovePreset } from './linkDesk'
 import type { StageFlow, StageReading } from './stageFlow'
 import { THIS_WEEK_DOORS } from './thisWeek'
+import type { MoveMark, RecordedMove } from './callPeople'
 
 /**
  * Moves on the card at a desk, and on a phone. A fourth is a list again. A step's proposal carries every move it has
@@ -90,6 +91,8 @@ export type WeekMove = {
   door: WeekDoor | null
   /** The person the page proposes, or the one named on a recorded call. Empty when nobody. */
   who: string
+  /** That person's account (v2.6864), so the move reaches their Needs you; null or absent for a name with no account. */
+  whoId?: string | null
   /** The number behind it today, kept on the call so Friday can read it again. */
   then: number | null
   /** On a recorded call: how far the number moved, and the word for it. */
@@ -150,6 +153,10 @@ export type WeekCallInput = {
   counts: { billJobs: number | null; lateInvoices: number | null }
   /** First names the page can propose: who is signed in, who sent the most bills, who took the most payments. */
   people: { caller: string; biller: string; collector: string }
+  /** The accounts behind those three names (v2.6864); a move proposed for one carries the account. */
+  peopleIds?: { caller?: string | null; biller?: string | null; collector?: string | null }
+  /** The Done presses people made on the calls' moves (`loadMoveMarks`). */
+  marks?: ReadonlyArray<MoveMark>
   /** The soonest supply bills due on or before the low point: the one bill a call can ask more days on. */
   supplyDue: { usd: number; ymd: string } | null
   calls: ReadonlyArray<BridgeCall>
@@ -247,17 +254,18 @@ function concreteMove(preset: DeskMovePreset, input: WeekCallInput, kind: WeekMo
   const n = input.moveNumbers[preset.key] ?? null
   if (n == null || n <= 0) return null
   const { caller, biller, collector } = input.people
+  const ids = input.peopleIds ?? {}
   if (preset.key === 'bill') {
     const jobs = input.counts.billJobs
-    return { ...base, title: jobs && jobs > 0 ? `Bill the ${count(jobs)} finished ${plural(jobs, 'job', 'jobs')}.` : 'Bill the finished work.', why: `${shortUsd(n)} is finished and not billed.`, door: THIS_WEEK_DOORS.stages, who: biller, then: n }
+    return { ...base, title: jobs && jobs > 0 ? `Bill the ${count(jobs)} finished ${plural(jobs, 'job', 'jobs')}.` : 'Bill the finished work.', why: `${shortUsd(n)} is finished and not billed.`, door: THIS_WEEK_DOORS.stages, who: biller, whoId: ids.biller ?? null, then: n }
   }
   if (preset.key === 'chase') {
     const late = input.counts.lateInvoices
-    return { ...base, title: late && late > 0 ? `Chase the ${count(late)} late ${plural(late, 'invoice', 'invoices')}.` : 'Chase the late invoices.', why: `${shortUsd(n)} is past its day.`, door: THIS_WEEK_DOORS.billing, who: collector, then: n }
+    return { ...base, title: late && late > 0 ? `Chase the ${count(late)} late ${plural(late, 'invoice', 'invoices')}.` : 'Chase the late invoices.', why: `${shortUsd(n)} is past its day.`, door: THIS_WEEK_DOORS.billing, who: collector, whoId: ids.collector ?? null, then: n }
   }
-  if (preset.key === 'approve') return { ...base, title: `Approve the ${count(n)} hours waiting.`, why: 'The week reads low until then.', door: THIS_WEEK_DOORS.approvals, who: caller, then: n }
-  if (preset.key === 'price') return { ...base, title: `Price the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} with no price.`, why: 'Their hours earn nothing until then.', door: THIS_WEEK_DOORS.jobs, who: caller, then: n }
-  return { ...base, title: `Set a percent on the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} without one.`, why: 'They read as half done until then.', door: THIS_WEEK_DOORS.jobs, who: caller, then: n }
+  if (preset.key === 'approve') return { ...base, title: `Approve the ${count(n)} hours waiting.`, why: 'The week reads low until then.', door: THIS_WEEK_DOORS.approvals, who: caller, whoId: ids.caller ?? null, then: n }
+  if (preset.key === 'price') return { ...base, title: `Price the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} with no price.`, why: 'Their hours earn nothing until then.', door: THIS_WEEK_DOORS.jobs, who: caller, whoId: ids.caller ?? null, then: n }
+  return { ...base, title: `Set a percent on the ${count(n)} ${plural(Math.round(n), 'job', 'jobs')} without one.`, why: 'They read as half done until then.', door: THIS_WEEK_DOORS.jobs, who: caller, whoId: ids.caller ?? null, then: n }
 }
 
 /** A link's moves, the ones with a number first: they have a door, and Friday can read them again. */
@@ -299,9 +307,9 @@ function cashMoves(input: WeekCallInput, step: StageReading | null): WeekMove[] 
   const chase = concreteMove({ key: 'chase', title: '' }, input, 'cash')
   if (chase) out.push({ ...chase, why: `${shortUsd(chase.then ?? 0)} is late. The forecast leans on it.` })
   if (input.supplyDue && input.supplyDue.usd > 0) {
-    out.push({ key: 'other', kind: 'cash', title: 'Ask the supply houses for more days.', why: `${shortUsd(input.supplyDue.usd)} of supply bills is due ${input.dayLabel(input.supplyDue.ymd)}.`, door: null, who: input.people.caller, then: null, done: null, doneText: null })
+    out.push({ key: 'other', kind: 'cash', title: 'Ask the supply houses for more days.', why: `${shortUsd(input.supplyDue.usd)} of supply bills is due ${input.dayLabel(input.supplyDue.ymd)}.`, door: null, who: input.people.caller, whoId: input.peopleIds?.caller ?? null, then: null, done: null, doneText: null })
   }
-  if (out.length === 0) out.push({ key: 'other', kind: 'cash', title: 'Delay what can wait. Spend nothing on other links.', why: '', door: null, who: input.people.caller, then: null, done: null, doneText: null })
+  if (out.length === 0) out.push({ key: 'other', kind: 'cash', title: 'Delay what can wait. Spend nothing on other links.', why: '', door: null, who: input.people.caller, whoId: input.peopleIds?.caller ?? null, then: null, done: null, doneText: null })
   const first = step ? proposedMoves(step.id, input, 'step').find((m) => m.key !== 'chase') : null
   if (first) out.push(first)
   return out.slice(0, WEEK_CALL_MOVES)
@@ -309,11 +317,15 @@ function cashMoves(input: WeekCallInput, step: StageReading | null): WeekMove[] 
 
 // ── a recorded call ────────────────────────────────────────────────────────
 
-function scoredMoves(call: BridgeCall, now: CallReadingNow): WeekMove[] {
-  return call.moves.map((m: CallMove) => {
+function scoredMoves(call: BridgeCall, now: CallReadingNow, marks: ReadonlyArray<MoveMark> = []): WeekMove[] {
+  return call.moves.map((m: CallMove, i) => {
     const cur = m.key === 'other' ? null : (now.keys[m.key] ?? null)
-    const done: MoveDone = m.key === 'other' ? 'unknown' : moveDone(m.then, cur)
-    const why = m.key === 'other' ? 'The app cannot read this one. You say.' : `It was ${numberWords(m.key, m.then)}. Today it is ${numberWords(m.key, cur)}.`
+    // The person's own Done press (v2.6864). On a move the app can read it is said beside the numbers, which keep the
+    // verdict; on one it cannot read, their word is the verdict.
+    const mark = marks.find((x) => x.callId === call.id && x.idx === i) ?? null
+    const said = mark ? `${mark.doneBy || m.who || 'Its person'} marked it done.` : ''
+    const done: MoveDone = m.key === 'other' ? (mark ? 'yes' : 'unknown') : moveDone(m.then, cur)
+    const why = m.key === 'other' ? said || 'The app cannot read this one. You say.' : `It was ${numberWords(m.key, m.then)}. Today it is ${numberWords(m.key, cur)}.${said ? ` ${said}` : ''}`
     return { key: m.key, kind: 'step' as const, title: m.title, why, door: null, who: m.who, then: m.then, done, doneText: DONE_TEXT[done] }
   })
 }
@@ -371,7 +383,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
 
   if (call) {
     const name = callName(call.link)
-    const moves = scoredMoves(call, input.now)
+    const moves = scoredMoves(call, input.now, input.marks)
     const line = measureLine(call, input.now, input)
     const by = call.calledByName ? ` by ${call.calledByName}` : ''
     if (call.outcome) {
@@ -451,8 +463,17 @@ export function movesShown<T>(moves: ReadonlyArray<T>, off: ReadonlySet<number>,
 }
 
 /** The moves the record press writes: the ones left on, with the person on each. */
-export function movesToRecord(moves: ReadonlyArray<WeekMove>, off: ReadonlySet<number>, who: ReadonlyMap<number, string>): CallMove[] {
-  return moves.flatMap((m, i) => (off.has(i) ? [] : [{ key: m.key, title: m.title, who: (who.get(i) ?? m.who).trim(), then: m.then }]))
+/**
+ * `who` holds a name changed on the card, `whoIds` the account picked with it. A name changed with no account picked
+ * carries none: a typed name reaches nobody's Needs you. A move left as proposed keeps the account it was proposed with.
+ */
+export function movesToRecord(moves: ReadonlyArray<WeekMove>, off: ReadonlySet<number>, who: ReadonlyMap<number, string>, whoIds: ReadonlyMap<number, string | null> = new Map()): RecordedMove[] {
+  return moves.flatMap((m, i) => {
+    if (off.has(i)) return []
+    const name = (who.get(i) ?? m.who).trim()
+    const whoId = whoIds.has(i) ? (whoIds.get(i) ?? null) : who.has(i) ? null : (m.whoId ?? null)
+    return [{ key: m.key, title: m.title, who: name, whoId: name ? whoId : null, then: m.then }]
+  })
 }
 
 /** A person's first name, as the chip prints it. */
@@ -462,6 +483,11 @@ export function firstName(name: string | null | undefined): string {
 
 /** Who has the most events in the window, by name: the person who bills, or who takes the payments. Empty when nobody is named. */
 export function topPerson(events: ReadonlyArray<{ userId: string | null; ymd: string }>, people: ReadonlyArray<{ userId: string; name: string }>, sinceYmd: string): string {
+  return firstName(people.find((p) => p.userId === topPersonId(events, sinceYmd))?.name)
+}
+
+/** The same person's account; null when nobody is named. */
+export function topPersonId(events: ReadonlyArray<{ userId: string | null; ymd: string }>, sinceYmd: string): string | null {
   const tally = new Map<string, number>()
   for (const e of events) {
     if (!e.userId || e.ymd < sinceYmd) continue
@@ -475,5 +501,5 @@ export function topPerson(events: ReadonlyArray<{ userId: string | null; ymd: st
       bestN = n
     }
   }
-  return firstName(people.find((p) => p.userId === best)?.name)
+  return best
 }

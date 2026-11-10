@@ -24,7 +24,7 @@ import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/j
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
-import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
@@ -274,14 +274,13 @@ export default function LienDeskAffidavitPane({
   const approve = () => run('Approve', async () => void (await approveLienDeskItem(item ? item.id : await ensureDraft())), 'Approved — ready to file.')
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
-  // The earlier form to the short one, on purpose: back to a draft that carries the short form's mark, so whoever approves it reads the paper that will be filed.
+  // The earlier form to the short one, on purpose: back to a draft that carries the short form's mark, in one write, so whoever approves it reads the paper that will be filed.
   const redrawShort = () =>
     run(
       'Redraw on the short form',
       async () => {
         if (!item) return
-        await pullBackLienDeskItem(item.id, authUserId)
-        await saveLienDeskDraft({ itemId: item.id, jobId: entry.jobId, months: [entry.lastMonth], fields: { ...draftFields(), ...LIEN_AFFIDAVIT_SHORT_FORM_MARK }, coverNote: false, userId: authUserId, kind: 'affidavit' })
+        await redrawLienAffidavitShort(item, authUserId)
         setRedrawOpen(false)
       },
       'Redrawn on the short form. It is back in To draft and needs approval again.',

@@ -106,7 +106,7 @@ export interface ListedBidPhoto {
   bytes: number | null
   /** When Drive first held it. */
   created: string | null
-  /** Who put it there, as Drive names them, or null. */
+  /** Who put it there, as Drive names them, or null (the app itself, or nobody Drive names). */
   by: string | null
 }
 
@@ -120,6 +120,12 @@ export interface AdoptedBidPhoto {
   filed_at: string
   bytes: number
   drive_file_id: string
+}
+
+/** The person a picture is adopted under: Drive's name for them; an address is not a name, so it reads as nobody. */
+export function adoptedByName(by: string | null | undefined): string {
+  const name = (by ?? '').trim()
+  return name.includes('@') ? '' : name.slice(0, 120)
 }
 
 /**
@@ -138,7 +144,7 @@ export function strayPhotoRows(bidId: string, listed: readonly ListedBidPhoto[],
     out.push({
       bid_id: bidId,
       name: driveSafeName(fileStem(f.name)).slice(0, 200),
-      by_name: (f.by ?? '').trim().slice(0, 120),
+      by_name: adoptedByName(f.by),
       taken_at: at,
       added_at: at,
       filed_at: at,

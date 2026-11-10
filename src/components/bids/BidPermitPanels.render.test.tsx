@@ -71,7 +71,7 @@ describe('BidSitePermits', () => {
   it('says a town is not read, and asks the table for nothing', async () => {
     renderWithProviders(<BidSitePermits address="3798 Kyle Crossing Kyle, TX 78640" projectName="Cedar Bend Clinic" bidValue="" />)
     expect(await screen.findByText('No permit records for Kyle.')).toBeTruthy()
-    expect(screen.getByText('Permits are read for San Antonio only.')).toBeTruthy()
+    expect(screen.getByText('Permits are read for San Antonio, Austin, New Braunfels, San Marcos and Seguin only.')).toBeTruthy()
     expect(io.loadPermitsByHouseNumber).not.toHaveBeenCalled()
   })
 
@@ -111,9 +111,10 @@ describe('BidGcPermits', () => {
     await waitFor(() => expect(screen.getByText('Of the 2 sites we can see, 1 has a permit. No general plumbing permit under another name seen.')).toBeTruthy())
     expect(io.loadBidsOfCustomers).toHaveBeenCalledWith(['c1', 'c2'])
     expect(io.loadPermitsByHouseNumber).toHaveBeenCalledWith('San Antonio', ['4120', '88'])
-    expect(screen.getByText('San Antonio only')).toBeTruthy()
+    // The cities the GC's bids sit in are named, each with the day its records start once that is known.
+    expect(screen.getByText('San Antonio')).toBeTruthy()
     expect(screen.getByText('2 of your 3 bids with them')).toBeTruthy()
-    expect(screen.getByText('B512 · Mill Street Lofts, Building C')).toBeTruthy()
+    expect(screen.getByText('512 · Mill Street Lofts, Building C')).toBeTruthy()
     expect(screen.getByText('This bid · no general plumbing permit seen')).toBeTruthy()
     expect(screen.getByText('Sent Oct 14 · no permit seen on the address')).toBeTruthy()
     expect(screen.getByText('1 more bid with them is in Kyle. No permit records are read there.')).toBeTruthy()
@@ -124,9 +125,9 @@ describe('BidGcPermits', () => {
     io.loadBidsOfCustomers.mockResolvedValue(bids)
     renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId="b1" />)
     const press = await screen.findByRole('button', { name: 'See the 2 jobs ›' })
-    expect(screen.queryByText('B512 · Mill Street Lofts, Building C')).toBeNull()
+    expect(screen.queryByText('512 · Mill Street Lofts, Building C')).toBeNull()
     fireEvent.click(press)
-    expect(screen.getByText('B512 · Mill Street Lofts, Building C')).toBeTruthy()
+    expect(screen.getByText('512 · Mill Street Lofts, Building C')).toBeTruthy()
   })
 
   it('says so when none of the bids is where permits are read', async () => {

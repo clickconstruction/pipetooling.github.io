@@ -37,6 +37,8 @@ export function recordsStartOf(runs: ReadonlyArray<{ source: string; since: stri
 
 /** How far back the records are worth reading: the first day of the city's current datastore. */
 export const HISTORY_GOAL_YMD = '2025-01-01'
+/** The cities whose feeds can be read up to a day (`pageUrlBefore` in `_shared/permitCities.ts`). The others have no read back yet. */
+export const HISTORY_CITIES: readonly string[] = ['San Antonio']
 /** How much one read back takes: about three months, a run the pull finishes inside its time budget. */
 export const HISTORY_STEP_DAYS = 92
 
@@ -58,6 +60,7 @@ export type HistoryAsk = {
  * records start moves a step at a time and every count says the new day.
  */
 export function historyAsk(city: string, recordsStartYmd: string | null, todayYmd: string): HistoryAsk | null {
+  if (!HISTORY_CITIES.includes(city)) return null
   if (!recordsStartYmd || !/^\d{4}-\d{2}-\d{2}$/.test(recordsStartYmd) || recordsStartYmd <= HISTORY_GOAL_YMD) return null
   const step = ymdPlusDays(recordsStartYmd, -HISTORY_STEP_DAYS)
   const since = step < HISTORY_GOAL_YMD ? HISTORY_GOAL_YMD : step

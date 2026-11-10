@@ -90,7 +90,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
     if (!ask || reading) return
     setReading(true)
     try {
-      const kept = await pullPermitsBack(ask.since, ask.until)
+      const kept = await pullPermitsBack(city, ask.since, ask.until)
       showToast(historyDoneWords(kept, ask.since, todayYmd), 'success')
       setReadBacks((n) => n + 1)
       await load()

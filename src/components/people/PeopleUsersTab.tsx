@@ -36,10 +36,11 @@ import {
 } from './peopleUsersTabShared'
 import CombinePeopleModal from './CombinePeopleModal'
 import { useAuth } from '../../hooks/useAuth'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { canArchiveAccount } from '../../lib/people/personDeskGates'
 import { PersonDeskAwayNoteModal } from '../personDesk/PersonDeskAwayNoteModal'
-import { AWAY_SECTION_WORDS, awaySectionTitle, splitAwayFromArchived, type AwayRow, type AwaySectionNote } from '../../lib/people/awaySection'
-import { AWAY_PREVIEW_WORDS } from '../../lib/people/awayPreview'
+import { awayRestoreConfirm, awaySectionTitle, splitAwayFromArchived, type AwayRow, type AwaySectionNote } from '../../lib/people/awaySection'
+import { UsersTabAwayGroup } from './UsersTabAwayGroup'
 import { AwayPreviewModal } from '../away/AwayPreviewModal'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { supabase } from '../../lib/supabase'
@@ -179,7 +180,8 @@ export function PeopleUsersTab({
   const { role: authRole, readOnly: authReadOnly } = useAuth()
   const canRestoreLogins = canArchiveAccount({ role: authRole, isDev, canAccessPay: access.canAccessPay, canAccessHours: false, canAccessVehicles: false, canAccessLicenses: false, canAccessContracts: false, readOnly: authReadOnly })
   const [archivedLogins, setArchivedLogins] = useState<ArchivedLogin[]>([])
-  // The Away section (v2.6723, punch list #256 PR 10): the notes on the archived logins, and the row whose note is open.
+  // The Away group (v2.6723, punch list #256 PR 10; roster rows since v2.6863): the notes on the archived logins, and the row whose note is open.
+  const confirmDialog = useConfirmDialog()
   const [awayNotes, setAwayNotes] = useState<AwaySectionNote[]>([])
   const [awayNoteFor, setAwayNoteFor] = useState<AwayRow | null>(null)
   // See what they see (v2.6846): the row whose sign-in screen is up as a preview. A look, with no sign-in as them.
@@ -211,7 +213,7 @@ export function PeopleUsersTab({
     if (rows.length > 0) {
       const { data: notes, error: notesError } = await supabase
         .from('away_notes' as never)
-        .select('user_id, countdown_ymd, alert_on_day')
+        .select('user_id, countdown_ymd, alert_on_day, words')
         .in('user_id', rows.map((u) => u.id))
       setAwayNotes(notesError ? [] : ((notes ?? []) as unknown as AwaySectionNote[]))
     } else {
@@ -246,6 +248,13 @@ export function PeopleUsersTab({
     } finally {
       setRestoringLoginId(null)
     }
+  }
+  /** Restore from an Away row (v2.6863): it takes the note down, so it asks first, and its button names the act. */
+  async function restoreAwayLogin(r: AwayRow) {
+    const u = archivedLogins.find((x) => x.id === r.userId)
+    if (!u) return
+    if (!(await confirmDialog(awayRestoreConfirm(r.displayName)))) return
+    await restoreLogin(u)
   }
   // The Away section (v2.6723): an archived login with a note on lists above Archived, its roster row folded in,
   // so Archived holds the sealed and banned alone.
@@ -921,70 +930,28 @@ export function PeopleUsersTab({
       ) : null}
 
       {/* Away (v2.6723, punch list #256 PR 10): a teammate who left with an Away note on — archived, and able to sign in
-          to the note alone. Listed here and not under Archived, so Archived means sealed and banned. */}
+          to the note alone. Listed here and not under Archived, so Archived means sealed and banned. Since v2.6863 the
+          group is drawn as roster rows (UsersTabAwayGroup). */}
       {awayRows.length > 0 && canRestoreLogins ? (
-        <div id="users-tab-away" style={{ marginTop: '2rem', maxWidth: 760, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
-          <div style={{ padding: '1rem 1rem 0.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{awaySectionTitle(awayRows.length)}</h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{AWAY_SECTION_WORDS.sub}</p>
-          </div>
-          <div style={{ padding: '0 1rem 1rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="Away">
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Left</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Back</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {awayRows.map((r) => (
-                  <tr key={r.userId} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {r.displayName}
-                      {r.email ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.email}</div> : null}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{humanRoleLabel(r.role)}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{r.leftWords}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: r.due ? 'var(--text-amber-800)' : undefined, fontWeight: r.due ? 600 : undefined }}>
-                      {r.backWords}
-                      {r.alertOn ? <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · alert on</span> : null}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => setAwayPreviewFor(r)} className="activeAccountsCard__btnSecondary" style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title={AWAY_PREVIEW_WORDS.pressTitle}>
-                          {AWAY_PREVIEW_WORDS.press}
-                        </button>
-                        <button type="button" onClick={() => setAwayNoteFor(r)} className="activeAccountsCard__btnSecondary" style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title={AWAY_SECTION_WORDS.editNoteTitle}>
-                          {AWAY_SECTION_WORDS.editNote}
-                        </button>
-                        {r.door === 'bring_back' && personDesk ? (
-                          <button type="button" onClick={() => personDesk.open({ userId: r.userId, ...(r.personId ? { personId: r.personId } : {}), displayName: r.displayName, flow: 'bring_back' })} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', border: '1px solid #2563eb', background: '#2563eb', color: '#fff', borderRadius: 4, cursor: 'pointer' }} title={AWAY_SECTION_WORDS.bringBackTitle}>
-                            {AWAY_SECTION_WORDS.bringBack}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const u = archivedLogins.find((x) => x.id === r.userId)
-                              if (u) void restoreLogin(u)
-                            }}
-                            disabled={restoringLoginId === r.userId}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                            title={AWAY_SECTION_WORDS.restoreTitle}
-                          >
-                            {restoringLoginId === r.userId ? 'Restoring…' : AWAY_SECTION_WORDS.restore}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ marginTop: narrowViewport ? '0.6rem' : '2rem' }}>
+          <UsersTabAwayGroup
+            rows={awayRows}
+            narrowViewport={narrowViewport}
+            bringBackThroughDesk={Boolean(personDesk)}
+            onSee={(r) => setAwayPreviewFor(r)}
+            onEditNote={(r) => setAwayNoteFor(r)}
+            onDoor={(r, kind) => {
+              if (kind === 'bring_back') {
+                personDesk?.open({ userId: r.userId, ...(r.personId ? { personId: r.personId } : {}), displayName: r.displayName, flow: 'bring_back' })
+                return
+              }
+              void restoreAwayLogin(r)
+            }}
+            openDesk={personDesk?.canOpen ? (r) => personDesk.open({ userId: r.userId, ...(r.personId ? { personId: r.personId } : {}), displayName: r.displayName }) : undefined}
+            restoringUserId={restoringLoginId}
+            swipeOpenId={swipeOpenId}
+            onSwipeChange={(rowId, open) => setSwipeOpenId((cur) => (open ? rowId : cur === rowId ? null : cur))}
+          />
         </div>
       ) : null}
 

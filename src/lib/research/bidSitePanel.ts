@@ -104,6 +104,8 @@ export type GcJobLine = { bidId: string; title: string; chip: Chip; detail: stri
 export type GcJobsView = {
   /** The bids that are street addresses in a city we read, the bid in hand first, then the newest. */
   lines: GcJobLine[]
+  /** The cities those bids sit in, in the order the cities are read. */
+  cities: string[]
   /** How many different sites those are. */
   sites: number
   sitesWithPermit: number
@@ -154,6 +156,7 @@ export function numbersToAsk(bids: readonly Pick<GcBid, 'address' | 'project_nam
 export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<string, readonly SitePermitRow[]>, readCities: readonly string[], currentBidId: string | null): GcJobsView {
   const ours = bids.filter((b) => !ROBOT_BID_RE.test(b.project_name ?? ''))
   const lines: Array<GcJobLine & { day: string }> = []
+  const inCities = new Set<string>()
   const seen = new Map<string, { permit: boolean; plumbing: boolean }>()
   const towns = new Map<string, number>()
   let elsewhereCount = 0
@@ -172,6 +175,7 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
       }
       continue
     }
+    inCities.add(site.city)
     const onSite = permitsOnSite(site, permitsByCity.get(site.city) ?? [])
     const general = [...onSite].sort((a, b) => (dayOf(b) ?? '').localeCompare(dayOf(a) ?? '')).find((p) => plumbingTypeOf(p.permit_type) === 'general') ?? null
     const lead = leadPermit(bid.project_name, onSite)
@@ -188,7 +192,7 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
         : 'no permit seen on the address'
     lines.push({
       bidId: bid.id,
-      title: [bid.bid_number ? `B${bid.bid_number.replace(/^B/i, '')}` : null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · '),
+      title: [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · '),
       chip,
       detail: `${statusWords(bid, current)} · ${plumbingWords}`,
       current,
@@ -208,6 +212,7 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
   const townWords = shown.length === 0 ? 'other towns' : townNames.length > 3 ? `${shown.join(', ')} and other towns` : listWords(shown)
   return {
     lines: lines.map(({ day: _day, ...line }) => line),
+    cities: readCities.filter((c) => inCities.has(c)),
     sites,
     sitesWithPermit,
     sitesWithGeneralPlumbing,

@@ -80,6 +80,8 @@ describe('a read back as history', () => {
     expect(historyAsk('San Antonio', HISTORY_GOAL_YMD, TODAY)).toBeNull()
     expect(historyAsk('San Antonio', '2024-06-01', TODAY)).toBeNull()
     expect(historyAsk('San Antonio', null, TODAY)).toBeNull()
+    // A city whose feed cannot be read up to a day has no read back yet.
+    expect(historyAsk('Seguin', '2026-08-26', TODAY)).toBeNull()
   })
 
   it('says what a read back kept', () => {

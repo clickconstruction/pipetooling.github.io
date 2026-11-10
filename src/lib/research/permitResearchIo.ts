@@ -5,6 +5,7 @@
  * and the RPC are newer than the generated types, so the calls use the house `as never` pattern
  * until the next chore(types) regen.
  */
+import { cityReadsParcels } from './permitCityDoors'
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -212,9 +213,9 @@ export async function approachFromPermit(row: ResearchPermitRow, role: PermitLea
 
 export type PullNowOutcome = { ok: boolean; feeds: Array<{ source: string; seen: number; kept: number; error: string | null }> }
 
-/** Pull now: the same run the night makes, as the signed-in researcher. */
-export async function pullPermitsNow(): Promise<PullNowOutcome> {
-  const { data, error } = await supabase.functions.invoke('permit-pull', { body: {} })
+/** Pull now: the same run the night makes, for the city on screen, as the signed-in researcher. */
+export async function pullPermitsNow(city: string): Promise<PullNowOutcome> {
+  const { data, error } = await supabase.functions.invoke('permit-pull', { body: { city } })
   if (error) failed(error, 'run the pull')
   const body = (data ?? {}) as Partial<PullNowOutcome>
   return { ok: body.ok === true, feeds: body.feeds ?? [] }
@@ -225,8 +226,8 @@ export async function pullPermitsNow(): Promise<PullNowOutcome> {
  * count for a builder and a bid's site and never sit on the skim. Returns how many permits it
  * kept. A feed that stopped short is a failure, with its reason: the records' start must not move.
  */
-export async function pullPermitsBack(sinceYmd: string, untilYmd: string): Promise<number> {
-  const { data, error } = await supabase.functions.invoke('permit-pull', { body: { since: sinceYmd, until: untilYmd } })
+export async function pullPermitsBack(city: string, sinceYmd: string, untilYmd: string): Promise<number> {
+  const { data, error } = await supabase.functions.invoke('permit-pull', { body: { city, since: sinceYmd, until: untilYmd } })
   if (error) failed(error, 'read the permits back')
   const body = (data ?? {}) as Partial<PullNowOutcome> & { error?: string }
   if (body.error) throw new Error(body.error)
@@ -261,6 +262,8 @@ export function lookupCompany(contact: string, city: string, refresh = false): P
 
 /** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
 export function lookupParcel(address: string, city: string, refresh = false): Promise<LookupAnswer<ParcelFacts>> {
+  // Only Bexar County's parcel record is read; another city's card says so and opens the appraisal district.
+  if (!cityReadsParcels(city)) return Promise.resolve({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
   return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh })
 }
 

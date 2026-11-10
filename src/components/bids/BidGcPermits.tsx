@@ -21,6 +21,12 @@ import { BidGcTiedNames } from './BidGcTiedNames'
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 
+/** One city a GC's bids sit in, with the day its records start: "San Antonio · since Aug 26". */
+function CityScopeChip({ city, today }: { city: string; today: string }) {
+  const start = usePermitRecordsStart(city)
+  return <PermitChip chip={{ words: start ? `${city} · since ${reachDay(start, today)}` : city, tone: 'blue' }} />
+}
+
 /** How many jobs show before the rest fold behind a press on a desk. */
 const DESK_LINES = 6
 
@@ -32,7 +38,6 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
   const [open, setOpen] = useState(false)
   const idsKey = [...customerIds].sort().join(',')
   const today = todayYmdInAppTz()
-  const recordsStart = usePermitRecordsStart(RESEARCH_CITIES[0] ?? '')
 
   useEffect(() => {
     let live = true
@@ -89,8 +94,9 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
     <div style={box} data-testid="bid-gc-permits">
       {title}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <PermitChip chip={{ words: `${RESEARCH_CITIES.join(', ')} only`, tone: 'blue' }} />
-        {recordsStart && <PermitChip chip={{ words: `since ${reachDay(recordsStart, today)}`, tone: 'blue' }} />}
+        {view.cities.map((c) => (
+          <CityScopeChip key={c} city={c} today={today} />
+        ))}
         <PermitChip chip={{ words: view.coverage, tone: 'grey' }} />
       </div>
       <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>The jobs you priced for them</div>

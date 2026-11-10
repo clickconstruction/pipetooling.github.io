@@ -72,11 +72,36 @@ describe('BridgeWeek', () => {
     expect(onRecord).toHaveBeenCalledWith(
       'bill',
       [
-        { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', then: 142_000 },
-        { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', then: 4 },
+        { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', whoId: null, then: 142_000 },
+        { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', whoId: null, then: 4 },
       ],
       null,
     )
+  })
+
+  it('picks a person from the accounts, so the move carries who it reaches (PR 4)', () => {
+    const onRecord = vi.fn()
+    // Made-up accounts; the first move is proposed for Dana's account.
+    const people = [{ id: 'u-dana', name: 'Dana Reyes' }, { id: 'u-jorge', name: 'Jorge Luna' }, { id: 'u-sam', name: 'Sam Holt' }]
+    const withIds: WeekCallModel = { ...propose, card: { ...propose.card, moves: propose.card.moves.map((m, i) => (i === 0 ? { ...m, whoId: 'u-dana' } : m)) } }
+    renderWithProviders(<BridgeWeek model={withIds} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} people={people} />)
+    // The second move was proposed for a name with no account: its chip says so.
+    expect(screen.getByRole('button', { name: /Sam does: Price the 4 jobs/ }).getAttribute('title')).toBe('No account, so this move reaches nobody’s Needs you.')
+    expect(screen.getByRole('button', { name: /Dana does: Bill the 11 finished jobs/ }).getAttribute('title')).toBeNull()
+    // Press it: a pick from the accounts, not a box to type in.
+    fireEvent.click(screen.getByRole('button', { name: /Sam does: Price the 4 jobs/ }))
+    const pick = screen.getByRole('combobox', { name: 'Who does: Price the 4 jobs with no price.' })
+    expect(Array.from(pick.querySelectorAll('option')).map((o) => o.textContent)).toEqual(['Nobody', 'Dana Reyes', 'Jorge Luna', 'Sam Holt', 'Type a name…'])
+    fireEvent.change(pick, { target: { value: 'u-jorge' } })
+    expect(screen.getByRole('button', { name: /Jorge does: Price the 4 jobs/ })).toBeTruthy()
+    // The third move: a typed name, which reaches nobody.
+    fireEvent.click(screen.getByRole('button', { name: /Name who does: Take bank sorting/ }))
+    fireEvent.change(screen.getByRole('combobox', { name: /Who does: Take bank sorting/ }), { target: { value: '__type_a_name__' } })
+    const box = screen.getByRole('textbox', { name: /Who does: Take bank sorting/ })
+    fireEvent.change(box, { target: { value: 'the office' } })
+    fireEvent.blur(box)
+    fireEvent.click(screen.getByTestId('bridge-week-record'))
+    expect(onRecord.mock.calls[0]?.[1].map((m: { who: string; whoId: string | null }) => [m.who, m.whoId])).toEqual([['Dana', 'u-dana'], ['Jorge', 'u-jorge'], ['the office', null]])
   })
 
   it('takes a note with the call, and shows it under a call that stands (v2.6840)', () => {
