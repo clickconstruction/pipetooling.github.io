@@ -2,8 +2,9 @@
 name: "Bids and permits: what the city knows about this site and this GC, on the bid"
 number: 307
 group: gated
-status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · nothing built
-mockup: to-dos/bid-permits/mockup.html
+status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · nothing else built
+mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html)
+ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4)
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
   a person bidding. The test on real rows says the name is the weak join and the address is the
@@ -18,7 +19,7 @@ summary: >
   its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
   small table of answers. San Antonio covers about three bid sites in ten, so every line says
   what it can see: the city, the first day of the records, and what a count is out of.
-next: The owner's look at the redrawn pick and his word on the seven calls. PR 1 is a kernel and a count, with no migration and nothing on a screen, and can start on his word.
+next: The owner's word on the seven calls, call 1 first. PR 1 is a kernel and a count, with no migration and nothing on a screen, and can start on his word.
 size: L as a train of eight (S · M · M · S · M · M · S · M); PR 1 and 2 alone answer whether this site has a permit
 blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
@@ -296,8 +297,8 @@ The same fault ran through the pick, so every line was read for what it claims.
 
 It changed the design and not only the words. The GC's half used to open on permits tied by
 name, the part the test found empty. It now opens on the jobs we priced for them, which stands
-on addresses alone and works the day it ships. The live Permits tab has the same fault today
-and PR 4 fixes it: a builder reads *permits in the last year* on 75 days of records.
+on addresses alone and works the day it ships. The live Permits tab had the same fault, a
+builder reading *permits in the last year* on 75 days of records, and it is fixed as v2.6857.
 
 Still weak in the pick: a permit on a shared address may be another tenant's, so *looks like
 this job* is a hint that can be wrong; seven sites in ten have no records until more cities are
@@ -355,9 +356,11 @@ fences when they make a table, and are pushed from a checkout of main after the 
    are counted and named. A setting holds the names that are us on a plumbing permit.
 4. **A year and more of history, and the live tab's words (S, the function redeployed).**
    `permit-pull` takes a first day for a one-time run back to January 2025 and fills
-   `builder_key` on the plumbing rows. Every count on Permits says the day the records start,
-   read from `permit_pulls`: `builderWords`, `builderLine` and the two lines in `PermitBuilders`
-   that say *this year* and *in the last year*.
+   `builder_key` on the plumbing rows. **The words were built 2026-11-10 as v2.6857**
+   (`docs/recent-features/v2.6857.md`, [`before-after-live-words.html`](before-after-live-words.html)):
+   every count on Permits says the day the records start, read from `permit_pulls` by
+   `permitReach.ts`, and goes back to *in the last year* by itself once the run back has been
+   made. Left: the run back and the plumbing keys.
 5. **Permit news on the Bid Board (M).** One read for every open and sent bid, never one per
    row. The strip, the chips on the row and the phone card, the line on a follow-up, and
    *Mark lost…* opening the outcome the board already has.
@@ -401,14 +404,15 @@ until PR 6.
 - `research_permits` pairs any plumbing-kind permit on an address with a building permit, so an
   irrigation permit can close a building permit as *Has a plumber* on the skim. It belongs to
   #302.
-- The permits on hand start 2026-08-26, so the live tab overstates the way the first panel did:
-  the Who card says *This name pulled N other permits in the last 365 days*, and Builders says
-  *N permits this year* and *in the last year*, on 75 days of records. PR 4 here fixes the words.
+- The permits on hand start 2026-08-26, and the live tab overstated the way the first panel
+  did: the Who card said *This name pulled N other permits in the last 365 days*, and Builders
+  said *N permits this year* and *in the last year*, on 75 days of records. Fixed as v2.6857.
 
 ## Where it stands
 
 2026-11-10: asked, read, tested on real rows through the dev seat, drawn and planned in one
 sitting. The owner's word on the first panel the same day brought the third look: the pick
 redrawn to say what we can see, the GC's half re-aimed at the jobs priced for them, and the plan
-grown from seven PRs to eight. Nothing is built and nothing was written to prod. The seven calls
-wait on the owner.
+grown from seven PRs to eight. On his yes, the live tab's count lines were fixed as v2.6857, the
+words half of PR 4, walked on real data at desk and phone width with nothing pressed. Nothing
+else is built and nothing was written to prod. The seven calls wait on the owner.

@@ -207,17 +207,27 @@ export function ourBidsWords(row: Pick<BuilderRow, 'bids' | 'won'>): string {
   return `${row.bids} priced, ${row.won === 0 ? 'none won' : `${row.won} won`}`
 }
 
+/** A builder's count on the Builders list and its sheet: "4 permits since Aug 26, 2 with no plumber yet". */
+export function builderCountWords(row: Pick<BuilderRow, 'permits' | 'open'>, reach: string | null): string {
+  return `${row.permits} permit${row.permits === 1 ? '' : 's'} ${reach ?? 'we can see'}, ${row.open} with no plumber yet`
+}
+
 /** "Blue Heron Plumbing on 2" or "nobody yet". */
 export function plumberUsedWords(row: Pick<BuilderRow, 'plumber' | 'plumber_jobs'>): string {
   return row.plumber ? `${row.plumber} on ${row.plumber_jobs}` : 'nobody yet'
 }
 
-/** Under who pulled it on a card: how busy the builder is. Null until the builder's permits are counted. */
-export function builderLine(row: Pick<ResearchPermitRow, 'builder_permits' | 'builder_open'>): string | null {
+/**
+ * Under who pulled it on a card: how busy the builder is, as far back as the records go (`reach`
+ * is `reachWords`: "since Aug 26", "in the last year", or null when the start is not known).
+ * Null until the builder's permits are counted.
+ */
+export function builderLine(row: Pick<ResearchPermitRow, 'builder_permits' | 'builder_open'>, reach: string | null): string | null {
   const n = row.builder_permits ?? 0
   if (n <= 0) return null
   const open = row.builder_open ?? 0
-  const first = n === 1 ? 'Their one permit this year.' : `${n} permits this year.`
+  const span = reach ?? 'we can see'
+  const first = n === 1 ? `Their one permit ${span}.` : `${n} permits ${span}.`
   if (n === 1) return first
   return `${first} ${open === 0 ? 'A plumber is on every one.' : open === 1 ? '1 has no plumber yet.' : `${open} have no plumber yet.`}`
 }

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Permits: every count says what we can see, before and after</title>
+<style>
+  /* Punch list #307, the live tab's words (v2.6857). Every name, street, count and date here is made up: Hartwell
+     Interiors, Marlow Design Group, Ridgeway Builders, Lone Oak Plumbing, Brazos Mechanical. Tokens are src/index.css's. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --bg-red-100: #fee2e2; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-red-700: #b91c1c; --text-link: #2563eb; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --bg-red-100: #4c1d1d; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-red-700: #fca5a5; --text-link: #60a5fa; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 320px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 84ch; }
+  #theme { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; cursor: pointer; }
+  b, strong { color: var(--text-strong); }
+  h2 { font-size: 18px; margin: 36px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 10px; color: var(--text-700); max-width: 96ch; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .pair.wide { grid-template-columns: 1fr; }
+  .side { display: grid; gap: 6px; min-width: 0; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap.after { color: var(--text-green-700); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; display: grid; gap: 8px; min-width: 0; overflow-x: auto; }
+  .before .card { border-style: dashed; box-shadow: none; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+  .title { font-weight: 600; font-size: 14px; color: var(--text-strong); }
+  mark { background: var(--bg-red-100); color: var(--text-red-700); border-radius: 4px; padding: 0 3px; }
+  .after mark { background: var(--bg-green-100); color: var(--text-green-700); }
+  .kv { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 10px; font-size: 14px; }
+  .kv > span:nth-child(odd) { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+  .list { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 3px 10px; font-size: 14px; }
+  .list > span:nth-child(odd) { color: var(--text-muted); }
+  .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; background: var(--bg-200); color: var(--text-700); }
+  .pill.g { background: var(--bg-green-100); color: var(--text-green-700); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th { text-align: left; font-size: 11.5px; color: var(--text-muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 13px; }
+  tr:last-child td { border-bottom: 0; }
+  .r { text-align: right; }
+  .name { font-weight: 700; color: var(--text-link); }
+  .scope { background: var(--bg-muted); border-radius: 8px; padding: 8px 12px; color: var(--text-700); font-size: 13px; }
+  .rule { margin: 14px 0 0; display: grid; gap: 6px; max-width: 96ch; }
+  .rule p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--text-green-700); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #307 · the live Permits tab · v2.6857 · every name and number made up</p>
+    <h1>Every count says what we can see</h1>
+    <p>Prospects → Permits holds San Antonio's permits from the day the first pull reached back to. Four lines said <i>this year</i>, <i>the last year</i> or <i>the last 365 days</i> on 75 days of records, and said a name <i>pulled</i> them. Red marks what overstated. Green marks what it reads now.</p>
+  </div>
+  <button type="button" id="theme">Dark</button>
+</header>
+
+<h2>1 · The skim card's Who line</h2>
+<p class="lede">Under the name on every card in the deck.</p>
+<div class="pair">
+  <div class="side before"><div class="cap">Before</div><div class="card">
+    <div class="kv"><span>Who</span><span><b>Hartwell Interiors</b> · new name<br><span class="muted">4 permits <mark>this year</mark>. 2 have no plumber yet.</span></span></div>
+  </div></div>
+  <div class="side after"><div class="cap after">After</div><div class="card">
+    <div class="kv"><span>Who</span><span><b>Hartwell Interiors</b> · new name<br><span class="muted">4 permits <mark>since Aug 26</mark>. 2 have no plumber yet.</span></span></div>
+  </div></div>
+</div>
+
+<h2>2 · Who pulled it → Their other permits</h2>
+<p class="lede">The card behind a name.</p>
+<div class="pair">
+  <div class="side before"><div class="cap">Before</div><div class="card">
+    <div class="title">Their other permits</div>
+    <div class="muted">This name <mark>pulled</mark> 3 other permits <mark>in the last 365 days</mark>.</div>
+    <div class="list"><span>Nov 3</span><span>Commercial remodel · 310 Alder Row</span><span>Oct 14</span><span>Commercial project · 88 Harbor St</span><span>Sep 2</span><span>Commercial remodel · 2210 Larkspur Dr</span></div>
+  </div></div>
+  <div class="side after"><div class="cap after">After</div><div class="card">
+    <div class="title">Their other permits</div>
+    <div class="muted">This name <mark>is on</mark> 3 other permits <mark>we can see since Aug 26</mark>.</div>
+    <div class="list"><span>Nov 3</span><span>Commercial remodel · 310 Alder Row</span><span>Oct 14</span><span>Commercial project · 88 Harbor St</span><span>Sep 2</span><span>Commercial remodel · 2210 Larkspur Dr</span></div>
+  </div></div>
+</div>
+
+<h2>3 · Builders</h2>
+<p class="lede">The list of every name on a commercial permit. A line over the list now says where the records start, and the column carries the day.</p>
+<div class="pair wide">
+  <div class="side before"><div class="cap">Before</div><div class="card">
+    <table>
+      <tr><th>Builder</th><th>Mark</th><th class="r"><mark>Permits, 12 mo</mark></th><th class="r">Without a plumber</th><th>Last permit</th><th>Plumber they use</th></tr>
+      <tr><td><span class="name">Hartwell Interiors</span></td><td><span class="pill">No mark</span></td><td class="r">4</td><td class="r">2</td><td>Nov 3</td><td>Lone Oak Plumbing on 2</td></tr>
+      <tr><td><span class="name">Marlow Design Group</span><br><span class="muted">Architect or engineer</span></td><td><span class="pill g">Good</span></td><td class="r">3</td><td class="r">3</td><td>Oct 29</td><td>nobody yet</td></tr>
+      <tr><td><span class="name">Ridgeway Builders</span></td><td><span class="pill">No mark</span></td><td class="r">1</td><td class="r">0</td><td>Sep 30</td><td>Brazos Mechanical on 1</td></tr>
+    </table>
+  </div></div>
+  <div class="side after"><div class="cap after">After</div><div class="card">
+    <div class="scope"><mark>San Antonio's records here start Aug 26. Every count is what we can see since then.</mark></div>
+    <table>
+      <tr><th>Builder</th><th>Mark</th><th class="r"><mark>Permits since Aug 26</mark></th><th class="r">Without a plumber</th><th>Last permit</th><th>Plumber they use</th></tr>
+      <tr><td><span class="name">Hartwell Interiors</span></td><td><span class="pill">No mark</span></td><td class="r">4</td><td class="r">2</td><td>Nov 3</td><td>Lone Oak Plumbing on 2</td></tr>
+      <tr><td><span class="name">Marlow Design Group</span><br><span class="muted">Architect or engineer</span></td><td><span class="pill g">Good</span></td><td class="r">3</td><td class="r">3</td><td>Oct 29</td><td>nobody yet</td></tr>
+      <tr><td><span class="name">Ridgeway Builders</span></td><td><span class="pill">No mark</span></td><td class="r">1</td><td class="r">0</td><td>Sep 30</td><td>Brazos Mechanical on 1</td></tr>
+    </table>
+  </div></div>
+</div>
+
+<h2>4 · A builder's sheet, and the phone's row</h2>
+<p class="lede">The line under the builder's name, the title over their permits, and the same line on a phone's list.</p>
+<div class="pair">
+  <div class="side before"><div class="cap">Before</div><div class="card">
+    <div class="muted">Builder</div>
+    <div class="title" style="font-size:17px">Hartwell Interiors</div>
+    <div class="muted">4 permits <mark>in the last year</mark>, 2 with no plumber yet · last filed Nov 3</div>
+    <div class="title" style="margin-top:6px">Their permits, <mark>the last 365 days</mark></div>
+    <div class="list"><span>Nov 3</span><span>Commercial remodel · 310 Alder Row</span><span>Oct 14</span><span>Commercial project · 88 Harbor St</span></div>
+  </div></div>
+  <div class="side after"><div class="cap after">After</div><div class="card">
+    <div class="muted">Builder</div>
+    <div class="title" style="font-size:17px">Hartwell Interiors</div>
+    <div class="muted">4 permits <mark>since Aug 26</mark>, 2 with no plumber yet · last filed Nov 3</div>
+    <div class="title" style="margin-top:6px">Their permits <mark>since Aug 26</mark></div>
+    <div class="list"><span>Nov 3</span><span>Commercial remodel · 310 Alder Row</span><span>Oct 14</span><span>Commercial project · 88 Harbor St</span></div>
+  </div></div>
+</div>
+
+<h2>5 · Once the records reach back a whole year</h2>
+<p class="lede">Nothing is hard-wired to Aug 26. The day is read from the pull's own log. When a longer pull has run, the same lines say a year again, and the line over Builders goes away.</p>
+<div class="pair">
+  <div class="side after"><div class="cap after">The skim card</div><div class="card"><div class="muted">4 permits <mark>in the last year</mark>. 2 have no plumber yet.</div></div></div>
+  <div class="side after"><div class="cap after">Their other permits</div><div class="card"><div class="muted">This name is on 3 other permits we can see <mark>in the last year</mark>.</div></div></div>
+</div>
+
+<div class="rule">
+  <p><b>The rule, from the owner's word on #307:</b> a count names how far back it can see, and a name is <i>on</i> a permit. The card's title, <i>Who pulled it</i>, is his own phrase for the question and stays.</p>
+  <p><b>Not in this change:</b> the feed's one contact is still shown as the name. Saying <i>the name the city lists</i> on every screen waits for the bid's permit lines in #307.</p>
+</div>
+</div>
+<script>
+  var btn = document.getElementById('theme');
+  btn.addEventListener('click', function () {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.textContent = dark ? 'Dark' : 'Light';
+  });
+</script>
+</body>
+</html>

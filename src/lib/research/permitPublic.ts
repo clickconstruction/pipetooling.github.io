@@ -218,11 +218,16 @@ export function builderPermitLines(rows: readonly SitePermit[], contact: string 
   return out.sort(newestFirst)
 }
 
-/** The sentence over a name's other permits. */
-export function builderWords(lines: readonly PermitLine[], days: number): string {
+/**
+ * The sentence over a name's other permits. It says what we can see, never what a name did: the
+ * records are one city's from one day on, and `reach` (`reachWords` in `permitReach.ts`) is how
+ * far back they go — "since Aug 26", "in the last year", or null when that is not known.
+ */
+export function builderWords(lines: readonly PermitLine[], reach: string | null): string {
   const n = lines.length
-  if (n === 0) return `This is the one permit this name pulled in the last ${days} days.`
-  return `This name pulled ${n} other permit${n === 1 ? '' : 's'} in the last ${days} days.`
+  const tail = reach ? ` ${reach}` : ''
+  if (n === 0) return `This is the one permit we can see under this name${tail}.`
+  return `This name is on ${n} other permit${n === 1 ? '' : 's'} we can see${tail}.`
 }
 
 /** How far back a name's other permits are read. */

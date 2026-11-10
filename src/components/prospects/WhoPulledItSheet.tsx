@@ -3,9 +3,11 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { contactParts, SAN_ANTONIO_PERMIT_PORTAL, type CompanyFacts, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { shortDay, shortMoney, workWords, type Hint, type LeadFacts, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { loadBuilderPermits, lookupCompany, lookupParcel, type LookupAnswer } from '../../lib/research/permitResearchIo'
-import { BUILDER_PERMIT_DAYS, TEXAS_FRANCHISE_SEARCH, builderPermitLines, builderSearchWord, builderWords, googleAskForCompany, googleAsksForContact, type SitePermit } from '../../lib/research/permitPublic'
+import { TEXAS_FRANCHISE_SEARCH, builderPermitLines, builderSearchWord, builderWords, googleAskForCompany, googleAsksForContact, type SitePermit } from '../../lib/research/permitPublic'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { GoogleSearchPress } from './GoogleSearchPress'
+import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
+import { reachWords, recordsReach } from '../../lib/research/permitReach'
 
 /**
  * Research, Who pulled it (punch list #292, PR 4): the card behind a contact's name. The
@@ -13,7 +15,7 @@ import { GoogleSearchPress } from './GoogleSearchPress'
  * county (the owner of record, their mailing address, the DBA, the values), our own history
  * with the name, and the door to the city's own record with the permit number copied. Approach
  * them from here carries what was found onto the lead. Since punch list #302 it also lists the
- * other permits the same name pulled in the last year, a Google press searches the company, the
+ * other permits we can see under the same name, a Google press searches the company, the
  * person and the owner of record, and a door opens the state's franchise tax search.
  */
 const sectionTitle: CSSProperties = { fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }
@@ -45,6 +47,10 @@ export function WhoPulledItSheet({
   const [nameCopied, setNameCopied] = useState(false)
   const [theirs, setTheirs] = useState<{ state: 'loading' } | { state: 'done'; rows: SitePermit[] } | { state: 'failed'; message: string }>({ state: 'loading' })
   const asks = googleAsksForContact(row.contact, row.city)
+  // How far back the count can see: the day the city's records start, or a year once they reach it.
+  const recordsStart = usePermitRecordsStart(row.city)
+  const today = todayYmdInAppTz()
+  const reach = reachWords(recordsReach(recordsStart, today), today)
 
   const load = useCallback(
     async (refresh: boolean) => {
@@ -241,7 +247,7 @@ export function WhoPulledItSheet({
           {theirs.state === 'failed' && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{theirs.message}</div>}
           {theirs.state === 'done' && (
             <>
-              <div style={muted}>{builderWords(theirLines, BUILDER_PERMIT_DAYS)}</div>
+              <div style={muted}>{builderWords(theirLines, reach)}</div>
               {theirLines.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', gap: '3px 10px', fontSize: '0.875rem', lineHeight: 1.45, marginTop: 6 }}>
                   {theirLines.slice(0, 12).map((l) => (
