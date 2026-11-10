@@ -12,6 +12,7 @@
  */
 import { daysBetween } from './permitSkim'
 import { reachDay } from './permitReach'
+import { builderKeyOf } from '../../../supabase/functions/_shared/permitLookup'
 
 /** An address in the shape both sides are compared in. */
 export type SiteCanon = {
@@ -186,6 +187,8 @@ export function readBidAddress(address: string | null | undefined, readCities: r
 /** What the kernel needs of a permit: the feed's street, what it is, its days, the project name and who the city lists. */
 export type BidSitePermit = {
   id: string
+  /** The feed's own number. One permit can sit in both feeds, applied and issued; it is one permit. */
+  permit_number?: string | null
   address: string | null
   kind: string
   stage: string
@@ -196,13 +199,33 @@ export type BidSitePermit = {
   contact: string | null
 }
 
-/** The permits of one city that sit on a bid's site. A read narrows by the house number; this decides. */
-export function permitsOnSite<P extends Pick<BidSitePermit, 'address'>>(site: BidSite, permits: readonly P[]): P[] {
+/**
+ * The permits of one city that sit on a bid's site, each once. A read narrows by the house
+ * number; this decides. The city's two feeds can both carry one permit (the application and the
+ * issued permit share a number and a type): the issued row stands for it.
+ */
+export function permitsOnSite<P extends Pick<BidSitePermit, 'address' | 'id'> & Partial<Pick<BidSitePermit, 'permit_number' | 'permit_type' | 'stage'>>>(site: BidSite, permits: readonly P[]): P[] {
   if (site.kind !== 'site') return []
-  return permits.filter((p) => {
+  const byPermit = new Map<string, P>()
+  for (const p of permits) {
     const canon = canonOfStreet(p.address)
-    return canon != null && sameSite(site.canon, canon)
-  })
+    if (canon == null || !sameSite(site.canon, canon)) continue
+    const key = p.permit_number ? `${p.permit_number}|${p.permit_type ?? ''}` : p.id
+    const held = byPermit.get(key)
+    if (!held || (held.stage !== 'issued' && p.stage === 'issued')) byPermit.set(key, p)
+  }
+  return [...byPermit.values()]
+}
+
+/**
+ * Who a general plumbing permit lists, read against the building permit beside it. In this feed
+ * a job's plumbing permit is often filed under the building permit's own contact, which names no
+ * plumber: `same` says so. Else the name the city lists, or null when it lists nobody.
+ */
+export function plumbingListing(general: Pick<BidSitePermit, 'contact'>, building: Pick<BidSitePermit, 'contact'> | null): { same: boolean; name: string | null } {
+  const name = general.contact?.replace(/\s+/g, ' ').trim() || null
+  const same = name != null && building?.contact != null && builderKeyOf(name) != null && builderKeyOf(name) === builderKeyOf(building.contact)
+  return { same, name }
 }
 
 export type PlumbingType = 'general' | 'gas' | 'irrigation' | 'sewer' | 'other'
@@ -311,7 +334,10 @@ export function bidSiteWords(
   }
   const general = [...onSite].sort(newestFirst).find((p) => plumbingTypeOf(p.permit_type) === 'general')
   if (!general) parts.push('No general plumbing permit seen on it.')
-  else parts.push(general.contact ? `A general plumbing permit is on this address. The city lists ${general.contact}.` : 'A general plumbing permit is on this address.')
+  else {
+    const listing = plumbingListing(general, lead && lead.kind === 'building' ? lead : null)
+    parts.push(listing.same ? 'A general plumbing permit is on this address, under the building permit’s own name.' : listing.name ? `A general plumbing permit is on this address. The city lists ${listing.name}.` : 'A general plumbing permit is on this address.')
+  }
   return { state, main: parts.filter(Boolean).join(' '), detail: null }
 }
 

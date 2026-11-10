@@ -2,9 +2,9 @@
 name: "Bids and permits: what the city knows about this site and this GC, on the bid"
 number: 307
 group: gated
-status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit
+status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit · his word after that: build it all · PR 2 and 3, the bid window's two blocks, built together as v2.6866 with one read
 mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html)
-ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count)
+ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC)
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
   a person bidding. The test on real rows says the name is the weak join and the address is the
@@ -19,8 +19,8 @@ summary: >
   its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
   small table of answers. San Antonio covers about three bid sites in ten, so every line says
   what it can see: the city, the first day of the records, and what a count is out of.
-next: PR 2, this site's permits in the bid window, which is the first thing on a screen and needs one read. The owner's word on the seven calls; his start on PR 1 took call 1's pick, site first.
-size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 and the words half of PR 4; left: PR 2 to 8 (M · M · S · M · M · S · M)
+next: PR 5, permit news on the Bid Board, then the answer on a name (PR 6 and 7), the history (the rest of PR 4) and Austin (PR 8). The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
+size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1, 2, 3 and the words half of PR 4; left: the rest of PR 4 and PR 5 to 8 (S · M · M · S · M)
 blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
@@ -357,10 +357,16 @@ fences when they make a table, and are pushed from a checkout of main after the 
    and area, for the kernel to decide and to read the plumbing line by type. The
    Location section's verdict line and its list, opening `PermitBuildingSheet` for a permit. The
    four states. The robot copies left out. The city's value and area beside the bid's.
+   **Built 2026-11-10 with PR 3 as v2.6866** (`docs/recent-features/v2.6866.md`). The read is
+   `bid_site_permits(city, numbers[])`. A row does not open the building's sheet yet. One permit
+   in both of the city's feeds is counted once, and a plumbing permit filed under the building
+   permit's own contact reads *under the building permit's own name*.
 3. **The jobs we priced for this GC (M, PR 2's read, no table).** Under the GC card: the scope
    line, the verdict with what it is out of, and each bid to that customer with what the city
    shows on its address, folded behind a press on a phone. The bids in towns with no records
    are counted and named. A setting holds the names that are us on a plumbing permit.
+   **Built 2026-11-10 with PR 2 as v2.6866.** Not built: the setting and the *Ours* chip. A
+   plumbing permit is marked only when it lists a name other than the building permit's contact.
 4. **A year and more of history, and the live tab's words (S, the function redeployed).**
    `permit-pull` takes a first day for a one-time run back to January 2025 and fills
    `builder_key` on the plumbing rows. **The words were built 2026-11-10 as v2.6857**

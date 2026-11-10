@@ -240,12 +240,12 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Approach:** Stage A the attestation line and the lock rule first; then `BidFormStatusDates` owning `dueTimeOpen` + `bidHasVersions` (effect 216–231 moves with it) and receiving `setLoggingContact`.
 
 ### F7 Location / F8 Files & links
-- F7: address `onBlur` auto-fills distance only when empty; "↻ Auto" forces; status line names the source (routed vs straight-line) and anchor.
+- F7: address `onBlur` auto-fills distance only when empty; "↻ Auto" forces; status line names the source (routed vs straight-line) and anchor. Under it, for `canResearchPermits` roles, `BidSitePermits` draws **This site**: what the city has on the address (`lib/research/bidSite.ts`, `bidSitePanel.ts`; reads `bid_site_permits`).
 - F8: three hardcoded Drive folder links (plumbing / electrical / HVAC, 972–981), Project Folder, Job Plans (`bid-form-plans-link`), CountTooling Plans (`bid-form-count-tooling-link`), `BidPriceRequestsTable` (saved bids; label hand-built `B<number> · <project>` 1010), `RobotReadinessLine` (reads `distanceAutoStatus`), Bid Submission, Design Drawing Plan Date.
 - **Approach:** move F7 + F8 together (they share `distanceAutoStatus`), or lift the status into a tiny `useBidDistanceAutoFill` hook the form keeps.
 
 ### F9 People
-- Primary GC as a `GcCard` (1044–1083; legacy `bids_gc_builders` name fallback) with "change ▸" and a per-GC `BidGcDetailsEditor` (writes `bid_gcs`; `onBidDueMaybeChanged` → `refreshDerivedDue`, because a per-GC due can move the bid's derived due).
+- Primary GC as a `GcCard` (1044–1083; legacy `bids_gc_builders` name fallback) with "change ▸" and a per-GC `BidGcDetailsEditor` (writes `bid_gcs`; `onBidDueMaybeChanged` → `refreshDerivedDue`, because a per-GC due can move the bid's derived due). Under the card, for `canResearchPermits` roles, `BidGcPermits` draws **What we can see about** the GC: the jobs priced for them and what the city has on each address (self-loading; reads `bids`, `bid_gcs`, `bid_site_permits`).
 - GC search 1084–1211: input clears `gcCustomerId` when the text stops matching (1109–1114), 200 ms blur close, "+ Add new customer" (role-gated; `onMouseDown` preventDefault beats the blur), the customer filter computed twice (1170–1176 and 1202–1205).
 - Terms bar + modal (payment terms / promise record of the payer), `BidGcRecipientsRow` (other GCs; self-loading, writes `bid_gc_recipients`), project contact (collapsible) + Submitted to.
 - **Role checks:** the same `dev || master_technician || isAssistantLike || estimator` expression 5× (1075, 1138, 1227, 1229, 1245).

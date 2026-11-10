@@ -166,6 +166,14 @@ describe('permitsOnSite', () => {
     expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX 78215'), rows).map((p) => p.id)).toEqual(['p1', 'p2'])
   })
 
+  it('counts a permit once when both of the city’s feeds carry it, and lets the issued row stand', () => {
+    const applied = permit({ id: 'a', permit_number: 'COM-7', permit_type: 'Comm Remodel Permit', stage: 'applied' })
+    const issued = permit({ id: 'b', permit_number: 'COM-7', permit_type: 'Comm Remodel Permit', stage: 'issued', issued_on: '2026-10-01' })
+    const trade = permit({ id: 'c', permit_number: 'COM-7', permit_type: 'Plumbing General Permit', kind: 'plumbing', stage: 'issued' })
+    expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX'), [applied, issued, trade]).map((p) => p.id)).toEqual(['b', 'c'])
+    expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX'), [issued, applied]).map((p) => p.id)).toEqual(['b'])
+  })
+
   it('finds nothing for a bid that is not a site', () => {
     expect(permitsOnSite(readBidAddress('BLANCO', READ), [permit()])).toEqual([])
   })
@@ -226,6 +234,8 @@ describe('the four honest states and their words', () => {
     const issued = permit({ stage: 'issued', permit_type: 'Comm New Building Permit', issued_on: '2026-11-03' })
     const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', project_name: null, stage: 'issued', issued_on: '2026-11-05', contact: 'Lone Oak Plumbing' })
     expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, plumbing], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address. The city lists Lone Oak Plumbing.')
+    // A plumbing permit filed under the building permit's own contact names no plumber.
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, { ...plumbing, contact: 'Dana Whitlow' }], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address, under the building permit’s own name.')
     expect(bidSiteWords(mill, 'Mill Street Lofts', [{ ...plumbing, contact: null }], CTX).main).toBe('The city has 1 permit on this address, and it is not a building permit. A general plumbing permit is on this address.')
   })
 
