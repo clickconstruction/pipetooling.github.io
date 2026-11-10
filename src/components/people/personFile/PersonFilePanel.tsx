@@ -1883,11 +1883,29 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     <div data-person-file-panel>
       {facts ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.6rem', alignItems: 'center' }}>
-          {personFileFactChips(facts).map((c) => (
-            <span key={c.key} style={chip(FACT_TONE[c.tone])}>
-              {c.label}
-            </span>
-          ))}
+          {personFileFactChips(facts).map((c) => {
+            // v2.6820: a chip is a press that narrows the Timeline to what it counts — *1 paper signed* lists the papers, each with
+            // its door to the signed record — and a second press on the same chip clears the filter.
+            const on = view === 'timeline' && lane === (c.filter.lane ?? null) && source === (c.filter.source ?? null)
+            return (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={on}
+                title={on ? 'Show the whole record' : `Show only these on the Timeline`}
+                data-testid={`person-file-chip-${c.key}`}
+                onClick={() => {
+                  setThemeFilter(null)
+                  setView('timeline')
+                  setLane(on ? null : c.filter.lane ?? null)
+                  setSource(on ? null : c.filter.source ?? null)
+                }}
+                style={chip(FACT_TONE[c.tone], { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit', outline: on ? '2px solid var(--border-blue)' : undefined, outlineOffset: 1 })}
+              >
+                {c.label}
+              </button>
+            )
+          })}
           {matterChip ? (
             <button type="button" onClick={() => setView('matter')} title="Open the matter" style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })} data-testid="person-file-matter-chip">
               {matterChip}

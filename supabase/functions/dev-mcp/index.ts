@@ -114,10 +114,17 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // base64 cut mid-string. A reply now carries at most MAIL_FILE_SLICE_MAX_BYTES of the file with offset, length and next_offset, the
 // size and the sha256 of the whole, and the words that name the argument that reads on (devMcpMailFile.ts → mailFileReadReply).
 //
+// What a person signed (v2.6820 / 0.58.0, numbered behind v2.6808's 0.57.0, which merged first): get_person_file's reply carries signed_papers — one entry per paper signed in the app
+// (person_contract_documents, status signed): the paper, the day, signed as, how (electronically, on paper, recorded by the office)
+// and door.to, the Contracts tab's deep link to the signed record — the same list the Timeline's signed lines now open, so an
+// agent reads what was signed without walking the months (personTimeline.ts → signedPapers). Hours statements too (Diane: "Statements
+// too"): the Timeline's new statement source draws each one with where it stands, and the reply's hours_statements lists them
+// with their doors (statementRows).
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.57.0'
+const SERVER_VERSION = '0.58.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -500,13 +507,13 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_person_file',
-    description: "A person's HR file whole, as People → HR draws it (docs/HR_FILES.md): one dated line per thing on record, on the day it is ABOUT — the HR entries by source, evidence, field reports waiting to be filed, papers signed, sent or owed and their expiries, licenses on file and lapsed, write-ups, no-shows, excused lates, the start and last days — in lanes Said · Did · Paper · Missed · Ahead, by month newest first with what lies ahead on top; the fact chips (reports waiting, licenses expired, papers owed…); the evidence records with their files and Drive state; the summary and narrative. The tab's own kernel over the tab's sources, each read as you under RLS: a source that could not be read is named in `held` and takes only itself out (the HR entries, evidence, reports and docs are dev-only). `person` is a people.id, a users.id (find_person) or a name that matches exactly one person. Narrow with lane, source or since; docs: false leaves the summary and narrative out of a long file.",
+    description: "A person's HR file whole, as People → HR draws it (docs/HR_FILES.md): one dated line per thing on record, on the day it is ABOUT — the HR entries by source, evidence, field reports waiting to be filed, papers signed, sent or owed and their expiries, licenses on file and lapsed, write-ups, no-shows, excused lates, the start and last days — in lanes Said · Did · Paper · Missed · Ahead, by month newest first with what lies ahead on top; the fact chips (reports waiting, licenses expired, papers owed…), each naming the filter it narrows to; signed_papers (since 0.58.0), the papers they signed in the app as a list — the paper, the day, signed as, how, and door.to, which opens the signed record on People → Contracts (the same door the Timeline's signed line carries); hours_statements, each with where it stands (draft · printed, not signed back · sent · signed back) and its door, the statement source on the Timeline; the evidence records with their files and Drive state; the summary and narrative. The tab's own kernel over the tab's sources, each read as you under RLS: a source that could not be read is named in `held` and takes only itself out (the HR entries, evidence, reports and docs are dev-only). `person` is a people.id, a users.id (find_person) or a name that matches exactly one person. Narrow with lane, source or since; docs: false leaves the summary and narrative out of a long file.",
     inputSchema: {
       type: 'object',
       properties: {
         person: { type: 'string', description: "people.id, users.id (find_person) or a name matching exactly one person" },
         lane: { type: 'string', description: 'said | did | paper | missed | planned (Ahead)' },
-        source: { type: 'string', description: 'file | evidence | report | contract | license | writeup | attendance | employment' },
+        source: { type: 'string', description: 'file | evidence | report | contract | statement | license | writeup | attendance | employment' },
         since: { type: 'string', description: 'YYYY-MM-DD — only lines on or after this day' },
         docs: { type: 'boolean', description: 'false leaves the summary and narrative out (default true)' },
       },

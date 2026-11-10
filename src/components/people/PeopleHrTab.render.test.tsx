@@ -139,6 +139,22 @@ describe('PeopleHrTab · the person file', () => {
     expect(screen.getByText('Started as a helper.')).toBeTruthy()
   })
 
+  it('a fact chip is a press (v2.6820): 1 paper signed narrows the Timeline to the papers, the signed line opens its own record, a second press clears', async () => {
+    await openMarcus()
+    const signedChip = screen.getByRole('button', { name: '1 paper signed' })
+    expect(signedChip.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(signedChip)
+    expect(await screen.findByText('Subcontractor Handbook')).toBeTruthy()
+    expect(screen.queryByText('Sit-down about Master hours.')).toBeNull()
+    expect(screen.queryByText('license expired')).toBeNull()
+    expect(screen.getByRole('button', { name: '1 paper signed' }).getAttribute('aria-pressed')).toBe('true')
+    const door = screen.getByText('Open the signed record ›').closest('a')!
+    expect(door.getAttribute('href')).toBe('/people?tab=contracts&doc=c1')
+    expect(screen.getByText('Signed electronically. Sent 2026-04-21.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '1 paper signed' }))
+    expect(await screen.findByText('Sit-down about Master hours.')).toBeTruthy()
+  })
+
   it('+ Add entry opens the composer, dated the day it happened, appending only', async () => {
     await openMarcus()
     fireEvent.click(screen.getByRole('button', { name: '+ Add entry' }))

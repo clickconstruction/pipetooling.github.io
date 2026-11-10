@@ -33,6 +33,20 @@ Write N§16 in an entry to point at section 16 of the narrative. On the Timeline
 
 That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry: "Correction to the Aug 19 entry: …".
 
+## See what someone signed
+
+The strip at the top of the file counts their papers. {{chip:green|1 paper signed}} counts the papers they signed in the app. {{chip:yellow|3 papers owed}} counts the papers made for them and never sent.
+
+1. Press {{chip:green|1 paper signed}}. The Timeline narrows to their papers.
+2. Find the line that reads {{chip:gray|signed}}. The line names the paper and who signed it. Under it the line says how it was signed and when the office recorded it.
+3. Press **Open the signed record ›** on the line. The signed record opens on People → Contracts with the agreement's words and the signing's facts.
+
+Press the chip again to see the whole record. Every chip on the strip works the same way. {{chip:green|4 licenses on file}} narrows the Timeline to the licenses.
+
+Their hours statements are on the Timeline too. Each line names the statement's number and its job. The chip says where it stands. {{chip:gray|hours statement · printed, not signed back}} means the paper went out and never came back. {{chip:gray|hours statement · signed back}} means it did. Press **Open the signed record ›** on a signed one. Press **Open the job ›** on the rest and find the sheet under Documents. {{chip:yellow|1 hours statement not signed back}} on the strip narrows the Timeline to them.
+
+An agent reads the same list through the dev seat. The reply to get_person_file carries signed_papers with each paper, its day and its door. The reply carries hours_statements too, each with where it stands.
+
 ## Open a matter on a person
 
 A matter is the analysis for counsel, kept apart from the record. The matter holds the narrative for the firm and the documents with what each one shows. The matter also holds the timeline of planned steps and recorded events. The Legal desk's matters stand on a customer who owes. This one stands on the person.

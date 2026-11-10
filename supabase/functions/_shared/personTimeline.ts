@@ -27,12 +27,13 @@ export const PERSON_TIMELINE_LANES: ReadonlyArray<{ lane: PersonTimelineLane; la
 ]
 
 /** Where a line comes from — the table that owns it, in the words the chips use. */
-export type PersonTimelineSource = 'file' | 'evidence' | 'report' | 'contract' | 'license' | 'writeup' | 'attendance' | 'employment'
+export type PersonTimelineSource = 'file' | 'evidence' | 'report' | 'contract' | 'statement' | 'license' | 'writeup' | 'attendance' | 'employment'
 export const PERSON_TIMELINE_SOURCES: ReadonlyArray<{ source: PersonTimelineSource; label: string }> = [
   { source: 'file', label: 'HR entries' },
   { source: 'evidence', label: 'Evidence' },
   { source: 'report', label: 'Field reports' },
   { source: 'contract', label: 'Contracts' },
+  { source: 'statement', label: 'Hours statements' },
   { source: 'license', label: 'Licenses' },
   { source: 'writeup', label: 'Write-ups' },
   { source: 'attendance', label: 'Attendance' },
@@ -112,6 +113,34 @@ export type PersonTimelineContract = {
   signer_printed_name: string | null
   expires_at: string | null
   doc_type: string
+  /** v2.6820: how it was signed — the e-sign consent's clock, the drawn mark's file, a scan keyed in from paper. Optional: an older caller reads without them. */
+  signer_consented_at?: string | null
+  signer_signature_storage_path?: string | null
+  form_scan_storage_path?: string | null
+  form_source?: string | null
+}
+/**
+ * A signed hours statement's record (`hours_statements`, punch list #212), v2.6820: one worker's hours on one job for a period,
+ * the paper they sign. `state` is draft · printed · sent · signed; a statement signed through the app has its signed copy in
+ * `person_contract_documents` (`contract_document_id`, `doc_type` hours_statement), which carries the signed day and the signed PDF.
+ */
+export type PersonTimelineStatement = {
+  id: string
+  /** HS-<job number>-<n>. */
+  record_id: string
+  job_ledger_id: string
+  /** The job in words, built by the io: *Job 629 · Gun Dog rough-in*; '' when the job could not be read. */
+  job_label: string
+  state: string
+  /** paid · charged. */
+  basis: string
+  period_start: string
+  period_end: string
+  prepared_at: string
+  updated_at: string
+  contract_document_id: string | null
+  drive_file_id: string | null
+  matter_document_id: string | null
 }
 export type PersonTimelineLicense = { id: string; license_type: string; date_of_expiry: string; created_at: string | null; note: string | null }
 export type PersonTimelineWriteup = {
@@ -135,6 +164,8 @@ export type PersonTimelineInput = {
   evidence: ReadonlyArray<PersonTimelineEvidence>
   reports: ReadonlyArray<PersonTimelineReport>
   contracts: ReadonlyArray<PersonTimelineContract>
+  /** v2.6820: the person's hours statements; left out by an older caller, which draws none. */
+  statements?: ReadonlyArray<PersonTimelineStatement>
   licenses: ReadonlyArray<PersonTimelineLicense>
   writeups: ReadonlyArray<PersonTimelineWriteup>
   ncns: ReadonlyArray<PersonTimelineNcns>
@@ -175,6 +206,66 @@ const ENTRY_KIND_WORDS: Record<string, string> = {
 }
 
 const CONTRACTS_DOOR = { label: 'Contracts', to: '/people?tab=contracts' }
+/** v2.6820: a signed paper's door opens its own record — the Contracts tab's deep link to the signed-record window — not the tab. */
+export function contractRecordDoor(id: string): { label: string; to: string } {
+  return { label: 'Open the signed record', to: `/people?tab=contracts&doc=${encodeURIComponent(id)}` }
+}
+
+/** How a signed paper was signed, in the words the line and the seat's list share (v2.6820). */
+export type PersonSignedHow = 'electronically' | 'on paper' | 'recorded by the office'
+export function contractSignedHow(c: Pick<PersonTimelineContract, 'sent_at' | 'signer_consented_at' | 'signer_signature_storage_path' | 'form_scan_storage_path' | 'form_source'>): PersonSignedHow {
+  if ((c.form_scan_storage_path ?? '').trim() || c.form_source === 'paper' || c.form_source === 'scan') return 'on paper'
+  if (c.signer_consented_at || (c.signer_signature_storage_path ?? '').trim() || c.sent_at) return 'electronically'
+  return 'recorded by the office'
+}
+/** The job window, where a statement's sheet lives under Documents → Hours statements. */
+export function jobWindowDoor(jobId: string): { label: string; to: string } {
+  return { label: 'Open the job', to: `/jobs?tab=stages&edit=${encodeURIComponent(jobId)}` }
+}
+export function driveFileDoor(fileId: string): { label: string; to: string } {
+  return { label: 'Open in Drive', to: `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view` }
+}
+
+/** Where a statement stands, in the words its line and the seat's list share (v2.6820). */
+export type PersonStatementStanding = 'draft' | 'printed' | 'sent' | 'signed'
+export function statementStanding(state: string): PersonStatementStanding {
+  return state === 'signed' || state === 'sent' || state === 'printed' ? state : 'draft'
+}
+const STATEMENT_KIND_WORDS: Record<PersonStatementStanding, string> = {
+  draft: 'hours statement · draft',
+  printed: 'hours statement · printed, not signed back',
+  sent: 'hours statement · sent for signature · waiting',
+  signed: 'hours statement · signed back',
+}
+const STATEMENT_STATE: Record<PersonStatementStanding, PersonTimelineState> = { draft: 'draft', printed: 'owed', sent: 'waiting', signed: 'live' }
+
+/**
+ * A statement's door: the signed record when its signed copy is on file (the signed PDF opens from there), else the file in
+ * Drive when the office put it there, else the job window, whose Documents tab holds the sheet.
+ */
+export function statementDoor(s: Pick<PersonTimelineStatement, 'job_ledger_id' | 'contract_document_id' | 'drive_file_id' | 'state'>): { label: string; to: string } {
+  if (s.state === 'signed' && s.contract_document_id) return contractRecordDoor(s.contract_document_id)
+  if (s.drive_file_id) return driveFileDoor(s.drive_file_id)
+  return jobWindowDoor(s.job_ledger_id)
+}
+
+/** The line's notes: the job, the period, the basis, where the paper is. */
+function statementNotes(s: PersonTimelineStatement, signedOn: string | null): string {
+  const parts = [
+    [s.job_label, `${s.period_start} to ${s.period_end}`, s.basis === 'charged' ? 'hours charged' : 'hours paid'].filter(Boolean).join(' · ') + '.',
+    signedOn ? `Signed ${signedOn}.` : '',
+    s.drive_file_id ? 'In the job\'s Drive folder.' : '',
+    s.matter_document_id ? 'On a matter\'s Evidence tab.' : '',
+    !s.drive_file_id && s.state !== 'signed' ? 'The sheet is on the job\'s Documents tab.' : '',
+  ]
+  return parts.filter(Boolean).join(' ')
+}
+
+const SIGNED_HOW_WORDS: Record<PersonSignedHow, string> = {
+  electronically: 'Signed electronically.',
+  'on paper': 'Signed on paper; the scan is the record.',
+  'recorded by the office': 'Recorded by the office as signed; no copy from the signing.',
+}
 const LICENSES_DOOR = { label: 'Licenses', to: '/people?tab=licenses' }
 const WRITEUPS_DOOR = { label: 'Write-ups', to: '/people?tab=writeups' }
 
@@ -264,24 +355,38 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
     })
   }
 
+  // A statement signed through the app has a signed copy among the contracts: the statement's own line carries the signed
+  // day and the copy's door, so the copy draws no second line. The copy still draws when the statements were held.
+  const statements = input.statements ?? []
+  const signedByCopy = new Map<string, PersonTimelineContract>()
+  for (const c of input.contracts) if (c.doc_type === 'hours_statement' && c.status === 'signed') signedByCopy.set(c.id, c)
+  const copiesOnStatements = new Set(statements.flatMap((s) => (s.contract_document_id && signedByCopy.has(s.contract_document_id) ? [s.contract_document_id] : [])))
+
   for (const c of input.contracts) {
+    if (copiesOnStatements.has(c.id)) continue
     const signedYmd = dayOf(c.signed_at)
     const sentYmd = dayOf(c.sent_at)
     const madeYmd = dayOf(c.created_at)
     if (c.status === 'signed' && signedYmd) {
+      // The notes say how it was signed, the day it was sent, and the day the office recorded it when that was later (a paper
+      // signed in April and keyed in in August reads both days).
+      const how = contractSignedHow(c)
+      const notes = [SIGNED_HOW_WORDS[how], sentYmd ? `Sent ${sentYmd}.` : '', madeYmd && madeYmd > signedYmd ? `Recorded ${madeYmd}.` : ''].filter(Boolean).join(' ')
       out.push({
         key: `contract:${c.id}:signed`,
         lane: 'paper',
         source: 'contract',
         ymd: signedYmd,
-        loggedAt: c.signed_at,
-        kindWords: 'signed',
+        // signed_at is a date with no clock; the clock of the signing is the consent's. A bare date read as an instant would
+        // say "written" the evening before in Central, so it is not kept as one.
+        loggedAt: c.signer_consented_at ?? (c.signed_at && c.signed_at.length > 10 ? c.signed_at : null),
+        kindWords: c.doc_type === 'hours_statement' ? 'hours statement · signed' : 'signed',
         what: c.document_name,
-        notes: sentYmd ? `Sent ${sentYmd}.` : '',
+        notes,
         byName: (c.signer_printed_name ?? '').trim() || (input.person?.name ?? ''),
         state: 'live',
         ref: { table: 'person_contract_documents', id: c.id },
-        door: CONTRACTS_DOOR,
+        door: contractRecordDoor(c.id),
         attachmentIds: [],
       })
       const officeYmd = dayOf(c.office_completed_at)
@@ -298,7 +403,7 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
           byName: 'the office',
           state: 'live',
           ref: { table: 'person_contract_documents', id: c.id },
-          door: CONTRACTS_DOOR,
+          door: contractRecordDoor(c.id),
           attachmentIds: [],
         })
       }
@@ -354,6 +459,29 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
         attachmentIds: [],
       })
     }
+  }
+
+  for (const s of statements) {
+    const ymd = dayOf(s.prepared_at)
+    if (!ymd) continue
+    const standing = statementStanding(s.state)
+    const copy = s.contract_document_id ? signedByCopy.get(s.contract_document_id) : undefined
+    const signedOn = standing === 'signed' ? dayOf(copy?.signed_at) : null
+    out.push({
+      key: `statement:${s.id}`,
+      lane: 'paper',
+      source: 'statement',
+      ymd,
+      loggedAt: s.prepared_at,
+      kindWords: STATEMENT_KIND_WORDS[standing],
+      what: `Hours statement ${s.record_id}`,
+      notes: statementNotes(s, signedOn),
+      byName: standing === 'signed' ? (copy?.signer_printed_name ?? '').trim() || (input.person?.name ?? '') : 'the office',
+      state: STATEMENT_STATE[standing],
+      ref: { table: 'hours_statements', id: s.id },
+      door: statementDoor(s),
+      attachmentIds: [],
+    })
   }
 
   for (const l of input.licenses) {
@@ -574,7 +702,7 @@ export type PersonTimelineCounts = {
 }
 
 export function countPersonTimeline(lines: ReadonlyArray<PersonTimelineLine>): PersonTimelineCounts {
-  const bySource = { file: 0, evidence: 0, report: 0, contract: 0, license: 0, writeup: 0, attendance: 0, employment: 0 } as Record<PersonTimelineSource, number>
+  const bySource = { file: 0, evidence: 0, report: 0, contract: 0, statement: 0, license: 0, writeup: 0, attendance: 0, employment: 0 } as Record<PersonTimelineSource, number>
   const byLane = { said: 0, did: 0, paper: 0, missed: 0, planned: 0 } as Record<PersonTimelineLane, number>
   for (const l of lines) {
     bySource[l.source] += 1
@@ -591,6 +719,8 @@ export type PersonFileFacts = {
   papersSigned: number
   papersWaiting: number
   papersOwed: number
+  /** v2.6820: hours statements printed or sent and not signed back. */
+  statementsOpen: number
   licensesLive: number
   licensesExpired: number
   writeups: number
@@ -625,6 +755,7 @@ export function personFileFacts(input: PersonTimelineInput, lines: ReadonlyArray
     papersSigned,
     papersWaiting,
     papersOwed,
+    statementsOpen: (input.statements ?? []).filter((s) => s.state === 'printed' || s.state === 'sent').length,
     licensesLive,
     licensesExpired,
     writeups: input.writeups.filter((w) => w.status === 'submitted').length,
@@ -641,18 +772,119 @@ export function ymdShift(ymd: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** The strip's chips in reading order; a zero is left out so the strip says only what is there. */
-export function personFileFactChips(f: PersonFileFacts): Array<{ key: string; label: string; tone: 'gray' | 'green' | 'amber' | 'red' }> {
-  const out: Array<{ key: string; label: string; tone: 'gray' | 'green' | 'amber' | 'red' }> = []
-  if (f.reportsPending > 0) out.push({ key: 'reports', label: `${f.reportsPending} report${f.reportsPending === 1 ? '' : 's'} waiting to be filed`, tone: 'amber' })
-  if (f.licensesExpired > 0) out.push({ key: 'expired', label: `${f.licensesExpired} license${f.licensesExpired === 1 ? '' : 's'} expired`, tone: 'red' })
-  if (f.papersOwed > 0) out.push({ key: 'owed', label: `${f.papersOwed} paper${f.papersOwed === 1 ? '' : 's'} owed`, tone: 'amber' })
-  if (f.papersWaiting > 0) out.push({ key: 'waiting', label: `${f.papersWaiting} sent, waiting`, tone: 'amber' })
-  if (f.ncns90 > 0) out.push({ key: 'ncns', label: `${f.ncns90} no-show${f.ncns90 === 1 ? '' : 's'} in 90 days`, tone: 'red' })
-  if (f.papersSigned > 0) out.push({ key: 'signed', label: `${f.papersSigned} paper${f.papersSigned === 1 ? '' : 's'} signed`, tone: 'green' })
-  if (f.licensesLive > 0) out.push({ key: 'licenses', label: `${f.licensesLive} license${f.licensesLive === 1 ? '' : 's'} on file`, tone: 'green' })
-  if (f.writeups > 0) out.push({ key: 'writeups', label: `${f.writeups} write-up${f.writeups === 1 ? '' : 's'}`, tone: 'gray' })
-  if (f.entries > 0) out.push({ key: 'entries', label: `${f.entries} HR entr${f.entries === 1 ? 'y' : 'ies'}`, tone: 'gray' })
-  if (f.evidence > 0) out.push({ key: 'evidence', label: `${f.evidence} piece${f.evidence === 1 ? '' : 's'} of evidence`, tone: 'gray' })
+export type PersonFileFactChip = {
+  key: string
+  label: string
+  tone: 'gray' | 'green' | 'amber' | 'red'
+  /** v2.6820: the Timeline filter the chip narrows to when pressed — the papers behind *1 paper signed*, the licenses behind *4 licenses on file*. */
+  filter: PersonTimelineFilter
+}
+
+const PAPERS: PersonTimelineFilter = { lane: 'paper', source: 'contract' }
+
+/** The strip's chips in reading order; a zero is left out so the strip says only what is there. Each names the filter it opens. */
+export function personFileFactChips(f: PersonFileFacts): PersonFileFactChip[] {
+  const out: PersonFileFactChip[] = []
+  if (f.reportsPending > 0) out.push({ key: 'reports', label: `${f.reportsPending} report${f.reportsPending === 1 ? '' : 's'} waiting to be filed`, tone: 'amber', filter: { source: 'report' } })
+  if (f.licensesExpired > 0) out.push({ key: 'expired', label: `${f.licensesExpired} license${f.licensesExpired === 1 ? '' : 's'} expired`, tone: 'red', filter: { lane: 'missed', source: 'license' } })
+  if (f.papersOwed > 0) out.push({ key: 'owed', label: `${f.papersOwed} paper${f.papersOwed === 1 ? '' : 's'} owed`, tone: 'amber', filter: PAPERS })
+  if (f.papersWaiting > 0) out.push({ key: 'waiting', label: `${f.papersWaiting} sent, waiting`, tone: 'amber', filter: PAPERS })
+  if (f.statementsOpen > 0) out.push({ key: 'statements', label: `${f.statementsOpen} hours statement${f.statementsOpen === 1 ? '' : 's'} not signed back`, tone: 'amber', filter: { source: 'statement' } })
+  if (f.ncns90 > 0) out.push({ key: 'ncns', label: `${f.ncns90} no-show${f.ncns90 === 1 ? '' : 's'} in 90 days`, tone: 'red', filter: { lane: 'missed', source: 'attendance' } })
+  if (f.papersSigned > 0) out.push({ key: 'signed', label: `${f.papersSigned} paper${f.papersSigned === 1 ? '' : 's'} signed`, tone: 'green', filter: PAPERS })
+  if (f.licensesLive > 0) out.push({ key: 'licenses', label: `${f.licensesLive} license${f.licensesLive === 1 ? '' : 's'} on file`, tone: 'green', filter: { source: 'license' } })
+  if (f.writeups > 0) out.push({ key: 'writeups', label: `${f.writeups} write-up${f.writeups === 1 ? '' : 's'}`, tone: 'gray', filter: { source: 'writeup' } })
+  if (f.entries > 0) out.push({ key: 'entries', label: `${f.entries} HR entr${f.entries === 1 ? 'y' : 'ies'}`, tone: 'gray', filter: { source: 'file' } })
+  if (f.evidence > 0) out.push({ key: 'evidence', label: `${f.evidence} piece${f.evidence === 1 ? '' : 's'} of evidence`, tone: 'gray', filter: { source: 'evidence' } })
+  return out
+}
+
+/** One signed paper, as the seat's `signed_papers` lists it and as the Timeline's signed line reads (v2.6820). */
+export type PersonSignedPaper = {
+  id: string
+  paper: string
+  doc_type: string
+  /** The day it was signed, YYYY-MM-DD. */
+  signed_on: string
+  signed_as: string
+  how: PersonSignedHow
+  sent_on: string | null
+  /** The day the office made the record, when that was after the signing (a scan keyed in later); null when the same day or before. */
+  recorded_on: string | null
+  office_completed_on: string | null
+  expires_on: string | null
+  door: { label: string; to: string }
+}
+
+/**
+ * The papers a person signed, newest first — a short list beside the Timeline so a reader or an agent sees what was signed
+ * without walking the months. Pure; the same rows the Timeline's `contract` source draws from.
+ */
+export function signedPapers(input: Pick<PersonTimelineInput, 'contracts' | 'person'>): PersonSignedPaper[] {
+  const out: PersonSignedPaper[] = []
+  for (const c of input.contracts) {
+    const signedOn = dayOf(c.signed_at)
+    if (c.status !== 'signed' || !signedOn) continue
+    const madeOn = dayOf(c.created_at)
+    out.push({
+      id: c.id,
+      paper: c.document_name,
+      doc_type: c.doc_type,
+      signed_on: signedOn,
+      signed_as: (c.signer_printed_name ?? '').trim() || (input.person?.name ?? ''),
+      how: contractSignedHow(c),
+      sent_on: dayOf(c.sent_at),
+      recorded_on: madeOn && madeOn > signedOn ? madeOn : null,
+      office_completed_on: dayOf(c.office_completed_at),
+      expires_on: dayOf(c.expires_at),
+      door: contractRecordDoor(c.id),
+    })
+  }
+  out.sort((a, b) => (a.signed_on < b.signed_on ? 1 : a.signed_on > b.signed_on ? -1 : a.paper < b.paper ? -1 : a.paper > b.paper ? 1 : 0))
+  return out
+}
+
+/** One hours statement, as the seat's `hours_statements` lists it (v2.6820). */
+export type PersonStatementRow = {
+  id: string
+  record_id: string
+  job: string
+  job_ledger_id: string
+  period: { from: string; to: string }
+  basis: string
+  standing: PersonStatementStanding
+  standing_words: string
+  prepared_on: string | null
+  signed_on: string | null
+  signed_copy_id: string | null
+  in_drive: boolean
+  on_matter: boolean
+  door: { label: string; to: string }
+}
+
+/** The person's hours statements, newest first, each with where it stands and its door. Pure. */
+export function statementRows(input: Pick<PersonTimelineInput, 'statements' | 'contracts'>): PersonStatementRow[] {
+  const copies = new Map(input.contracts.filter((c) => c.doc_type === 'hours_statement').map((c) => [c.id, c]))
+  const out = (input.statements ?? []).map((s): PersonStatementRow => {
+    const standing = statementStanding(s.state)
+    const copy = s.contract_document_id ? copies.get(s.contract_document_id) : undefined
+    return {
+      id: s.id,
+      record_id: s.record_id,
+      job: s.job_label,
+      job_ledger_id: s.job_ledger_id,
+      period: { from: s.period_start, to: s.period_end },
+      basis: s.basis,
+      standing,
+      standing_words: STATEMENT_KIND_WORDS[standing].replace('hours statement · ', ''),
+      prepared_on: dayOf(s.prepared_at),
+      signed_on: standing === 'signed' ? dayOf(copy?.signed_at) : null,
+      signed_copy_id: s.contract_document_id,
+      in_drive: Boolean(s.drive_file_id),
+      on_matter: Boolean(s.matter_document_id),
+      door: statementDoor(s),
+    }
+  })
+  out.sort((a, b) => ((a.prepared_on ?? '') < (b.prepared_on ?? '') ? 1 : (a.prepared_on ?? '') > (b.prepared_on ?? '') ? -1 : a.record_id < b.record_id ? -1 : 1))
   return out
 }
