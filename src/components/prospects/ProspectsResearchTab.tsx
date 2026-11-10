@@ -110,6 +110,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   // the ledger and the map are the wide view of a window of the same rows.
   const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'builders' | 'ledger' | 'map'>('skim')
   const wide = view === 'ledger' || view === 'map'
+  const phoneSkim = isMobile && view === 'skim'
   // Every permit the feed has brought, with no window: the deck, the step strip and the three lists read these.
   const [allRows, setAllRows] = useState<ResearchPermitRow[]>([])
   const [allLoading, setAllLoading] = useState(true)
@@ -307,7 +308,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      {/* On a phone the skim is the card: the filters and Pull now wait on the ledger, so the card starts near the top. */}
+      <div style={{ display: phoneSkim ? 'none' : 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 600, fontSize: '1rem' }}>Permits</span>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>City</span>
@@ -361,7 +363,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </button>
       </div>
 
-      <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, WebkitOverflowScrolling: 'touch', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
         {(
           [
             { v: 'skim', words: 'Skim', n: places.skim },
@@ -384,7 +386,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                 if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
                 setView(step.v)
               }}
-              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: step.v === 'ledger' ? 'auto' : undefined }}
+              style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined }}
             >
               {step.words}
               {step.n != null && !allLoading ? ` ${step.n}` : ''}
@@ -393,7 +395,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         })}
       </div>
 
-      <div style={mutedStyle}>{loading ? 'Reading the permits…' : wide ? line : pulledAtWords(pull)}</div>
+      {!phoneSkim && <div style={mutedStyle}>{loading ? 'Reading the permits…' : wide ? line : pulledAtWords(pull)}</div>}
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700, var(--text-red-700))', fontSize: '0.875rem' }}>

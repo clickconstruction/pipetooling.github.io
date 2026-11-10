@@ -401,7 +401,7 @@ export function PermitSkimDeck({
           </span>
         </>
       )}
-      <PermitSkimLook row={row} milesWords={far} />
+      <PermitSkimLook row={row} milesWords={far} compact={isMobile} />
       <div style={{ padding: '14px 16px 4px' }}>
         <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {row.work_type ?? 'Permit'} · {filedWords(row, todayYmd)}
@@ -435,13 +435,16 @@ export function PermitSkimDeck({
           <GoogleSearchPress ask={asks.company ?? asks.person} />
         </div>
 
-        <div style={factRow}>
-          <span style={factName}>Plumber</span>
-          <span>
-            <span style={pill('green')}>none yet</span>
-          </span>
-          <span />
-        </div>
+        {/* Every card in the deck has no plumber yet, and the green line says so: a phone spends the row on the answers. */}
+        {!isMobile && (
+          <div style={factRow}>
+            <span style={factName}>Plumber</span>
+            <span>
+              <span style={pill('green')}>none yet</span>
+            </span>
+            <span />
+          </div>
+        )}
 
         <div style={factRow}>
           <span style={factName}>Property</span>
