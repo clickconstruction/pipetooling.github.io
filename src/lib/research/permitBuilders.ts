@@ -5,7 +5,7 @@
  */
 import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
 import { plumbingOnFile, rowsAboveFloor, type BuilderMarkValue, type PursueFor, type ResearchPermitRow, type ValueFloor } from './permitResearch'
-import { daysBetween, type BuilderMark, type SkimContext } from './permitSkim'
+import { daysBetween, type BuilderMark, type SkimAnswer, type SkimContext } from './permitSkim'
 
 /** Where a permit sits. Every permit above the filter is in exactly one. */
 export type PermitPlace = 'skim' | 'kept' | 'pursuing' | 'closed'
@@ -61,6 +61,18 @@ export function placeCounts(rows: readonly ResearchPermitRow[], floor: ValueFloo
   const out: PlaceCounts = { skim: 0, kept: 0, pursuing: 0, closed: 0 }
   for (const r of rowsAboveFloor(rows, floor)) out[placeOf(r).place]++
   return out
+}
+
+/** What the skim deck knows before the tab does: how many cards are left, and the answer it holds for Undo. */
+export type SkimLive = { left: number; held: SkimAnswer | null }
+
+/**
+ * The strip's counts while the skim is open. The strip is the one count on the page, so Skim is
+ * the deck's own number, and an answer still held for Undo already reads on Kept or on Closed.
+ */
+export function stripCounts(places: PlaceCounts, live: SkimLive | null): PlaceCounts {
+  if (!live) return places
+  return { ...places, skim: live.left, kept: places.kept + (live.held === 'keep' ? 1 : 0), closed: places.closed + (live.held === 'pass' ? 1 : 0) }
 }
 
 export type KeptShowing = 'everyone' | 'mine' | 'nobody' | 'again'

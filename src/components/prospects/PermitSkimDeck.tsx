@@ -5,7 +5,7 @@ import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { contactKeys, rowsAboveFloor, type ContactHistory, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
-import { BUILDER_KIND_WORDS, builderLine, isBuilderKind, placeCounts, placeOf, skimBuilderContext } from '../../lib/research/permitBuilders'
+import { BUILDER_KIND_WORDS, builderLine, isBuilderKind, placeCounts, placeOf, skimBuilderContext, type SkimLive } from '../../lib/research/permitBuilders'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import {
   PASS_REASONS,
@@ -20,7 +20,6 @@ import {
   skimMoney,
   skimTitle,
   skimVerdict,
-  toSkimWords,
   type PassReasonCode,
   type SkimAnswer,
   type SkimCard,
@@ -86,6 +85,7 @@ export function PermitSkimDeck({
   onReload,
   onAnswered,
   onDigIn,
+  onLive,
 }: {
   authUserId: string
   city: string
@@ -103,6 +103,8 @@ export function PermitSkimDeck({
   onAnswered: (permitId: string, patch: AnsweredPatch) => void
   /** Opens the kept permits, where step two works them. */
   onDigIn: () => void
+  /** The deck's own count and the answer it holds, for the strip above it. Null while it reads, when it fails and when it closes. */
+  onLive?: (live: SkimLive | null) => void
 }) {
   const { showToast } = useToastContext()
   const office = useOfficeAnchor(true)
@@ -137,6 +139,15 @@ export function PermitSkimDeck({
   const top = deck[0] ?? null
   // A kept permit the tab has not yet been told about is still held here, so the press counts it.
   const keptCount = useMemo(() => placeCounts(rows, floor).kept + (pending?.answer === 'keep' ? 1 : 0), [rows, floor, pending])
+
+  // The strip above is the one count on the page, so it reads the deck's number and the held answer.
+  const left = deck.length
+  const heldAnswer = pending?.answer ?? null
+  const deckReady = !loading && !error
+  useEffect(() => {
+    onLive?.(deckReady ? { left, held: heldAnswer } : null)
+  }, [onLive, deckReady, left, heldAnswer])
+  useEffect(() => () => onLive?.(null), [onLive])
 
   /** Write one held answer. A failure names the permit, says why, and puts the card back. */
   const write = useCallback(
@@ -483,24 +494,17 @@ export function PermitSkimDeck({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>
-          <strong style={{ color: 'var(--text)', fontSize: '0.9375rem' }}>{toSkimWords(deck.length)}</strong> · best first
-        </span>
-        {answered > 0 && (
-          <span>
-            {tally.kept} kept, {tally.passed} passed
-          </span>
-        )}
-      </div>
-      <div aria-hidden="true" style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${Math.round((answered / Math.max(1, answered + deck.length)) * 100)}%`, background: '#2563eb' }} />
-      </div>
+      {/* How far this sitting has come. Not drawn before the first answer: an empty bar under the strip says nothing. */}
+      {answered > 0 && (
+        <div aria-hidden="true" style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.round((answered / Math.max(1, answered + deck.length)) * 100)}%`, background: '#2563eb' }} />
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '220px minmax(0, 560px)', gap: 14, alignItems: 'start' }}>
         {!isMobile && (
           <div>
-            <div style={{ ...factName, marginBottom: 4 }}>Up next</div>
+            <div style={{ ...factName, marginBottom: 4 }}>Up next · best first</div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', overflow: 'hidden', fontSize: '0.8125rem' }}>
               {deck.slice(0, 6).map((c, i) => (
                 <div key={c.row.id} style={{ padding: '7px 10px', borderTop: i === 0 ? 0 : '1px solid var(--border)', background: i === 0 ? 'var(--bg-blue-tint)' : undefined }}>
@@ -512,6 +516,11 @@ export function PermitSkimDeck({
               ))}
               {deck.length > 6 && <div style={{ ...muted, padding: '7px 10px', borderTop: '1px solid var(--border)', fontSize: '0.72rem' }}>and {deck.length - 6} more</div>}
             </div>
+            {answered > 0 && (
+              <div style={{ ...muted, fontSize: '0.75rem', paddingTop: 6 }}>
+                This sitting: {tally.kept} kept, {tally.passed} passed
+              </div>
+            )}
           </div>
         )}
         <div>

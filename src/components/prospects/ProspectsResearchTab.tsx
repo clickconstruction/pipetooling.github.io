@@ -52,7 +52,7 @@ import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
-import { notPursuingVerdict, placeCounts, pursueReason } from '../../lib/research/permitBuilders'
+import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -190,6 +190,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   }, [])
 
   const places = useMemo(() => placeCounts(allRows, floor), [allRows, floor])
+  // The strip is the one count on the page: while the skim is open it reads the deck's own number and held answer.
+  const [skimLive, setSkimLive] = useState<SkimLive | null>(null)
+  const strip = useMemo(() => stripCounts(places, view === 'skim' ? skimLive : null), [places, view, skimLive])
   /** An answer was written: the row reads it at once, so the strip and the lists do not wait on a reload. */
   const patchRow = useCallback(
     (permitId: string, patch: AnsweredPatch) => {
@@ -366,10 +369,10 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, WebkitOverflowScrolling: 'touch', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
         {(
           [
-            { v: 'skim', words: 'Skim', n: places.skim },
-            { v: 'kept', words: 'Kept', n: places.kept },
-            { v: 'pursuing', words: 'Pursuing', n: places.pursuing },
-            { v: 'closed', words: 'Closed', n: places.closed },
+            { v: 'skim', words: 'Skim', n: strip.skim },
+            { v: 'kept', words: 'Kept', n: strip.kept },
+            { v: 'pursuing', words: 'Pursuing', n: strip.pursuing },
+            { v: 'closed', words: 'Closed', n: strip.closed },
             { v: 'builders', words: 'Builders', n: null },
             { v: 'ledger', words: 'Ledger', n: null },
             { v: 'map', words: 'Map', n: null },
@@ -418,7 +421,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       {view === 'skim' && (
-        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} />
+        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} />
       )}
 
       {(view === 'kept' || view === 'pursuing' || view === 'closed') &&

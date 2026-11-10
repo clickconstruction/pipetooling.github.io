@@ -27,7 +27,7 @@ The count says how many are left. A permit stays in the deck until someone answe
 
 ## Work the ones you kept
 
-A strip under the filters counts where every permit is. **Skim** waits on an answer. **Kept** waits on a closer look. **Pursuing** has a lead. **Closed** is done.
+A strip under the filters counts where every permit is. **Skim** waits on an answer. **Kept** waits on a closer look. **Pursuing** has a lead. **Closed** is done. The number on **Skim** is how many cards are left. It drops as you answer.
 
 After a keep the dark bar asks who it is for. Tap a name to hand it over. You can also pick a name beside **Hand to** on a kept row.
 

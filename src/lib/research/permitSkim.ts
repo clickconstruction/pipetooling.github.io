@@ -189,11 +189,6 @@ export function skimKeyAct(key: string): SkimKeyAct | null {
 /** How long an answer is held before it is written, so Undo has something to take back. */
 export const SKIM_HOLD_MS = 15_000
 
-/** "12 to skim". */
-export function toSkimWords(left: number): string {
-  return `${left} to skim`
-}
-
 /** The caught-up state's second line: what this sitting answered, and when more arrives. */
 export function caughtUpWords(kept: number, passed: number): string {
   const n = kept + passed
