@@ -21,6 +21,8 @@ The page opens on three numbers.
 - **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
 - **Slowest step** is the stage the page reads as the weakest link.
 
+Under the three numbers, a strip of pipe draws the five steps in a line. A section is wide when the step moves many dollars a week. The word under each number says what the dollars are: asked, sold, built, billed or paid. A block on top of a section is work waiting in front of that step. The slowest step is red. Press a section to open that step's desk. In a week cash comes first, the strip sits under the card.
+
 An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
 When cash goes under your floor, cash comes first. The cash tile takes the top row and the card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.

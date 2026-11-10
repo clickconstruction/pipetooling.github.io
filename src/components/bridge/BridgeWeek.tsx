@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import type { CallLink, CallMove, CallOutcome, MoveDone } from '../../lib/bridge/calls'
@@ -76,6 +76,7 @@ export function BridgeWeek({
   onAnswer,
   onPickStep,
   onCashNote,
+  strip,
 }: {
   model: WeekCallModel
   recording: boolean
@@ -87,6 +88,8 @@ export function BridgeWeek({
   onPickStep: () => void
   /** Opens Money at the bank's accounts, from the sentence that names what is left out. */
   onCashNote: () => void
+  /** The strip of pipe (PR 3): under the tiles in a usual week, under the card in a week cash leads. */
+  strip?: ReactNode
 }) {
   const narrow = useIsNarrowScreen()
   const proposing = model.state === 'propose'
@@ -212,6 +215,7 @@ export function BridgeWeek({
           <Tile key={t.id} tile={t} narrow={narrow} onNote={onCashNote} />
         ))}
       </div>
+      {!model.cashLeads && strip}
 
       <div style={{ display: 'grid', gridTemplateColumns: (!narrow && last) || how ? 'minmax(0, 1.55fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: narrow ? 8 : 12, marginTop: narrow ? 8 : 12, alignItems: 'start' }}>
         <div style={{ background: 'var(--surface)', border: `2px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
@@ -305,6 +309,7 @@ export function BridgeWeek({
           </div>
         )}
       </div>
+      {model.cashLeads && strip}
     </section>
   )
 }
