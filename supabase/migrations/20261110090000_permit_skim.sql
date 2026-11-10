@@ -271,7 +271,7 @@ AS $$
            ) AS has_plumbing
     FROM public.permits q
     WHERE q.city = p_city AND q.kind = 'building' AND NOT q.residential AND q.builder_key IS NOT NULL
-      AND COALESCE(q.issued_on, q.submitted_on) >= CURRENT_DATE - 365
+      AND COALESCE(q.issued_on, q.submitted_on) >= public.app_today() - 365
   ),
   stats AS (
     SELECT builder_key, count(*)::integer AS permits, count(*) FILTER (WHERE NOT has_plumbing)::integer AS open
@@ -341,7 +341,7 @@ AS $$
     SELECT q.id, q.builder_key, q.contact, q.permit_number, q.address_key, q.city, COALESCE(q.issued_on, q.submitted_on) AS filed_on
     FROM public.permits q
     WHERE q.city = p_city AND q.kind = 'building' AND NOT q.residential AND q.builder_key IS NOT NULL
-      AND COALESCE(q.issued_on, q.submitted_on) >= CURRENT_DATE - 365
+      AND COALESCE(q.issued_on, q.submitted_on) >= public.app_today() - 365
   ),
   plumb AS (
     SELECT m.id, m.builder_key, pl.contact AS plumber,
