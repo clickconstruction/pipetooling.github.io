@@ -26,6 +26,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'todays-sends': 'anyone',
   // While you were off (v2.6060, punch list #141 PR 4): the viewer's own held pushes; nobody else's line.
   'while-off': 'anyone',
+  // The week's call (punch list #303 PR 4): the move was given to this account; nobody else's line.
+  'bridge-moves': 'anyone',
   // The review ask (v2.5946): whoever reads it calls; the owner may want the call himself.
   'rating-low': 'anyone',
   'gc-review-weekly': 'assistant',
