@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bridge under one story</title>
+<style>
+  /* The Bridge under one story. Every company figure in the frames is made up: Sam, Dana and Jorge, Ridgeway Builders,
+     Oak Hollow HOA, Cedar Bend Dental, North Yard Supply, every dollar, week, job count and date. The only real numbers
+     are in section 1, and they measure the page itself (its length, its words, its presses), never the company.
+     The frames use the app's own token names with the app's light and dark values (src/index.css). A blue press is
+     #2563eb under white words, a green one #16a34a, the lit step #dc2626. Phone frames are 375 wide, desk frames 1080. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-red: #fca5a5; --border-amber: #fcd34d; --border-green: #bbf7d0; --border-blue: #bfdbfe;
+    --sept: #64748b; --oct10: #2563eb; --oct11: #c2410c;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #1e3358;
+    --border-red: #991b1b; --border-amber: #92400e; --border-green: #166534; --border-blue: #1e40af;
+    --sept: #94a3b8; --oct10: #60a5fa; --oct11: #fb923c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 96ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 48px 0 6px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  h3.sub { font-size: 14px; margin: 22px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap b { color: var(--copper); }
+  .say { margin: 0; font-size: 13px; max-width: 52ch; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 104ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  ul.plain, ol.plain { margin: 8px 0 0; padding-left: 20px; max-width: 104ch; }
+  ul.plain li, ol.plain li { margin: 0 0 6px; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; max-width: 1180px; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 6px 9px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  .tw { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---- section 1: the page as it is, in bars ---- */
+  .map { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; width: 620px; max-width: 100%; }
+  .maprow { display: grid; grid-template-columns: 182px 40px 1fr 62px; gap: 8px; align-items: center; font-size: 12px; min-height: 22px; }
+  .maprow .nm { color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .maprow .at, .maprow .ht { color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .maprow i { display: block; height: 12px; border-radius: 3px; min-width: 3px; }
+  .maprow i.s { background: var(--sept); } .maprow i.a { background: var(--oct10); } .maprow i.b { background: var(--oct11); }
+  .mapmark { margin: 3px 0; padding: 3px 8px; font-size: 11.5px; font-weight: 600; border-radius: 6px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px dashed var(--border-amber); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-top: 8px; color: var(--text-muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; flex: 1 1 420px; min-width: 0; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .fact b { display: block; font-size: 24px; line-height: 1.1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .fact span { display: block; font-size: 12.5px; margin-top: 3px; }
+  .fact.bad b { color: var(--text-red-700); }
+
+  /* ---- the app, drawn ---- */
+  .screen { width: 375px; position: relative; background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; padding: 10px 12px 14px; min-height: 668px; }
+  .screen.desk { width: 1080px; min-height: 0; padding: 16px 18px 20px; }
+  .fold { position: absolute; left: 0; right: 0; top: 640px; border-top: 2px dashed var(--copper); pointer-events: none; }
+  .fold span { position: absolute; right: 6px; top: -17px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--copper); background: var(--bg-page); padding: 0 4px; }
+  .bhead { display: flex; align-items: baseline; gap: 8px; margin: 2px 2px 8px; }
+  .bhead b { font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-strong); }
+  .bhead span { font-size: .8rem; color: var(--text-muted); }
+  .bhead .chipx { margin-left: auto; font-size: .7rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-muted); }
+  .bhead .chipx.green { border-color: var(--text-green-700); color: var(--text-green-700); }
+  .bhead .chipx.amber { border-style: dashed; border-color: var(--border-amber); color: var(--text-amber-800); background: var(--bg-amber-tint); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 9px; min-width: 0; }
+  .tile .k { font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); line-height: 1.25; min-height: 1.6rem; }
+  .tile .v { font-size: 1.45rem; font-weight: 800; color: var(--text-strong); line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .tile .s { font-size: .72rem; color: var(--text-muted); line-height: 1.3; margin-top: 2px; }
+  .tile.red { border-color: var(--border-red); background: var(--bg-red-tint); } .tile.red .v { color: var(--text-red-700); }
+  .tile.green .v { color: var(--text-green-700); }
+  .tile.wide { grid-column: 1 / -1; }
+  .desk .tile { padding: 12px 14px; } .desk .tile .k { font-size: .7rem; min-height: 0; } .desk .tile .v { font-size: 2rem; } .desk .tile .s { font-size: .82rem; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 22px; margin: 4px 0 2px; }
+  .bars i { flex: 1; background: #2563eb; border-radius: 1px; opacity: .55; } .bars i.now { opacity: 1; }
+  .desk .bars { height: 32px; gap: 5px; max-width: 300px; }
+  .call { margin-top: 8px; background: var(--surface); border: 2px solid var(--border-strong); border-radius: 12px; padding: 9px 12px 10px; }
+  .call.lit { border-color: #dc2626; }
+  .call.ask { border-color: #2563eb; }
+  .call .k { font-size: .66rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .call .lead { margin: 2px 0 2px; font-size: 1.12rem; font-weight: 800; color: var(--text-strong); line-height: 1.25; }
+  .call p { margin: 0; font-size: .86rem; color: var(--text-700); }
+  .moves { list-style: none; margin: 7px 0 0; padding: 0; counter-reset: m; }
+  .moves li { counter-increment: m; display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 8px; align-items: start; padding: 6px 0; border-top: 1px solid var(--border); min-height: 48px; }
+  .moves li::before { content: counter(m); width: 22px; height: 22px; border-radius: 50%; background: var(--bg-muted); color: var(--text-strong); font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .moves b { display: block; font-size: .9rem; color: var(--text-strong); line-height: 1.3; }
+  .moves .why { display: block; font-size: .76rem; color: var(--text-muted); line-height: 1.3; }
+  .moves a { font-size: .78rem; color: var(--text-link); text-decoration: none; white-space: nowrap; display: inline-block; padding-top: 3px; }
+  .who { font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-700); white-space: nowrap; align-self: start; }
+  .tag { display: inline-block; font-size: .6rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 4px; padding: 1px 5px; margin-right: 5px; vertical-align: 1px; }
+  .tag.cash { background: var(--bg-red-tint); color: var(--text-red-700); border: 1px solid var(--border-red); }
+  .tag.step { background: var(--bg-blue-tint); color: var(--text-link); border: 1px solid var(--border-blue); }
+  .done { font-size: .72rem; font-weight: 700; white-space: nowrap; align-self: start; padding-top: 3px; }
+  .done.y { color: var(--text-green-700); } .done.p { color: var(--text-amber-800); } .done.n { color: var(--text-muted); }
+  .press { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 8px; border-radius: 10px; border: 0; font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer; padding: .5rem .8rem; }
+  .press.blue { background: #2563eb; color: #fff; } .press.green { background: #16a34a; color: #fff; }
+  .press.line { background: var(--surface); color: var(--text-base); border: 1.5px solid var(--border-strong); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fine { margin: 7px 0 0 !important; font-size: .76rem !important; color: var(--text-muted) !important; }
+  .fine a { color: var(--text-link); text-decoration: none; }
+  .doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .door { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; min-height: 46px; font-size: .86rem; font-weight: 700; color: var(--text-strong); display: flex; flex-direction: column; justify-content: center; }
+  .door span { font-size: .68rem; font-weight: 500; color: var(--text-muted); line-height: 1.25; }
+  .soft { display: block; margin-top: 9px; font-size: .78rem; color: var(--text-amber-800); text-decoration: none; padding: 7px 10px; border: 1px dashed var(--border-amber); border-radius: 8px; background: var(--bg-amber-tint); }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
+  .panel .k { font-size: .66rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .big { font-size: 2.5rem; font-weight: 800; line-height: 1.05; color: var(--text-red-700); font-variant-numeric: tabular-nums; }
+  .band { margin-top: 8px; font-size: .76rem; padding: 6px 9px; border-radius: 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .dgrid { display: grid; gap: 12px; }
+  .dgrid.c2 { grid-template-columns: 1.55fr 1fr; } .dgrid.c2b { grid-template-columns: 1.25fr 1fr; }
+  .desk .tiles { gap: 12px; } .desk .call { margin-top: 0; } .desk .doors { margin-top: 12px; grid-template-columns: repeat(4, 1fr); }
+  .last { font-size: .86rem; } .last p { margin: 4px 0 0; color: var(--text-700); }
+  .last table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .8rem; }
+  .last td { padding: 5px 0; border-top: 1px solid var(--border); vertical-align: top; } .last td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+  .pipecap { font-size: .72rem; color: var(--text-muted); margin: 6px 2px 0; }
+  svg text { font-family: var(--font); }
+  .sheetrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; width: 980px; max-width: 100%; padding: 14px; background: var(--bg-page); }
+  .sheet { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; font-size: 13px; color: var(--text-700); }
+  .sheet h4 { margin: 0 0 4px; font-size: 14px; color: var(--text-strong); }
+  .sheet ul { margin: 0; padding-left: 17px; } .sheet li { margin: 0 0 3px; }
+  .sheet .from { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .daylist { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 6px; }
+  .daylist td { padding: 5px 0; border-top: 1px solid var(--border); } .daylist td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .neg { color: var(--text-red-700); } .pos { color: var(--text-green-700); }
+  @media (max-width: 700px) { .maprow { grid-template-columns: 120px 34px 1fr 54px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #303 · The Bridge · design only, nothing built</p>
+    <h1>The Bridge under one story</h1>
+    <p>The page has been drawn three times, each on top of the last. This sheet shows the page as it stands, then three stories it could tell instead, then the one I would build. Every company figure in the frames is made up.</p>
+    <nav class="jump"><a href="#today">1 · Today</a><a href="#a">2 · A: one decision a week</a><a href="#b">3 · B: cash first</a><a href="#c">4 · C: the flow as one picture</a><a href="#pick">5 · The pick</a><a href="#moves">6 · Where everything goes</a><a href="#second">7 · The second look</a><a href="#calls">8 · Your calls</a></nav>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+  </div>
+</header>
+
+<!-- ============================================================ 1 TODAY -->
+<h2 id="today">1 · Today <small>the page measured on 2026-11-10, on a phone and at a desk</small></h2>
+<p class="lede">Each bar is one section of <code>/bridge</code>, as long as the section is tall on a phone. The colour says which drawing put it there. The counts measure the page. None of them is a company figure.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">The scroll on a phone, top to bottom · 13.7 screens</div>
+    <div class="map">
+      <div class="maprow"><span class="nm">Header and the rule</span><span class="at">0.0</span><span><i class="b" style="width:8%"></i></span><span class="ht">0.2</span></div>
+      <div class="maprow"><span class="nm">What we maximize, two lights</span><span class="at">0.2</span><span><i class="a" style="width:32%"></i></span><span class="ht">0.8</span></div>
+      <div class="mapmark">A phone's first screen ends here. It shows one number, one verdict and no stage.</div>
+      <div class="maprow"><span class="nm">Where the work piles up</span><span class="at">1.1</span><span><i class="b" style="width:84%"></i></span><span class="ht">2.1</span></div>
+      <div class="maprow"><span class="nm">Jobs with no %</span><span class="at">3.2</span><span><i class="b" style="width:8%"></i></span><span class="ht">0.2</span></div>
+      <div class="maprow"><span class="nm">The dial</span><span class="at">3.3</span><span><i class="b" style="width:28%"></i></span><span class="ht">0.7</span></div>
+      <div class="maprow"><span class="nm">What throttles the link</span><span class="at">4.1</span><span><i class="b" style="width:32%"></i></span><span class="ht">0.8</span></div>
+      <div class="maprow"><span class="nm">The link's desk</span><span class="at">4.9</span><span><i class="b" style="width:40%"></i></span><span class="ht">1.0</span></div>
+      <div class="mapmark">The press that records the week's call sits here. About 1,030 words and 120 numbers come before it.</div>
+      <div class="maprow"><span class="nm">Everything else waits, last call</span><span class="at">5.9</span><span><i class="b" style="width:24%"></i></span><span class="ht">0.6</span></div>
+      <div class="maprow"><span class="nm">This week, Fix the reading</span><span class="at">6.4</span><span><i class="a" style="width:88%"></i></span><span class="ht">2.2</span></div>
+      <div class="maprow"><span class="nm">Three cards</span><span class="at">8.6</span><span><i class="s" style="width:20%"></i></span><span class="ht">0.5</span></div>
+      <div class="maprow"><span class="nm">Net position</span><span class="at">9.1</span><span><i class="s" style="width:12%"></i></span><span class="ht">0.3</span></div>
+      <div class="maprow"><span class="nm">Truth check</span><span class="at">9.4</span><span><i class="s" style="width:28%"></i></span><span class="ht">0.7</span></div>
+      <div class="maprow"><span class="nm">People, folded</span><span class="at">10.1</span><span><i class="s" style="width:8%"></i></span><span class="ht">0.2</span></div>
+      <div class="maprow"><span class="nm">Cash, next 8 weeks</span><span class="at">10.3</span><span><i class="s" style="width:36%"></i></span><span class="ht">0.9</span></div>
+      <div class="maprow"><span class="nm">Bills due, receipts expected</span><span class="at">11.2</span><span><i class="s" style="width:84%"></i></span><span class="ht">2.1</span></div>
+      <div class="legend">
+        <span><i style="background:var(--sept)"></i>the September chart table</span>
+        <span><i style="background:var(--oct10)"></i>the redraw of Oct 10</span>
+        <span><i style="background:var(--oct11)"></i>the weakest link of Oct 11</span>
+        <span>second column: screens down · last column: screens tall</span>
+      </div>
+    </div>
+    <p class="say">Three stories, one under the other. The first panel says what we maximize. The rule above it says find the slowest step. The oldest part, at the bottom, is about cash and net position.</p>
+  </div>
+  <div class="facts">
+    <div class="fact"><b>5.2</b><span>screens tall at a desk. 13.7 on a phone.</span></div>
+    <div class="fact"><b>88</b><span>numbers on the first desk screen, in 584 words. 414 numbers on the page.</span></div>
+    <div class="fact"><b>27</b><span>figures printed in two or more sections. Net position's change is in three.</span></div>
+    <div class="fact"><b>6</b><span>sections ask for the hours to be approved. Five ask for the percents. Three ask for prices.</span></div>
+    <div class="fact"><b>5</b><span>lists of things to do: the piles on you, the desk's moves, the usual fixes, This week, Fix the reading.</span></div>
+    <div class="fact"><b>4</b><span>readings of "are we making money", with different signs on the same day.</span></div>
+    <div class="fact"><b>42 of 61</b><span>presses on the phone are under 36 px tall. The record press is 34.</span></div>
+    <div class="fact bad"><b>0</b><span>calls recorded since the call shipped on Oct 11. Five Mondays have passed.</span></div>
+    <div class="fact bad"><b>0</b><span>weekly emails sent. The switch has been off since it shipped on Oct 26.</span></div>
+    <div class="fact bad"><b>1</b><span>account has opened the page in 90 days: a dev, on 23 days, mostly the days it was being built.</span></div>
+  </div>
+</div>
+<p class="note"><b>The read.</b> Nothing on the page is wrong. It is three answers to three questions, at one volume, and the one press the October design called "the product" is five phone screens down behind an owner field for every move. The page has readings. It does not yet have a reader.</p>
+
+<!-- ============================================================ A -->
+<h2 id="a">2 · A: one decision a week <small>the page is a ritual: Monday calls it, Friday asks</small></h2>
+<p class="lede">Three numbers say where we stand. One card names the slowest step and proposes two or three moves, each with a person and a door. One press makes it the week's call. On Friday the same card asks whether it moved. Everything else sits behind three doors.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>A1</b> · phone · Monday, before the call</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span><span class="chipx amber">5 soft numbers ›</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Earned last week</div><div class="v">$31k</div><div class="bars"><i style="height:83%"></i><i style="height:71%"></i><i style="height:100%"></i><i style="height:54%"></i><i style="height:93%"></i><i style="height:88%"></i><i style="height:66%"></i><i class="now" style="height:76%"></i></div><div class="s">8 weeks ran $22k to $41k.</div></div>
+        <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v">$12k</div><div class="s">The low point, on Nov 27. The floor is $10k.</div></div>
+        <div class="tile red"><div class="k">Slowest step</div><div class="v">Bill</div><div class="s">7.5 weeks of finished work waits.</div></div>
+      </div>
+      <div class="call lit">
+        <div class="k">This week's call</div>
+        <p class="lead">Bill is the slowest step.</p>
+        <p>$142k of finished work is not billed. At $19k a week that is 7.5 weeks.</p>
+        <ol class="moves">
+          <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. Opens Ready to bill.</span></div><span class="who">Dana</span></li>
+          <li><div><b>Price the 4 jobs with no price.</b><span class="why">Opens the 4 jobs.</span></div><span class="who">Sam</span></li>
+          <li><div><b>Keep Friday morning for billing only.</b><span class="why">Nothing else lands on that desk.</span></div><span class="who">Dana</span></li>
+        </ol>
+        <button class="press blue" type="button">Make Bill this week's call</button>
+        <p class="fine">Friday asks if it moved. <a>Pick another step ›</a></p>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps</span></div>
+        <div class="door">Money ›<span>cash, owed</span></div>
+        <div class="door">People ›<span>who moved it</span></div>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">The page proposes the step, the moves and the people. Sam prunes and presses once. A tap on a move opens its door. Today the same press sits five screens down, behind a name typed on every move.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><b>A2</b> · phone · Friday, the same card asks</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Friday, Nov 13</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Earned this week so far</div><div class="v">$27k</div><div class="bars"><i style="height:71%"></i><i style="height:100%"></i><i style="height:54%"></i><i style="height:93%"></i><i style="height:88%"></i><i style="height:66%"></i><i style="height:76%"></i><i class="now" style="height:66%"></i></div><div class="s">Last week was $31k.</div></div>
+        <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v">$14k</div><div class="s">The low point, on Nov 27. The floor is $10k.</div></div>
+        <div class="tile red"><div class="k">Slowest step</div><div class="v">Bill</div><div class="s">5.9 weeks. It was 7.5 on Monday.</div></div>
+      </div>
+      <div class="call ask">
+        <div class="k">Friday's question</div>
+        <p class="lead">Did Bill move?</p>
+        <p>Monday it was 7.5 weeks and $142k. Today it is 5.9 weeks and $112k.</p>
+        <ol class="moves">
+          <li><div><b>Bill the 11 finished jobs.</b><span class="why">6 of 11 billed. $64k went out.</span></div><span class="done p">part</span></li>
+          <li><div><b>Price the 4 jobs with no price.</b><span class="why">All 4 have a price now.</span></div><span class="done y">done</span></li>
+          <li><div><b>Keep Friday morning for billing only.</b><span class="why">The app cannot read this one. You say.</span></div><span class="done n">yours</span></li>
+        </ol>
+        <div class="two">
+          <button class="press green" type="button">It moved</button>
+          <button class="press line" type="button">It did not</button>
+        </div>
+        <p class="fine">The numbers say it moved. Your answer is the one kept.</p>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps</span></div>
+        <div class="door">Money ›<span>cash, owed</span></div>
+        <div class="door">People ›<span>who moved it</span></div>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">Between Monday and Friday the card shows the call and each move's count as it changes. A second week on the same step with nothing moved asks for other people or another call, as the page does now.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>A3</b> · desk · Monday, the first screen</div>
+    <div class="frame"><div class="screen desk">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span><span class="chipx green">last week: Collect moved</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Earned last week</div><div class="v">$31k</div><div class="bars"><i style="height:83%"></i><i style="height:71%"></i><i style="height:100%"></i><i style="height:54%"></i><i style="height:93%"></i><i style="height:88%"></i><i style="height:66%"></i><i class="now" style="height:76%"></i></div><div class="s">The last 8 pay weeks ran $22k to $41k. Press for the full chart.</div></div>
+        <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v">$12k</div><div class="s">The low point, on Nov 27. The floor is $10k. The bank has $18.4k today.</div></div>
+        <div class="tile red"><div class="k">Slowest step</div><div class="v">Bill</div><div class="s">7.5 weeks of finished work waits. Build is next at 6.0 weeks.</div></div>
+      </div>
+      <div class="dgrid c2" style="margin-top:12px">
+        <div class="call lit">
+          <div class="k">This week's call</div>
+          <p class="lead">Bill is the slowest step.</p>
+          <p>$142k of finished work is not billed. The field finishes $33k a week. The office bills $19k.</p>
+          <ol class="moves">
+            <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. The office already marked them done.</span><a>Open Ready to bill ›</a></div><span class="who">Dana</span></li>
+            <li><div><b>Price the 4 jobs with no price.</b><span class="why">They cannot be billed until they have one.</span><a>Open the 4 jobs ›</a></div><span class="who">Sam</span></li>
+            <li><div><b>Keep Friday morning for billing only.</b><span class="why">Nothing else lands on that desk.</span></div><span class="who">Dana</span></li>
+          </ol>
+          <button class="press blue" type="button" style="max-width:340px">Make Bill this week's call</button>
+          <p class="fine">Friday asks if it moved. <a>Pick another step ›</a></p>
+        </div>
+        <div class="panel last">
+          <div class="k">Last week's call</div>
+          <p><b style="color:var(--text-green-700)">Collect moved.</b> 5.1 weeks late became 3.7.</p>
+          <table>
+            <tr><td>Call the 6 invoices over 30 days late.<br><span style="color:var(--text-muted)">Dana. 4 paid, $38k.</span></td><td style="color:var(--text-green-700)">done</td></tr>
+            <tr><td>Get a pay date from Ridgeway Builders.<br><span style="color:var(--text-muted)">Sam. Promised Nov 20.</span></td><td style="color:var(--text-green-700)">done</td></tr>
+          </table>
+          <p style="margin-top:8px">The step moved, so this week's call moves on to the next one.</p>
+        </div>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps and their desks</span></div>
+        <div class="door">Money ›<span>cash, net position, what is owed</span></div>
+        <div class="door">People ›<span>who moved the number</span></div>
+        <div class="door" style="border-style:dashed;border-color:var(--border-amber);color:var(--text-amber-800)">5 soft numbers ›<span>what makes the reading unsure</span></div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:100ch">At a desk the last call sits beside this one, so the week opens on what happened and what is next. The screen holds 232 words and 27 numbers. Today's first desk screen holds 584 and 88.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>A4</b> · behind A's doors</div>
+    <div class="frame"><div class="sheetrow">
+      <div class="sheet"><h4>The flow ›</h4><ul><li>The five steps, each with its desk.</li><li>Try a change: the dial and the four usual fixes.</li><li>What throttles the step, on its desk.</li><li>What to deal with first.</li><li>Jobs with no %.</li></ul><div class="from">Today: sections 3 to 9 of the scroll.</div></div>
+      <div class="sheet"><h4>Money ›</h4><ul><li>Cash for 8 weeks, with how sure it is.</li><li>Bills due and receipts expected, by day.</li><li>Net position, with the truth check inside it.</li><li>Money owed, both ways.</li><li>The 8 week chart, full size.</li></ul><div class="from">Today: the three cards and the bottom six sections.</div></div>
+      <div class="sheet"><h4>People ›</h4><ul><li>Who moved the number this pay week.</li><li>Vectors by the day.</li><li>Crew hours and what waits on approval.</li></ul><div class="from">Today: the People strip and the hours card.</div></div>
+      <div class="sheet"><h4>Soft numbers ›</h4><ul><li>One list of what makes the reading unsure.</li><li>Each row says what it moves and opens its door.</li></ul><div class="from">Today: Fix the reading, the piles on you, half of This week.</div></div>
+    </div></div>
+    <p class="say" style="max-width:100ch">Nothing built is thrown away. The Monday sheet retires as a separate view, because the first screen is the sheet. The Monday email carries that screen and a link to make the call.</p>
+  </div>
+</div>
+
+<!-- ============================================================ B -->
+<h2 id="b">3 · B: cash first <small>how long we have, and what changes that</small></h2>
+<p class="lede">The page opens on the day cash goes under the floor. Under it are the few moves that change that day, each one saying whether it is enough. The five steps become the answer to a later question: is enough work coming after these eight weeks.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>B1</b> · phone · first screen</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="panel" style="border-color:var(--border-red)">
+        <div class="k">Cash, next 8 weeks</div>
+        <div class="big" style="font-size:2.1rem">2 weeks</div>
+        <p style="margin:2px 0 0;font-size:.9rem;font-weight:700;color:var(--text-strong)">Cash goes under the $10k floor on Nov 24.</p>
+        <p style="margin:1px 0 0;font-size:.78rem;color:var(--text-muted)">The bank has $18.4k today.</p>
+        <svg viewBox="0 0 351 122" width="100%" role="img" aria-label="Cash for eight weeks. The line dips under the floor from Nov 24 to Dec 3." style="margin-top:6px;display:block">
+          <rect x="0" y="85" width="351" height="25" style="fill:var(--bg-red-tint)"/>
+          <line x1="0" y1="85" x2="351" y2="85" style="stroke:var(--text-red-700);stroke-width:1.5;stroke-dasharray:3 3"/>
+          <text x="349" y="81" text-anchor="end" font-size="9.5" style="fill:var(--text-red-700)">floor $10k</text>
+          <polyline points="69,29 94,41 113,55 150,37 157,57" style="fill:none;stroke:#16a34a;stroke-width:2;stroke-dasharray:4 3"/>
+          <polyline points="0,64 25,80 50,69 69,79 88,79 94,91 113,105 150,88 157,57 201,68 245,45 288,55 332,32 351,35" style="fill:none;stroke:#8b5cf6;stroke-width:2.2"/>
+          <circle cx="113" cy="105" r="3.5" style="fill:var(--text-red-700)"/>
+          <text x="113" y="119" text-anchor="middle" font-size="9.5" style="fill:var(--text-red-700)">$2.1k, Nov 27</text>
+          <text x="2" y="119" font-size="9.5" style="fill:var(--text-muted)">today</text>
+          <text x="349" y="119" text-anchor="end" font-size="9.5" style="fill:var(--text-muted)">Jan 4</text>
+          <text x="118" y="24" font-size="9.5" style="fill:var(--text-green-700)">with move 1</text>
+        </svg>
+        <div class="band" style="margin-top:4px;padding:4px 9px">$73k of the $118k expected is late money.</div>
+      </div>
+      <div class="call" style="border-width:1px;padding:8px 12px 4px">
+        <div class="k">What changes that</div>
+        <ol class="moves" style="margin-top:4px">
+          <li><div><b>Call the 3 invoices over 30 days late.</b><span class="why">$41k. $20k by Nov 20 keeps cash above the floor.</span></div><span class="done y">enough</span></li>
+          <li><div><b>Ask North Yard Supply for 10 more days.</b><span class="why">$4.8k is due Nov 24. The low point becomes $6.9k.</span></div><span class="done p">not alone</span></li>
+          <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. Paid in about 24 days.</span></div><span class="done n">December</span></li>
+        </ol>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>after 8 weeks</span></div>
+        <div class="door">Net position ›</div>
+        <div class="door">People ›<span>who moved it</span></div>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">It answers the question an owner wakes up with. Each move is judged by one thing: does it change the day. The third move, the biggest in dollars, does not.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><b>B2</b> · desk · first screen</div>
+    <div class="frame"><div class="screen desk">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="dgrid c2b">
+        <div class="panel" style="border-color:var(--border-red)">
+          <div class="k">Cash, next 8 weeks</div>
+          <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap">
+            <div class="big">2 weeks</div>
+            <div style="padding-bottom:6px"><b style="color:var(--text-strong)">Cash goes under the $10k floor on Nov 24.</b><br><span style="font-size:.84rem;color:var(--text-muted)">The bank has $18.4k today. The low point is $2.1k on Nov 27. It is back above the floor on Dec 4.</span></div>
+          </div>
+          <svg viewBox="0 0 351 122" width="100%" role="img" aria-label="Cash for eight weeks, with the floor" style="margin-top:8px;display:block">
+            <rect x="0" y="85" width="351" height="25" style="fill:var(--bg-red-tint)"/>
+            <line x1="0" y1="85" x2="351" y2="85" style="stroke:var(--text-red-700);stroke-width:1;stroke-dasharray:3 3"/>
+            <text x="349" y="82" text-anchor="end" font-size="6.5" style="fill:var(--text-red-700)">floor $10k</text>
+            <polyline points="69,29 94,41 113,55 150,37 157,57" style="fill:none;stroke:#16a34a;stroke-width:1.4;stroke-dasharray:4 3"/>
+            <polyline points="0,64 25,80 50,69 69,79 88,79 94,91 113,105 150,88 157,57 201,68 245,45 288,55 332,32 351,35" style="fill:none;stroke:#8b5cf6;stroke-width:1.6"/>
+            <circle cx="113" cy="105" r="2.6" style="fill:var(--text-red-700)"/>
+            <text x="113" y="117" text-anchor="middle" font-size="6.5" style="fill:var(--text-red-700)">$2.1k, Nov 27</text>
+            <text x="2" y="117" font-size="6.5" style="fill:var(--text-muted)">today</text>
+            <text x="349" y="117" text-anchor="end" font-size="6.5" style="fill:var(--text-muted)">Jan 4</text>
+            <text x="118" y="25" font-size="6.5" style="fill:var(--text-green-700)">with move 1</text>
+          </svg>
+          <div class="band">$73k of the $118k expected is late invoices. The page assumes they land. If they slip, Dec 4 is the day to watch.</div>
+        </div>
+        <div>
+          <div class="call" style="border-width:1px">
+            <div class="k">What changes that</div>
+            <ol class="moves" style="margin-top:4px">
+              <li><div><b>Call the 3 invoices over 30 days late.</b><span class="why">$41k. If $20k lands by Nov 20, cash stays above the floor.</span><a>Open the Collect desk ›</a></div><span class="done y">enough</span></li>
+              <li><div><b>Ask North Yard Supply for 10 more days.</b><span class="why">$4.8k is due Nov 24. The low point becomes $6.9k.</span><a>Open the bill ›</a></div><span class="done p">not alone</span></li>
+              <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. These customers pay in about 24 days.</span><a>Open Ready to bill ›</a></div><span class="done n">December</span></li>
+            </ol>
+          </div>
+          <div class="panel" style="margin-top:12px">
+            <div class="k">The next 14 days</div>
+            <table class="daylist">
+              <tr><td>Fri Nov 13, payroll</td><td class="neg">−$6.4k</td></tr>
+              <tr><td>Tue Nov 17, Oak Hollow HOA, promised</td><td class="pos">+$4.5k</td></tr>
+              <tr><td>Fri Nov 20, payroll and Cedar Bend Dental</td><td class="neg">−$4.1k</td></tr>
+              <tr><td>Tue Nov 24, North Yard Supply</td><td class="neg">−$4.8k</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="doors" style="grid-template-columns:repeat(3,1fr)">
+        <div class="door">After 8 weeks ›<span>the five steps: is enough work coming</span></div>
+        <div class="door">Net position ›<span>with the truth check inside it</span></div>
+        <div class="door">People ›<span>who moved the number</span></div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:100ch">The chart the page already draws, moved to the top, with each move drawn on it. The bills and receipts lists shrink to the next 14 days. The rest opens from the chart.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>B3</b> · behind B's doors</div>
+    <div class="frame"><div class="sheetrow">
+      <div class="sheet"><h4>After 8 weeks ›</h4><ul><li>The five steps and their desks.</li><li>The dial and the usual fixes.</li><li>The week's call, kept as it is today.</li></ul><div class="from">The weakest link becomes the second page.</div></div>
+      <div class="sheet"><h4>Net position ›</h4><ul><li>The 8 week line.</li><li>The truth check and what moved it.</li><li>Money owed, both ways.</li></ul><div class="from">Today: the three cards, net position, truth check.</div></div>
+      <div class="sheet"><h4>People ›</h4><ul><li>The 8 week contribution chart.</li><li>Who moved the number.</li><li>Vectors by the day.</li></ul><div class="from">The number we maximize moves behind a door.</div></div>
+    </div></div>
+    <p class="say" style="max-width:100ch">B stands on one number being true: the bank's balance. Whether the bank the page reads is the whole bank has been an open question since Oct 10.</p>
+  </div>
+</div>
+
+<!-- ============================================================ C -->
+<h2 id="c">4 · C: the flow as one picture <small>one pipe, the narrowest section lit</small></h2>
+<p class="lede">The five steps drawn as one line of pipe. A section is as wide as the dollars it moves in a week. The narrowest section is lit. The bars under it show how many weeks of work wait in front of each section. A tap on a section opens its desk.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>C1</b> · phone · first screen</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="panel" style="padding:10px 8px 8px">
+        <svg viewBox="0 0 351 478" width="100%" role="img" aria-label="The five steps as one pipe running down. Bill is the narrowest section." style="display:block">
+          <polygon points="16,0 104,0 104,70 96,90 96,160 93,180 93,250 79,270 79,340 86,360 86,430 34,430 34,360 41,340 41,270 27,250 27,180 24,160 24,90 16,70" style="fill:var(--bg-200);stroke:var(--border-strong);stroke-width:1.5"/>
+          <rect x="41" y="270" width="38" height="70" style="fill:#dc2626"/>
+          <g font-size="12.5" style="fill:var(--text-strong)" font-weight="700">
+            <text x="122" y="24">Market</text><text x="122" y="114">Sales</text><text x="122" y="204">Build</text><text x="122" y="294" style="fill:var(--text-red-700)">Bill, the slowest step</text><text x="122" y="384">Collect</text>
+          </g>
+          <g font-size="11.5" style="fill:var(--text-700)">
+            <text x="122" y="41">asked for $44k a week of work we win</text>
+            <text x="122" y="131">sold $36k a week</text>
+            <text x="122" y="221">built $33k a week</text>
+            <text x="122" y="311">billed $19k a week</text>
+            <text x="122" y="401">paid $26k a week</text>
+          </g>
+          <g font-size="11" style="fill:var(--text-muted)">
+            <text x="122" y="57">feeds the field</text>
+            <text x="122" y="147">$1.9M asked and not answered</text>
+            <text x="122" y="237">$198k waits, 6.0 weeks</text>
+            <text x="122" y="327" style="fill:var(--text-red-700)">$142k waits, 7.5 weeks</text>
+            <text x="122" y="417">$96k is late, 3.7 weeks</text>
+          </g>
+          <g>
+            <rect x="122" y="243" width="96" height="5" rx="2" style="fill:var(--border-strong)"/>
+            <rect x="122" y="333" width="120" height="5" rx="2" style="fill:#dc2626"/>
+            <rect x="122" y="423" width="59" height="5" rx="2" style="fill:var(--border-strong)"/>
+          </g>
+          <path d="M60 434 v18 m-6 -7 l6 8 l6 -8" style="fill:none;stroke:var(--border-strong);stroke-width:2"/>
+          <rect x="16" y="456" width="88" height="20" rx="5" style="fill:var(--bg-green-tint);stroke:var(--border-green)"/>
+          <text x="60" y="470" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text-green-700)">Bank $18.4k</text>
+        </svg>
+      </div>
+      <div class="call lit" style="padding:9px 11px 10px">
+        <p class="lead" style="font-size:1rem">$142k of finished work is not billed.</p>
+        <button class="press blue" type="button">Open Bill's desk</button>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">The picture fills the first screen, so the moves and the call are a tap away. On a phone the pipe has to run down, and the words beside it do most of the work.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><b>C2</b> · desk · first screen</div>
+    <div class="frame"><div class="screen desk">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="panel">
+        <div class="k">Where the money runs, and where it narrows</div>
+        <svg viewBox="0 0 1044 262" width="100%" role="img" aria-label="The five steps as one pipe running left to right into the bank. Bill is the narrowest section." style="display:block;margin-top:4px">
+          <g font-size="13" font-weight="700" style="fill:var(--text-strong)">
+            <text x="10" y="18">MARKET</text><text x="200" y="18">SALES</text><text x="400" y="18">BUILD</text><text x="600" y="18" style="fill:var(--text-red-700)">BILL, THE SLOWEST STEP</text><text x="800" y="18">COLLECT</text>
+          </g>
+          <g font-size="11.5" style="fill:var(--text-muted)">
+            <text x="10" y="34">work asked of us</text><text x="200" y="34">work sold</text><text x="400" y="34">work done</text><text x="600" y="34">work billed</text><text x="800" y="34">bills paid</text>
+          </g>
+          <polygon points="10,51 170,51 200,59 370,59 400,62 570,62 600,76 770,76 800,69 970,69 970,121 800,121 770,114 600,114 570,128 400,128 370,131 200,131 170,139 10,139" style="fill:var(--bg-200);stroke:var(--border-strong);stroke-width:1.5"/>
+          <rect x="600" y="76" width="170" height="38" style="fill:#dc2626"/>
+          <g font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--text-strong)">
+            <text x="90" y="100">$44k a week</text><text x="285" y="100">$36k a week</text><text x="485" y="100">$33k a week</text><text x="885" y="100">$26k a week</text>
+          </g>
+          <text x="685" y="100" font-size="13" font-weight="700" text-anchor="middle" fill="#ffffff">$19k a week</text>
+          <path d="M974 95 h22 m-8 -6 l8 6 l-8 6" style="fill:none;stroke:var(--border-strong);stroke-width:2"/>
+          <rect x="1000" y="70" width="42" height="50" rx="6" style="fill:var(--bg-green-tint);stroke:var(--border-green)"/>
+          <text x="1021" y="91" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--text-green-700)">BANK</text>
+          <text x="1021" y="107" text-anchor="middle" font-size="10.5" font-weight="700" style="fill:var(--text-green-700)">$18.4k</text>
+          <text x="10" y="170" font-size="10.5" font-weight="700" letter-spacing=".06em" style="fill:var(--text-muted)">WAITS IN FRONT OF IT</text>
+          <g font-size="12" style="fill:var(--text-700)">
+            <text x="10" y="192">feeds the field</text>
+            <text x="200" y="192">$1.9M asked, not answered</text>
+            <text x="400" y="192">$198k sold, not built</text>
+            <text x="600" y="192" style="fill:var(--text-red-700)" font-weight="700">$142k finished, not billed</text>
+            <text x="800" y="192">$96k billed and late</text>
+          </g>
+          <rect x="400" y="202" width="120" height="8" rx="3" style="fill:var(--border-strong)"/>
+          <rect x="600" y="202" width="150" height="8" rx="3" style="fill:#dc2626"/>
+          <rect x="800" y="202" width="74" height="8" rx="3" style="fill:var(--border-strong)"/>
+          <g font-size="11.5" style="fill:var(--text-muted)">
+            <text x="10" y="226">read by pace, not by a pile</text><text x="200" y="226">read by pace, not by a pile</text>
+            <text x="400" y="226">6.0 weeks to build it</text><text x="600" y="226" style="fill:var(--text-red-700)">7.5 weeks to bill it</text><text x="800" y="226">3.7 weeks to collect it</text>
+          </g>
+          <text x="10" y="252" font-size="11" style="fill:var(--text-muted)">A section is as tall as the dollars it moves in a week. Tap a section to open its desk.</text>
+        </svg>
+      </div>
+      <div class="dgrid c2" style="margin-top:12px">
+        <div class="call lit">
+          <div class="k">This week's call</div>
+          <p class="lead">Bill is the slowest step.</p>
+          <ol class="moves">
+            <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. The office already marked them done.</span><a>Open Ready to bill ›</a></div><span class="who">Dana</span></li>
+            <li><div><b>Price the 4 jobs with no price.</b><span class="why">They cannot be billed until they have one.</span><a>Open the 4 jobs ›</a></div><span class="who">Sam</span></li>
+          </ol>
+          <button class="press blue" type="button" style="max-width:340px">Make Bill this week's call</button>
+        </div>
+        <div class="tiles" style="grid-template-columns:1fr;align-content:start">
+          <div class="tile"><div class="k">Earned last week</div><div class="v" style="font-size:1.5rem">$31k</div><div class="s">8 weeks ran $22k to $41k.</div></div>
+          <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v" style="font-size:1.5rem">$12k</div><div class="s">The low point, on Nov 27. The floor is $10k.</div></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:100ch">At a desk the picture reads in one look, and it is this company's own trade: a line is only as fast as its smallest reducer. Five cards of about seventy words each become one drawing.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>C3</b> · behind C's doors</div>
+    <div class="frame"><div class="sheetrow">
+      <div class="sheet"><h4>A section ›</h4><ul><li>Its desk, as built.</li><li>Drag the section wider to try a change. The dial and the usual fixes live here.</li><li>What throttles it.</li></ul><div class="from">Five doors, one per section.</div></div>
+      <div class="sheet"><h4>The bank ›</h4><ul><li>Cash for 8 weeks, bills and receipts.</li><li>Net position and the truth check.</li><li>Money owed.</li></ul><div class="from">The end of the pipe is the Money door.</div></div>
+      <div class="sheet"><h4>Earned last week ›</h4><ul><li>The 8 week chart.</li><li>Who moved the number.</li><li>Vectors by the day.</li></ul><div class="from">People sits behind the number they made.</div></div>
+    </div></div>
+    <p class="say" style="max-width:100ch">The picture's blind spot is drawn on it: Market and Sales have no pile to show, so two of five sections say "read by pace". A picture also tells no one what to do. It still needs the call under it.</p>
+  </div>
+</div>
+
+<!-- ============================================================ PICK -->
+<h2 id="pick">5 · The pick <small>A's spine, C's line of pipe, B's one rule</small></h2>
+<p class="lede">A is the story. It borrows two things. From C, the pipe as one strip in place of five cards, because where we stand should be seen and not read. From B, one rule: when cash goes under the floor inside the eight weeks, cash leads and the first moves are cash moves.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>P1</b> · phone · Monday, a usual week</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Earned last week</div><div class="v">$31k</div><div class="bars"><i style="height:83%"></i><i style="height:71%"></i><i style="height:100%"></i><i style="height:54%"></i><i style="height:93%"></i><i style="height:88%"></i><i style="height:66%"></i><i class="now" style="height:76%"></i></div><div class="s">8 weeks ran $22k to $41k.</div></div>
+        <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v">$12k</div><div class="s">The low point, on Nov 27. The floor is $10k.</div></div>
+        <div class="tile red"><div class="k">Slowest step</div><div class="v">Bill</div><div class="s">7.5 weeks of finished work waits.</div></div>
+      </div>
+      <div class="panel" style="margin-top:8px;padding:6px 9px 3px">
+        <svg viewBox="0 0 351 66" width="100%" role="img" aria-label="The five steps as one pipe. Bill is the narrowest." style="display:block">
+          <polygon points="0,9 60,9 72,11 132,11 144,12 204,12 216,16.5 276,16.5 288,14 348,14 348,30 288,30 276,27.5 216,27.5 204,32 144,32 132,33 72,33 60,35 0,35" style="fill:var(--bg-200);stroke:var(--border-strong);stroke-width:1.2"/>
+          <rect x="216" y="16.5" width="60" height="11" style="fill:#dc2626"/>
+          <g font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--text-strong)"><text x="30" y="49">Market</text><text x="102" y="49">Sales</text><text x="174" y="49">Build</text><text x="246" y="49" style="fill:var(--text-red-700)">Bill</text><text x="318" y="49">Collect</text></g>
+          <g font-size="9.5" text-anchor="middle" style="fill:var(--text-muted)"><text x="30" y="62">$44k a wk</text><text x="102" y="62">$36k a wk</text><text x="174" y="62">$33k a wk</text><text x="246" y="62" style="fill:var(--text-red-700)">$19k a wk</text><text x="318" y="62">$26k a wk</text></g>
+        </svg>
+      </div>
+      <div class="call lit" style="margin-top:8px">
+        <div class="k">This week's call</div>
+        <p class="lead">Bill is the slowest step.</p>
+        <p>$142k of finished work is not billed. That is 7.5 weeks at $19k a week.</p>
+        <ol class="moves">
+          <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. Opens Ready to bill.</span></div><span class="who">Dana</span></li>
+          <li><div><b>Price the 4 jobs with no price.</b><span class="why">Opens the 4 jobs.</span></div><span class="who">Sam</span></li>
+        </ol>
+        <button class="press blue" type="button">Make Bill this week's call</button>
+        <p class="fine">Dana and Sam each get their move in Needs you. Friday asks if it moved.</p>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps</span></div>
+        <div class="door">Money ›<span>cash, owed</span></div>
+        <div class="door">People ›<span>who moved it</span></div>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">Two moves on a phone, three at a desk. The press does one more thing than today: each move lands with its person, in the Needs you card they already read. This screen holds 139 words and 22 numbers. Today's first phone screen holds 163 and 33, with no stage, no move and no press.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><b>P2</b> · phone · the week cash goes under the floor</div>
+    <div class="frame"><div class="screen">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span></div>
+      <div class="tiles">
+        <div class="tile red wide"><div class="k" style="min-height:0">Cash comes first this week</div><div class="v">Under the floor in 2 weeks</div><div class="s">Cash goes under $10k on Nov 24. The bank has $18.4k today.</div></div>
+        <div class="tile"><div class="k" style="min-height:0">Earned last week</div><div class="v" style="font-size:1.2rem">$31k</div></div>
+        <div class="tile" style="grid-column:span 2"><div class="k" style="min-height:0">Slowest step</div><div class="v" style="font-size:1.2rem">Bill, 7.5 weeks</div></div>
+      </div>
+      <div class="call lit" style="margin-top:8px">
+        <div class="k">This week's call</div>
+        <p class="lead">Keep cash above the floor.</p>
+        <ol class="moves">
+          <li><div><b><span class="tag cash">cash</span>Call the 3 invoices over 30 days late.</b><span class="why">$41k. $20k by Nov 20 is enough.</span></div><span class="who">Dana</span></li>
+          <li><div><b><span class="tag cash">cash</span>Ask North Yard Supply for 10 more days.</b><span class="why">$4.8k is due Nov 24.</span></div><span class="who">Sam</span></li>
+          <li><div><b><span class="tag step">step</span>Bill the 11 finished jobs.</b><span class="why">$142k. It lands in December.</span></div><span class="who">Dana</span></li>
+        </ol>
+        <button class="press blue" type="button">Make this the week's call</button>
+        <p class="fine">Friday asks if the day moved, and if Bill moved.</p>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps</span></div>
+        <div class="door">Money ›<span>cash, owed</span></div>
+        <div class="door">People ›<span>who moved it</span></div>
+      </div>
+      <div class="fold"><span>a phone's first screen ends here</span></div>
+    </div></div>
+    <p class="say">The same screen in a bad week. The strip gives way to the cash tile. The call still names the slowest step, as its third move.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>P3</b> · desk · Monday, a usual week</div>
+    <div class="frame"><div class="screen desk">
+      <div class="bhead"><b>The Bridge</b><span>Monday, Nov 9</span><span class="chipx green">last week: Collect moved</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Earned last week</div><div class="v">$31k</div><div class="bars"><i style="height:83%"></i><i style="height:71%"></i><i style="height:100%"></i><i style="height:54%"></i><i style="height:93%"></i><i style="height:88%"></i><i style="height:66%"></i><i class="now" style="height:76%"></i></div><div class="s">The last 8 pay weeks ran $22k to $41k.</div></div>
+        <div class="tile green"><div class="k">Cash, next 8 weeks</div><div class="v">$12k</div><div class="s">The low point, on Nov 27. The floor is $10k. The bank has $18.4k today.</div></div>
+        <div class="tile red"><div class="k">Slowest step</div><div class="v">Bill</div><div class="s">7.5 weeks of finished work waits. Build is next at 6.0 weeks.</div></div>
+      </div>
+      <div class="panel" style="margin-top:10px;padding:8px 14px 2px">
+        <svg viewBox="0 0 1044 134" width="100%" role="img" aria-label="The five steps as one pipe into the bank. Bill is the narrowest section." style="display:block">
+          <polygon points="10,23 170,23 200,29 370,29 400,31 570,31 600,42 770,42 800,37 970,37 970,75 800,75 770,70 600,70 570,81 400,81 370,83 200,83 170,89 10,89" style="fill:var(--bg-200);stroke:var(--border-strong);stroke-width:1.5"/>
+          <rect x="600" y="42" width="170" height="28" style="fill:#dc2626"/>
+          <g font-size="12.5" font-weight="700" text-anchor="middle" style="fill:var(--text-strong)"><text x="90" y="61">$44k a week</text><text x="285" y="61">$36k a week</text><text x="485" y="61">$33k a week</text><text x="885" y="61">$26k a week</text></g>
+          <text x="685" y="61" font-size="12.5" font-weight="700" text-anchor="middle" fill="#ffffff">$19k a week</text>
+          <path d="M974 56 h22 m-8 -6 l8 6 l-8 6" style="fill:none;stroke:var(--border-strong);stroke-width:2"/>
+          <rect x="1000" y="33" width="42" height="46" rx="6" style="fill:var(--bg-green-tint);stroke:var(--border-green)"/>
+          <text x="1021" y="52" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--text-green-700)">BANK</text>
+          <text x="1021" y="67" text-anchor="middle" font-size="10.5" font-weight="700" style="fill:var(--text-green-700)">$18.4k</text>
+          <g font-size="12.5" font-weight="700" style="fill:var(--text-strong)"><text x="10" y="112">Market</text><text x="200" y="112">Sales</text><text x="400" y="112">Build</text><text x="600" y="112" style="fill:var(--text-red-700)">Bill</text><text x="800" y="112">Collect</text></g>
+          <g font-size="11.5" style="fill:var(--text-muted)"><text x="10" y="129">feeds the field</text><text x="200" y="129">$1.9M asked, not answered</text><text x="400" y="129">$198k waits, 6.0 weeks</text><text x="600" y="129" style="fill:var(--text-red-700)">$142k waits, 7.5 weeks</text><text x="800" y="129">$96k is late, 3.7 weeks</text></g>
+        </svg>
+      </div>
+      <div class="dgrid c2" style="margin-top:10px">
+        <div class="call lit">
+          <div class="k">This week's call</div>
+          <p class="lead">Bill is the slowest step.</p>
+          <p>The field finishes $33k a week and the office bills $19k. So $142k waits.</p>
+          <ol class="moves">
+            <li><div><b>Bill the 11 finished jobs.</b><span class="why">$142k. Opens Ready to bill.</span></div><span class="who">Dana</span></li>
+            <li><div><b>Price the 4 jobs with no price.</b><span class="why">Opens the 4 jobs.</span></div><span class="who">Sam</span></li>
+            <li><div><b>Keep Friday morning for billing only.</b><span class="why">Nothing else lands on that desk.</span></div><span class="who">Dana</span></li>
+          </ol>
+          <button class="press blue" type="button" style="max-width:340px">Make Bill this week's call</button>
+          <p class="fine">Dana and Sam each get their move in Needs you. Friday asks if it moved.</p>
+        </div>
+        <div class="panel last">
+          <div class="k">Last week's call</div>
+          <p><b style="color:var(--text-green-700)">Collect moved.</b> 5.1 weeks late became 3.7.</p>
+          <table>
+            <tr><td>Call the 6 invoices over 30 days late.<br><span style="color:var(--text-muted)">Dana. 4 paid, $38k.</span></td><td style="color:var(--text-green-700)">done</td></tr>
+            <tr><td>Get a pay date from Ridgeway Builders.<br><span style="color:var(--text-muted)">Sam. Promised Nov 20.</span></td><td style="color:var(--text-green-700)">done</td></tr>
+          </table>
+          <p style="margin-top:8px">The step moved, so this week's call moves on to the next one.</p>
+        </div>
+      </div>
+      <div class="doors">
+        <div class="door">The flow ›<span>five steps and their desks</span></div>
+        <div class="door">Money ›<span>cash, net position, what is owed</span></div>
+        <div class="door">People ›<span>who moved the number</span></div>
+        <div class="door" style="border-style:dashed;border-color:var(--border-amber);color:var(--text-amber-800)">5 soft numbers ›<span>what makes the reading unsure</span></div>
+      </div>
+    </div></div>
+    <p class="say" style="max-width:100ch">One screen at a desk: three numbers, the line of pipe, this week's call beside last week's, four doors. Friday is frame A2. The Monday email is this screen.</p>
+  </div>
+</div>
+
+<!-- ============================================================ MOVES -->
+<h2 id="moves">6 · Where everything goes <small>nothing built is deleted; it moves</small></h2>
+<div class="tw">
+<table class="t">
+  <thead><tr><th>On the page today</th><th>A · one decision</th><th>B · cash first</th><th>C · one picture</th><th>The pick</th></tr></thead>
+  <tbody>
+    <tr><td>The rule line</td><td>Becomes the call card's first sentence</td><td>Behind After 8 weeks</td><td>The picture says it</td><td>Becomes the call card's first sentence. The long reading stays behind its ?</td></tr>
+    <tr><td>What we maximize, 8 bars</td><td>First tile, bars small. Full chart on a press</td><td>Behind People</td><td>A tile under the picture</td><td>First tile, bars small. Full chart on a press</td></tr>
+    <tr><td>The two lights</td><td>Cash is the second tile. Net position goes to Money</td><td>Cash is the page. Net position is a door</td><td>Cash is a tile. Net position at the bank</td><td>Cash is the second tile and leads when red. Net position goes to Money</td></tr>
+    <tr><td>The five stage cards</td><td>The flow door. The link is the third tile</td><td>After 8 weeks door</td><td>The picture</td><td>The strip of pipe. The cards open from it</td></tr>
+    <tr><td>Jobs with no %</td><td>Soft numbers</td><td>Soft numbers</td><td>On Build's section</td><td>Soft numbers, and on Build's desk</td></tr>
+    <tr><td>The dial</td><td>The flow door, as Try a change</td><td>After 8 weeks door</td><td>Drag a section</td><td>The flow door, as Try a change</td></tr>
+    <tr><td>What throttles the link</td><td>On the step's desk</td><td>After 8 weeks door</td><td>On the section's desk</td><td>Decision is the soft numbers. Capital is the cash tile. Talent is a line on the desk</td></tr>
+    <tr><td>The link's desk and the record</td><td>The call card, with the moves proposed</td><td>After 8 weeks door, as today</td><td>Under the picture</td><td>The call card. The four paragraphs stay behind The flow</td></tr>
+    <tr><td>Everything else waits</td><td>With the dial, in Try a change</td><td>After 8 weeks door</td><td>With the dial</td><td>With the dial, in Try a change</td></tr>
+    <tr><td>Last week's call</td><td>The same card on Friday. A panel at a desk</td><td>After 8 weeks door</td><td>Under the picture</td><td>The same card on Friday. A panel at a desk</td></tr>
+    <tr><td>This week</td><td>Its moves feed the call card</td><td>Its cash moves are What changes that</td><td>Feeds the call</td><td>One list: the call's moves. The rest are soft numbers</td></tr>
+    <tr><td>Fix the reading</td><td>Soft numbers</td><td>The amber band and a door</td><td>Soft numbers</td><td>Soft numbers, one count on the first screen</td></tr>
+    <tr><td>Three cards and their panels</td><td>Money and People</td><td>Net position door</td><td>The bank, the earned tile</td><td>Money and People. The daily profit card is cut</td></tr>
+    <tr><td>Net position, truth check</td><td>Money, as one panel</td><td>Net position door</td><td>The bank</td><td>Money, as one panel</td></tr>
+    <tr><td>People, Vectors, the day grid</td><td>People door</td><td>People door</td><td>Behind the earned tile</td><td>People door</td></tr>
+    <tr><td>Cash, bills, receipts</td><td>Money</td><td>The first screen, the lists cut to 14 days</td><td>The bank</td><td>Money. They rise to the first screen only when cash is red</td></tr>
+    <tr><td>The Monday sheet and its email</td><td>Retires as a view. The email is the first screen</td><td>The email leads on cash</td><td>The email is words only</td><td>Retires as a view. The email is the first screen with a link to make the call</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ============================================================ SECOND LOOK -->
+<h2 id="second">7 · The second look <small>is this the best we can do?</small></h2>
+<h3 class="sub">Why not B</h3>
+<ul class="plain">
+  <li>It stands on the bank balance being the whole bank. That question has been open since Oct 10. A first screen that cries wolf teaches a person to stop looking.</li>
+  <li>Most of what the eight weeks expect is late money the page assumes will land. The loudest number would be the softest one.</li>
+  <li>It never looks past eight weeks. A thin pipeline of sold work would not show until the cash had already dried up.</li>
+  <li>In a good month it has nothing to say. What is worth keeping from it is one rule, and the pick keeps it.</li>
+</ul>
+<h3 class="sub">Why not C</h3>
+<ul class="plain">
+  <li>A picture shows where. It does not say what to do, who does it, or whether it worked. It still needs A under it.</li>
+  <li>Two of its five sections cannot show a pile, and it says so on its face.</li>
+  <li>On a phone it fills the first screen and the words beside it do the work. As a strip it costs one line and keeps its point.</li>
+  <li>It is the costliest to build well and the easiest to get wrong. The strip is the cheap part of it.</li>
+</ul>
+<h3 class="sub">What could still be wrong with the pick</h3>
+<ul class="plain">
+  <li><b>The call is what has gone unused, and the pick makes it the page.</b> The bet is that it went unused because it was buried, dev only, and reached no one. Naming a person today writes a word in a box. If the call still goes unpressed after four Mondays on the first screen, the ritual is the problem and the page should fall back to three numbers and one list.</li>
+  <li><b>"Earned last week" is new.</b> The page leads with this week so far, which is nearly empty on the Monday the call is made. The last full pay week is the fairer number. It is a change to a figure the owner chose.</li>
+  <li><b>The October choices.</b> He turned down a three stop walk as the opening, and the four usual fixes under the dial. The pick is one screen and not a walk. The fixes and the dial leave the first page together.</li>
+  <li><b>Two moves on a phone.</b> A third fits at a desk. A fourth is a list again.</li>
+  <li><b>A budget, held by a test.</b> The first screen's words come from one kernel. A unit test can hold a phone's first screen to 150 words and 24 numbers, the way the plain words test holds a guide.</li>
+</ul>
+<h3 class="sub">What I would cut even if nothing else changed</h3>
+<ol class="plain">
+  <li><b>The Daily profit rate card.</b> It reads approved hours only, so it shows a loss beside a headline that shows a gain. The Oct 10 redraw named this and the card stayed.</li>
+  <li><b>Four of the five lists.</b> The piles on you, the desk's moves, This week and Fix the reading say the same six things. One list, each row saying what it moves.</li>
+  <li><b>The truth check as its own panel.</b> It explains the net position line. It belongs inside that line's Break it down.</li>
+  <li><b>The bills and receipts lists on the page.</b> At two phone screens they are the longest block, under everything. Show 14 days. Keep the rest behind the chart.</li>
+  <li><b>The owner box on every move.</b> A typed name reaches no one. Fill it from who did that work, and let a tap change it.</li>
+  <li><b>The Monday sheet as a second view.</b> It is three screens on a phone and says "one screen". A first screen that fits needs no sheet.</li>
+</ol>
+
+<!-- ============================================================ CALLS -->
+<h2 id="calls">8 · The calls that are yours</h2>
+<ol class="plain">
+  <li><b>The story.</b> Answered 2026-11-10: the pick.</li>
+  <li><b>Is the bank the page reads the whole bank?</b> If it is not, the cash tile cannot lead, in any of the four.</li>
+  <li><b>The first number.</b> Earned last week, the last full pay week. Or this week so far, as today.</li>
+  <li><b>Who a move reaches.</b> Each named person gets the move in their Needs you. Or the call stays on the Bridge.</li>
+  <li><b>The Monday email.</b> On, to the owner and the devs, carrying the first screen. It has been off since it shipped.</li>
+  <li><b>The cuts.</b> The six above. Each is small and stands alone.</li>
+  <li><b>Who else opens it.</b> Owner and dev today. The call names office people who cannot see the page.</li>
+</ol>
+
+</div>
+<script>
+  // The theme toggle. The frames read the app's token names, so one attribute flips every screen.
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set);
+      document.querySelectorAll('.themes button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+</script>
+</body>
+</html>
