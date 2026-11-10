@@ -18,6 +18,7 @@ import { canOpenGcProjects, canOpenMessages, canSeeGcMoney } from '../gc/access'
 import { canOpenPunchList, PUNCH_LIST_PATH } from '../todos/punchListAccess'
 import { canOpenMoneyfill } from '../quickfill/closeWeekChip'
 import { canOpenDayBook } from '../people/dayBookAccess'
+import { canOpenMaterialsTab } from '../materials/materialsTabs'
 import { getZonedSettingsGroups, SETTINGS_ZONE_LABELS, type SettingsGroupDef } from '../settingsGroups'
 import { SETTINGS_SEARCH_INDEX, type SettingsSearchEntry } from '../settingsSearch'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
@@ -261,6 +262,8 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'New estimate', kind: 'window', where: 'Estimates · the estimate form', words: ['start an estimate', 'add estimate', 'new estimate'], to: '/estimates?newEstimate=true', gate: (v) => officeOrSuper(v) || v.role === 'estimator' || v.role === 'primary', reads: { file: 'src/pages/Estimates.tsx', text: "searchParams.get('newEstimate')" } }),
   p({ label: 'Documents', where: 'Documents', words: ['contracts', 'document packets', 'packets', 'documents'], to: '/documents', gate: notFarm(notField) }),
   p({ label: 'Materials', where: 'Materials', words: ['materials', 'parts book', 'price book', 'labor book', 'assembly', 'assemblies', 'catalog', 'books'], to: '/materials', gate: notFarm(notField) }),
+  // Punch list #304 (v2.6851): the cages and boxes on every job, on the Materials page, for every role that opens it.
+  p({ label: 'Find a part on any job', where: 'Materials · On site', words: ['find a part on any job', 'where is a part', 'which box', 'print labels', 'box labels', 'labels', 'scan a label', 'boxes on every job', 'track materials', 'track'], to: '/materials?tab=on-site', gate: (v) => !v.farmModeActive && canOpenMaterialsTab(v.role, 'on-site') }),
   p({ label: 'Supply houses', where: 'Materials · Supply houses', words: ['supply houses', 'supply house', 'house invoices', 'invoices from the house', 'bills from supply houses'], to: '/materials?tab=supply-houses', gate: notFarm(notField) }),
   p({ label: 'Job accounts to move', kind: 'window', where: 'Materials · Supply houses', words: ['job accounts', 'movable invoices', 'move onto a job account'], to: '/materials?tab=supply-houses&list=movable', gate: office, reads: { file: 'src/pages/Materials.tsx', text: "searchParams.get('list')" } }),
   p({ label: 'Map', where: 'Map', words: ['map of work', 'map', 'where the jobs are', 'clocked in map'], to: '/map', gate: notFarm(officeOrEstimator) }),

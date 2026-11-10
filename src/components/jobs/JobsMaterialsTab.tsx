@@ -3,10 +3,12 @@
  * desk across jobs (containers, lines on site, missing this week with the money, counts due,
  * credits due); with a job (`?job=<id>`), its four sections: On site by container, Movements,
  * Missing, Counts, plus Print labels, Print the manifest and Correct the count. Reads the same store the field tab
- * writes; the spike keeps it on this device until the tables land.
+ * writes (`lib/materials/onSiteStore.ts`, over the on-site tables). Mounted twice (punch list #304): on Jobs →
+ * Materials, and as the office's On site tab on the Materials page, which adds a row's doors and leaves the
+ * Drive-folder backfill to Jobs.
  */
-import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
@@ -43,6 +45,10 @@ type Props = {
   byUserId: string | null
   byName: string
   onOpenJobDetail: (jobId: string) => void
+  /** The desk's Drive-folder backfill, which plans over `jobs` as the live jobs. Off where `jobs` is every job (the Materials page's mount). */
+  driveBackfill?: boolean
+  /** A row's doors on the desk (the Materials page's mount): Labels for the job's boxes, and the job on the phone screen. */
+  rowDoors?: { onLabels: (jobId: string) => void }
 }
 
 const BLUE = '#2563eb'
@@ -119,7 +125,8 @@ function BookPricesLine() {
   )
 }
 
-export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail }: Props) {
+export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors }: Props) {
+  const openJobRef = useRef<HTMLSelectElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
@@ -169,10 +176,10 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-desk" idempotent />
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th></tr></thead>
+            <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td style={td} colSpan={6}><span style={muted}>No job has a container yet. Pick a job below and add one, or fill it with demo data.</span></td></tr>
+                <tr><td style={td} colSpan={rowDoors ? 7 : 6}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : rows.map((r) => (
                 <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
                   <td style={td}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
@@ -181,21 +188,28 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                   <td style={{ ...td, ...num, fontWeight: r.sum.missingMoneyWeek > 0 ? 700 : 400 }}><Money n={r.sum.missingMoneyWeek} /></td>
                   <td style={td}>{r.sum.stale.length === 0 ? <span style={chip('green')}>all this fortnight</span> : <span style={chip('amber')} title={r.sum.stale.map((c) => `${c.label} ${lastCountedAt(listMovements(r.id), c.id) ? `${daysSince(lastCountedAt(listMovements(r.id), c.id)!.at, now)} d` : 'never'}`).join(' · ')}>{staleWords(r.sum.stale)}</span>}</td>
                   <td style={{ ...td, ...num }}>{r.sum.credits}</td>
+                  {rowDoors ? (
+                    <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} disabled={!listContainers(r.id).some((c) => !c.retiredAt && c.kind !== 'unsorted')} onClick={() => rowDoors.onLabels(r.id)} aria-label={`Print labels for ${jobLabel(r.job, r.id)}`}>Labels</button>
+                        <Link to={`/tally?tab=on-site&job=${r.id}`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, textDecoration: 'none' }}>Open on the phone screen</Link>
+                      </span>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} />
+        {driveBackfill ? <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} /> : null}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             Open a job
-            <select aria-label="Open a job" defaultValue="" onChange={(e) => { if (e.target.value) setJob(e.target.value) }} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.5rem', maxWidth: 360 }}>
+            <select ref={openJobRef} aria-label="Open a job" defaultValue="" onChange={(e) => { if (e.target.value) setJob(e.target.value) }} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.5rem', maxWidth: 360 }}>
               <option value="">Choose…</option>
               {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j, j.id)}</option>)}
             </select>
           </label>
-          <span style={{ ...muted, fontSize: '0.75rem' }}>Spike: rows live on this device only.</span>
         </div>
       </div>
     )
@@ -374,7 +388,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
     const id = labelParams.get('label')
     const manifestId = labelParams.get('manifest')
     if (!id && !manifestId) return
-    if (id) setLabelsOpen({ only: id })
+    // `label=all` (punch list #304): every box's label, as the Print labels press opens it.
+    if (id) setLabelsOpen({ only: id === 'all' ? null : id })
     if (manifestId) setManifestOpen({ only: manifestId })
     setLabelParams((p) => { const n = new URLSearchParams(p); n.delete('label'); n.delete('manifest'); return n }, { replace: true })
   }, [labelParams, setLabelParams])
