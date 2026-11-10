@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permits: skim, then dig in (punch list #302)</title>
+<style>
+  /* Punch list #302. Everything here is made up: Ridgeway Builders, Calloway and Finch, Tall Pine Development,
+     Marlow Commercial, Juniper Hospitality, Permit Runners of Texas, Blue Heron Plumbing, Copperline Mechanical,
+     Voltline Electric, Dana, Marcus, Priya, Jordan and Sam, every street, permit number, amount, count and day. No live permit row,
+     address or applicant is on this page. The screens are drawn in the app's light theme values. The blue press
+     is #2563eb under white words, the green one #16a34a. Phone frames are 375 wide, desk frames 920. */
+  :root { color-scheme: light; --page: #eceae4; --strong: #111827; --ink: #1f2937; --muted: #6b7280; --slate: #64748b; --border: #e5e7eb; --surface: #ffffff; --bg: #f9fafb; --bg2: #f3f4f6; --blue: #2563eb; --blue-50: #eff6ff; --blue-800: #1e40af; --green: #16a34a; --green-100: #dcfce7; --green-700: #15803d; --amber-50: #fffbeb; --amber-700: #b45309; --amber-200: #fde68a; --red-50: #fef2f2; --red-200: #fecaca; --red-700: #b91c1c; --link: #2563eb; --copper: #9a5b2b; --font: -apple-system, 'Segoe UI', Roboto, sans-serif; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 72px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 20px; margin: 46px 0 6px; color: var(--strong); }
+  .lede { margin: 0 0 6px; color: #374151; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 377px; } .col.p920 { flex: 0 1 922px; } .col.p560 { flex: 0 1 562px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .cap b { color: var(--copper); }
+  .say { margin: 0; font-size: 13px; color: #374151; max-width: 46ch; }
+  .col.p920 .say, .col.p560 .say { max-width: 100ch; }
+  .frame { max-width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+  ol.calls, ul.calls { margin: 10px 0 0; padding-left: 20px; max-width: 104ch; color: #374151; }
+  ol.calls li, ul.calls li { margin: 0 0 6px; }
+  table.plain { border-collapse: collapse; margin-top: 10px; max-width: 104ch; font-size: 13px; }
+  table.plain th, table.plain td { text-align: left; vertical-align: top; padding: 6px 12px 6px 0; border-bottom: 1px solid #d8d4ca; }
+  table.plain th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---- the app, light theme ---- */
+  .screen { width: 375px; font-size: 16px; line-height: 1.45; color: var(--ink); background: var(--bg); position: relative; }
+  .screen.w920 { width: 920px; } .screen.w560 { width: 560px; }
+  .pad { padding: 14px 14px 18px; }
+  .ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); padding: 10px 10px 0; background: var(--surface); overflow-x: auto; }
+  .ptabs span { padding: .4rem .7rem; font-size: .8125rem; color: var(--muted); border-radius: 6px 6px 0 0; white-space: nowrap; }
+  .ptabs span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .steps { display: flex; gap: 6px; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .steps span { flex: 0 0 auto; padding: .35rem .7rem; border-radius: 999px; font-size: .8125rem; color: var(--ink); background: var(--bg2); white-space: nowrap; }
+  .steps span b { font-variant-numeric: tabular-nums; }
+  .steps span.on { background: var(--strong); color: #fff; font-weight: 600; }
+  .press { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 10px; border: none; font: inherit; font-weight: 700; font-size: .9375rem; padding: .55rem .9rem; cursor: pointer; text-align: center; }
+  .press.blue { background: var(--blue); color: #fff; }
+  .press.green { background: var(--green); color: #fff; }
+  .press.grey { background: var(--surface); color: var(--ink); border: 1.5px solid #cbd5e1; }
+  .press.line { background: var(--surface); color: var(--blue); border: 1.5px solid var(--blue); }
+  .press.red { background: var(--surface); color: var(--red-700); border: 1.5px solid var(--red-200); }
+  .press.sm { min-height: 40px; font-size: .8125rem; font-weight: 600; border-radius: 8px; padding: .4rem .7rem; }
+  kbd { font: 600 .6875rem var(--font); border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--ink); }
+  .press kbd { background: transparent; color: inherit; font: 600 .6875rem var(--font); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; opacity: .75; }
+  .new { outline: 2px dashed var(--copper); outline-offset: 3px; border-radius: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: .6875rem; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+  .pill.ok { background: var(--green-100); color: var(--green-700); }
+  .pill.grey { background: var(--bg2); color: var(--muted); border: 1px solid var(--border); }
+  .pill.blue { background: var(--blue-50); color: var(--blue-800); }
+  .pill.warm { background: var(--amber-50); color: var(--amber-700); border: 1px solid var(--amber-200); }
+  .pill.bad { background: var(--red-50); color: var(--red-700); border: 1px solid var(--red-200); }
+  .lnk { background: none; border: none; color: var(--link); font: inherit; font-size: .8125rem; padding: 0; cursor: pointer; text-decoration: none; }
+  .mut { color: var(--muted); font-size: .8125rem; }
+  .h4 { margin: 0 0 4px; font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* the skim card */
+  .togo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; font-size: .8125rem; color: var(--muted); }
+  .togo b { color: var(--strong); font-size: .9375rem; }
+  .bar { height: 4px; border-radius: 2px; background: var(--border); margin: 0 2px 10px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); }
+  .deck { position: relative; }
+  .under { position: absolute; left: 10px; right: 10px; top: 8px; bottom: -8px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+  .under.two { left: 20px; right: 20px; top: 16px; bottom: -16px; opacity: .6; }
+  .pcard { position: relative; background: var(--surface); border: 1px solid #d5dae1; border-radius: 14px; box-shadow: 0 2px 6px rgba(0,0,0,.06); overflow: hidden; touch-action: pan-y; user-select: none; }
+  .pcard .mapt { height: 96px; background: #e8eef3 linear-gradient(0deg, rgba(255,255,255,.55) 1px, transparent 1px) 0 0/100% 24px; position: relative; overflow: hidden; }
+  .pcard .mapt::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px) 0 0/32px 100%, linear-gradient(118deg, transparent 46%, #fff 46% 49%, transparent 49%), linear-gradient(8deg, transparent 58%, #f6e7b4 58% 61%, transparent 61%); }
+  .pcard .mapt .pin { position: absolute; left: 62%; top: 34%; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; background: var(--blue); transform: rotate(-45deg); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .pcard .mapt .office { position: absolute; left: 14%; top: 66%; width: 10px; height: 10px; border-radius: 50%; background: var(--strong); border: 2px solid #fff; }
+  .pcard .mapt .ring { position: absolute; left: calc(14% - 96px); top: calc(66% - 96px); width: 202px; height: 202px; border-radius: 50%; border: 1.5px dashed rgba(17,24,39,.3); }
+  .pcard .mapt .miles { position: absolute; right: 8px; bottom: 8px; background: rgba(255,255,255,.92); border-radius: 6px; padding: 2px 8px; font-size: .75rem; font-weight: 600; color: var(--strong); }
+  /* the look: a street view and a map on every card. The scenes are drawings, not photos. */
+  .media { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: 122px; background: var(--border); }
+  .media .mapt, .pcard .media .mapt { height: 100%; }
+  .sv { position: relative; background: #cfd8e3 center/cover no-repeat; overflow: hidden; }
+  .sv.lot { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Cpath d='M0 100Q40 86 80 97T160 94T240 98T320 92V116H0Z' fill='%236f8f6a'/%3E%3Crect y='112' width='320' height='28' fill='%23b9b189'/%3E%3Cpath d='M0 122H320M0 130H320' stroke='%238a8f96' stroke-width='.8'/%3E%3Cpath d='M12 114V136M52 114V136M92 114V136M132 114V136M172 114V136M212 114V136M252 114V136M292 114V136' stroke='%237b8087' stroke-width='1.5'/%3E%3Crect x='196' y='84' width='52' height='26' fill='%23fff' stroke='%23555'/%3E%3Cpath d='M204 93H240M204 100H232' stroke='%239a5b2b' stroke-width='3'/%3E%3Cpath d='M222 110V128' stroke='%23555' stroke-width='3'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.strip { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Crect x='14' y='62' width='292' height='52' fill='%23dbcdb5'/%3E%3Crect x='14' y='62' width='292' height='11' fill='%23a6744a'/%3E%3Cpath d='M24 82h36v32h-36zM70 82h36v32h-36zM116 82h36v32h-36zM162 82h36v32h-36zM208 82h36v32h-36zM254 82h36v32h-36z' fill='%235d7f99'/%3E%3Cpath d='M24 78h36M70 78h36M116 78h36M162 78h36M208 78h36M254 78h36' stroke='%23fff' stroke-width='4'/%3E%3Crect y='114' width='320' height='26' fill='%23787d84'/%3E%3Cpath d='M30 114v20M66 114v20M102 114v20M138 114v20M174 114v20M210 114v20M246 114v20M282 114v20' stroke='%23d7d9dc' stroke-width='1'/%3E%3Crect x='70' y='120' width='28' height='11' rx='3' fill='%23b23a3a'/%3E%3Crect x='178' y='120' width='28' height='11' rx='3' fill='%23e9e9e9'/%3E%3Crect x='250' y='120' width='28' height='11' rx='3' fill='%2334507a'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.office { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Crect x='86' y='34' width='168' height='82' fill='%23c9ced6'/%3E%3Crect x='86' y='34' width='168' height='7' fill='%238e97a3'/%3E%3Cpath d='M98 50h144M98 68h144M98 86h144' stroke='%235d7f99' stroke-width='10'/%3E%3Cpath d='M122 44v48M146 44v48M170 44v48M194 44v48M218 44v48' stroke='%23c9ced6' stroke-width='3'/%3E%3Crect x='158' y='98' width='24' height='18' fill='%233f4a57'/%3E%3Ccircle cx='52' cy='98' r='20' fill='%235f8a5a'/%3E%3Crect x='50' y='108' width='4' height='24' fill='%236b5235'/%3E%3Ccircle cx='286' cy='100' r='17' fill='%236c9766'/%3E%3Crect x='284' y='110' width='4' height='22' fill='%236b5235'/%3E%3Crect y='116' width='320' height='24' fill='%239ba39a'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.sat { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='180' fill='%236b7d52'/%3E%3Cpath d='M0 0H130V70H0Z' fill='%238a8a62'/%3E%3Cpath d='M130 0H320V54H130Z' fill='%235c7048'/%3E%3Cpath d='M0 70H96V180H0Z' fill='%2377895a'/%3E%3Cpath d='M96 70H240V180H96Z' fill='%23a39a78'/%3E%3Cpath d='M240 54H320V180H240Z' fill='%2366794f'/%3E%3Cpath d='M0 62L320 46' stroke='%23b9b6ad' stroke-width='7'/%3E%3Cpath d='M118 0L104 180' stroke='%23b9b6ad' stroke-width='5'/%3E%3Crect x='150' y='96' width='44' height='26' fill='%23d4d0c4'/%3E%3Crect x='202' y='128' width='22' height='30' fill='%23c8c2b2'/%3E%3Ccircle cx='40' cy='120' r='10' fill='%2348603c'/%3E%3Ccircle cx='62' cy='146' r='13' fill='%234d6741'/%3E%3Ccircle cx='276' cy='96' r='12' fill='%234d6741'/%3E%3C/svg%3E"); }
+  .sv .tag, .mapt .tag { position: absolute; left: 6px; bottom: 6px; background: rgba(17,24,39,.72); color: #fff; border-radius: 6px; padding: 1px 7px; font-size: .6875rem; font-weight: 600; white-space: nowrap; }
+  .media .mapt .miles { right: 6px; bottom: 6px; padding: 1px 7px; font-size: .6875rem; }
+  .look { background: #111827; color: #fff; }
+  .look .bar2 { display: flex; align-items: center; gap: 6px; padding: 10px 12px; }
+  .look .bar2 span { padding: .3rem .7rem; border-radius: 999px; font-size: .8125rem; color: #d1d5db; border: 1px solid rgba(255,255,255,.25); }
+  .look .bar2 span.on { background: #fff; color: #111827; font-weight: 600; border-color: #fff; }
+  .look .bar2 .x { margin-left: auto; border: 0; font-size: 1.25rem; padding: 0 .4rem; }
+  .look .sv { height: 420px; background-position: 68% center; }
+  .look .cap2 { padding: 10px 14px 2px; font-size: .9375rem; font-weight: 600; }
+  .look .cap3 { padding: 0 14px 4px; font-size: .78rem; color: #cbd5e1; }
+  .look .answers { background: #111827; }
+  /* everything public, on a tap */
+  .g { display: inline-flex; align-items: center; gap: 4px; vertical-align: 1px; border: 1px solid #cbd5e1; background: var(--surface); color: var(--ink); border-radius: 999px; padding: 0 8px 0 3px; min-height: 24px; font-size: .6875rem; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .g i { font-style: normal; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--blue-50); color: var(--blue-800); font-weight: 800; font-size: .6875rem; }
+  .g.solo { padding: 0 3px; }
+  .fact.tap { position: relative; padding-right: 18px; cursor: pointer; }
+  .fact.tap::after { content: '\203A'; position: absolute; right: 2px; top: 6px; font-size: 1.125rem; color: #9ca3af; }
+  .dim { background: rgba(17,24,39,.45); padding-top: 36px; }
+  .sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 14px 4px; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #d1d5db; margin: 0 auto 10px; }
+  .sheet h3 { margin: 2px 0 2px; font-size: 1.1875rem; color: var(--strong); line-height: 1.25; }
+  .src { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: .875rem; }
+  .src .from { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+  .src .from b { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .src .from span { font-size: .6875rem; color: #9ca3af; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 108px 1fr; gap: 2px 8px; font-size: .8125rem; }
+  .kv > span:nth-child(odd) { color: var(--muted); }
+  .kv > span:nth-child(even) { color: var(--strong); }
+  .door { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px dotted var(--border); font-size: .8125rem; }
+  .door:first-of-type { border-top: 0; }
+  .door span { color: var(--muted); font-size: .75rem; display: block; }
+  .sheet .answers { margin: 12px -14px 0; border-top: 1px solid var(--border); background: var(--surface); }
+  .pcard .body { padding: 12px 14px 4px; }
+  .pcard .kind { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .pcard h3 { margin: 2px 0 0; font-size: 1.1875rem; line-height: 1.25; color: var(--strong); }
+  .pcard .money { font-size: .9375rem; color: var(--ink); margin-top: 2px; }
+  .pcard .money b { font-variant-numeric: tabular-nums; }
+  .pcard .where { margin: 6px 0 10px; font-size: .875rem; }
+  .fact.new { outline-offset: -1px; padding-left: 6px; padding-right: 6px; border-top-color: transparent; }
+  .fact { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 9px 0; border-top: 1px solid var(--border); font-size: .875rem; }
+  .fact .k { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+  .fact .v b { color: var(--strong); }
+  .fact .v .sub { display: block; font-size: .78rem; color: var(--muted); margin-top: 1px; }
+  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px 14px; }
+  .answers .press { width: 100%; min-height: 52px; }
+  .morelink { display: flex; justify-content: center; padding: 0 0 8px; }
+  .stamp { position: absolute; top: 18px; font-weight: 800; font-size: 1.5rem; letter-spacing: .08em; padding: 2px 12px; border-radius: 8px; border: 3px solid; background: rgba(255,255,255,.9); opacity: 0; pointer-events: none; z-index: 2; }
+  .stamp.keep { left: 14px; color: var(--green-700); border-color: var(--green); transform: rotate(-12deg); }
+  .stamp.pass { right: 14px; color: var(--slate); border-color: var(--slate); transform: rotate(12deg); }
+  .tilt-r { transform: translateX(86px) rotate(9deg); } .tilt-r .stamp.keep { opacity: 1; }
+  .tilt-l { transform: translateX(-86px) rotate(-9deg); } .tilt-l .stamp.pass { opacity: 1; }
+  .ghost { overflow: hidden; }
+  .undo { margin-top: 20px; padding: .6rem .75rem; border-radius: 10px; background: var(--strong); color: #fff; font-size: .8125rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .undo .sp { flex: 1 1 auto; }
+  .undo button { font: inherit; font-size: .8125rem; font-weight: 600; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); background: transparent; color: #fff; padding: 3px 10px; min-height: 32px; cursor: pointer; }
+  .undo button.u { border: 0; color: #93c5fd; padding: 3px 4px; }
+  .undo button.picked { background: #fff; color: var(--strong); }
+  .empty { text-align: center; padding: 34px 18px 26px; }
+  .empty .tick { width: 54px; height: 54px; border-radius: 50%; background: var(--green-100); color: var(--green-700); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; }
+  .empty h3 { margin: 12px 0 4px; font-size: 1.125rem; color: var(--strong); }
+  .empty p { margin: 0 0 14px; font-size: .875rem; color: var(--muted); }
+  .stackbar { padding: 8px 14px; background: var(--blue-50); border-bottom: 1px solid #dbeafe; font-size: .8125rem; color: var(--blue-800); }
+  .stackbar b { color: var(--blue-800); }
+  .sites { margin: 0 0 10px; padding: 0; list-style: none; font-size: .8125rem; }
+  .sites li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-top: 1px dotted var(--border); }
+  .sites li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* lists */
+  .lrow { display: grid; gap: 2px; padding: 11px 14px; border-top: 1px solid var(--border); background: var(--surface); }
+  .lrow .t { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .lrow .t b { font-size: .9375rem; color: var(--strong); }
+  .lrow .t span { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+  .lrow .s { font-size: .8125rem; color: var(--ink); }
+  .lrow .m { font-size: .75rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; }
+  .chips span { padding: .3rem .65rem; border-radius: 999px; font-size: .78rem; border: 1px solid var(--border); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .chips span.on { background: var(--blue-50); border-color: var(--blue); color: var(--blue-800); font-weight: 600; }
+  .search { margin: 0 14px 10px; border: 1px solid #d1d5db; border-radius: 8px; padding: .5rem .7rem; font-size: .875rem; color: #9ca3af; background: var(--surface); min-height: 40px; }
+  .flag { margin: 10px 14px 0; padding: .55rem .7rem; border-radius: 10px; background: var(--amber-50); border: 1px solid var(--amber-200); color: var(--amber-700); font-size: .8125rem; }
+
+  /* desk */
+  .desk { display: grid; grid-template-columns: 210px minmax(0, 1fr) 250px; gap: 14px; padding: 14px; }
+  .desk .side { font-size: .8125rem; }
+  .peek { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .peek div { padding: 7px 10px; border-top: 1px solid var(--border); }
+  .peek div:first-child { border-top: 0; }
+  .peek div b { display: block; color: var(--strong); font-size: .8125rem; }
+  .peek div span { color: var(--muted); font-size: .72rem; }
+  .peek div.cur { background: var(--blue-50); box-shadow: inset 3px 0 0 var(--blue); }
+  .box { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 12px; margin-bottom: 10px; font-size: .8125rem; }
+  .box b { color: var(--strong); }
+  .keys { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: .75rem; color: var(--muted); padding: 2px 0 12px; }
+  .keys kbd { font: 600 .6875rem var(--font); border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--ink); }
+  .two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .sec { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 12px 14px; margin-bottom: 12px; font-size: .875rem; }
+  .sec h4 { margin: 0 0 6px; font-size: .9375rem; color: var(--strong); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sec p { margin: 2px 0; }
+  .head { padding: 14px 14px 0; }
+  .head a { font-size: .8125rem; color: var(--link); text-decoration: none; }
+  .head h3 { margin: 4px 0 2px; font-size: 1.375rem; color: var(--strong); line-height: 1.2; }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .log { margin: 6px 0 0; padding: 0; list-style: none; font-size: .8125rem; }
+  .log li { padding: 5px 0; border-top: 1px dotted var(--border); }
+  .log li span { color: var(--muted); }
+  table.t { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+  table.t th { text-align: left; font-size: .6875rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tr.cur td { background: var(--blue-50); }
+  table.t tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+  table.t tr.sel td { background: #f5f3ff; }
+  .person { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .person:first-of-type { border-top: 0; }
+  .person b { color: var(--strong); }
+  .person .mut { grid-column: 1 / -1; }
+  .mark { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .mark span { padding: .45rem .8rem; font-size: .8125rem; font-weight: 600; color: var(--muted); border-left: 1px solid var(--border); min-height: 40px; display: inline-flex; align-items: center; }
+  .mark span:first-child { border-left: 0; }
+  .mark span.good { background: var(--green-100); color: var(--green-700); }
+  .mark span.avoid { background: var(--red-50); color: var(--red-700); }
+  .field { margin-top: 10px; }
+  .field label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 3px; }
+  .field .in { border: 1px solid #d1d5db; border-radius: 8px; padding: .5rem .7rem; font-size: .9375rem; color: var(--strong); min-height: 42px; background: var(--surface); }
+  /* On a phone the page gives up its gutter, so a 375 frame is the phone's own width and frame A can be tried by thumb. */
+  @media (max-width: 420px) { body { padding: 0 0 72px; } header.top, h2, .lede, .note, ol.calls, ul.calls, table.plain, .cap, .say { margin-left: 12px; margin-right: 12px; } ol.calls, ul.calls { padding-left: 20px; } .row { gap: 14px; } .col.p375 { flex: 0 0 100%; } .frame { border-left: 0; border-right: 0; border-radius: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #302 · Prospects → Permits · plan and mock-up only, nothing built</p>
+  <h1>Permits: skim first, then dig in</h1>
+  <p>Today the tab is a ledger. It is good for finding a permit and slow for answering one. On the live tab on 2026-11-10, 163 permits wait on a look and none has a verdict. This page draws a first step that takes a few seconds a permit and a second step that takes as long as the permit deserves. Then it draws the builder behind the name, with a mark and our own contacts. Every name, street and number here is made up.</p>
+</header>
+
+<h2>The two steps</h2>
+<p class="lede">Step one is a yes or a no on one screen. Step two is the research the ledger already does, on the few that got a yes. A permit is always in exactly one of four places, and the counts on the step strip add up to every permit the feed brought in.</p>
+<table class="plain">
+  <tr><th>Place</th><th>How a permit gets there</th><th>What it waits on</th></tr>
+  <tr><td><b>Skim</b></td><td>The nightly pull brings it in with no plumber on it.</td><td>One answer: Keep or Pass.</td></tr>
+  <tr><td><b>Kept</b></td><td>Someone pressed Keep.</td><td>The dig in, then Pursue or Not pursuing.</td></tr>
+  <tr><td><b>Pursuing</b></td><td>Someone pressed Pursue. A lead is on the calling deck.</td><td>The lead's own life on Prospects and Bids.</td></tr>
+  <tr><td><b>Closed</b></td><td>Passed on the skim, not pursued after a dig in, or the feed named a plumber.</td><td>Nothing. It can be put back.</td></tr>
+</table>
+
+<h2>A · Try the skim</h2>
+<p class="lede">This frame works. Drag the card, press the two buttons, or click the card and use the arrow keys. Six made-up permits, then the caught-up state. The street views are drawings, not photos.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>A</b> · the skim on a phone, live</span>
+    <div class="frame"><div class="screen" id="demo" tabindex="0" aria-label="The skim, a working demo">
+      <div class="ptabs"><span>Customers</span><span>Jobs to GC</span><span>Subs</span><span>Hiring</span><span class="on">Permits</span></div>
+      <div class="steps"><span class="on">Skim <b id="d-skim">6</b></span><span>Kept <b id="d-kept">14</b></span><span>Pursuing <b>3</b></span><span>Closed</span><span>Builders</span></div>
+      <div class="pad" id="d-stage" style="min-height:640px"></div>
+    </div></div>
+    <p class="say">The buttons are the control. The swipe is the shortcut for the same two answers. Right keeps, left passes.</p>
+  </div>
+  <div class="col" style="flex:1 1 320px;max-width:520px">
+    <span class="cap">what the card carries, top to bottom</span>
+    <ol class="calls">
+      <li><b>The look.</b> A street view of the address beside a map with the office and its 25 mile ring. Added on the owner's look at the first frames.</li>
+      <li><b>What.</b> The kind of work, the size and the declared value in the biggest type on the card.</li>
+      <li><b>Where.</b> The street, and the miles from the office on the map.</li>
+      <li><b>When.</b> Applied or issued, and how many days ago. An application is the early signal.</li>
+      <li><b>Who.</b> The builder, their mark, our bids with them, and how many permits they pulled this year. A tap opens everything public about them (frame L1), and the small Google press searches the name.</li>
+      <li><b>Plumber.</b> None yet, on file with no name, or the plumber's name.</li>
+      <li><b>The property.</b> The county's owner of record and what stands on the lot now. A tap opens everything public about the address (frame L2).</li>
+    </ol>
+    <p class="note"><b>The pictures are the app's own.</b> The job window already shows a street view of a job's address, read through the app's own function with the key kept on the server. The On site map already draws satellite. The card reuses both. The date on the street view matters: on a new build an old picture of an empty lot is the signal, and where the car never drove the tile shows satellite and says so.</p>
+    <p class="note"><b>Nothing is typed on the skim.</b> Today every verdict needs a typed reason, which is right for a decision and wrong for a glance. A pass offers four one-tap reasons in the dark bar after the card has gone. Tapping one is optional. The bar is also the undo.</p>
+    <p class="note"><b>A permit skimmed by one person is skimmed for everyone.</b> The queue is the company's, like the ledger's verdicts are today. Each answer keeps the name and the day.</p>
+  </div>
+</div>
+
+<h2>B · The card and its two answers</h2>
+<p class="lede">The same card as stills, for the frames a live demo cannot hold on.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>B1</b> · at rest</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="togo"><span><b>41</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="bar"><i style="width:22%"></i></div>
+      <div class="deck"><div class="under two"></div><div class="under"></div>
+      <div class="pcard new">
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">New commercial · applied 4 days ago</div>
+          <h3>Retail shell, 6,200 sq ft</h3>
+          <div class="money"><b>$1.4M</b> declared</div>
+          <div class="where">2400 Lantern Creek Blvd, 78249</div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g solo" href="#l" title="Search Google for this name"><i>G</i></a><span class="sub">We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
+          <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
+          <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres</span></span></div>
+        </div>
+        <div class="morelink"><a class="lnk" href="#h">Open it now</a></div>
+        <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+      </div></div>
+    </div></div></div>
+    <p class="say">Two more cards show under it, so the size of the pile is felt as well as counted.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>B2</b> · dragged right: keep</span>
+    <div class="frame"><div class="screen ghost"><div class="pad">
+      <div class="togo"><span><b>41</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="bar"><i style="width:22%"></i></div>
+      <div class="deck"><div class="under"></div>
+      <div class="pcard tilt-r">
+        <span class="stamp keep">KEEP</span>
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">New commercial · applied 4 days ago</div>
+          <h3>Retail shell, 6,200 sq ft</h3>
+          <div class="money"><b>$1.4M</b> declared</div>
+          <div class="where">2400 Lantern Creek Blvd, 78249</div>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span></span></div>
+        </div>
+      </div></div>
+      <div class="undo"><span>Kept for a closer look.</span><span class="sp"></span><button class="u">Undo</button></div>
+    </div></div></div>
+    <p class="say">The word appears as the card passes a third of its width. Let go before that and it springs back.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>B3</b> · dragged left: pass, and the bar after it</span>
+    <div class="frame"><div class="screen ghost"><div class="pad">
+      <div class="togo"><span><b>40</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="bar"><i style="width:24%"></i></div>
+      <div class="deck"><div class="under"></div>
+      <div class="pcard tilt-l">
+        <span class="stamp pass">PASS</span>
+        <div class="media"><div class="sv sat"><span class="tag">No street view · satellite</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:88%;top:12%"></span><span class="miles">41 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">Commercial site work · applied 9 days ago</div>
+          <h3>Parking lot and drainage</h3>
+          <div class="money">Value not declared</div>
+          <div class="where">60 Millrace Row, 78154</div>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill blue">New name</span></span></div>
+        </div>
+      </div></div>
+      <div class="undo new"><span>Passed. Why?</span><button>Too small</button><button class="picked">Too far</button><button>Not our work</button><button>Not this builder</button><span class="sp"></span><button class="u">Undo</button></div>
+    </div></div></div>
+    <p class="say">The bar stays until the next answer. A reason tapped here lands on the permit with the name and the day.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>B4</b> · tap a picture: the bigger look</span>
+    <div class="frame"><div class="screen look new">
+      <div class="bar2"><span class="on">Street view</span><span>Satellite</span><span>Map</span><span class="x">×</span></div>
+      <div class="sv lot"><span class="tag">Street view · Mar 2024 · facing the lot</span></div>
+      <div class="cap2">Retail shell, 6,200 sq ft · $1.4M</div>
+      <div class="cap3">2400 Lantern Creek Blvd · Ridgeway Builders · 14 mi from the office · <a class="lnk" style="color:#93c5fd" href="#b">Walk the street in Google</a></div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div>
+    <p class="say">A tap on either picture opens it big, with the two answers still under the thumb. Nothing on the card or in here is dragged sideways except the card itself.</p>
+  </div>
+</div>
+
+<h2>C · One site, six permits: a stack</h2>
+<p class="lede">A site with six buildings files six applications. On the live tab, 26 names pulled 70 of the 163 waiting permits. A stack answers the same builder on the same street in one go, and its buttons say how many.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>C</b> · a stack card</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="togo"><span><b>38</b> to skim</span><span>Pulled today 5:31 AM</span></div>
+      <div class="bar"><i style="width:30%"></i></div>
+      <div class="deck"><div class="under two"></div><div class="under"></div>
+      <div class="pcard new">
+        <div class="stackbar"><b>6 permits, one site.</b> Same builder, same street, filed the same week.</div>
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Aug 2023</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:20%;top:20%"></span><span class="miles">22 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">New multifamily · applied 6 days ago</div>
+          <h3>Oak Hollow Apartments, 6 buildings</h3>
+          <div class="money"><b>$19.2M</b> declared across the six</div>
+          <div class="where">815 Quarry Bend, 78253</div>
+          <ul class="sites"><li><span>Buildings 1 to 4, 24 units each</span><span>$3.6M each</span></li><li><span>Building 5, clubhouse</span><span>$2.1M</span></li><li><span>Building 6, 16 units</span><span>$2.7M</span></li></ul>
+          <div class="fact tap"><span class="k">Who</span><span class="v"><b>Calloway and Finch</b> <span class="pill grey">No mark</span><span class="sub">We bid 2 and won none. Last bid in 2025.</span></span></div>
+          <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet on any of the six</span></span></div>
+        </div>
+        <div class="morelink"><a class="lnk" href="#c">Answer them one by one</a></div>
+        <div class="answers"><button class="press grey">← Pass all 6</button><button class="press green">Keep all 6 →</button></div>
+      </div></div>
+    </div></div></div>
+    <p class="say">If one of the six already has a plumber, it is left out of the stack and the bar says so.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>D</b> · caught up</span>
+    <div class="frame"><div class="screen"><div class="ptabs"><span>Customers</span><span>Jobs to GC</span><span>Subs</span><span>Hiring</span><span class="on">Permits</span></div>
+      <div class="steps"><span class="on">Skim <b>0</b></span><span>Kept <b>14</b></span><span>Pursuing <b>3</b></span><span>Closed</span><span>Builders</span></div>
+      <div class="pad"><div class="pcard"><div class="empty">
+        <span class="tick">✓</span>
+        <h3>Nothing waiting on a skim.</h3>
+        <p>You answered 41 today. 9 kept, 32 passed.<br>The next pull is tomorrow at 5:30 AM.</p>
+        <button class="press blue" style="width:100%">Dig in · 14 kept</button>
+        <p style="margin:12px 0 0"><a class="lnk" href="#f">See what was passed</a></p>
+      </div></div></div>
+    </div></div>
+    <p class="say">Empty is the good state, so the words say so and the one press is the next step.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>E</b> · the first day: the backlog</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="pcard new"><div class="body" style="padding-bottom:14px">
+        <div class="kind">Before you start</div>
+        <h3>163 permits are waiting</h3>
+        <p class="mut" style="margin:6px 0 10px">The feed has run since November 9 and nobody has answered one yet. About 7 more arrive each working day.</p>
+        <div style="display:grid;gap:8px">
+          <button class="press blue">Skim all 163</button>
+          <button class="press grey">Skim the last 14 days · 61</button>
+        </div>
+        <p class="mut" style="margin:10px 0 0">The second press passes the 102 older ones as <b>Too old</b>. They stay under Closed and can be put back.</p>
+      </div></div>
+    </div></div></div>
+    <p class="say">Shown once, on the first open. At five seconds a card, all 163 is about a quarter of an hour.</p>
+  </div>
+</div>
+
+<h2>F · The skim on a desk</h2>
+<p class="lede">The same card in the middle. The room a desk has goes to what is coming next on the left, and a bigger map and the builder on the right. The arrow keys answer.</p>
+<div class="row">
+  <div class="col p920">
+    <span class="cap"><b>F</b> · desk, 920 wide</span>
+    <div class="frame"><div class="screen w920">
+      <div class="ptabs"><span>Customers</span><span>Jobs to GC</span><span>Subs</span><span>Hiring</span><span class="on">Permits</span></div>
+      <div class="steps"><span class="on">Skim <b>41</b></span><span>Kept <b>14</b></span><span>Pursuing <b>3</b></span><span>Closed <b>345</b></span><span>Builders <b>119</b></span><span style="margin-left:auto;background:transparent;color:var(--muted)">San Antonio · commercial, $25k and up · Pulled today 5:31 AM</span></div>
+      <div class="desk">
+        <div class="side">
+          <div class="h4">Up next</div>
+          <div class="peek">
+            <div class="cur"><b>Retail shell, 6,200 sq ft</b><span>Ridgeway Builders · 14 mi</span></div>
+            <div><b>Oak Hollow, 6 buildings</b><span>Calloway and Finch · 22 mi</span></div>
+            <div><b>Restaurant finish out</b><span>Marlow Commercial · 6 mi</span></div>
+            <div><b>Parking lot and drainage</b><span>Tall Pine Development · 41 mi</span></div>
+            <div><b>Hotel, 4 floors</b><span>Juniper Hospitality · 9 mi</span></div>
+            <div><span>and 36 more</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="pcard">
+            <div class="body">
+              <div class="kind">New commercial · applied 4 days ago</div>
+              <h3>Retail shell, 6,200 sq ft</h3>
+              <div class="money"><b>$1.4M</b> declared</div>
+              <div class="where">2400 Lantern Creek Blvd, 78249 <span class="mut">· permit COM-PRJ-APP26-00000001</span></div>
+              <div class="fact tap"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a><span class="sub">Dana Whitlock filed it. We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
+              <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
+              <div class="fact tap"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres, appraised $610k</span></span></div>
+            </div>
+            <div class="answers"><button class="press grey"><kbd>←</kbd> Pass</button><button class="press green">Keep <kbd>→</kbd></button></div>
+          </div>
+          <div class="keys" style="padding-top:10px"><span><kbd>←</kbd> Pass</span><span><kbd>→</kbd> Keep</span><span><kbd>Z</kbd> Undo</span><span><kbd>S</kbd> Street view</span><span><kbd>Enter</kbd> Open it now</span><span><kbd>1</kbd> to <kbd>4</kbd> a pass reason</span></div>
+        </div>
+        <div class="side">
+          <div class="pcard new" style="margin-bottom:10px"><div class="sv lot" style="height:140px"><span class="tag">Street view · Mar 2024</span></div><div class="mapt" style="height:120px;border-top:2px solid var(--border)"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
+          <div class="mut" style="margin:-4px 2px 10px"><kbd>S</kbd> opens the bigger look</div>
+          <div class="box"><div class="h4">Ridgeway Builders</div><b>Good</b> since March, set by Jordan.<br><span class="mut">"Pays on time. Sends plans early."</span><br><br>Their last 4 permits named <b>Blue Heron Plumbing</b> twice and nobody twice.<br><a class="lnk" href="#i">The builder's page</a></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">A desk never swipes. The card does not move under a mouse. The keys and the two buttons are the whole control.</p>
+  </div>
+</div>
+
+<h2>G · Kept, and Closed</h2>
+<p class="lede">Every answer can be found again. Kept is the short list that step two works. Closed holds every pass with its reason, every permit the feed gave a plumber, and every one dug into and dropped.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>G1</b> · Kept: the list step two works</span>
+    <div class="frame"><div class="screen">
+      <div class="steps"><span>Skim <b>0</b></span><span class="on">Kept <b>14</b></span><span>Pursuing <b>3</b></span><span>Closed</span><span>Builders</span></div>
+      <div class="flag new"><b>2 kept permits got a plumber since you kept them.</b> They moved to Closed. <a class="lnk" href="#g">See them</a></div>
+      <div class="chips"><span class="on">Everyone's 14</span><span>Mine 9</span><span>Look again today 2</span></div>
+      <div class="lrow"><div class="t"><b>Retail shell, 6,200 sq ft</b><span>$1.4M</span></div><div class="s">2400 Lantern Creek Blvd · Ridgeway Builders <span class="pill ok">Good</span></div><div class="m">Kept by Sam today · 14 mi · no plumber yet</div></div>
+      <div class="lrow"><div class="t"><b>Oak Hollow Apartments, 6 buildings</b><span>$19.2M</span></div><div class="s">815 Quarry Bend · Calloway and Finch</div><div class="m">Kept by Sam today · 22 mi · no plumber yet</div></div>
+      <div class="lrow"><div class="t"><b>Hotel, 4 floors</b><span>$8.8M</span></div><div class="s">1200 Heron Landing · Juniper Hospitality <span class="pill blue">New name</span></div><div class="m">Kept by Jordan, Nov 6 · <span class="pill warm">Look again today</span></div></div>
+      <div class="lrow"><div class="t"><b>Restaurant finish out, 3,100 sq ft</b><span>not declared</span></div><div class="s">44 Tannery Square · Marlow Commercial</div><div class="m">Kept by Jordan, Nov 5 · 6 mi · called once, no answer</div></div>
+      <div class="lrow"><div class="mut">and 10 more</div></div>
+    </div></div>
+    <p class="say">The oldest kept sits at the bottom of nobody's mind, so the list opens on Look again today, then the oldest.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>G2</b> · Closed: found again, put back</span>
+    <div class="frame"><div class="screen">
+      <div class="steps"><span>Skim <b>0</b></span><span>Kept <b>14</b></span><span>Pursuing <b>3</b></span><span class="on">Closed <b>345</b></span><span>Builders</span></div>
+      <div class="chips"><span class="on">Passed 208</span><span>Has a plumber 133</span><span>Not pursuing 4</span></div>
+      <div class="search">Search a street, a builder or a permit number</div>
+      <div class="lrow"><div class="t"><b>Parking lot and drainage</b><span>Nov 10</span></div><div class="s">60 Millrace Row · Tall Pine Development</div><div class="m">Passed by Sam · <span class="pill grey">Too far</span> · <a class="lnk" href="#g">Put back</a></div></div>
+      <div class="lrow"><div class="t"><b>Sign and canopy</b><span>Nov 10</span></div><div class="s">9 Larkspur Court · Permit Runners of Texas</div><div class="m">Passed by Sam · <span class="pill grey">Not our work</span> · <a class="lnk" href="#g">Put back</a></div></div>
+      <div class="lrow"><div class="t"><b>Office remodel, 2,000 sq ft</b><span>Nov 9</span></div><div class="s">310 Foundry Lane · Marlow Commercial</div><div class="m">Passed by Jordan · no reason given · <a class="lnk" href="#g">Put back</a></div></div>
+      <div class="lrow"><div class="t"><b>102 older permits</b><span>Nov 10</span></div><div class="s">Filed before October 27</div><div class="m">Passed by Sam in one press · <span class="pill grey">Too old</span> · <a class="lnk" href="#g">Put back all 102</a></div></div>
+    </div></div>
+    <p class="say">Put back sends a permit to the skim again. The ledger and the map stay as they are, under All permits, for the wide view.</p>
+  </div>
+  <div class="col" style="flex:1 1 300px;max-width:440px">
+    <span class="cap">how the queue is counted</span>
+    <ul class="calls">
+      <li><b>To skim</b> is every building permit with no answer and no plumbing permit on it, however old. Today the list reads a 14, 30 or 90 day window, so an unanswered permit drops out of sight when its day passes.</li>
+      <li>The deck keeps today's two filters as its own: commercial only, and $25k and up or not declared. A permit under the filter is not in any count.</li>
+      <li>A permit the feed pairs with a plumbing permit never enters the deck. It goes to Closed as <b>Has a plumber</b>, and it still counts on the builder's page.</li>
+      <li>Skim, Kept, Pursuing and Closed add up to every permit above the filter. The step strip shows all four.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="h">H · Dig in: a page, not a sheet</h2>
+<p class="lede">A kept permit opens as its own page with its own link. It holds what the Who pulled it sheet finds today, the county's record, the other permits on the site, and what we did about it. It ends on one of two presses.</p>
+<div class="row">
+  <div class="col p920">
+    <span class="cap"><b>H</b> · the dig in, desk</span>
+    <div class="frame"><div class="screen w920">
+      <div class="head"><a href="#g">← Kept · 3 of 14</a>
+        <h3>Retail shell, 6,200 sq ft · 2400 Lantern Creek Blvd</h3>
+        <div class="mut">New commercial · applied Nov 6 · $1.4M declared · COM-PRJ-APP26-00000001 · Kept by Sam today</div>
+      </div>
+      <div class="two">
+        <div>
+          <div class="sec"><h4>The site</h4>
+            <div class="pcard new" style="margin-bottom:8px"><div class="media" style="height:170px"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="tag">Map · Satellite</span><span class="miles">14 mi from the office</span></div></div></div>
+            <p><b>Owner of record:</b> Lantern Creek Retail LP <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></p>
+            <p class="mut">Mailing address 900 Sample Plaza, Suite 4 · vacant land, 2.1 acres · appraised $610k</p>
+            <div class="acts"><a class="lnk" href="#h">Walk the street in Google</a><a class="lnk" href="#h">Open in Google Maps</a><a class="lnk" href="#h">Open at the appraisal district</a></div>
+          </div>
+          <div class="sec"><h4>Every permit on this site</h4>
+            <table class="t"><tr><th>Permit</th><th>Filed</th><th>Who</th></tr>
+              <tr><td>Building, new commercial</td><td>Nov 6</td><td>Ridgeway Builders</td></tr>
+              <tr><td>Site work</td><td>Oct 21</td><td>Ridgeway Builders</td></tr>
+              <tr><td>Electrical</td><td>Nov 8</td><td>Voltline Electric</td></tr>
+              <tr><td>Plumbing</td><td colspan="2"><span class="pill ok">None yet</span></td></tr></table>
+            <div class="acts"><button class="press sm grey">Copy the permit number</button><a class="lnk" href="#h" style="align-self:center">Open the city's permit search</a></div>
+          </div>
+          <div class="sec"><h4>What we did</h4>
+            <ul class="log"><li><b>Sam</b> called Dana Whitlock. No answer. <span>Today 9:12 AM</span></li><li><b>Sam</b> kept it on the skim. <span>Today 8:40 AM</span></li></ul>
+            <div class="field"><div class="in" style="color:#9ca3af">Add a note</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec new"><h4>Ridgeway Builders <span class="pill ok">Good</span> <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></h4>
+            <p class="mut">General contractor · a customer of ours since 2024</p>
+            <p>We bid 5 and won 3. Last bid in June.</p>
+            <p>4 permits this year. Blue Heron Plumbing on 2, nobody yet on 2.</p>
+            <div class="person"><b>Dana Whitlock <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></b><a class="lnk" href="#h">210 555 0142</a><span class="mut">Project manager · filed this permit · in our contacts</span></div>
+            <div class="person"><b>Marcus Oyelaran</b><a class="lnk" href="#h">210 555 0177</a><span class="mut">Estimating · added by Jordan in March</span></div>
+            <div class="acts"><button class="press sm line">Add a person</button><a class="lnk" href="#i" style="align-self:center">The builder's page</a></div>
+          </div>
+          <div class="sec"><h4>Next</h4>
+            <div class="acts"><button class="press sm grey">Call Dana</button><button class="press sm grey">Look again on a day</button></div>
+          </div>
+          <div class="sec new"><h4>Close it out</h4>
+            <div style="display:grid;gap:8px">
+              <button class="press blue">Pursue · put Ridgeway on the calling deck</button>
+              <button class="press grey">Not pursuing…</button>
+            </div>
+            <p class="mut" style="margin-top:8px">Pursue makes the lead the Approach press makes today, with the phone, the people and the owner of record carried. Not pursuing asks for one of five reasons.</p>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">On a phone the two columns become one, in this order: the header, the builder, the site, the permits, what we did, close it out.</p>
+  </div>
+</div>
+
+<h2 id="i">I · The builder</h2>
+<p class="lede">The long view. A name on a permit becomes a builder the first time it is seen. Every later permit of that name joins it. The office gives it a mark, corrects what kind of company it is, adds people, and says when two names are one company.</p>
+<div class="row">
+  <div class="col p920">
+    <span class="cap"><b>I1</b> · a builder's page, desk</span>
+    <div class="frame"><div class="screen w920">
+      <div class="head"><a href="#j">← Builders</a>
+        <h3>Ridgeway Builders <a class="g" href="#l" title="Search Google for this name"><i>G</i>Google</a></h3>
+        <div class="mut">General contractor · 4410 Sample Parkway · 210 555 0100 · ridgewaybuilders.example</div>
+      </div>
+      <div class="two">
+        <div>
+          <div class="sec new"><h4>Our mark</h4>
+            <div class="mark"><span class="good">Good</span><span>No mark</span><span>Avoid</span></div>
+            <p style="margin-top:8px">"Pays on time. Sends plans early."</p>
+            <p class="mut">Set by Jordan on March 3. Before that: no mark.</p>
+          </div>
+          <div class="sec"><h4>Their permits, the last 12 months</h4>
+            <table class="t"><tr><th>Filed</th><th>Work</th><th>Plumber</th><th>Ours</th></tr>
+              <tr><td>Nov 6</td><td>Retail shell, 6,200 sq ft<br><span class="mut">2400 Lantern Creek Blvd</span></td><td><span class="pill ok">None yet</span></td><td>Kept</td></tr>
+              <tr><td>Oct 2</td><td>Office finish out<br><span class="mut">77 Kiln Street</span></td><td><span class="pill ok">None yet</span></td><td>Pursuing</td></tr>
+              <tr><td>Jul 14</td><td>Medical office, 9,000 sq ft<br><span class="mut">5 Aster Ridge</span></td><td>Blue Heron Plumbing</td><td>Closed</td></tr>
+              <tr><td>Mar 20</td><td>Retail remodel<br><span class="mut">120 Sample St</span></td><td>Blue Heron Plumbing</td><td>Closed</td></tr></table>
+            <p class="mut" style="margin-top:8px">Who they use: Blue Heron Plumbing on 2 of 4. Nobody yet on 2.</p>
+          </div>
+          <div class="sec"><h4>In our books</h4>
+            <p>A customer since 2024. <a class="lnk" href="#i">Open the customer</a></p>
+            <p>5 bids, 3 won, last bid in June. 2 jobs billed.</p>
+          </div>
+        </div>
+        <div>
+          <div class="sec new"><h4>People</h4>
+            <div class="person"><b>Dana Whitlock</b><a class="lnk" href="#i">210 555 0142</a><span class="mut">Project manager · named on 3 permits · from the customer's contacts</span></div>
+            <div class="person"><b>Marcus Oyelaran</b><a class="lnk" href="#i">210 555 0177</a><span class="mut">Estimating · added by Jordan in March · "Ask for him on bid day."</span></div>
+            <div class="person"><b>Priya Raman</b><span class="pill grey">no number yet</span><span class="mut">Named on the Nov 6 permit · <a class="lnk" href="#i">Add her number</a></span></div>
+            <div class="acts"><button class="press sm line">Add a person</button></div>
+          </div>
+          <div class="sec"><h4>Calls and notes</h4>
+            <ul class="log"><li><b>Sam</b> called Dana. No answer. <span>Today</span></li><li><b>Jordan</b> had lunch with Marcus. Two shells coming in spring. <span>Sep 18</span></li></ul>
+          </div>
+          <div class="sec new"><h4>Also filed as</h4>
+            <p>RIDGEWAY BUILDERS LLC · Ridgeway Bldrs · Dana Whitlock, Ridgeway Builders</p>
+            <div class="acts"><button class="press sm grey">Same company as…</button><a class="lnk" href="#i" style="align-self:center">Split a name off</a></div>
+            <p class="mut" style="margin-top:6px">Same company as joins another builder into this one. Its permits, people and notes come with it, and the join can be undone.</p>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>I2</b> · setting a mark</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="pcard new"><div class="body" style="padding-bottom:14px">
+        <h3>Mark Tall Pine Development</h3>
+        <div class="mark" style="margin-top:10px"><span>Good</span><span>No mark</span><span class="avoid">Avoid</span></div>
+        <div class="field"><label>Why, in a line</label><div class="in">Slow pay on the Millrace job. 94 days.</div></div>
+        <p class="mut" style="margin:8px 0 12px">Your name and today go on the mark. Every estimator sees it on the skim card.</p>
+        <button class="press blue" style="width:100%">Mark as Avoid</button>
+      </div></div>
+    </div></div></div>
+    <p class="say">A mark is a decision, so this one keeps its reason, the way a verdict does today.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>I3</b> · the mark on the skim</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="pcard">
+        <div class="media"><div class="sv office"><span class="tag">Street view · Jan 2025</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:40%;top:52%"></span><span class="miles">8 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">Commercial remodel · issued 2 days ago</div>
+          <h3>Warehouse office, 4,000 sq ft</h3>
+          <div class="money"><b>$310k</b> declared</div>
+          <div class="where">18 Drover Road, 78219</div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill bad">Avoid</span><span class="sub">"Slow pay on the Millrace job." Jordan, Nov 3.</span></span></div>
+          <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
+        </div>
+        <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+      </div>
+    </div></div></div>
+    <p class="say">The mark informs. It does not answer for you. Whether an Avoid builder's permits pass by themselves is one of the owner's calls below.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>I4</b> · a name that is not the builder</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="pcard">
+        <div class="media"><div class="sv strip"><span class="tag">Street view · Jun 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:34%;top:44%"></span><span class="miles">5 mi from the office</span></div></div>
+        <div class="body">
+          <div class="kind">New commercial · applied 3 days ago</div>
+          <h3>Restaurant, 3,800 sq ft</h3>
+          <div class="money"><b>$900k</b> declared</div>
+          <div class="where">7 Cinder Path, 78216</div>
+          <div class="fact tap new"><span class="k">Who</span><span class="v"><b>Permit Runners of Texas</b> <span class="pill grey">Files for others</span><span class="sub">31 permits this year for 19 owners. Not who builds it.</span></span></div>
+          <div class="fact tap"><span class="k">Property</span><span class="v"><b>Juniper Hospitality Group</b><span class="sub">The county's owner of record. Read this one.</span></span></div>
+          <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
+        </div>
+        <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+      </div>
+    </div></div></div>
+    <p class="say">The first live look found a permit runner at the top of who wins what. Once a builder's kind is set to Files for others, the card leads with the owner.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col p920">
+    <span class="cap" id="j"><b>J</b> · Builders: who is building in town</span>
+    <div class="frame"><div class="screen w920">
+      <div class="steps"><span>Skim <b>0</b></span><span>Kept <b>14</b></span><span>Pursuing <b>3</b></span><span>Closed <b>345</b></span><span class="on">Builders <b>119</b></span></div>
+      <div class="chips"><span class="on">All 119</span><span>Good 6</span><span>Avoid 2</span><span>No mark 111</span><span>Customers of ours 9</span><span>3 or more permits and never bid 11</span></div>
+      <div style="padding:0 14px 14px"><div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow-x:auto">
+      <table class="t"><tr><th>Builder</th><th>Mark</th><th>Permits, 12 mo</th><th>No plumber yet</th><th>Last permit</th><th>Our bids</th><th>Plumber they use</th></tr>
+        <tr><td><b>Calloway and Finch</b><br><span class="mut">General contractor</span></td><td><span class="pill grey">No mark</span></td><td class="n">11</td><td class="n">7</td><td>Nov 4</td><td>2, none won</td><td>Copperline Mechanical, 3</td></tr>
+        <tr><td><b>Ridgeway Builders</b><br><span class="mut">General contractor · customer</span></td><td><span class="pill ok">Good</span></td><td class="n">4</td><td class="n">2</td><td>Nov 6</td><td>5, 3 won</td><td>Blue Heron Plumbing, 2</td></tr>
+        <tr><td><b>Juniper Hospitality Group</b><br><span class="mut">Owner</span></td><td><span class="pill grey">No mark</span></td><td class="n">3</td><td class="n">3</td><td>Nov 7</td><td>never</td><td>nobody yet</td></tr>
+        <tr><td><b>Tall Pine Development</b><br><span class="mut">Developer</span></td><td><span class="pill bad">Avoid</span></td><td class="n">5</td><td class="n">1</td><td>Nov 8</td><td>1, won</td><td>Copperline Mechanical, 4</td></tr>
+        <tr><td><b>Permit Runners of Texas</b><br><span class="mut">Files for others</span></td><td><span class="pill grey">No mark</span></td><td class="n">31</td><td class="n">12</td><td>Nov 9</td><td>never</td><td>many</td></tr></table></div></div>
+    </div></div>
+    <p class="say">The last chip is the list the owner described: people pulling permits again and again whom we have never bid. That is who to build a relationship with.</p>
+  </div>
+</div>
+
+<h2 id="l">L · Tap Who or the building: everything public</h2>
+<p class="lede">Asked on the owner's second look. On the skim card the Who line and the Property line are presses. Each opens one sheet that lays out everything public the app can read about that company or that address, source by source, with the day it was read. A small Google press sits beside every name and searches Google for it in a new tab. The two answers stay at the bottom of the sheet.</p>
+<div class="row">
+  <div class="col p375">
+    <span class="cap"><b>L1</b> · tap Who: the company and the person</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet new">
+      <div class="grab"></div>
+      <div class="h4">Who pulled it</div>
+      <h3>Ridgeway Builders <span class="pill ok">Good</span></h3>
+      <div class="mut">General contractor · filed as RIDGEWAY BUILDERS LLC</div>
+      <div class="acts"><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%22Ridgeway%20Builders%22%20San%20Antonio"><i>G</i>Google the company</a><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%22Dana%20Whitlock%22%20%22Ridgeway%20Builders%22"><i>G</i>Google Dana Whitlock</a></div>
+      <div class="src"><div class="from"><b>On the permit</b><span>the city's feed, Nov 6</span></div>
+        <div class="kv"><span>Filed by</span><span>Dana Whitlock</span><span>Company</span><span>Ridgeway Builders LLC</span><span>Named on</span><span>3 permits this year</span></div></div>
+      <div class="src"><div class="from"><b>On Google</b><span>read Nov 10 · <a class="lnk" style="font-size:inherit" href="#l">Look again</a></span></div>
+        <div class="kv"><span>Phone</span><span><a class="lnk" href="#l">210 555 0100</a></span><span>Website</span><span><a class="lnk" href="#l">ridgewaybuilders.example</a></span><span>Office</span><span>4410 Sample Parkway</span><span>Kind</span><span>General contractor</span><span>Reviews</span><span>4.6 from 38 reviews</span></div></div>
+      <div class="src"><div class="from"><b>In our books</b><span>live</span></div>
+        <div class="kv"><span>Customer</span><span>since 2024 · <a class="lnk" href="#l">Open</a></span><span>Bids</span><span>5 priced, 3 won, last in June</span><span>Jobs</span><span>2 billed, paid in 31 days on average</span><span>People</span><span>Dana Whitlock, Marcus Oyelaran</span></div></div>
+      <div class="src"><div class="from"><b>Their permits</b><span>the city's feed, 12 months</span></div>
+        <div class="kv"><span>Pulled</span><span>4 permits · <a class="lnk" href="#i">See them</a></span><span>No plumber yet</span><span>2</span><span>Plumber used</span><span>Blue Heron Plumbing on 2</span></div></div>
+      <div class="src"><div class="from"><b>More, one press away</b><span>opens in a new tab</span></div>
+        <div class="door"><div>The state's business record<span>Status, registered agent, officers. The name is copied.</span></div><a class="lnk" href="#l">Open</a></div>
+        <div class="door"><div>The plumbing license roll<span>When the name is a plumber.</span></div><a class="lnk" href="#l">Open</a></div>
+      </div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div></div></div>
+    <p class="say">The two Google presses in this frame work. They search for the made-up names. A person is searched with their company, so a common name finds the right one.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>L2</b> · tap the building: the address</span>
+    <div class="frame"><div class="screen"><div class="dim"><div class="sheet new">
+      <div class="grab"></div>
+      <div class="h4">The building</div>
+      <h3>2400 Lantern Creek Blvd, 78249</h3>
+      <div class="acts"><a class="g" target="_blank" rel="noreferrer" href="https://www.google.com/search?q=%222400%20Lantern%20Creek%20Blvd%22%20San%20Antonio"><i>G</i>Google the address</a><a class="lnk" href="#b" style="align-self:center">Street view · Satellite · Map</a></div>
+      <div class="src"><div class="from"><b>The permit, as the city gave it</b><span>the city's feed, Nov 6</span></div>
+        <div class="kv"><span>Type</span><span>Commercial Project Application</span><span>Number</span><span>COM-PRJ-APP26-00000001</span><span>Project name</span><span>Lantern Creek Retail, shell</span><span>Work</span><span>New commercial</span><span>Applied</span><span>Nov 6, not issued yet</span><span>Declared</span><span>$1,400,000</span><span>Area</span><span>6,200 sq ft</span></div>
+        <p style="margin:6px 0 0"><a class="lnk" href="#l">Show every field the city sent</a></p></div>
+      <div class="src"><div class="from"><b>At the county</b><span>read Nov 10 · the roll runs behind a sale</span></div>
+        <div class="kv"><span>Owner of record</span><span>Lantern Creek Retail LP <a class="g solo" target="_blank" rel="noreferrer" title="Search Google for this name" href="https://www.google.com/search?q=%22Lantern%20Creek%20Retail%20LP%22"><i>G</i></a></span><span>Mailing</span><span>900 Sample Plaza, Suite 4</span><span>Doing business as</span><span>none given</span><span>Land</span><span>$610,000</span><span>Buildings</span><span>$0</span><span>Use</span><span>Vacant commercial</span><span>Built</span><span>nothing yet</span><span>Lot</span><span>2.1 acres</span></div>
+        <p style="margin:6px 0 0"><a class="lnk" href="#l">Open at the appraisal district</a></p></div>
+      <div class="src"><div class="from"><b>Every permit on this address</b><span>the city's feed</span></div>
+        <div class="kv"><span>Nov 6</span><span>Building, new commercial · Ridgeway Builders</span><span>Oct 21</span><span>Site work · Ridgeway Builders</span><span>Plumbing</span><span>none yet</span></div></div>
+      <div class="src"><div class="from"><b>More, one press away</b><span>opens in a new tab</span></div>
+        <div class="door"><div>The city's own record<span>Applicant, contractor, reviews. The number is copied.</span></div><a class="lnk" href="#l">Open</a></div>
+        <div class="door"><div>The county clerk's deeds<span>Who bought it, and when.</span></div><a class="lnk" href="#l">Open</a></div>
+      </div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div></div></div>
+    <p class="say">The same sheet opens from the dig in and from a row on All permits. From there it has no Keep and Pass.</p>
+  </div>
+  <div class="col" style="flex:1 1 300px;max-width:470px">
+    <span class="cap">where each fact comes from</span>
+    <table class="plain">
+      <tr><th>Fact</th><th>Today</th></tr>
+      <tr><td>Phone, website, office, kind of business</td><td><b>In the app.</b> The Who pulled it card reads Google for it.</td></tr>
+      <tr><td>Owner of record, mailing address, values, use, year built, area, acres</td><td><b>In the app.</b> The same card reads the county's parcel layer.</td></tr>
+      <tr><td>Our bids and wins with the name</td><td><b>In the app</b>, as one word and a count.</td></tr>
+      <tr><td>Every field the city's feed sent</td><td><b>Stored, shown nowhere.</b> The row is kept whole. Showing it costs nothing.</td></tr>
+      <tr><td>Every permit on the address, and by the builder</td><td><b>Stored, shown nowhere</b> except the plumber pairing.</td></tr>
+      <tr><td>Google search for a name or an address</td><td><b>New.</b> A link. No cost and no key.</td></tr>
+      <tr><td>Google's review score</td><td><b>New, to check.</b> The same Google call can return it. It may cost more per call.</td></tr>
+      <tr><td>The state's business record, the plumbing license roll, the county clerk's deeds, the city's own record</td><td><b>Doors.</b> Each is a public search page. Reading one by machine is to check, source by source.</td></tr>
+    </table>
+    <p class="note"><b>So, is there such a flow today?</b> Half of one. The Who pulled it card shows Google, the county and our history for one name, and it opens only from a row on the ledger or the map. There is no sheet for the building, the feed's full row is never shown, and nothing searches Google.</p>
+  </div>
+</div>
+
+<h2>K · Two other ways to do step one</h2>
+<p class="lede">Both were drawn before choosing. Each one is better than the deck at something, and the plan takes that part of each.</p>
+<div class="row">
+  <div class="col p560">
+    <span class="cap"><b>K1</b> · a triage table with one-key answers</span>
+    <div class="frame"><div class="screen w560">
+      <div class="steps"><span class="on">Skim <b>41</b></span><span>Kept <b>14</b></span><span>Closed</span></div>
+      <div style="padding:0 0 4px;background:var(--surface)">
+      <table class="t"><tr><th>Work</th><th>Where</th><th>Who</th><th></th></tr>
+        <tr class="sel"><td><b>Sign and canopy</b><br><span class="mut">$31k</span></td><td>9 Larkspur Court<br><span class="mut">11 mi</span></td><td>Permit Runners</td><td class="n">☑</td></tr>
+        <tr class="cur"><td><b>Retail shell, 6,200 sq ft</b><br><span class="mut">$1.4M</span></td><td>2400 Lantern Creek<br><span class="mut">14 mi</span></td><td>Ridgeway Builders <span class="pill ok">Good</span></td><td class="n"><kbd>X</kbd> <kbd>K</kbd></td></tr>
+        <tr class="sel"><td><b>Parking lot and drainage</b><br><span class="mut">not declared</span></td><td>60 Millrace Row<br><span class="mut">41 mi</span></td><td>Tall Pine <span class="pill bad">Avoid</span></td><td class="n">☑</td></tr>
+        <tr><td><b>Restaurant finish out</b><br><span class="mut">not declared</span></td><td>44 Tannery Square<br><span class="mut">6 mi</span></td><td>Marlow Commercial</td><td class="n">☐</td></tr></table>
+      <div class="acts" style="padding:10px 12px"><button class="press sm grey">Pass 2 selected</button><span class="mut" style="align-self:center"><kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>X</kbd> passes · <kbd>K</kbd> keeps · <kbd>Space</kbd> selects</span></div></div>
+    </div></div>
+    <p class="say"><b>Better at:</b> a desk, twenty rows in view, comparing neighbours, passing several at once. <b>Worse at:</b> a phone. A row cannot carry the property, the history and the map, so the answer is made on less. It is also the ledger we have, which nobody has answered.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>K2</b> · skim the builders, not the permits</span>
+    <div class="frame"><div class="screen"><div class="pad">
+      <div class="togo"><span><b>119</b> builders with new permits</span></div>
+      <div class="pcard">
+        <div class="body">
+          <div class="kind">General contractor · 11 permits this year</div>
+          <h3>Calloway and Finch</h3>
+          <div class="money">7 new permits with no plumber yet</div>
+          <ul class="sites"><li><span>Oak Hollow Apartments, 6 buildings</span><span>$19.2M</span></li><li><span>Bank branch remodel</span><span>$420k</span></li></ul>
+          <div class="fact"><span class="k">Ours</span><span class="v">We bid 2 and won none.</span></div>
+        </div>
+        <div class="answers"><button class="press grey">← Pass all 7</button><button class="press green">Keep all 7 →</button></div>
+      </div>
+    </div></div></div>
+    <p class="say"><b>Better at:</b> the long view. It is 119 answers, not 163, and it builds the builder from day one. <b>Worse at:</b> the answer itself. One builder's $19M apartments and its $31k sign are not one decision, and three in four names have only one permit.</p>
+  </div>
+  <div class="col" style="flex:1 1 300px;max-width:440px">
+    <span class="cap">what the plan takes from each</span>
+    <ul class="calls">
+      <li>From <b>K1</b>: the keys on a desk, the Up next column in frame F, and the ledger kept whole as All permits.</li>
+      <li>From <b>K2</b>: the stack in frame C, limited to one builder on one street, and the Builders list in frame J.</li>
+      <li>The deck stays the first step because the ask was one permit, everything on one page, two answers. It is also the only one of the three that works with a thumb.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<p class="lede">Asked twice. First of the plan while the frames were being drawn, which changed the six things below. Then of the page once it was rendered, which is the box after them.</p>
+<ol class="calls">
+  <li><b>The first draft had three answers.</b> Pass, Later and Pursue now. Pursue on a glance skips the dig in that makes a call worth making. The card has two answers and a small Open it now for the rare permit that cannot wait.</li>
+  <li><b>The first draft kept the typed reason.</b> The ledger refuses a verdict with no reason. On 163 cards that is 163 sentences, and it is why nothing has been answered. The reason became four taps in the bar, optional, after the card is gone.</li>
+  <li><b>The first draft was one card per permit.</b> Then the live counts showed 26 names behind 70 of the 163. The stack came from that.</li>
+  <li><b>The first draft read a window.</b> A deck that forgets a permit after 30 days cannot promise that every permit is closed out. The deck has no window, and the first day gets its own card.</li>
+  <li><b>The first draft swiped on a desk.</b> Dragging a card with a mouse is slower than a key and reads as a toy. The desk has keys.</li>
+  <li><b>The first draft put the mark on the skim card as a press.</b> A mark is a judgment about a company, with a reason. It moved to the builder and the dig in. The skim only shows it.</li>
+</ol>
+<p class="note"><b>The owner's look, 2026-11-10.</b> Good as drawn, and better with a map and a street view. Both are now on every skim card (frames A to C and I), bigger on the desk (frame F) and side by side on the dig in (frame H), with a tap to open either one big (frame B4). The first draft had only a small map strip, which said where and nothing about what is there. Two tiles of equal size were chosen over a street view with a small map in its corner, since the miles are read as often as the picture. A swipe between the two pictures was not drawn: it would fight the card's own swipe.</p>
+<p class="note"><b>The owner's second look, 2026-11-10.</b> Much better, and two more asks: a tap on Who or on the building that shows as much public information as there is, and a small Google button beside a name. Both are section L. The first draft made the reader go to the dig in for any of this, which is one step too late: the facts that decide a keep are the ones on these sheets. They are sheets over the card, not pages, so the deck is never left and the two answers stay under the thumb.</p>
+<p class="note"><b>What the render showed.</b> Checked in the browser at desk width and at 375. The live deck in frame A answers by button, by drag and by key, takes a reason, undoes, and ends on the caught-up card. Three things were fixed after seeing them: the stack's blue line broke into two columns, a dashed box sat on top of the address on two cards, and the triage table used K for both keep and move. One thing stays as it is on purpose: the desk card in frame F is short enough that the Up next column, not the card, is where the eye goes first. That may be right. It is the owner's to judge on the frame.</p>
+<p class="note"><b>Still weak, and said plainly.</b> The card can only show what the feed and the county give. On the live tab 137 of the 163 waiting permits are applications whose work reads only Commercial project, 70 declare no value, and the history word reads new name on 162. The first weeks of the skim will be made on the street, the size, the owner of record and the miles. The card gets better as builders collect permits, marks and people, which is the reason the builder work is in the same plan and not a later one. The other weak spot is the swipe itself: a drag that starts at the left edge of a phone is the browser's own Back. The drag starts on the card, the card sits inside the page's gutter, and the buttons never go away.</p>
+
+<h2>The owner's calls</h2>
+<ol class="calls">
+  <li><b>The two answers.</b> Right keeps for a closer look and left passes, under the words Keep and Pass. Or other words?</li>
+  <li><b>A reason on a pass.</b> Optional and one tap, as drawn. Or required, or none at all?</li>
+  <li><b>The backlog.</b> Skim all 163, or start from the last 14 days and pass the older ones in one press as Too old?</li>
+  <li><b>What reaches the deck.</b> Commercial only, $25k and up or not declared, no houses, nothing that already has a plumber. That is today's default list. Keep it?</li>
+  <li><b>One queue or one each.</b> As drawn, a permit skimmed by one person is done for everyone. Or does each estimator skim their own?</li>
+  <li><b>Where a pursued permit lands.</b> Today the lead goes on the Jobs to GC deck. A general contractor who needs a plumber reads more like the Customers deck. Which one, or by the builder's kind?</li>
+  <li><b>What Avoid does.</b> As drawn it is a red word on the card. Or should an Avoid builder's permits pass by themselves, counted and listed under Closed?</li>
+  <li><b>Who may mark a builder.</b> The office and every estimator, as with verdicts. Or the office alone?</li>
+</ol>
+
+</div>
+
+<script>
+// The live skim in frame A. Made-up permits. No network, nothing stored.
+(function () {
+  var all = [
+    { kind: 'New commercial · applied 4 days ago', title: 'Retail shell, 6,200 sq ft', sv: ['lot', 'Street view · Mar 2024'], money: '<b>$1.4M</b> declared', where: '2400 Lantern Creek Blvd, 78249', miles: '14 mi from the office', pin: [62, 34], who: 'Ridgeway Builders', mark: ['ok', 'Good'], hist: 'We bid 5 and won 3. Last bid in June.', perm: '4 permits this year. 2 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Lantern Creek Retail LP', lot: 'Vacant land, 2.1 acres' },
+    { kind: 'Commercial site work · applied 9 days ago', title: 'Parking lot and drainage', sv: ['sat', 'No street view · satellite'], money: 'Value not declared', where: '60 Millrace Row, 78154', miles: '41 mi from the office', pin: [88, 12], who: 'Tall Pine Development', mark: ['bad', 'Avoid'], hist: '"Slow pay on the Millrace job." Jordan, Nov 3.', perm: '5 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tall Pine Holdings LLC', lot: 'Vacant land, 6 acres' },
+    { kind: 'Commercial remodel · issued 2 days ago', title: 'Restaurant finish out, 3,100 sq ft', sv: ['strip', 'Street view · Jun 2024'], money: 'Value not declared', where: '44 Tannery Square, 78205', miles: '6 mi from the office', pin: [30, 48], who: 'Marlow Commercial', mark: ['grey', 'No mark'], hist: 'We bid 1 and did not win it.', perm: '2 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tannery Square Partners', lot: 'Retail strip, built 2009' },
+    { kind: 'New commercial · applied 3 days ago', title: 'Hotel, 4 floors, 62,000 sq ft', sv: ['lot', 'Street view · Nov 2022'], money: '<b>$8.8M</b> declared', where: '1200 Heron Landing, 78230', miles: '9 mi from the office', pin: [44, 22], who: 'Juniper Hospitality Group', mark: ['blue', 'New name'], hist: 'No bid to this name yet.', perm: '3 permits this year. All 3 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Juniper Hospitality Group', lot: 'Vacant land, 3.4 acres' },
+    { kind: 'Commercial project · applied 1 day ago', title: 'Sign and canopy', sv: ['office', 'Street view · Jan 2025'], money: '<b>$31k</b> declared', where: '9 Larkspur Court, 78213', miles: '11 mi from the office', pin: [55, 60], who: 'Permit Runners of Texas', mark: ['grey', 'Files for others'], hist: 'Not who builds it. Read the owner.', perm: '31 permits this year for 19 owners.', plumber: ['ok', 'None yet'], owner: 'Larkspur Dental PLLC', lot: 'Office, built 1998' },
+    { kind: 'Commercial remodel · issued 5 days ago', title: 'Medical office, 9,000 sq ft', sv: ['office', 'Street view · Sep 2024'], money: '<b>$2.2M</b> declared', where: '5 Aster Ridge, 78258', miles: '17 mi from the office', pin: [70, 20], who: 'Calloway and Finch', mark: ['grey', 'No mark'], hist: 'We bid 2 and won none. Last bid in 2025.', perm: '11 permits this year. 7 have no plumber yet.', plumber: ['grey', 'On file, no plumber named'], owner: 'Aster Ridge Medical LP', lot: 'Office, built 2016' }
+  ];
+  var stage = document.getElementById('d-stage'), demo = document.getElementById('demo');
+  var elSkim = document.getElementById('d-skim'), elKept = document.getElementById('d-kept');
+  var i = 0, kept = 0, passed = 0, last = null, reason = null;
+  var REASONS = ['Too small', 'Too far', 'Not our work', 'Not this builder'];
+
+  function cardHtml(p) {
+    return '<span class="stamp keep">KEEP</span><span class="stamp pass">PASS</span>' +
+      '<div class="media"><div class="sv ' + p.sv[0] + '"><span class="tag">' + p.sv[1] + '</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:' + p.pin[0] + '%;top:' + p.pin[1] + '%"></span><span class="miles">' + p.miles + '</span></div></div>' +
+      '<div class="body"><div class="kind">' + p.kind + '</div><h3>' + p.title + '</h3><div class="money">' + p.money + '</div><div class="where">' + p.where + '</div>' +
+      '<div class="fact tap"><span class="k">Who</span><span class="v"><b>' + p.who + '</b> <span class="pill ' + p.mark[0] + '">' + p.mark[1] + '</span> <a class="g solo" target="_blank" rel="noreferrer" title="Search Google for this name" href="https://www.google.com/search?q=' + encodeURIComponent('"' + p.who + '" San Antonio') + '"><i>G</i></a><span class="sub">' + p.hist + '</span><span class="sub">' + p.perm + '</span></span></div>' +
+      '<div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ' + p.plumber[0] + '">' + p.plumber[1] + '</span></span></div>' +
+      '<div class="fact tap"><span class="k">Property</span><span class="v">' + p.owner + '<span class="sub">' + p.lot + '</span></span></div></div>' +
+      '<div class="answers"><button class="press grey" data-a="pass">← Pass</button><button class="press green" data-a="keep">Keep →</button></div>';
+  }
+  function undoHtml() {
+    if (!last) return '';
+    if (last === 'keep') return '<div class="undo"><span>Kept for a closer look.</span><span class="sp"></span><button class="u" data-a="undo">Undo</button></div>';
+    return '<div class="undo"><span>Passed. Why?</span>' + REASONS.map(function (r) { return '<button data-r="' + r + '"' + (reason === r ? ' class="picked"' : '') + '>' + r + '</button>'; }).join('') + '<span class="sp"></span><button class="u" data-a="undo">Undo</button></div>';
+  }
+  function draw() {
+    elSkim.textContent = String(all.length - i);
+    elKept.textContent = String(14 + kept);
+    if (i >= all.length) {
+      stage.innerHTML = '<div class="pcard"><div class="empty"><span class="tick">✓</span><h3>Nothing waiting on a skim.</h3><p>You answered ' + all.length + ' just now. ' + kept + ' kept, ' + passed + ' passed.<br>The next pull is tomorrow at 5:30 AM.</p><button class="press blue" style="width:100%">Dig in · ' + (14 + kept) + ' kept</button><p style="margin:12px 0 0"><button class="lnk" data-a="reset">Start the demo over</button></p></div></div>' + undoHtml();
+      return;
+    }
+    var left = all.length - i;
+    stage.innerHTML = '<div class="togo"><span><b>' + left + '</b> to skim</span><span>Pulled today 5:31 AM</span></div><div class="bar"><i style="width:' + Math.round((i / all.length) * 100) + '%"></i></div>' +
+      '<div class="deck">' + (left > 2 ? '<div class="under two"></div>' : '') + (left > 1 ? '<div class="under"></div>' : '') + '<div class="pcard" id="d-card">' + cardHtml(all[i]) + '</div></div>' + undoHtml();
+    bindDrag(document.getElementById('d-card'));
+  }
+  function answer(a) {
+    if (i >= all.length) return;
+    var card = document.getElementById('d-card');
+    last = a; reason = null;
+    if (a === 'keep') kept++; else passed++;
+    if (card) {
+      card.style.transition = 'transform .18s ease-in, opacity .18s ease-in';
+      card.style.transform = 'translateX(' + (a === 'keep' ? 420 : -420) + 'px) rotate(' + (a === 'keep' ? 16 : -16) + 'deg)';
+      card.style.opacity = '0';
+      setTimeout(function () { i++; draw(); }, 170);
+    } else { i++; draw(); }
+  }
+  function undo() {
+    if (!last || i === 0) return;
+    if (last === 'keep') kept--; else passed--;
+    i--; last = null; reason = null; draw();
+  }
+  function bindDrag(card) {
+    var startX = 0, dx = 0, on = false;
+    var k = card.querySelector('.stamp.keep'), p = card.querySelector('.stamp.pass');
+    card.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('button, a')) return;
+      on = true; startX = e.clientX; dx = 0; card.style.transition = 'none';
+      try { card.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    card.addEventListener('pointermove', function (e) {
+      if (!on) return;
+      dx = e.clientX - startX;
+      card.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 22) + 'deg)';
+      var t = Math.min(1, Math.abs(dx) / 110);
+      k.style.opacity = dx > 0 ? String(t) : '0';
+      p.style.opacity = dx < 0 ? String(t) : '0';
+    });
+    function end() {
+      if (!on) return; on = false;
+      if (dx > 110) return answer('keep');
+      if (dx < -110) return answer('pass');
+      card.style.transition = 'transform .15s ease-out'; card.style.transform = '';
+      k.style.opacity = '0'; p.style.opacity = '0';
+    }
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+  }
+  stage.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var a = b.getAttribute('data-a'), r = b.getAttribute('data-r');
+    if (a === 'keep' || a === 'pass') answer(a);
+    else if (a === 'undo') undo();
+    else if (a === 'reset') { i = 0; kept = 0; passed = 0; last = null; reason = null; draw(); }
+    else if (r) { reason = reason === r ? null : r; draw(); }
+  });
+  demo.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); answer('keep'); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); answer('pass'); }
+    else if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); undo(); }
+    else if (last === 'pass' && /^[1-4]$/.test(e.key)) { reason = REASONS[Number(e.key) - 1]; draw(); }
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
