@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { contactParts, SAN_ANTONIO_PERMIT_PORTAL, type CompanyFacts, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
-import { shortMoney, workWords, type Hint, type LeadFacts, type ResearchPermitRow } from '../../lib/research/permitResearch'
-import { lookupCompany, lookupParcel, type LookupAnswer } from '../../lib/research/permitResearchIo'
+import { shortDay, shortMoney, workWords, type Hint, type LeadFacts, type ResearchPermitRow } from '../../lib/research/permitResearch'
+import { loadBuilderPermits, lookupCompany, lookupParcel, type LookupAnswer } from '../../lib/research/permitResearchIo'
+import { BUILDER_PERMIT_DAYS, TEXAS_FRANCHISE_SEARCH, builderPermitLines, builderSearchWord, builderWords, googleAskForCompany, googleAsksForContact, type SitePermit } from '../../lib/research/permitPublic'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { GoogleSearchPress } from './GoogleSearchPress'
 
 /**
  * Research, Who pulled it (punch list #292, PR 4): the card behind a contact's name. The
  * company on Google Places (phone, website, address, what kind of business), the parcel at the
  * county (the owner of record, their mailing address, the DBA, the values), our own history
  * with the name, and the door to the city's own record with the permit number copied. Approach
- * them from here carries what was found onto the lead.
+ * them from here carries what was found onto the lead. Since punch list #302 it also lists the
+ * other permits the same name pulled in the last year, a Google press searches the company, the
+ * person and the owner of record, and a door opens the state's franchise tax search.
  */
 const sectionTitle: CSSProperties = { fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
@@ -34,6 +39,9 @@ export function WhoPulledItSheet({
   const [company, setCompany] = useState<Loadable<CompanyFacts>>({ state: 'loading' })
   const [parcel, setParcel] = useState<Loadable<ParcelFacts>>({ state: 'loading' })
   const [copied, setCopied] = useState(false)
+  const [nameCopied, setNameCopied] = useState(false)
+  const [theirs, setTheirs] = useState<{ state: 'loading' } | { state: 'done'; rows: SitePermit[] } | { state: 'failed'; message: string }>({ state: 'loading' })
+  const asks = googleAsksForContact(row.contact, row.city)
 
   const load = useCallback(
     async (refresh: boolean) => {
@@ -57,6 +65,24 @@ export function WhoPulledItSheet({
     [row.contact, row.address, row.city],
   )
 
+  // The name's other permits: one word asked of the table, the rows held to the whole name by the kernel.
+  useEffect(() => {
+    const word = builderSearchWord(row.contact)
+    if (!word) {
+      setTheirs({ state: 'done', rows: [] })
+      return
+    }
+    let live = true
+    setTheirs({ state: 'loading' })
+    loadBuilderPermits(row.city, word, todayYmdInAppTz())
+      .then((rows) => live && setTheirs({ state: 'done', rows }))
+      .catch((e) => live && setTheirs({ state: 'failed', message: formatErrorMessage(e) }))
+    return () => {
+      live = false
+    }
+  }, [row.contact, row.city])
+  const theirLines = useMemo(() => (theirs.state === 'done' ? builderPermitLines(theirs.rows, row.contact, row.id) : []), [theirs, row.contact, row.id])
+
   useEffect(() => {
     void load(false)
   }, [load])
@@ -71,7 +97,19 @@ export function WhoPulledItSheet({
     companyAddress: companyFacts?.address ?? null,
     ownerOfRecord: parcelFacts?.owner ?? null,
   }
+  // The state's search is for a company: the one on the permit, else the county's owner of record.
+  const stateName = parts.company ?? parcelFacts?.owner ?? null
   const work = workWords(row)
+
+  const copyName = async () => {
+    if (!stateName) return
+    try {
+      await navigator.clipboard.writeText(stateName)
+      setNameCopied(true)
+    } catch {
+      setNameCopied(false)
+    }
+  }
 
   const copyNumber = async () => {
     try {
@@ -101,6 +139,12 @@ export function WhoPulledItSheet({
             <div style={muted}>
               {row.permit_number} · {work.main} · {row.address ?? 'no address'}
             </div>
+            {(asks.company || asks.person) && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <GoogleSearchPress ask={asks.company} words="Google the company" />
+                <GoogleSearchPress ask={asks.person} words={parts.person ? `Google ${parts.person}` : undefined} />
+              </div>
+            )}
           </div>
           <span style={{ flex: '1 1 auto' }} />
           <button type="button" aria-label="Close" onClick={onClose} style={{ background: 'transparent', border: 0, color: 'var(--text-muted)', width: 36, height: 36, borderRadius: 8, fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>
@@ -154,7 +198,7 @@ export function WhoPulledItSheet({
           {parcelFacts && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={line}>
-                <strong>Owner of record:</strong> {parcelFacts.owner ?? 'not given'}
+                <strong>Owner of record:</strong> {parcelFacts.owner ?? 'not given'} <GoogleSearchPress ask={googleAskForCompany(parcelFacts.owner, row.city)} />
                 {parcelFacts.dba ? <span style={muted}> · DBA {parcelFacts.dba}</span> : null}
               </div>
               {parcelFacts.owner_address && <div style={line}>Mailing address: {parcelFacts.owner_address}</div>}
@@ -187,6 +231,46 @@ export function WhoPulledItSheet({
             <strong>{hint.word}</strong> <span style={muted}>· {hint.detail}</span>
           </div>
         </section>
+
+        <section>
+          <div style={sectionTitle}>Their other permits</div>
+          {theirs.state === 'loading' && <div style={muted}>Reading this name’s other permits…</div>}
+          {theirs.state === 'failed' && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{theirs.message}</div>}
+          {theirs.state === 'done' && (
+            <>
+              <div style={muted}>{builderWords(theirLines, BUILDER_PERMIT_DAYS)}</div>
+              {theirLines.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', gap: '3px 10px', fontSize: '0.875rem', lineHeight: 1.45, marginTop: 6 }}>
+                  {theirLines.slice(0, 12).map((l) => (
+                    <Fragment key={l.id}>
+                      <span style={muted}>{shortDay(l.day)}</span>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                        {l.what}
+                        {l.where ? <span style={muted}> · {l.where}</span> : null}
+                      </span>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+              {theirLines.length > 12 && <div style={{ ...muted, marginTop: 4 }}>and {theirLines.length - 12} older ones</div>}
+            </>
+          )}
+        </section>
+
+        {stateName && (
+          <section>
+            <div style={sectionTitle}>The state’s business record</div>
+            <div style={muted}>The franchise tax search: whether the company is in good standing, its registered agent and its officers. Copy the name, open the search, paste it.</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <button type="button" onClick={() => void copyName()} style={smallPress}>
+                {nameCopied ? 'Copied' : `Copy ${stateName}`}
+              </button>
+              <a href={TEXAS_FRANCHISE_SEARCH} target="_blank" rel="noreferrer" style={{ ...smallPress, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                Open the state’s search
+              </a>
+            </div>
+          </section>
+        )}
 
         <section>
           <div style={sectionTitle}>The city’s own record</div>

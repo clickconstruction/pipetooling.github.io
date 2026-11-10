@@ -8,8 +8,9 @@
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { leadFromPermit, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
+import { leadFromPermit, ymdPlusDays, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
+import { BUILDER_PERMIT_DAYS, type SitePermit } from './permitPublic'
 
 function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
@@ -129,4 +130,46 @@ export function lookupCompany(contact: string, city: string, refresh = false): P
 /** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
 export function lookupParcel(address: string, city: string, refresh = false): Promise<LookupAnswer<ParcelFacts>> {
   return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh })
+}
+
+/** One permit's own feed row: every column the city sent, where it came from and when. */
+export type PermitFeedRow = { raw: unknown; source: string; pulledAt: string; firstSeenAt: string; addressKey: string | null }
+
+/** The feed's full row for one permit (punch list #302): `permits.raw` keeps it whole and the ledger shows a part. */
+export async function loadPermitFeedRow(permitId: string): Promise<PermitFeedRow | null> {
+  const { data, error } = await supabase.from('permits').select('raw, source, pulled_at, first_seen_at, address_key').eq('id', permitId).maybeSingle()
+  if (error) failed(error, "read the city's row")
+  if (!data) return null
+  return { raw: data.raw, source: data.source, pulledAt: data.pulled_at, firstSeenAt: data.first_seen_at, addressKey: data.address_key }
+}
+
+const SITE_PERMIT_COLUMNS = 'id, permit_number, permit_type, kind, stage, work_type, submitted_on, issued_on, contact, address, declared_value'
+
+/** Every permit the feed holds on one address or under one number: two reads, since a name with a comma breaks an or-filter. */
+export async function loadSitePermits(city: string, permitNumber: string, addressKey: string | null): Promise<SitePermit[]> {
+  const byNumber = supabase.from('permits').select(SITE_PERMIT_COLUMNS).eq('city', city).eq('permit_number', permitNumber).limit(100)
+  const byAddress = addressKey ? supabase.from('permits').select(SITE_PERMIT_COLUMNS).eq('city', city).eq('address_key', addressKey).limit(100) : null
+  const [a, b] = await Promise.all([byNumber, byAddress])
+  if (a.error) failed(a.error, 'read the permits on this address')
+  if (b?.error) failed(b.error, 'read the permits on this address')
+  return [...(a.data ?? []), ...(b?.data ?? [])]
+}
+
+/**
+ * The building permits whose contact line holds one word of a name, in the last year, newest
+ * first. Candidates only: `builderPermitLines` holds them to the whole name.
+ */
+export async function loadBuilderPermits(city: string, word: string, todayYmd: string): Promise<SitePermit[]> {
+  const since = ymdPlusDays(todayYmd, -BUILDER_PERMIT_DAYS)
+  const { data, error } = await supabase
+    .from('permits')
+    .select(SITE_PERMIT_COLUMNS)
+    .eq('city', city)
+    .eq('kind', 'building')
+    .ilike('contact', `%${word}%`)
+    .or(`issued_on.gte.${since},submitted_on.gte.${since}`)
+    .order('submitted_on', { ascending: false, nullsFirst: false })
+    .limit(300)
+  if (error) failed(error, "read this name's other permits")
+  return data ?? []
 }

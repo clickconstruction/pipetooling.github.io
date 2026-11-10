@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects
+keywords: research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -29,7 +29,9 @@ Each row is one permit. The columns say when it was filed, where, what work, who
 
 The **Plumber** column is the signal. **none yet** means no plumbing permit sits on that number or address. A plumber's name means the job is taken. **on file, no plumber named** means a plumbing permit sits there under the applicant's own name. That job is taken too.
 
-Press **map** beside an address to see the site in Google Maps.
+Press **map** beside an address to see the site in Google Maps. Press the address to open the building.
+
+Press the round **G** beside a name to search Google for it. The search opens in a new tab.
 
 ## Read the word under a name
 
@@ -41,9 +43,43 @@ Press **Map** beside **Ledger**. The same rows draw as pins, coloured by their l
 
 Click a pin to read the permit beside the map. Press {{button:blue|Decide…}} there the same as on the ledger.
 
+## See everything about the building
+
+Press an address. A sheet named **The building** opens with four parts.
+
+:::cards
+
+:::card The permit, as the city gave it
+
+The type, the number, the work, the day and the declared value. A press under them shows every field the city sent.
+
+:::
+
+:::card The property, at the county
+
+The owner of record, their mailing address, the land and building values, the year built and the lot.
+
+:::
+
+:::card Every permit on this address
+
+Each permit the feed holds there, newest first. One line says whether a plumbing permit is among them.
+
+:::
+
+:::card More, one press away
+
+**Open the city's permit search** opens the city's own record. **Open the county clerk's records** opens the deeds.
+
+:::
+
+:::
+
+Press **Google the address** to search Google for it. Press the name beside **Pulled by** to open the card on who pulled it.
+
 ## Find out who pulled it
 
-Press the name under **Who pulled it**. A card opens with four parts.
+Press the name under **Who pulled it**. A card opens with six parts.
 
 :::cards
 
@@ -71,7 +107,21 @@ Press **Copy** for the permit number, then **Open the city's permit search** and
 
 :::
 
+:::card Their other permits
+
+The other permits the same name pulled in the last year, newest first.
+
 :::
+
+:::card The state's business record
+
+Press **Copy** for the company's name, then **Open the state's search** and paste it. The state says whether the company is in good standing.
+
+:::
+
+:::
+
+Press **Google the company** to search Google for the name. A person is searched with their company.
 
 Press **Approach them with these facts** to make the lead with the phone and the website already on it. Each name and each address is looked up once a month. **Look again** asks fresh.
 

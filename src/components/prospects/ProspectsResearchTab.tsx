@@ -45,6 +45,9 @@ import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPer
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
+import { PermitBuildingSheet } from './PermitBuildingSheet'
+import { GoogleSearchPress } from './GoogleSearchPress'
+import { googleAsksForContact } from '../../lib/research/permitPublic'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -112,6 +115,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [lastLooked] = useState<string | null>(() => readLastLooked(lastLookedKey(authUserId, DEFAULT_RESEARCH_CITY)))
   const [deciding, setDeciding] = useState<ResearchPermitRow | null>(null)
   const [whoRow, setWhoRow] = useState<ResearchPermitRow | null>(null)
+  const [siteRow, setSiteRow] = useState<ResearchPermitRow | null>(null)
   const [leadFacts, setLeadFacts] = useState<LeadFacts>({})
   const [startVerdict, setStartVerdict] = useState<'approach' | null>(null)
   const [saving, setSaving] = useState(false)
@@ -287,7 +291,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
           {selected && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
               <div style={mutedStyle}>Selected pin</div>
-              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{selected.address ?? selected.permit_number} · {workWords(selected).main}</div>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                <button type="button" onClick={() => setSiteRow(selected)} style={{ ...namePress, fontWeight: 600 }}>
+                  {selected.address ?? selected.permit_number}
+                </button>{' '}
+                · {workWords(selected).main}
+              </div>
               <div style={mutedStyle}>
                 {selected.permit_number} · {selected.stage} {shortDay(selected.filed_on)} · {workWords(selected).detail}
               </div>
@@ -303,7 +312,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                   </button>
                 ) : (
                   'nobody named'
-                )}
+                )}{' '}
+                {(() => {
+                  const asks = googleAsksForContact(selected.contact, selected.city)
+                  return <GoogleSearchPress ask={asks.company ?? asks.person} />
+                })()}
               </div>
               {selected.verdict && (
                 <div style={mutedStyle}>
@@ -350,7 +363,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                       <span style={mutedStyle}>{row.stage}</span>
                     </td>
                     <td style={tdStyle}>
-                      <strong>{row.address ?? '—'}</strong>
+                      <button type="button" onClick={() => setSiteRow(row)} style={{ ...namePress, fontWeight: 700 }} title="The building: the permit as the city gave it, the property at the county, every permit on this address">
+                        {row.address ?? row.permit_number}
+                      </button>
                       {maps && (
                         <>
                           {' '}
@@ -379,7 +394,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                         <span style={mutedStyle}>nobody named</span>
                       )}
                       <br />
-                      <HintChip hint={hintFor(row.contact, history)} />
+                      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <HintChip hint={hintFor(row.contact, history)} />
+                        {(() => {
+                          const asks = googleAsksForContact(row.contact, row.city)
+                          return <GoogleSearchPress ask={asks.company ?? asks.person} />
+                        })()}
+                      </span>
                     </td>
                     <td style={tdStyle}>
                       {(() => {
@@ -444,9 +465,25 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-        <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address names someone other than the applicant; <em>on file, no plumber named</em> means the applicant pulled it under their own name. The word under who pulled it reads our own bid history with that name and is never the verdict.
+An address opens <strong>The building</strong>: the permit as the city gave it, the property at the county and every permit on the address. The round <strong>G</strong> beside a name searches Google for it in a new tab. <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address names someone other than the applicant; <em>on file, no plumber named</em> means the applicant pulled it under their own name. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
+      {siteRow && !deciding && !whoRow && (
+        <PermitBuildingSheet
+          row={siteRow}
+          onClose={() => setSiteRow(null)}
+          onDecide={() => {
+            const r = siteRow
+            setSiteRow(null)
+            openDecide(r)
+          }}
+          onWho={() => {
+            const r = siteRow
+            setSiteRow(null)
+            setWhoRow(r)
+          }}
+        />
+      )}
       {whoRow && !deciding && (
         <WhoPulledItSheet
           row={whoRow}
