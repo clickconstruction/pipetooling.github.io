@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bridge: what the cuts took, behind a press</title>
+<style>
+  /* Punch list #303. Before is the Bridge as PR 2 built it (the doors, with the six cuts). After is the same page with
+     the three things the cuts removed outright put back behind a press, plus a note on the call.
+     Every company figure is made up: Sam, Dana and Jorge, Ridgeway Builders, Oak Hollow HOA, Cedar Bend Dental,
+     every dollar, hour, job count and date. The frames use the app's token names with its light and dark values. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-amber-900: #78350f;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-red: #fca5a5; --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-amber-900: #fde68a;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #1e3358;
+    --border-red: #991b1b; --border-amber: #92400e; --border-blue: #1e40af;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap b { color: var(--copper); }
+  .cap .is { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 46ch; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  ul.plain { margin: 8px 0 0; padding-left: 20px; max-width: 96ch; }
+  ul.plain li { margin: 0 0 6px; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  .tw { overflow-x: auto; }
+
+  /* ---- the app, drawn ---- */
+  .screen { width: 375px; background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; padding: 10px 12px 14px; }
+  .doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .door { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; min-height: 44px; font-size: .84rem; font-weight: 700; color: var(--text-strong); display: flex; flex-direction: column; justify-content: center; }
+  .door span { font-size: .66rem; font-weight: 500; color: var(--text-muted); line-height: 1.25; }
+  .door.open { border: 2px solid #2563eb; padding: 5px 9px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .k { font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .det { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
+  .v { font-size: 1.7rem; font-weight: 800; color: var(--text-strong); line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .v small { font-size: .8rem; font-weight: 500; color: var(--text-muted); }
+  .bars { display: flex; align-items: flex-end; gap: 5px; height: 54px; margin: 8px 0 4px; }
+  .bars i { flex: 1; background: #2563eb; border-radius: 2px; opacity: .6; } .bars i.now { opacity: 1; } .bars i.neg { background: #dc2626; }
+  .lights { display: grid; gap: 4px; margin-top: 8px; font-size: .8rem; color: var(--text-700); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .dot.g { background: #16a34a; } .dot.r { background: #dc2626; }
+  .btn { display: inline-flex; align-items: center; font: inherit; font-size: .8rem; font-weight: 600; min-height: 36px; padding: .25rem .7rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); }
+  .btn.is { border: 2px solid var(--new); background: var(--new-tint); }
+  .band { margin-top: 8px; font-size: .78rem; padding: 6px 9px; border-radius: 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .isbox { margin-top: 8px; border: 2px solid var(--new); border-radius: 10px; padding: 9px 11px; background: var(--surface); }
+  .fall { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .84rem; }
+  .fall td { padding: 4px 0; border-top: 1px solid var(--border); vertical-align: middle; }
+  .fall td:nth-child(2) { width: 46%; padding: 4px 8px; }
+  .fall td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fall i { display: block; height: 10px; border-radius: 2px; background: #2563eb; }
+  .fall i.c { background: #dc2626; opacity: .75; } .fall i.l { background: #16a34a; }
+  .neg { color: var(--text-red-700); } .pos { color: var(--text-green-700); }
+  .rows { list-style: none; margin: 6px 0 0; padding: 0; }
+  .rows li { display: flex; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); min-height: 44px; font-size: .88rem; }
+  .rows li > span:first-child { flex: 1; min-width: 0; color: var(--text-strong); font-weight: 600; line-height: 1.3; }
+  .rows small { display: block; font-size: .74rem; font-weight: 400; color: var(--text-muted); }
+  .size { font-size: .8rem; font-weight: 700; color: var(--text-green-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .size.is { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 4px; padding: 0 3px; }
+  .go { font-size: .8rem; color: var(--text-link); white-space: nowrap; }
+  .chip { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--border-blue); background: var(--bg-blue-tint); color: var(--text-link); }
+  .chip.off { border-color: var(--border-strong); background: transparent; color: var(--text-muted); }
+  .read { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 8px; font-size: .8rem; color: var(--text-700); }
+  .read b { display: block; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .call { background: var(--surface); border: 2px solid #dc2626; border-radius: 12px; padding: 9px 12px 10px; }
+  .call .lead { margin: 2px 0; font-size: 1.1rem; font-weight: 800; color: var(--text-strong); line-height: 1.25; }
+  .call p { margin: 0; font-size: .86rem; color: var(--text-700); }
+  .mv { display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 8px; padding: 6px 0; border-top: 1px solid var(--border); margin-top: 7px; }
+  .mv i { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-muted); color: var(--text-strong); font-size: .75rem; font-weight: 700; font-style: normal; display: flex; align-items: center; justify-content: center; }
+  .mv b { font-size: .9rem; color: var(--text-strong); line-height: 1.3; } .mv small { display: block; font-size: .76rem; font-weight: 400; color: var(--text-muted); }
+  .who { font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-700); white-space: nowrap; align-self: start; }
+  .press { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 8px; border-radius: 10px; border: 0; font: inherit; font-weight: 700; font-size: .95rem; background: #2563eb; color: #fff; }
+  .fine { margin: 7px 0 0 !important; font-size: .76rem !important; color: var(--text-muted) !important; }
+  .fine a { color: var(--text-link); text-decoration: none; }
+  .fine a.is { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 4px; }
+  .field { margin-top: 8px; width: 100%; font: inherit; font-size: .86rem; min-height: 40px; padding: .3rem .6rem; border: 2px solid var(--new); border-radius: 8px; background: var(--surface); color: var(--text-muted); }
+  .key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--new); border-radius: 3px; background: var(--new-tint); vertical-align: -1px; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #303 · The Bridge · a drawing, nothing here is built</p>
+    <h1>What the cuts took, put back behind a press</h1>
+    <p>Three of the six cuts are still one press away. The other three removed something nothing else on the page shows. Each pair below is the page as PR 2 built it, then the same place with that piece back. <span class="key"></span>A violet outline marks what is new. Every company figure is made up.</p>
+    <nav class="jump"><a href="#profit">1 · Profit after overhead</a><a href="#sizes">2 · What a fix is worth</a><a href="#moves">3 · Every move for a step</a><a href="#note">4 · A note on the call</a><a href="#cost">5 · What it adds</a><a href="#best">6 · Is this the best we can do?</a></nav>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+  </div>
+</header>
+
+<!-- ───────────────────────── 1 ───────────────────────── -->
+<h2 id="profit">1 · Profit after overhead <small>behind Money, from the eight week chart</small></h2>
+<p class="lede">The headline counts what the field earned less its wages. The cut card was the only place that showed what is left after materials, subs and overhead, week by week, and where break-even sits. It comes back as a breakdown of the chart it explains, not as a card with its own big number.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · as built</div>
+    <div class="frame"><div class="screen">
+      <div class="doors"><div class="door">The flow ▾<span>five steps</span></div><div class="door open">Money ▴<span>cash, owed</span></div><div class="door">People ▾<span>who moved it</span></div></div>
+      <div class="panel">
+        <div class="k">What we maximize · field contribution</div>
+        <div class="v">$31.0k <small>last week</small></div>
+        <div class="bars"><i style="height:52%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:58%"></i><i style="height:76%" class="now"></i><i style="height:22%"></i></div>
+        <div class="det">Six settled weeks ran $22.0k to $41.0k.</div>
+        <div class="lights"><span><i class="dot g"></i>Net position rises over 8 weeks</span><span><i class="dot g"></i>Cash stays above the floor</span></div>
+      </div>
+    </div></div>
+    <p class="say">The chart ends at wages. Nothing says what the week kept after every other cost.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · closed, one press</div>
+    <div class="frame"><div class="screen">
+      <div class="doors"><div class="door">The flow ▾<span>five steps</span></div><div class="door open">Money ▴<span>cash, owed</span></div><div class="door">People ▾<span>who moved it</span></div></div>
+      <div class="panel">
+        <div class="k">What we maximize · field contribution</div>
+        <div class="v">$31.0k <small>last week</small></div>
+        <div class="bars"><i style="height:52%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:58%"></i><i style="height:76%" class="now"></i><i style="height:22%"></i></div>
+        <div class="det">Six settled weeks ran $22.0k to $41.0k.</div>
+        <div class="lights"><span><i class="dot g"></i>Net position rises over 8 weeks</span><span><i class="dot g"></i>Cash stays above the floor</span></div>
+        <div style="margin-top:9px"><span class="btn is">What is left after overhead ▾</span></div>
+      </div>
+    </div></div>
+    <p class="say">Closed, it adds five words and no number. The headline stays the one figure on the panel.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · opened</div>
+    <div class="frame"><div class="screen">
+      <div class="panel" style="margin-top:0">
+        <div class="k">What we maximize · field contribution</div>
+        <div class="v">$31.0k <small>last week</small></div>
+        <div style="margin-top:9px"><span class="btn is">What is left after overhead ▴</span></div>
+        <div class="isbox">
+          <div class="k">Profit after overhead · last 14 days</div>
+          <div class="band">Reads low for now. 93 hours still wait on approval.</div>
+          <div class="v" style="font-size:1.35rem;margin-top:6px">$670 <small>a day left after every cost</small></div>
+          <table class="fall">
+            <tr><td>Earned</td><td><i style="width:100%"></i></td><td>$6,330</td></tr>
+            <tr><td>Field wages</td><td><i class="c" style="width:30%"></i></td><td class="neg">−$1,900</td></tr>
+            <tr><td>Materials, subs</td><td><i class="c" style="width:41%"></i></td><td class="neg">−$2,610</td></tr>
+            <tr><td>Overhead</td><td><i class="c" style="width:18%"></i></td><td class="neg">−$1,150</td></tr>
+            <tr><td><b>Left</b></td><td><i class="l" style="width:11%"></i></td><td class="pos">$670</td></tr>
+          </table>
+          <div class="det" style="margin-top:6px"><b style="color:var(--text-strong)">Break-even is $5,660 earned a day.</b> The last 14 days ran $6,330.</div>
+          <div class="k" style="margin-top:9px">Left, by pay week</div>
+          <div class="bars" style="height:34px"><i style="height:40%"></i><i style="height:66%"></i><i style="height:30%" class="neg"></i><i style="height:82%"></i><i style="height:100%"></i><i style="height:24%" class="neg"></i><i style="height:58%" class="now"></i><i style="height:12%"></i></div>
+          <div class="det"><span class="go">Where each number comes from ›</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The warning comes first, so a low reading is never mistaken for a loss. Then where a day's money goes, break-even, and the eight weeks.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 2 ───────────────────────── -->
+<h2 id="sizes">2 · What a fix is worth <small>behind The flow, on the usual fixes</small></h2>
+<p class="lede"><i>This week</i> sized three what-ifs in dollars a day: one more field day, overhead cut by a tenth, and a bid that is due. The usual fixes already list two of them as presses. So the sizes go on the rows that are there, and the bids due get two lines under them. No list comes back.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · as built</div>
+    <div class="frame"><div class="screen">
+      <div class="doors"><div class="door open">The flow ▴<span>five steps</span></div><div class="door">Money ▾<span>cash, owed</span></div><div class="door">People ▾<span>who moved it</span></div></div>
+      <div class="panel">
+        <div class="k">Everything else waits</div>
+        <div class="det">The four fixes people reach for first. Press one to see what it does to the link.</div>
+        <ul class="rows">
+          <li><span>Hire another plumber</span></li>
+          <li><span>Push for more bids</span></li>
+          <li><span>Add a field day</span></li>
+          <li><span>Cut overhead</span></li>
+        </ul>
+      </div>
+    </div></div>
+    <p class="say">A press shows whether the link moves. It never says what the fix is worth in dollars.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span></div>
+    <div class="frame"><div class="screen">
+      <div class="doors"><div class="door open">The flow ▴<span>five steps</span></div><div class="door">Money ▾<span>cash, owed</span></div><div class="door">People ▾<span>who moved it</span></div></div>
+      <div class="panel">
+        <div class="k">Everything else waits</div>
+        <div class="det">The four fixes people reach for first. Press one to see what it does to the link.</div>
+        <ul class="rows">
+          <li><span>Hire another plumber</span></li>
+          <li><span>Push for more bids</span></li>
+          <li><span>Add a field day<small>one more day a week, at $72 an hour earned</small></span><span class="size is">+$58 a day</span></li>
+          <li><span>Cut overhead<small>a tenth of $1,150 a day</small></span><span class="size is">+$115 a day</span></li>
+        </ul>
+        <div class="isbox">
+          <div class="k">Bids due this week</div>
+          <ul class="rows" style="margin-top:2px">
+            <li><span>Ridgeway Builders, lot 9<small>$63k, due Nov 14</small></span><span class="size">+$735 a day</span><span class="go">Bids ›</span></li>
+            <li><span>Cedar Bend Dental<small>$18k, due Nov 16</small></span><span class="size">+$210 a day</span><span class="go">Bids ›</span></li>
+          </ul>
+          <div class="det">A win is spread over 60 days of work.</div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">Two sizes on rows that were already there, and the bids due with their door. The two fixes the app cannot size stay as they are.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 3 ───────────────────────── -->
+<h2 id="moves">3 · Every move for a step <small>behind The flow, on the link's desk</small></h2>
+<p class="lede">The card at the top shows three moves, two on a phone. A step can have more. The desk gets the whole list back to read, with today's number on each. It has no owner boxes and no second record press.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · as built</div>
+    <div class="frame"><div class="screen">
+      <div class="panel" style="margin-top:0">
+        <div style="display:flex;gap:8px;align-items:baseline"><b style="font-size:1.05rem;color:var(--text-strong)">Bill</b><span class="det">the work finished</span></div>
+        <div class="read">
+          <div><b>What it is</b>Finished work that has no bill yet.</div>
+          <div><b>Today's reading</b>$142k finished, not yet billed.</div>
+        </div>
+        <div class="det" style="margin-top:9px">The card at the top proposes the call on Bill, with a person on each move.</div>
+        <div style="margin-top:8px;text-align:right"><span class="btn">Go to this week's call ↑</span></div>
+      </div>
+    </div></div>
+    <p class="say">To see what Bill would ask for, you go up to the card, and it shows the first three.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · opened</div>
+    <div class="frame"><div class="screen">
+      <div class="panel" style="margin-top:0">
+        <div style="display:flex;gap:8px;align-items:baseline"><b style="font-size:1.05rem;color:var(--text-strong)">Bill</b><span class="det">the work finished</span></div>
+        <div class="read">
+          <div><b>What it is</b>Finished work that has no bill yet.</div>
+          <div><b>Today's reading</b>$142k finished, not yet billed.</div>
+        </div>
+        <div style="margin-top:9px"><span class="btn is">Every move for Bill, 4 ▴</span></div>
+        <div class="isbox">
+          <ul class="rows" style="margin-top:0">
+            <li style="border-top:0"><span>Bill the 11 finished jobs.<small>$142k today</small></span><span class="chip">on the call</span></li>
+            <li><span>Price the 4 jobs with no price.<small>4 today</small></span><span class="chip">on the call</span></li>
+            <li><span>Take bank sorting off whoever bills.</span><span class="chip">on the call</span></li>
+            <li><span>Mark a job ready to bill the day it finishes.</span><span class="chip off">not on it</span></li>
+          </ul>
+          <div class="det">The card holds three. Take one off there and the fourth can go on.</div>
+        </div>
+        <div style="margin-top:8px;text-align:right"><span class="btn">Go to this week's call ↑</span></div>
+      </div>
+    </div></div>
+    <p class="say">A list to read, not a second place to make the call. The one record press stays at the top.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 4 ───────────────────────── -->
+<h2 id="note">4 · A note on the call <small>on the first screen's card</small></h2>
+<p class="lede">The desk's record press took a note. The card at the top does not. It comes back as a quiet press beside <i>Pick another step</i>, and opens one line.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · as built</div>
+    <div class="frame"><div class="screen">
+      <div class="call">
+        <div class="k">This week's call</div>
+        <div class="lead">Bill is the slowest step.</div>
+        <p>$142k finished, not yet billed.</p>
+        <div class="mv"><i>1</i><b>Bill the 11 finished jobs.<small>$142k is finished and not billed.</small></b><span class="who">Dana</span></div>
+        <div class="press">Make Bill this week's call</div>
+        <p class="fine">Friday asks if it moved. <a>Pick another step ›</a></p>
+      </div>
+    </div></div>
+    <p class="say">A call is recorded with its moves and people, and nothing else.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · closed</div>
+    <div class="frame"><div class="screen">
+      <div class="call">
+        <div class="k">This week's call</div>
+        <div class="lead">Bill is the slowest step.</div>
+        <p>$142k finished, not yet billed.</p>
+        <div class="mv"><i>1</i><b>Bill the 11 finished jobs.<small>$142k is finished and not billed.</small></b><span class="who">Dana</span></div>
+        <div class="press">Make Bill this week's call</div>
+        <p class="fine">Friday asks if it moved. <a>Pick another step ›</a> &nbsp;<a class="is">Add a note ›</a></p>
+      </div>
+    </div></div>
+    <p class="say">Three words on the first screen.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · opened</div>
+    <div class="frame"><div class="screen">
+      <div class="call">
+        <div class="k">This week's call</div>
+        <div class="lead">Bill is the slowest step.</div>
+        <p>$142k finished, not yet billed.</p>
+        <div class="mv"><i>1</i><b>Bill the 11 finished jobs.<small>$142k is finished and not billed.</small></b><span class="who">Dana</span></div>
+        <div class="field">Ridgeway pays on the 20th if billed by Friday.</div>
+        <div class="press">Make Bill this week's call</div>
+        <p class="fine">Friday asks if it moved. <a>Pick another step ›</a></p>
+      </div>
+    </div></div>
+    <p class="say">Friday's question shows the note under the call, so the reason travels with it.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 5 ───────────────────────── -->
+<h2 id="cost">5 · What it adds, and what stays cut</h2>
+<div class="tw"><table class="t">
+  <tr><th>Piece</th><th>Where it opens from</th><th>Added while closed</th><th>Answers</th></tr>
+  <tr><td>Profit after overhead</td><td>Money, under the eight week chart</td><td>5 words, no number</td><td>What is left after every cost, and where break-even is</td></tr>
+  <tr><td>What a fix is worth</td><td>The flow, on the usual fixes</td><td>2 sizes on rows already there, 2 bid lines</td><td>How many dollars a day a fix is worth</td></tr>
+  <tr><td>Every move for a step</td><td>The flow, on the link's desk</td><td>1 press</td><td>What else this step would ask for</td></tr>
+  <tr><td>A note on the call</td><td>The first screen's card</td><td>3 words</td><td>Why this call, read again on Friday</td></tr>
+</table></div>
+<ul class="plain">
+  <li><b>Already one press away, unchanged:</b> the truth check (inside net position's breakdown) and the later bills and receipts (the press under each list).</li>
+  <li><b>Stays cut:</b> the Daily profit rate as a card with its own big number, <i>This week</i> and <i>Fix the reading</i> as lists, the owner box on every move, a second record press, and the Monday sheet as a view. <i>Email me this screen</i> comes with the email's redraw, the train's last PR.</li>
+</ul>
+
+<!-- ───────────────────────── 6 ───────────────────────── -->
+<h2 id="best">6 · Is this the best we can do?</h2>
+<ul class="plain">
+  <li><b>A fifth door, "Dig in", holding all four.</b> Lost. A drawer of unrelated tools is the old scroll with a lid. Each piece opens from the number it explains, so you find it when you are asking that question.</li>
+  <li><b>The Daily profit rate card back as it was.</b> Lost. It put a red number beside a green headline. The information was right and the placement was wrong.</li>
+  <li><b>Profit after overhead as a fourth tile on the first screen.</b> Lost. That is a fourth reading of "are we making money" at the top again. Three were the problem.</li>
+  <li><b>The what-ifs back as their own list.</b> Lost. Two of the three were already rows on the usual fixes, so a list would print them twice.</li>
+  <li><b>A record press on the desk again.</b> Lost. One call needs one place to make it. The list is there to read.</li>
+  <li><b>The Monday sheet behind a door.</b> Lost. It summarizes a page that is now one screen.</li>
+</ul>
+<div class="note"><b>Three things are yours to decide.</b>
+  <ul class="plain">
+    <li><b>Which of the four come back.</b> I would take all four. If only one, profit after overhead.</li>
+    <li><b>What profit after overhead reads.</b> The old card read approved hours only, which is why it showed a loss while hours waited. It could read recorded time, as the headline does, with the same ≈ mark. I would do that, so the two can no longer disagree in sign for that reason.</li>
+    <li><b>Whether the fourth move can go on the call from the desk.</b> Drawn as read-only. A press there would be quicker, and it is a second place that changes the call.</li>
+  </ul>
+</div>
+<div class="note" id="render"><b>What the render showed.</b> Drawn at 1280 wide in dark and in light: no frame clips and nothing runs off the page. Closed, <i>What is left after overhead</i> adds 45 px to the chart panel. The two sizes and the bids due add 185 px to the usual fixes card, most of it the bids. The note adds no height to the call card until it is opened, then 48 px. Opened, the profit breakdown is 542 px, about two thirds of a phone screen.</div>
+
+</div>
+<script>
+  // Light and dark, as the app draws them.
+  const root = document.documentElement
+  for (const b of document.querySelectorAll('.themes button')) {
+    b.addEventListener('click', () => {
+      root.setAttribute('data-theme', b.dataset.set)
+      for (const o of document.querySelectorAll('.themes button')) o.setAttribute('aria-pressed', String(o === b))
+    })
+  }
+</script>
+</body>
+</html>
