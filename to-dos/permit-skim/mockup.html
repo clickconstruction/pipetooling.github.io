@@ -82,6 +82,25 @@
   .pcard .mapt .office { position: absolute; left: 14%; top: 66%; width: 10px; height: 10px; border-radius: 50%; background: var(--strong); border: 2px solid #fff; }
   .pcard .mapt .ring { position: absolute; left: calc(14% - 96px); top: calc(66% - 96px); width: 202px; height: 202px; border-radius: 50%; border: 1.5px dashed rgba(17,24,39,.3); }
   .pcard .mapt .miles { position: absolute; right: 8px; bottom: 8px; background: rgba(255,255,255,.92); border-radius: 6px; padding: 2px 8px; font-size: .75rem; font-weight: 600; color: var(--strong); }
+  /* the look: a street view and a map on every card. The scenes are drawings, not photos. */
+  .media { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: 122px; background: var(--border); }
+  .media .mapt, .pcard .media .mapt { height: 100%; }
+  .sv { position: relative; background: #cfd8e3 center/cover no-repeat; overflow: hidden; }
+  .sv.lot { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Cpath d='M0 100Q40 86 80 97T160 94T240 98T320 92V116H0Z' fill='%236f8f6a'/%3E%3Crect y='112' width='320' height='28' fill='%23b9b189'/%3E%3Cpath d='M0 122H320M0 130H320' stroke='%238a8f96' stroke-width='.8'/%3E%3Cpath d='M12 114V136M52 114V136M92 114V136M132 114V136M172 114V136M212 114V136M252 114V136M292 114V136' stroke='%237b8087' stroke-width='1.5'/%3E%3Crect x='196' y='84' width='52' height='26' fill='%23fff' stroke='%23555'/%3E%3Cpath d='M204 93H240M204 100H232' stroke='%239a5b2b' stroke-width='3'/%3E%3Cpath d='M222 110V128' stroke='%23555' stroke-width='3'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.strip { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Crect x='14' y='62' width='292' height='52' fill='%23dbcdb5'/%3E%3Crect x='14' y='62' width='292' height='11' fill='%23a6744a'/%3E%3Cpath d='M24 82h36v32h-36zM70 82h36v32h-36zM116 82h36v32h-36zM162 82h36v32h-36zM208 82h36v32h-36zM254 82h36v32h-36z' fill='%235d7f99'/%3E%3Cpath d='M24 78h36M70 78h36M116 78h36M162 78h36M208 78h36M254 78h36' stroke='%23fff' stroke-width='4'/%3E%3Crect y='114' width='320' height='26' fill='%23787d84'/%3E%3Cpath d='M30 114v20M66 114v20M102 114v20M138 114v20M174 114v20M210 114v20M246 114v20M282 114v20' stroke='%23d7d9dc' stroke-width='1'/%3E%3Crect x='70' y='120' width='28' height='11' rx='3' fill='%23b23a3a'/%3E%3Crect x='178' y='120' width='28' height='11' rx='3' fill='%23e9e9e9'/%3E%3Crect x='250' y='120' width='28' height='11' rx='3' fill='%2334507a'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.office { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='120' fill='%23bcd9f2'/%3E%3Crect y='70' width='320' height='50' fill='%23dcebf8'/%3E%3Crect x='86' y='34' width='168' height='82' fill='%23c9ced6'/%3E%3Crect x='86' y='34' width='168' height='7' fill='%238e97a3'/%3E%3Cpath d='M98 50h144M98 68h144M98 86h144' stroke='%235d7f99' stroke-width='10'/%3E%3Cpath d='M122 44v48M146 44v48M170 44v48M194 44v48M218 44v48' stroke='%23c9ced6' stroke-width='3'/%3E%3Crect x='158' y='98' width='24' height='18' fill='%233f4a57'/%3E%3Ccircle cx='52' cy='98' r='20' fill='%235f8a5a'/%3E%3Crect x='50' y='108' width='4' height='24' fill='%236b5235'/%3E%3Ccircle cx='286' cy='100' r='17' fill='%236c9766'/%3E%3Crect x='284' y='110' width='4' height='22' fill='%236b5235'/%3E%3Crect y='116' width='320' height='24' fill='%239ba39a'/%3E%3Crect y='138' width='320' height='5' fill='%23c9c9c4'/%3E%3Crect y='143' width='320' height='37' fill='%23565a60'/%3E%3Cpath d='M0 162H320' stroke='%23e8d37a' stroke-width='3' stroke-dasharray='22 16'/%3E%3C/svg%3E"); }
+  .sv.sat { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='320' height='180' fill='%236b7d52'/%3E%3Cpath d='M0 0H130V70H0Z' fill='%238a8a62'/%3E%3Cpath d='M130 0H320V54H130Z' fill='%235c7048'/%3E%3Cpath d='M0 70H96V180H0Z' fill='%2377895a'/%3E%3Cpath d='M96 70H240V180H96Z' fill='%23a39a78'/%3E%3Cpath d='M240 54H320V180H240Z' fill='%2366794f'/%3E%3Cpath d='M0 62L320 46' stroke='%23b9b6ad' stroke-width='7'/%3E%3Cpath d='M118 0L104 180' stroke='%23b9b6ad' stroke-width='5'/%3E%3Crect x='150' y='96' width='44' height='26' fill='%23d4d0c4'/%3E%3Crect x='202' y='128' width='22' height='30' fill='%23c8c2b2'/%3E%3Ccircle cx='40' cy='120' r='10' fill='%2348603c'/%3E%3Ccircle cx='62' cy='146' r='13' fill='%234d6741'/%3E%3Ccircle cx='276' cy='96' r='12' fill='%234d6741'/%3E%3C/svg%3E"); }
+  .sv .tag, .mapt .tag { position: absolute; left: 6px; bottom: 6px; background: rgba(17,24,39,.72); color: #fff; border-radius: 6px; padding: 1px 7px; font-size: .6875rem; font-weight: 600; white-space: nowrap; }
+  .media .mapt .miles { right: 6px; bottom: 6px; padding: 1px 7px; font-size: .6875rem; }
+  .look { background: #111827; color: #fff; }
+  .look .bar2 { display: flex; align-items: center; gap: 6px; padding: 10px 12px; }
+  .look .bar2 span { padding: .3rem .7rem; border-radius: 999px; font-size: .8125rem; color: #d1d5db; border: 1px solid rgba(255,255,255,.25); }
+  .look .bar2 span.on { background: #fff; color: #111827; font-weight: 600; border-color: #fff; }
+  .look .bar2 .x { margin-left: auto; border: 0; font-size: 1.25rem; padding: 0 .4rem; }
+  .look .sv { height: 420px; background-position: 68% center; }
+  .look .cap2 { padding: 10px 14px 2px; font-size: .9375rem; font-weight: 600; }
+  .look .cap3 { padding: 0 14px 4px; font-size: .78rem; color: #cbd5e1; }
+  .look .answers { background: #111827; }
   .pcard .body { padding: 12px 14px 4px; }
   .pcard .kind { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pcard h3 { margin: 2px 0 0; font-size: 1.1875rem; line-height: 1.25; color: var(--strong); }
@@ -197,7 +216,7 @@
 </table>
 
 <h2>A · Try the skim</h2>
-<p class="lede">This frame works. Drag the card, press the two buttons, or click the card and use the arrow keys. Six made-up permits, then the caught-up state.</p>
+<p class="lede">This frame works. Drag the card, press the two buttons, or click the card and use the arrow keys. Six made-up permits, then the caught-up state. The street views are drawings, not photos.</p>
 <div class="row">
   <div class="col p375">
     <span class="cap"><b>A</b> · the skim on a phone, live</span>
@@ -211,13 +230,15 @@
   <div class="col" style="flex:1 1 320px;max-width:520px">
     <span class="cap">what the card carries, top to bottom</span>
     <ol class="calls">
+      <li><b>The look.</b> A street view of the address beside a map with the office and its 25 mile ring. Added on the owner's look at the first frames.</li>
       <li><b>What.</b> The kind of work, the size and the declared value in the biggest type on the card.</li>
-      <li><b>Where.</b> A small map with the office and its 25 mile ring, the street, and the miles from the office.</li>
+      <li><b>Where.</b> The street, and the miles from the office on the map.</li>
       <li><b>When.</b> Applied or issued, and how many days ago. An application is the early signal.</li>
       <li><b>Who.</b> The builder, their mark, our bids with them, and how many permits they pulled this year.</li>
       <li><b>Plumber.</b> None yet, on file with no name, or the plumber's name.</li>
       <li><b>The property.</b> The county's owner of record and what stands on the lot now.</li>
     </ol>
+    <p class="note"><b>The pictures are the app's own.</b> The job window already shows a street view of a job's address, read through the app's own function with the key kept on the server. The On site map already draws satellite. The card reuses both. The date on the street view matters: on a new build an old picture of an empty lot is the signal, and where the car never drove the tile shows satellite and says so.</p>
     <p class="note"><b>Nothing is typed on the skim.</b> Today every verdict needs a typed reason, which is right for a decision and wrong for a glance. A pass offers four one-tap reasons in the dark bar after the card has gone. Tapping one is optional. The bar is also the undo.</p>
     <p class="note"><b>A permit skimmed by one person is skimmed for everyone.</b> The queue is the company's, like the ledger's verdicts are today. Each answer keeps the name and the day.</p>
   </div>
@@ -233,7 +254,7 @@
       <div class="bar"><i style="width:22%"></i></div>
       <div class="deck"><div class="under two"></div><div class="under"></div>
       <div class="pcard new">
-        <div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 miles from the office</span></div>
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">New commercial · applied 4 days ago</div>
           <h3>Retail shell, 6,200 sq ft</h3>
@@ -257,7 +278,7 @@
       <div class="deck"><div class="under"></div>
       <div class="pcard tilt-r">
         <span class="stamp keep">KEEP</span>
-        <div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 miles from the office</span></div>
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">New commercial · applied 4 days ago</div>
           <h3>Retail shell, 6,200 sq ft</h3>
@@ -278,7 +299,7 @@
       <div class="deck"><div class="under"></div>
       <div class="pcard tilt-l">
         <span class="stamp pass">PASS</span>
-        <div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:88%;top:12%"></span><span class="miles">41 miles from the office</span></div>
+        <div class="media"><div class="sv sat"><span class="tag">No street view · satellite</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:88%;top:12%"></span><span class="miles">41 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">Commercial site work · applied 9 days ago</div>
           <h3>Parking lot and drainage</h3>
@@ -290,6 +311,17 @@
       <div class="undo new"><span>Passed. Why?</span><button>Too small</button><button class="picked">Too far</button><button>Not our work</button><button>Not this builder</button><span class="sp"></span><button class="u">Undo</button></div>
     </div></div></div>
     <p class="say">The bar stays until the next answer. A reason tapped here lands on the permit with the name and the day.</p>
+  </div>
+  <div class="col p375">
+    <span class="cap"><b>B4</b> · tap a picture: the bigger look</span>
+    <div class="frame"><div class="screen look new">
+      <div class="bar2"><span class="on">Street view</span><span>Satellite</span><span>Map</span><span class="x">×</span></div>
+      <div class="sv lot"><span class="tag">Street view · Mar 2024 · facing the lot</span></div>
+      <div class="cap2">Retail shell, 6,200 sq ft · $1.4M</div>
+      <div class="cap3">2400 Lantern Creek Blvd · Ridgeway Builders · 14 mi from the office · <a class="lnk" style="color:#93c5fd" href="#b">Walk the street in Google</a></div>
+      <div class="answers"><button class="press grey">← Pass</button><button class="press green">Keep →</button></div>
+    </div></div>
+    <p class="say">A tap on either picture opens it big, with the two answers still under the thumb. Nothing on the card or in here is dragged sideways except the card itself.</p>
   </div>
 </div>
 
@@ -304,11 +336,12 @@
       <div class="deck"><div class="under two"></div><div class="under"></div>
       <div class="pcard new">
         <div class="stackbar"><b>6 permits, one site.</b> Same builder, same street, filed the same week.</div>
+        <div class="media"><div class="sv lot"><span class="tag">Street view · Aug 2023</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:20%;top:20%"></span><span class="miles">22 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">New multifamily · applied 6 days ago</div>
           <h3>Oak Hollow Apartments, 6 buildings</h3>
           <div class="money"><b>$19.2M</b> declared across the six</div>
-          <div class="where">815 Quarry Bend, 78253 · 22 miles from the office</div>
+          <div class="where">815 Quarry Bend, 78253</div>
           <ul class="sites"><li><span>Buildings 1 to 4, 24 units each</span><span>$3.6M each</span></li><li><span>Building 5, clubhouse</span><span>$2.1M</span></li><li><span>Building 6, 16 units</span><span>$2.7M</span></li></ul>
           <div class="fact"><span class="k">Who</span><span class="v"><b>Calloway and Finch</b> <span class="pill grey">No mark</span><span class="sub">We bid 2 and won none. Last bid in 2025.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet on any of the six</span></span></div>
@@ -377,17 +410,18 @@
               <div class="kind">New commercial · applied 4 days ago</div>
               <h3>Retail shell, 6,200 sq ft</h3>
               <div class="money"><b>$1.4M</b> declared</div>
-              <div class="where">2400 Lantern Creek Blvd, 78249 · 14 miles from the office <span class="mut">· permit COM-PRJ-APP26-00000001</span></div>
+              <div class="where">2400 Lantern Creek Blvd, 78249 <span class="mut">· permit COM-PRJ-APP26-00000001</span></div>
               <div class="fact"><span class="k">Who</span><span class="v"><b>Ridgeway Builders</b> <span class="pill ok">Good</span><span class="sub">Dana Whitlock filed it. We bid 5 and won 3. Last bid in June.</span><span class="sub">4 permits this year. 2 have no plumber yet.</span></span></div>
               <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
               <div class="fact"><span class="k">Property</span><span class="v">Lantern Creek Retail LP<span class="sub">Vacant land, 2.1 acres, appraised $610k</span></span></div>
             </div>
             <div class="answers"><button class="press grey"><kbd>←</kbd> Pass</button><button class="press green">Keep <kbd>→</kbd></button></div>
           </div>
-          <div class="keys" style="padding-top:10px"><span><kbd>←</kbd> Pass</span><span><kbd>→</kbd> Keep</span><span><kbd>Z</kbd> Undo</span><span><kbd>Enter</kbd> Open it now</span><span><kbd>1</kbd> to <kbd>4</kbd> a pass reason</span></div>
+          <div class="keys" style="padding-top:10px"><span><kbd>←</kbd> Pass</span><span><kbd>→</kbd> Keep</span><span><kbd>Z</kbd> Undo</span><span><kbd>S</kbd> Street view</span><span><kbd>Enter</kbd> Open it now</span><span><kbd>1</kbd> to <kbd>4</kbd> a pass reason</span></div>
         </div>
         <div class="side">
-          <div class="pcard" style="margin-bottom:10px"><div class="mapt" style="height:150px"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">Open in Google Maps</span></div></div>
+          <div class="pcard new" style="margin-bottom:10px"><div class="sv lot" style="height:140px"><span class="tag">Street view · Mar 2024</span></div><div class="mapt" style="height:120px;border-top:2px solid var(--border)"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 mi from the office</span></div></div>
+          <div class="mut" style="margin:-4px 2px 10px"><kbd>S</kbd> opens the bigger look</div>
           <div class="box"><div class="h4">Ridgeway Builders</div><b>Good</b> since March, set by Jordan.<br><span class="mut">"Pays on time. Sends plans early."</span><br><br>Their last 4 permits named <b>Blue Heron Plumbing</b> twice and nobody twice.<br><a class="lnk" href="#i">The builder's page</a></div>
         </div>
       </div>
@@ -450,10 +484,10 @@
       <div class="two">
         <div>
           <div class="sec"><h4>The site</h4>
-            <div class="pcard" style="margin-bottom:8px"><div class="mapt" style="height:130px"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="miles">14 miles from the office</span></div></div>
+            <div class="pcard new" style="margin-bottom:8px"><div class="media" style="height:170px"><div class="sv lot"><span class="tag">Street view · Mar 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin"></span><span class="tag">Map · Satellite</span><span class="miles">14 mi from the office</span></div></div></div>
             <p><b>Owner of record:</b> Lantern Creek Retail LP</p>
             <p class="mut">Mailing address 900 Sample Plaza, Suite 4 · vacant land, 2.1 acres · appraised $610k</p>
-            <div class="acts"><a class="lnk" href="#h">Open in Google Maps</a><a class="lnk" href="#h">Open at the appraisal district</a></div>
+            <div class="acts"><a class="lnk" href="#h">Walk the street in Google</a><a class="lnk" href="#h">Open in Google Maps</a><a class="lnk" href="#h">Open at the appraisal district</a></div>
           </div>
           <div class="sec"><h4>Every permit on this site</h4>
             <table class="t"><tr><th>Permit</th><th>Filed</th><th>Who</th></tr>
@@ -562,11 +596,12 @@
     <span class="cap"><b>I3</b> · the mark on the skim</span>
     <div class="frame"><div class="screen"><div class="pad">
       <div class="pcard">
+        <div class="media"><div class="sv office"><span class="tag">Street view · Jan 2025</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:40%;top:52%"></span><span class="miles">8 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">Commercial remodel · issued 2 days ago</div>
           <h3>Warehouse office, 4,000 sq ft</h3>
           <div class="money"><b>$310k</b> declared</div>
-          <div class="where">18 Drover Road, 78219 · 8 miles from the office</div>
+          <div class="where">18 Drover Road, 78219</div>
           <div class="fact new"><span class="k">Who</span><span class="v"><b>Tall Pine Development</b> <span class="pill bad">Avoid</span><span class="sub">"Slow pay on the Millrace job." Jordan, Nov 3.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
         </div>
@@ -579,11 +614,12 @@
     <span class="cap"><b>I4</b> · a name that is not the builder</span>
     <div class="frame"><div class="screen"><div class="pad">
       <div class="pcard">
+        <div class="media"><div class="sv strip"><span class="tag">Street view · Jun 2024</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:34%;top:44%"></span><span class="miles">5 mi from the office</span></div></div>
         <div class="body">
           <div class="kind">New commercial · applied 3 days ago</div>
           <h3>Restaurant, 3,800 sq ft</h3>
           <div class="money"><b>$900k</b> declared</div>
-          <div class="where">7 Cinder Path, 78216 · 5 miles from the office</div>
+          <div class="where">7 Cinder Path, 78216</div>
           <div class="fact new"><span class="k">Who</span><span class="v"><b>Permit Runners of Texas</b> <span class="pill grey">Files for others</span><span class="sub">31 permits this year for 19 owners. Not who builds it.</span></span></div>
           <div class="fact"><span class="k">Property</span><span class="v"><b>Juniper Hospitality Group</b><span class="sub">The county's owner of record. Read this one.</span></span></div>
           <div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ok">None yet</span></span></div>
@@ -666,6 +702,7 @@
   <li><b>The first draft swiped on a desk.</b> Dragging a card with a mouse is slower than a key and reads as a toy. The desk has keys.</li>
   <li><b>The first draft put the mark on the skim card as a press.</b> A mark is a judgment about a company, with a reason. It moved to the builder and the dig in. The skim only shows it.</li>
 </ol>
+<p class="note"><b>The owner's look, 2026-11-10.</b> Good as drawn, and better with a map and a street view. Both are now on every skim card (frames A to C and I), bigger on the desk (frame F) and side by side on the dig in (frame H), with a tap to open either one big (frame B4). The first draft had only a small map strip, which said where and nothing about what is there. Two tiles of equal size were chosen over a street view with a small map in its corner, since the miles are read as often as the picture. A swipe between the two pictures was not drawn: it would fight the card's own swipe.</p>
 <p class="note"><b>What the render showed.</b> Checked in the browser at desk width and at 375. The live deck in frame A answers by button, by drag and by key, takes a reason, undoes, and ends on the caught-up card. Three things were fixed after seeing them: the stack's blue line broke into two columns, a dashed box sat on top of the address on two cards, and the triage table used K for both keep and move. One thing stays as it is on purpose: the desk card in frame F is short enough that the Up next column, not the card, is where the eye goes first. That may be right. It is the owner's to judge on the frame.</p>
 <p class="note"><b>Still weak, and said plainly.</b> The card can only show what the feed and the county give. On the live tab 137 of the 163 waiting permits are applications whose work reads only Commercial project, 70 declare no value, and the history word reads new name on 162. The first weeks of the skim will be made on the street, the size, the owner of record and the miles. The card gets better as builders collect permits, marks and people, which is the reason the builder work is in the same plan and not a later one. The other weak spot is the swipe itself: a drag that starts at the left edge of a phone is the browser's own Back. The drag starts on the card, the card sits inside the page's gutter, and the buttons never go away.</p>
 
@@ -687,12 +724,12 @@
 // The live skim in frame A. Made-up permits. No network, nothing stored.
 (function () {
   var all = [
-    { kind: 'New commercial · applied 4 days ago', title: 'Retail shell, 6,200 sq ft', money: '<b>$1.4M</b> declared', where: '2400 Lantern Creek Blvd, 78249', miles: '14 miles from the office', pin: [62, 34], who: 'Ridgeway Builders', mark: ['ok', 'Good'], hist: 'We bid 5 and won 3. Last bid in June.', perm: '4 permits this year. 2 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Lantern Creek Retail LP', lot: 'Vacant land, 2.1 acres' },
-    { kind: 'Commercial site work · applied 9 days ago', title: 'Parking lot and drainage', money: 'Value not declared', where: '60 Millrace Row, 78154', miles: '41 miles from the office', pin: [88, 12], who: 'Tall Pine Development', mark: ['bad', 'Avoid'], hist: '"Slow pay on the Millrace job." Jordan, Nov 3.', perm: '5 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tall Pine Holdings LLC', lot: 'Vacant land, 6 acres' },
-    { kind: 'Commercial remodel · issued 2 days ago', title: 'Restaurant finish out, 3,100 sq ft', money: 'Value not declared', where: '44 Tannery Square, 78205', miles: '6 miles from the office', pin: [30, 48], who: 'Marlow Commercial', mark: ['grey', 'No mark'], hist: 'We bid 1 and did not win it.', perm: '2 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tannery Square Partners', lot: 'Retail strip, built 2009' },
-    { kind: 'New commercial · applied 3 days ago', title: 'Hotel, 4 floors, 62,000 sq ft', money: '<b>$8.8M</b> declared', where: '1200 Heron Landing, 78230', miles: '9 miles from the office', pin: [44, 22], who: 'Juniper Hospitality Group', mark: ['blue', 'New name'], hist: 'No bid to this name yet.', perm: '3 permits this year. All 3 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Juniper Hospitality Group', lot: 'Vacant land, 3.4 acres' },
-    { kind: 'Commercial project · applied 1 day ago', title: 'Sign and canopy', money: '<b>$31k</b> declared', where: '9 Larkspur Court, 78213', miles: '11 miles from the office', pin: [55, 60], who: 'Permit Runners of Texas', mark: ['grey', 'Files for others'], hist: 'Not who builds it. Read the owner.', perm: '31 permits this year for 19 owners.', plumber: ['ok', 'None yet'], owner: 'Larkspur Dental PLLC', lot: 'Office, built 1998' },
-    { kind: 'Commercial remodel · issued 5 days ago', title: 'Medical office, 9,000 sq ft', money: '<b>$2.2M</b> declared', where: '5 Aster Ridge, 78258', miles: '17 miles from the office', pin: [70, 20], who: 'Calloway and Finch', mark: ['grey', 'No mark'], hist: 'We bid 2 and won none. Last bid in 2025.', perm: '11 permits this year. 7 have no plumber yet.', plumber: ['grey', 'On file, no plumber named'], owner: 'Aster Ridge Medical LP', lot: 'Office, built 2016' }
+    { kind: 'New commercial · applied 4 days ago', title: 'Retail shell, 6,200 sq ft', sv: ['lot', 'Street view · Mar 2024'], money: '<b>$1.4M</b> declared', where: '2400 Lantern Creek Blvd, 78249', miles: '14 mi from the office', pin: [62, 34], who: 'Ridgeway Builders', mark: ['ok', 'Good'], hist: 'We bid 5 and won 3. Last bid in June.', perm: '4 permits this year. 2 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Lantern Creek Retail LP', lot: 'Vacant land, 2.1 acres' },
+    { kind: 'Commercial site work · applied 9 days ago', title: 'Parking lot and drainage', sv: ['sat', 'No street view · satellite'], money: 'Value not declared', where: '60 Millrace Row, 78154', miles: '41 mi from the office', pin: [88, 12], who: 'Tall Pine Development', mark: ['bad', 'Avoid'], hist: '"Slow pay on the Millrace job." Jordan, Nov 3.', perm: '5 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tall Pine Holdings LLC', lot: 'Vacant land, 6 acres' },
+    { kind: 'Commercial remodel · issued 2 days ago', title: 'Restaurant finish out, 3,100 sq ft', sv: ['strip', 'Street view · Jun 2024'], money: 'Value not declared', where: '44 Tannery Square, 78205', miles: '6 mi from the office', pin: [30, 48], who: 'Marlow Commercial', mark: ['grey', 'No mark'], hist: 'We bid 1 and did not win it.', perm: '2 permits this year.', plumber: ['ok', 'None yet'], owner: 'Tannery Square Partners', lot: 'Retail strip, built 2009' },
+    { kind: 'New commercial · applied 3 days ago', title: 'Hotel, 4 floors, 62,000 sq ft', sv: ['lot', 'Street view · Nov 2022'], money: '<b>$8.8M</b> declared', where: '1200 Heron Landing, 78230', miles: '9 mi from the office', pin: [44, 22], who: 'Juniper Hospitality Group', mark: ['blue', 'New name'], hist: 'No bid to this name yet.', perm: '3 permits this year. All 3 have no plumber yet.', plumber: ['ok', 'None yet'], owner: 'Juniper Hospitality Group', lot: 'Vacant land, 3.4 acres' },
+    { kind: 'Commercial project · applied 1 day ago', title: 'Sign and canopy', sv: ['office', 'Street view · Jan 2025'], money: '<b>$31k</b> declared', where: '9 Larkspur Court, 78213', miles: '11 mi from the office', pin: [55, 60], who: 'Permit Runners of Texas', mark: ['grey', 'Files for others'], hist: 'Not who builds it. Read the owner.', perm: '31 permits this year for 19 owners.', plumber: ['ok', 'None yet'], owner: 'Larkspur Dental PLLC', lot: 'Office, built 1998' },
+    { kind: 'Commercial remodel · issued 5 days ago', title: 'Medical office, 9,000 sq ft', sv: ['office', 'Street view · Sep 2024'], money: '<b>$2.2M</b> declared', where: '5 Aster Ridge, 78258', miles: '17 mi from the office', pin: [70, 20], who: 'Calloway and Finch', mark: ['grey', 'No mark'], hist: 'We bid 2 and won none. Last bid in 2025.', perm: '11 permits this year. 7 have no plumber yet.', plumber: ['grey', 'On file, no plumber named'], owner: 'Aster Ridge Medical LP', lot: 'Office, built 2016' }
   ];
   var stage = document.getElementById('d-stage'), demo = document.getElementById('demo');
   var elSkim = document.getElementById('d-skim'), elKept = document.getElementById('d-kept');
@@ -701,7 +738,7 @@
 
   function cardHtml(p) {
     return '<span class="stamp keep">KEEP</span><span class="stamp pass">PASS</span>' +
-      '<div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:' + p.pin[0] + '%;top:' + p.pin[1] + '%"></span><span class="miles">' + p.miles + '</span></div>' +
+      '<div class="media"><div class="sv ' + p.sv[0] + '"><span class="tag">' + p.sv[1] + '</span></div><div class="mapt"><span class="ring"></span><span class="office"></span><span class="pin" style="left:' + p.pin[0] + '%;top:' + p.pin[1] + '%"></span><span class="miles">' + p.miles + '</span></div></div>' +
       '<div class="body"><div class="kind">' + p.kind + '</div><h3>' + p.title + '</h3><div class="money">' + p.money + '</div><div class="where">' + p.where + '</div>' +
       '<div class="fact"><span class="k">Who</span><span class="v"><b>' + p.who + '</b> <span class="pill ' + p.mark[0] + '">' + p.mark[1] + '</span><span class="sub">' + p.hist + '</span><span class="sub">' + p.perm + '</span></span></div>' +
       '<div class="fact"><span class="k">Plumber</span><span class="v"><span class="pill ' + p.plumber[0] + '">' + p.plumber[1] + '</span></span></div>' +
