@@ -2,7 +2,7 @@
 name: "Permits: skim every one in a few seconds, dig into the few, and know the builders"
 number: 302
 group: gated
-status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830 · PR 3 and 5, the pictures and the swipe, built as v2.6833 · PR 6 and 7 and the count of PR 8, built as v2.6835 with one migration, tested on a local bed
+status: asked 2026-11-10 · the live tab walked the same day at desk and phone width · planned and drawn the same day with a working skim in frame A · the owner's three looks the same day added a street view and a map, everything public on a tap and a Google press · PR 4 built first on the ledger and the map (v2.6828) · his holistic look, "is this the best we can do", cut eleven PRs to eight and re-aimed them, and his two answers (the plumber is sometimes chosen already, not always; the Leader skims in time, the assistants and estimators more likely) are drawn in · his word the same night: build it all on the picks drawn, live by morning · PR 1 and 2, the skim, built as v2.6830 · PR 3 and 5, the pictures and the swipe, built as v2.6833 · PR 6 and 7 and the count of PR 8, built as v2.6835 with one migration, tested on a local bed · LIVE 2026-11-10 10:22Z: #7529 and #7535 merged, migration 20261110090000 pushed (drift 1219 of 1219), street-view-preview and permit-pull deployed, the pull run (413 builders keyed), the client deployed and its bundle read off clicktooling.com · the phone layout fixed after the live walk (v2.6837)
 mockup: to-dos/permit-skim/mockup.html
 ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim) · v2.6833 (PR 3 and 5, the pictures and the swipe) · v2.6835 (PR 6, 7, 8) · v2.6837 (the phone layout)
 summary: >
@@ -17,7 +17,7 @@ summary: >
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
   and one count says whether any of it turns into bids. The first build is eight small PRs, one
   built, then two weeks of use before more.
-next: After the merges: push the migration, deploy street-view-preview and permit-pull, Pull now once, put the walk's one kept permit back. The first build is whole. The six calls stand on the picks drawn until the owner overturns one.
+next: Two weeks of use, then a look at the count on Permits and the pass reasons before anything held is built. The owner's six calls stand on the picks drawn until he overturns one; call 4's pick (a general contractor's lead on the Customers deck) is the one not built.
 size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 8; left: two weeks of use, then the look at the count
 blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork
@@ -325,6 +325,24 @@ No live permit row, address or applicant goes in a test, a doc or this card. The
 are made up; the counts under What is there today are counts only.
 
 ## Where it stands
+
+**Live, 2026-11-10 10:22Z.** #7529 (v2.6828) merged at 09:09Z and #7535 (v2.6830, v2.6833, v2.6835) at 10:07Z. Migration
+`20261110090000_permit_skim` was pushed at 10:08Z from a checkout of main (drift check: 1219 local, 1219 remote),
+`street-view-preview` and `permit-pull` were deployed, and Pull now was run until no building permit was left without
+its builder key: Builders listed 413 names, 39 of them with three or more permits and never bid. The client deploy
+landed at 10:22Z after three earlier deploys of main timed out in GitHub's Pages step; the words of the skim were read
+off the bundle clicktooling.com serves. Walked on localhost against prod at desk width and 375: the deck (340 to
+skim), the street view with its month, the builder line on the card, the count, Builders and a builder's sheet, Closed
+(293, all Has a plumber).
+
+**One write the walk made, and its undoing.** A Keep landed on one permit under the owner's login when the held
+answer flushed as the browser pane lost focus. It was put back through the app after the push; the permit's history
+keeps both lines. Kept rows gained Put back because of it.
+
+**Found on the walks and fixed the same night:** the answer bar and the active step filled with a token that does not
+exist; `CURRENT_DATE` in the migration; a pursued or closed permit's sheet whose foot only closed; and, on a phone,
+filters that pushed the card under its own answers (v2.6837).
+
 
 2026-11-10: asked, walked, planned and drawn in one day, with three looks from the owner between.
 PR 4 was built first, on today's ledger and map, as v2.6828, and walked live read-only at desk and
