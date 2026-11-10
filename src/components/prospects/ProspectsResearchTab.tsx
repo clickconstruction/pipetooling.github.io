@@ -625,7 +625,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         <PermitBuildingSheet
           row={digRow}
           onClose={() => setDigRow(null)}
-          onDecide={() => setDigRow(null)}
+          onDecide={() => {
+            // A permit that is not kept (pursued, closed) changes its verdict on the Decide sheet, as on the ledger.
+            const r = digRow
+            setDigRow(null)
+            openDecide(r)
+          }}
           onWho={() => setWhoRow(digRow)}
           closeOut={
             digRow.verdict === 'look'
