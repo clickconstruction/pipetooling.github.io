@@ -51,6 +51,7 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
+import { MY_MOVES_WORDS, type MyMovesNeed } from './bridge/callPeople'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 
@@ -114,6 +115,7 @@ export type NeedsYouItem = {
     | 'customer-messages'
     | 'todays-sends'
     | 'while-off'
+    | 'bridge-moves'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -231,6 +233,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'todays-sends': 40,
   // The same tier: the pushes the viewer's own Push me hours held while they were off (v2.6060, punch list #141 PR 4).
   'while-off': 40,
+  // The week's one decision, handed to this person (punch list #303 PR 4): beside the hard weekly deadline.
+  'bridge-moves': 20,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -741,6 +745,14 @@ export type NeedsYouInputs = {
    */
   whileOffEnabled?: boolean
   whileOff?: WhatWaited | null
+  /**
+   * The week's call (v2.6864, punch list #303 PR 4): the moves on the Bridge's standing call that carry the viewer's own
+   * account, as `useBridgeMoves` reads them (`bridge/callPeople.ts` → `myMovesNeed`). Everyone who signs in; null when
+   * no move is theirs. The line is the first move: its button opens the page where that work is done, or marks the
+   * move done when the app has no page for it.
+   */
+  bridgeMovesEnabled?: boolean
+  bridgeMoves?: MyMovesNeed | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1451,6 +1463,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
+  }
+
+  if (inputs.bridgeMovesEnabled && inputs.bridgeMoves && inputs.bridgeMoves.count > 0) {
+    const b = inputs.bridgeMoves
+    items.push({
+      key: 'bridge-moves',
+      severity: 'amber',
+      kicker: MY_MOVES_WORDS.kicker,
+      title: b.title,
+      detail: b.detail,
+      figure: b.count > 99 ? '99+' : String(b.count),
+      actionLabel: b.door ? b.door.label : MY_MOVES_WORDS.markDone,
+      // With a page to open, Done is the link beside the button; with none, Done is the button.
+      ...(b.door ? { secondary: [{ key: 'done', label: MY_MOVES_WORDS.done }] } : {}),
+    })
   }
 
   if (inputs.whileOffEnabled && inputs.whileOff && inputs.whileOff.count > 0) {

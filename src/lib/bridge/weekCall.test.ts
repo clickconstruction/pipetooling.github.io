@@ -5,7 +5,7 @@ import { buildCashForecast } from './cashForecast'
 import type { BridgeCall } from './calls'
 import type { Headline, HeadlineWeek } from './headline'
 import type { StageFlow, StageReading } from './stageFlow'
-import { WEEK_CALL_MOVES, WEEK_FIRST_SCREEN_NUMBERS, WEEK_HOW, WEEK_FIRST_SCREEN_WORDS, buildWeekCall, firstDayUnderFloor, firstName, movesToRecord, proposedMoves, topPerson, weekCallBudget, weekCallWords, whenWords, type WeekCallInput, deskMoves, deskMovesFoot, movesShown } from './weekCall'
+import { WEEK_CALL_MOVES, WEEK_FIRST_SCREEN_NUMBERS, WEEK_HOW, WEEK_FIRST_SCREEN_WORDS, buildWeekCall, firstDayUnderFloor, firstName, movesToRecord, proposedMoves, topPerson, weekCallBudget, weekCallWords, whenWords, type WeekCallInput, deskMoves, deskMovesFoot, movesShown, topPersonId } from './weekCall'
 
 // Made-up numbers throughout: a company whose finished work waits on the bill.
 
@@ -321,10 +321,43 @@ describe('the record press', () => {
   it('writes the moves left on, with the person on each', () => {
     const moves = movesShown(buildWeekCall(base).card.moves, new Set(), WEEK_CALL_MOVES)
     expect(movesToRecord(moves, new Set([2]), new Map([[1, ' Jorge ']]))).toEqual([
-      { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', then: 142_000 },
-      { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', then: 4 },
+      { key: 'bill', title: 'Bill the 11 finished jobs.', who: 'Dana', whoId: null, then: 142_000 },
+      { key: 'price', title: 'Price the 4 jobs with no price.', who: 'Jorge', whoId: null, then: 4 },
     ])
     expect(movesToRecord(moves, new Set([0, 1, 2]), new Map())).toEqual([])
+  })
+
+  it('carries the person’s account on a move, so it reaches their Needs you (PR 4)', () => {
+    const withIds = { ...base, peopleIds: { caller: 'u-sam', biller: 'u-dana', collector: 'u-dana' } }
+    const moves = movesShown(buildWeekCall(withIds).card.moves, new Set(), WEEK_CALL_MOVES)
+    // As proposed: who bills carries her account, the caller's moves carry his, and a move with nobody carries none.
+    expect(moves.map((m) => [m.who, m.whoId ?? null])).toEqual([['Dana', 'u-dana'], ['Sam', 'u-sam'], ['', null]])
+    expect(movesToRecord(moves, new Set(), new Map()).map((m) => m.whoId)).toEqual(['u-dana', 'u-sam', null])
+    // A person picked on the card carries their account; a name typed carries none, whoever was proposed.
+    const picked = movesToRecord(moves, new Set(), new Map([[0, 'Jorge'], [1, 'the office'], [2, 'Dana']]), new Map([[0, 'u-jorge'], [2, 'u-dana']]))
+    expect(picked.map((m) => [m.who, m.whoId])).toEqual([['Jorge', 'u-jorge'], ['the office', null], ['Dana', 'u-dana']])
+    // A name cleared leaves nobody, and no account.
+    expect(movesToRecord(moves, new Set(), new Map([[0, '  ']]), new Map([[0, 'u-dana']]))[0]).toMatchObject({ who: '', whoId: null })
+    // A cash week: the caller's cash moves carry his account.
+    const cash = buildWeekCall({ ...withIds, forecast: under, cashMayLead: true, supplyDue: { usd: 10_800, ymd: '2026-11-24' } }).card.moves
+    expect(cash.map((m) => m.whoId ?? null)).toEqual(['u-dana', 'u-sam', 'u-dana'])
+    expect(topPersonId([{ userId: 'u1', ymd: '2026-10-20' }, { userId: 'u2', ymd: '2026-10-21' }, { userId: 'u1', ymd: '2026-10-22' }], '2026-09-15')).toBe('u1')
+    expect(topPersonId([], '2026-09-15')).toBeNull()
+  })
+
+  it('shows a person’s Done press on the call that stands (PR 4)', () => {
+    const standing = { ...base, todayYmd: '2026-11-10', calls: [billCall] }
+    const marks = [{ callId: 'c1', idx: 0, doneBy: 'Dana Reyes' }, { callId: 'c1', idx: 2, doneBy: '' }, { callId: 'another', idx: 1, doneBy: 'Sam' }]
+    const moves = buildWeekCall({ ...standing, marks }).card.moves
+    // A move the app reads: the numbers keep the verdict, and her word is said beside them.
+    expect(moves[0]?.why).toMatch(/^It was \$142k\. Today it is .*\. Dana Reyes marked it done\.$/)
+    expect(moves[0]?.doneText).toBe(buildWeekCall(standing).card.moves[0]?.doneText)
+    // A move the app cannot read: her word is the verdict.
+    expect(moves[2]).toMatchObject({ done: 'yes', doneText: 'done', why: 'Dana marked it done.' })
+    expect(buildWeekCall(standing).card.moves[2]).toMatchObject({ done: 'unknown', why: 'The app cannot read this one. You say.' })
+    // Another call's mark is not this call's.
+    expect(moves[1]?.why).not.toContain('marked it done')
+    for (const m of moves) expect(plainWordsFailures(m.why), m.why).toEqual([])
   })
 
   it('names who bills from the bills they sent', () => {
