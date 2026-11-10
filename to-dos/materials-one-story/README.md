@@ -2,7 +2,7 @@
 name: "Materials under one story: the whole life of a part on the Materials page"
 number: 304
 group: close
-status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · four directions drawn the same day, D being the owner's own idea (three named groups) · the owner's go the same day (good enough for a pass with live users, build it all) · built the same day as two client-only PRs on the card's picks, v2.6851 the Materials page (the three groups, On site as a tab with one search across jobs, Print labels, Scan a label) and v2.6852 the phone (This job · Every job, an empty job naming the other jobs, Scan a label, the prints in place) · left: the owner's word on the third word and the order after his pass with live users, the badges on Plan and Purchase, Jobs → Materials as a door, Where it is now on a Parts Book row
+status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · four directions drawn the same day, D being the owner's own idea (three named groups) · the owner's go the same day (good enough for a pass with live users, build it all) · built the same day as two client-only PRs on the card's picks, v2.6851 the Materials page (the three groups, On site as a tab with one search across jobs, Print labels, Scan a label) and v2.6852 the phone (This job · Every job, an empty job naming the other jobs, Scan a label, the prints in place) · the labels window's tape choice drawn and built the same day on his yes · left: the owner's word on the third word and the order after his pass with live users, the badges on Plan and Purchase, Jobs → Materials as a door, Where it is now on a Parts Book row
 mockup: to-dos/materials-one-story/mockup.html
 summary: >
   The word Materials names three places: the Materials page (price, buy, pay), Jobs → Materials
@@ -75,15 +75,14 @@ press points an estimator at `/jobs` (it lands once Jobs → Materials is a door
 4. *Where it is now* on a Parts Book row (call 8; the plan's PR 8).
 5. A camera inside the app, only if the crew asks (call 4).
 
-**Asked next, drawn, not built** (the owner, 2026-11-10, with the Brother PT-D610BT and tape in
-hand: should the new view make label printing more apparent). `tape-labels-before-after.html`:
-the labels window today opens on paper sheets with Tape as a small chip; the after makes
-*Paper sheet* and *Brother tape* the window's first choice, lists the three first-time steps in
-the window, adds **Print 1 test strip** and **None · Every box**, and opens on tape on a
-computer that printed tape last. One small client-only PR on his word. First, though, three
-strips off the real printer from today's window: the tape format (#294, v2.6801) has never been
-printed on it. His calls there: the tape width in the box (the app lays out 18 and 24 mm), what
-the test strip prints, whether a box remembers it has a label, and the name *Brother tape*.
+**Asked next, drawn, then built on his yes** (the owner, 2026-11-10, with the Brother PT-D610BT
+and tape in hand: should the new view make label printing more apparent).
+`tape-labels-before-after.html` drew it and PR #7566 builds it: *Paper sheet* and *Brother tape*
+are the labels window's first choice, the three first-time steps sit in the window, **Print 1
+test strip** and **None · Every box** are new, and a computer that printed tape opens on tape.
+Client only; its release note and fragment carry the detail. Still his: three strips off the
+real printer (the tape format, #294, has never been printed on it), and the tape width in the
+box, since the app lays out 18 and 24 mm only.
 
 **Walked** on localhost against prod as the dev login, read only, at 1,400 wide and at 375: the
 strip, On site with the three real jobs, the search, Print labels through *Which job?* to a ZZ
