@@ -94,6 +94,10 @@ export const WRITE_VERBS = {
   // matter document or a matter event, with why it fits and how it proves the theme, kept or proposed.
   plan_theme_marks: { rpc: 'dev_theme_marks_write', step: 'plan' },
   apply_theme_marks: { rpc: 'dev_theme_marks_write', step: 'apply' },
+  // v2.6844: the review of marks already on the record (dev_theme_review_write) — keep the proposed marks named,
+  // take the named marks off with a reason each; the one door beside the app's Keep press and Take it off….
+  plan_theme_review: { rpc: 'dev_theme_review_write', step: 'plan' },
+  apply_theme_review: { rpc: 'dev_theme_review_write', step: 'apply' },
   // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
@@ -676,6 +680,35 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const p: Json = { stand, marks }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${marks.length} mark${marks.length === 1 ? '' : 's'}`, planHash }
   }
+  if (verb === 'plan_theme_review' || verb === 'apply_theme_review') {
+    // v2.6844: 1 to 200 marks across keep (mark ids) and take_off ({ id, why }), no mark named twice; the database
+    // resolves each one and says ready, already or held — the shape alone is checked here.
+    const shape = `${verb} needs keep and/or take_off — keep: [ mark id ] (legal_theme_marks.id of a proposed mark: read_rows on legal_theme_marks, proposed is true and kept_at is null), take_off: [ { id (a mark id), why (the reason it comes off, 1 to 200 characters) } ]; 1 to 200 marks across the two, no mark named twice.`
+    const keepIn = input.keep === undefined || input.keep === null ? [] : input.keep
+    const offIn = input.take_off === undefined || input.take_off === null ? [] : input.take_off
+    if (!Array.isArray(keepIn) || !Array.isArray(offIn)) return { ok: false, error: shape }
+    if (keepIn.length + offIn.length === 0 || keepIn.length + offIn.length > 200) return { ok: false, error: shape }
+    const seen = new Set<string>()
+    const keep: string[] = []
+    for (const raw of keepIn) {
+      const id = typeof raw === 'string' ? raw.trim().toLowerCase() : ''
+      if (!UUID_RE.test(id) || seen.has(id)) return { ok: false, error: shape }
+      seen.add(id)
+      keep.push(id)
+    }
+    const takeOff: Json[] = []
+    for (const raw of offIn) {
+      const m = obj(raw)
+      const id = m && typeof m.id === 'string' ? m.id.trim().toLowerCase() : ''
+      const why = m && typeof m.why === 'string' ? m.why.trim() : ''
+      if (!m || !UUID_RE.test(id) || seen.has(id) || !why || why.length > 200) return { ok: false, error: shape }
+      seen.add(id)
+      takeOff.push({ id, why })
+    }
+    const p: Json = { keep, take_off: takeOff }
+    const n = keep.length + takeOff.length
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${n} mark${n === 1 ? '' : 's'}`, planHash }
+  }
   if (verb === 'plan_gap_answer' || verb === 'apply_gap_answer') {
     const gap = obj(input.gap)
     const action = gap && typeof gap.action === 'string' ? gap.action.trim() : 'answer'
@@ -1161,6 +1194,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
   if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
   if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
+  if (verb === 'apply_theme_review') return `Nothing written: this plan was already applied on those marks${when}. A kept mark reads as kept already and a mark that came off as off already in a new plan; read_rows on legal_theme_marks shows the stamps, and the file's By theme view draws them.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || event || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
