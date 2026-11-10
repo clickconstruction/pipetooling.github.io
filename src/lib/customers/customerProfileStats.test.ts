@@ -7,6 +7,66 @@ function job(p: Partial<ProfileJob>): ProfileJob {
   return { id: 'j1', status: 'billed', revenue: 0, payments_made: 0, invoices: [], payments: [], ...p }
 }
 
+describe('customerMoneyStats, a customer who pays in kind (punch list #301)', () => {
+  const landlord = [
+    job({
+      id: 'paid',
+      status: 'paid',
+      revenue: 2140,
+      payments_made: 2140,
+      in_kind_arrangement_id: 'a1',
+      invoices: [{ id: 'i1', status: 'paid', amount: 2140, billed_at: '2026-05-01T12:00:00Z', estimated_bill_date: '2026-05-01' }],
+      payments: [{ invoice_id: 'i1', amount: 2140, paid_on: '2026-05-01', payment_type: 'In kind' }],
+    }),
+    job({
+      id: 'open',
+      revenue: 1480,
+      payments_made: 799.5,
+      in_kind_arrangement_id: 'a1',
+      invoices: [{ id: 'i2', status: 'billed', amount: 1480, billed_at: '2026-01-05T12:00:00Z', estimated_bill_date: '2026-01-05' }],
+      payments: [{ invoice_id: 'i2', amount: 799.5, paid_on: '2026-01-05', payment_type: 'in-kind' }],
+    }),
+  ]
+  it('counts the open money as scheduled in kind and never ages it', () => {
+    const s = customerMoneyStats(landlord, TODAY)
+    expect(s.openBalance).toBe(680.5)
+    expect(s.scheduledInKind).toBe(680.5)
+    expect(s.aging).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }) // 210 days old, and not late
+  })
+  it('says how much of what was collected was in kind', () => {
+    const s = customerMoneyStats(landlord, TODAY)
+    expect(s.lifetimeCollected).toBe(2939.5)
+    expect(s.collectedInKind).toBe(2939.5)
+  })
+  it('still ages a bill no deal pays, beside one a deal does', () => {
+    const s = customerMoneyStats(
+      [...landlord, job({ id: 'cash', revenue: 500, invoices: [{ id: 'i3', status: 'billed', amount: 500, billed_at: null, estimated_bill_date: '2026-03-01' }] })],
+      TODAY,
+    )
+    expect(s.openBalance).toBe(1180.5)
+    expect(s.scheduledInKind).toBe(680.5)
+    expect(s.aging).toEqual({ count30_90: 0, sum30_90: 0, count90: 1, sum90: 500 })
+  })
+  it('reads zero of both for a customer who pays in money', () => {
+    const s = customerMoneyStats([job({ revenue: 900, payments_made: 200, payments: [{ invoice_id: null, amount: 200, paid_on: '2026-07-01', payment_type: 'Check' }] })], TODAY)
+    expect(s.scheduledInKind).toBe(0)
+    expect(s.collectedInKind).toBe(0)
+  })
+  it('leaves in kind payments out of pay speed', () => {
+    expect(customerDaysToPay(landlord, TODAY)).toBeNull()
+    const mixed = [
+      ...landlord,
+      job({
+        id: 'cash',
+        status: 'paid',
+        invoices: [{ id: 'i9', status: 'paid', amount: 100, billed_at: '2026-07-01T12:00:00Z', estimated_bill_date: null }],
+        payments: [{ invoice_id: 'i9', amount: 100, paid_on: '2026-07-11', payment_type: 'Check' }],
+      }),
+    ]
+    expect(customerDaysToPay(mixed, TODAY)).toEqual({ medianDays: 10, samples: 1 })
+  })
+})
+
 describe('customerMoneyStats', () => {
   it('sums billed-invoice remainders and ages them by estimated bill date', () => {
     const jobs = [

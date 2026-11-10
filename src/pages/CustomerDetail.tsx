@@ -22,6 +22,9 @@ import {
 import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers/fetchCustomerProfile'
 import { useAuth } from '../hooks/useAuth'
 import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
+import { isOfficeRole } from '../lib/doorRoles'
+import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
+import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInKindWords } from '../lib/inKind/customerInKindStrip'
 import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
 import CustomerAgreementsCard from '../components/customers/CustomerAgreementsCard'
 import {
@@ -178,7 +181,7 @@ function TypeChip({ label, bg, fg }: { label: string; bg: string; fg: string }) 
 
 export default function CustomerDetail() {
   const { id: customerId } = useParams<{ id: string }>()
-  const { role: myRole } = useAuth()
+  const { role: myRole, user: authUser } = useAuth()
   /**
    * ZZ test jobs (punch list #61, v2.5122): for every role but a dev who shows them, a ZZ job leaves the page,
    * its money and its Invoices tab. The page knows its customer, so a job is a test job when its own name is
@@ -248,6 +251,9 @@ export default function CustomerDetail() {
 
   const agingChip = useMemo(() => {
     if (!stats) return null
+    // v2.6829: money an in-kind deal pays is scheduled, never late (punch list #301).
+    const inKindChip = openBalanceInKindChip(stats)
+    if (inKindChip) return { label: inKindChip.label, bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
     if (stats.aging.count90 > 0)
       return { label: `${stats.aging.count90} · ${money(stats.aging.sum90)} at 90+ days`, bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' }
     if (stats.aging.count30_90 > 0)
@@ -490,7 +496,7 @@ export default function CustomerDetail() {
           >
             <MoneyCell
               cap="Lifetime value"
-              sub={`billed across ${stats.jobCount} job${stats.jobCount === 1 ? '' : 's'} · ${money(stats.lifetimeCollected)} collected`}
+              sub={`billed across ${stats.jobCount} job${stats.jobCount === 1 ? '' : 's'} · ${collectedInKindWords(stats) ?? `${money(stats.lifetimeCollected)} collected`}`}
             >
               <span style={{ color: 'var(--text-green-600)' }}>{money(stats.lifetimeBilled)}</span>
             </MoneyCell>
@@ -516,13 +522,13 @@ export default function CustomerDetail() {
                 ) : undefined
               }
             >
-              <span style={{ color: stats.openBalance > 0.005 ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>
+              <span style={{ color: stats.openBalance > 0.005 && !openIsAllInKind(stats) ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>
                 {money(stats.openBalance)}
               </span>
             </MoneyCell>
             <MoneyCell
               cap="Pays in"
-              sub={daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : 'no billed→paid history yet'}
+              sub={daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : (paysInInKindWords(false, stats) ?? 'no billed→paid history yet')}
             >
               {daysToPay ? `~${daysToPay.medianDays} day${daysToPay.medianDays === 1 ? '' : 's'}` : '—'}
             </MoneyCell>
@@ -534,6 +540,11 @@ export default function CustomerDetail() {
               {estimateOutcomes ? `${estimateOutcomes.accepted} / ${estimateOutcomes.decided}` : '—'}
             </MoneyCell>
           </div>
+
+          {/* v2.6829: Pays in kind — the deal, how far along it is and what is left (punch list #301). The office only. */}
+          {isOfficeRole(myRole) && customerId && authUser ? (
+            <CustomerInKindCard customerId={customerId} customerName={data.customer.name ?? ''} userId={authUser.id} canSetUp={stats.openBalance > 0.005} onChanged={load} />
+          ) : null}
 
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}
           {canSeeWhatCustomersSee(myRole) && customerId ? <CustomerAgreementsCard customerId={customerId} customerName={data.customer.name} /> : null}

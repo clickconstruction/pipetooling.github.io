@@ -13,13 +13,18 @@
  *  - aging buckets: estimated_bill_date rule at 30/90 days with remaining > 0
  *    (keep in sync with billedStageRowAgingBucket in lib/jobs/invoiceBilling —
  *    same rule, restated here over lean structural inputs);
- *  - lifetime collected: every payment row on their jobs;
+ *  - lifetime collected: every payment row on their jobs; `collectedInKind` is the part of it
+ *    that was a credit given instead of money (v2.6829, punch list #301);
+ *  - scheduled in kind: the open balance on jobs an in-kind deal pays
+ *    (`jobs_ledger.in_kind_arrangement_id`). It is still open, and it is never aged as late;
  *  - "pays in ~N days": MEDIAN gap between an invoice's billed_at and its
  *    invoice-linked payments' paid_on, last 12 months (job-level payments
- *    excluded — no bill date to measure from).
+ *    excluded — no bill date to measure from). An In kind payment is left out: a credit dated
+ *    to its bill's own day says nothing of how fast a customer pays.
  */
 
 import { todayYmdInAppTz } from './appTimeZone.ts'
+import { isInKindPaymentType } from './inKindPayment.ts'
 import {
   appliedByInvoiceUnderRule,
   jobBilledContribution,
@@ -42,6 +47,8 @@ export type ProfilePayment = {
   invoice_id: string | null
   amount: number | null
   paid_on: string | null
+  /** The kind as typed (Check, In kind); read only to tell a credit from money. */
+  payment_type?: string | null
 }
 
 export type ProfileJob = {
@@ -49,6 +56,8 @@ export type ProfileJob = {
   status: string | null
   revenue: number | null
   payments_made: number | null
+  /** The in-kind deal that pays this job (punch list #301); its open bill is scheduled, not late. */
+  in_kind_arrangement_id?: string | null
   invoices: ProfileInvoice[]
   payments: ProfilePayment[]
 }
@@ -68,6 +77,10 @@ export type CustomerMoneyStats = {
    */
   lifetimeBilled: number
   jobCount: number
+  /** The part of `openBalance` on jobs an in-kind deal pays: scheduled, never aged. */
+  scheduledInKind: number
+  /** The part of `lifetimeCollected` that was In kind, not money. */
+  collectedInKind: number
 }
 
 function daysBetweenYmdUtc(fromYmd: string, toYmd: string): number {
@@ -101,9 +114,13 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
   let open = 0
   let lifetime = 0
   let billedTotal = 0
+  let scheduledInKind = 0
+  let collectedInKind = 0
   const aging: CustomerAging = { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }
   for (const job of jobs) {
     lifetime += lifetimeCollected(job.payments)
+    collectedInKind += lifetimeCollected(job.payments.filter((p) => isInKindPaymentType(p.payment_type)))
+    const inKind = Boolean(job.in_kind_arrangement_id)
     const appliedByInvoice = appliedOnJob(job)
     billedTotal += jobBilledContribution(job, job.invoices)
     const rows = openBillRowsForJob(
@@ -114,6 +131,10 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
     const invoiceById = new Map(job.invoices.map((i) => [i.id, i]))
     for (const row of rows) {
       open += row.remaining
+      if (inKind) {
+        scheduledInKind += row.remaining
+        continue
+      }
       const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
       if (row.settled || !inv?.estimated_bill_date) continue
       const remaining = row.remaining
@@ -127,7 +148,7 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
       }
     }
   }
-  return { openBalance: open, aging, lifetimeCollected: lifetime, lifetimeBilled: billedTotal, jobCount: jobs.length }
+  return { openBalance: open, aging, lifetimeCollected: lifetime, lifetimeBilled: billedTotal, jobCount: jobs.length, scheduledInKind, collectedInKind }
 }
 
 export type EstimateOutcomes = { accepted: number; decided: number } | null
@@ -165,6 +186,7 @@ export function customerDaysToPay(jobs: ProfileJob[], todayYmd: string): DaysToP
     }
     for (const p of job.payments) {
       if (!p.invoice_id || !p.paid_on) continue
+      if (isInKindPaymentType(p.payment_type)) continue
       const billedYmd = billedAtByInvoice.get(p.invoice_id)
       if (!billedYmd) continue
       const paidYmd = ymdOf(p.paid_on)
