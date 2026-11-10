@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up the same day · left: November 2026's credit, the readers that still read these bills as late, and the owner's four small calls
+status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,10 +11,10 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: Enter November 2026's credit from its Needs you line once the rent has left the bank or the month is over. Then the sweep of the readers under Left.
+next: The sweep of the readers under Left. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836
-blocker: November's credit waits on the rent: $1,000 if half is paid, $2,000 if none is
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841
+blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
 
@@ -83,7 +83,7 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 
 ## Left
 
-- **November 2026's credit is not entered.** The landlord's arrangement was set up on 2026-11-10 through *Set up paying in kind*: the fifteen jobs, the usual credit, the whole rent, the name the rent goes out under at the bank, and November 2026 as the first month to enter. The fourteen payments typed by hand read as *typed on the bills by hand* and count as paid. November reads *Not due yet*, since no rent has left the bank that month. Its Needs you line comes when the rent leaves the bank or the month ends.
+- **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again.
 - **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, the Customers list's open balance. Each has its own row list and select.
 - **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.

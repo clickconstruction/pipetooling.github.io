@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { dueMonths, inKindTotals, isMonthlyArrangement, lastCreditMonth, monthOf, monthYear } from '../../lib/inKind/inKindLedger'
+import { dueMonths, inKindTotals, isMonthlyArrangement, lastCreditMonth, monthYear } from '../../lib/inKind/inKindLedger'
+import { nextCreditMonth } from '../../lib/inKind/inKindMonthChoices'
 import { bankLinesOfMonth, monthsWithBank, type BankPaidLine } from '../../lib/inKind/inKindBank'
 import { loadCustomerInKind, loadInKindBankLines, type InKindLedgerData } from '../../lib/inKind/inKindIo'
 import { IN_KIND_CHANGED_EVENT } from '../../lib/inKind/inKindCreditsDue'
@@ -145,7 +146,7 @@ export default function CustomerInKindCard({
         const a = d.arrangement
         const t = inKindTotals(d.jobs, d.lines, d.payments)
         const { paidPct } = meterParts(t.paidInKind, t.work)
-        const last = isMonthlyArrangement(a) ? lastCreditMonth(t.left, a.monthly_amount, monthOf(todayYmd)) : null
+        const last = isMonthlyArrangement(a) ? lastCreditMonth(t.left, a.monthly_amount, nextCreditMonth(monthsById.get(a.id) ?? [], todayYmd)) : null
         const due = dueMonths(monthsById.get(a.id) ?? [])
         const firstDue = due[0] ?? null
         const firstDueBank = firstDue ? bankLinesOfMonth(bank.get(a.id) ?? [], firstDue.month) : []

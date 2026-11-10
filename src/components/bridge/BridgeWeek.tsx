@@ -57,6 +57,12 @@ function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
         </div>
       )}
       <div style={{ fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }}>{tile.sub}</div>
+      {/* The accounts left out of cash on hand (v2.6838): the list and its switches sit behind the link. */}
+      {tile.note && (
+        <a href="#bridge-money" data-testid="bridge-week-tile-note" style={{ display: 'block', fontSize: narrow ? '0.72rem' : '0.8rem', color: 'var(--text-amber-800)', lineHeight: 1.3, marginTop: 2, textDecoration: 'underline' }}>
+          {tile.note}
+        </a>
+      )}
     </div>
   )
 }

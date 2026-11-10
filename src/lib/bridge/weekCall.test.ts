@@ -186,6 +186,21 @@ describe('buildWeekCall, cash under the floor', () => {
     expect(m.card.press).toBe('Make this the week’s call')
   })
 
+  it('says which accounts are left out on the cash tile, in every week', () => {
+    const note = 'Leaves out Accounts Payable 2222, $12.4k.'
+    // A clear week: the note rides under the green tile.
+    expect(buildWeekCall({ ...base, cashNote: note }).tiles[1]).toMatchObject({ id: 'cash', tone: 'green', note })
+    // Nothing left out: no note at all.
+    expect(buildWeekCall(base).tiles[1]?.note).toBeUndefined()
+    expect(buildWeekCall({ ...base, cashNote: null }).tiles[1]?.note).toBeUndefined()
+    // Under the floor and not leading.
+    expect(buildWeekCall({ ...base, forecast: under, cashNote: note }).tiles[1]).toMatchObject({ tone: 'red', note })
+    // Leading: the tile no longer says the bank has it, because an account is left out.
+    const m = buildWeekCall({ ...base, forecast: under, cashMayLead: true, cashNote: note })
+    expect(m.tiles[0]).toMatchObject({ wide: true, sub: 'Cash goes under $10.0k on Nov 24. Cash on hand is $18.4k today.', note })
+    expect(weekCallWords(m)).toContain(note)
+  })
+
   it('never leads over the owner’s own pick, and says today when cash is already under', () => {
     expect(buildWeekCall({ ...base, forecast: under, cashMayLead: true, picked: 'build' }).link).toBe('build')
     expect(firstDayUnderFloor(under, 4_000, '2026-11-09')).toEqual({ ymd: '2026-11-09', offset: 0 })
@@ -242,6 +257,7 @@ describe('the first screen’s words', () => {
     buildWeekCall({ ...base, picked: 'collect' }),
     buildWeekCall({ ...base, forecast: under }),
     buildWeekCall({ ...base, forecast: under, cashMayLead: true, supplyDue: { usd: 10_800, ymd: '2026-11-24' } }),
+    buildWeekCall({ ...base, forecast: under, cashMayLead: true, supplyDue: { usd: 10_800, ymd: '2026-11-24' }, cashNote: 'Leaves out Accounts Payable 2222, $12.4k.' }),
     buildWeekCall({ ...base, todayYmd: '2026-11-10', calls: [billCall] }),
     buildWeekCall(friday),
     buildWeekCall({ ...friday, calls: [{ ...billCall, outcome: 'moved' }] }),

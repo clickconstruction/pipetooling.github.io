@@ -84,6 +84,8 @@ The rent is $3,000.00 and the usual credit is $1,500.00. In a month $1,500.00 le
 
 Nothing is entered by itself. The app suggests, and you press.
 
+You can enter a month before it is due. Open the ledger and press **Enter it early** on that month's row. The window picks the usual credit, since the bank has nothing to say yet. If the amount changes later, take the line back and enter the month again.
+
 ## Overhead or a job
 
 A line is a cost that never touched a card or a supply house bill. Under **Counts as**, say where it belongs.

@@ -90,6 +90,22 @@ describe('InKindMonthWindow', () => {
     expect((screen.getByLabelText('Date') as HTMLInputElement).value).toBe('2026-10-31')
   })
 
+  it('opens a month that is not over with the usual credit picked, and says it is early', async () => {
+    renderWithProviders(<InKindMonthWindow data={rentDeal()} month="2026-11-01" bankLines={[]} onClose={() => undefined} onEntered={() => undefined} io={makeIo()} />)
+    await settle()
+    expect(screen.getByTestId('in-kind-month-bank').textContent).toBe('What the bank shows. Nothing has left the bank to Calloway in November yet.')
+    expect(screen.getByTestId('in-kind-month-early').textContent).toBe('November is not over. Enter it now if the amount is settled. If it changes, take the line back and enter it again.')
+    expect(screen.getByTestId('in-kind-month-save').textContent).toBe('Record November’s credit of $1,500.00')
+    expect(screen.getByText('We pay nothing this month.')).toBeTruthy()
+    expect((screen.getByLabelText('Date') as HTMLInputElement).value).toBe('2026-11-10')
+  })
+
+  it('says nothing of early once the bank has a line in the month', async () => {
+    renderWithProviders(<InKindMonthWindow data={rentDeal()} month="2026-11-01" bankLines={novBank} onClose={() => undefined} onEntered={() => undefined} io={makeIo()} />)
+    await settle()
+    expect(screen.queryByTestId('in-kind-month-early')).toBeNull()
+  })
+
   it('takes another amount, and keeps the press dead until it is one', async () => {
     const io = makeIo()
     renderWithProviders(<InKindMonthWindow data={rentDeal()} month="2026-11-01" bankLines={null} onClose={() => undefined} onEntered={() => undefined} io={io} />)

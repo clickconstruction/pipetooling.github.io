@@ -41,14 +41,19 @@ export function showHeaderTaskChecklistButton(role: UserRole | null): boolean {
   )
 }
 
+/** The Bids page and anything under it. */
+export function isBidsPagePath(pathname: string): boolean {
+  return pathname === '/bids' || pathname.startsWith('/bids/')
+}
+
 /**
- * The header's **Bid** press, New Bid from any page (v2.6167). It was the estimator's alone; now
- * every role that can make a bid has it, the way the estimator always did, and Farm Mode (the
- * checklist-only lens) hides it with the header's other presses. The Bids page reads the same
- * rule: below its wide header its own New Bid used to wrap onto a row of its own under the trades
- * (the owner, 2026-10-30: *instead of new bid wrapping at this viewport … move it to the header*),
- * so with the header's press on, the page draws none of its own there.
+ * The header's **Bid** press: New Bid, on the Bids page alone (v2.6839; from any page since
+ * v2.6167, and the owner, 2026-11-10: *I would only like for it to be visible on the bids page*).
+ * Every role that can make a bid has it there, and Farm Mode (the checklist-only lens) hides it
+ * with the header's other presses. The Bids page reads the same rule: below its wide header its
+ * own New Bid used to wrap onto a row of its own under the trades, so with the header's press on,
+ * the page draws none of its own there.
  */
-export function showHeaderNewBidButton(role: UserRole | null, farmModeActive: boolean): boolean {
-  return !farmModeActive && canOpenBids(role) && role !== 'primary'
+export function showHeaderNewBidButton(role: UserRole | null, farmModeActive: boolean, pathname: string): boolean {
+  return isBidsPagePath(pathname) && !farmModeActive && canOpenBids(role) && role !== 'primary'
 }

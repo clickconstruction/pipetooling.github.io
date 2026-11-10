@@ -44,11 +44,12 @@ export const WEEK_CALL_MOVES = 3
 export const WEEK_CALL_MOVES_PHONE = 2
 
 /**
- * Whether cash may lead the first screen. Off until the owner says the bank the page reads is
- * the whole bank (punch list #303, the owner's call 2): a first screen that cries wolf teaches
- * a person to stop looking. The cash tile shows red either way.
+ * Whether cash may lead the first screen. On since v2.6838: the owner said on 2026-11-10 that the
+ * bank the page reads is the whole bank (punch list #303, the owner's call 2). It was off until
+ * then, because a first screen that cries wolf teaches a person to stop looking. The accounts the
+ * owner switches off (`cashAccounts.ts`) are left out of the figure the rule reads.
  */
-export const WEEK_CASH_MAY_LEAD = false
+export const WEEK_CASH_MAY_LEAD = true
 
 /** How the week runs, for the desk's side panel until a first call exists. */
 export const WEEK_HOW = ['Monday you make the call.', 'Each move goes to a person.', 'Friday this card asks if the step moved.'] as const
@@ -71,6 +72,8 @@ export type WeekTile = {
   bars?: WeekBar[]
   /** The tile takes the whole row: cash, in a week it leads. */
   wide?: boolean
+  /** On the cash tile: the accounts left out of cash on hand, in one sentence. */
+  note?: string
 }
 
 export type WeekDoor = { to: string; label: string }
@@ -130,6 +133,8 @@ export type WeekCallInput = {
   headline: Headline | null
   forecast: Pick<CashForecast, 'days' | 'lowest' | 'floorUsd' | 'clearsFloor'> | null
   cashTodayUsd: number | null
+  /** The accounts the owner switched off, in one sentence (`buildCashAccounts().note`); empty when every account counts. */
+  cashNote?: string | null
   /** The cash figure is the bank's own balance and the owner trusts it as the whole bank. */
   cashMayLead: boolean
   flow: StageFlow | null
@@ -210,13 +215,16 @@ function cashTile(input: WeekCallInput, leads: boolean): WeekTile {
   const f = input.forecast
   if (!f) return { id: 'cash', label: 'Cash low point, 8 weeks', value: 'not read', sub: 'Cash on hand is not read yet.', tone: 'plain' }
   const floor = shortK(f.floorUsd)
-  if (f.clearsFloor) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. The floor is ${floor}.`, tone: 'green' }
+  // The accounts left out ride on the tile, so a lower figure is never a silent one.
+  const note = input.cashNote ? { note: input.cashNote } : {}
+  if (f.clearsFloor) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. The floor is ${floor}.`, tone: 'green', ...note }
   const first = firstDayUnderFloor(f, input.cashTodayUsd, input.todayYmd)
   const from = first && first.offset > 0 ? `from ${input.dayLabel(first.ymd)}` : 'today'
-  if (!leads) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. Under the ${floor} floor ${from}.`, tone: 'red' }
-  const bank = input.cashTodayUsd != null ? ` The bank has ${shortK(input.cashTodayUsd)} today.` : ''
+  if (!leads) return { id: 'cash', label: 'Cash low point, 8 weeks', value: shortK(f.lowest.cashUsd), sub: `On ${input.dayLabel(f.lowest.ymd)}. Under the ${floor} floor ${from}.`, tone: 'red', ...note }
+  // "The bank has" is only true when every account counts.
+  const bank = input.cashTodayUsd == null ? '' : input.cashNote ? ` Cash on hand is ${shortK(input.cashTodayUsd)} today.` : ` The bank has ${shortK(input.cashTodayUsd)} today.`
   const goes = first && first.offset > 0 ? `Cash goes under ${floor} on ${input.dayLabel(first.ymd)}.` : `Cash is under the ${floor} floor.`
-  return { id: 'cash', label: 'Cash comes first this week', value: `Under the floor ${whenWords(first?.offset ?? 0)}`, sub: `${goes}${bank}`, tone: 'red', wide: true }
+  return { id: 'cash', label: 'Cash comes first this week', value: `Under the floor ${whenWords(first?.offset ?? 0)}`, sub: `${goes}${bank}`, tone: 'red', wide: true, ...note }
 }
 
 function stepTile(flow: StageFlow | null): WeekTile {
@@ -380,7 +388,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
 /** Every sentence a phone's first screen prints, in order: the tiles, the card with its first moves, the press. */
 export function weekCallWords(model: WeekCallModel, moves: number = WEEK_CALL_MOVES_PHONE): string[] {
   const out: string[] = []
-  for (const t of model.tiles) out.push(t.label, t.value, t.sub)
+  for (const t of model.tiles) out.push(t.label, t.value, t.sub, t.note ?? '')
   if (model.last) out.push(model.last.text)
   out.push(model.card.label, model.card.lead, model.card.line)
   for (const m of model.card.moves.slice(0, moves)) out.push(m.title, m.why, m.who, m.doneText ?? '')

@@ -19,7 +19,8 @@ import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPane
 import type { VectorReading } from '../lib/bridge/vectorReading'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
-import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
+import type { MercuryCash } from '../lib/bridge/mercuryCash'
+import { buildCashAccounts, countedCash, flipAccountOut, loadBankRead, saveAccountsOut } from '../lib/bridge/cashAccounts'
 import { carryingDay, carryingSentence, receiptsConfidence } from '../lib/bridge/cashConfidence'
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
 import { buildReadingGaps } from '../lib/bridge/readingGaps'
@@ -42,6 +43,7 @@ import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
 import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
+import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall, firstName, topPerson } from '../lib/bridge/weekCall'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
@@ -150,6 +152,11 @@ export default function Bridge() {
   const [weeksError, setWeeksError] = useState<string | null>(null)
   // Cash on hand from the bank (v2.5218): Mercury's balances, read when the page loads; the typed figure is the fallback.
   const [bank, setBank] = useState<MercuryCash | null>(null)
+  // Every account by its Mercury name, and the ones the owner leaves out of cash on hand (v2.6838).
+  const [bankNames, setBankNames] = useState<Map<string, string>>(() => new Map())
+  const [accountsOut, setAccountsOut] = useState<string[]>([])
+  // A choice the save refused holds for the visit: Read again must not put the saved one back over it.
+  const accountsOutUnsavedRef = useRef(false)
   const [bankError, setBankError] = useState<string | null>(null)
   const [bankLoading, setBankLoading] = useState(false)
   // The People strip (v2.5222): Vectors and the day grid fold under it, closed by default and remembered per browser.
@@ -233,8 +240,12 @@ export default function Bridge() {
     setBankError(null)
     void (async () => {
       try {
-        const b = await loadMercuryCash(supabase)
-        if (!cancelled) setBank(b)
+        const b = await loadBankRead(supabase)
+        if (!cancelled) {
+          setBank(b.cash)
+          setBankNames(b.names)
+          if (!accountsOutUnsavedRef.current) setAccountsOut(b.out)
+        }
       } catch (e) {
         if (!cancelled) {
           setBank(null)
@@ -270,7 +281,10 @@ export default function Bridge() {
     if (!data?.cashSetting) return null
     return cashTodayFromAsOf({ cashAsOfUsd: data.cashSetting.usd, asOfYmd: data.cashSetting.asOfYmd, todayYmd: data.todayYmd, bankFlowByDay: data.bankFlowByDay })
   }, [data])
-  const cashToday = useMemo(() => (bank ? bank.usd : typedRolled), [bank, typedRolled])
+  // Cash on hand is the accounts switched on; `bank` stays the whole bank for the lines that compare it with the ledger.
+  const cashAccounts = useMemo(() => (bank ? buildCashAccounts({ bank, names: bankNames, out: accountsOut }) : null), [bank, bankNames, accountsOut])
+  const bankCounted = useMemo(() => (bank ? countedCash(bank, accountsOut) : null), [bank, accountsOut])
+  const cashToday = useMemo(() => (cashAccounts ? cashAccounts.countedUsd : typedRolled), [cashAccounts, typedRolled])
 
   const history = useMemo(() => {
     if (!data || cashToday == null || !fin.data) return null
@@ -901,6 +915,7 @@ export default function Bridge() {
       headline,
       forecast,
       cashTodayUsd: cashToday,
+      cashNote: cashAccounts?.note ?? null,
       cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
       flow: stageFlow,
       picked: pickedStage && pickedStage !== stageFlow?.linkId ? pickedStage : null,
@@ -917,7 +932,23 @@ export default function Bridge() {
       now: nowReading,
       dayLabel: md,
     })
-  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+
+  // One account's switch: the page follows at once, the row is saved behind it, and a save that is refused says why.
+  const flipAccount = useCallback(
+    async (id: string) => {
+      const next = flipAccountOut(accountsOut, id)
+      setAccountsOut(next)
+      try {
+        await saveAccountsOut(supabase, next)
+        accountsOutUnsavedRef.current = false
+      } catch (e) {
+        accountsOutUnsavedRef.current = true
+        showToast(`Not saved, so it holds until you leave the page. ${formatErrorMessage(e)}`, 'error', 5000)
+      }
+    },
+    [accountsOut, showToast],
+  )
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -1219,10 +1250,10 @@ export default function Bridge() {
       callsError ? 'the calls' : null,
     ].filter((g): g is string => !!g)
     return buildSheetFromReads(
-      { data, fin: fin.data, bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads: collectReads && collectReads.forKey === collectReadKey ? collectReads.reads : null, gaps },
+      { data, fin: fin.data, bank: bankCounted, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads: collectReads && collectReads.forKey === collectReadKey ? collectReads.reads : null, gaps },
       { weekStart: vectorWeekStart, pickedStage, dialUsd },
     )
-  }, [data, fin.data, fin.error, bank, bankError, vectorInputs, vectorError, weeksInputs, weeksError, buildInputs, buildError, billJobs, demandInputs, demandError, calls, callsError, collectReads, collectReadKey, vectorWeekStart, pickedStage, dialUsd])
+  }, [data, fin.data, fin.error, bankCounted, bankError, vectorInputs, vectorError, weeksInputs, weeksError, buildInputs, buildError, billJobs, demandInputs, demandError, calls, callsError, collectReads, collectReadKey, vectorWeekStart, pickedStage, dialUsd])
 
   const emailSheet = useCallback(async () => {
     if (!sheet || emailing) return
@@ -1622,8 +1653,7 @@ export default function Bridge() {
                 {bank ? (
                   <>
                     <span style={det}>
-                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(bank.usd)}</b> · the bank's balance at {bankReadAt}
-                      {bank.accounts.length > 1 ? ` · ${mercuryAccountsLine(bank.accounts)}` : ''}
+                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(cashToday ?? bank.usd)}</b> · the bank's balance at {bankReadAt}
                     </span>
                     {data.cashSetting && typedRolled != null && Math.abs(typedRolled - bank.usd) >= 1000 && (
                       <span style={{ ...det, color: 'var(--text-amber-800)' }} data-testid="bridge-cash-typed-drift">
@@ -1650,6 +1680,7 @@ export default function Bridge() {
                 <button type="button" onClick={() => void saveFloor()} style={btnStyle}>Set</button>
               </span>
             </div>
+            {cashAccounts && <BridgeCashAccounts accounts={cashAccounts} onFlip={(id) => void flipAccount(id)} />}
             {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
           </div>
 

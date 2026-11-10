@@ -1661,7 +1661,7 @@ export default function Bids() {
   // The header's New Bid, and the same press for the empty lists that name it (punch list #184, sweep C).
   const newBidPress = visibleServiceTypes.length > 0 && myRole !== 'primary' ? openNewBid : undefined
   // v2.6167: below the wide header the app header's Bid press is the one New Bid; the empty lists keep theirs.
-  const headerHasNewBid = showHeaderNewBidButton(myRole, farmModeEnabled && !!authUser?.id)
+  const headerHasNewBid = showHeaderNewBidButton(myRole, farmModeEnabled && !!authUser?.id, location.pathname)
   const bidsNewBidButton =
     newBidPress && (wideBidsHeader || !headerHasNewBid) ? (
       <button

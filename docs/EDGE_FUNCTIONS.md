@@ -6214,9 +6214,9 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 
 ### get-mercury-account-balances
 
-**Purpose**: Live Mercury account balances for the Balance Sheet cash line: `GET /accounts` from the Mercury API, filters out archived accounts, and returns per-account `currentBalance` / `availableBalance` plus totals. Read-only — nothing is written to the database.
+**Purpose**: Live Mercury account balances for the Balance Sheet cash line: `GET /accounts` from the Mercury API, filters out archived accounts, and returns per-account `currentBalance` / `availableBalance` plus totals, with each account's `nickname` (the name its owner gave it in Mercury, null when it has none) since v2.6838. Read-only — nothing is written to the database.
 
-**Callers**: Banking's Mercury review tab (the Balance Sheet cash line) and, since v2.5218, the Bridge (`src/lib/bridge/mercuryCash.ts`: cash on hand for the net-position line and the cash forecast, read on load and on **Refresh**; the typed figure stands when the call fails).
+**Callers**: Banking's Mercury review tab (the Balance Sheet cash line) and, since v2.5218, the Bridge (`src/lib/bridge/mercuryCash.ts`: cash on hand for the net-position line and the cash forecast, read on load and on **Refresh**; the typed figure stands when the call fails; since v2.6838 through `loadBankRead` in `src/lib/bridge/cashAccounts.ts`, which keeps the nicknames for the list of accounts).
 
 **Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
 
@@ -6229,7 +6229,7 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 ```typescript
 {
   ok: true,
-  accounts: Array<{ id, name, kind, currentBalance, availableBalance }>,
+  accounts: Array<{ id, name, nickname, kind, currentBalance, availableBalance }>,
   totalCurrentBalance: number,
   totalAvailableBalance: number
 }

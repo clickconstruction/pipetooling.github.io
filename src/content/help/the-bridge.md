@@ -21,6 +21,10 @@ The page opens on three numbers.
 - **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
 - **Slowest step** is the stage the page reads as the weakest link.
 
+An amber line under the cash tile names any account you left out of cash on hand. Press it to jump to [the bank's accounts](#cash-on-hand-comes-from-the-bank).
+
+When cash goes under your floor, cash comes first. The cash tile takes the top row and the card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
+
 Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
 
 - Press a name to change who does the move.
@@ -143,7 +147,19 @@ Under the sheet sits the **Weekly email** switch. Turn it on and the app builds 
 
 ## Cash on hand comes from the bank
 
-The page reads the bank's balance when it opens. Under the cash chart, the cash row says the balance and the time it was read. The accounts with money are named beside it. Accounts at zero are only counted. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.
+The page reads the bank's balance when it opens. Under the cash chart, the cash row says cash on hand and the time the bank was read. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.
+
+Under that row, **The bank's accounts** lists every account by the name you gave it in Mercury. Each row shows what the account holds. A row also shows what is free to spend when a charge is still pending.
+
+Each account has a tick box. Clear the box to leave that account out of cash on hand. The row then reads *Left out* and keeps its balance. The forecast, the cash tile and the cash rule all use the lower figure. Tick the box to count the account again. The choice is saved, so it stands until you change it.
+
+:::example Leaving one account out
+
+You keep money for bills in an account named Accounts Payable. Clear its box to see cash without that money. Tick it again to see cash with it.
+
+:::
+
+Bills still come off the forecast on the day they are due, whichever way you count.
 
 When the bank cannot be read, the row shows the reason. You then type today's balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. Once the bank answers again, the typed figure steps aside. An amber line then says how far the typed figure drifted from the bank, if it did.
 

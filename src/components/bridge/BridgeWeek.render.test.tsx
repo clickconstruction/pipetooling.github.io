@@ -76,6 +76,15 @@ describe('BridgeWeek', () => {
     ])
   })
 
+  it('says under the cash tile which account is left out, as a link to the list', () => {
+    const note = 'Leaves out Accounts Payable 2222, $12.4k.'
+    const left: WeekCallModel = { ...propose, tiles: tiles.map((t) => (t.id === 'cash' ? { ...t, note } : t)) }
+    renderWithProviders(<BridgeWeek model={left} softCount={0} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} />)
+    const link = screen.getByTestId('bridge-week-tile-note')
+    expect(link.textContent).toBe(note)
+    expect(link.getAttribute('href')).toBe('#bridge-money')
+  })
+
   it('never records an empty call', () => {
     const onRecord = vi.fn()
     renderWithProviders(<BridgeWeek model={propose} softCount={0} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} />)
