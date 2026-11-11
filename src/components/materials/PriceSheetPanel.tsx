@@ -132,14 +132,20 @@ export function PriceSheetPanel({
 
   useEffect(() => setParts(knownParts), [knownParts])
 
+  // The door hands a new onGone on each of its renders. The read must not follow it: a new reload on every render
+  // read the sheet again and again while Takeoffs drew the panel's offers (v2.6928).
+  const onGoneRef = useRef(onGone)
+  useEffect(() => {
+    onGoneRef.current = onGone
+  }, [onGone])
   const reload = useCallback(async () => {
     const [read, codeRead] = await Promise.all([loadSheet(supabase, paperId), loadHouseCodes(supabase)])
     if (!read.ok) setProblem(read.error)
-    else if (!read.sheet) onGone()
+    else if (!read.sheet) onGoneRef.current()
     else setSheetState(read.sheet)
     setCodes(codeRead.rows)
     setLoading(false)
-  }, [paperId, onGone])
+  }, [paperId])
 
   useEffect(() => {
     if (initialSheet) {
@@ -206,7 +212,10 @@ export function PriceSheetPanel({
   }, [plan, takeoff, chosenRows])
 
   // The ready fixtures, by the bid's row, so Takeoffs can offer each on its own row while the panel is open.
+  // Takeoffs draws again on each list it is handed, and hands back a new takeoff, which plans the fixtures again:
+  // a list with the same offers is never sent twice, so the two cannot chase each other (v2.6928).
   const houseName = house?.name ?? null
+  const sentOffers = useRef<string | null>(null)
   useEffect(() => {
     if (!onRowOffers) return
     const offers: PriceSheetRowOffer[] = []
@@ -217,9 +226,18 @@ export function PriceSheetPanel({
         for (const r of st.rows) offers.push({ countRowId: r.id, groupId: g.group.id, houseName, each: st.each, parts: st.items.length })
       }
     }
+    const key = JSON.stringify(offers)
+    if (key === sentOffers.current) return
+    sentOffers.current = key
     onRowOffers(offers)
   }, [plan, statuses, houseName, onRowOffers])
-  useEffect(() => () => onRowOffers?.([]), [onRowOffers])
+  useEffect(
+    () => () => {
+      sentOffers.current = null
+      onRowOffers?.([])
+    },
+    [onRowOffers],
+  )
   useEffect(() => {
     if (!placeRef) return
     placeRef.current = (groupId: string) => {
