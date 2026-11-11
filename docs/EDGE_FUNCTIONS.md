@@ -6213,7 +6213,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Tests**: the kernel in `src/lib/materials/lines/billSweep.test.ts` (the plan, the holds, the schema, the ranges and the join, the match, the rows written, the words); the migration in `npm run test:pg:bill-lines-sweep`.
 
-**Deploy**: `bash scripts/deploy-functions.sh bill-lines-sweep bill-read` after migration `20261110230000_bill_lines_sweep.sql` is pushed (`bill-read` for the cap that now counts its own rows). The dev-mcp catalog does not name it until its next regeneration, so `check_edge_boot` does not probe it yet.
+**Deploy**: `bash scripts/deploy-functions.sh bill-lines-sweep bill-read` after migration `20261110230000_bill_lines_sweep.sql` is pushed (`bill-read` for the cap that now counts its own rows). The dev-mcp catalog names it, so `check_edge_boot` probes it from `dev-mcp`'s next redeploy.
 
 ### messages-nudge-dispatch
 
