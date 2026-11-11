@@ -22,6 +22,8 @@ import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocume
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpPaperFromFields, lienHelpPrintHtml } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { LienSigningCountyBox } from './LienSigningCountyBox'
+import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -38,7 +40,8 @@ import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
-import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
+import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -216,6 +219,9 @@ export default function LienFilingTabs({
   // The desk's own recipe fills the paper (v2.6809): this tab filled the fields by hand beside it, and a job with no clock hours printed
   // *from — through —* where the desk's draft swore its month; the original contractor's address was never handed over. The period is the
   // first approved day through the last, or the day set by hand (v2.6061), else the month the window's strip names.
+  // The county the affidavit is signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
+  const signing = useLienSigningCounty(issuer)
+  const affidavitIssuer = signing.issuer
   const affidavitFields: LienAffidavitFields = useMemo(() => {
     const days = workDays ?? job
     return buildLienWindowAffidavitFields({
@@ -239,13 +245,13 @@ export default function LienFilingTabs({
       todayYmd: todayYmd(),
       noticesRecorded: liveNotices.length > 0,
       contactPerson: signerNameFallback,
-      issuer,
+      issuer: affidavitIssuer,
       form: affidavitForm,
       // The short form names the months and the sends of the notices recorded on the job.
       filings: live,
       homestead: property.homestead,
     })
-  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
+  }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -337,6 +343,11 @@ export default function LienFilingTabs({
     { ok: !property.homestead, label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : 'Not a homestead' },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
+  const noticeCheckLines = useMemo(() => {
+    const days = workDays ?? job
+    const months = lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
+    return lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months, filings: live }))
+  }, [workDays, job, workMonths, isSub, live, property.propertyKind])
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -381,8 +392,16 @@ export default function LienFilingTabs({
   // The affidavit's help sheet (punch list #314): the job's facts as the paper states them, so the sheet and the paper agree.
   const [helpSheetOn, setHelpSheetOn] = useLienHelpSheetChoice()
   const helpPaper = useMemo(
-    () => lienHelpPaperFromFields({ jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '), fileBy: clock.filingDeadline ? demandDate(clock.filingDeadline) : '', claimWords: demandMoney(affidavitFields.unpaidAmount), fields: affidavitFields }),
-    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields],
+    () =>
+      lienHelpPaperFromFields({
+        jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+        fileBy: clock.filingDeadline ? demandDate(clock.filingDeadline) : '',
+        claimWords: demandMoney(affidavitFields.unpaidAmount),
+        fields: affidavitFields,
+        // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
+        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines },
+      }),
+    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines],
   )
 
   const printDoc = useCallback(() => {
@@ -983,6 +1002,15 @@ export default function LienFilingTabs({
               </div>
             ))}
             {monthMatchWarning ? <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {monthMatchWarning}</div> : null}
+            {/* The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold. */}
+            {noticeCheckLines.length > 0 ? (
+              <div data-lien-window-notice-check style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem', display: 'grid', gap: '0.1rem' }}>
+                <strong>⚠ {LIEN_NOTICE_CHECK_LEAD}</strong>
+                {noticeCheckLines.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </div>
+            ) : null}
             {clock.filingDeadline ? <div style={{ fontSize: '0.72rem', color: 'var(--text-red-700)', marginTop: '0.3rem', fontWeight: 700 }}>Filing window for {clock.workMonth} work runs through {demandDate(clock.filingDeadline)} (§ 53.052).</div> : null}
           </div>
           {affidavitReady ? (
@@ -1058,6 +1086,7 @@ export default function LienFilingTabs({
                       {LIEN_HELP_SHEET_BOX}
                     </label>
                   ) : null}
+                  {affidavitFields.form === 'short' ? <LienSigningCountyBox id="lien-window-signing-county" county={signing.county} onChange={signing.setCounty} /> : null}
                 </div>
               )}
             </>

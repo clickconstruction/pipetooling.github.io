@@ -42,6 +42,7 @@ import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
+import { bidUpdateInput, isBidUpdateVerb } from './devMcpBidUpdate.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -225,6 +226,12 @@ export const WRITE_VERBS = {
   // apply needs confirm_no_undo: true beside the hash.
   plan_job_combine: { rpc: null, step: 'plan' },
   apply_job_combine: { rpc: null, step: 'apply' },
+  // v2.6945 (the bid train's PR 1): a bid changed as Edit Bid and the Bid Board change it — the form's columns as one
+  // PATCH on bids under RLS as the dev, the columns that ride written with their driver, then the line the form leaves
+  // when the outcome moves; rpc is null, the dry run the server's read of the bid, its versions, the jobs that point at
+  // it and each row a new id names (devMcpBidUpdate.ts).
+  plan_bid_update: { rpc: null, step: 'plan' },
+  apply_bid_update: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -379,6 +386,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
     // dry run is the server's read of the job, its payment rows and the bank row.
     const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidUpdateVerb(verb)) {
+    // v2.6945: the shape check is devMcpBidUpdate's, with the day (a bid is never sent or decided ahead of today); the
+    // dry run is the server's read of the bid and what hangs on it.
+    const built = bidUpdateInput(verb, input, todayYmd())
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1244,6 +1258,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_property_record') return `Nothing written: this plan was already applied on this property record${when}. The record already reads that way; read_rows on customer_addresses shows it. A plan commits to the record's updated_at and each column's before value, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_bid_update') return `Nothing written: this plan was already applied on this bid${when}. The bid already reads that way; get_bid shows it. A plan commits to the columns' before values and the bid's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`

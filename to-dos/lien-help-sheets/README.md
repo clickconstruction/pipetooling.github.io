@@ -2,7 +2,7 @@
 name: "Help sheets printed with every lien paper"
 number: 314
 group: gated
-status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names · the owner the same day, *build it all I like it all* · built the same day as four PRs · then *is this the best we can do?*: a before and after page with eleven changes
+status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names · the owner the same day, *build it all I like it all* · built the same day as four PRs · then *is this the best we can do?*: a before and after page with eleven changes · the owner the same day, *do 1-3, and then show me mockups for 5-11* · 1 to 3 built on PR 7697 · 5 to 11 drawn one at a time
 summary: >
   The office signed and notarized its first batch of short-form lien affidavits on 2026-11-11.
   Read against the record, none could be filed as it stood: the county blank at the top was
@@ -10,7 +10,7 @@ summary: >
   should have been stopped before they were printed. The owner asked for help sheets that print
   with every paper. Three shapes are drawn: a cover sheet for each paper, one sheet for the whole
   batch, and a marked guide copy of the paper itself.
-next: The owner picks from the eleven changes on `before-after.html`. The pick here is the first four, in that order: a held paper is never printed, the app answers its own checks on the sheet, the signing county is printed, and the seal has a place.
+next: The owner picks from changes 5, 6, 7, 9, 10 and 11 on `changes-5-to-11.html`, each drawn beside what prints today. Changes 1 to 3 are built on PR 7697, and change 8 came with change 2. Change 4, a place marked for the seal, was not asked for and is not drawn there.
 size: M as a train of three (S the form's label · M the sheet on the batch print and the Lien window · S the same sheet for the two notices)
 blocker: The owner's pick from the polish list. Printing the signing county and marking the seal change the paper's face, so counsel should see them.
 opinion: your call — the first build is in review; of the eleven polish changes, do 1 to 4 first
@@ -111,7 +111,9 @@ Read again as a first-week employee would read them, the built sheets fall short
 | 10 | *The app shows the last day to mail* | Lines to write the filing day and the mail-by day; each clerk's address and fee, once the office has typed them in Settings | M |
 | 11 | A plain band, and the guide copy has bands alone | A striped edge on every help sheet, a GUIDE COPY watermark across the guide copy's paper, and a code to scan for the full guide | S |
 
-**The pick: 1 to 4 first, in that order.** 1 is a promise the mock-up made and the build did not keep. 2 is the largest gain: a warning that prints on every paper is one people stop reading, and the app already knows four of the six answers. 3 removes the mistake all eleven sheets made, where the label only explains it. 4 answers the other mistake all eleven made. The rest is tidying and can ride with them.
+**The owner, 2026-11-11: *do 1-3, and then show me mockups for 5-11*.** Changes 1 to 3 are built on PR 7697: a ready paper with a hold is left out of the batch and named on the sheet, the sheets say what the app checked with *ask first* on a paper that has a question, and the county where the paper is signed prints on both county lines from Settings or the box beside the print press. Change 8 came with change 2, since the notice check is one of the checks. `changes-5-to-11.html` draws 5, 6, 7, 9, 10 and 11 one at a time, each piece as it prints today beside the same piece with that change, and shows 8 as built. Each can be built without the others. Change 10 is two parts: lines to write on (small), and each clerk's address, fee and hours, which the app does not hold and must not guess, so it needs a short list in Settings that the office types once. Change 4 was neither asked for nor drawn.
+
+**The pick before that answer: 1 to 4 first, in that order.** 1 is a promise the mock-up made and the build did not keep. 2 is the largest gain: a warning that prints on every paper is one people stop reading, and the app already knows four of the six answers. 3 removes the mistake all eleven sheets made, where the label only explains it. 4 answers the other mistake all eleven made. The rest is tidying and can ride with them.
 
 **Two of these change the paper's face** (3 and 4). Neither changes a sworn word, and the Legal desk's own affidavits already print a typed venue (`affidavitPaper.ts`, `venueCounty`), but a recorded paper's form is counsel's to see first. v2.6249 took a seal caption off the jurat on the reasoning that a notary knows where it goes; the first batch says otherwise.
 

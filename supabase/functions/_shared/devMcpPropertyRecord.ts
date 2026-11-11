@@ -1,4 +1,4 @@
-// A property record's lien facts from the dev seat (v2.6950 / 0.70.0 — the first of the Lien desk's verbs; the owner's
+// A property record's lien facts from the dev seat (v2.6950 / 0.71.0 — the first of the Lien desk's verbs; the owner's
 // ask of 2026-11-11: "everything a user can do a dev can do", starting with a homestead found on the county's page
 // that the seat had no verb to mark).
 //
