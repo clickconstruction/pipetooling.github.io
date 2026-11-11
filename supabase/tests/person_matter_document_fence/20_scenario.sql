@@ -30,9 +30,9 @@ BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
 END $$;
--- What a signed-in user reads through RLS: the titles, in order.
-CREATE FUNCTION pmf.docs() RETURNS text LANGUAGE sql STABLE AS $$ SELECT COALESCE(string_agg(d.title, ', ' ORDER BY d.title), 'none') FROM public.documents d $$;
-CREATE FUNCTION pmf.revs() RETURNS text LANGUAGE sql STABLE AS $$ SELECT COALESCE(string_agg(r.title, ', ' ORDER BY r.title), 'none') FROM public.document_revisions r $$;
+-- What a signed-in user reads through RLS of this bed's own documents: the titles, in order.
+CREATE FUNCTION pmf.docs() RETURNS text LANGUAGE sql STABLE AS $$ SELECT COALESCE(string_agg(d.title, ', ' ORDER BY d.title), 'none') FROM public.documents d WHERE d.id::text LIKE '00000000-0000-0000-0000-0000000966a%' $$;
+CREATE FUNCTION pmf.revs() RETURNS text LANGUAGE sql STABLE AS $$ SELECT COALESCE(string_agg(r.title, ', ' ORDER BY r.title), 'none') FROM public.document_revisions r WHERE r.document_id::text LIKE '00000000-0000-0000-0000-0000000966a%' $$;
 -- How many rows an UPDATE touched, as the caller.
 CREATE FUNCTION pmf.retitle(p_id uuid, p_title text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE n int;
