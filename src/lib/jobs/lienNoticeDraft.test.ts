@@ -90,6 +90,19 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(buildLienAffidavitFieldsForJob({ ...aff, jobName: 'Bruce Hall' }).workDescription).toBe('Plumbing labor and materials')
   })
 
+  it('the short form carries the company’s physical address when Settings hold one (punch list #305)', () => {
+    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', noticesRecorded: true }
+    const issuer = (physicalAddressText?: string) => ({ companyName: 'Click Plumbing', addressText: 'PO Box 9\nKingsbury TX', phone: '', email: '', tagline: '', licenseLine: '', ...(physicalAddressText === undefined ? {} : { physicalAddressText }) })
+    const both = buildLienAffidavitFieldsForJob({ ...aff, issuer: issuer('12925 FM 20\r\nKingsbury TX  ') })
+    expect([both.claimantAddress, both.claimantPhysicalAddress]).toEqual(['PO Box 9, Kingsbury TX', '12925 FM 20, Kingsbury TX'])
+    // Blank, or a setting saved before the field existed: the field is left off, so a stored copy reads as before.
+    expect('claimantPhysicalAddress' in buildLienAffidavitFieldsForJob({ ...aff, issuer: issuer('  \n ') })).toBe(false)
+    expect('claimantPhysicalAddress' in buildLienAffidavitFieldsForJob({ ...aff, issuer: issuer() })).toBe(false)
+    expect('claimantPhysicalAddress' in buildLienAffidavitFieldsForJob({ ...aff, issuer: null })).toBe(false)
+    // The earlier ten-paragraph form names one address and keeps its fields.
+    expect('claimantPhysicalAddress' in buildLienAffidavitFieldsForJob({ ...aff, issuer: issuer('12925 FM 20'), form: 'long' })).toBe(false)
+  })
+
   it('swears to what the sent bills owe when the desk hands it over (v2.4969), the correction still off it', () => {
     const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
     expect(buildLienAffidavitFieldsForJob(aff).unpaidAmount).toBe('5000.00')

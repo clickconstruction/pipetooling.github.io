@@ -159,6 +159,31 @@ const winFor = (over: { isSub?: boolean; gcName?: string; gcAddress?: string; co
     workMonths: null,
   })
 
+describe('the company’s second address reaches the paper from both fills (punch list #305)', () => {
+  const twoAddresses = { companyName: 'Sample Plumbing LLC', addressText: 'PO Box 9\nSan Antonio, TX 78201', physicalAddressText: '1 Shop Rd\nSan Antonio, TX 78201' } as never
+  const short = (f: ReturnType<typeof winFor>) => filingDocText(buildLienAffidavitBlocks(f))
+  it('the short form prints the mailing address, then the physical one, the same from the desk and the window', () => {
+    const desk = buildLienDeskAffidavitFields({
+      job: { ...jobRow, job_name: shared.jobName, job_address: shared.jobAddress, customer_name: shared.customerName, revenue: staged.revenue, payments_made: staged.payments_made, service_type: { name: 'Plumbing' } },
+      entry: { isSub: true, openBalance: lienBilledOpen(staged, staged.invoices, staged.payments), lastMonth: '2026-08', gates },
+      gc: { name: shared.originalContractorName, address: shared.originalContractorAddress },
+      ...property,
+      correction: null,
+      contactPerson: shared.contactPerson,
+      issuer: twoAddresses,
+      todayYmd: shared.todayYmd,
+    })
+    const win = buildLienWindowAffidavitFields({ ...shared, isSub: true, originalContractorName: shared.originalContractorName, originalContractorAddress: shared.originalContractorAddress, revenue: staged.revenue, paymentsMade: staged.payments_made, openBalance: lienWindowClaim(staged, null).openBalance, issuer: twoAddresses, job: jobRow, workMonths: null, form: 'short' })
+    expect(win.claimantPhysicalAddress).toBe('1 Shop Rd, San Antonio, TX 78201')
+    expect(desk.claimantPhysicalAddress).toBe(win.claimantPhysicalAddress)
+    expect(short(win)).toContain("Claimant's mailing address is PO Box 9, San Antonio, TX 78201. Its physical address is 1 Shop Rd, San Antonio, TX 78201.")
+    expect(short(desk)).toContain('Its physical address is 1 Shop Rd, San Antonio, TX 78201.')
+  })
+  it('one address in Settings prints one address, as before', () => {
+    expect(short(buildLienWindowAffidavitFields({ ...shared, isSub: true, originalContractorName: shared.originalContractorName, originalContractorAddress: shared.originalContractorAddress, revenue: staged.revenue, paymentsMade: staged.payments_made, openBalance: 3500, issuer, job: jobRow, workMonths: null, form: 'short' }))).not.toContain('physical address')
+  })
+})
+
 describe('the sworn amount is the desk’s: what the sent bills owe, less the claim set by hand', () => {
   it('a job billed in stages swears the bills, never the job’s whole balance', () => {
     const claim = lienWindowClaim(staged, null)

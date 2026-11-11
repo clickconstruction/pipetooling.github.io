@@ -145,10 +145,17 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // not pick it: "That mail carries no file". The seat now lists and picks by one rule, the mail reader's own (fileKeep,
 // through devMcpMailSearch.ts → isMailFile): everything but a small picture placed in the body, a signature's logo.
 //
+// A large case fits the door (v2.6935 / 0.63.0): on a file of fifty documents and two hundred entries get_case_brief and
+// get_person_file answered past the 80,000 characters replyText cuts at, so the brief lost every block after documents and
+// the file's lines were cut mid-text. Both now shorten themselves in a fixed order (devMcpReplyFit.ts → fitReply) and name
+// each shortened block in `shortened` with the call that reads it whole. get_person_file takes brief (or line_chars) for
+// short lines and until to read a long Timeline on, with next_until the day to pass; the HR entries are read a page at a
+// time (readAllRows), so the count is exact past 200.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.62.0'
+const SERVER_VERSION = '0.63.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -521,7 +528,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_case_brief',
-    description: "One page that says what is where on a person's case (v2.6619, punch list #278) — the brief to read before anything else, the way a folder's README is read: your own Agent notes document first (a named document so titled, kept through plan_person_doc), the summary whole, the narrative's section index, the named documents with their section indexes and counsel marks, the entries' count and newest ten, the evidence index, the matter's narrative sections, steps and documents, the theme counts, and the developments the person's jobs sit in with their History's newest lines — every item with its id for a drill-in, the text never carried whole except the summary. Dev-only like the HR file: another role gets the person and held: dev only. read_next says which verb reads each thing further.",
+    description: "One page that says what is where on a person's case (v2.6619, punch list #278) — the brief to read before anything else, the way a folder's README is read: your own Agent notes document first (a named document so titled, kept through plan_person_doc), the summary whole, the narrative's section index, the named documents with their section indexes and counsel marks, the entries' count and newest ten, the evidence index, the matter's narrative sections, steps and documents, the theme counts, and the developments the person's jobs sit in with their History's newest lines — every item with its id for a drill-in, the text never carried whole except the summary. Dev-only like the HR file: another role gets the person and held: dev only. read_next says which verb reads each thing further. Since 0.63.0 the brief fits the door on a large case: the small blocks come first, the entries are counted a page at a time, and a brief that would pass the door's 80,000 characters is shortened in a fixed order — the documents' section indexes first, each kept as an outline of its shallowest headings beside section_count, its whole count — with shortened naming each block, what it kept and the call that reads the rest (get_person_document for one document's whole index); shortened is null when nothing was.",
     inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' } }, required: ['person'] },
   },
   {
@@ -546,7 +553,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_person_file',
-    description: "A person's HR file whole, as People → HR draws it (docs/HR_FILES.md): one dated line per thing on record, on the day it is ABOUT — the HR entries by source, evidence, field reports waiting to be filed, papers signed, sent or owed and their expiries, licenses on file and lapsed, write-ups, no-shows, excused lates, the start and last days — in lanes Said · Did · Paper · Missed · Ahead, by month newest first with what lies ahead on top; the fact chips (reports waiting, licenses expired, papers owed…), each naming the filter it narrows to; signed_papers (since 0.58.0), the papers they signed in the app as a list — the paper, the day, signed as, how, and door.to, which opens the signed record on People → Contracts (the same door the Timeline's signed line carries); hours_statements, each with where it stands (draft · printed, not signed back · sent · signed back) and its door, the statement source on the Timeline; the evidence records with their files and Drive state; the summary and narrative. The tab's own kernel over the tab's sources, each read as you under RLS: a source that could not be read is named in `held` and takes only itself out (the HR entries, evidence, reports and docs are dev-only). `person` is a people.id, a users.id (find_person) or a name that matches exactly one person. Narrow with lane, source or since; docs: false leaves the summary and narrative out of a long file.",
+    description: "A person's HR file whole, as People → HR draws it (docs/HR_FILES.md): one dated line per thing on record, on the day it is ABOUT — the HR entries by source, evidence, field reports waiting to be filed, papers signed, sent or owed and their expiries, licenses on file and lapsed, write-ups, no-shows, excused lates, the start and last days — in lanes Said · Did · Paper · Missed · Ahead, by month newest first with what lies ahead on top; the fact chips (reports waiting, licenses expired, papers owed…), each naming the filter it narrows to; signed_papers (since 0.58.0), the papers they signed in the app as a list — the paper, the day, signed as, how, and door.to, which opens the signed record on People → Contracts (the same door the Timeline's signed line carries); hours_statements, each with where it stands (draft · printed, not signed back · sent · signed back) and its door, the statement source on the Timeline; the evidence records with their files and Drive state; the summary and narrative. The tab's own kernel over the tab's sources, each read as you under RLS: a source that could not be read is named in `held` and takes only itself out (the HR entries, evidence, reports and docs are dev-only). `person` is a people.id, a users.id (find_person) or a name that matches exactly one person. Narrow with lane, source, since or until; docs: false leaves the summary and narrative out of a long file. Since 0.63.0: brief: true answers each line short — the day, the lane, the kind, the first 160 characters of its words (line_chars sets another length, 40 to 2,000) with more counting the rest, who, and row, the table:id read_rows answers whole — and the docs' sizes in place of their text (docs: true keeps the text). A reply that would pass the door's 80,000 characters is shortened whether or not you asked: the docs' text first, then the evidence and the lists another verb carries, then the lines, and last the Timeline's oldest months; shortened names each block with what it kept and the call that reads the rest, and next_until is the day to pass as until to read the lines left out. The HR entries are read a page at a time, so the counts are whole past 200.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -554,7 +561,10 @@ const TOOLS: McpTool[] = [
         lane: { type: 'string', description: 'said | did | paper | missed | planned (Ahead)' },
         source: { type: 'string', description: 'file | evidence | report | contract | statement | license | writeup | attendance | employment' },
         since: { type: 'string', description: 'YYYY-MM-DD — only lines on or after this day' },
-        docs: { type: 'boolean', description: 'false leaves the summary and narrative out (default true)' },
+        until: { type: 'string', description: 'YYYY-MM-DD — only lines on or before this day; pass a reply\'s next_until to read on' },
+        docs: { type: 'boolean', description: 'false leaves the summary and narrative out (default true; under brief their sizes stand in unless docs is true)' },
+        brief: { type: 'boolean', description: 'true answers each line short, with the row behind it, and the docs\' sizes in place of their text' },
+        line_chars: { type: 'number', description: 'how many characters of a line\'s words brief keeps, 40 to 2,000 (160 when left out); asking it asks for brief' },
       },
       required: ['person'],
     },
@@ -1692,6 +1702,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'get_case_brief': {
       // v2.6619 (punch list #278 PR 1): the orientation read — composed from the seat's own reads as `who` under RLS, each
       // fail-soft into `held` (devMcpCaseBrief.ts); the section indexes come from the two index views, never the text.
+      // v2.6935: a brief too long for the door shortens itself (devMcpReplyFit.ts) and names the blocks in `shortened`.
       const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.entries.count })
@@ -1730,7 +1741,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // v2.6422: a person's HR file whole, as People → HR draws it — the tab's own kernel (_shared/personTimeline.ts)
       // over the tab's sources and keys, each read as `who` under RLS and fail-soft (devMcpPersonFile.ts). The HR
       // sources are dev-only by RLS and are not read for another role: a view_as of the office sees the papers.
-      const out = await getPersonFile(readerAs(await jwt()), { person: String(args.person ?? ''), lane: args.lane, source: args.source, since: args.since, docs: args.docs }, { role: who.role, todayYmd: todayYmdInAppTz() })
+      // v2.6935: brief / line_chars for short lines, until to read on; a reply past the door's cut shortens itself and says so.
+      const out = await getPersonFile(readerAs(await jwt()), { person: String(args.person ?? ''), lane: args.lane, source: args.source, since: args.since, until: args.until, docs: args.docs, brief: args.brief, line_chars: args.line_chars }, { role: who.role, todayYmd: todayYmdInAppTz() })
       // The refusal is a string on every path; the `??` only keeps deno check quiet where the inferred union widens it (v2.6716).
       if ('refused' in out) return refused(out.refused ?? 'get_person_file was refused', { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.counts.shown })

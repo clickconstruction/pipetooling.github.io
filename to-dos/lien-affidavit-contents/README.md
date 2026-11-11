@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: waiting
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), an affidavit holds while the GC has no address on file (v2.6932), a house holds until the homestead question is answered (v2.6937)
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), a house holds until the homestead question is answered (v2.6937)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -171,13 +171,13 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    same line on the Lien window's tab. Read again on 2026-11-11 it holds nothing: both GCs on the
    desk have an address. On a job contracted with the owner the hiring party is the owner, and the
    owner gate already needs a mailing address.
-5. **A second company address** (S). Settings hold one (`app_settings` key
-   `physical_invoice_issuer_v1`, field `addressText`), printed as the mailing address. One optional
-   field `physicalAddressText` in the same JSON (no migration), one input *Physical address, if
-   different* under the address in the issuer block in Settings, and one line in
-   `buildLienAffidavitFieldsForJob` (`src/lib/jobs/lienNoticeDraft.ts`) passing it as
-   `claimantPhysicalAddress`. The short form already prints *Its physical address is …* when given
-   one that differs (tested).
+5. **A second company address** (S). Shipped as v2.6936 (`docs/recent-features/v2.6936.md`):
+   one optional field `physicalAddressText` in the `physical_invoice_issuer_v1` setting (no
+   migration), one input **Physical address, if different** under the address in the company
+   block in Settings, and `buildLienAffidavitFieldsForJob` passes it to the short form as
+   `claimantPhysicalAddress`. The paper prints *Its physical address is …* when Settings hold one
+   that differs from the mailing address. Settings held one address on 2026-11-11, so no paper
+   changes until the owner types the second.
 6. **One affidavit per property** (M). Question 5, only on a yes.
 
 ## The brief for the next session
