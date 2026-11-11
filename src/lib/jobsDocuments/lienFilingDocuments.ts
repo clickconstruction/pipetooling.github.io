@@ -400,6 +400,18 @@ export function filingKeepTogetherRuns(blocks: ReadonlyArray<FilingDocBlock>): A
 const FILING_PRINT_END = '<!--filing-print-end-->'
 
 /** Add pages behind a printed paper (the notice's pay page and invoices): inside the sheet, so they keep its page margins. */
+/**
+ * A page of its own in front of the papers of a print sheet (punch list #314): a help sheet, which is never part of
+ * the paper. `section` goes first in the sheet's body and `styles` into its head; the section ends its own page. The
+ * copy filed on a job is built without it, so a help sheet is never a sent copy.
+ */
+export function prependToFilingPrintHtml(html: string, section: string, styles: string): string {
+  if (!section) return html
+  const opened = '<tbody><tr><td>'
+  if (!html.includes(opened) || !html.includes('</style></head>')) return html
+  return html.replace('</style></head>', `${styles}</style></head>`).replace(opened, `${opened}${section}`)
+}
+
 export function appendToFilingPrintHtml(html: string, extra: string): string {
   if (!extra) return html
   return html.includes(FILING_PRINT_END) ? html.replace(FILING_PRINT_END, `${extra}${FILING_PRINT_END}`) : html.replace('</body>', `${extra}</body>`)
