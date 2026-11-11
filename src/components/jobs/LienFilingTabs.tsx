@@ -35,7 +35,8 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { contractorAddressGate } from '../../lib/jobs/lienDeskAffidavits'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
-import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
+import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -331,6 +332,11 @@ export default function LienFilingTabs({
     { ok: !property.homestead, label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : 'Not a homestead' },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
+  const noticeCheckLines = useMemo(() => {
+    const days = workDays ?? job
+    const months = lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
+    return lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months, filings: live }))
+  }, [workDays, job, workMonths, isSub, live, property.propertyKind])
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -956,6 +962,15 @@ export default function LienFilingTabs({
               </div>
             ))}
             {monthMatchWarning ? <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {monthMatchWarning}</div> : null}
+            {/* The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold. */}
+            {noticeCheckLines.length > 0 ? (
+              <div data-lien-window-notice-check style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem', display: 'grid', gap: '0.1rem' }}>
+                <strong>⚠ {LIEN_NOTICE_CHECK_LEAD}</strong>
+                {noticeCheckLines.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </div>
+            ) : null}
             {clock.filingDeadline ? <div style={{ fontSize: '0.72rem', color: 'var(--text-red-700)', marginTop: '0.3rem', fontWeight: 700 }}>Filing window for {clock.workMonth} work runs through {demandDate(clock.filingDeadline)} (§ 53.052).</div> : null}
           </div>
           {affidavitReady ? (
