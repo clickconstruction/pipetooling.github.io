@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { driveFileState, folderFiles, freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
-import { REFILE_BUDGET_MS, REFILE_SWEEP_BATCH, dueRowsByJob, nextFreeName, refileAskOf, refileResult, refileRowNeedsClearing, refileRowPatch, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
+import { REFILE_ASK_REFUSAL, REFILE_BUDGET_MS, REFILE_SWEEP_BATCH, dueRowsByJob, mayAskRefile, nextFreeName, refileAskOf, refileResult, refileRowNeedsClearing, refileRowPatch, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
 import { roadmapTaskFolderPath, taskFolderName, taskPhotoDriveName, type TaskPhotoKind } from '../_shared/taskPhotoNames.ts'
@@ -97,7 +97,7 @@ import {
  * Materials on site are moved to another job (the dev seat's `apply_materials_move`) or carried by a whole-job combine,
  * but a file already filed stays in the first job's photo folder. One ask moves them:
  *
- *   POST { refile_box_photos: <job_id> } (a dev's JWT, or X-Cron-Secret) → { job_id, folder_id, folder_url, in_drive,
+ *   POST { refile_box_photos: <job_id> } (the session of a role that may combine jobs, or X-Cron-Secret) → { job_id, folder_id, folder_url, in_drive,
  *     moved: [{ id, file_name, drive_file_id, renamed_to? }], already, held: [{ id, file_name, why }], left, words }
  *
  * For each `job_box_photos` row of the job with a `drive_file_id`, a file not in the folder the job's photos land in
@@ -117,7 +117,7 @@ import {
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
  * source re-schedules it with every clause (20261111024500_box_photo_refile_due.sql holds all eleven).
  *
- * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY (the re-file ask's dev check), CRON_SECRET,
+ * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY (who makes the re-file ask), CRON_SECRET,
  * GOOGLE_SERVICE_ACCOUNT_JSON; DRIVE_IMPERSONATE_USER
  * (optional) lets a bid photo reach a folder in a personal Drive. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -1192,15 +1192,16 @@ serve(async (req) => {
   if (ask) {
     try {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-      // The one ask a person may make: a dev, with their own session. Everything else here is the cron's.
+      // The one ask a person may make, with their own session. Everything else here is the cron's.
       if (!isCron) {
         const asUser = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
         const { data: me } = await asUser.auth.getUser()
         const archivedRefusal = await refuseArchivedCaller(admin, me?.user?.id, corsHeaders)
         if (archivedRefusal) return archivedRefusal
         if (!me?.user) return json({ error: 'Sign in first.' }, 401)
-        const { data: isDev } = await asUser.rpc('is_dev')
-        if (isDev !== true) return json({ error: 'Only a dev moves a job’s box photos to its folder.' }, 403)
+        // v2.6927: the roles that may combine two jobs may ask, since the app asks for them right after a combine.
+        const { data: asker } = await admin.from('users').select('role').eq('id', me.user.id).maybeSingle()
+        if (!mayAskRefile((asker as { role: string | null } | null)?.role)) return json({ error: REFILE_ASK_REFUSAL }, 403)
       }
       if (!ask.ok) return json({ error: ask.error }, 400)
       const out = await refileBoxPhotos(admin, ask.jobId)

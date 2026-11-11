@@ -2,7 +2,7 @@
 title: combine two duplicate jobs into one
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, plans, promise, lien, agreement, pay application, legal matter, texts, messages, sub sheet, certified mail, statement of charges
+keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, box photos, drive folder, held file, plans, promise, lien, agreement, pay application, legal matter, texts, messages, sub sheet, certified mail, statement of charges
 order: 73
 ---
 Sometimes the same work ends up as two job cards. Each card collects its own costs, hours and activity, so the money and the story split in half.
@@ -26,6 +26,14 @@ A job made from an estimate carries that estimate with it. The exception is when
 :::example The combined job keeps the target's status
 Combining never changes the target's status or % done. If a tech had marked the source further along, that mark doesn't transfer — which is exactly why the warning shows first, so you can move the target forward yourself if the work really is done.
 :::
+
+## Box photos follow in Drive
+
+A photo of a cage or box is a file in the job's Drive folder. After a combine the source's photo files move into the target's Drive folder.
+
+They start by themselves and finish in a minute or two. The success message says how many are moving. You can keep working.
+
+Open the target on **Jobs → Materials** to watch the count go down. A file that cannot move is named there with its reason. Press {{button:blue|Try 1 held file again}} once it is put right. A held file is also tried again by itself a day later.
 
 ## When the target already has one
 

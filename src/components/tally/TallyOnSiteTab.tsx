@@ -22,6 +22,7 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
 import { useOnSiteDeskJobs } from '../../hooks/useOnSiteDeskJobs'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
@@ -250,6 +251,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {jobButton}
         {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
         <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-phone" idempotent />
+        {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move. */}
+        {jobId ? <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} /> : null}
         {/* The flow row (#209): the three names already on this screen, in the order of a day, each with its count; a dot where the crew is needed now. */}
         {containers.length > 0 ? (
           <FlowRow

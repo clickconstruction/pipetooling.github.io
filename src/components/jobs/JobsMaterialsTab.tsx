@@ -18,6 +18,7 @@ import { materialsPressDead, materialsPressStyle } from '../../lib/materials/mat
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
 import { useOnSiteDesk, useOnSiteJob, useOnSiteStoreVersion } from '../../hooks/useOnSiteStore'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
@@ -423,6 +424,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
       </div>
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
+      {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move, and any held with its reason. */}
+      <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} />
       {/* The flow row (#209): the material's path left to right at the pills' height — came in → on site → used → missing — each figure in its colour, a badge where a hand is needed. */}
       {jobLedgerCapped(jobId) ? (
         /* v2.6743: past the store's 5,000-row read the sums are the database's and the lists show the newest rows. */

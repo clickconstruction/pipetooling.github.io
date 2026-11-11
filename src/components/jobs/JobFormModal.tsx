@@ -57,6 +57,7 @@ import {
 import { composePctAutoNoteBody } from '../../lib/jobs/stagesPctNote'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import { migrateDeleteSuccessToast, type MigrateDeleteOkPayload } from '../../lib/jobs/migrateDeleteReply'
+import { afterCombineBoxPhotos } from '../../lib/materials/boxPhotoRefileIo'
 import {
   buildJobFormUndoSnapshot,
   invoiceSetKey,
@@ -2592,7 +2593,9 @@ export default function JobFormModal({
       }
       onSavedRef.current?.()
       closeFormWithoutSaving()
-      showToast(migrateDeleteSuccessToast(payload as MigrateDeleteOkPayload), 'success')
+      // #297 (v2.6927): the target job's box photos follow in Drive by themselves; the finish says so and starts the ask.
+      const photosLine = await afterCombineBoxPhotos(toId, authRole)
+      showToast([migrateDeleteSuccessToast(payload as MigrateDeleteOkPayload), photosLine].filter(Boolean).join(' '), 'success')
       return true
     } catch (err: unknown) {
       console.error('migrateJobLedgerCostsAndDelete', err)
