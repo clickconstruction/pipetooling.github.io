@@ -50,6 +50,19 @@ describe('the company block · Physical address, if different', () => {
     expect(issuerIo.save.mock.calls[0]![0]).toMatchObject({ addressText: 'PO Box 9\nSan Antonio, TX 78201', physicalAddressText: '1 Shop Rd\nSan Antonio, TX 78201' })
   })
 
+  it('County where lien papers are signed sits under it, and Save hands the county over (punch list #314)', async () => {
+    renderWithProviders(<PhysicalInvoiceIssuerDevSettingsBlock focusField="signingCounty" />)
+    const county = (await screen.findByLabelText('County where lien papers are signed')) as HTMLInputElement
+    expect(county.value).toBe('')
+    expect(county.getAttribute('data-settings-focus')).toBe('issuer.signingCounty')
+    expect(county.style.boxShadow).not.toBe('')
+    expect(document.body.textContent).toContain('A lien affidavit prints it on both county lines. It is not the property’s county.')
+    fireEvent.change(county, { target: { value: 'Travis' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(issuerIo.save).toHaveBeenCalled())
+    expect(issuerIo.save.mock.calls[issuerIo.save.mock.calls.length - 1]![0]).toMatchObject({ signingCounty: 'Travis' })
+  })
+
   it('opens on the address Settings hold, and a door that names the field lands on it', async () => {
     issuerIo.draft.physicalAddressText = '1 Shop Rd\nSan Antonio, TX 78201'
     renderWithProviders(<PhysicalInvoiceIssuerDevSettingsBlock focusField="physicalAddressText" />)

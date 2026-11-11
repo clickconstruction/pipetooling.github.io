@@ -22,6 +22,8 @@ import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocume
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpPaperFromFields, lienHelpPrintHtml } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { LienSigningCountyBox } from './LienSigningCountyBox'
+import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -217,6 +219,9 @@ export default function LienFilingTabs({
   // The desk's own recipe fills the paper (v2.6809): this tab filled the fields by hand beside it, and a job with no clock hours printed
   // *from — through —* where the desk's draft swore its month; the original contractor's address was never handed over. The period is the
   // first approved day through the last, or the day set by hand (v2.6061), else the month the window's strip names.
+  // The county the affidavit is signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
+  const signing = useLienSigningCounty(issuer)
+  const affidavitIssuer = signing.issuer
   const affidavitFields: LienAffidavitFields = useMemo(() => {
     const days = workDays ?? job
     return buildLienWindowAffidavitFields({
@@ -240,13 +245,13 @@ export default function LienFilingTabs({
       todayYmd: todayYmd(),
       noticesRecorded: liveNotices.length > 0,
       contactPerson: signerNameFallback,
-      issuer,
+      issuer: affidavitIssuer,
       form: affidavitForm,
       // The short form names the months and the sends of the notices recorded on the job.
       filings: live,
       homestead: property.homestead,
     })
-  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
+  }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -387,8 +392,16 @@ export default function LienFilingTabs({
   // The affidavit's help sheet (punch list #314): the job's facts as the paper states them, so the sheet and the paper agree.
   const [helpSheetOn, setHelpSheetOn] = useLienHelpSheetChoice()
   const helpPaper = useMemo(
-    () => lienHelpPaperFromFields({ jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '), fileBy: clock.filingDeadline ? demandDate(clock.filingDeadline) : '', claimWords: demandMoney(affidavitFields.unpaidAmount), fields: affidavitFields }),
-    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields],
+    () =>
+      lienHelpPaperFromFields({
+        jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+        fileBy: clock.filingDeadline ? demandDate(clock.filingDeadline) : '',
+        claimWords: demandMoney(affidavitFields.unpaidAmount),
+        fields: affidavitFields,
+        // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
+        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines },
+      }),
+    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines],
   )
 
   const printDoc = useCallback(() => {
@@ -1073,6 +1086,7 @@ export default function LienFilingTabs({
                       {LIEN_HELP_SHEET_BOX}
                     </label>
                   ) : null}
+                  {affidavitFields.form === 'short' ? <LienSigningCountyBox id="lien-window-signing-county" county={signing.county} onChange={signing.setCounty} /> : null}
                 </div>
               )}
             </>
