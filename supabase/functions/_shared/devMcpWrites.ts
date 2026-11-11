@@ -218,12 +218,12 @@ export const WRITE_VERBS = {
   // apply needs confirm_no_undo: true beside the hash.
   plan_job_combine: { rpc: null, step: 'plan' },
   apply_job_combine: { rpc: null, step: 'apply' },
-  // v2.6944 / 0.66.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
+  // v2.6944 / 0.67.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
   // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
   // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
   plan_sub_labor: { rpc: null, step: 'plan' },
   apply_sub_labor: { rpc: null, step: 'apply' },
-  // v2.6944 / 0.66.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
+  // v2.6944 / 0.67.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
   // or removed through the payment's own remove_labor_job_payment, which keeps a trace; rpc is null, the dry run the
   // server's read of the sheet, its payments and the bank row with every job it is already allocated to.
   plan_sub_labor_payment: { rpc: null, step: 'plan' },
