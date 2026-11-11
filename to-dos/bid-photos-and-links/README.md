@@ -17,7 +17,7 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: A bid photo on a plumbing bid, the test of the folders' move into the shared Drive (call 4, made 2026-11-10). The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
 size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 4 to 9 (S · M · M · S · S · S)
 blocker: None for PR 5. Call 6 gates PR 4 and call 11 gates PR 6.
 opinion: build — PR 5 next, so every link has its place in the column; then the job's pair
@@ -267,9 +267,17 @@ answered.
      sharing. Members of the shared Drive who were not on a folder before can now open it.
    - **The app**: `bid-photos` asked about a plumbing bid made that day answers with its folder in the shared
      Drive and no hold. Nothing was written by that read.
-   - **Not walked**: a photo added to a real plumbing bid and filed. The first one is the test. The folder
-     maker will now move a won bid's folder under its customer, and may place up to fifteen open jobs made
-     from a bid the same way on its ten-minute sweep; that was not watched.
+   - **Walked the same evening, on the live site**: a photo named ZZ Test was added to a real plumbing bid
+     whose folder is inside the moved plumbing folder. The window named the folder with no hold, the press read
+     *Make the folder and add 1 photo*, and the next sweep, under four minutes later, made Team only › Photos
+     in that folder and filed the picture there. The window then drew it from Drive, the board's camera turned
+     blue with 1, the bucket copy was gone, and neither that bid nor the robots' bid on the same folder adopted
+     a second row. Taken back after: the row is stamped removed, the Team only folder the test made is in
+     Drive's trash, and the bid reads as it did before.
+   - **Seen in the walk**: the press says it makes the folder, and the sweep makes it up to five minutes
+     later. Until then the photo reads *Not in Drive yet*, which is true.
+   - **Not walked**: the folder maker will now move a won bid's folder under its customer, and may place up
+     to fifteen open jobs made from a bid the same way on its ten-minute sweep; that was not watched.
 5. **When a bid is won, what happens to its photos?** My pick: nothing moves. The folder is the
    job's by then, and the photos are in its Team only › Photos. A later PR shows them in the job's
    photo window as *from the bid*. Customer Pictures stays the job's own.
