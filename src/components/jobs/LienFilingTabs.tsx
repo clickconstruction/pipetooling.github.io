@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { appendToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, lienAffidavitPrintOptions, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type FilingPrintOptions, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { appendToFilingPrintHtml, prependToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, lienAffidavitPrintOptions, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type FilingPrintOptions, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
@@ -18,8 +18,12 @@ import {
   type CustomerAddressRow,
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
-import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpPaperFromFields, lienHelpPrintHtml } from '../../lib/jobs/lienHelpSheet'
+import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { LienSigningCountyBox } from './LienSigningCountyBox'
+import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -33,9 +37,11 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
-import { contractorAddressGate } from '../../lib/jobs/lienDeskAffidavits'
+import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
+import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
-import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
+import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -213,6 +219,9 @@ export default function LienFilingTabs({
   // The desk's own recipe fills the paper (v2.6809): this tab filled the fields by hand beside it, and a job with no clock hours printed
   // *from — through —* where the desk's draft swore its month; the original contractor's address was never handed over. The period is the
   // first approved day through the last, or the day set by hand (v2.6061), else the month the window's strip names.
+  // The county the affidavit is signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
+  const signing = useLienSigningCounty(issuer)
+  const affidavitIssuer = signing.issuer
   const affidavitFields: LienAffidavitFields = useMemo(() => {
     const days = workDays ?? job
     return buildLienWindowAffidavitFields({
@@ -236,13 +245,13 @@ export default function LienFilingTabs({
       todayYmd: todayYmd(),
       noticesRecorded: liveNotices.length > 0,
       contactPerson: signerNameFallback,
-      issuer,
+      issuer: affidavitIssuer,
       form: affidavitForm,
       // The short form names the months and the sends of the notices recorded on the job.
       filings: live,
       homestead: property.homestead,
     })
-  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
+  }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -319,7 +328,10 @@ export default function LienFilingTabs({
 
   // ---------- gates ----------
 
+  // Punch list #314: a mechanic's lien does not attach to public property. Every name the record gives is asked, not the one the paper prints.
+  const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany])
   const affidavitGates: { ok: boolean; label: string }[] = [
+    ...(ownerPublic ? [{ ok: false, label: PUBLIC_OWNER_DESK_SENTENCE }] : []),
     { ok: Boolean(ownerName && property.owner.mailingAddress), label: ownerName ? `Owner of record — ${ownerName}${property.owner.mailingAddress ? '' : ' (mailing address missing)'}` : 'Owner of record with mailing address' },
     {
       ok: Boolean(property.county && property.legalDescription),
@@ -331,6 +343,11 @@ export default function LienFilingTabs({
     { ok: !property.homestead, label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : 'Not a homestead' },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
+  const noticeCheckLines = useMemo(() => {
+    const days = workDays ?? job
+    const months = lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
+    return lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months, filings: live }))
+  }, [workDays, job, workMonths, isSub, live, property.propertyKind])
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -372,16 +389,45 @@ export default function LienFilingTabs({
     [currentDoc, printOptions],
   )
 
+  // The affidavit's help sheet (punch list #314): the job's facts as the paper states them, so the sheet and the paper agree.
+  const [helpSheetOn, setHelpSheetOn] = useLienHelpSheetChoice()
+  const helpPaper = useMemo(
+    () =>
+      lienHelpPaperFromFields({
+        jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+        fileBy: clock.filingDeadline ? demandDate(clock.filingDeadline) : '',
+        claimWords: demandMoney(affidavitFields.unpaidAmount),
+        fields: affidavitFields,
+        // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
+        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines },
+      }),
+    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines],
+  )
+
   const printDoc = useCallback(() => {
     if (!currentDoc) return
+    const paperHtml = noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions))
+    const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id] }
+    // A short-form affidavit prints behind its help sheet (punch list #314). The sheet is never the paper: the copy filed on the job is the paper alone.
+    if (currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && helpSheetOn) {
+      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd())), LIEN_HELP_STYLES))) {
+        showToast('Popup blocked — allow popups to print.', 'error')
+        return
+      }
+      void fileSentCopy({ ...filing, how: 'print' }, { html: paperHtml })
+      return
+    }
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
-    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions)), {
-      kind: `lien_${currentDoc.kind}`,
-      title: currentDoc.title,
-      jobIds: [job.id],
-    })
+    const ok = printAndFile(paperHtml, filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions, affidavitFields.form, helpSheetOn, helpPaper])
+
+  // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
+  const printGuideCopy = useCallback(() => {
+    if (!currentDoc || currentDoc.kind !== 'affidavit') return
+    const page = lienHelpPrintHtml(lienHelpGuideCopyHtml(filingDocHtml(currentDoc.blocks), helpPaper), `Guide copy — Job ${jobNumber}`)
+    if (!openHtmlPrintWindow(page)) showToast('Popup blocked — allow popups to print.', 'error')
+  }, [currentDoc, helpPaper, jobNumber, showToast])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return
@@ -956,6 +1002,15 @@ export default function LienFilingTabs({
               </div>
             ))}
             {monthMatchWarning ? <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {monthMatchWarning}</div> : null}
+            {/* The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold. */}
+            {noticeCheckLines.length > 0 ? (
+              <div data-lien-window-notice-check style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem', display: 'grid', gap: '0.1rem' }}>
+                <strong>⚠ {LIEN_NOTICE_CHECK_LEAD}</strong>
+                {noticeCheckLines.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </div>
+            ) : null}
             {clock.filingDeadline ? <div style={{ fontSize: '0.72rem', color: 'var(--text-red-700)', marginTop: '0.3rem', fontWeight: 700 }}>Filing window for {clock.workMonth} work runs through {demandDate(clock.filingDeadline)} (§ 53.052).</div> : null}
           </div>
           {affidavitReady ? (
@@ -1006,6 +1061,11 @@ export default function LienFilingTabs({
                   <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
                     Print for notarization
                   </button>
+                  {affidavitFields.form === 'short' ? (
+                    <button type="button" data-lien-guide-copy onClick={printGuideCopy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer' }}>
+                      Print a guide copy
+                    </button>
+                  ) : null}
                   <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
                     {pdfBusy ? 'Building…' : 'Download PDF'}
                   </button>
@@ -1019,6 +1079,14 @@ export default function LienFilingTabs({
                     </button>
                   ) : null}
                   {sheetNote}
+                  {/* The help sheet (punch list #314): on unless the office turns it off, and the choice is kept on this computer. */}
+                  {affidavitFields.form === 'short' ? (
+                    <label data-lien-window-help-sheet style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={helpSheetOn} onChange={(e) => setHelpSheetOn(e.target.checked)} />
+                      {LIEN_HELP_SHEET_BOX}
+                    </label>
+                  ) : null}
+                  {affidavitFields.form === 'short' ? <LienSigningCountyBox id="lien-window-signing-county" county={signing.county} onChange={signing.setCounty} /> : null}
                 </div>
               )}
             </>

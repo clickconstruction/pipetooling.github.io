@@ -13,6 +13,12 @@ export type PhysicalInvoiceIssuer = {
    * affidavit prints it after the mailing address (§ 53.054(a)(7), the app's reading); nothing else reads it.
    */
   physicalAddressText?: string
+  /**
+   * The county where the company signs its lien papers in front of a notary (punch list #314): the venue. The short
+   * lien affidavit prints it on both county lines, so nobody writes the property's county there. Blank leaves the
+   * lines blank for the notary's hand.
+   */
+  signingCounty?: string
   phone: string
   email: string
   tagline: string
@@ -29,6 +35,7 @@ const EMPTY: PhysicalInvoiceIssuer = {
   companyName: '',
   addressText: '',
   physicalAddressText: '',
+  signingCounty: '',
   phone: '',
   email: '',
   tagline: '',
@@ -44,6 +51,7 @@ function cloneIssuer(i: PhysicalInvoiceIssuer): PhysicalInvoiceIssuer {
     companyName: i.companyName,
     addressText: i.addressText,
     physicalAddressText: i.physicalAddressText ?? '',
+    signingCounty: i.signingCounty ?? '',
     phone: i.phone,
     email: i.email,
     tagline: i.tagline,
@@ -63,6 +71,7 @@ export function parsePhysicalInvoiceIssuerStoredJson(parsed: unknown): PhysicalI
     companyName: typeof o.companyName === 'string' ? o.companyName : '',
     addressText: typeof o.addressText === 'string' ? o.addressText : '',
     physicalAddressText: typeof o.physicalAddressText === 'string' ? o.physicalAddressText : '',
+    signingCounty: typeof o.signingCounty === 'string' ? o.signingCounty : '',
     phone: typeof o.phone === 'string' ? o.phone : '',
     email: typeof o.email === 'string' ? o.email : '',
     tagline: typeof o.tagline === 'string' ? o.tagline : '',

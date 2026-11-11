@@ -368,6 +368,17 @@ export function lienOriginalContractor(f: { isSub: boolean; gcName: string | nul
   return { name: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME, address: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim() }
 }
 
+/**
+ * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the months its recorded § 53.056 notices name
+ * that fall inside the job's own work span. The short form prints them in words; the notice check reads them as they
+ * are (punch list #314). None on a job contracted with the owner.
+ */
+export function lienAffidavitSwornMonths(f: Pick<LienAffidavitJobFacts, 'isSub' | 'workDays' | 'firstMonth' | 'lastMonth' | 'todayYmd' | 'filings'>): string[] {
+  if (!f.isSub) return []
+  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
+}
+
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
   const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
   // One rule for paragraph 7: the GC on a job under one, our own company on a job contracted with the owner, whatever the caller handed over.
@@ -404,9 +415,11 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
           isSub: f.isSub,
           ...(f.homestead === true ? { homestead: true } : {}),
           ...(physicalAddress ? { claimantPhysicalAddress: physicalAddress } : {}),
+          // The county the company signs in (punch list #314), when Settings or the print press names one: both county lines print it.
+          ...((f.issuer?.signingCounty ?? '').trim() ? { signingCounty: (f.issuer?.signingCounty ?? '').trim() } : {}),
           // A job contracted with the owner names no months and no notices: neither is asked of an original contractor.
           // The months are the noticed ones inside this job's own span: a notice mailed for several jobs stores the whole paper's months on each.
-          ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),
+          ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitSwornMonths(f)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),
         }),
   }
 }

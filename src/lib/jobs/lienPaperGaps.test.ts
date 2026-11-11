@@ -34,6 +34,11 @@ describe('lienPaperGaps (v2.4632)', () => {
     ])
     expect(withGapTokens({ county: 'Bexar' }, gaps)).toEqual({ county: 'Bexar' })
   })
+  it('a public owner is a blank on the record that only counsel settles (punch list #314)', () => {
+    const gaps = lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'public_owner', ok: false }] })
+    expect(gaps.map((g) => [g.n, g.key, g.where, g.fix, g.fixWords])).toEqual([[1, 'public_owner', 'record', 'counsel', 'Talk to counsel']])
+    expect(lienPaperFixWindow(gaps[0]!)).toBeNull()
+  })
   it("a GC with no address on file is a blank on the form, fixed on its customer record (punch list #305)", () => {
     const gaps = lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'contractor', ok: false }] })
     expect(gaps.map((g) => [g.n, g.key, g.where, g.fix, g.fixWords, g.field ?? null])).toEqual([[1, 'gc_address', 'form', 'customer', 'Add it on the customer record', 'originalContractorAddress']])
