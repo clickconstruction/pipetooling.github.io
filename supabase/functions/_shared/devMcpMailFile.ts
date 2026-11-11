@@ -11,8 +11,14 @@
  * over about 59 KB used to come back as base64 cut mid-string. A reply now carries at most `MAIL_FILE_SLICE_MAX_BYTES`
  * of the file with `offset`, `length` and `next_offset`, the size and the sha256 of the whole, and the words that say
  * which argument reads on (`mailFileReadReply`).
+ *
+ * Server 0.60.0 (v2.6880, punch list #296): `read_mail_file_text` hands back the file's words instead of its bytes —
+ * a PDF's text layer, a text file, an `.eml` decoded — read on the server by the file index's own reader
+ * (`fileText.ts` → `textFromBytes`) and paged by character (`mailFileTextReply`). A scan, a kind the reader does not
+ * read, a file past its size and a read that failed answer in words that name `read_mail_file` (`mailFileTextHeldWords`).
  */
 import { REPLY_MAX_CHARS, replyText } from './devMcpDoor.ts'
+import { type FileTextRead, INDEX_TEXT_MAX_CHARS, TEXT_PDF_MAX_BYTES, TEXT_PLAIN_MAX_BYTES } from './fileIndexKernel.ts'
 import type { EmailFile } from './gcKernels/lib/emailIn/gmailMessage.ts'
 import type { MailAccount } from './devMcpMailSearch.ts'
 
@@ -72,6 +78,15 @@ export function mailFileReadArgs(args: Record<string, unknown>, known: readonly 
   const length = given(args.length) ? wholeNumber(args.length) : null
   if (given(args.length) && (length === null || length < 1)) return { ok: false, error: `read_mail_file: length is how many bytes to hand back, a whole number from 1; a reply carries at most ${MAIL_FILE_SLICE_MAX_BYTES}.` }
   return { ok: true, account: base.account, id: base.id, name: base.name, offset, length }
+}
+
+/** `read_mail_file_text`'s arguments: the account, the hit's id and the file's name, and `offset`, the character to start at (0 when left out). */
+export function mailFileTextArgs(args: Record<string, unknown>, known: readonly MailAccount[]): { ok: true; account: MailAccount; id: string; name: string; offset: number } | { ok: false; error: string } {
+  const base = mailFileBase(args, known, 'read_mail_file_text')
+  if (!base.ok) return base
+  const offset = args.offset !== undefined && args.offset !== null ? wholeNumber(args.offset) : 0
+  if (offset === null) return { ok: false, error: 'read_mail_file_text: offset is the character to start at, a whole number from 0 (a reply’s next_offset).' }
+  return { ok: true, account: base.account, id: base.id, name: base.name, offset }
 }
 
 function mailFileBase(args: Record<string, unknown>, known: readonly MailAccount[], verb: string): { ok: true; account: MailAccount; id: string; name: string } | { ok: false; error: string } {
@@ -208,6 +223,92 @@ export function mailFileReadNextWords(piece: { size: number; offset: number; len
   if (next === null) return `This is the last piece, ${span}. ${join}`
   const left = Math.ceil((size - next) / length)
   return `This is ${span}, not the whole file: a reply is cut at ${count(REPLY_MAX_CHARS)} characters, so a file comes in pieces of at most ${count(MAIL_FILE_SLICE_MAX_BYTES)} bytes. Call read_mail_file again with the same account, id and name and offset: ${next}, and on until next_offset is null (${left} more ${left === 1 ? 'call' : 'calls'} at this length). ${join}`
+}
+
+/**
+ * The most characters of a file's words one `read_mail_file_text` reply carries. JSON writes a line end as two
+ * characters, so 60,000 leaves the door's 80,000 room for a page of short lines and the file's facts; a text that
+ * escapes to more is shortened until the reply fits.
+ */
+export const MAIL_FILE_TEXT_MAX_CHARS = 60_000
+/** How far back from the cut a line end is looked for, so a piece ends on a whole line where one is near. */
+const TEXT_LINE_END_REACH = 2_000
+
+/** Where a piece of `text` from `offset` ends: at most `max` characters on, on a line end where one is near, never between the halves of one character. */
+export function textPieceEnd(text: string, offset: number, max: number): number {
+  let end = Math.min(text.length, offset + Math.max(1, max))
+  if (end >= text.length) return text.length
+  const line = text.lastIndexOf('\n', end - 1)
+  if (line >= offset && end - (line + 1) <= TEXT_LINE_END_REACH) end = line + 1
+  const last = text.charCodeAt(end - 1)
+  if (last >= 0xd800 && last <= 0xdbff && end - 1 > offset) end -= 1
+  return end
+}
+
+/** Why a file off a mail has no words to hand back, each naming the next press. */
+export function mailFileTextHeldWords(file: { name: string; mime: string; size_bytes: number }, why: 'scan' | 'kind' | 'big' | 'slow' | 'error'): string {
+  const bytes = 'Read its bytes with read_mail_file (same account, id and name).'
+  switch (why) {
+    case 'scan':
+      return `${file.name} is a scan with no text layer, so there are no words to hand back. ${bytes} Or file it on its job with plan_mail_file → apply_mail_file: the file index reads a filed scan by OCR where OCR is set up (read_file_index_status says how many scans wait).`
+    case 'kind':
+      return `${file.name} (${file.mime}) is a kind of file the reader does not read: it reads a PDF’s text layer, a text file (.txt, .csv, .md) and an email (.eml). ${bytes}`
+    case 'big':
+      return `${file.name} is ${kbWords(file.size_bytes)}, past what the reader takes: a PDF up to ${TEXT_PDF_MAX_BYTES / 1024 / 1024} MB, a text file or an email up to ${TEXT_PLAIN_MAX_BYTES / 1024 / 1024} MB. ${bytes}`
+    case 'slow':
+      return `The read of ${file.name} ran out of time before a page of it was read. ${bytes}`
+    case 'error':
+      return `The reader could not open ${file.name} (a damaged PDF or one locked with a password reads this way). ${bytes}`
+  }
+}
+
+/**
+ * `read_mail_file_text`'s reply: the file's words from `offset`, at most `MAIL_FILE_TEXT_MAX_CHARS` of them and cut on a
+ * line end where one is near, with where they came from (`text_source`), a PDF's `pages` and `pages_read`, `chars` (the
+ * whole text's length) and `next_offset` — the argument that reads on, null when this piece ends the text. `read_next`
+ * stands before the words whenever they are not the whole file's: a piece of a longer text, or a PDF the reader stopped
+ * in. The reply is measured as the door writes it and the piece shortened until it fits, so the door's cut never lands
+ * inside the words. A file with no words is refused in words (`mailFileTextHeldWords`).
+ */
+export function mailFileTextReply(account: string, id: string, file: MailFileRaw, read: FileTextRead, ask: { offset: number } = { offset: 0 }): { ok: true; reply: Record<string, unknown> } | { ok: false; error: string } {
+  const facts = { name: file.name, mime: file.mime, size_bytes: file.bytes.length }
+  if ('why' in read) return { ok: false, error: mailFileTextHeldWords(facts, read.why) }
+  const text = read.text.replace(/\u0000/g, '')
+  const chars = text.length
+  if (text.trim() === '') return { ok: false, error: `${file.name} holds no words: the reader read it and found it empty. Read its bytes with read_mail_file (same account, id and name).` }
+  if (ask.offset >= chars) return { ok: false, error: `offset ${count(ask.offset)} is past the end of ${file.name}’s words, which are ${count(chars)} characters: offsets run from 0 to ${count(chars - 1)}.` }
+  const pages = read.pages
+  const pagesRead = pages == null ? null : (read.pagesRead ?? pages)
+  let max = MAIL_FILE_TEXT_MAX_CHARS
+  for (;;) {
+    const end = textPieceEnd(text, ask.offset, max)
+    const next = end < chars ? end : null
+    const reply: Record<string, unknown> = { account, id, ...facts, sha256: file.sha256, text_source: read.source, pages, pages_read: pagesRead, chars, offset: ask.offset, next_offset: next }
+    const words = mailFileTextNextWords({ chars, offset: ask.offset, end, next, pages, pagesRead })
+    if (words) reply.read_next = words
+    reply.text = text.slice(ask.offset, end)
+    if (end - ask.offset <= 1 || replyText(reply).length <= REPLY_MAX_CHARS) return { ok: true, reply }
+    max = Math.max(1, Math.floor(((end - ask.offset) * 3) / 4))
+  }
+}
+
+/** What a piece of a file's words says about itself and how to read on; nothing when the reply is the whole file's words. */
+export function mailFileTextNextWords(piece: { chars: number; offset: number; end: number; next: number | null; pages: number | null; pagesRead: number | null }): string | null {
+  const { chars, offset, end, next, pages, pagesRead } = piece
+  const short =
+    pages != null && pagesRead != null && pagesRead < pages
+      ? `The reader stopped after page ${count(pagesRead)} of ${count(pages)} (its time for one file, or its ${count(INDEX_TEXT_MAX_CHARS)} characters), so these ${count(chars)} characters are the words of the first ${count(pagesRead)} ${pagesRead === 1 ? 'page' : 'pages'} only. The pages past that are read from the file’s bytes with read_mail_file.`
+      : null
+  if (offset === 0 && next === null) return short
+  const span = `characters ${count(offset)} to ${count(end - 1)} of ${count(chars)}`
+  if (next === null) return [`These are the last of the words, ${span}.`, short].filter(Boolean).join(' ')
+  const left = Math.ceil((chars - next) / MAIL_FILE_TEXT_MAX_CHARS)
+  return [
+    `These are ${span}, not the whole text: a reply is cut at ${count(REPLY_MAX_CHARS)} characters, so the words come at most ${count(MAIL_FILE_TEXT_MAX_CHARS)} at a time, ending on a line. Call read_mail_file_text again with the same account, id and name and offset: ${next}, and on until next_offset is null (about ${left} more ${left === 1 ? 'call' : 'calls'}).`,
+    short,
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 /** The inner verb and its arguments for an evidence record or a matter document: the file as content_base64. */

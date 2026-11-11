@@ -29,7 +29,7 @@ describe('the theme-review verbs (v2.6844)', () => {
     expect(SERVER).toContain("name: 'apply_theme_review'")
     expect(SERVER).toContain("case 'plan_theme_review':")
     expect(SERVER).toContain("case 'apply_theme_review':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.59.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.60.0'")
     expect(SERVER).toContain('Writes are seventy-seven verbs and nothing else:')
     expect(SERVER).toContain('plan_theme_review → apply_theme_review (the review of marks already there')
   })

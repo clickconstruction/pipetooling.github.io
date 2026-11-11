@@ -65,7 +65,7 @@ describe('devMcpActivityNote — the verbs on the allowlist', () => {
     }
     expect(planVerbFor('apply_activity_note')).toBe('plan_activity_note')
     expect(isActivityNoteVerb('plan_job')).toBe(false)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.59.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.60.0'")
     expect(SERVER).toContain('Writes are seventy-seven verbs and nothing else:')
     expect(SERVER).toContain('plan_activity_note → apply_activity_note')
     expect(README).toContain('`plan_activity_note(note)` · `apply_activity_note(note, plan_hash)`')
