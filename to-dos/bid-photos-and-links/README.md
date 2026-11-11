@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 7, setting a link in the Files window itself, needs no further word and can start.
-size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, and PR 5 is the column with its Files window; left: PRs 4 and 6 to 9 (S · M · S · S · S)
-blocker: None for PR 7. Call 6 gates PR 4 and call 11 gates PR 6.
-opinion: build — PR 7 next, so a missing link is set in the window where it is seen; then the job's pair
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 8, a photo taken with no signal, needs no further word and can start.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; left: PRs 4, 6, 8 and 9 (S · M · S · S)
+blocker: None for PRs 8 and 9. Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — the owner's two calls next, since they gate the removal and the job's pair; PR 8 can go meanwhile
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -415,12 +415,17 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
   crews' photos are for the office is amended); `docs/BIDS_SYSTEM.md`; the guides `add-photos-to-a-bid` and
   `add-a-photo-to-a-job`.
 
-**PR 7 · set or change a link from the window (S).**
+**PR 7 · set or change a link from the window (S). Shipped, v2.6922, 2026-11-10.**
 - *Client*: Project folder (paste, or **Make the project folder**), Plans (**Add a set**, the form's
   own field reused), CountTooling and Bid submission (paste). Writes the columns the form writes.
 - *Edge functions*: `bid-photos make` is reused for the project folder. No new function.
 - *Docs*: the guide `keep-more-than-one-set-of-plans-on-a-bid` and a new one for the window;
   `docs/BIDS_SYSTEM.md`.
+- *As built*: a grey icon opens the window with that row's box already open. A project folder that is not a
+  Google Drive folder saves, with a line that photos cannot be filed there. The window does not clear a link
+  and does not list the CountTooling projects behind the counts: **Open Edit bid** in each box is the door.
+  Call 9, whether the window replaces Files & links in the form, stays open: both write the same columns.
+- *Walked*: a link saved and Make the project folder pressed, each on a ZZ Test bid and each put back.
 
 **PR 8 · a photo taken with no signal (S).**
 - *Client*: `photoBlobs` holds the photo on the phone and sends it when the signal is back, as a
