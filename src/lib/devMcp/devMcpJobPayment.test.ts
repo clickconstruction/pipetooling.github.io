@@ -76,8 +76,8 @@ describe('devMcpJobPayment — the verbs on the allowlist', () => {
     }
     expect(isJobPaymentVerb('plan_job')).toBe(false)
     expect(planVerbFor('apply_job_payment')).toBe('plan_job_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.66.0'")
-    expect(SERVER).toContain('Writes are eighty-one verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.67.0'")
+    expect(SERVER).toContain('Writes are eighty-three verbs and nothing else:')
     expect(README).toContain('`plan_job_payment(payment)` · `apply_job_payment(payment, plan_hash)`')
     expect(README).toContain("eighty-one since v2.6940's payment and combine pairs")
     expect(alreadyApplied('apply_job_payment', { target: SHELL, at: null })).toContain('already applied')
