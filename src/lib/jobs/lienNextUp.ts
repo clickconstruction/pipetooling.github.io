@@ -334,6 +334,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
         if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: 'Affidavit · send the § 53.056 notice first — late is allowed while this window is open', action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
         // Punch list #305: when the property record is whole and the GC's address is what is missing, the row says so.
+        // Punch list #314: a public owner is not a record to fix. The row says so and offers no press.
+        else if (failing.includes('public_owner')) push({ ...base, key, sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', action: 'fix_property', button: null })
         else if (failing.includes('contractor') && !failing.some((k) => k === 'owner' || k === 'legal' || k === 'homestead')) push({ ...base, key, sub: 'Affidavit · the general contractor has no address on file', action: 'fix_property', button: canAct ? 'Add the address' : null })
         else push({ ...base, key, sub: 'Affidavit · the property record is not complete', action: 'fix_property' })
         break
