@@ -144,7 +144,12 @@ serve(async (req) => {
         }
         // One row per key inside the page too: the door can hand the same permit and type twice.
         const byKey = new Map<string, PermitRow>()
-        for (const row of rows) byKey.set(`${row.permit_number}\u0000${row.permit_type}`, row)
+        for (const row of rows) {
+          const key = `${row.permit_number}\u0000${row.permit_type}`
+          const held = byKey.get(key)
+          // A door that writes a permit once per person on it says which row to keep; otherwise the later one.
+          byKey.set(key, held && feed.prefer ? feed.prefer(held, row) : row)
+        }
         const unique = [...byKey.values()]
         if (!dryRun) {
           for (let i = 0; i < unique.length; i += UPSERT_BATCH) {

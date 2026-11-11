@@ -6,6 +6,7 @@ import { appendToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlock
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
+import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 import LienRecordSheet from './LienRecordSheet'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
@@ -356,17 +357,25 @@ export default function LienFilingTabs({
     [currentDoc, enclosedDocs, payPagePdf],
   )
 
+  // The short affidavit prints on its tight sheet, one page for the notary (v2.6895).
+  const printOptions = useMemo(() => (currentDoc?.kind === 'affidavit' ? lienAffidavitPrintOptions(affidavitFields) : undefined), [currentDoc, affidavitFields])
+  // The same paper laid out as the printer will, for the line that says when it takes a second sheet (v2.6896).
+  // The notice is left out: its pay page and invoices print behind it, so it is never one sheet.
+  const sheetNote = useMemo(
+    () => (currentDoc && currentDoc.kind !== 'notice_53_056' ? <FilingSheetNote sheetHtml={filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), { ...printOptions, sheet: true })} /> : null),
+    [currentDoc, printOptions],
+  )
+
   const printDoc = useCallback(() => {
     if (!currentDoc) return
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
-    // The short affidavit prints on its tight sheet, one page for the notary (v2.6895).
-    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), currentDoc.kind === 'affidavit' ? lienAffidavitPrintOptions(affidavitFields) : undefined)), {
+    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions)), {
       kind: `lien_${currentDoc.kind}`,
       title: currentDoc.title,
       jobIds: [job.id],
     })
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, affidavitFields])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return
@@ -1003,6 +1012,7 @@ export default function LienFilingTabs({
                       Record service…
                     </button>
                   ) : null}
+                  {sheetNote}
                 </div>
               )}
             </>
@@ -1064,6 +1074,7 @@ export default function LienFilingTabs({
                 {busy ? 'Saving…' : 'Save release record'}
               </button>
             </div>
+            {sheetNote}
           </>
         )}
       </div>

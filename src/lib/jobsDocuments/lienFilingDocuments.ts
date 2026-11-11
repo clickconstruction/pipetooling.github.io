@@ -407,8 +407,18 @@ export function appendToFilingPrintHtml(html: string, extra: string): string {
 /** The white band at the head and foot of every printed page; nothing on screen. */
 const FILING_PAGE_GAP = '<tr><td><div class="filing-page-gap"></div></td></tr>'
 
-/** How a paper prints, beyond its blocks. */
-export type FilingPrintOptions = { leading?: 'tight' }
+/**
+ * How a paper prints, beyond its blocks. `sheet` (v2.6896) writes the print sheet's rules for the screen too, so a
+ * hidden frame `FILING_SHEET_WIDTH_PX` wide lays the paper out as the printer will and the window can say where it
+ * breaks (`filingSheetBreak`). Never printed from.
+ */
+export type FilingPrintOptions = { leading?: 'tight'; sheet?: boolean }
+
+/** The white band at the head and foot of every printed page, in inches. */
+const FILING_PAGE_GAP_IN = 0.6
+/** A Letter sheet at 96 CSS pixels to the inch: its width, and the room for the paper between the head and foot bands. */
+export const FILING_SHEET_WIDTH_PX = 8.5 * 96
+export const FILING_SHEET_ROOM_PX = (11 - 2 * FILING_PAGE_GAP_IN) * 96
 
 /**
  * The printed body's leading on the short lien affidavit's sheet (v2.6895). The paper's own 1.75 put the seven
@@ -463,10 +473,10 @@ export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, f
   .filing-page td { padding: 0; vertical-align: top; }
   .filing-page-gap { height: 0; }
   .filing-keep { break-inside: avoid; page-break-inside: avoid; }
-  @media print {
-    html { margin: 0; padding: 0; }
+  @media ${opts?.sheet ? 'all' : 'print'} {
+    html { margin: 0; padding: 0;${opts?.sheet ? ' overflow: hidden;' : ''} }
     body { max-width: none; margin: 0; padding: 0 0.85in;${opts?.leading === 'tight' ? ` line-height: ${FILING_PRINT_TIGHT_LEADING};` : ''} }
-    .filing-page-gap { height: 0.6in; }
+    .filing-page-gap { height: ${FILING_PAGE_GAP_IN}in; }
   }
 </style></head><body><table class="filing-page" role="presentation"><thead>${FILING_PAGE_GAP}</thead><tbody><tr><td>${body}${FILING_PRINT_END}</td></tr></tbody><tfoot>${FILING_PAGE_GAP}</tfoot></table></body></html>`
 }
