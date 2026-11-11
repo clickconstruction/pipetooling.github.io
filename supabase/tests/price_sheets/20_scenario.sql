@@ -283,6 +283,114 @@ RESET ROLE;
 SELECT bedt.ok('anon cannot call either function',
   NOT has_function_privilege('anon', 'public.price_row_file(jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_row_take_back(uuid)', 'EXECUTE'));
 
+-- 17 · a sheet just read is kept whole, with its fixtures, and nothing is filed.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+SET LOCAL ROLE authenticated;
+INSERT INTO bed_out VALUES ('sheet', to_jsonb(public.price_sheet_save(
+  jsonb_build_object('number', 'Q-88213', 'dated_on', '2026-11-12', 'valid_until', '2026-12-12', 'file_sha256', 'abc123', 'page_from', 1, 'page_to', 6),
+  jsonb_build_array(
+    jsonb_build_object('group_no', 1, 'tag', 'SK-2', 'label', 'DUMP SINK (BAR) (OFCI)', 'each_price', 52.72),
+    jsonb_build_object('group_no', 2, 'tag', 'MS-1', 'label', 'MOP SINK', 'each_price', 313.27)),
+  jsonb_build_array(
+    jsonb_build_object('group_no', 1, 'group_tag', 'SK-2', 'group_label', 'DUMP SINK (BAR) (OFCI)', 'line_kind', 'charge', 'house_code', '440118', 'description', 'MISC CHARGE', 'qty', 1),
+    jsonb_build_object('group_no', 1, 'group_tag', 'SK-2', 'group_label', 'DUMP SINK (BAR) (OFCI)', 'line_kind', 'component', 'house_code', '512207', 'description', 'AX8802XL-LR-PC ARLO SUPPLY KIT', 'qty', 1),
+    jsonb_build_object('group_no', 2, 'group_tag', 'MS-1', 'group_label', 'MOP SINK', 'house_code', '277310', 'description', 'B0133-ADF12 TANNER PRE RINSE', 'qty', 1, 'unit_price', 312.50),
+    jsonb_build_object('group_no', 2, 'group_tag', 'MS-1', 'group_label', 'MOP SINK', 'house_code', '190443', 'description', '3/8 X 1-1/2 CLOSET BOLT BRASS', 'qty', 2, 'unit_price', 38.40, 'pricing_unit', 'per_hundred', 'page_no', 4)))));
+SELECT bedt.ok('the sheet is a quote, came by sheet, with no house yet, kept by the caller',
+  (SELECT kind = 'quote' AND came_by = 'sheet' AND supply_house_id IS NULL AND number = 'Q-88213' AND valid_until = '2026-12-12' AND file_sha256 = 'abc123'
+     AND created_by = '00000000-0000-0000-0000-0000000000a1' FROM public.supply_papers WHERE id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet')));
+SELECT bedt.ok('its two fixtures and four rows are read back in order',
+  (SELECT count(*) = 2 FROM public.supply_paper_groups WHERE paper_id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet'))
+  AND (SELECT array_agg(line_no ORDER BY line_no) = ARRAY[1, 2, 3, 4] AND bool_and(filed_at IS NULL) FROM public.supply_paper_lines WHERE paper_id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet')));
+SELECT bedt.ok('a row keeps its fixture, its kind and its unit',
+  (SELECT group_no = 2 AND group_tag = 'MS-1' AND pricing_unit = 'per_hundred' AND qty_ordered = 2 AND page_no = 4 FROM public.supply_paper_lines
+   WHERE paper_id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet') AND line_no = 4));
+SELECT bedt.ok('nothing was filed by keeping the sheet', (SELECT count(*) = 0 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e002'));
+
+-- 18 · a row cannot be filed until the sheet has its house; then it files as that house, dated by the sheet.
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.price_row_file(jsonb_build_object('line_id', (SELECT id FROM public.supply_paper_lines WHERE description = 'B0133-ADF12 TANNER PRE RINSE'), 'part_id', '00000000-0000-0000-0000-00000000e002'));
+    RAISE EXCEPTION 'FAILED: a row was filed with no house';
+  EXCEPTION WHEN invalid_parameter_value THEN RAISE NOTICE 'ok: a row of a sheet with no house is not filed';
+  END;
+END $$;
+SELECT public.price_sheet_set((SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet'), jsonb_build_object('supply_house_id', '00000000-0000-0000-0000-00000000d002'));
+INSERT INTO bed_out VALUES ('sheet_row', public.price_row_file(jsonb_build_object(
+  'line_id', (SELECT id FROM public.supply_paper_lines WHERE description = 'B0133-ADF12 TANNER PRE RINSE'), 'part_id', '00000000-0000-0000-0000-00000000e002', 'came_by', 'sheet', 'matched_how', 'mfr_number')));
+SELECT bedt.ok('the row files under the sheet''s house, at its price, on its day',
+  (SELECT price = 312.50 AND effective_date = '2026-11-12' FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e002' AND supply_house_id = '00000000-0000-0000-0000-00000000d002'));
+SELECT bedt.ok('the row''s own number is kept on the part, taught by the sheet',
+  (SELECT part_id = '00000000-0000-0000-0000-00000000e002' AND taught_from = 'sheet' FROM public.supply_part_codes WHERE supply_house_id = '00000000-0000-0000-0000-00000000d002' AND code_key = '277310'));
+SELECT bedt.ok('the history names the quote', (SELECT notes = 'From quote Q-88213' FROM public.material_part_price_history WHERE part_id = '00000000-0000-0000-0000-00000000e002' AND new_price = 312.50));
+
+-- 19 · the house cannot change under a filed row; a filed row cannot be left out; the sheet cannot be removed.
+DO $$
+DECLARE v_sheet uuid := (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet');
+BEGIN
+  BEGIN
+    PERFORM public.price_sheet_set(v_sheet, jsonb_build_object('supply_house_id', '00000000-0000-0000-0000-00000000d001'));
+    RAISE EXCEPTION 'FAILED: the house changed under a filed row';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: the house does not change under a filed row';
+  END;
+  BEGIN
+    PERFORM public.price_sheet_line_hold((SELECT (v->>'line_id')::uuid FROM bed_out WHERE k = 'sheet_row'), 'left_out');
+    RAISE EXCEPTION 'FAILED: a filed row was left out';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: a filed row is not left out';
+  END;
+  BEGIN
+    PERFORM public.price_sheet_discard(v_sheet);
+    RAISE EXCEPTION 'FAILED: a sheet with a filed row was removed';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: a sheet with a filed row is not removed';
+  END;
+END $$;
+SELECT public.price_sheet_line_part((SELECT id FROM public.supply_paper_lines WHERE description = 'AX8802XL-LR-PC ARLO SUPPLY KIT' AND group_tag = 'SK-2'), '00000000-0000-0000-0000-00000000e001');
+SELECT bedt.ok('a person''s pick of the part is kept on the row',
+  (SELECT part_id = '00000000-0000-0000-0000-00000000e001' AND matched_how = 'person' AND filed_at IS NULL FROM public.supply_paper_lines WHERE description = 'AX8802XL-LR-PC ARLO SUPPLY KIT' AND group_tag = 'SK-2'));
+SELECT public.price_sheet_line_part((SELECT id FROM public.supply_paper_lines WHERE description = 'AX8802XL-LR-PC ARLO SUPPLY KIT' AND group_tag = 'SK-2'), NULL);
+SELECT bedt.ok('and the pick is undone', (SELECT part_id IS NULL AND matched_how = '' FROM public.supply_paper_lines WHERE description = 'AX8802XL-LR-PC ARLO SUPPLY KIT' AND group_tag = 'SK-2'));
+SELECT public.price_sheet_line_hold((SELECT id FROM public.supply_paper_lines WHERE description = 'MISC CHARGE' AND group_tag = 'SK-2'), 'left_out');
+SELECT bedt.ok('a row that is not filed is left out', (SELECT held_why = 'left_out' FROM public.supply_paper_lines WHERE description = 'MISC CHARGE' AND group_tag = 'SK-2'));
+SELECT public.price_sheet_set((SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet'), jsonb_build_object('number', 'Q-88213-R1'));
+SELECT bedt.ok('the number changes and the house stays', (SELECT number = 'Q-88213-R1' AND supply_house_id = '00000000-0000-0000-0000-00000000d002' FROM public.supply_papers WHERE id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet')));
+
+-- 20 · a sheet's row taken back stays on the sheet, unfiled; then the sheet can be removed.
+SELECT bedt.ok('the sheet''s row comes back', (SELECT (public.price_row_take_back((SELECT (v->>'line_id')::uuid FROM bed_out WHERE k = 'sheet_row'))->>'restored')::boolean));
+SELECT bedt.ok('the row is still on the sheet, not filed',
+  (SELECT filed_at IS NULL AND filed_price IS NULL FROM public.supply_paper_lines WHERE id = (SELECT (v->>'line_id')::uuid FROM bed_out WHERE k = 'sheet_row')));
+SELECT bedt.ok('the price it filed is gone, and the number it taught', (SELECT count(*) = 0 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e002' AND supply_house_id = '00000000-0000-0000-0000-00000000d002')
+  AND NOT EXISTS (SELECT 1 FROM public.supply_part_codes WHERE code_key = '277310'));
+SELECT public.price_sheet_discard((SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet'));
+SELECT bedt.ok('the sheet, its fixtures and its rows are gone',
+  (SELECT count(*) = 0 FROM public.supply_papers WHERE number = 'Q-88213-R1') AND (SELECT count(*) = 0 FROM public.supply_paper_groups) AND (SELECT count(*) = 0 FROM public.supply_paper_lines WHERE group_tag <> ''));
+RESET ROLE;
+
+-- 21 · a helper keeps no sheet; the groups table carries the fences.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a2');
+SET LOCAL ROLE authenticated;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.price_sheet_save(jsonb_build_object('number', 'X'), '[]'::jsonb, jsonb_build_array(jsonb_build_object('description', 'A ROW')));
+    RAISE EXCEPTION 'FAILED: a helper kept a sheet';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a helper keeps no sheet';
+  END;
+END $$;
+RESET ROLE;
+SELECT bedt.ok('the fixtures table has row level security and its restrictive policies',
+  (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.supply_paper_groups'::regclass)
+  AND (SELECT count(*) >= 3 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'supply_paper_groups' AND permissive = 'RESTRICTIVE'));
+SELECT bedt.ok('anon cannot call the sheet functions',
+  NOT has_function_privilege('anon', 'public.price_sheet_save(jsonb, jsonb, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_discard(uuid)', 'EXECUTE')
+  AND NOT has_function_privilege('anon', 'public.price_sheet_set(uuid, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_line_hold(uuid, text)', 'EXECUTE'));
+
 -- 7 · a number goes with its part.
 SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
 DELETE FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e002';

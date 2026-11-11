@@ -22,6 +22,8 @@ export type PastedRow = {
   extended: number | null
   /** How many printed lines the row took. More than one means a description that ran on. */
   lines: number
+  /** The page the row is printed on, when the text came from a file's pages. */
+  page?: number
 }
 
 export type PastedGroup = {
@@ -32,6 +34,8 @@ export type PastedGroup = {
   /** The group's EACH subtotal, when the paper prints one. */
   each: number | null
   rows: PastedRow[]
+  /** The page the heading is printed on, when the text came from a file's pages. */
+  page?: number
 }
 
 export type PastedSheet = { groups: PastedGroup[]; loose: PastedRow[] }
@@ -50,6 +54,9 @@ const UNIT_SUFFIX = /^\/?(ea|each|e|c|m)\.?$/i
 const RULE_LINE = /^[\s*=_.\-–—]{5,}$/
 const HEADER_LINE = /\b(?:order\s+qty|item\s+no|unit\s+price|description\s+unit|page\s+\d+\s+of\s+\d+)\b/i
 const SUBTOTAL_LINE = /^sub\s*-?\s*total\b/i
+/** A line that says which page the lines after it are on. `pageMark(4)` between pages keeps a fixture that runs over. */
+const PAGE_MARK = /^\f(\d+)$/
+export const pageMark = (page: number): string => `\f${page}`
 const TAG = /^([A-Z]{1,5}-?\d{1,3}[A-Z]?(?:\s*(?:&|\/|,)\s*[A-Z]{0,5}-?\d{1,3}[A-Z]?)*)\s+(\S.*)$/
 
 function money(token: string): number | null {
@@ -151,8 +158,16 @@ export function parsePasted(text: string): PastedSheet {
   let group: PastedGroup | null = null
   let lastRow: PastedRow | null = null
   let afterBreak = true
+  let page: number | undefined
 
   for (const raw of text.split(/\r?\n/)) {
+    const mark = PAGE_MARK.exec(raw)
+    if (mark) {
+      // A new page: the fixture may run on, a description does not.
+      page = Number(mark[1])
+      lastRow = null
+      continue
+    }
     const line = raw.replace(/\t/g, '  ')
     if (!line.trim() || RULE_LINE.test(line)) {
       afterBreak = true
@@ -172,6 +187,7 @@ export function parsePasted(text: string): PastedSheet {
 
     const row = parsePastedRow(line)
     if (row) {
+      if (page != null) row.page = page
       ;(group ? group.rows : loose).push(row)
       lastRow = row
       afterBreak = false
@@ -181,7 +197,7 @@ export function parsePasted(text: string): PastedSheet {
     const heading = parseHeading(line, afterBreak)
     // A tag with a dash is a heading wherever it stands; one without is a heading only when no row is running on.
     if (heading && (!lastRow || heading.tag.includes('-'))) {
-      group = { tag: heading.tag, label: heading.label, each: null, rows: [] }
+      group = { tag: heading.tag, label: heading.label, each: null, rows: [], ...(page != null ? { page } : {}) }
       groups.push(group)
       afterBreak = false
       continue
@@ -195,7 +211,7 @@ export function parsePasted(text: string): PastedSheet {
       continue
     }
     if (heading) {
-      group = { tag: heading.tag, label: heading.label, each: null, rows: [] }
+      group = { tag: heading.tag, label: heading.label, each: null, rows: [], ...(page != null ? { page } : {}) }
       groups.push(group)
     }
     afterBreak = false

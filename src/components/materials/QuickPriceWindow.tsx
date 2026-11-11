@@ -7,22 +7,21 @@
  * With `presetPart` the part is known (opened from that part's prices), so only the house, the
  * number and the price are asked.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
 import { loadHouseCodes, toHouseCodes, type HouseCodeRow } from '../../lib/materials/houseCodes'
-import { indexBook, indexHouseCodes, matchRow, type BookPart, type PartMatch } from '../../lib/materials/partMatch'
+import { indexBook, indexHouseCodes, matchRow, type PartMatch } from '../../lib/materials/partMatch'
 import { loadPartsCatalog } from '../../lib/materials/partsCatalog'
-import { allRows, bookPrice, parsePasted, PRICING_UNIT_FACTOR, type PastedRow, type PricingUnit } from '../../lib/materials/priceSheet/pastedRow'
+import { allRows, parsePasted, type PastedRow, type PricingUnit } from '../../lib/materials/priceSheet/pastedRow'
 import { filePriceRow, loadBidAskedHouseIds, loadOnFilePrices, takeBackPriceRow, type CameBy } from '../../lib/materials/priceSheet/priceRowIo'
-import { dollars, rowCard, type OnFilePrice, type RowCard } from '../../lib/materials/priceSheet/rowCard'
+import { dollars, type OnFilePrice } from '../../lib/materials/priceSheet/rowCard'
+import { cardInput as input, cardLink as link, cardPress as press } from '../../lib/materials/priceSheet/cardStyles'
+import { PriceRowCardView, type KnownPart, type ServerAsk } from './PriceRowCardView'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 type House = { id: string; name: string }
-type KnownPart = BookPart & { is_robot?: boolean | null }
 type Filed = { key: string; lineId: string; partName: string; houseName: string; price: number; was: OnFilePrice | null; note: string | null }
-type ServerAsk = { why: 'moved' | 'newer_on_file'; onFile: OnFilePrice }
 
 const LAST_HOUSE_KEY = 'price-sheet:last-house'
 const CAME_BY: { key: CameBy; label: string }[] = [
@@ -32,27 +31,7 @@ const CAME_BY: { key: CameBy; label: string }[] = [
   { key: 'mail', label: 'Mail' },
   { key: 'website', label: 'Website' },
 ]
-const CHIP_TONE: Record<RowCard['chip']['tone'], CSSProperties> = {
-  green: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
-  blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
-  amber: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
-  gray: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
-}
 const HOW: Record<string, 'crosswalk' | 'mfr_number' | 'description' | 'person'> = { house_number: 'crosswalk', model_number: 'mfr_number', same_name: 'description', words: 'description' }
-
-const input: CSSProperties = { padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box' }
-const press = (dead: boolean, primary: boolean): CSSProperties => ({
-  padding: '0.4rem 0.8rem',
-  background: dead ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)',
-  color: dead ? DEAD_PRESS_TEXT : primary ? 'white' : 'var(--text-base)',
-  border: primary || dead ? 'none' : '1px solid var(--border-strong)',
-  borderRadius: 4,
-  cursor: dead ? 'not-allowed' : 'pointer',
-  fontWeight: 600,
-  fontSize: '0.8125rem',
-  whiteSpace: 'nowrap',
-})
-const link: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, fontSize: '0.8125rem' }
 
 function readLastHouse(): string {
   try {
@@ -70,6 +49,7 @@ export function QuickPriceWindow({
   supplyHouses,
   knownParts,
   onChanged,
+  initialText = '',
 }: {
   onClose: () => void
   serviceTypeId: string
@@ -78,6 +58,8 @@ export function QuickPriceWindow({
   supplyHouses?: House[]
   knownParts?: KnownPart[]
   onChanged?: () => void
+  /** A row already in hand: pasted on the tab before the window opened. */
+  initialText?: string
 }) {
   const [houses, setHouses] = useState<House[]>(supplyHouses ?? [])
   const [parts, setParts] = useState<KnownPart[]>(knownParts ?? [])
@@ -87,15 +69,13 @@ export function QuickPriceWindow({
   const [houseId, setHouseId] = useState('')
   const [datedOn, setDatedOn] = useState(todayYmdChicago())
   const [cameBy, setCameBy] = useState<CameBy>(presetPart ? 'phone' : 'pasted')
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   // With a part already known: the number and the price are typed in their own fields.
   const [theirNumber, setTheirNumber] = useState('')
   const [typedPrice, setTypedPrice] = useState('')
   const [typedUnit, setTypedUnit] = useState<PricingUnit>('each')
   const [onFile, setOnFile] = useState<Map<string, OnFilePrice>>(new Map())
   const [chosen, setChosen] = useState<Record<string, KnownPart>>({})
-  const [searching, setSearching] = useState<Record<string, string | undefined>>({})
-  const [newName, setNewName] = useState<Record<string, string | undefined>>({})
   const [serverAsk, setServerAsk] = useState<Record<string, ServerAsk | undefined>>({})
   const [gone, setGone] = useState<Set<string>>(new Set())
   const [problems, setProblems] = useState<Record<string, string | undefined>>({})
@@ -226,8 +206,7 @@ export function QuickPriceWindow({
     setWorking(null)
   }
 
-  async function makeAndFile(r: PastedRow & { key: string }) {
-    const name = (newName[r.key] ?? r.description).trim()
+  async function makeAndFile(r: PastedRow & { key: string }, name: string) {
     if (!name) return
     setWorking(r.key)
     setProblems((p) => ({ ...p, [r.key]: undefined }))
@@ -266,149 +245,33 @@ export function QuickPriceWindow({
 
   function card(r: PastedRow & { key: string }) {
     const m = matches.get(r.key)!
-    const part = m.match.part
-    const c = rowCard({ row: r, houseName: house?.name ?? null, match: m.match, onFile: part ? (onFile.get(part.id) ?? null) : null, datedOn })
-    const asked = serverAsk[r.key]
-    const busy = working === r.key
-    const dead = working != null
-    const each = c.each
-    const chipLabel = m.picked && !presetPart && c.status === 'offer' ? 'Your pick' : c.chip.label
-    const question = asked
-      ? asked.why === 'moved'
-        ? `${dollars(asked.onFile.price)} is on file. That is a big move. Press again to file it.`
-        : `A newer price is on file: ${dollars(asked.onFile.price)}. Press again to file this one over it.`
-      : m.picked && c.status === 'offer'
-        ? (c.onFileLine ?? `${house?.name ?? 'This house'} has no price on file for this part yet.`)
-        : c.question
-    const query = searching[r.key]
-    const found =
-      query != null && query.trim().length >= 2
-        ? parts
-            .filter((p) => !p.is_robot && query.toLowerCase().split(/\s+/).every((w) => `${p.name} ${p.manufacturer ?? ''}`.toLowerCase().includes(w)))
-            .slice(0, 8)
-        : []
-
     return (
-      <div key={r.key} data-testid="price-row-card" style={{ border: '1px solid var(--border)', borderLeft: `4px solid ${c.status === 'ready' || c.status === 'offer' ? '#059669' : '#d97706'}`, borderRadius: 8, padding: '0.65rem 0.8rem', display: 'grid', gap: '0.45rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span style={{ ...CHIP_TONE[c.chip.tone], borderRadius: 999, padding: '0.05rem 0.55rem', fontWeight: 600 }}>{chipLabel}</span>
-          {r.houseCode ? <span>{house ? `${house.name} ` : ''}{r.houseCode}</span> : null}
-          {c.ranOver ? <span>{c.ranOver} lines read as one row</span> : null}
-        </div>
-        {!presetPart ? (
-          <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4, padding: '0.3rem 0.5rem', overflowWrap: 'anywhere' }}>
-            {r.description}
-            {r.unitPrice != null ? ` · ${r.unitPrice.toFixed(2)}${r.pricingUnit === 'per_hundred' ? ' C' : r.pricingUnit === 'per_thousand' ? ' M' : ''}` : ''}
-          </div>
-        ) : null}
-        {part ? <strong style={{ fontSize: '0.875rem', overflowWrap: 'anywhere' }}>{part.name}</strong> : null}
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{question}</span>
-        {problems[r.key] ? (
-          <span role="alert" style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
-            {problems[r.key]}
-          </span>
-        ) : null}
-
-        {c.status === 'pick'
-          ? m.match.rivals.map((p) => (
-              <div key={p.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--border)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>
-                <span style={{ fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{p.name}</span>
-                <button type="button" disabled={dead} onClick={() => setChosen((x) => ({ ...x, [r.key]: p }))} style={press(dead, false)}>
-                  Use this one
-                </button>
-              </div>
-            ))
-          : null}
-
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {part && each != null && c.unitAsk && !asked ? (
-            <>
-              <button type="button" disabled={dead} onClick={() => void file(r, part)} style={press(dead, true)}>
-                {busy ? 'Filing…' : `File ${dollars(each)} each`}
-              </button>
-              <button type="button" disabled={dead} onClick={() => void file(r, part, { unitFactor: 1 })} style={press(dead, false)}>
-                It is {dollars(c.eachAsPrinted ?? each)} each
-              </button>
-            </>
-          ) : part && each != null && c.older && !asked ? (
-            <>
-              <button type="button" disabled={dead} onClick={() => setGone((g) => new Set(g).add(r.key))} style={press(dead, true)}>
-                Keep the newer price
-              </button>
-              <button type="button" disabled={dead} onClick={() => void file(r, part, { allow: true })} style={press(dead, false)}>
-                File {dollars(each)} over it
-              </button>
-            </>
-          ) : part && each != null && house ? (
-            <>
-              <button type="button" disabled={dead} onClick={() => void file(r, part, { allow: c.bigMove })} style={press(dead, true)}>
-                {busy ? 'Filing…' : asked ? `File ${dollars(each)} anyway` : c.status === 'offer' && !m.picked ? `Same part · file ${dollars(each)}` : `File ${dollars(each)}`}
-              </button>
-              {c.bigMove && onFile.get(part.id) ? (
-                <button type="button" disabled={dead} onClick={() => setGone((g) => new Set(g).add(r.key))} style={press(dead, false)}>
-                  Keep {dollars(onFile.get(part.id)!.price)}
-                </button>
-              ) : null}
-            </>
-          ) : null}
-          {c.status === 'new' && r.unitPrice != null && house ? (
-            <>
-              <input
-                type="text"
-                value={newName[r.key] ?? r.description}
-                onChange={(e) => setNewName((n) => ({ ...n, [r.key]: e.target.value }))}
-                aria-label="Name in the book"
-                style={{ ...input, flex: '1 1 16rem', minWidth: 0 }}
-              />
-              <button type="button" disabled={dead || !(newName[r.key] ?? r.description).trim()} onClick={() => void makeAndFile(r)} style={press(dead, true)}>
-                {busy ? 'Making…' : `New part in the book · file ${dollars(bookPrice(r.unitPrice, PRICING_UNIT_FACTOR[r.pricingUnit]))}`}
-              </button>
-            </>
-          ) : null}
-          {!presetPart ? (
-            <>
-              <button type="button" onClick={() => setSearching((s) => ({ ...s, [r.key]: s[r.key] == null ? '' : undefined }))} style={link}>
-                {part ? 'Another part…' : 'It is…'}
-              </button>
-              {m.picked ? (
-                <button type="button" onClick={() => setChosen((x) => { const next = { ...x }; delete next[r.key]; return next })} style={link}>
-                  Undo my pick
-                </button>
-              ) : null}
-              <button type="button" onClick={() => setGone((g) => new Set(g).add(r.key))} style={link}>
-                Leave it out
-              </button>
-            </>
-          ) : null}
-        </div>
-        {query != null ? (
-          <div style={{ display: 'grid', gap: '0.3rem' }}>
-            <input
-              type="text"
-              autoFocus
-              value={query}
-              onChange={(e) => setSearching((s) => ({ ...s, [r.key]: e.target.value }))}
-              placeholder="Search the parts book…"
-              aria-label="Search the parts book"
-              style={input}
-            />
-            {found.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setChosen((x) => ({ ...x, [r.key]: p }))
-                  setSearching((s) => ({ ...s, [r.key]: undefined }))
-                }}
-                style={{ ...link, textAlign: 'left', color: 'var(--text-base)', padding: '0.2rem 0.3rem', overflowWrap: 'anywhere' }}
-              >
-                {p.name}
-                {p.manufacturer ? <span style={{ color: 'var(--text-muted)' }}> · {p.manufacturer}</span> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      <PriceRowCardView
+        key={r.key}
+        row={r}
+        house={house}
+        match={m.match}
+        picked={m.picked}
+        fixedPart={presetPart != null}
+        priceOnFile={m.match.part ? (onFile.get(m.match.part.id) ?? null) : null}
+        datedOn={datedOn}
+        serverAsk={serverAsk[r.key]}
+        problem={problems[r.key]}
+        busy={working === r.key}
+        dead={working != null}
+        parts={parts}
+        onFileRow={(part, opts) => void file(r, part, opts)}
+        onMakeAndFile={(name) => void makeAndFile(r, name)}
+        onPick={(part) => setChosen((x) => ({ ...x, [r.key]: part }))}
+        onUnpick={() =>
+          setChosen((x) => {
+            const next = { ...x }
+            delete next[r.key]
+            return next
+          })
+        }
+        onLeaveOut={() => setGone((g) => new Set(g).add(r.key))}
+      />
     )
   }
 
