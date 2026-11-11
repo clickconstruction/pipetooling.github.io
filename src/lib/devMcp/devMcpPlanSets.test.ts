@@ -492,7 +492,7 @@ describe('a filed plan set lands on the bid’s job’s part too (plan_file_plan
     expect(SERVER).toContain('planLinkKey(r.link) === planLinkKey(folderLink)')
     expect(TWIN).toContain('planLinkKey(r.link) === planLinkKey(plansLink)')
   })
-  it('the dev seat commits the parts into the plan hash and writes them after the RPC; the twin seat lands the rows after drive-intake, at 1.11.0', () => {
+  it('the dev seat commits the parts into the plan hash and writes them after the RPC; the twin seat lands the rows after drive-intake, from 1.11.0 on', () => {
     expect(SERVER).toContain("const jobsRes = await restGet(session, 'jobs_ledger', `select=id,job_name,click_number,hcp_number,plan_part_id&bid_id=eq.${plans.bid_id}&plan_part_id=not.is.null`)")
     expect(SERVER).toContain('const targets = filedPlansTargets(partJobs, parts)')
     expect(SERVER).toContain('const committed = { ...((dry.body as Record<string, unknown> | null) ?? {}), job_parts: targets }')
@@ -504,6 +504,10 @@ describe('a filed plan set lands on the bid’s job’s part too (plan_file_plan
     expect(TWIN).toContain('const landed = await landFiledPlans(admin, twin, String(args.bid ?? \'\').trim(), plansLink, typeof args.plans_file_name === \'string\' ? args.plans_file_name : null)')
     expect(TWIN).toContain("admin.from('bid_plan_sets').insert({ bid_id: bid.id, name: setName, link: plansLink, memo: 'Filed by the robot (file_plans)'")
     expect(TWIN).toContain("admin.from('plan_sets').insert(row as never).select('id').single()")
-    expect(TWIN).toContain("serverInfo: { name: 'pipetooling-twin-mcp', version: '1.11.0' }")
+    // The landing shipped in server 1.11.0; a later version still carries it, so the pin is a floor, not an exact match.
+    const served = /serverInfo: \{ name: 'pipetooling-twin-mcp', version: '(\d+)\.(\d+)\.(\d+)' \}/.exec(TWIN)
+    expect(served, 'twin-mcp names its version').not.toBeNull()
+    const [major, minor] = [Number(served![1]), Number(served![2])]
+    expect(major > 1 || (major === 1 && minor >= 11), `twin-mcp ${served![0]} is at least 1.11.0`).toBe(true)
   })
 })
