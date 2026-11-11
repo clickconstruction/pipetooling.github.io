@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Link a customer to its names on permits</title>
+<style>
+  /* Punch list #307, the link between a customer and its names on permits. Every name, street, count and date here is
+     made up: Ridgeway Builders, Ridgeway Builders of Texas LLC, Ridgway Builders Inc, Ridgeway Roofing Co, Dana Whitlow,
+     Hartwell Interiors, Marlow Design Group, Lone Oak Plumbing, Paula Kemp. Tokens are src/index.css's. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --text-link: #2563eb; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --text-link: #60a5fa; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 320px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 88ch; }
+  #theme { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; cursor: pointer; }
+  b, strong { color: var(--text-strong); }
+  h2 { font-size: 19px; margin: 40px 0 4px; color: var(--text-strong); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  .lede { margin: 0 0 8px; color: var(--text-700); max-width: 100ch; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 14px 0 0; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .fact .n { font-size: 24px; font-weight: 700; color: var(--text-strong); line-height: 1.1; }
+  .fact .n small { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .fact p { margin: 4px 0 0; color: var(--text-700); font-size: 13px; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 12px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 377px; }
+  .col.d680 { flex: 0 1 682px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; max-width: 100%; }
+  .screen { padding: 14px 16px 16px; display: grid; gap: 10px; font-size: 14px; }
+  .screen.w375 { width: 375px; padding: 12px; }
+  .screen.w680 { width: 680px; }
+  .screen.w1100 { width: 1100px; }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+  .title { font-weight: 700; font-size: 16px; color: var(--text-strong); }
+  .sub2 { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+  .chip { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; white-space: nowrap; background: var(--bg-muted); color: var(--text-700); }
+  .chip.g { background: var(--bg-green-100); color: var(--text-green-700); }
+  .chip.a { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .chip.b { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sug { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+  .sug.top { border-color: var(--text-green-700); }
+  .sug .n { font-size: 15px; color: var(--text-700); }
+  .sug .n mark { background: var(--bg-amber-100); color: var(--text-strong); border-radius: 3px; padding: 0 2px; font-weight: 700; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn { border: 1px solid #2563eb; background: #2563eb; color: #fff; font: 600 13px var(--font); border-radius: 6px; padding: 6px 12px; white-space: nowrap; }
+  .btn.ghost { background: var(--surface); color: var(--text-strong); border-color: var(--border-strong); }
+  .link { color: var(--text-link); font-weight: 600; font-size: 13px; }
+  .search { border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 11px; color: var(--text-muted); background: var(--surface); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  .two > div { padding: 7px 10px; border-top: 1px solid var(--border); min-width: 0; }
+  .two > div:nth-child(-n+2) { border-top: 0; background: var(--bg-subtle); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+  .two > div:nth-child(odd) { border-right: 1px solid var(--border); }
+  .two .hit { background: var(--bg-green-100); }
+  .two .k { display: block; font-size: 11px; color: var(--text-muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11.5px; color: var(--text-muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 13px; }
+  tr:last-child td { border-bottom: 0; }
+  td mark { background: var(--bg-amber-100); color: var(--text-strong); border-radius: 3px; padding: 0 2px; font-weight: 700; }
+  .second { margin: 36px 0 0; background: var(--surface); border: 2px solid var(--text-strong); border-radius: 12px; padding: 16px 18px; max-width: 1100px; }
+  .second h2 { margin: 0 0 8px; }
+  .second ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-700); }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 100ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .screen > * { min-width: 0; }
+  .w375 .btn { white-space: normal; text-align: left; }
+  .w375 .two { grid-template-columns: 1fr; }
+  .w375 .two > div:nth-child(odd) { border-right: 0; }
+  .w375 .two > div:nth-child(-n+2) { display: none; }
+  .w375 .two > div:nth-child(3) { border-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #307 · mock-up · 2026-11-10 · every name and number made up</p>
+    <h1>Link a customer to its names on permits</h1>
+    <p>The owner: our names for customers may not match the permits, so let a person link one of our customers to a name the city lists, and see what the two have in common. The app suggests, with its reasons. A person ties. Nothing is tied on a likeness alone.</p>
+  </div>
+  <button type="button" id="theme">Dark</button>
+</header>
+
+<h2>What your data says</h2>
+<p class="lede">Twelve of the GCs on recent bids, each searched by its one telling word across every permit on hand. Counts only.</p>
+<div class="facts">
+  <div class="fact"><div class="n">1 <small>of 12</small></div><p>Has the same name on a permit. The app already joins it.</p></div>
+  <div class="fact"><div class="n">3 <small>of 12</small></div><p>Have a look-alike: a name that shares the telling word and may or may not be them.</p></div>
+  <div class="fact"><div class="n">1 <small>of 12</small></div><p>Matched only by accident: the word sat inside a longer, unrelated word.</p></div>
+  <div class="fact"><div class="n">7 <small>of 12</small></div><p>Have nothing like them on any permit. A search is all a person can do.</p></div>
+</div>
+
+<h2><span class="num pick">1</span> From the customer: Find their names on permits <span class="tag">the pick, built first</span></h2>
+<p class="lede">A press under the GC's card in a bid's window, and on the customer's own page. It opens one sheet: the look-alikes with their reasons, a search over every name on permits, and what is already tied.</p>
+<div class="row">
+  <div class="col d680"><div class="cap">The sheet · desk</div><div class="frame"><div class="screen w680" data-fill="sheet"></div></div></div>
+  <div class="col p375"><div class="cap">The same · phone</div><div class="frame"><div class="screen w375" data-fill="sheet"></div></div></div>
+</div>
+<div class="row">
+  <div class="col d680"><div class="cap">Compare, opened on one name · desk</div><div class="frame"><div class="screen w680" data-fill="compare"></div></div></div>
+  <div class="col p375"><div class="cap">The same · phone</div><div class="frame"><div class="screen w375" data-fill="compare"></div></div></div>
+</div>
+<div class="say">
+  <p class="gain">It is where the question comes up: you are bidding to this GC and want to know what else they have going.</p>
+  <p class="gain">Every suggestion carries its reason, and the strongest reason is not the name: it is a permit on an address you bid to them.</p>
+  <p class="lose">One customer at a time. Seven GCs in twelve will open on a search box and nothing else.</p>
+</div>
+
+<div class="second">
+  <h2>Is this the best we can do?</h2>
+  <p class="lede">Not by itself. Three things from the data shaped the second look.</p>
+  <ol>
+    <li><b>A look-alike is a question, never an answer.</b> One of the three was a different company with one word in common. So the press says what it does, <i>Same company</i> or <i>Not them</i>, and a No is kept so the name is not offered again.</li>
+    <li><b>The name is the weakest evidence.</b> Compare puts ours beside the city's and marks what is truly shared: an address you bid to them, a zip, a phone. A shared word alone is drawn as the least of them.</li>
+    <li><b>One customer at a time leaves most of them unlinked.</b> Nobody opens forty bids to tie forty names. The same row, drawn as one list for every customer, lets one sitting do it. That is direction 2.</li>
+  </ol>
+</div>
+
+<h2><span class="num">2</span> From the permits: Looks like a customer <span class="tag">built second</span></h2>
+<p class="lede">A chip on Prospects → Permits → Builders, with a count. Every look-alike pair in one list, the strongest evidence first, each answered in one press.</p>
+<div class="row">
+  <div class="col desk"><div class="cap">Builders · Looks like a customer · desk</div><div class="frame"><div class="screen w1100" data-fill="worklist"></div></div></div>
+  <div class="col p375"><div class="cap">The same · phone</div><div class="frame"><div class="screen w375" data-fill="worklistphone"></div></div></div>
+</div>
+<div class="say">
+  <p class="gain">One sitting ties most of what can be tied. The count on the chip falls to zero and stays there until the pull brings a new name.</p>
+  <p class="lose">It is away from the bid. Someone has to go and do it, so it comes second and the Needs you card can carry its count.</p>
+</div>
+
+<h2>What is built, and what is new</h2>
+<p class="lede">The link itself already exists. It is the answer table that ships with the bid's name question, where <i>works for, every permit</i> is a tie. Linking a customer to a name writes the same row from a different door. No new table.</p>
+<div class="say">
+  <p><b>New, small:</b> a pure kernel that grades two names and says why (the same name, one begins the other, a shared telling word, one letter apart, initials), with the common trade words counted for little. A read of the names on permits. The sheet. The list.</p>
+  <p><b>Never:</b> a tie made by the app on a likeness. Only the exact same name is joined without a person, as it is today.</p>
+</div>
+</div>
+
+<template id="t-sheet">
+  <div class="title">Find Ridgeway Builders on permits</div>
+  <div class="chips"><span class="chip b">San Antonio · since Jan 2025</span><span class="chip b">Austin · since Aug 27</span><span class="chip">1,940 names on permits</span></div>
+  <div class="sub2">Names that may be them</div>
+  <div class="sug top">
+    <div class="n"><mark>Ridgeway Builders</mark> of Texas LLC</div>
+    <div class="chips"><span class="chip g">2 permits on addresses you bid to them</span><span class="chip a">One name begins the other</span></div>
+    <div class="muted">Listed on 7 permits since Jan 2025 · last Nov 3 · 78215, 78209</div>
+    <div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span><span class="link">Compare ›</span></div>
+  </div>
+  <div class="sug">
+    <div class="n">Ridg<mark>w</mark>ay Builders Inc</div>
+    <div class="chips"><span class="chip a">One letter apart</span></div>
+    <div class="muted">Listed on 2 permits since Jan 2025 · last Sep 14 · 78258</div>
+    <div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span><span class="link">Compare ›</span></div>
+  </div>
+  <div class="sug">
+    <div class="n"><mark>Ridgeway</mark> Roofing Co</div>
+    <div class="chips"><span class="chip">Shares the word Ridgeway</span></div>
+    <div class="muted">Listed on 11 permits since Jan 2025 · last Oct 30 · 78245, 78250, 78253</div>
+    <div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span><span class="link">Compare ›</span></div>
+  </div>
+  <div class="sub2">Or search every name on permits</div>
+  <div class="search">Search a company or a person</div>
+  <div class="sub2">Tied to them</div>
+  <div class="sug">
+    <div class="n"><b>Dana Whitlow</b> <span class="chip b">Works for them · your word, Nov 10</span></div>
+    <div class="muted">Listed on 8 permits since Jan 2025 · <span class="link">See them ›</span> · <span class="link">Take back</span></div>
+  </div>
+  <div class="muted">A name on a permit is the contact the city lists. It is not always the builder.</div>
+</template>
+
+<template id="t-compare">
+  <div class="title">Ridgeway Builders and Ridgeway Builders of Texas LLC</div>
+  <div class="muted">What the two have in common is marked green. A shared word alone proves little.</div>
+  <div class="two">
+    <div>Our customer</div><div>The city's records</div>
+    <div><span class="k">Name</span>Ridgeway Builders</div><div><span class="k">Name, as listed</span>Ridgeway Builders of Texas LLC · also Paula Kemp, Ridgeway Builders of Texas</div>
+    <div class="hit"><span class="k">Addresses you bid to them</span>4120 Mill Street · 88 Harbor St</div><div class="hit"><span class="k">Permits on those addresses</span>4120 MILL ST, applied Sep 11 · 88 HARBOR ST, issued Nov 3</div>
+    <div class="hit"><span class="k">Where your bids with them are</span>78215 (3) · 78209 (1) · Kyle (2)</div><div class="hit"><span class="k">Where its permits are</span>78215 (4) · 78209 (2) · 78258 (1)</div>
+    <div><span class="k">Phone on file</span>210-555-0142</div><div><span class="k">Phone, from a lookup</span>Not looked up yet · <span class="link">Look it up</span></div>
+    <div><span class="k">Your contact</span>Paula Kemp</div><div class="hit"><span class="k">People listed with the name</span>Paula Kemp (5) · Dana Whitlow (2)</div>
+  </div>
+  <div class="btns"><span class="btn">Same company: show its 7 permits under Ridgeway Builders</span><span class="btn ghost">Not them</span></div>
+  <div class="muted">Either answer keeps your name and the day, and can be taken back.</div>
+</template>
+
+<template id="t-worklist">
+  <div class="chips"><span class="chip">All 1,940</span><span class="chip">3 or more permits and never bid 212</span><span class="chip b" style="outline:2px dashed var(--text-green-700);outline-offset:2px">Looks like a customer 14</span><span class="chip">Good 6</span><span class="chip">Avoid 2</span></div>
+  <div class="muted">A name on permits that resembles one of our customers, the strongest reason first. Answer each once.</div>
+  <table>
+    <tr><th>Name on permits</th><th>Our customer</th><th>Why</th><th>Permits</th><th></th></tr>
+    <tr><td><mark>Ridgeway Builders</mark> of Texas LLC</td><td>Ridgeway Builders</td><td><span class="chip g">2 permits on addresses you bid to them</span> <span class="chip a">One name begins the other</span></td><td>7 · last Nov 3</td><td><div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div></td></tr>
+    <tr><td><mark>Hartwell Interior</mark> Contracting</td><td>Hartwell Interiors</td><td><span class="chip a">One letter apart</span> <span class="chip">Same zip, 78209</span></td><td>4 · last Oct 21</td><td><div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div></td></tr>
+    <tr><td><mark>Marlow Design</mark> + Build</td><td>Marlow Design Group</td><td><span class="chip">Shares the words Marlow and Design</span></td><td>3 · last Sep 30</td><td><div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div></td></tr>
+    <tr><td><mark>Ridgeway</mark> Roofing Co</td><td>Ridgeway Builders</td><td><span class="chip">Shares the word Ridgeway</span></td><td>11 · last Oct 30</td><td><div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div></td></tr>
+  </table>
+</template>
+
+<template id="t-worklistphone">
+  <div class="chips"><span class="chip b">Looks like a customer 14</span></div>
+  <div class="sug top">
+    <div class="n"><mark>Ridgeway Builders</mark> of Texas LLC</div>
+    <div class="muted">may be <b>Ridgeway Builders</b></div>
+    <div class="chips"><span class="chip g">2 permits on addresses you bid to them</span><span class="chip a">One name begins the other</span></div>
+    <div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div>
+  </div>
+  <div class="sug">
+    <div class="n"><mark>Hartwell Interior</mark> Contracting</div>
+    <div class="muted">may be <b>Hartwell Interiors</b></div>
+    <div class="chips"><span class="chip a">One letter apart</span><span class="chip">Same zip, 78209</span></div>
+    <div class="btns"><span class="btn">Same company</span><span class="btn ghost">Not them</span></div>
+  </div>
+</template>
+
+<script>
+  document.querySelectorAll('[data-fill]').forEach(function (slot) {
+    var t = document.getElementById('t-' + slot.getAttribute('data-fill'));
+    if (t) slot.appendChild(t.content.cloneNode(true));
+  });
+  var btn = document.getElementById('theme');
+  btn.addEventListener('click', function () {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.textContent = dark ? 'Dark' : 'Light';
+  });
+</script>
+</body>
+</html>

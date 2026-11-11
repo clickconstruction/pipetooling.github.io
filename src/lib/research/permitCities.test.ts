@@ -292,3 +292,15 @@ describe('New Braunfels', () => {
   })
 })
 
+
+describe('a read back as history (punch list #307)', () => {
+  it('reads San Antonio’s two feeds up to a day, and leaves the other cities without a read back', () => {
+    const [issued, applied] = feedsToPull('San Antonio')
+    const url = decodeURIComponent(issued!.pageUrlBefore!('2026-05-26', '2026-08-26', 2000, 0))
+    expect(url).toContain(`"DATE ISSUED" >= '2026-05-26' AND "DATE ISSUED" < '2026-08-26'`)
+    expect(decodeURIComponent(applied!.pageUrlBefore!('2026-05-26', '2026-08-26', 2000, 0))).toContain(`"DATE SUBMITTED" < '2026-08-26'`)
+    // The usual page has no end.
+    expect(decodeURIComponent(issued!.pageUrl('2026-05-26', 2000, 0))).not.toContain(' < ')
+    for (const city of ['Austin', 'New Braunfels', 'San Marcos', 'Seguin']) expect(feedsToPull(city).every((f) => f.pageUrlBefore == null)).toBe(true)
+  })
+})

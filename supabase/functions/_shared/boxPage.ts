@@ -2,7 +2,8 @@
  * The box page (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR
  * reads `PRTS.CO/B/<eight hex>`, prts.co forwards it to the app's `/b/:code`, and the page asks the `box-read` function
  * for the box by its code: the stencil, the place, the newest photo, the lines with their counts and the day of the last
- * count. Never the job, the customer, a price or a person's name. The pure part lives here, shared with the client
+ * count; since v2.6874 the lines emptied since that count, a line's Can't find presses and the company's own number.
+ * Never the job, the customer, a price or a person's name. The pure part lives here, shared with the client
  * through `src/lib/materials/boxPage.ts` and tested from `src/lib/materials/boxPage.test.ts`. Deno-free on purpose.
  */
 
@@ -24,7 +25,13 @@ export function boxPageCodeWords(code: string): string {
 
 export type BoxPageKind = 'cage' | 'box' | 'pile'
 
-export type BoxPageLine = { partName: string; manufacturer: string | null; onHand: number }
+export type BoxPageLine = {
+  partName: string
+  manufacturer: string | null
+  onHand: number
+  /** The Can't find presses on the line since its last count, carried only when there are any (v2.6874). */
+  cannotFind?: number
+}
 
 export type BoxPagePhoto = {
   id: string
@@ -45,10 +52,14 @@ export type BoxPagePayload = {
     place: string
     where: string
     lines: BoxPageLine[]
+    /** The lines emptied since the box's last count (v2.6874): the page reads them *None left*. A count clears them. */
+    gone: BoxPageLine[]
     /** The app calendar's day of the last count in this box, or null when never counted. */
     lastCountedOn: string | null
     photo: BoxPagePhoto | null
   }
+  /** The company's own number, for *Text the office* (v2.6874); null when the letterhead carries none. Never a person's. */
+  office: { phone: string } | null
 }
 
 /** The answers that are not a box: the code is not one, no live box carries it, the box was retired, or the source is locked. */
@@ -57,8 +68,17 @@ export type BoxPageRefusal = 'bad_code' | 'not_found' | 'retired' | 'locked'
 /** The container row as the function reads it. */
 export type BoxPageContainerRow = { id: string; job_id: string; label: string; kind: string; where_note: string | null; place_id: string | null; retired_at: string | null; code: string }
 
-/** A line of `on_site_job_summary`'s answer, the part the page needs. */
-export type BoxPageServerLine = { container_id: string; part_name: string; manufacturer: string | null; on_hand: number }
+/** A line of `on_site_job_summary`'s answer, the part the page needs. Its `*_by` names are never read. */
+export type BoxPageServerLine = {
+  container_id: string
+  part_name: string
+  manufacturer: string | null
+  on_hand: number
+  /** The Can't find presses on the line since its last count. */
+  cannot_find_since_count?: number | null
+  /** When the line was last touched by any press, a count included. */
+  last_touched_at?: string | null
+}
 
 export function boxPageKind(kind: string): BoxPageKind {
   return kind === 'box' ? 'box' : kind === 'cage' ? 'cage' : 'pile'
@@ -70,11 +90,45 @@ export function boxPageNoun(kind: BoxPageKind, capital = true): string {
   return capital ? w[0]!.toUpperCase() + w.slice(1) : w
 }
 
+function cannotFindOf(l: BoxPageServerLine): number {
+  const n = Math.round(Number(l.cannot_find_since_count ?? 0))
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function pageLine(l: BoxPageServerLine, onHand: number): BoxPageLine {
+  const cannotFind = cannotFindOf(l)
+  return { partName: l.part_name, manufacturer: l.manufacturer, onHand, ...(cannotFind > 0 ? { cannotFind } : {}) }
+}
+
 /** The lines of one container with something on hand, in name order. */
 export function boxPageLines(lines: ReadonlyArray<BoxPageServerLine>, containerId: string): BoxPageLine[] {
   return lines
     .filter((l) => l.container_id === containerId && l.on_hand > 0)
-    .map((l) => ({ partName: l.part_name, manufacturer: l.manufacturer, onHand: l.on_hand }))
+    .map((l) => pageLine(l, l.on_hand))
+    .sort((a, b) => a.partName.localeCompare(b.partName))
+}
+
+/** With no count ever, a line emptied longer ago than this drops off the page: the window the office calls a count due. */
+export const BOX_PAGE_GONE_DAYS = 14
+
+/**
+ * The lines of one container with nothing left that a person would still look for (v2.6874): emptied by a press after the
+ * box's last count, or carrying a Can't find since their own count. The next count of the box clears them, so an old cage
+ * grows no tail; a line counted to zero drops out, as it does on the crew's screen (`linesOf` in onSite.ts). A box never
+ * counted keeps a line for `BOX_PAGE_GONE_DAYS` after it emptied. In name order, every one at zero.
+ */
+export function boxPageGoneLines(lines: ReadonlyArray<BoxPageServerLine>, containerId: string, lastCountAt: string | null, nowIso: string): BoxPageLine[] {
+  const counted = lastCountAt ? Date.parse(lastCountAt) : Number.NaN
+  const floor = Date.parse(nowIso) - BOX_PAGE_GONE_DAYS * 86_400_000
+  return lines
+    .filter((l) => l.container_id === containerId && l.on_hand <= 0)
+    .filter((l) => {
+      if (cannotFindOf(l) > 0) return true
+      const touched = l.last_touched_at ? Date.parse(l.last_touched_at) : Number.NaN
+      if (!Number.isFinite(touched)) return false
+      return Number.isFinite(counted) ? touched > counted : Number.isFinite(floor) && touched >= floor
+    })
+    .map((l) => pageLine(l, 0))
     .sort((a, b) => a.partName.localeCompare(b.partName))
 }
 
@@ -89,8 +143,15 @@ export function buildBoxPagePayload(input: {
   lines: ReadonlyArray<BoxPageServerLine>
   lastCountedOn: string | null
   photo: BoxPagePhoto | null
+  /** The instant of the box's last count, which clears its lines at zero; null when never counted. */
+  lastCountAt?: string | null
+  /** Now, as the function reads it. Without it no line at zero is kept by its age. */
+  now?: string
+  /** The company's own number off the letterhead. */
+  officePhone?: string | null
 }): BoxPagePayload {
   const c = input.container
+  const phone = (input.officePhone ?? '').trim()
   return {
     ok: true,
     box: {
@@ -100,10 +161,21 @@ export function buildBoxPagePayload(input: {
       place: input.place,
       where: (c.where_note ?? '').trim(),
       lines: boxPageLines(input.lines, c.id),
+      gone: boxPageGoneLines(input.lines, c.id, input.lastCountAt ?? null, input.now ?? ''),
       lastCountedOn: input.lastCountedOn,
       photo: input.photo,
     },
+    office: phone ? { phone } : null,
   }
+}
+
+/** One line of the answer read back; null when it is not a line. */
+function readLine(l: unknown): BoxPageLine | null {
+  if (!l || typeof l !== 'object') return null
+  const r = l as Record<string, unknown>
+  if (typeof r.partName !== 'string' || typeof r.onHand !== 'number') return null
+  const cannotFind = typeof r.cannotFind === 'number' && r.cannotFind > 0 ? r.cannotFind : 0
+  return { partName: r.partName, manufacturer: typeof r.manufacturer === 'string' ? r.manufacturer : null, onHand: r.onHand, ...(cannotFind > 0 ? { cannotFind } : {}) }
 }
 
 /** The function's answer read back on the client; null when it is not the shape. */
@@ -115,11 +187,20 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
   if (typeof x.code !== 'string' || typeof x.stencil !== 'string' || !Array.isArray(x.lines)) return null
   const lines: BoxPageLine[] = []
   for (const l of x.lines as unknown[]) {
-    if (!l || typeof l !== 'object') return null
-    const r = l as Record<string, unknown>
-    if (typeof r.partName !== 'string' || typeof r.onHand !== 'number') return null
-    lines.push({ partName: r.partName, manufacturer: typeof r.manufacturer === 'string' ? r.manufacturer : null, onHand: r.onHand })
+    const line = readLine(l)
+    if (!line) return null
+    lines.push(line)
   }
+  // An answer from before v2.6874 carries no `gone` and no `office`: read as none, so an old function still draws.
+  const gone: BoxPageLine[] = []
+  if (Array.isArray(x.gone)) {
+    for (const l of x.gone as unknown[]) {
+      const line = readLine(l)
+      if (line) gone.push(line)
+    }
+  }
+  const o = (body as { office?: unknown }).office
+  const officePhone = o && typeof o === 'object' && typeof (o as { phone?: unknown }).phone === 'string' ? ((o as { phone: string }).phone).trim() : ''
   let photo: BoxPagePhoto | null = null
   if (x.photo && typeof x.photo === 'object') {
     const p = x.photo as Record<string, unknown>
@@ -134,9 +215,11 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
       place: typeof x.place === 'string' ? x.place : '',
       where: typeof x.where === 'string' ? x.where : '',
       lines,
+      gone,
       lastCountedOn: typeof x.lastCountedOn === 'string' ? x.lastCountedOn : null,
       photo,
     },
+    office: officePhone ? { phone: officePhone } : null,
   }
 }
 
@@ -253,9 +336,9 @@ export function parseBoxPageFindResponse(body: unknown): BoxPageFindPayload | nu
     if (typeof r.code !== 'string' || typeof r.stencil !== 'string' || !Array.isArray(r.lines)) return null
     const lines: BoxPageLine[] = []
     for (const l of r.lines as unknown[]) {
-      const q = (l ?? {}) as Record<string, unknown>
-      if (typeof q.partName !== 'string' || typeof q.onHand !== 'number') return null
-      lines.push({ partName: q.partName, manufacturer: typeof q.manufacturer === 'string' ? q.manufacturer : null, onHand: q.onHand })
+      const line = readLine(l)
+      if (!line) return null
+      lines.push(line)
     }
     boxes.push({ code: r.code, stencil: r.stencil, kind: boxPageKind(typeof r.kind === 'string' ? r.kind : ''), place: typeof r.place === 'string' ? r.place : '', where: typeof r.where === 'string' ? r.where : '', lines, thisBox: r.thisBox === true })
   }

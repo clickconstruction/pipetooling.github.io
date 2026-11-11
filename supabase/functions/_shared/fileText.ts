@@ -44,7 +44,8 @@ export async function textFromBytes(data: Uint8Array, f: Pick<DriveFileMeta, 'na
       const pdf = await getDocumentProxy(data)
       try {
         const { text, pagesRead } = await pdfPagesText(pdf as unknown as PdfDoc, limits, () => performance.now())
-        return text.replace(/\s+/g, '').length < PDF_SCAN_MAX_CHARS ? { why: 'scan' } : { text, source: 'pdf_layer', pages: pdf.numPages, pagesRead }
+        // A scan says how many pages it has (#298 PR 2): the bill sweep reads a long scan a few pages at a time.
+        return text.replace(/\s+/g, '').length < PDF_SCAN_MAX_CHARS ? { why: 'scan', pages: pdf.numPages } : { text, source: 'pdf_layer', pages: pdf.numPages, pagesRead }
       } finally {
         // The document holds the file's bytes; a pass may read several, and memory is the limit they share.
         void Promise.resolve(pdf.loadingTask?.destroy?.()).catch(() => {})

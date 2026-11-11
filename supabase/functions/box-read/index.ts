@@ -5,16 +5,19 @@ import { googleAccessToken } from '../_shared/driveUpload.ts'
 import { driveMedia } from '../_shared/driveJobFolder.ts'
 import { ESTIMATE_LINK_LOCKED_CODE, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
-import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPageKind, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
  * `PRTS.CO/B/<eight hex>`; prts.co forwards it to the app's `/b/:code`, and signed out the page asks here.
  *
- *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, lines, lastCountedOn, photo } }
+ *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, lines, gone, lastCountedOn, photo }, office }
  *                                             the live container by its code, its lines from `on_site_job_summary` (the
  *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
- *                                             Never the job, the customer, a price or a person's name.
+ *                                             Since v2.6874 a line carries its Can't find presses since its count, `gone` is
+ *                                             the lines emptied since the box's last count, and `office.phone` is the
+ *                                             letterhead's number. Never the job, the customer, a price or a person's name.
  *   GET ?code=<code>&find=<words>            → (v2.6799, PR 3) the live boxes of the same job whose stencil, place or lines
  *                                             hold every word, each with the lines that matched: the search a scanned code
  *                                             opens, that site and no other. No code, no search.
@@ -25,7 +28,8 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxP
  * No auth (`verify_jwt = false`): the code is the capability, as the estimate and bill links are. Eight hex characters
  * is 32 bits against a few hundred live boxes, and the page carries nothing worth a guess; a code that opens nothing
  * counts a miss against its source through the estimate link's guard (`estimate_link_miss`), and past 20 misses in the
- * hour the function answers 429 `locked`. A retired box answers 410 `retired` with no lines. Each read that opens lands
+ * hour the function answers 429 `locked`. A retired box answers 410 `retired` with no lines, and since v2.6874 its stencil,
+ * kind and the office's number, which the label in the hand already prints or the letterhead already carries. Each read that opens lands
  * one `public_page_views` row (surface `box_page`); a staff session or `?preview=1` is stamped and not counted, as the
  * portals do. Rate limit: 60 reads a minute per client address and 600 across the isolate, in memory, best effort.
  */
@@ -95,7 +99,7 @@ serve(async (req) => {
     }
     if (row.retired_at) {
       console.log(JSON.stringify({ event: 'box_page_open', code, state: 'retired' }))
-      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at) }, 410)
+      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: row.label, kind: boxPageKind(row.kind), phone: PORTAL_COMPANY.phone }, 410)
     }
 
     // The photo's bytes, for the page's <img>: Drive once filed, the bucket while it waits.
@@ -167,7 +171,16 @@ serve(async (req) => {
     const newest = photos[0]
     const photo: BoxPagePhoto | null = newest ? { id: newest.id, takenOn: calendarYmdInAppTzFromIso(newest.taken_at), url: boxPagePhotoUrl(supabaseUrl, code, newest.id) } : null
 
-    const payload = buildBoxPagePayload({ container: row, place, lines: summary.lines ?? [], lastCountedOn: lastCount ? calendarYmdInAppTzFromIso(lastCount.at) : null, photo })
+    const payload = buildBoxPagePayload({
+      container: row,
+      place,
+      lines: summary.lines ?? [],
+      lastCountedOn: lastCount ? calendarYmdInAppTzFromIso(lastCount.at) : null,
+      photo,
+      lastCountAt: lastCount?.at ?? null,
+      now: new Date().toISOString(),
+      officePhone: PORTAL_COMPANY.phone,
+    })
 
     // Who looked: the outside counts; a signed-in teammate or a preview is stamped, never counted.
     const decision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
@@ -175,7 +188,7 @@ serve(async (req) => {
       .from('public_page_views')
       .insert({ surface: 'box_page', entity_id: row.id, via: 'token', viewer: decision.viewer, viewer_user_id: decision.staffUserId })
       .then(() => {}, () => {})
-    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', lines: payload.box.lines.length, photo: Boolean(photo), viewer: decision.viewer }))
+    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', lines: payload.box.lines.length, gone: payload.box.gone.length, photo: Boolean(photo), viewer: decision.viewer }))
     return json(payload)
   } catch (e) {
     console.error('box-read failed', e)
