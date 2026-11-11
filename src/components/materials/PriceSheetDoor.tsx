@@ -277,7 +277,7 @@ export function PriceSheetDoor({
         ) : null}
       </span>
       {listOpen ? (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
           <div role="dialog" aria-modal="true" aria-label="Price sheets" style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(820px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1.25rem 1.5rem', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
               <h2 style={{ margin: 0 }}>Price sheets</h2>
