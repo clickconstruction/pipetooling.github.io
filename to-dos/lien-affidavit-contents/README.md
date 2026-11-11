@@ -1,7 +1,7 @@
 ---
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
-group: ready
+group: waiting
 status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), an affidavit holds while the GC has no address on file (v2.6932), a house holds until the homestead question is answered (v2.6937)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
@@ -18,7 +18,7 @@ summary: >
 next: Item 6 of *The build*, one affidavit per property, on counsel's yes to question 5. Items 1 to 5 are built. Counsel's answers to the five questions may still change the wording, which sits in `buildShortLienAffidavitBlocks`.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
 blocker: Item 6 waits on counsel's answer to question 5. Counsel's answers may still change the wording.
-opinion: wait — items 1 to 5 are built; item 6 is built only on counsel's yes to question 5
+opinion: later — items 1 to 5 are built; item 6 is built only on counsel's yes to question 5
 ---
 
 # The lien affidavit, cut to what § 53.054 lists (#305)
