@@ -2,7 +2,7 @@ import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome } from '
 import { filingSheetWords, type FilingSheetBreak } from '../jobsDocuments/filingSheetBreak'
 import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, filingDocsPrintHtml, lienAffidavitPrintOptions, prependToFilingPrintHtml, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import { demandMoney } from '../jobsDocuments/demandLetter'
-import { LIEN_HELP_STYLES, lienHelpBatchSheetHtml, lienHelpPaperFromFields, type LienHelpLeftOut, type LienHelpPaper } from './lienHelpSheet'
+import { LIEN_HELP_STYLES, lienHelpBatchSheetHtml, lienHelpPaperFromFields, type LienHelpClerk, type LienHelpExtras, type LienHelpLeftOut, type LienHelpPaper } from './lienHelpSheet'
 import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
@@ -146,12 +146,25 @@ export type LienAffidavitPrintPaper = {
   fileBy?: string
   /** What the desk knows of the property and the notices, for the help sheet's checks (the best-we-can-do pass). */
   checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string> }
+  /** The property's county clerk as Settings hold it, and who to ask about this job (changes 9 and 10). */
+  clerk?: LienHelpClerk
+  ask?: string
+}
+
+/**
+ * The batch in clerk order (punch list #314, change 7): the papers sorted by the county they are filed in, each
+ * clerk's papers keeping the order the desk listed them. The print and its help sheet both read this, so a clerk's
+ * papers come off the printer together and the sheet's rows count the papers as they lie in the stack.
+ */
+export function lienAffidavitClerkOrder<P extends { fields: Pick<LienAffidavitFields, 'county'> }>(papers: ReadonlyArray<P>): P[] {
+  const key = (p: P) => p.fields.county.trim().toLowerCase()
+  return papers.map((paper, i) => ({ paper, i })).sort((a, b) => key(a.paper).localeCompare(key(b.paper)) || a.i - b.i).map((x) => x.paper)
 }
 
 /** The batch's help sheet (punch list #314): a row for each paper from the paper's own fields, and the ones left out with their reason. */
-export function lienAffidavitBatchHelpSheet(papers: ReadonlyArray<LienAffidavitPrintPaper>, leftOut: ReadonlyArray<LienHelpLeftOut>, printedOn: string): string {
-  const rows: LienHelpPaper[] = papers.map((p) => lienHelpPaperFromFields({ jobLabel: p.label?.trim() || `Job ${p.jobNumber}`, fileBy: p.fileBy ?? '', claimWords: demandMoney(p.fields.unpaidAmount), fields: p.fields, checked: p.checked }))
-  return lienHelpBatchSheetHtml({ papers: rows, leftOut, printedOn })
+export function lienAffidavitBatchHelpSheet(papers: ReadonlyArray<LienAffidavitPrintPaper>, leftOut: ReadonlyArray<LienHelpLeftOut>, printedOn: string, extras?: LienHelpExtras): string {
+  const rows: LienHelpPaper[] = papers.map((p) => lienHelpPaperFromFields({ jobLabel: p.label?.trim() || `Job ${p.jobNumber}`, fileBy: p.fileBy ?? '', claimWords: demandMoney(p.fields.unpaidAmount), fields: p.fields, checked: p.checked, clerk: p.clerk, ask: p.ask }))
+  return lienHelpBatchSheetHtml({ papers: rows, leftOut, printedOn, extras })
 }
 
 /** Why a ready paper on the earlier form is not in the batch, on the help sheet. */

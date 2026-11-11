@@ -204,7 +204,7 @@ export function installDomShims() {
  * useConfirmDialog throw without one; the modal contexts return null without
  * a provider, which the components tolerate).
  */
-export function renderWithProviders(ui: ReactElement): RenderResult {
+export function renderWithProviders(ui: ReactElement, opts: { /** The address the page opens at, for a component that reads a deep link. */ route?: string } = {}): RenderResult {
   installDomShims()
   // All providers live in the wrapper (not in `ui`) so RenderResult.rerender
   // keeps them — the JobsStagesTab active-flip tests depend on that.
@@ -212,7 +212,7 @@ export function renderWithProviders(ui: ReactElement): RenderResult {
     wrapper: ({ children }: { children: ReactNode }) => (
       <ToastProvider>
         <ConfirmDialogProvider>
-          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <MemoryRouter initialEntries={opts.route ? [opts.route] : undefined} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             {children}
           </MemoryRouter>
         </ConfirmDialogProvider>

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { useLocation } from 'react-router-dom'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import { ymdPlusDays, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { reachDay } from '../../lib/research/permitReach'
@@ -57,6 +58,11 @@ vi.mock('../map/PinsMapCanvas', () => ({
 }))
 
 import { ProspectsResearchTab } from './ProspectsResearchTab'
+
+/** The address as the router holds it, for the deep link's tests. */
+function Address() {
+  return <span data-testid="address">{useLocation().search}</span>
+}
 
 /** The records in these tests start thirty days back, so every count says the day and not a year (punch list #307). */
 const RECORDS_START = ymdPlusDays(todayYmdInAppTz(), -30)
@@ -716,6 +722,71 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByText('Tall Pine Development', { selector: 'strong' })).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Same company' }))
       await waitFor(() => expect(siteIo.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'tallpinedevelopmentgroup', customerId: 'c7', answer: 'works_for', scope: 'all', permitId: null, name: 'Tall Pine Development Group LLC' }))
+    })
+
+    describe('opened from the Needs you line (punch list #307)', () => {
+      const lookAlikeBuilders = [
+        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+      ]
+      beforeEach(() => {
+        window.localStorage.removeItem('permits.lastCity')
+        io.loadBuilders.mockResolvedValue(lookAlikeBuilders)
+        siteIo.loadAllNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+        siteIo.loadCustomerNames.mockResolvedValue([{ id: 'c7', name: 'Tall Pine Development' }])
+      })
+      afterEach(() => window.localStorage.removeItem('permits.lastCity'))
+
+      it('opens Builders with the Looks like a customer chip already on, in the city the line named', async () => {
+        renderWithProviders(
+          <>
+            <ProspectsResearchTab authUserId="u1" />
+            <Address />
+          </>,
+          { route: '/prospects?tab=permits&view=builders&looks=1&city=Austin' },
+        )
+        // No press: the worklist is on screen, and Builders was read for Austin.
+        expect(await screen.findByText('One name begins the other')).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Looks like a customer 1' }).getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByRole('button', { name: 'Builders' }).getAttribute('aria-pressed')).toBe('true')
+        expect(io.loadBuilders).toHaveBeenCalledWith('Austin')
+        expect(io.loadBuilders).not.toHaveBeenCalledWith('San Antonio')
+        // Builders and the chip stay on the address for a reload; the city is taken once and remembered by the browser.
+        await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits&view=builders&looks=1'))
+        expect(window.localStorage.getItem('permits.lastCity')).toBe('Austin')
+      })
+
+      it('takes the chip off the address when it is pressed off, and Builders off it on another view', async () => {
+        renderWithProviders(
+          <>
+            <ProspectsResearchTab authUserId="u1" />
+            <Address />
+          </>,
+          { route: '/prospects?tab=permits&view=builders&looks=1' },
+        )
+        fireEvent.click(await screen.findByRole('button', { name: 'Looks like a customer 1' }))
+        await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits&view=builders'))
+        expect(screen.getByRole('button', { name: 'Tall Pine Development Group LLC' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Looks like a customer 1' }))
+        await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits&view=builders&looks=1'))
+        fireEvent.click(screen.getByRole('button', { name: 'Ledger' }))
+        await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits'))
+      })
+
+      it('puts Builders on the address when it is opened by its press, and opens on Skim with no word for it', async () => {
+        renderWithProviders(
+          <>
+            <ProspectsResearchTab authUserId="u1" />
+            <Address />
+          </>,
+          { route: '/prospects?tab=permits' },
+        )
+        expect((await screen.findByRole('button', { name: /^Skim/ })).getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByTestId('address').textContent).toBe('?tab=permits')
+        fireEvent.click(screen.getByRole('button', { name: 'Builders' }))
+        await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits&view=builders'))
+        expect((await screen.findByRole('button', { name: 'Looks like a customer 1' })).getAttribute('aria-pressed')).toBe('false')
+      })
     })
 
     it('draws no look-alike chip before the answers table is on the database', async () => {

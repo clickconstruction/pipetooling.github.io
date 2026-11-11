@@ -80,7 +80,7 @@ describe('devMcpBidCounts — the verbs on the allowlist', () => {
     expect(planVerbFor('apply_bid_counts')).toBe('plan_bid_counts')
     expect(isBidCountsVerb('plan_count')).toBe(false) // Materials on site's count of a box
     expect(README).toContain('`plan_bid_counts(counts)` · `apply_bid_counts(counts, plan_hash)`')
-    expect(README).toContain("eighty-five since v2.6967's bid counts")
+    expect(README).toContain("eighty-nine since v2.6967's bid counts")
   })
 })
 

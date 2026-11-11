@@ -8,6 +8,7 @@ import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorH
 import { fetchAllRows, warnIfRowCapHit } from '../supabasePaging'
 import { sitePermitOrder, type GcBid, type SitePermitRow } from './bidSitePanel'
 import type { AnswerScope, NameAnswer, NameAnswerRow } from './nameAnswers'
+import { forgetLookAlikeCounts } from './lookAlikeCountMemory'
 
 /** PostgREST's "function not found": the window after the client deploys and before the migration is pushed. */
 function missingFunction(error: unknown): boolean {
@@ -142,6 +143,8 @@ export async function recordNameAnswer(input: { builderKey: string; customerId: 
       } as never),
     'save the answer',
   )
+  // The Dashboard's Needs you line counts the names still to answer, and this answer moved the count.
+  forgetLookAlikeCounts()
   for (const fn of answerListeners) fn()
 }
 

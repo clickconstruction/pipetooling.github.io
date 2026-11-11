@@ -8,6 +8,7 @@ import { legalDeskHref } from './legal/legalDeskRoute'
 import { GC_FOLLOW_UP_HREF } from './gc/links'
 import { messagesThreadHref } from './messages/customerThread'
 import type { NeedsYouHost } from './needsYouSources'
+import { lookAlikesHref } from './research/permitsLink'
 import { materialsNeedsHref } from './needsYou/materialsOnSite'
 import type { UserRole } from '../hooks/useAuth'
 
@@ -67,6 +68,8 @@ export type NeedsYouDoorData = {
   lowRatingContactId?: string | null
   /** While you were off (v2.6060, punch list #141 PR 4): the first customer's line still waiting, whose thread the line opens. */
   whileOffFirst?: { contactId: string; messageId: string } | null
+  /** Looks like a customer (punch list #307): the city whose Builders the line opens, this browser's own when it has some. */
+  lookAlikeCity?: string | null
   /** The week's call (punch list #303 PR 4): the page where the viewer's first move is done; null when the app has none. */
   bridgeMoveDoor?: string | null
   /** The day back (punch list #256 PR 9): the first teammate whose countdown ended, whose desk opens on Bring back. */
@@ -169,6 +172,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href(GC_FOLLOW_UP_HREF)
     case 'permits-to-skim':
       return href('/prospects?tab=permits')
+    case 'permit-look-alikes':
+      // Builders with the Looks like a customer chip on, in the city that has some.
+      return href(lookAlikesHref(d.lookAlikeCity))
     case 'customer-messages':
       return href(CUSTOMER_MESSAGES_HREF)
     case 'contract-clauses':

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -58,6 +58,7 @@ import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
 import { keepFromPassedReason } from '../../lib/research/permitHistory'
 import { readLastCity, writeLastCity } from '../../lib/research/permitCityDoors'
+import { permitsLinkForView, readPermitsLink } from '../../lib/research/permitsLink'
 import { secondLookCount, secondLookSegmentWords, showsSecondLookSegment } from '../../lib/research/permitSecondLook'
 import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
@@ -115,7 +116,14 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const isMobile = useIsMobile()
   // Skim is step one and where the tab opens; Kept, Pursuing and Closed are where an answered permit sits;
   // the ledger and the map are the wide view of a window of the same rows.
-  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'find' | 'builders' | 'ledger' | 'map'>('skim')
+  // Builders rides the address (punch list #307): the Needs you line *names on permits look like a customer* opens on it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [door] = useState(() => readPermitsLink(searchParams))
+  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'find' | 'builders' | 'ledger' | 'map'>(door.builders ? 'builders' : 'skim')
+  useEffect(() => {
+    const next = permitsLinkForView(searchParams, view === 'builders')
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
+  }, [view, searchParams, setSearchParams])
   const wide = view === 'ledger' || view === 'map'
   // A deck is open: the skim, or the second look at what someone else passed.
   const onDeck = view === 'skim' || view === 'second'
@@ -136,7 +144,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
   // The city on screen, remembered by this browser: an office that works Austin opens on Austin.
-  const [city, setCityState] = useState<string>(() => readLastCity(DEFAULT_RESEARCH_CITY))
+  const [city, setCityState] = useState<string>(() => door.city ?? readLastCity(DEFAULT_RESEARCH_CITY))
+  // A city the address named is the city on screen now, so the browser remembers it as it does a picked one.
+  useEffect(() => {
+    if (door.city) writeLastCity(door.city)
+  }, [door.city])
   const setCity = (next: string) => {
     writeLastCity(next)
     setCityState(next)
