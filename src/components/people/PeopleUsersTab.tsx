@@ -93,6 +93,10 @@ interface PeopleUsersTabProps {
   usersTabTags: UsersTabTagsApi
   showToast: (message: string, type: 'success' | 'error') => void
   setEditingUserNote: (value: EditingUserNote | null) => void
+  /** Punch list #313: opens a teammate's card and footer. Absent when the viewer is not the office. */
+  openCardAndFooter?: (row: { userId: string; name: string }) => void
+  /** Punch list #313: opens Cards and footers for the team. Absent when the viewer is not the office. */
+  openTeamCards?: () => void
   openAdd: (kind: PersonKind) => void
   openEdit: (item: Person) => void
   /** Sets people.account_user_id so the external row folds into the account row. */
@@ -134,6 +138,8 @@ export function PeopleUsersTab({
   usersTabTags,
   showToast,
   setEditingUserNote,
+  openCardAndFooter,
+  openTeamCards,
   openAdd,
   openEdit,
   linkPersonToAccount,
@@ -400,6 +406,8 @@ export function PeopleUsersTab({
           onClick: () => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '', phone: ('phone' in item ? item.phone : null) ?? '' }),
         })
       }
+      // Punch list #313: the same card a person has on Your account, with this teammate's facts and photo.
+      if (openCardAndFooter) out.push({ key: 'card', label: 'Card and footer…', onClick: () => openCardAndFooter({ userId: item.id, name: item.name }) })
       if (setNeedsSupervision && hasSupervisionSwitch(item.role) && item.id !== authUserId) {
         const needs = item.needs_supervision !== false
         out.push({
@@ -693,6 +701,7 @@ export function PeopleUsersTab({
           },
         ]
       : []),
+    ...(openTeamCards ? [{ key: 'cards', label: 'Cards and footers', onClick: openTeamCards }] : []),
     {
       key: 'archived',
       label: `Archived (${archivedCount})`,
@@ -827,6 +836,11 @@ export function PeopleUsersTab({
           >
             Archived ({archivedCount})
           </button>
+          {openTeamCards ? (
+            <button type="button" onClick={openTeamCards} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="A business card and an email footer for everyone at once">
+              Cards and footers
+            </button>
+          ) : null}
           {backToDesk ? (
             <button type="button" onClick={backToDesk.open} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Reopen the desk you closed last">
               {backToDesk.label}

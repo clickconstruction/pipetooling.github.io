@@ -1,8 +1,8 @@
 ---
 name: "Cards and footers: a business card and an email footer made from a person's facts and photo"
 number: 313
-group: ready
-status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · nothing built in the app yet, nothing changed in anyone's mail
+group: close
+status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · built the same day as way A on the picks: the facts and the photo's home (v2.6941, pushed to prod), the designs as kernels (v2.6942), and the screens, Your card and footer on Your account with the People doors (v2.6943) · nothing changed in anyone's mail
 mockup: to-dos/cards-and-footers/a-in-place.html
 summary: >
   Every footer and card today is a flat picture a designer made for one person, so a new photo
@@ -21,10 +21,10 @@ summary: >
   the designer's file to hairline edges. The owner then took five changes to the designs
   themselves: one orange, even lines on the card, a title, a phone on the footer, and the photo
   front kept.
-next: Build way A in the plan's order, PR 1 first (the facts and the photo's home). The owner said to build it all on 2026-11-11 without answering calls 1 to 10 one by one, so each goes with its pick until he says otherwise.
-size: M as a train of six (S · S · S · S · S · S); two more wait on a call each, the footer with live words (S) and Gmail set by the app (M)
-blocker: None to build. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer.
-opinion: build A, the footer first — the footer is what was asked for and it needs no print shop, no vector and no new scope. The card follows on the same photo and the same facts.
+next: The owner tries it: his own card on Settings → Your account, then a teammate's from People → Users. A real photo save was not walked by the session, since it writes to prod. Then the designer's two files, the owner's word on calls 1 to 10, and the three checks on a device in v2.6943's fragment.
+size: M as a train of six (S · S · S · S · S · S), built as three PRs; left: the designer's vector and photo dropped in (XS), then on a call each the footer with live words (S), Gmail set by the app (M), the letterhead (S)
+blocker: The owner's try of it. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer.
+opinion: built as recommended, way A with the footer and the card together. Next the designer's two files, since the mark is a cut-out and the card front still carries the designer's own logo under the drawn one.
 ---
 
 # Cards and footers (#313)
@@ -43,7 +43,15 @@ The media is a designer's hand-off: flat pictures, one made per person. No vecto
 
 ## Where it stands
 
-**Drawn, and cleared to build.** Five pages sit beside this card. Nothing in the app has changed yet and nothing was sent.
+**Built, 2026-11-11.** Way A, on the picks, in three PRs: v2.6941 (the migration, pushed to prod the same day), v2.6942 (the kernels) and v2.6943 (the screens). Five mock-up pages sit beside this card as the record of what was drawn. Nothing was sent to anyone and nothing was changed in anyone's mail.
+
+**What is in the app.** Settings → Your account → *Your card and footer*: the photo sheet, the name on the card and the title, the footer as a picture, the card as a print file and as a sheet of ten. People → Users: *Card and footer…* in a person's row menu, and *Cards and footers* for the team. The help guide is `make-my-email-footer-and-business-card`.
+
+**What was not walked.** A real photo save, since it writes to prod: the session walked the screens on the dev server with every write refused, and the migration on a local database. The owner's first photo is the first real one.
+
+**What is left.** The designer's two files. The owner's word on calls 1 to 10, which went with their picks. The footer with live words, Gmail set by the app and the letterhead, each on its call. Footers 02, 03 and 05 and card 2 as layouts, if wanted.
+
+The record of the day, as it went:
 
 The owner, 2026-11-11, after taking the rework's five picks:
 
@@ -301,7 +309,7 @@ The words on the footer stay centred between the pipes however many rows a perso
 
 ## The plan
 
-Six small PRs. Each one ships alone.
+Six small PRs were planned. They were built as three: PR 1 as v2.6941, PR 2 as v2.6942, and PRs 3 to 6 together as v2.6943, since CI's test step runs over half an hour a PR.
 
 1. **The facts and the photo's home (S).** The migration: the name on the card, the photo's path and crop on `users`, the bucket and its policies. No screen.
 2. **The templates as kernels (S).** The brand, the three layouts and the parts, the fit of a long name, the ring's crop math, the font, the mark. Tests hold the numbers measured here.

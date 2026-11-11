@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { CardAndFooterWindow } from '../components/people/CardAndFooterWindow'
+import { TeamCardsWindow } from '../components/people/TeamCardsWindow'
+import type { UserRole } from '../hooks/useAuth'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
 import { payReportPeriodWord, typedConfirmMessage, typedWordMatches } from '../lib/typedConfirm'
 import { isControllerOrDev } from '../lib/doorRoles'
@@ -629,6 +632,9 @@ export default function People() {
     [alignHoursSessions],
   )
   const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string; phone: string } | null>(null)
+  const [cardFor, setCardFor] = useState<{ userId: string; name: string } | null>(null)
+  const [teamCardsOpen, setTeamCardsOpen] = useState(false)
+  const [teamCardsKey, setTeamCardsKey] = useState(0)
   const [userNoteSaving, setUserNoteSaving] = useState(false)
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
   // Page-owned dependencies the roster loaders/handlers reach into. Assigned
@@ -1995,6 +2001,8 @@ export default function People() {
           usersTabTags={usersTabTags}
           showToast={showToast}
           setEditingUserNote={setEditingUserNote}
+          openCardAndFooter={canEditUserNotes ? setCardFor : undefined}
+          openTeamCards={canEditUserNotes ? () => setTeamCardsOpen(true) : undefined}
           openAdd={openAdd}
           openEdit={openEdit}
           linkPersonToAccount={linkPersonToAccount}
@@ -2845,6 +2853,19 @@ export default function People() {
           </div>
         </div>
       )}
+      {/* Punch list #313: a business card and an email footer for the team, and for one teammate. */}
+      {teamCardsOpen ? <TeamCardsWindow reloadKey={teamCardsKey} onClose={() => setTeamCardsOpen(false)} onOpenCard={setCardFor} /> : null}
+      {cardFor ? (
+        <CardAndFooterWindow
+          userId={cardFor.userId}
+          name={cardFor.name}
+          role={authUserRole as UserRole | null}
+          onClose={() => {
+            setCardFor(null)
+            setTeamCardsKey((k) => k + 1)
+          }}
+        />
+      ) : null}
       {editingUserNote && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: DESK_EDITOR_Z, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
