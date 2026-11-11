@@ -53,6 +53,7 @@ describe('BoxPublicPage', () => {
     expect(screen.getByTestId('box-page-lines').textContent).toContain('3/4" copper 90° elbows')
     expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
     // v2.6868: the top reads as the label does, and the count is a verdict by the 14-day rule.
+    // v2.6899: the stencil is the plate's heading, large, with the kind read aloud before it.
     expect(screen.getByTestId('box-page-tile').textContent).toBe('B3')
     expect(screen.getByTestId('box-page-code').textContent).toBe('4F2A-9C18')
     expect(screen.getByTestId('box-page-counted').textContent).toBe('Counted 5 days agoThursday, Nov 5')
@@ -86,7 +87,8 @@ describe('BoxPublicPage', () => {
   it('Sign in to record a use or a count remembers the box and goes to the sign-in', async () => {
     answer(200, box)
     mount()
-    expect((await screen.findByTestId('box-page-sign-in')).textContent).toBe('Sign in to record a use or a count')
+    // v2.6899: the press is a row, its title over one line of who it is for.
+    expect((await screen.findByTestId('box-page-sign-in')).textContent).toContain('Sign in to record a use or a countOn Click\'s crew? Once on this phone.')
     fireEvent.click(await screen.findByTestId('box-page-sign-in'))
     expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/4f2a9c18')
     expect(await screen.findByTestId('sign-in-page')).toBeTruthy()
@@ -97,7 +99,7 @@ describe('BoxPublicPage', () => {
     mount()
     expect((await screen.findByTestId('box-page-empty')).textContent).toContain('Nothing is recorded in this cage yet')
     expect(screen.getByTestId('box-page-counted').textContent).toContain('Never counted')
-    expect(screen.getByTestId('box-page-sign-in').textContent).toBe('Sign in to add a part')
+    expect(screen.getByTestId('box-page-sign-in').textContent).toContain('Sign in to add a part')
     // The search stays: an empty cage is when a person most needs the others.
     expect(screen.getByTestId('box-page-find-form')).toBeTruthy()
   })
@@ -164,9 +166,11 @@ describe('BoxPublicPage', () => {
     expect(screen.getByTestId('box-page-parts').textContent).toBe('1 part')
     expect(screen.getAllByRole('row').map((r) => r.getAttribute('data-testid'))).toEqual(['box-page-line', 'box-page-gone'])
     const text = screen.getByTestId('box-page-text-office')
-    expect(text.textContent).toBe('Text the office about Cage B3')
+    expect(text.textContent).toContain('Text the office about Cage B3')
     expect(text.getAttribute('href')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
+    // v2.6899: the call has a row of its own, with the number as its second line.
     expect(screen.getByTestId('box-page-call-office').getAttribute('href')).toBe('tel:+15125550142')
+    expect(screen.getByTestId('box-page-call-office').textContent).toContain('Call the office(512) 555-0142')
   })
 
   it('a cage with only lines at zero lists them, not the empty words', async () => {
@@ -181,7 +185,10 @@ describe('BoxPublicPage', () => {
     answer(200, box)
     mount()
     await screen.findByTestId('box-page-title')
-    expect(screen.queryByTestId('box-page-office')).toBeNull()
+    expect(screen.queryByTestId('box-page-text-office')).toBeNull()
+    expect(screen.queryByTestId('box-page-call-office')).toBeNull()
+    // The sign-in row still stands alone in the card.
+    expect(screen.getByTestId('box-page-sign-in')).toBeTruthy()
   })
 
   it('a retired label names its box and offers the text when the function answers them', async () => {
