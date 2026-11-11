@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bridge: the four open items, before and after</title>
+<style>
+  /* Punch list #303. The four items the train left open, each as the page is today and as it would be.
+     Every company figure is made up: Sam, Dana and Jorge, every dollar, hour and date.
+     The frames use the app's token names with its light and dark values. Drawn before any of the four was built. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-red: #fca5a5; --border-amber: #fcd34d; --border-green: #86efac; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #1e3358;
+    --border-red: #991b1b; --border-amber: #92400e; --border-green: #166534; --border-blue: #1e40af;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap b { color: var(--copper); }
+  .cap .is { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 46ch; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  .key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--new); border-radius: 3px; background: var(--new-tint); vertical-align: -1px; margin-right: 6px; }
+
+  /* ---- the app, drawn ---- */
+  .screen { width: 375px; background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; padding: 10px 12px 14px; }
+  .screen.narrow { width: 300px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .panel:first-child { margin-top: 0; }
+  .panel.is { border: 2px solid var(--new); }
+  .k { font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .det { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
+  .v { font-size: 1.7rem; font-weight: 800; color: var(--text-strong); line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .v small { font-size: .8rem; font-weight: 500; color: var(--text-muted); }
+  .bars { display: flex; align-items: flex-end; gap: 5px; height: 40px; margin: 8px 0 4px; }
+  .bars i { flex: 1; background: #2563eb; border-radius: 2px; opacity: .55; } .bars i.now { opacity: 1; } .bars i.neg { background: #dc2626; }
+  .bars i.wait { background: repeating-linear-gradient(45deg, #2563eb 0 3px, transparent 3px 6px); opacity: .9; }
+  .btn { display: inline-flex; align-items: center; font: inherit; font-size: .8rem; font-weight: 600; min-height: 36px; padding: .25rem .7rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .band { margin-top: 8px; font-size: .78rem; padding: 6px 9px; border-radius: 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .band.is { outline: 2px solid var(--new); outline-offset: 2px; }
+  .fall { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .84rem; }
+  .fall td { padding: 4px 0; border-top: 1px solid var(--border); vertical-align: middle; }
+  .fall td:nth-child(2) { width: 42%; padding: 4px 8px; }
+  .fall td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fall i { display: block; height: 10px; border-radius: 2px; background: #2563eb; }
+  .fall i.c { background: #dc2626; opacity: .75; } .fall i.l { background: #16a34a; }
+  .neg { color: var(--text-red-700); } .pos { color: var(--text-green-700); }
+  .toast { margin-top: 10px; font-size: .8rem; padding: 8px 10px; border-radius: 8px; font-weight: 600; }
+  .toast.bad { background: var(--bg-red-tint); color: var(--text-red-700); border: 1px solid var(--border-red); }
+  .toast.good { background: var(--bg-green-tint); color: var(--text-green-700); border: 1px solid var(--border-green); }
+  .toast.is { outline: 2px solid var(--new); outline-offset: 2px; }
+  .inrow { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .input { flex: 1; min-height: 36px; border: 1px solid var(--border-strong); border-radius: 8px; padding: .25rem .6rem; font-size: .9rem; color: var(--text-strong); background: var(--surface); font-variant-numeric: tabular-nums; }
+  .acct { display: flex; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: .86rem; min-height: 40px; }
+  .acct span:nth-child(2) { flex: 1; color: var(--text-strong); font-weight: 600; }
+  .acct span:last-child { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .box { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; }
+  .box.on { background: #2563eb; border-color: #2563eb; }
+  .out { font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); margin-left: 6px; }
+  .ny { display: grid; gap: 4px; }
+  .ny b { font-size: .9rem; color: var(--text-strong); }
+  .ny .acts { display: flex; gap: 8px; margin-top: 6px; }
+  .mv { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: .84rem; }
+  .mv b { color: var(--text-strong); font-weight: 600; }
+  .who { font-size: .72rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-700); white-space: nowrap; align-self: start; }
+  .who.me { border-color: var(--border-blue); background: var(--bg-blue-tint); color: var(--text-link); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #303 · The Bridge · drawn 2026-11-11 before any build · item 4 shipped as v2.6964, item 3 built after it</p>
+    <h1>The four open items, before and after</h1>
+    <p>Each pair is the page as it is today, then the same place after the change. <span class="key"></span>A violet outline marks what would be new. Every company figure is made up.</p>
+    <nav class="jump"><a href="#first">1 · The first number</a><a href="#who">2 · Who else opens it</a><a href="#profit">3 · Profit after overhead</a><a href="#saves">4 · The saves</a></nav>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+  </div>
+</header>
+
+<!-- ───────────────────────── 1 ───────────────────────── -->
+<h2 id="first">1 · The first number <small>his call 3 · the first tile on the first screen</small></h2>
+<p class="lede">The card asked: the last full pay week, or this week so far. The build did both. The tile shows last week from Sunday to Thursday. From Friday it shows this week so far. Nobody has said yes to that yet.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Today</b> · Sunday to Thursday</div>
+    <div class="frame"><div class="screen narrow"><div class="panel">
+      <div class="k">Made last week</div>
+      <div class="v">$31.0k</div>
+      <div class="bars"><i style="height:52%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:58%"></i><i style="height:76%" class="now"></i><i style="height:18%"></i></div>
+      <div class="det">6 settled weeks ran $22.0k to $41.0k.</div>
+    </div></div></div>
+    <p class="say">The day the call is made, the tile is a whole week. This is the card's pick.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><b>Today</b> · Friday and Saturday</div>
+    <div class="frame"><div class="screen narrow"><div class="panel">
+      <div class="k">Made this week so far</div>
+      <div class="v">$24.6k ≈</div>
+      <div class="bars"><i style="height:52%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:58%"></i><i style="height:76%"></i><i style="height:60%" class="now"></i></div>
+      <div class="det">Last week was $31.0k.</div>
+    </div></div></div>
+    <p class="say">On Friday the card asks whether the step moved. The tile shows the week being asked about.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">The other way</span> · last week, all week</div>
+    <div class="frame"><div class="screen narrow"><div class="panel is">
+      <div class="k">Made last week</div>
+      <div class="v">$31.0k</div>
+      <div class="bars"><i style="height:52%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:58%"></i><i style="height:76%" class="now"></i><i style="height:60%"></i></div>
+      <div class="det">This week is $24.6k so far.</div>
+    </div></div></div>
+    <p class="say">One number that never changes its meaning. This week moves to the small line.</p>
+  </div>
+</div>
+<div class="note"><b>The pick: keep today's.</b> It costs nothing. The label always says which week it is. The Monday email always shows last week, since it goes out on Monday.</div>
+
+<!-- ───────────────────────── 2 ───────────────────────── -->
+<h2 id="who">2 · Who else opens it <small>his call 7 · the people a call names</small></h2>
+<p class="lede">The card said the call names office people who cannot see the page. Since v2.6864 each named person reads their own move on the Dashboard. They still cannot see the rest of the call. The page itself shows the bank, every wage and what is owed.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Today</b> · Dana's Dashboard, Needs you</div>
+    <div class="frame"><div class="screen"><div class="panel ny">
+      <div class="k">Needs you</div>
+      <b>The week's call</b>
+      <div class="det">Sam made this week's call. Bill the 4 finished jobs, $18.2k.</div>
+      <div class="acts"><span class="btn blue">Open Billing</span><span class="btn">Done</span></div>
+    </div></div></div>
+    <p class="say">Dana sees her own move and its door. She does not see the step or what anyone else took.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">A middle way</span> · the whole call, no money page</div>
+    <div class="frame"><div class="screen"><div class="panel ny is">
+      <div class="k">Needs you</div>
+      <b>The week's call: Bill is the slowest step</b>
+      <div class="det">Sam made this week's call.</div>
+      <div class="mv"><b>Bill the 4 finished jobs, $18.2k</b><span class="who me">You</span></div>
+      <div class="mv"><b>Approve the 93 hours waiting</b><span class="who">Sam</span></div>
+      <div class="mv"><b>Set percents on 6 jobs</b><span class="who">Jorge</span></div>
+      <div class="acts"><span class="btn blue">Open Billing</span><span class="btn">Done</span></div>
+    </div></div></div>
+    <p class="say">Everyone named on the call sees the step and who has which move. Nobody new sees the bank or a wage.</p>
+  </div>
+</div>
+<div class="note"><b>The pick: leave the page to the owner and the devs for now.</b> No call has been recorded yet, so nobody has been named. Wait for the first calls. If people ask what the rest of the call is, build the middle way.</div>
+
+<!-- ───────────────────────── 3 ───────────────────────── -->
+<h2 id="profit">3 · Profit after overhead reads recorded time <small>behind Money, under the eight week chart</small></h2>
+<p class="lede">The headline counts every hour the crew recorded and marks the number with ≈ while hours wait. The breakdown under it counts approved hours only. So the two disagree whenever hours wait, and the breakdown has to open on a warning.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Today</b> · approved hours only</div>
+    <div class="frame"><div class="screen"><div class="panel">
+      <div class="k">Profit after overhead · last 14 days</div>
+      <div class="band">Reads low for now. 93 hours still wait on approval. With them it reads about $1,120 a day.</div>
+      <div class="v" style="font-size:1.35rem;margin-top:6px">$670 <small>a day left after every cost</small></div>
+      <table class="fall">
+        <tr><td>Earned</td><td><i style="width:100%"></i></td><td>$6,330</td></tr>
+        <tr><td>Field wages</td><td><i class="c" style="width:30%"></i></td><td class="neg">−$1,900</td></tr>
+        <tr><td>Materials, subs</td><td><i class="c" style="width:41%"></i></td><td class="neg">−$2,610</td></tr>
+        <tr><td>Overhead</td><td><i class="c" style="width:18%"></i></td><td class="neg">−$1,150</td></tr>
+        <tr><td><b>Left</b></td><td><i class="l" style="width:11%"></i></td><td class="pos">$670</td></tr>
+      </table>
+      <div class="k" style="margin-top:9px">Left, by pay week</div>
+      <div class="bars" style="height:34px"><i style="height:40%"></i><i style="height:66%"></i><i style="height:30%" class="neg"></i><i style="height:82%"></i><i style="height:100%"></i><i style="height:24%" class="neg"></i><i style="height:38%" class="now"></i><i style="height:8%"></i></div>
+    </div></div></div>
+    <p class="say">The big number is the low one. The better guess sits in the warning. That guess adds what the waiting hours earn and forgets their wages.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · recorded time, as the headline</div>
+    <div class="frame"><div class="screen"><div class="panel">
+      <div class="k">Profit after overhead · last 14 days</div>
+      <div class="v" style="font-size:1.35rem;margin-top:6px">$940 ≈ <small>a day left after every cost</small></div>
+      <div class="band is">Counts 93 hours that still wait on approval. On approved hours alone it reads $670 a day.</div>
+      <table class="fall">
+        <tr><td>Earned</td><td><i style="width:100%"></i></td><td>$6,780</td></tr>
+        <tr><td>Field wages</td><td><i class="c" style="width:31%"></i></td><td class="neg">−$2,080</td></tr>
+        <tr><td>Materials, subs</td><td><i class="c" style="width:38%"></i></td><td class="neg">−$2,610</td></tr>
+        <tr><td>Overhead</td><td><i class="c" style="width:17%"></i></td><td class="neg">−$1,150</td></tr>
+        <tr><td><b>Left</b></td><td><i class="l" style="width:14%"></i></td><td class="pos">$940</td></tr>
+      </table>
+      <div class="k" style="margin-top:9px">Left, by pay week</div>
+      <div class="bars" style="height:34px"><i style="height:40%"></i><i style="height:66%"></i><i style="height:30%" class="neg"></i><i style="height:82%"></i><i style="height:100%"></i><i style="height:24%" class="neg"></i><i style="height:62%" class="wait"></i><i style="height:20%" class="wait"></i></div>
+      <div class="det">A hatched week still has hours waiting.</div>
+    </div></div></div>
+    <p class="say">The big number agrees with the headline. The waiting hours bring their wages with them. The low reading moves to one line under it.</p>
+  </div>
+</div>
+<div class="note"><b>The pick: build it, on the page's side.</b> The page already loads every recorded hour for the headline. A small kernel can turn those into the breakdown's days. That leaves the loader alone, so no edge function is redeployed and there is no migration.</div>
+
+<!-- ───────────────────────── 4 ───────────────────────── -->
+<h2 id="saves">4 · The floor, the typed cash and the account choice save for the owner's role <small>behind Money, under the cash chart</small></h2>
+<p class="lede">The screen does not change. Today the three saves pass for a dev and are refused for the owner's role. The floor has never been saved by anyone. The page still reads the $5,000 it ships with.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Today</b> · signed in with the owner's role</div>
+    <div class="frame"><div class="screen"><div class="panel">
+      <div class="k">Cash floor</div>
+      <div class="inrow"><span class="input">$8,000</span><span class="btn">Set</span></div>
+      <div class="k" style="margin-top:10px">The bank's accounts</div>
+      <div class="acct"><span class="box on">✓</span><span>Operating 1111</span><span>$21,400</span></div>
+      <div class="acct"><span class="box"></span><span>Accounts Payable 2222<span class="out">Left out</span></span><span>$12,400</span></div>
+      <div class="toast bad">Not saved, so it holds until you leave the page. The database refused the write.</div>
+    </div></div></div>
+    <p class="say">The switch follows for the visit and is lost on the next one. The Monday email still counts the account. The floor does not move at all.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the same presses</div>
+    <div class="frame"><div class="screen"><div class="panel">
+      <div class="k">Cash floor</div>
+      <div class="inrow"><span class="input">$8,000</span><span class="btn">Set</span></div>
+      <div class="k" style="margin-top:10px">The bank's accounts</div>
+      <div class="acct"><span class="box on">✓</span><span>Operating 1111</span><span>$21,400</span></div>
+      <div class="acct"><span class="box"></span><span>Accounts Payable 2222<span class="out">Left out</span></span><span>$12,400</span></div>
+      <div class="toast good is">Cash floor set: $8,000</div>
+    </div></div></div>
+    <p class="say">One migration lets the owner's role write these three settings and nothing else. The page, the email and the cash rule all read the saved choice.</p>
+  </div>
+</div>
+<div class="note"><b>The pick: build it first.</b> It is the smallest of the four. The Monday email goes out for the first time on Monday the 16th and it leads to these presses.</div>
+
+</div>
+<script>
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set)
+      document.querySelectorAll('.themes button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false') })
+    })
+  })
+</script>
+</body>
+</html>
