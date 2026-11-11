@@ -15,6 +15,8 @@ The {{button:green|Forecast}} button at the top of the Pipeline rolls every chip
 
 A bill with no bill date sits in **No pay history** at the end. So no money ever hides from the total.
 
+A bill an in kind arrangement pays is in no bucket, since no money is coming for it. The last line says how much is scheduled in kind. The email says the same. See [keep track of work paid in kind](/help/keep-track-of-work-paid-in-kind).
+
 The **Pay speeds** strip under the buckets gives the medians at a glance. The strip shows the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} medians. Each median says how many payments it's based on. Res means residential and Comm means commercial. Every row also wears its customer's Res/Comm tag. Commercial GCs usually pay on check runs, while homeowners pay on the spot. So the same "late by 10 days" reads very differently between the two.
 
 ## Emailing the forecast

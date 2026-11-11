@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billWaitTone, buildMoneyWaiting, openBillsForCustomers } from './moneyWaiting'
+import { billWaitTone, buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers } from './moneyWaiting'
 import type { PaySpeedData } from './billedExpectedPay'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -123,6 +123,35 @@ describe('buildMoneyWaiting', () => {
 
   it('returns null without pay-speed data', () => {
     expect(buildMoneyWaiting([invRow('rmc', 'RMC', 5000, '2026-03-15')], null, TODAY)).toBeNull()
+  })
+
+  it('a bill an in kind deal pays is under no customer, late or on pace, and is counted apart (punch list #301)', () => {
+    const onDeal = (r: StageRow): StageRow => ({ ...r, job: { ...r.job, in_kind_arrangement_id: 'deal-a' } }) as StageRow
+    const m = buildMoneyWaiting(
+      [
+        // RMC pays in kind: one bill 164 days old on the deal, one young bill paid with money.
+        onDeal(invRow('rmc', 'RMC- Dudley Mason', 13700, '2026-03-15', 'Ph 2 rough')),
+        invRow('rmc', 'RMC- Dudley Mason', 2750, '2026-08-01', 'Trim set'),
+        onDeal(invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe')),
+      ],
+      speeds(),
+      TODAY,
+    )!
+    expect(m.rows).toEqual([])
+    expect(m.onPaceCount).toBe(1)
+    expect(m.onPaceOpen).toBe(2750)
+    expect(m.inKind).toEqual({ count: 2, dollars: 17820 })
+    expect(moneyWaitingInKindLine(m.inKind)).toBe('$17,820 on 2 bills is scheduled in kind, not money waiting')
+    expect(moneyWaitingInKindLine({ count: 1, dollars: 726.5 })).toBe('$727 on 1 bill is scheduled in kind, not money waiting')
+    expect(moneyWaitingInKindLine({ count: 0, dollars: 0 })).toBeNull()
+    // The same bills with no deal: RMC and Ingram are both off pace.
+    const money = buildMoneyWaiting(
+      [invRow('rmc', 'RMC- Dudley Mason', 13700, '2026-03-15', 'Ph 2 rough'), invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe')],
+      speeds(),
+      TODAY,
+    )!
+    expect(money.rows.map((r) => r.customerId)).toEqual(['rmc', 'ingram'])
+    expect(money.inKind).toEqual({ count: 0, dollars: 0 })
   })
 })
 

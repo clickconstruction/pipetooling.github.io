@@ -4,12 +4,15 @@
  * + billWaitTone) — keep in sync. Operates on the payload RPC's invoice rows
  * (get_money_waiting_email_payload: the forecast payload rows + job_address)
  * instead of client StageRows; the grouping, baselines, tones, and sort are
- * verbatim.
+ * verbatim. A bill an in-kind deal pays is on nobody's list and counted apart
+ * (`inKind`); the dispatch stamps the deal on the rows, since the RPC does not
+ * carry it (_shared/inKindPayloadRows.ts).
  */
 import {
   PAY_SPEED_MIN_SAMPLES,
   billedReferenceYmd,
   daysBetweenYmd,
+  rowIsScheduledInKind,
   type PayloadPaySpeeds,
 } from './paymentForecastCore.ts'
 
@@ -27,6 +30,8 @@ export type MoneyWaitingPayloadRow = {
   billed_at: string | null
   est_bill_ymd: string | null
   remaining: number
+  /** The in-kind deal that pays this job's bills, stamped by the dispatch. Absent or null = paid with money. */
+  in_kind_arrangement_id?: string | null
 }
 
 /**
@@ -75,6 +80,8 @@ export type MoneyWaiting = {
   onPaceCount: number
   onPaceOpen: number
   companyMedianDays: number
+  /** Bills an in-kind deal pays (punch list #301): open, never late, so under no customer here. */
+  inKind: { count: number; dollars: number }
 }
 
 /** ok at/under baseline · warn over it · late at twice it or more · undated when the bill has no date. */
@@ -93,9 +100,16 @@ export function buildMoneyWaitingFromPayload(p: MoneyWaitingEmailPayload): Money
   type RawBill = Omit<OpenBill, 'tone'>
   type Acc = { name: string; open: number; bills: RawBill[] }
   const byCustomer = new Map<string, Acc>()
+  const inKind = { count: 0, dollars: 0 }
   for (const r of p.rows) {
     const open = Number(r.remaining) || 0
     if (open <= 0) continue
+    // Scheduled in kind is not waiting money: no pace judges it and nobody chases it.
+    if (rowIsScheduledInKind(r)) {
+      inKind.count += 1
+      inKind.dollars += open
+      continue
+    }
     const payer = moneyWaitingRowPayer(r)
     const customerId = payer.id
     if (!customerId) continue
@@ -151,5 +165,5 @@ export function buildMoneyWaitingFromPayload(p: MoneyWaitingEmailPayload): Money
   }
 
   offPace.sort((a, b) => b.oldestWaitDays - a.oldestWaitDays || b.open - a.open)
-  return { rows: offPace, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays }
+  return { rows: offPace, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays, inKind }
 }

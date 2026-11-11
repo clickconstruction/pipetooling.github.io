@@ -1,4 +1,5 @@
 import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome } from '../batchWords'
+import { filingSheetWords, type FilingSheetBreak } from '../jobsDocuments/filingSheetBreak'
 import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, filingDocsPrintHtml, lienAffidavitPrintOptions, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
@@ -129,5 +130,51 @@ export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPa
       const title = `Lien Affidavit — Job ${d.paper.jobNumber}`
       return { filing: { kind: 'lien_affidavit', title, jobIds: [d.paper.jobId] }, html: filingDocPrintHtml(d.blocks, title, footer, d.opts) }
     }),
+  }
+}
+
+/**
+ * Which papers of the print take a second sheet (v2.6930). The Lien window says it under **Print for notarization**
+ * (`FilingSheetNote`, v2.6896); the batch printed with no word, so a notary could be handed a paper whose signature
+ * sits on a sheet of its own. Each paper is laid out alone, as its own window lays it out, and read by the same
+ * `filingSheetBreak`. The press never waits on this and never leaves a paper out: it prints what is ready and the bar
+ * names what to check (`CLAUDE.md` → *Do what is ready*).
+ */
+
+/** One paper of the print as the hidden frame lays it out: the Lien window's own print document, with `sheet` set. */
+export type LienAffidavitSheetPaper = { jobId: string; sheetHtml: string }
+
+export function lienAffidavitSheetPapers(papers: ReadonlyArray<LienAffidavitPrintPaper>): LienAffidavitSheetPaper[] {
+  const footer = filingDocFooter('affidavit')
+  return papers.map((p) => ({ jobId: p.jobId, sheetHtml: filingDocPrintHtml(buildLienAffidavitBlocks(p.fields), `Lien Affidavit — Job ${p.jobNumber}`, footer, { ...lienAffidavitPrintOptions(p.fields), sheet: true }) }))
+}
+
+/** What has been read so far, by job: the document that was laid out, and how it broke (null when the frame had no layout). */
+export type LienAffidavitSheetReads = Readonly<Record<string, { sheetHtml: string; sheet: FilingSheetBreak | null }>>
+
+/** A read counts only for the document it was read from: a paper whose words changed is read again. */
+const sheetReadOf = (p: LienAffidavitSheetPaper, reads: LienAffidavitSheetReads) => (reads[p.jobId]?.sheetHtml === p.sheetHtml ? reads[p.jobId]! : null)
+
+/** The paper the frame lays out next, one at a time; null when every paper of the print has been read. */
+export function lienAffidavitSheetNext(papers: ReadonlyArray<LienAffidavitSheetPaper>, reads: LienAffidavitSheetReads): LienAffidavitSheetPaper | null {
+  return papers.find((p) => !sheetReadOf(p, reads)) ?? null
+}
+
+export type LienAffidavitSheetFlags = { lead: string; rows: Array<{ jobId: string; words: string }> }
+
+/** The papers that take a second sheet, each with the Lien window's own line; null while none is known to. */
+export function lienAffidavitSheetFlags(papers: ReadonlyArray<LienAffidavitSheetPaper>, reads: LienAffidavitSheetReads): LienAffidavitSheetFlags | null {
+  const rows = papers.flatMap((p) => {
+    const words = filingSheetWords(sheetReadOf(p, reads)?.sheet)
+    return words ? [{ jobId: p.jobId, words }] : []
+  })
+  if (rows.length === 0) return null
+  return {
+    lead: count(
+      rows.length,
+      '1 paper in this print takes a second sheet. Keep its sheets together for the notary, or print it alone from its own Lien window.',
+      '# papers in this print take a second sheet. Keep each one’s sheets together for the notary, or print each alone from its own Lien window.',
+    ),
+    rows,
   }
 }

@@ -20,6 +20,7 @@ import {
   type OpenBill,
   type OpenBillTone,
 } from '../_shared/moneyWaitingCore.ts'
+import { inKindApartLine } from '../_shared/paymentForecastCore.ts'
 
 export type { MoneyWaitingEmailPayload }
 
@@ -93,6 +94,8 @@ export function moneyWaitingEmailText(p: MoneyWaitingEmailPayload): string {
     }
   }
   lines.push('', `On pace: ${mw.onPaceCount} customer${mw.onPaceCount === 1 ? '' : 's'} · ${money(mw.onPaceOpen)} open`)
+  const inKindLine = inKindApartLine(mw.inKind, 'money waiting')
+  if (inKindLine) lines.push(`${inKindLine}.`)
   return lines.join('\n')
 }
 
@@ -160,6 +163,9 @@ export function renderMoneyWaitingEmail(p: MoneyWaitingEmailPayload, appUrl: str
       ? `<p style="font-size:13px;color:#374151;">Everyone with open billed money is on their usual pace this week — ${mw.onPaceCount} customer${mw.onPaceCount === 1 ? '' : 's'}, ${money(mw.onPaceOpen)} open. Nothing needs chasing.</p>`
       : `${legend}${mw.rows.map((r) => customerBlock(appUrl, r, mw.companyMedianDays)).join('')}
         <p style="font-size:11px;color:#5b6472;margin:10px 0 0;">On pace and not shown: ${mw.onPaceCount} customer${mw.onPaceCount === 1 ? '' : 's'} &middot; ${money(mw.onPaceOpen)} open.</p>`
+  // What a deal pays is open and is on nobody's list (punch list #301): say so, so the total does not shrink with no word.
+  const inKindLine = mw ? inKindApartLine(mw.inKind, 'money waiting') : null
+  const inKindNote = inKindLine ? `<p style="font-size:11px;color:#5b6472;margin:6px 0 0;">${esc(inKindLine)}.</p>` : ''
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -168,7 +174,7 @@ export function renderMoneyWaitingEmail(p: MoneyWaitingEmailPayload, appUrl: str
       <tr><td style="padding:18px 20px 4px;">
         <h1 style="margin:0;font-size:18px;color:#111827;">Money waiting</h1>
         <p style="margin:2px 0 12px;font-size:12px;color:#5b6472;">slowest first &middot; bars are their open bills, sized by dollars &middot; ${esc(reportDate(p.generated_at))} &middot; Central time</p>
-        ${bodyCore}
+        ${bodyCore}${inKindNote}
         <p style="margin:16px 0 4px;">
           <a href="${appUrl}/jobs?tab=stages&amp;forecast=1" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:9px 18px;font-weight:bold;text-decoration:none;font-size:13px;">Open Pay speeds in ClickTooling</a>
         </p>
