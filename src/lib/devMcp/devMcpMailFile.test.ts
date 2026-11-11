@@ -9,8 +9,8 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { EmailFile } from '../../../supabase/functions/_shared/gcKernels/lib/emailIn/gmailMessage'
-import type { MailAccount } from '../../../supabase/functions/_shared/devMcpMailSearch'
+import type { EmailFile, EmailIn } from '../../../supabase/functions/_shared/gcKernels/lib/emailIn/gmailMessage'
+import { isMailFile, mailReadReply, type MailAccount } from '../../../supabase/functions/_shared/devMcpMailSearch'
 import { REPLY_MAX_CHARS, replyText } from '../../../supabase/functions/_shared/devMcpDoor'
 import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, MAIL_FILE_TEXT_MAX_CHARS, mailFileReadArgs, mailFileReadNextWords, mailFileReadReply, mailFileTextArgs, mailFileTextHeldWords, mailFileTextReply, mailFileWhole, pickMailFile, textPieceEnd, type MailFileArgs, type MailFileBytes, type MailFileRaw } from '../../../supabase/functions/_shared/devMcpMailFile'
 
@@ -59,8 +59,8 @@ describe('a file off a mail · the arguments', () => {
 })
 
 describe('a file off a mail · the file and the inner verbs', () => {
-  it('picks the file by its name, exact then by its start, never a picture placed in the body', () => {
-    const files = [file({}), file({ partId: '3', name: 'Lot 12 photo.jpg', mime: 'image/jpeg' }), file({ partId: '4', name: 'logo.png', inline: true })]
+  it('picks the file by its name, exact then by its start, never a signature’s logo placed in the body', () => {
+    const files = [file({}), file({ partId: '3', name: 'Lot 12 photo.jpg', mime: 'image/jpeg' }), file({ partId: '4', name: 'logo.png', mime: 'image/png', inline: true })]
     expect(pickMailFile(files, 'INVOICE 4471.PDF')).toEqual({ ok: true, file: files[0] })
     expect(pickMailFile(files, 'lot 12')).toEqual({ ok: true, file: files[1] })
     expect(pickMailFile(files, 'logo.png')).toEqual({ ok: false, error: expect.stringContaining('No file named "logo.png"') })
@@ -180,6 +180,32 @@ describe('a file off a mail · read in pieces', () => {
     const text = replyText(reply)
     expect(text.length).toBeLessThanOrEqual(REPLY_MAX_CHARS)
     expect(unbase64(JSON.parse(text).content_base64)).toEqual(file.bytes.subarray(0, Number(reply.length)))
+  })
+})
+
+describe('a file off a mail · what counts as a file (0.62.0)', () => {
+  // Apple Mail places a PDF in the body (Content-Disposition: inline), and marks a signature's logo the same way.
+  const placed = file({ partId: '3', name: 'PO 371.pdf', size: 524_096, inline: true })
+  const logo = file({ partId: '4', name: 'image001.png', mime: 'image/png', size: 6_308, inline: true })
+  const sitePhoto = file({ partId: '5', name: 'IMG_2231.jpeg', mime: 'image/jpeg', size: 2_400_000, inline: true })
+
+  it('a PDF placed in the body is picked by its name, as an attached one is', () => {
+    expect(pickMailFile([logo, placed], 'PO 371.pdf')).toEqual({ ok: true, file: placed })
+    expect(pickMailFile([logo, placed], 'po 371')).toEqual({ ok: true, file: placed })
+  })
+
+  it('a large picture placed in the body is a file too; a signature’s logo is left out', () => {
+    expect(pickMailFile([logo, sitePhoto], 'IMG_2231.jpeg')).toEqual({ ok: true, file: sitePhoto })
+    expect(pickMailFile([logo, placed], 'image001.png')).toEqual({ ok: false, error: 'No file named "image001.png" on that mail. Its files: "PO 371.pdf".' })
+    expect(pickMailFile([logo], 'image001.png')).toEqual({ ok: false, error: 'That mail carries no file (a small picture placed in the body, such as a signature’s logo, is left out).' })
+  })
+
+  it('read_mail lists exactly what can be picked', () => {
+    const email = { gmailId: 'm1', threadId: 't1', labels: [], at: '2026-08-25T17:13:58.000Z', from: null, to: [], cc: [], subject: 'Fwd: PO 371', text: '', links: [], files: [logo, placed, sitePhoto], headers: {}, html: null } as unknown as EmailIn
+    const listed = mailReadReply('dana@example-plumbing.test', email).files
+    expect(listed.map((f) => f.name)).toEqual(['PO 371.pdf', 'IMG_2231.jpeg'])
+    for (const f of listed) expect(pickMailFile(email.files, f.name).ok).toBe(true)
+    expect([logo, placed, sitePhoto].map(isMailFile)).toEqual([false, true, true])
   })
 })
 
@@ -303,7 +329,7 @@ describe('a file off a mail · its words', () => {
 
 describe('the server and the docs', () => {
   it('declares the three verbs, files a job through drive-link as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.61.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.62.0'")
     for (const verb of ['read_mail_file', 'plan_mail_file', 'apply_mail_file']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
