@@ -23,7 +23,8 @@
 
 export type KitFact = 'name' | 'title' | 'email' | 'mobile' | 'office' | 'license'
 export type KitIcon = 'email' | 'mobile' | 'office' | 'license'
-export type KitColour = 'orange' | 'white'
+/** `orange` is the layout's accent, whatever colour a look gives it; a hex is itself. */
+export type KitColour = 'orange' | 'white' | `#${string}`
 export type KitWeight = 'bold' | 'light'
 export type KitAsset = 'mark' | 'cardFrontPhoto'
 export type KitPoint = [number, number]
@@ -90,7 +91,8 @@ export type KitLayout = {
   photo?: KitAsset
   panels?: { points: KitPoint[]; colour: KitColour }[]
   pipes?: KitPipe[]
-  logo?: { x: number; y: number; scale: number }
+  /** `ink` is the colour of the logo's two words, for a look whose words sit on a light panel; white when absent. */
+  logo?: { x: number; y: number; scale: number; ink?: `#${string}` }
   ring?: { cx: number; cy: number; photo: number; ring: number }
   words?: KitWords
 }
