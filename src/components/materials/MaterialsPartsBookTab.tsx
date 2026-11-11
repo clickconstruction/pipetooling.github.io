@@ -1,4 +1,4 @@
-import { Fragment, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useState, type Dispatch, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
 import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
@@ -6,6 +6,7 @@ import { MaterialPricesCard } from './MaterialPricesCard'
 import { EmptyState } from '../EmptyState'
 import { partsBookEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { supabase } from '../../lib/supabase'
+import { HouseNumbersWindow } from './HouseNumbersWindow'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -87,6 +88,8 @@ export function MaterialsPartsBookTab({
   openEditPart,
   openSupplyHousesModal,
 }: MaterialsPartsBookTabProps) {
+  // House numbers (punch list #308): what each supply house calls a part.
+  const [houseNumbersOpen, setHouseNumbersOpen] = useState(false)
   // Parts are already filtered and sorted server-side, so just use them directly
   const sortedParts = parts
 
@@ -122,6 +125,15 @@ export function MaterialsPartsBookTab({
             >
               Price coverage
             </button>
+            <button
+              type="button"
+              onClick={() => setHouseNumbersOpen(true)}
+              title="What each supply house calls a part, so a price sheet finds the part by its number"
+              style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+            >
+              House numbers
+            </button>
+            {houseNumbersOpen ? <HouseNumbersWindow onClose={() => setHouseNumbersOpen(false)} /> : null}
             <input
               type="text"
               placeholder={loadAllMode ? "Search all parts (instant)..." : "Search parts..."}

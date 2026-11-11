@@ -6,7 +6,7 @@ import type { RobotGap } from './robotRowState'
  * scrolls there, rings it, and puts the cursor in it. Keep the map and the
  * form's ids in step — a focus with no element is a silent no-op.
  */
-export type BidFormFocus = 'projectName' | 'gcBuilder' | 'bidValue' | 'plansLink' | 'serviceType' | 'dueDate'
+export type BidFormFocus = 'projectName' | 'gcBuilder' | 'bidValue' | 'plansLink' | 'serviceType' | 'dueDate' | 'driveLink' | 'countLink' | 'submissionLink'
 
 export const BID_FORM_FOCUS_ELEMENT_ID: Record<BidFormFocus, string> = {
   projectName: 'bid-form-project-name',
@@ -15,6 +15,9 @@ export const BID_FORM_FOCUS_ELEMENT_ID: Record<BidFormFocus, string> = {
   plansLink: 'bid-form-plans-link',
   serviceType: 'bid-form-service-type',
   dueDate: 'bid-form-bid-due-date',
+  driveLink: 'bid-form-drive-link',
+  countLink: 'bid-form-count-tooling-link',
+  submissionLink: 'bid-form-bid-submission-link',
 }
 
 /**

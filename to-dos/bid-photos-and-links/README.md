@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
-size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 4 to 9 (S · M · M · S · S · S)
-blocker: None for PR 5. Call 6 gates PR 4 and call 11 gates PR 6.
-opinion: build — PR 5 next, so every link has its place in the column; then the job's pair
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 7, setting a link in the Files window itself, needs no further word and can start.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, and PR 5 is the column with its Files window; left: PRs 4 and 6 to 9 (S · M · S · S · S)
+blocker: None for PR 7. Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — PR 7 next, so a missing link is set in the window where it is seen; then the job's pair
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -384,12 +384,17 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
 - *Docs*: `docs/EDGE_FUNCTIONS.md` (the section amended); `docs/ACCESS_CONTROL.md` (who may
   remove); the guide.
 
-**PR 5 · the column (M).** Gated by call 1. The second look gave every link its fixed place already, so what is left here is the grey icon for a missing link and the Files window it opens.
+**PR 5 · the column (M). Shipped, v2.6914, 2026-11-10.** The second look gave every link its fixed place already, so this was the grey icon for a missing link and the Files window it opens.
 - *Client*: the kernel returns all five slots in order; the table and the phone's card draw them,
   grey where missing; the photos window becomes the first row of `BidFilesModal`; a grey icon
   opens the window on its row, each row reading its state with **Open ↗**.
 - *Migration*: none. *Edge functions*: none.
 - *Docs*: `docs/BIDS_SYSTEM.md`; the guide; `docs/GLOSSARY.md` (Files window).
+- *As built*: a row the bid does not have offers **Set it in Edit bid**, which opens the bid's form landed on that
+  field, since the window sets nothing itself until PR 7. A grey link icon opens the window with the photos
+  folded away, so nothing is read for them until they are asked for. The Files window shows no **Change** yet.
+- *Seen in the walk, for the owner*: a bid with nothing now shows five grey icons, as drawn. On the live
+  board that is 124 grey link icons over 85 rows beside the grey cameras.
 
 **PR 6 · B and J: the job's pair beside the bid's (M).** Gated by call 11. The owner's calls of 2026-11-10.
 - *Migration*: a read for the board that an estimator may call, `bid_board_job_doors(p_bid_ids uuid[])`,
@@ -473,7 +478,7 @@ What it did not fix, and is the owner's:
   no ZZ Test folder sits in a personal Drive. **The owner chose the move, and the three bid folders were moved
   into the shared Drive the same evening**; what moved and what was checked are under call 4.
 - **A grey camera on 84 of 85 rows is a lot of grey.** It is what was asked, and it reads as a to-do on every bid.
-  Once the fixed column lands with grey for every missing link (PR 5) the owner may want the grey fainter.
+  The fixed column landed with grey for every missing link (PR 5, v2.6914), in the same grey. The owner may want it fainter.
 
 ## Found in passing, not fixed
 

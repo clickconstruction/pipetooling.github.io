@@ -7,6 +7,7 @@
  * grants the token cannot.
  */
 import type { EmailAddress, EmailIn, GmailMessage } from './gcKernels/lib/emailIn/gmailMessage.ts'
+import { fileKeep } from './gcKernels/lib/emailIn/emailLine.ts'
 
 /** The one scope the search asks for: Gmail refuses every write under it. The admin grants it on the Workspace. */
 export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
@@ -209,6 +210,16 @@ export interface MailReadReply {
 
 const addressWords = (a: EmailAddress): string => (a.name ? `${a.name} <${a.address}>` : a.address)
 
+/**
+ * Whether a part of a mail is a file the seat lists, reads and files (v2.6909): everything but a small picture placed in
+ * the body, a signature's logo, by the reader's own rule (`fileKeep`). Apple Mail places a PDF in the body as well
+ * (`Content-Disposition: inline`), and it is still a file: until 0.62.0 `read_mail` listed one and `read_mail_file`,
+ * `read_mail_file_text` and `plan_mail_file` could not pick it.
+ */
+export function isMailFile(file: Pick<EmailIn['files'][number], 'size' | 'inline' | 'mime'>): boolean {
+  return fileKeep(file) !== 'skip'
+}
+
 /** The mail whole as `readGmailMessage` reads it, its words capped, its files named. */
 export function mailReadReply(account: string, email: EmailIn): MailReadReply {
   const truncated = email.text.length > MAIL_READ_TEXT_MAX
@@ -224,7 +235,7 @@ export function mailReadReply(account: string, email: EmailIn): MailReadReply {
     labels: email.labels,
     text: truncated ? email.text.slice(0, MAIL_READ_TEXT_MAX) : email.text,
     truncated,
-    files: email.files.map((f) => ({ name: f.name, mime: f.mime, size: f.size })),
+    files: email.files.filter(isMailFile).map((f) => ({ name: f.name, mime: f.mime, size: f.size })),
   }
 }
 

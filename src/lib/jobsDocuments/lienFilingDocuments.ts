@@ -450,6 +450,23 @@ export function lienAffidavitPrintOptions(f: Pick<LienAffidavitFields, 'form'>):
  * see `lienAffidavitPrintOptions`. The screen keeps the paper's own leading.
  */
 export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, footer?: string, opts?: FilingPrintOptions): string {
+  return filingPrintShell(filingPrintBody(blocks, footer), docTitle, opts)
+}
+
+/**
+ * Several papers as one print document (v2.6918), each starting its own sheet: the Lien desk prints every ready
+ * affidavit for the notary in one press. Each paper keeps its own leading (`opts.leading`), so a short affidavit
+ * prints on its tight sheet beside one on the earlier form.
+ */
+export function filingDocsPrintHtml(papers: ReadonlyArray<{ blocks: FilingDocBlock[]; footer?: string; opts?: Pick<FilingPrintOptions, 'leading'> }>, docTitle: string): string {
+  const body = papers
+    .map((p, i) => `<div class="filing-paper${i > 0 ? ' filing-next-paper' : ''}${p.opts?.leading === 'tight' ? ' filing-tight' : ''}">${filingPrintBody(p.blocks, p.footer)}</div>`)
+    .join('')
+  return filingPrintShell(body, docTitle, undefined, true)
+}
+
+/** One paper's blocks inside the sheet: each keep-together run in its own block, the footer with the last. */
+function filingPrintBody(blocks: FilingDocBlock[], footer?: string): string {
   const footerHtml = footer
     ? `<div style="${HTML_LABEL_FONT};margin-top:1.8em;padding-top:0.5em;border-top:1px solid ${HTML_RULE};font-size:0.68em;color:${HTML_MUTED};break-before:avoid;page-break-before:avoid">${esc(footer)}</div>`
     : ''
@@ -464,7 +481,10 @@ export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, f
     at = last + 1
   }
   if (at < blocks.length) parts.push(filingDocHtml(blocks.slice(at)))
-  const body = parts.join('') + (footerPlaced ? '' : footerHtml)
+  return parts.join('') + (footerPlaced ? '' : footerHtml)
+}
+
+function filingPrintShell(body: string, docTitle: string, opts?: FilingPrintOptions, several?: boolean): string {
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(docTitle)}</title>${filingHtmlHasTypedSignature(body) ? FILING_SIGNATURE_FONT_LINK : ''}
 <style>
   @page { size: letter; margin: 0; }
@@ -472,11 +492,14 @@ export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, f
   .filing-page { width: 100%; border-collapse: collapse; border-spacing: 0; }
   .filing-page td { padding: 0; vertical-align: top; }
   .filing-page-gap { height: 0; }
-  .filing-keep { break-inside: avoid; page-break-inside: avoid; }
+  .filing-keep { break-inside: avoid; page-break-inside: avoid; }${several ? `
+  .filing-next-paper { break-before: page; page-break-before: always; margin-top: 4rem; }` : ''}
   @media ${opts?.sheet ? 'all' : 'print'} {
     html { margin: 0; padding: 0;${opts?.sheet ? ' overflow: hidden;' : ''} }
     body { max-width: none; margin: 0; padding: 0 0.85in;${opts?.leading === 'tight' ? ` line-height: ${FILING_PRINT_TIGHT_LEADING};` : ''} }
-    .filing-page-gap { height: ${FILING_PAGE_GAP_IN}in; }
+    .filing-page-gap { height: ${FILING_PAGE_GAP_IN}in; }${several ? `
+    .filing-next-paper { margin-top: 0; }
+    .filing-tight { line-height: ${FILING_PRINT_TIGHT_LEADING}; }` : ''}
   }
 </style></head><body><table class="filing-page" role="presentation"><thead>${FILING_PAGE_GAP}</thead><tbody><tr><td>${body}${FILING_PRINT_END}</td></tr></tbody><tfoot>${FILING_PAGE_GAP}</tfoot></table></body></html>`
 }

@@ -84,7 +84,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
@@ -99,7 +99,7 @@ import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
-import { affidavitStopPages, filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { affidavitStopPages, filingSnapshotPage, lienDeskAffidavitFieldsFor, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
@@ -113,6 +113,7 @@ import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
+import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, type LienAffidavitPrintPaper } from '../../lib/jobs/lienAffidavitBatch'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -147,7 +148,8 @@ import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildLienDeskGates, lienSentGatesFold, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -518,6 +520,9 @@ export default function LienDesk({
   // Redraw on the short form, for every ready paper at once (punch list #305): the press in flight, and the papers that did not take with their reasons.
   const [redrawBusy, setRedrawBusy] = useState(false)
   const [redrawFailed, setRedrawFailed] = useState<Array<{ jobId: string; reason: string }>>([])
+  // Send every drafted affidavit for approval, then print every ready one (punch list #305, v2.6918).
+  const [affSendBusy, setAffSendBusy] = useState(false)
+  const [affSendFailed, setAffSendFailed] = useState<Array<{ jobId: string; reason: string }>>([])
   const confirmDialog = useConfirmDialog()
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
@@ -1589,6 +1594,47 @@ export default function LienDesk({
     } finally {
       setRedrawBusy(false)
     }
+  }
+  // Send every drafted affidavit for approval (v2.6918): each goes where its GC's rule takes it, as the pane's own press sends it.
+  const affSendPlan = lienAffidavitSendPlan(affEntries, {
+    policyFor: (gcId) => (gcId ? data?.gcsById[gcId]?.policy : undefined) ?? 'ask',
+    promiseYmdFor: (jobId) => data?.promisesByJob[jobId]?.promisedYmd ?? null,
+    gcHasPriorNotice: (gcId) => Boolean(data?.gcsWithPriorNotice.has(gcId)),
+    gcHeldBefore: (gcId) => Boolean(data?.gcsHeldBefore.has(gcId)),
+    todayYmd,
+  })
+  const affSendWords = lienAffidavitSendWords(affSendPlan)
+  const sendDraftedAffidavits = async () => {
+    if (affSendBusy || affSendWords.dead) return
+    if (!(await confirmDialog({ title: affSendWords.title, message: affSendWords.message, confirmLabel: affSendWords.confirmLabel }))) return
+    setAffSendBusy(true)
+    try {
+      const result = await submitLienAffidavits(affSendPlan.ready.flatMap((r) => (r.entry.item ? [{ jobId: r.entry.jobId, itemId: r.entry.item.id, outcome: r.outcome }] : [])))
+      const outcome = lienAffidavitSendOutcome(result.done.length, result.failed.length)
+      setAffSendFailed(result.failed)
+      showToast(outcome.line, outcome.tone)
+      if (result.done.length > 0) onChanged()
+    } finally {
+      setAffSendBusy(false)
+    }
+  }
+  // Print every ready affidavit on the short form for the notary (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
+  const affPrintPlan = lienAffidavitPrintPlan(affEntries)
+  const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
+  const printReadyAffidavits = () => {
+    if (!data || affPrintWords.dead) return
+    const papers: LienAffidavitPrintPaper[] = affPrintPlan.ready.flatMap((e) => {
+      const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer, signerNameFor, todayYmd })
+      const job = data.jobsById[e.jobId]
+      return fields ? [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields }] : []
+    })
+    const run = lienAffidavitPrintRun(papers)
+    if (!openHtmlPrintWindow(run.html)) {
+      showToast('Popup blocked — allow popups to print.', 'error')
+      return
+    }
+    // A print counts as a send (docs/SENT_COPIES.md): each job keeps its own paper, as its Lien window's print files it.
+    for (const copy of run.copies) void fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html })
   }
   const retEntries = data?.retainage.entries ?? []
   const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
@@ -2721,6 +2767,42 @@ export default function LienDesk({
               ))}
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {office && (affSendPlan.ready.length > 0 || affSendFailed.length > 0) ? (
+        <div data-lien-affidavit-send-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {affSendPlan.ready.length > 0 ? (
+            <>
+              <span>{affSendWords.lead}</span>
+              <button type="button" onClick={() => void sendDraftedAffidavits()} disabled={affSendBusy} style={{ ...btn('plain', affSendBusy), justifySelf: 'start' }}>
+                {affSendBusy ? 'Sending…' : affSendWords.button}
+              </button>
+              {affSendWords.foot ? <span data-lien-affidavit-send-all-foot>{affSendWords.foot}</span> : null}
+            </>
+          ) : null}
+          {affSendFailed.length > 0 ? (
+            <div data-lien-affidavit-send-all-failed style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-red-600)' }}>
+              <strong>{lienAffidavitSendOutcome(0, affSendFailed.length).head}</strong>
+              {affSendFailed.map((f) => (
+                <span key={f.jobId}>
+                  <button type="button" onClick={() => { setAffSelectedJobId(f.jobId); setMobileListShown(false) }} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                    {jobLabel(data?.jobsById[f.jobId], f.jobId)}
+                  </button>
+                  {' · '}
+                  {f.reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {office && affPrintPlan.ready.length > 0 ? (
+        <div data-lien-affidavit-print-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          <span>{affPrintWords.lead}</span>
+          <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
+            {affPrintWords.button}
+          </button>
+          {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
         </div>
       ) : null}
       {LIEN_AFFIDAVIT_PILES.map((p) => {
