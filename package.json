@@ -145,6 +145,7 @@
     "test:pg:away-notes": "bash scripts/pgtest-away-notes.sh",
     "test:pg:permit-skim": "bash scripts/pgtest-permit-skim.sh",
     "test:pg:permit-policies": "bash scripts/pgtest-permit-policies.sh",
+    "test:pg:permit-hint-decks": "bash scripts/pgtest-permit-hint-decks.sh",
     "test:pg:counter-tickets": "bash scripts/pgtest-counter-tickets.sh",
     "test:pg:in-kind": "bash scripts/pgtest-in-kind.sh",
     "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
