@@ -10,7 +10,10 @@ const read = (name) => readFileSync(join(here, name), 'utf8').trimEnd();
 const dataUri = (name, mime) => `data:${mime};base64,${readFileSync(join(here, name)).toString('base64')}`;
 
 // the whole-logo picture is only for the footer with live words, so only a page that shows one carries it
-const blocksFor = (html) => ({
+// what the page itself asks for: its own markup, with the blocks this script wrote into it set aside, since they
+// carry the same words in their comments
+const own = (html) => html.replace(/<(script|style) data-inline="[^"]*">[\s\S]*?<\/\1>/g, '')
+const blocksFor = (page) => ((html) => ({
   'mock.css': `<style data-inline="mock.css">\n${read('mock.css')}\n</style>`,
   'kit.js':
     `<script data-inline="kit.js">\nwindow.ClickKitAssets = ${JSON.stringify({
@@ -20,14 +23,14 @@ const blocksFor = (html) => ({
       'card-front.jpg': dataUri('card-front.jpg', 'image/jpeg'),
     })};\n${read('kit.js')}\n</script>`,
   'mock.js': `<script data-inline="mock.js">\n${read('mock.js')}\n</script>`,
-});
+}))(own(page));
 const firstTime = {
   'mock.css': /<link rel="stylesheet" href="mock\.css">/,
   'kit.js': /<script src="kit\.js"><\/script>/,
   'mock.js': /<script src="mock\.js"><\/script>/,
 };
 
-for (const page of ['templates.html', 'rework.html', 'looks.html', 'a-in-place.html', 'b-desk.html', 'c-walk.html']) {
+for (const page of ['templates.html', 'rework.html', 'looks.html', 'sizes.html', 'a-in-place.html', 'b-desk.html', 'c-walk.html']) {
   let html = readFileSync(join(here, page), 'utf8');
   for (const [name, block] of Object.entries(blocksFor(html))) {
     const tag = name.endsWith('.css') ? 'style' : 'script';
