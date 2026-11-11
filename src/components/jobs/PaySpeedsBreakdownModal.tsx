@@ -8,7 +8,7 @@ import {
   receiptGapTone,
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
-import { buildMoneyWaiting, openBillsForCustomers, billWaitTone, type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
+import { buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers, billWaitTone,type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
@@ -499,7 +499,7 @@ export default function PaySpeedsBreakdownModal({
 
         {moneyWaitingShareOpen && <MoneyWaitingShareModal onClose={() => setMoneyWaitingShareOpen(false)} />}
 
-        {money && (money.rows.length > 0 || money.onPaceCount > 0) ? (
+        {money && (money.rows.length > 0 || money.onPaceCount > 0 || money.inKind.count > 0) ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.8rem 0.6rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)' }}>Money waiting</span>
@@ -658,6 +658,11 @@ export default function PaySpeedsBreakdownModal({
                 {formatUsdNoCents(money.onPaceOpen)} open · nothing to chase
               </div>
             )}
+            {moneyWaitingInKindLine(money.inKind) ? (
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }} data-testid="money-waiting-in-kind">
+                {moneyWaitingInKindLine(money.inKind)}
+              </div>
+            ) : null}
           </div>
         ) : (
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>

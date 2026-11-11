@@ -27,6 +27,7 @@ import {
 } from './render.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { stampInKindDeals } from '../_shared/inKindPayloadRows.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,7 +59,8 @@ async function fetchPayload(admin: Admin): Promise<MoneyWaitingEmailPayload> {
   if (!data || typeof data !== 'object' || !Array.isArray((data as MoneyWaitingEmailPayload).rows)) {
     throw new Error('Empty payload')
   }
-  return data as MoneyWaitingEmailPayload
+  // The RPC does not say which bills an in-kind deal pays; those are on nobody's list, as on the Pay speeds window.
+  return await stampInKindDeals(admin, data as MoneyWaitingEmailPayload)
 }
 
 /** Caller JWT → active staff users row; a Response means the gate failed. */

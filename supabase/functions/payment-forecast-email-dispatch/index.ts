@@ -39,6 +39,7 @@ import {
 } from './render.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { stampInKindDeals } from '../_shared/inKindPayloadRows.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,7 +71,8 @@ async function fetchPayload(admin: Admin): Promise<ForecastEmailPayload> {
   if (!data || typeof data !== 'object' || !Array.isArray((data as ForecastEmailPayload).rows)) {
     throw new Error('Empty payload')
   }
-  return data as ForecastEmailPayload
+  // The RPC does not say which bills an in-kind deal pays; the forecast counts those apart, as the modal does.
+  return await stampInKindDeals(admin, data as ForecastEmailPayload)
 }
 
 /** Caller JWT → active staff users row; a Response means the gate failed. */
