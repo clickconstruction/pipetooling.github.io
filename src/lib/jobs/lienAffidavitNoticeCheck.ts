@@ -1,0 +1,90 @@
+import { noticeDeadlineForMonth } from './lienDeadlines'
+import { describeNoticeMonths } from './lienNoticeDraft'
+import type { LienAffidavitNoticeRow } from './lienAffidavitNotices'
+
+/**
+ * Whether each month an affidavit swears has a notice behind it (punch list #314). Pure.
+ *
+ * The office's first signed batch held papers that swore April through August on a house where the first notice was
+ * mailed in late September, and the record showed that notice going to the owner alone. § 53.056 asks a subcontractor
+ * to send notice to the owner and the original contractor by the 15th of the second month after each month of work on
+ * a residential property, the third on any other (`noticeDeadlineForMonth`, the app's reading; counsel has not
+ * answered what a late notice leaves standing). So this is a flag, never a hold: the desk's own rule lets a late
+ * notice count while the affidavit's window is open, a hold has no override, and a paper stopped by a wrong reading
+ * days before its last day to file would cost the lien. The line says what the record shows and to ask the attorney.
+ *
+ * A month is read off the recorded § 53.056 filings that name it: the first day a copy went to the owner, and the first
+ * day one went to the original contractor.
+ */
+
+export type LienNoticeCheckMonth = {
+  /** 'YYYY-MM' */
+  month: string
+  /** The last day a notice for this month's work was on time, 'YYYY-MM-DD'. */
+  dueOn: string
+  ownerSentOn: string | null
+  contractorSentOn: string | null
+}
+
+export type LienNoticeCheck = {
+  months: LienNoticeCheckMonth[]
+  /** Months whose first notice to the owner went after its day, or never went. */
+  ownerLate: string[]
+  /** Months with no copy to the original contractor on record. */
+  contractorMissing: string[]
+  /** Months whose copy to the original contractor went after its day. */
+  contractorLate: string[]
+}
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/
+
+function firstSend(filings: ReadonlyArray<LienAffidavitNoticeRow>, month: string, recipient: string): string | null {
+  let first: string | null = null
+  for (const f of filings) {
+    if (f.kind !== 'notice_53_056' || f.voided_at || !(f.months_covered ?? []).includes(month)) continue
+    for (const raw of Array.isArray(f.sends) ? f.sends : []) {
+      if (!raw || typeof raw !== 'object') continue
+      const s = raw as { recipient?: unknown; sent_on?: unknown }
+      if (s.recipient !== recipient || typeof s.sent_on !== 'string' || !YMD.test(s.sent_on)) continue
+      if (first === null || s.sent_on < first) first = s.sent_on
+    }
+  }
+  return first
+}
+
+/** The check for one paper: `months` are the months it swears (`lienAffidavitSwornMonths`). A job contracted with the owner owes no notice and has nothing to check. */
+export function lienAffidavitNoticeCheck(input: { isSub: boolean; propertyKind: string | null | undefined; months: ReadonlyArray<string>; filings: ReadonlyArray<LienAffidavitNoticeRow> | null | undefined }): LienNoticeCheck {
+  const empty: LienNoticeCheck = { months: [], ownerLate: [], contractorMissing: [], contractorLate: [] }
+  if (!input.isSub) return empty
+  const filings = input.filings ?? []
+  const months = [...new Set(input.months.filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort().map((month): LienNoticeCheckMonth => ({
+    month,
+    dueOn: noticeDeadlineForMonth(`${month}-01`, input.propertyKind ?? ''),
+    ownerSentOn: firstSend(filings, month, 'owner'),
+    contractorSentOn: firstSend(filings, month, 'original_contractor'),
+  }))
+  const late = (sentOn: string | null, dueOn: string) => sentOn !== null && dueOn !== '' && sentOn > dueOn
+  return {
+    months,
+    ownerLate: months.filter((m) => m.ownerSentOn === null || late(m.ownerSentOn, m.dueOn)).map((m) => m.month),
+    contractorMissing: months.filter((m) => m.contractorSentOn === null).map((m) => m.month),
+    contractorLate: months.filter((m) => late(m.contractorSentOn, m.dueOn)).map((m) => m.month),
+  }
+}
+
+/** True when the record raises a question about any sworn month. */
+export function lienNoticeCheckFlags(check: LienNoticeCheck): boolean {
+  return check.ownerLate.length > 0 || check.contractorMissing.length > 0 || check.contractorLate.length > 0
+}
+
+/** The lead above the lines: what to do about them. */
+export const LIEN_NOTICE_CHECK_LEAD = 'Ask the attorney before this is filed.'
+
+/** The lines the desk and the Lien window draw, one per kind of question; none when the record raises none. */
+export function lienNoticeCheckLines(check: LienNoticeCheck): string[] {
+  const lines: string[] = []
+  if (check.ownerLate.length > 0) lines.push(`The owner's notice went after its date, or is not on record, for ${describeNoticeMonths(check.ownerLate)}.`)
+  if (check.contractorMissing.length > 0) lines.push(`No copy to the original contractor is on record for ${describeNoticeMonths(check.contractorMissing)}.`)
+  if (check.contractorLate.length > 0) lines.push(`The original contractor's copy went after its date for ${describeNoticeMonths(check.contractorLate)}.`)
+  return lines
+}

@@ -94,6 +94,36 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     expect(fileCopyMock.mock.calls[0]![1].html).toContain('BEFORE ME')
   })
 
+  it('the sheet says what the app checked, and the county box prints the county on both county lines (the best-we-can-do pass)', () => {
+    const issuer = { companyName: 'Sample Plumbing LLC', addressText: '100 Made Up Rd, Marlow, TX 75001', phone: '', email: '', tagline: '', licenseLine: '', signingCounty: 'Alder' }
+    renderWithProviders(<LienFilingTabs {...props({ issuer })} />)
+    // The box opens on the county Settings hold.
+    const county = document.querySelector('[data-lien-signing-county] input') as HTMLInputElement
+    expect(county.value).toBe('Alder')
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    let html = openPrintMock.mock.calls[0]![0]
+    expect(html.match(/COUNTY OF ALDER/g)).toHaveLength(2)
+    expect(html).not.toContain('where signed')
+    expect(html).toContain('What the app checked on this paper')
+    expect(html).toContain('Four things to write. Nothing else is written on the paper.')
+    expect(html).toContain('The counties are printed: signed in Alder County.')
+    expect(html).not.toContain('Do not sign. Call the office first if any of these is true.')
+    expect(fileCopyMock.mock.calls[0]![1].html.match(/COUNTY OF ALDER/g)).toHaveLength(2)
+    // Signed somewhere else this once: the typed county prints, and Settings are untouched.
+    fireEvent.change(county, { target: { value: 'Cedar' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    html = openPrintMock.mock.calls[1]![0]
+    expect(html.match(/COUNTY OF CEDAR/g)).toHaveLength(2)
+    expect(html).toContain('signed in Cedar County')
+    expect(issuer.signingCounty).toBe('Alder')
+    // Cleared, the notary writes both lines by hand and the sheet lists six blanks again.
+    fireEvent.change(county, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    html = openPrintMock.mock.calls[2]![0]
+    expect(html).toContain('where signed')
+    expect(html).toContain('COUNTY OF, at the top.')
+  })
+
   it('with the box unticked the paper prints alone, as before, and the choice is kept on this computer', () => {
     renderWithProviders(<LienFilingTabs {...props()} />)
     fireEvent.click(document.querySelector('[data-lien-window-help-sheet] input') as HTMLInputElement)

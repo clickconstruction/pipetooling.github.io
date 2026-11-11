@@ -8,7 +8,7 @@ import {
   parsePhysicalInvoiceIssuerStoredJson,
 } from './physicalInvoiceIssuer'
 
-const EMPTY = { companyName: '', addressText: '', physicalAddressText: '', phone: '', email: '', tagline: '', licenseLine: '', signerName: '', signerTitle: '' }
+const EMPTY = { companyName: '', addressText: '', physicalAddressText: '', signingCounty: '', phone: '', email: '', tagline: '', licenseLine: '', signerName: '', signerTitle: '' }
 
 describe('parsePhysicalInvoiceIssuerStoredJson', () => {
   it('returns all-empty fields for anything that is not an object', () => {
@@ -33,6 +33,7 @@ describe('parsePhysicalInvoiceIssuerStoredJson', () => {
       companyName: 'Click Plumbing',
       addressText: '12925 FM 20\nKingsbury TX',
       physicalAddressText: '',
+      signingCounty: '',
       phone: '',
       email: 'office@example.com',
       tagline: '',
@@ -48,6 +49,9 @@ describe('the physical address (punch list #305)', () => {
     expect(parsePhysicalInvoiceIssuerStoredJson({ addressText: 'PO Box 9\nKingsbury TX', physicalAddressText: '12925 FM 20\nKingsbury TX' }).physicalAddressText).toBe('12925 FM 20\nKingsbury TX')
     expect(parsePhysicalInvoiceIssuerStoredJson({ addressText: 'PO Box 9' }).physicalAddressText).toBe('')
     expect(parsePhysicalInvoiceIssuerStoredJson({ physicalAddressText: 7 }).physicalAddressText).toBe('')
+    // The county where the company signs (punch list #314): kept as typed, blank on an older setting.
+    expect(parsePhysicalInvoiceIssuerStoredJson({ signingCounty: 'Travis' }).signingCounty).toBe('Travis')
+    expect(parsePhysicalInvoiceIssuerStoredJson({ addressText: 'PO Box 9' }).signingCounty).toBe('')
   })
 })
 

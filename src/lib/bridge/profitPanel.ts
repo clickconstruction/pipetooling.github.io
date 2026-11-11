@@ -9,6 +9,13 @@
  * bar, a week hatched while its hours wait), where a day's money goes (the
  * 14-day average as a waterfall), where each input is read from and what can
  * make it wrong, and break-even. Pure: the page passes the loader's maps.
+ *
+ * Since v2.6965 the breakdown reads recorded time, as the headline does: the
+ * page adds what the hours still waiting on approval earn and cost
+ * (`waitingDays.ts`) and passes `waiting`. The big number then agrees with the
+ * headline and carries ≈, and one line under it says what approved hours alone
+ * read. Without `waiting` (the recorded hours could not be read) the panel is
+ * the approved reading with its warning first, as before.
  */
 import { payWeekContaining } from '../payWeekAnchor'
 
@@ -26,9 +33,14 @@ export type ProfitPanel = {
   breakEven: string
   note: string
   noteTone: 'amber' | 'green' | 'grey'
-  /** What a day keeps after every cost, on the average of `days` days. */
-  left: { usd: number; days: number }
-  /** Stands first when hours wait on approval: the reading is low, and about what it reads with them. Null when none wait. */
+  /** Which hours the figures count: every recorded hour, as the headline does, or approved hours only. */
+  reading: 'recorded' | 'approved'
+  /** What a day keeps after every cost, on the average of `days` days. `approx` when waiting hours move the figure. */
+  left: { usd: number; days: number; approx: boolean }
+  /**
+   * While hours wait on approval. On recorded time: how many are counted, and what approved hours alone read. On
+   * approved time it stands first: the reading is low, and about what it reads with them. Null when none wait.
+   */
   warn: string | null
 }
 
@@ -46,8 +58,13 @@ export type ProfitPanelInput = {
   pendingClosedHours: number
   unlinkedCard: number | null
   unattributedNoncard: number | null
-  /** Earned per approved field hour over the window, for what the waiting hours would add. */
-  fieldEarnedPerHour: number | null
+  /** Earned less wages per approved field hour over the window, for what the waiting hours would add on the approved reading. */
+  fieldMadePerHour: number | null
+  /**
+   * Set when the day maps, the speed and the totals already count the hours that still wait on approval
+   * (`buildRecordedReading`): the waiting field hours in the window, and what a day keeps on approved hours alone.
+   */
+  waiting?: { hours: number; approvedLeftUsd: number } | null
   weekLabel: (start: string) => string
 }
 
@@ -99,10 +116,24 @@ export function buildProfitPanel(input: ProfitPanelInput): ProfitPanel {
   const t = input.totals
   const direct = t.fieldLaborUsd + t.materialsUsd + t.subLaborUsd
   const share = (n: number): string => (direct > 0 ? `${Math.round((n / direct) * 100)}% of job costs` : '')
-  const pending = input.pendingClosedHours
+  const recorded = input.waiting != null
+  // On recorded time the hours that matter are the waiting field hours the figures count; on approved time, every hour that waits.
+  const pending = input.waiting != null ? input.waiting.hours : input.pendingClosedHours
   const sources: ProfitSourceRow[] = [
-    { input: 'earned', from: 'approved field hours × the job’s contract ÷ its expected hours', risk: pending > 0 ? `${hrs(pending)} not yet approved: reads low` : 'read in full', tone: pending > 0 ? 'amber' : 'green', door: PROFIT_DOORS.approvals },
-    { input: 'field labor', from: `payroll on the approved hours (${shortK(t.fieldLaborUsd)} in the window, ${share(t.fieldLaborUsd)})`, risk: pending > 0 ? 'the same hours: reads low' : 'read in full', tone: pending > 0 ? 'amber' : 'green', door: PROFIT_DOORS.approvals },
+    {
+      input: 'earned',
+      from: `${recorded ? 'recorded' : 'approved'} field hours × the job’s contract ÷ its expected hours`,
+      risk: pending > 0 ? (recorded ? `${hrs(pending)} not yet approved: counted, and can change` : `${hrs(pending)} not yet approved: reads low`) : 'read in full',
+      tone: pending > 0 ? 'amber' : 'green',
+      door: PROFIT_DOORS.approvals,
+    },
+    {
+      input: 'field labor',
+      from: `payroll on the approved hours${recorded ? ', and each person’s wage on the hours waiting' : ''} (${shortK(t.fieldLaborUsd)} in the window, ${share(t.fieldLaborUsd)})`,
+      risk: pending > 0 ? (recorded ? 'the same hours: counted, and can change' : 'the same hours: reads low') : 'read in full',
+      tone: pending > 0 ? 'amber' : 'green',
+      door: PROFIT_DOORS.approvals,
+    },
     {
       input: 'materials',
       from: `card and bank purchases sorted to a job, plus supply-house invoices by job (${shortK(t.materialsUsd)}, ${share(t.materialsUsd)})`,
@@ -124,9 +155,19 @@ export function buildProfitPanel(input: ProfitPanelInput): ProfitPanel {
   const materialsShare = direct > 0 ? Math.round((t.materialsUsd / direct) * 100) : null
   let note: string
   let noteTone: ProfitPanel['noteTone']
-  if (pending > 0 && s.climbPerDay < 0) {
-    const addPerDay = input.fieldEarnedPerHour != null ? (pending * input.fieldEarnedPerHour) / s.days : null
-    note = `The ${money(s.climbPerDay)} a day is a reading, not a result, and part of this is hours waiting: ${hrs(pending)} are not yet approved, so the last ${s.days} days earn on paper only what was approved.${addPerDay != null ? ` Approve them and the rate reads about ${money(s.climbPerDay + addPerDay)} a day.` : ''}${materialsShare != null && materialsShare > 0 ? ` Part can be materials bought ahead of the work — ${materialsShare}% of the window’s job costs is materials.` : ''}`
+  const boughtAhead = materialsShare != null && materialsShare > 0 ? ` Part can be materials bought ahead of the work — ${materialsShare}% of the window’s job costs is materials.` : ''
+  if (recorded) {
+    // Every recorded hour is in: a loss here is not a pile of approvals.
+    if (s.climbPerDay >= 0) {
+      note = `The day makes money at ${money(s.climbPerDay)} on the ${s.days}-day average${pending > 0 ? `, counting ${hrs(pending)} still waiting on approval` : ''}.`
+      noteTone = 'green'
+    } else {
+      note = `The day loses ${money(Math.abs(s.climbPerDay))} on the ${s.days}-day average with every recorded hour counted${pending > 0 ? `, ${hrs(pending)} of them still waiting on approval` : ''}.${boughtAhead}`
+      noteTone = 'amber'
+    }
+  } else if (pending > 0 && s.climbPerDay < 0) {
+    const addPerDay = input.fieldMadePerHour != null ? (pending * input.fieldMadePerHour) / s.days : null
+    note = `The ${money(s.climbPerDay)} a day is a reading, not a result, and part of this is hours waiting: ${hrs(pending)} are not yet approved, so the last ${s.days} days earn on paper only what was approved.${addPerDay != null ? ` Approve them and the rate reads about ${money(s.climbPerDay + addPerDay)} a day.` : ''}${boughtAhead}`
     noteTone = 'amber'
   } else if (s.climbPerDay >= 0) {
     note = `The day makes money at ${money(s.climbPerDay)} on the ${s.days}-day average${pending > 0 ? `, with ${hrs(pending)} still waiting on approval` : ''}.`
@@ -137,7 +178,13 @@ export function buildProfitPanel(input: ProfitPanelInput): ProfitPanel {
   }
   // In plain words, for the top of the breakdown.
   const waitHours = Math.round(pending)
-  const withThem = input.fieldEarnedPerHour != null ? s.climbPerDay + (pending * input.fieldEarnedPerHour) / s.days : null
+  if (input.waiting != null) {
+    // The waiting hours move the day's figure only when some fall inside the average's days.
+    const moved = waitHours > 0 && Math.abs(s.climbPerDay - input.waiting.approvedLeftUsd) >= 1
+    const warn = waitHours > 0 ? `Counts ${waitHours.toLocaleString('en-US')} ${waitHours === 1 ? 'hour that still waits' : 'hours that still wait'} on approval.${moved ? ` On approved hours alone it reads ${money(input.waiting.approvedLeftUsd)} a day.` : ''}` : null
+    return { weeks, eightWeeks, waterfall, sources, breakEven, note, noteTone, reading: 'recorded', left: { usd: s.climbPerDay, days: s.days, approx: moved }, warn }
+  }
+  const withThem = input.fieldMadePerHour != null ? s.climbPerDay + (pending * input.fieldMadePerHour) / s.days : null
   const warn = waitHours > 0 ? `Reads low for now. ${waitHours.toLocaleString('en-US')} ${waitHours === 1 ? 'hour still waits' : 'hours still wait'} on approval.${withThem != null ? ` With them it reads about ${money(withThem)} a day.` : ''}` : null
-  return { weeks, eightWeeks, waterfall, sources, breakEven, note, noteTone, left: { usd: s.climbPerDay, days: s.days }, warn }
+  return { weeks, eightWeeks, waterfall, sources, breakEven, note, noteTone, reading: 'approved', left: { usd: s.climbPerDay, days: s.days, approx: false }, warn }
 }

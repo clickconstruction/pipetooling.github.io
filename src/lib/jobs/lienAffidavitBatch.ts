@@ -6,6 +6,7 @@ import { LIEN_HELP_STYLES, lienHelpBatchSheetHtml, lienHelpPaperFromFields, type
 import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
+import { lienAffidavitFootBlockedSentence } from './lienDeskGates'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 
 /**
@@ -88,39 +89,68 @@ export function lienAffidavitSendOutcome(done: number, failed: number): BatchOut
   return batchOutcomeWords({ verb: 'send', past: 'Sent', done, failed, noun: 'affidavit' })
 }
 
-type PrintEntry = Pick<LienAffidavitEntry, 'jobId' | 'pile' | 'item'>
+type PrintEntry = Pick<LienAffidavitEntry, 'jobId' | 'pile' | 'item'> & Partial<Pick<LienAffidavitEntry, 'ready' | 'gates'>>
 
 export type LienAffidavitPrintPlan<E extends PrintEntry = PrintEntry> = {
-  /** In Ready to file on the short form: the press prints these. */
+  /** In Ready to file on the short form with every gate clear: the press prints these. */
   ready: E[]
   /** In Ready to file on the earlier form: redrawn first, or printed from its own Lien window. */
   held: E[]
+  /**
+   * In Ready to file on the short form with a gate closed since it was approved (punch list #314): a public owner, a
+   * homestead, an address gone. Its Lien window draws no paper, so the batch does not print one either, and the help
+   * sheet lists it with the reason. An entry that carries no gates is not judged.
+   */
+  gated: Array<{ entry: E; reason: string }>
+}
+
+/** Why a ready paper with a closed gate is left out: the hold line's own sentence, without its *Don't file yet.* */
+export function lienAffidavitGatedReason(entry: Pick<PrintEntry, 'gates'>): string {
+  const gate = (entry.gates ?? []).find((g) => !g.ok) ?? null
+  return lienAffidavitFootBlockedSentence(gate).replace(/^Don't file yet\.\s*/, '')
 }
 
 export function lienAffidavitPrintPlan<E extends PrintEntry>(entries: ReadonlyArray<E>): LienAffidavitPrintPlan<E> {
   const readyPile = entries.filter((e) => e.pile === 'ready' && e.item != null)
-  return { ready: readyPile.filter((e) => lienAffidavitFormForItem(e.item) === 'short'), held: readyPile.filter((e) => lienAffidavitFormForItem(e.item) !== 'short') }
+  const short = readyPile.filter((e) => lienAffidavitFormForItem(e.item) === 'short')
+  const closed = (e: E) => e.ready === false || (e.gates ?? []).some((g) => !g.ok)
+  return {
+    ready: short.filter((e) => !closed(e)),
+    held: readyPile.filter((e) => lienAffidavitFormForItem(e.item) !== 'short'),
+    gated: short.filter(closed).map((entry) => ({ entry, reason: lienAffidavitGatedReason(entry) })),
+  }
 }
 
 export type LienAffidavitPrintWords = { lead: string; button: string; foot: string | null; dead: boolean }
 
-export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'>): LienAffidavitPrintWords {
+export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'> & Partial<Pick<LienAffidavitPrintPlan, 'gated'>>): LienAffidavitPrintWords {
   const ready = plan.ready.length
   const held = plan.held.length
+  const gated = plan.gated?.length ?? 0
+  const gatedWords = gated > 0 ? count(gated, '1 ready affidavit is held by a gate and is left out. Its row says why.', '# ready affidavits are held by a gate and are left out. Each row says why.') : ''
+  const heldWords = held > 0 ? count(held, '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.', '# ready affidavits are on the earlier form and are left out. Redraw them, or print each from its own Lien window.') : ''
   return {
     lead: count(ready, '1 affidavit on the short form is ready to file.', '# affidavits on the short form are ready to file.'),
     button: `${countedLabel('Print', ready)} for notarization`,
-    foot: held > 0 ? count(held, '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.', '# ready affidavits are on the earlier form and are left out. Redraw them, or print each from its own Lien window.') : null,
-    dead: batchWords({ verb: 'Print', ready, held }).dead,
+    foot: [heldWords, gatedWords].filter(Boolean).join(' ') || null,
+    dead: batchWords({ verb: 'Print', ready, held: held + gated }).dead,
   }
 }
 
 /** One paper of the print: the job, its number as the ledger shows it, and the fields the desk filled. `label` and `fileBy` are the help sheet's (punch list #314): the job as the desk names it and its last day to file, in words. */
-export type LienAffidavitPrintPaper = { jobId: string; jobNumber: string; fields: LienAffidavitFields; label?: string; fileBy?: string }
+export type LienAffidavitPrintPaper = {
+  jobId: string
+  jobNumber: string
+  fields: LienAffidavitFields
+  label?: string
+  fileBy?: string
+  /** What the desk knows of the property and the notices, for the help sheet's checks (the best-we-can-do pass). */
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string> }
+}
 
 /** The batch's help sheet (punch list #314): a row for each paper from the paper's own fields, and the ones left out with their reason. */
 export function lienAffidavitBatchHelpSheet(papers: ReadonlyArray<LienAffidavitPrintPaper>, leftOut: ReadonlyArray<LienHelpLeftOut>, printedOn: string): string {
-  const rows: LienHelpPaper[] = papers.map((p) => lienHelpPaperFromFields({ jobLabel: p.label?.trim() || `Job ${p.jobNumber}`, fileBy: p.fileBy ?? '', claimWords: demandMoney(p.fields.unpaidAmount), fields: p.fields }))
+  const rows: LienHelpPaper[] = papers.map((p) => lienHelpPaperFromFields({ jobLabel: p.label?.trim() || `Job ${p.jobNumber}`, fileBy: p.fileBy ?? '', claimWords: demandMoney(p.fields.unpaidAmount), fields: p.fields, checked: p.checked }))
   return lienHelpBatchSheetHtml({ papers: rows, leftOut, printedOn })
 }
 

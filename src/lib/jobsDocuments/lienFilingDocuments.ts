@@ -1058,6 +1058,8 @@ export type LienAffidavitFields = {
   isSub?: boolean
   /** Short form ¶1: the claimant's physical address, printed only when it differs from `claimantAddress` (the mailing address), § 53.054(a)(7). */
   claimantPhysicalAddress?: string
+  /** Short form: the county the paper is signed in, the venue (punch list #314). Printed on the top county line and the notary's; blank leaves both for the notary's hand. Never the property's county, which is `county`. */
+  signingCounty?: string
   /** Short form ¶3: the hiring party's last known address, read only when `contractedWithName` is someone other than the original contractor, § 53.054(a)(4). */
   contractedWithAddress?: string
   /** Short form ¶5: each month payment is requested for, in words ("July and August 2026"), § 53.054(a)(3). */
@@ -1114,6 +1116,8 @@ function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDo
   const physical = (f.claimantPhysicalAddress ?? '').trim()
   const claim = demandMoney(f.unpaidAmount)
   const isSub = f.isSub !== false
+  // The venue, printed when the company's signing county is known (punch list #314): a word like "Travis" or "Travis County".
+  const signingCounty = (f.signingCounty ?? '').trim().replace(/\s+county$/i, '')
   const texts: string[] = [
     `I am authorized to make this affidavit for ${company} ("Claimant"). Claimant's mailing address is ${mailing || AFFIDAVIT_BLANK}.${physical && !sameParty(physical, mailing) ? ` Its physical address is ${physical}.` : ''}`,
     `Claimant furnished ${midSentence(f.workDescription) || AFFIDAVIT_BLANK} to improve this property in ${f.county.trim() || '_______'} County, Texas: ${f.legalDescription.trim() || AFFIDAVIT_BLANK}, ${f.propertyAddress.trim() || AFFIDAVIT_BLANK}.`,
@@ -1138,11 +1142,11 @@ function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDo
     ...(f.homestead ? [{ kind: 'topNotice', text: HOMESTEAD_AFFIDAVIT_NOTICE } as FilingDocBlock] : []),
     { kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] },
     // The blank is the county where the paper is signed, and says so (punch list #314): the office's first signed batch wrote the property's county in it on every sheet.
-    { kind: 'jurisdiction', county: '', note: AFFIDAVIT_VENUE_NOTE },
+    { kind: 'jurisdiction', county: signingCounty, note: AFFIDAVIT_VENUE_NOTE },
     { kind: 'paragraph', text: `BEFORE ME, the undersigned authority, on this day personally appeared ${signer || AFFIDAVIT_BLANK}, who being by me duly sworn, upon oath states the following:` },
     ...texts.map((text, i): FilingDocBlock => ({ kind: 'numbered', n: i + 1, text })),
     { kind: 'signature', lines: [signer, f.claimantCompany.trim()].filter((l) => l) },
-    { kind: 'notarial', who: signer, printedName: true },
+    { kind: 'notarial', who: signer, printedName: true, ...(signingCounty ? { county: signingCounty } : {}) },
   ]
   // Nothing above the title: the recorded sends, if a caller hands any, still close the page.
   return prependExtras(blocks, extras?.deliveryLines ? { deliveryLines: extras.deliveryLines } : undefined)
