@@ -2,7 +2,7 @@
 name: "A navy, orange and yellow skin for the app"
 number: 309
 group: waiting
-status: asked 2026-11-10, after the owner picked the navy plate for the box page (v2.6899) · read against main the same day (the tokens, the Layout's bar, the portal's theme, the brand files, screenshots at 375 and 1280 in both themes) · drawn as a before and after with two directions · nothing built · waiting on the owner's pick
+status: asked 2026-11-10, after the owner picked the navy plate for the box page (v2.6899) · read against main the same day (the tokens, the Layout's bar, the portal's theme, the brand files, screenshots at 375 and 1280 in both themes) · drawn as a before and after with two directions · the owner's answer the same day, on seeing the mock-up: he does not love it, and the app's look stays as it is for now · nothing built, nothing to build
 mockup: to-dos/navy-orange-yellow-skin/before-after.html
 summary: >
   The owner likes navy with the safety orange and yellow the company already uses, and asked
@@ -16,11 +16,12 @@ summary: >
   the one main press. Held to six rules, A holds all six. B breaks two: an orange press sits beside
   a warning on three of five screens, and it ends the one press blue the office picked, which is
   written 1,798 times in 830 files. The pick is A, with B's plate kept for a page about one thing
-  (a cage, a bill, a job), and no orange press.
-next: The owner's pick between A, B and A with plates later, and his answers to the nine calls at the foot of the mock-up. Then the train starts with the signed-out pages, one page a PR.
-size: S as a train of four for A (XS · S · S · XS), after the owner's pick; the plates on pages about one thing are a later train (M); B whole would be L and is not the pick
-blocker: The owner's pick. Nothing else.
-opinion: build A — the brand goes in the frame, where no state is read, for four token values and a marker. B's orange press should not be built. Orange and amber already mean "late" on every page, and the app's one orange press, Clock In, is the right amount.
+  (a cage, a bill, a job), and no orange press. The owner looked at it on 2026-11-10 and said
+  no: the app's look is not to be changed for now.
+next: Nothing. Do not build any part of this, and do not restyle the bar, the tab bar, a page head or a press toward it. The card stays as the record of what was drawn and why. It opens again only on the owner's word.
+size: S as a train of four for A (XS · S · S · XS), if the owner ever asks again; B whole would be L
+blocker: The owner's no of 2026-11-10. He does not want the look changed for now.
+opinion: wait — the owner saw both directions and does not love either. The app keeps its pale bar, white cards and blue presses. The mock-up and the facts it found are kept so the question is not drawn twice.
 ---
 
 # A navy, orange and yellow skin for the app (#309)
@@ -30,6 +31,14 @@ opinion: build A — the brand goes in the frame, where no state is read, for fo
 2026-11-10, after choosing the navy plate for the signed-out box page over a paper version, from live screenshots:
 
 > I think navy and the safety orange and yellow we use is a good combo. Perhaps we should skin more of the app?
+
+## Where it stands
+
+**Not for now.** The owner, 2026-11-10, with the mock-up in front of him:
+
+> I don't love it, we'll leave things how they are.
+
+So the app's look stays as it is: the pale bar, white cards, blue links and presses, the signed-out pages on the portal's paper, the box page's navy plate where it already is. No part of either direction is to be built, and no session should move a surface toward it on its own. His answer covered the whole page, so none of the nine calls below was answered one by one. Everything under this section is the record of what was drawn and why, kept so the question is not worked out twice. The recommendation, the plan and the picks below are the session's, not the owner's.
 
 ## The recommendation in one line
 
@@ -89,7 +98,7 @@ The mock-up draws both on the Dashboard at 375, the Tally's On site tab at 375, 
 - **Thought about and not drawn:** the portal's paper inside the app. The pages are dense tables tuned on grey under white cards, and every token would need a new pair on cream.
 - **What a drawing cannot settle:** a navy bar in full sun on a phone, which mark feels like Home, and whether Dark needs any change. A is cheap to try live and cheap to take back.
 
-## The plan, after the owner's pick
+## The plan, had the owner said yes
 
 Each step is its own PR with a release note, a fragment and a walk in both themes.
 
@@ -100,7 +109,7 @@ Each step is its own PR with a release note, a fragment and a walk in both theme
 5. **Later, its own train:** the plate on pages about one thing, the cage's screen on the Tally first, after a week of living with steps 1 to 4.
 6. **Not planned:** an orange press.
 
-## The owner's calls
+## The owner's calls, left unanswered
 
 1. A, B, or A with the plate kept for pages about one thing? *Pick: A, with the plate later.*
 2. Which mark is the Home press: the yellow ClickTooling tile, or the logo's hand on a white chip? *Pick: the tile inside the app, the hand on what a customer sees.*
