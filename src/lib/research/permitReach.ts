@@ -37,8 +37,13 @@ export function recordsStartOf(runs: ReadonlyArray<{ source: string; since: stri
 
 /** How far back the records are worth reading: the first day of the city's current datastore. */
 export const HISTORY_GOAL_YMD = '2025-01-01'
-/** The cities whose feeds can be read up to a day (`pageUrlBefore` in `_shared/permitCities.ts`). The others have no read back yet. */
-export const HISTORY_CITIES: readonly string[] = ['San Antonio']
+/**
+ * Empty while the read back is held (2026-11-10): the skim's and Builders' reads pair every
+ * building permit with every plumbing permit in a city, and older rows would slow them past the
+ * statement timeout. `permit-pull` refuses a read back as well. San Antonio returns here once
+ * those reads are index-driven.
+ */
+export const HISTORY_CITIES: readonly string[] = []
 /** How much one read back takes: about three months, a run the pull finishes inside its time budget. */
 export const HISTORY_STEP_DAYS = 92
 
@@ -59,8 +64,8 @@ export type HistoryAsk = {
  * goal or their start is not known. One press reads one step further back, so the day the
  * records start moves a step at a time and every count says the new day.
  */
-export function historyAsk(city: string, recordsStartYmd: string | null, todayYmd: string): HistoryAsk | null {
-  if (!HISTORY_CITIES.includes(city)) return null
+export function historyAsk(city: string, recordsStartYmd: string | null, todayYmd: string, cities: readonly string[] = HISTORY_CITIES): HistoryAsk | null {
+  if (!cities.includes(city)) return null
   if (!recordsStartYmd || !/^\d{4}-\d{2}-\d{2}$/.test(recordsStartYmd) || recordsStartYmd <= HISTORY_GOAL_YMD) return null
   const step = ymdPlusDays(recordsStartYmd, -HISTORY_STEP_DAYS)
   const since = step < HISTORY_GOAL_YMD ? HISTORY_GOAL_YMD : step

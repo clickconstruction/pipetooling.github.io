@@ -201,7 +201,8 @@ export function tiedNames(states: ReadonlyMap<string, NameState>, customerName: 
   const tied = [...states.values()].filter((s) => (s.all || s.permitIds.length > 0) && s.key !== ownKey).sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
   for (const s of tied) {
     const word = wordOfWords(s.by, s.at, me, nameOf)
-    const base = s.all ? 'Works for them' : `Tied on ${s.permitIds.length} permit${s.permitIds.length === 1 ? '' : 's'}`
+    // A company tied to a company is the same company under another name; a person works for them.
+    const base = s.all ? (contactParts(s.name).company ? 'Same company' : 'Works for them') : `Tied on ${s.permitIds.length} permit${s.permitIds.length === 1 ? '' : 's'}`
     out.push({ key: s.key, name: s.name || s.key, how: word ? `${base} · ${word}` : base, tie: s.all ? 'all' : 'permits', permitIds: s.all ? [] : [...s.permitIds] })
   }
   return out

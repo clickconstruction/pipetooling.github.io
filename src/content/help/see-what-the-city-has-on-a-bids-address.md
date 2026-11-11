@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -56,6 +56,25 @@ Another line names the towns where the GC's other bids are. No permit records ar
 On a phone the jobs fold behind **See the jobs**.
 
 Below the jobs sits **Other permits under names tied to them**. It lists the GC's own name and each name someone tied to the GC. Each row says whose word it is and how many permits the city lists that name on. Press **See them** to read the list. Press **Take back** to undo a tie.
+
+## Link a customer to its names on permits
+
+Our name for a customer is often not the name a city lists. You can link the two.
+
+Press **Find their names on permits** under the names tied to the GC. The same press sits on the customer's page, in the **Names on permits** card.
+
+A sheet opens with names that may be them. Each one says why it is offered. The strongest reason is a permit on an address you bid to them. The others are about the name. One name may begin the other. They may be one letter apart. They may share a word.
+
+Press **Compare** to see ours beside the city's. What the two share is marked green.
+
+Then answer the name once.
+
+- {{button:blue|Same company}} ties the name to the customer. Its permits show under them from then on. For a person the press reads **Works for them**.
+- **Not them** keeps your No. The name is not offered for that customer again.
+
+Nothing fits? Type in the search box. It reaches every name on permits.
+
+The app never ties a name by itself. It only joins a name that is exactly the same.
 
 ## See permit news on the Bid Board
 

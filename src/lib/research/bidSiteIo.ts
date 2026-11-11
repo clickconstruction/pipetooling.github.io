@@ -128,3 +128,47 @@ export function onNameAnswered(fn: () => void): () => void {
     answerListeners.delete(fn)
   }
 }
+
+// --- Linking a customer to its names on permits (punch list #307, PR 9 and 10) ---------------
+
+/** A permit as the name's own list and Compare read it. */
+export type NamePermit = { id: string; city: string; address: string | null; zip: string | null; contact: string | null; work_type: string | null; permit_type: string; kind: string; stage: string; issued_on: string | null; submitted_on: string | null }
+
+/** Every permit on hand under one name key, in every city, newest first. */
+export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[]> {
+  const rows = await withSupabaseRetry(
+    async () =>
+      await supabase
+        .from('permits' as never)
+        .select('id, city, address, zip, contact, work_type, permit_type, kind, stage, issued_on, submitted_on')
+        .eq('builder_key', builderKey)
+        .order('issued_on', { ascending: false, nullsFirst: false })
+        .limit(300),
+    'read the permits under this name',
+  )
+  return ((rows ?? []) as unknown) as NamePermit[]
+}
+
+/** Every answer on a name, for the worklist over all customers. Null before the table is on the database. */
+export async function loadAllNameAnswers(): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {
+  const { data: session } = await supabase.auth.getSession()
+  const me = session.session?.user.id ?? null
+  const res = await supabase.from('builder_customer_answers' as never).select(ANSWER_COLUMNS).order('answered_at', { ascending: true }).limit(5000)
+  if (res.error) {
+    if (missingTable(res.error)) return null
+    throw res.error
+  }
+  return { rows: ((res.data ?? []) as unknown) as NameAnswerRow[], me }
+}
+
+/** Our customers by name, for the worklist. Archived ones are left out. */
+export async function loadCustomerNames(): Promise<Array<{ id: string; name: string }>> {
+  const rows = await withSupabaseRetry(async () => await supabase.from('customers').select('id, name').is('archived_at', null).order('name').limit(5000), 'read the customers')
+  return ((rows ?? []) as Array<{ id: string; name: string | null }>).filter((c) => (c.name ?? '').trim() !== '').map((c) => ({ id: c.id, name: c.name as string }))
+}
+
+/** The newest bids with a customer on them, for the worklist's site evidence. */
+export async function loadRecentBidsWithCustomer(limit = 1000): Promise<Array<GcBid & { customer_id: string }>> {
+  const rows = await withSupabaseRetry(async () => await supabase.from('bids').select(`${GC_BID_COLUMNS}, customer_id`).not('customer_id', 'is', null).order('created_at', { ascending: false }).limit(limit), 'read the bids')
+  return ((rows ?? []) as unknown) as Array<GcBid & { customer_id: string }>
+}

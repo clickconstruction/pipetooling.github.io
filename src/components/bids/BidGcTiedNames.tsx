@@ -8,6 +8,7 @@ import { sitePermitLines as feedLines, type SitePermit } from '../../lib/researc
 import { loadPermitsOfBuilder, loadResearchers } from '../../lib/research/permitResearchIo'
 import { loadNameAnswers, onNameAnswered, recordNameAnswer } from '../../lib/research/bidSiteIo'
 import { foldNameAnswers, listedOnWords, tiedNames, type TiedName } from '../../lib/research/nameAnswers'
+import { FindNamesSheet } from './FindNamesSheet'
 
 /**
  * Other permits under names tied to a GC (punch list #307, PR 7): the second half of the GC's
@@ -21,7 +22,17 @@ const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, fo
 type Row = TiedName & { permits: SitePermit[] }
 type Loaded = { state: 'loading' } | { state: 'absent' } | { state: 'done'; rows: Row[] } | { state: 'failed'; message: string }
 
-export function BidGcTiedNames({ customerIds, customerName }: { customerIds: readonly string[]; customerName: string }) {
+export function BidGcTiedNames({
+  customerIds,
+  customerName,
+  findPress = true,
+}: {
+  customerIds: readonly string[]
+  customerName: string
+  /** The press that opens Find their names on permits. Off inside that sheet itself. */
+  findPress?: boolean
+}) {
+  const [finding, setFinding] = useState(false)
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -134,7 +145,13 @@ export function BidGcTiedNames({ customerIds, customerName }: { customerIds: rea
           )
         })}
       </div>
-      {tied.length === 0 && <div style={muted}>A name is tied when someone answers the question beside a permit on a bid’s site.</div>}
+      {tied.length === 0 && <div style={muted}>A name is tied when someone answers the question beside a permit on a bid’s site, or finds it here.</div>}
+      {findPress && (
+        <button type="button" onClick={() => setFinding(true)} style={{ ...linkPress, justifySelf: 'start' }}>
+          Find their names on permits ›
+        </button>
+      )}
+      {finding && <FindNamesSheet customerIds={customerIds} customerName={customerName} onClose={() => setFinding(false)} />}
       <div style={muted}>A name on a permit is the contact the city lists. It is not always the builder.</div>
     </>
   )
