@@ -12,7 +12,8 @@
 # goes with its part; a pasted row files a price with its source, a big move and an older paper wait, a row comes
 # back, a hand edit keeps its price; a sheet is kept whole, its house settled, a pick kept, a row left out, the sheet
 # removed; a kit row files with no price and keeps its number; a whole sheet comes back around a price changed by hand.
-# It raises on its first failed assertion and ends with "price_sheets PASSED". PGTEST_KEEP=1 leaves
+# A fixture's placement is remembered and cleared, and holds the sheet while it stands. It raises on its first failed
+# assertion and ends with "price_sheets PASSED". PGTEST_KEEP=1 leaves
 # the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a
 # migration. Never touches prod.
 set -euo pipefail
@@ -21,7 +22,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55608}"
 NAME="pgtest-price-sheets"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_supply_part_codes.sql supabase/migrations/*_price_rows.sql supabase/migrations/*_price_sheets.sql supabase/migrations/*_price_sheet_filing.sql)"
+WRITES="$(ls supabase/migrations/*_supply_part_codes.sql supabase/migrations/*_price_rows.sql supabase/migrations/*_price_sheets.sql supabase/migrations/*_price_sheet_filing.sql supabase/migrations/*_price_sheet_fixtures.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

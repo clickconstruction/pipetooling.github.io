@@ -64,6 +64,26 @@ That row is still worth filing. It keeps the house's number on the part, so the 
 
 A fixture that does not add up says so in amber. Its rows do not sum to the subtotal the paper prints. Check the paper before you use it.
 
+## Place the fixtures
+
+When every row of a fixture is filed, the sheet offers to place it. Its line under **By fixture** says where it goes.
+
+Press {{button:gray|Place · $52.72 each}}. The fixture gets one line on the takeoff, at the house's price each.
+
+The app looks for an assembly that already holds the same parts. It uses that one. It makes a new assembly only when none matches.
+
+Press **Place 14 fixtures** to place every ready fixture at once. Your own count shows on the button.
+
+While the sheet is open, a ready fixture is also offered on its own takeoff row. Press **Use** there.
+
+Some fixtures wait for you.
+
+- **Costed by hand.** The fixture already has lines you put there. Press **Use the sheet's** to replace them, or leave it.
+- **No fixture with that tag.** The bid has no row with the sheet's tag. Pick the right row under **It is…**.
+- **Does not add up.** Check the paper first.
+
+Press **Take off** to undo a placement. The assembly stays in the book.
+
 ## Leave and come back
 
 Every press saves at once. There is no Save button.

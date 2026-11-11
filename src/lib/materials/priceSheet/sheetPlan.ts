@@ -33,6 +33,13 @@ export type SheetGroup = {
   eachPrice: number | null
   placedAt: string | null
   heldWhy: string
+  /** What a placement left behind (PR 6): the assembly used, the bid's rows, the takeoff lines, and the bundle price set and replaced. */
+  templateId?: string | null
+  countRowIds?: string[]
+  placedLineIds?: string[]
+  bundlePrice?: number | null
+  replacedBundlePrice?: number | null
+  replacedBundleEffectiveDate?: string | null
 }
 
 /** Where a row stands. */

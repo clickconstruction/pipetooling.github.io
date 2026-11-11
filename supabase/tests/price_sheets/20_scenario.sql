@@ -445,6 +445,70 @@ END $$;
 RESET ROLE;
 SELECT bedt.ok('anon cannot take a sheet back', NOT has_function_privilege('anon', 'public.price_sheet_take_back(uuid)', 'EXECUTE'));
 
+-- 24 · a fixture's placement is remembered and cleared; a sheet with a fixture still placed is not taken back.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+INSERT INTO public.material_templates (id, name, service_type_id) VALUES ('00000000-0000-0000-0000-00000000aa01', 'SK-3 3 COMPARTMENT SINK · Bed Borden', '00000000-0000-0000-0000-00000000a001');
+INSERT INTO public.bids (id, created_by, account_manager_id, service_type_id, project_name)
+VALUES ('00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000a001', 'Bed Juniper Dental');
+INSERT INTO public.bids_count_rows (id, bid_id, fixture, count, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000bb01', '00000000-0000-0000-0000-00000000b001', 'SK-3 OFCI', 1, 1),
+  ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-00000000b001', 'SK-3A', 2, 2);
+INSERT INTO public.bids_takeoff_rough_part_lines (id, bid_id, count_row_id, source_template_id, quantity, unit_price, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000cc01', '00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-00000000bb01', '00000000-0000-0000-0000-00000000aa01', 1, 386.40, 1),
+  ('00000000-0000-0000-0000-00000000cc02', '00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-00000000aa01', 1, 386.40, 1);
+SET LOCAL ROLE authenticated;
+DO $$
+DECLARE v_group uuid := (SELECT id FROM public.supply_paper_groups WHERE tag = 'SK-3');
+BEGIN
+  BEGIN
+    PERFORM public.price_sheet_group_place(v_group, jsonb_build_object('template_id', '00000000-0000-0000-0000-00000000aa01', 'placed_line_ids', '[]'::jsonb));
+    RAISE EXCEPTION 'FAILED: a placement with no takeoff line was kept';
+  EXCEPTION WHEN invalid_parameter_value THEN RAISE NOTICE 'ok: a placement needs its takeoff line';
+  END;
+END $$;
+SELECT public.price_sheet_group_place((SELECT id FROM public.supply_paper_groups WHERE tag = 'SK-3'), jsonb_build_object(
+  'template_id', '00000000-0000-0000-0000-00000000aa01',
+  'count_row_ids', jsonb_build_array('00000000-0000-0000-0000-00000000bb01', '00000000-0000-0000-0000-00000000bb02'),
+  'placed_line_ids', jsonb_build_array('00000000-0000-0000-0000-00000000cc01', '00000000-0000-0000-0000-00000000cc02'),
+  'bundle_price', 386.40, 'replaced_bundle_price', 371.15, 'replaced_bundle_effective_date', '2026-09-02', 'made_template', true));
+SELECT bedt.ok('the fixture remembers the rows, the lines, the assembly and the bundle price it replaced',
+  (SELECT placed_at IS NOT NULL AND placed_by = '00000000-0000-0000-0000-0000000000a1' AND cardinality(count_row_ids) = 2 AND cardinality(placed_line_ids) = 2
+     AND bundle_price = 386.40 AND replaced_bundle_price = 371.15 AND replaced_bundle_effective_date = '2026-09-02' AND made_template
+     AND template_id = '00000000-0000-0000-0000-00000000aa01' FROM public.supply_paper_groups WHERE tag = 'SK-3'));
+DO $$
+DECLARE v_group uuid := (SELECT id FROM public.supply_paper_groups WHERE tag = 'SK-3');
+BEGIN
+  BEGIN
+    PERFORM public.price_sheet_group_place(v_group, jsonb_build_object('template_id', '00000000-0000-0000-0000-00000000aa01', 'placed_line_ids', jsonb_build_array('00000000-0000-0000-0000-00000000cc01')));
+    RAISE EXCEPTION 'FAILED: a fixture was placed twice';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: a fixture is not placed twice';
+  END;
+  BEGIN
+    PERFORM public.price_sheet_take_back((SELECT paper_id FROM public.supply_paper_groups WHERE id = v_group));
+    RAISE EXCEPTION 'FAILED: a sheet was taken back with a fixture still placed';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    IF SQLERRM <> 'Fixtures of this sheet are on a takeoff. Take them off first.' THEN RAISE EXCEPTION 'FAILED: the refusal reads [%]', SQLERRM; END IF;
+    RAISE NOTICE 'ok: a sheet is not taken back while a fixture is placed';
+  END;
+  BEGIN
+    PERFORM public.price_sheet_discard((SELECT paper_id FROM public.supply_paper_groups WHERE id = v_group));
+    RAISE EXCEPTION 'FAILED: a sheet was removed with a fixture still placed';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: a sheet is not removed while a fixture is placed';
+  END;
+END $$;
+SELECT public.price_sheet_group_unplace((SELECT id FROM public.supply_paper_groups WHERE tag = 'SK-3'));
+SELECT bedt.ok('taken off, the fixture remembers nothing of the placement',
+  (SELECT placed_at IS NULL AND cardinality(placed_line_ids) = 0 AND bundle_price IS NULL AND NOT made_template FROM public.supply_paper_groups WHERE tag = 'SK-3'));
+SELECT bedt.ok('and the sheet can be taken back again', (SELECT public.price_sheet_take_back((SELECT paper_id FROM public.supply_paper_groups WHERE tag = 'SK-3')) ? 'restored'));
+RESET ROLE;
+SELECT bedt.ok('anon cannot place or take off a fixture',
+  NOT has_function_privilege('anon', 'public.price_sheet_group_place(uuid, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_group_unplace(uuid)', 'EXECUTE'));
+
 -- 7 · a number goes with its part.
 SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
 DELETE FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e002';

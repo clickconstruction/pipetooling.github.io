@@ -7,7 +7,7 @@
  * Docked, it is a drawer on the right and the page keeps its width beside it. On a narrow window it
  * opens over the page.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { batchOutcomeWords, batchWords, countedLabel } from '../../lib/batchWords'
@@ -18,6 +18,8 @@ import { cardInput, cardLink, cardPress, CHIP_TONE } from '../../lib/materials/p
 import { filePriceRow, loadBidAskedHouseIds, loadOnFilePrices, takeBackPriceRow } from '../../lib/materials/priceSheet/priceRowIo'
 import { discardSheet, holdSheetLine, loadSheet, pickSheetLinePart, setSheet, takeBackSheet, type LoadedSheet } from '../../lib/materials/priceSheet/priceSheetIo'
 import { dollars, shortDay, type OnFilePrice } from '../../lib/materials/priceSheet/rowCard'
+import { assemblyName, findSameItemsAssembly, fixtureStatus, type CountRow, type FixtureStatus, type KnownAssembly } from '../../lib/materials/priceSheet/sheetFixtures'
+import { loadAssemblies, makeAssembly, recordPlaced, recordUnplaced, restoreBundlePrice, setBundlePrice } from '../../lib/materials/priceSheet/sheetFixturesIo'
 import { houseVerdict, type HouseVerdict } from '../../lib/materials/priceSheet/sheetHouse'
 import { planSheet, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -31,6 +33,22 @@ export const PRICE_SHEET_DOCK_WIDTH = 452
 export const PRICE_SHEET_DOCK_MIN_WINDOW = 1100
 
 const ROWS = ['row', 'rows'] as const
+const FIXTURES = ['fixture', 'fixtures'] as const
+
+/** What Takeoffs lends the panel so a sheet's fixture can land on the bid (PR 6). */
+export type PriceSheetTakeoff = {
+  countRows: CountRow[]
+  /** How many lines one of the bid's rows has now. */
+  lineCount: (countRowId: string) => number
+  /** Put one bundle line on a row at this price; with `replace`, the row's own lines go first. Answers the saved line's id. */
+  placeBundle: (countRowId: string, templateId: string, unitPrice: number, replace: boolean) => Promise<{ lineId: string } | { error: string }>
+  removeLines: (lineIds: string[]) => Promise<{ error: string | null }>
+  /** An assembly was made: Takeoffs reads its assemblies again. */
+  reloadAssemblies: () => void
+}
+
+/** A sheet's fixture offered on the bid's own row, while the panel is open. */
+export type PriceSheetRowOffer = { countRowId: string; groupId: string; houseName: string; each: number; parts: number }
 const sectionHead: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
 export function PriceSheetPanel({
@@ -42,6 +60,9 @@ export function PriceSheetPanel({
   firstRead = null,
   docked,
   initialSheet = null,
+  takeoff,
+  onRowOffers,
+  placeRef,
   onFold,
   onChanged,
   onGone,
@@ -56,6 +77,12 @@ export function PriceSheetPanel({
   docked: boolean
   /** A sheet handed in already loaded (render tests). */
   initialSheet?: LoadedSheet | null
+  /** With Takeoffs behind it, the panel places a ready fixture on the bid. Without, it files prices only. */
+  takeoff?: PriceSheetTakeoff
+  /** The ready fixtures, by the bid's row, so Takeoffs can offer each on its own row. */
+  onRowOffers?: (offers: PriceSheetRowOffer[]) => void
+  /** Filled by the panel: place one fixture, as its own press would. */
+  placeRef?: MutableRefObject<((groupId: string) => void) | null>
   onFold: () => void
   /** The book's prices changed. */
   onChanged?: () => void
@@ -78,7 +105,30 @@ export function PriceSheetPanel({
   // One press for many rows: how far it is, and what it did.
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null)
   const [outcome, setOutcome] = useState<{ line: string; tone: 'success' | 'warning' | 'error'; failed: { where: string; why: string }[] } | null>(null)
+  // The assemblies on file, so a fixture reuses one with the same items; and the row a person chose for a tag the bid lacks.
+  const [assemblies, setAssemblies] = useState<KnownAssembly[]>([])
+  const assembliesRef = useRef<KnownAssembly[]>([])
+  const [chosenRows, setChosenRows] = useState<Record<number, string[] | undefined>>({})
+  const [fixtureProblems, setFixtureProblems] = useState<Record<string, string | undefined>>({})
+  const hasTakeoff = takeoff != null
   const bidId = bid?.id ?? null
+
+  useEffect(() => {
+    if (!hasTakeoff || !serviceTypeId) return
+    let cancelled = false
+    loadAssemblies(supabase, serviceTypeId)
+      .then((a) => {
+        if (cancelled) return
+        assembliesRef.current = a
+        setAssemblies(a)
+      })
+      .catch((e) => {
+        if (!cancelled) setProblem(formatErrorMessage(e, 'The assemblies could not be read'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hasTakeoff, serviceTypeId])
 
   useEffect(() => setParts(knownParts), [knownParts])
 
@@ -147,6 +197,39 @@ export function PriceSheetPanel({
     () => (sheet ? planSheet(sheet.lines, sheet.groups, { supplyHouseId: houseId, houseName: house?.name ?? null, book, codes: codeIndex, onFile, datedOn }) : null),
     [sheet, houseId, house, book, codeIndex, onFile, datedOn],
   )
+
+  const statuses = useMemo(() => {
+    const m = new Map<string, FixtureStatus>()
+    if (!plan || !takeoff) return m
+    for (const g of plan.groups) m.set(g.group.id, fixtureStatus({ group: g, countRows: takeoff.countRows, lineCount: takeoff.lineCount, chosenRowIds: chosenRows[g.group.groupNo] }))
+    return m
+  }, [plan, takeoff, chosenRows])
+
+  // The ready fixtures, by the bid's row, so Takeoffs can offer each on its own row while the panel is open.
+  const houseName = house?.name ?? null
+  useEffect(() => {
+    if (!onRowOffers) return
+    const offers: PriceSheetRowOffer[] = []
+    if (plan && houseName) {
+      for (const g of plan.groups) {
+        const st = statuses.get(g.group.id)
+        if (!st || st.state !== 'ready' || st.each == null) continue
+        for (const r of st.rows) offers.push({ countRowId: r.id, groupId: g.group.id, houseName, each: st.each, parts: st.items.length })
+      }
+    }
+    onRowOffers(offers)
+  }, [plan, statuses, houseName, onRowOffers])
+  useEffect(() => () => onRowOffers?.([]), [onRowOffers])
+  useEffect(() => {
+    if (!placeRef) return
+    placeRef.current = (groupId: string) => {
+      const g = plan?.groups.find((x) => x.group.id === groupId)
+      if (g && working == null) void fixtureAct(g, () => placeFixture(g, false))
+    }
+    return () => {
+      placeRef.current = null
+    }
+  })
 
   // How many of the sheet's item numbers each house already has on file: one of the reasons for the house.
   const codeShare = useMemo(() => {
@@ -242,6 +325,92 @@ export function PriceSheetPanel({
   }
 
   /**
+   * Put one fixture on the bid: an assembly with the same items is reused, else one is made; the subtotal becomes
+   * the house's bundle price; one bundle line lands on each of the bid's rows; the sheet remembers it. Answers the
+   * reason it could not, or null.
+   */
+  async function placeFixture(g: PlannedGroup<KnownPart>, replace: boolean): Promise<string | null> {
+    const st = statuses.get(g.group.id)
+    if (!st || !takeoff || !houseId || st.each == null || st.rows.length === 0) return 'This fixture is not ready to place.'
+    const reuse = findSameItemsAssembly(st.items, assembliesRef.current)
+    let templateId = reuse?.id ?? null
+    let made = false
+    if (!templateId) {
+      const name = assemblyName(g.group.tag, g.group.label, house?.name ?? '')
+      const res = await makeAssembly(supabase, { serviceTypeId, name, description: `From ${house?.name ?? 'a supply house'}'s quote${sheet?.paper.number ? ` ${sheet.paper.number}` : ''}.`, items: st.items })
+      if (!res.ok) return res.error
+      templateId = res.templateId
+      made = true
+      assembliesRef.current = [...assembliesRef.current, { id: templateId, name, items: st.items }]
+      setAssemblies(assembliesRef.current)
+      takeoff.reloadAssemblies()
+    }
+    const price = Math.round(st.each * 100) / 100
+    const bundle = await setBundlePrice(supabase, { templateId, supplyHouseId: houseId, price, datedOn: sheet?.paper.datedOn ?? null })
+    if (!bundle.ok) return bundle.error
+    const lineIds: string[] = []
+    for (const row of st.rows) {
+      const res = await takeoff.placeBundle(row.id, templateId, price, replace)
+      if ('error' in res) {
+        if (lineIds.length) await takeoff.removeLines(lineIds)
+        return res.error
+      }
+      lineIds.push(res.lineId)
+    }
+    const kept = await recordPlaced(supabase, g.group.id, { templateId, countRowIds: st.rows.map((r) => r.id), placedLineIds: lineIds, bundlePrice: price, replaced: bundle.replaced, madeTemplate: made })
+    if (kept.error) {
+      await takeoff.removeLines(lineIds)
+      return kept.error
+    }
+    return null
+  }
+
+  /** Take one fixture off the bid: its lines go, the bundle price returns to what it was, the sheet forgets it. The assembly stays in the book. */
+  async function unplaceFixture(g: PlannedGroup<KnownPart>): Promise<string | null> {
+    const gr = g.group
+    if (!takeoff) return 'Open the sheet from Takeoffs to take a fixture off.'
+    const removed = await takeoff.removeLines(gr.placedLineIds ?? [])
+    if (removed.error) return removed.error
+    if (gr.templateId && houseId && gr.bundlePrice != null) {
+      const back = await restoreBundlePrice(supabase, {
+        templateId: gr.templateId,
+        supplyHouseId: houseId,
+        setPrice: gr.bundlePrice,
+        replaced: gr.replacedBundlePrice != null ? { price: gr.replacedBundlePrice, effectiveDate: gr.replacedBundleEffectiveDate ?? null } : null,
+      })
+      if (back.error) return back.error
+    }
+    return (await recordUnplaced(supabase, gr.id)).error
+  }
+
+  async function fixtureAct(g: PlannedGroup<KnownPart>, run: () => Promise<string | null>) {
+    setWorking(`g${g.group.id}`)
+    setFixtureProblems((p) => ({ ...p, [g.group.id]: undefined }))
+    const why = await run()
+    if (why) setFixtureProblems((p) => ({ ...p, [g.group.id]: why }))
+    await reload()
+    onChanged?.()
+    setWorking(null)
+  }
+
+  async function placeMany(list: PlannedGroup<KnownPart>[]) {
+    setWorking('batch')
+    setOutcome(null)
+    let done = 0
+    const failed: { where: string; why: string }[] = []
+    for (const g of list) {
+      const why = await placeFixture(g, false)
+      if (why) failed.push({ where: g.group.tag || `fixture ${g.group.groupNo}`, why })
+      else done += 1
+    }
+    await reload()
+    onChanged?.()
+    const words = batchOutcomeWords({ verb: 'Place', past: 'placed', done, failed: failed.length, noun: FIXTURES })
+    setOutcome({ line: words.line, tone: words.tone, failed })
+    setWorking(null)
+  }
+
+  /**
    * File many rows on one press: what is ready goes, a row that fails is named with its reason and the rest go on,
    * and a row the database holds (a big move, a newer price on file) becomes a question on its own card.
    */
@@ -284,13 +453,24 @@ export function PriceSheetPanel({
     const filedCount = sheet?.lines.filter((l) => l.filedAt).length ?? 0
     const ok = await confirmDialog({
       title: 'Take this sheet back?',
-      message: `${filedCount === 1 ? 'The 1 row' : `The ${filedCount} rows`} this sheet filed ${filedCount === 1 ? 'comes' : 'come'} back. Each price returns to what it was before the sheet. A price somebody changed since is left as it is. The sheet stays, so you can file it again.`,
+      message: `${filedCount === 1 ? 'The 1 row' : `The ${filedCount} rows`} this sheet filed ${filedCount === 1 ? 'comes' : 'come'} back, and its fixtures come off the takeoff. Each price returns to what it was before the sheet. A price somebody changed since is left as it is. The sheet stays, so you can file it again.`,
       confirmLabel: countedLabel('Take back', filedCount, ROWS),
       danger: true,
     })
     if (!ok) return
     setWorking('sheet')
     setOutcome(null)
+    // Its fixtures come off the takeoff first: a bundle line is never left with no sheet behind it.
+    for (const g of plan?.groups ?? []) {
+      if (!g.group.placedAt) continue
+      const why = await unplaceFixture(g)
+      if (why) {
+        setProblem(`${g.group.tag} could not be taken off the takeoff: ${why}`)
+        await reload()
+        setWorking(null)
+        return
+      }
+    }
     const res = await takeBackSheet(supabase, paperId)
     if (!res.ok) setProblem(res.error)
     else {
@@ -392,6 +572,9 @@ export function PriceSheetPanel({
   function fold(g: PlannedGroup<KnownPart>) {
     const isOpen = open.has(g.group.groupNo)
     const waits = g.rows.filter((r) => r.bucket === 'needs_you' || r.bucket === 'confirm').length
+    const st = statuses.get(g.group.id)
+    const reuse = st ? findSameItemsAssembly(st.items, assemblies) : null
+    const busy = working != null
     return (
       <div key={g.group.id} style={{ borderTop: '1px solid var(--border)' }}>
         <button
@@ -419,6 +602,47 @@ export function PriceSheetPanel({
           </span>
           <strong style={{ whiteSpace: 'nowrap' }}>{g.group.eachPrice != null ? `${dollars(g.group.eachPrice)} each` : ''}</strong>
         </button>
+        {st ? (
+          <div data-testid="price-sheet-fixture" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', padding: '0 0 0.5rem 1.5rem', fontSize: '0.75rem' }}>
+            <span style={{ color: st.state === 'placed' ? 'var(--text-green-700)' : st.state === 'ready' ? 'var(--text-700)' : 'var(--text-amber-800)', minWidth: 0, overflowWrap: 'anywhere' }}>
+              {st.why}
+              {st.state === 'ready' || st.state === 'costed_by_hand' ? (reuse ? ` Reuses ${reuse.name}.` : ' Makes a new assembly.') : ''}
+              {fixtureProblems[g.group.id] ? <span role="alert" style={{ color: 'var(--text-red-700)' }}> {fixtureProblems[g.group.id]}</span> : null}
+            </span>
+            <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+              {st.state === 'ready' && st.each != null ? (
+                <button type="button" disabled={busy} onClick={() => void fixtureAct(g, () => placeFixture(g, false))} style={{ ...cardPress(busy, false), padding: '0.25rem 0.6rem' }}>
+                  {working === `g${g.group.id}` ? 'Placing…' : `Place · ${dollars(st.each)} each`}
+                </button>
+              ) : null}
+              {st.state === 'costed_by_hand' && st.each != null ? (
+                <button type="button" disabled={busy} onClick={() => void fixtureAct(g, () => placeFixture(g, true))} style={{ ...cardPress(busy, false), padding: '0.25rem 0.6rem' }}>
+                  Use the sheet&apos;s {dollars(st.each)}
+                </button>
+              ) : null}
+              {st.state === 'placed' ? (
+                <button type="button" disabled={busy} onClick={() => void fixtureAct(g, () => unplaceFixture(g))} style={cardLink}>
+                  Take off
+                </button>
+              ) : null}
+              {(st.state === 'no_row' || chosenRows[g.group.groupNo]) && st.state !== 'placed' && takeoff ? (
+                <select
+                  value={chosenRows[g.group.groupNo]?.[0] ?? ''}
+                  onChange={(e) => setChosenRows((c) => ({ ...c, [g.group.groupNo]: e.target.value ? [e.target.value] : undefined }))}
+                  aria-label={`The fixture on this bid for ${g.group.tag}`}
+                  style={{ ...cardInput, padding: '0.2rem 0.4rem', fontSize: '0.75rem', maxWidth: '11rem' }}
+                >
+                  <option value="">It is…</option>
+                  {takeoff.countRows.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.fixture}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
         {isOpen ? <div style={{ paddingBottom: '0.5rem' }}>{g.rows.map((r) => rowLine(r))}</div> : null}
       </div>
     )
@@ -432,6 +656,7 @@ export function PriceSheetPanel({
   const needs = plan?.rows.filter((r) => r.bucket === 'needs_you') ?? []
   const confirm = plan?.rows.filter((r) => r.bucket === 'confirm') ?? []
   const ready = plan?.rows.filter((r) => r.bucket === 'ready') ?? []
+  const placeable = (plan?.groups ?? []).filter((g) => statuses.get(g.group.id)?.state === 'ready')
   const press = batchWords({ verb: 'File', ready: ready.length, held: needs.length + confirm.length, heldWhy: { one: 'waits', many: 'wait' }, noun: ROWS })
   const houseOffers = verdict.offers.map((id) => supplyHouses.find((h) => h.id === id)).filter((h): h is House => !!h)
 
@@ -523,6 +748,11 @@ export function PriceSheetPanel({
                 </button>
                 {press.foot ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{press.foot}</span> : null}
               </div>
+            ) : null}
+            {placeable.length > 0 ? (
+              <button type="button" data-testid="price-sheet-place" disabled={working != null} onClick={() => void placeMany(placeable)} style={{ ...cardPress(working != null, ready.length === 0), justifySelf: 'start' }}>
+                {countedLabel('Place', placeable.length, FIXTURES)}
+              </button>
             ) : null}
             {outcome ? (
               <div role="status" data-testid="price-sheet-outcome" style={{ padding: '0.5rem 0.7rem', borderRadius: 6, fontSize: '0.8125rem', display: 'grid', gap: '0.25rem', background: outcome.tone === 'success' ? 'var(--bg-green-100)' : outcome.tone === 'warning' ? 'var(--bg-amber-100)' : 'var(--bg-red-100)' }}>

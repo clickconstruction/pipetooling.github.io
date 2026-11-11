@@ -97,7 +97,8 @@ describe('PriceSheetPanel', () => {
 
 describe('TakeoffPriceSheetDoor', () => {
   it('is one press in the title row that offers a file or one price', async () => {
-    renderWithProviders(<TakeoffPriceSheetDoor bid={bid} serviceTypeId="st1" supplyHouses={houses} knownParts={parts} onBookChanged={() => {}} />)
+    const takeoff = { countRows: [], lineCount: () => 0, placeBundle: async () => ({ error: 'not in this test' }), removeLines: async () => ({ error: null }), reloadAssemblies: () => {} }
+    renderWithProviders(<TakeoffPriceSheetDoor bid={bid} serviceTypeId="st1" supplyHouses={houses} knownParts={parts} onBookChanged={() => {}} takeoff={takeoff} onRowOffers={() => {}} placeRef={{ current: null }} />)
     await settle()
     const door = screen.getByRole('button', { name: 'Price sheet ▾' })
     fireEvent.click(door)

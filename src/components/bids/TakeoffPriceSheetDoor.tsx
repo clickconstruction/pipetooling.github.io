@@ -4,7 +4,7 @@
  * tab, or pasted, is read as a price sheet; a row pasted from a mail opens as one price. A chip says
  * when a sheet on this bid still has rows waiting, and opens it where it was left.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { supabase } from '../../lib/supabase'
 import { loadBidAskedHouseIds } from '../../lib/materials/priceSheet/priceRowIo'
 import { findSheetByHash, listSheets, saveSheet, type SheetSummary } from '../../lib/materials/priceSheet/priceSheetIo'
@@ -13,7 +13,7 @@ import { shortDay } from '../../lib/materials/priceSheet/rowCard'
 import { houseVerdict, letterheadHouse, sheetHeader } from '../../lib/materials/priceSheet/sheetHouse'
 import { readSheetFile, sha256Hex } from '../../lib/materials/priceSheet/sheetText'
 import type { KnownPart } from '../materials/PriceRowCardView'
-import { PRICE_SHEET_DOCK_MIN_WINDOW, PRICE_SHEET_DOCK_WIDTH, PriceSheetPanel } from '../materials/PriceSheetPanel'
+import { PRICE_SHEET_DOCK_MIN_WINDOW, PRICE_SHEET_DOCK_WIDTH, PriceSheetPanel, type PriceSheetRowOffer, type PriceSheetTakeoff } from '../materials/PriceSheetPanel'
 import { QuickPriceWindow } from '../materials/QuickPriceWindow'
 
 type House = { id: string; name: string }
@@ -30,6 +30,9 @@ export function TakeoffPriceSheetDoor({
   supplyHouses,
   knownParts,
   onBookChanged,
+  takeoff,
+  onRowOffers,
+  placeRef,
 }: {
   bid: { id: string; label: string }
   serviceTypeId: string
@@ -37,6 +40,11 @@ export function TakeoffPriceSheetDoor({
   knownParts: KnownPart[]
   /** The book's prices may have moved: the takeoff reads its catalog prices again. */
   onBookChanged: () => void
+  /** What the panel needs to put a sheet's fixture on this bid (PR 6). */
+  takeoff: PriceSheetTakeoff
+  /** The open sheet's ready fixtures, by the bid's row: Takeoffs draws each on its own row. */
+  onRowOffers: (offers: PriceSheetRowOffer[]) => void
+  placeRef: MutableRefObject<((groupId: string) => void) | null>
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [quickPrice, setQuickPrice] = useState<{ text: string } | null>(null)
@@ -264,6 +272,9 @@ export function TakeoffPriceSheetDoor({
           knownParts={knownParts}
           firstRead={openSheet.firstRead}
           docked={docked}
+          takeoff={takeoff}
+          onRowOffers={onRowOffers}
+          placeRef={placeRef}
           onFold={() => {
             setOpenSheet(null)
             void refreshSheets()

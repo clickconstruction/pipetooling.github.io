@@ -87,16 +87,27 @@ export async function saveSheet(supabase: Db, input: SaveSheetInput): Promise<{ 
 }
 
 type LineRow = { id: string; line_no: number; group_no: number | null; line_kind: SheetLine['kind']; house_code: string; description: string; qty_ordered: number | string | null; unit_price: number | string | null; pricing_unit: PricingUnit; part_id: string | null; filed_at: string | null; filed_price: number | string | null; held_why: string; page_no: number | null }
-type GroupRow = { id: string; group_no: number; tag: string; label: string; each_price: number | string | null; placed_at: string | null; held_why: string }
+type GroupRow = {
+  id: string; group_no: number; tag: string; label: string; each_price: number | string | null; placed_at: string | null; held_why: string
+  template_id?: string | null; count_row_ids?: string[] | null; placed_line_ids?: string[] | null; bundle_price?: number | string | null
+  replaced_bundle_price?: number | string | null; replaced_bundle_effective_date?: string | null
+}
+const GROUP_SELECT = 'id,group_no,tag,label,each_price,placed_at,held_why'
+const GROUP_SELECT_PLACED = `${GROUP_SELECT},template_id,count_row_ids,placed_line_ids,bundle_price,replaced_bundle_price,replaced_bundle_effective_date`
 const num = (v: number | string | null): number | null => (v == null ? null : Number(v))
 
 export type LoadedSheet = { paper: SheetPaper; groups: SheetGroup[]; lines: SheetLine[] }
 
 /** One kept sheet whole, or null when it is gone. */
 export async function loadSheet(supabase: Db, paperId: string): Promise<{ ok: true; sheet: LoadedSheet | null } | { ok: false; error: string }> {
+  const readGroups = async () => {
+    const full = await supabase.from('supply_paper_groups').select(GROUP_SELECT_PLACED).eq('paper_id', paperId).order('group_no')
+    // Before the placement columns are on the database, the fixtures are read without them.
+    return full.error && isMissing(full.error) ? supabase.from('supply_paper_groups').select(GROUP_SELECT).eq('paper_id', paperId).order('group_no') : full
+  }
   const [paper, groups, lines] = await Promise.all([
     supabase.from('supply_papers').select(PAPER_SELECT).eq('id', paperId).maybeSingle(),
-    supabase.from('supply_paper_groups').select('id,group_no,tag,label,each_price,placed_at,held_why').eq('paper_id', paperId).order('group_no'),
+    readGroups(),
     supabase.from('supply_paper_lines').select('id,line_no,group_no,line_kind,house_code,description,qty_ordered,unit_price,pricing_unit,part_id,filed_at,filed_price,held_why,page_no').eq('paper_id', paperId).order('line_no').limit(1000),
   ])
   const failed = paper.error ?? groups.error ?? lines.error
@@ -106,7 +117,11 @@ export async function loadSheet(supabase: Db, paperId: string): Promise<{ ok: tr
     ok: true,
     sheet: {
       paper: toPaper(paper.data as unknown as PaperRow),
-      groups: ((groups.data ?? []) as unknown as GroupRow[]).map((g) => ({ id: g.id, groupNo: g.group_no, tag: g.tag, label: g.label, eachPrice: num(g.each_price), placedAt: g.placed_at, heldWhy: g.held_why })),
+      groups: ((groups.data ?? []) as unknown as GroupRow[]).map((g) => ({
+        id: g.id, groupNo: g.group_no, tag: g.tag, label: g.label, eachPrice: num(g.each_price), placedAt: g.placed_at, heldWhy: g.held_why,
+        templateId: g.template_id ?? null, countRowIds: g.count_row_ids ?? [], placedLineIds: g.placed_line_ids ?? [], bundlePrice: num(g.bundle_price ?? null),
+        replacedBundlePrice: num(g.replaced_bundle_price ?? null), replacedBundleEffectiveDate: g.replaced_bundle_effective_date ?? null,
+      })),
       lines: ((lines.data ?? []) as unknown as LineRow[]).map((l) => ({
         id: l.id, lineNo: l.line_no, groupNo: l.group_no, kind: l.line_kind, houseCode: l.house_code, description: l.description, qty: num(l.qty_ordered), unitPrice: num(l.unit_price),
         pricingUnit: l.pricing_unit, partId: l.part_id, filedAt: l.filed_at, filedPrice: num(l.filed_price), heldWhy: l.held_why, page: l.page_no,
