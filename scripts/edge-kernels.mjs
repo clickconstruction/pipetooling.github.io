@@ -417,6 +417,12 @@ export const ENTRIES = {
     values: ['LICENSE_LEVELS', 'licenseTypeText', 'cleanLicenseNumber', 'tdlrNumberFor', 'tdlrQueryUrl', 'tdlrAnswer', 'tradeCheckedByTdlr'],
     types: ['LicenseTrade', 'LicenseLevel', 'TdlrRow', 'TdlrAnswer'],
   },
+  // The dev seat's plan_bid_update (v2.6945): the line Edit Bid writes when the outcome moves, the six loss categories and
+  // the Bid Board's sections, so a bid changed from the seat reads on the Board as one changed on the form. The index
+  // exports nothing of them: the seat imports each file by its path, as it does the submittal kernels.
+  'lib/outcomeChangeBidNote.ts': { values: [], types: [] },
+  'lib/bidLossCategories.ts': { values: [], types: [] },
+  'lib/bids/submissionSections.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

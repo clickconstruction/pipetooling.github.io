@@ -269,7 +269,7 @@ describe('get_person_file on a large file (v2.6935): 250 entries, 80 evidence re
 
 describe('the server and the docs carry the fit (v2.6935 / 0.63.0)', () => {
   it('get_person_file takes until, brief and line_chars; both verbs say shortened; the README rows say how to read on', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.65.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.67.0'")
     expect(SERVER).toContain('until: args.until, docs: args.docs, brief: args.brief, line_chars: args.line_chars')
     for (const arg of ['until:', 'brief:', 'line_chars:']) expect(SERVER.slice(SERVER.indexOf("name: 'get_person_file'"), SERVER.indexOf("name: 'get_hours_statement'"))).toContain(arg)
     expect(SERVER.slice(SERVER.indexOf("name: 'get_case_brief'"), SERVER.indexOf("name: 'get_document_history'"))).toContain('shortened')
