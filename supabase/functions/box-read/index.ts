@@ -6,7 +6,8 @@ import { driveMedia } from '../_shared/driveJobFolder.ts'
 import { ESTIMATE_LINK_LOCKED_CODE, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
-import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPageKind, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
+import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
+import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPageKind, boxPageOfficePhone, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
@@ -17,7 +18,8 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxP
  *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
  *                                             Since v2.6874 a line carries its Can't find presses since its count, `gone` is
  *                                             the lines emptied since the box's last count, and `office.phone` is the
- *                                             letterhead's number. Never the job, the customer, a price or a person's name.
+ *                                             office's number: the team box's line from Settings since v2.6910, the
+ *                                             letterhead's before. Never the job, the customer, a price or a person's name.
  *   GET ?code=<code>&find=<words>            → (v2.6799, PR 3) the live boxes of the same job whose stencil, place or lines
  *                                             hold every word, each with the lines that matched: the search a scanned code
  *                                             opens, that site and no other. No code, no search.
@@ -66,6 +68,23 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
 }
 
+/**
+ * The number the page's Text the office and Call the office use (v2.6910): the team box's line from Settings → Phone and
+ * texts, which the Messages page reads, so a text about a cage lands in front of the office. The letterhead's number was
+ * used until then; its texts go to a mailbox nobody reads in the app. A read that fails falls back to the letterhead.
+ */
+// deno-lint-ignore no-explicit-any
+async function officePhone(admin: any): Promise<string> {
+  let team = ''
+  try {
+    const { data } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
+    team = boxSetting('team', parseBoxSettings((data as { value_text: string | null } | null)?.value_text)).phone
+  } catch (e) {
+    console.warn('box-read: the boxes did not read', e)
+  }
+  return boxPageOfficePhone([team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type PhotoRow = { id: string; container_id: string; taken_at: string; status: string; storage_path: string | null; drive_file_id: string | null }
@@ -99,7 +118,7 @@ serve(async (req) => {
     }
     if (row.retired_at) {
       console.log(JSON.stringify({ event: 'box_page_open', code, state: 'retired' }))
-      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: row.label, kind: boxPageKind(row.kind), phone: PORTAL_COMPANY.phone }, 410)
+      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: row.label, kind: boxPageKind(row.kind), phone: await officePhone(admin) }, 410)
     }
 
     // The photo's bytes, for the page's <img>: Drive once filed, the bucket while it waits.
@@ -152,7 +171,8 @@ serve(async (req) => {
       return json({ ok: true, find })
     }
 
-    const [placeRes, summaryRes, photoRes] = await Promise.all([
+    const [phone, placeRes, summaryRes, photoRes] = await Promise.all([
+      officePhone(admin),
       row.place_id ? admin.from('job_places').select('name').eq('id', row.place_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       admin.rpc('on_site_job_summary', { p_job_id: row.job_id }),
       admin
@@ -179,7 +199,7 @@ serve(async (req) => {
       photo,
       lastCountAt: lastCount?.at ?? null,
       now: new Date().toISOString(),
-      officePhone: PORTAL_COMPANY.phone,
+      officePhone: phone,
     })
 
     // Who looked: the outside counts; a signed-in teammate or a preview is stamped, never counted.
