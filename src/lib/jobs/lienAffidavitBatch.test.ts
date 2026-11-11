@@ -99,9 +99,9 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     ])
     expect(plan.ready.map((e) => e.jobId)).toEqual(['clear', 'unjudged'])
     expect(plan.gated.map((g) => g.entry.jobId)).toEqual(['city'])
-    expect(plan.gated[0].reason).toBe(lienAffidavitGatedReason({ gates: publicOwner }))
-    expect(plan.gated[0].reason).not.toMatch(/^Don't file yet/)
-    expect(plan.gated[0].reason.length).toBeGreaterThan(10)
+    expect(plan.gated[0]!.reason).toBe(lienAffidavitGatedReason({ gates: publicOwner }))
+    expect(plan.gated[0]!.reason).not.toMatch(/^Don't file yet/)
+    expect(plan.gated[0]!.reason.length).toBeGreaterThan(10)
     expect(lienAffidavitPrintWords(plan)).toEqual({
       lead: '2 affidavits on the short form are ready to file.',
       button: 'Print 2 for notarization',
