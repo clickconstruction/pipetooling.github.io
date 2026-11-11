@@ -317,7 +317,22 @@ the rows it touches; an apply that plans again and writes only on a match; never
    cloned to the bid first, as the tab does. Before it, as its own PR, the pricing kernels join
    the edge copy (a generated copy, no rewrite), so the plan states the total the screen would
    show and `get_bid.totals` becomes a figure. The margin stamp only where the screen would stamp.
-6. **After the five**, when asked for: per-GC sends and outcomes on a bid with versions
+6. **`plan_bid_submission` / `apply_bid_submission`** — the paper that was sent, filed on its bid. The owner,
+   2026-11-11, on proposal files to be copied into company Drive: "connected to their bids where a
+   user links the submissions" and "if we don't have dev verbs to support this, we should add those
+   too". The link is Edit Bid's Bid Submission field (`bids.bid_submission_link`, also the Cover
+   Letter's quick add and `bidFilesIo.ts`), and PR 1 sets it. What is missing is the filing: a file
+   already in Drive, named by its id or link, read and copied on the server into the bid's own Drive
+   folder under Sent, then the bid's link set to the filed copy. The landing is drive-link's `put`
+   with `where: sent`, the Documents tab's Add a file, which `plan_mail_file` already uses for a
+   file off a mail; the source is read as `devMcpDriveDoc.ts` reads a Drive file. The plan commits
+   to the file's name, size and sha256 and to the bid's link before, as `plan_file_plans` does, and
+   a bid that already has a link is refused unless `replace`. Until it is built: `plan_mail_file`
+   files a submission that came by mail (`to: { kind: 'job', bid_id, where: 'sent' }`), and
+   `plan_bid_update` sets the link to a file that is already where it belongs. What was said when
+   it went out is a note on the bid (`plan_activity_note`); a contact with its method is the Log
+   contact press and has no verb yet.
+7. **After those**, when asked for: per-GC sends and outcomes on a bid with versions
    (`bid_version_sends`, `setGcPacketOutcome`'s writes), the letter's boxes and schedule of values.
 
 For a proposal on paper the order of entry is the order of the PRs: the bid, its counts, takeoff,
