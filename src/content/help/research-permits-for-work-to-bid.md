@@ -17,7 +17,9 @@ On a phone, Skim hides the box to make room for the card. Press **Ledger** to re
 
 Austin posts a permit once the city issues it. San Antonio also posts applications, so its permits show earlier.
 
-Outside San Antonio the Property line names the county. That county's record is not read here yet. Open the building and press **Open the appraisal district** to look the owner up.
+Every city's Property line reads its own county for the owner of record. Austin reads Travis County. San Marcos reads Hays County. New Braunfels reads Comal County. Seguin reads Guadalupe County.
+
+A new building often has no parcel under its street address yet. The app then reads the parcel at the permit's point, and the card says so.
 
 The cities do not all publish the same facts.
 
@@ -159,7 +161,7 @@ The type, the number, the work, the day and the declared value. A press under th
 
 :::card The property, at the county
 
-The owner of record, their mailing address, the land and building values, the year built and the lot.
+The owner of record, their mailing address, the land and building values and the lot. Bexar County also gives the year built and the built area. Travis County gives the year built.
 
 :::
 
@@ -193,7 +195,7 @@ The phone, the website, the office address and what kind of business it is. When
 
 :::card The property, at the county
 
-The owner of record, their mailing address and the appraised value, from Bexar County's own parcel map. Open at the appraisal district shows the full record.
+The owner of record, their mailing address and the appraised value, from the county's own parcel map. Open at the appraisal district shows the full record.
 
 :::
 

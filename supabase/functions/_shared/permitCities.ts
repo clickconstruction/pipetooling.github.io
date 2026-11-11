@@ -479,7 +479,7 @@ export type PermitCity = {
   permitSearch: string
   /** The county clerk's deed search, or null where no door is known. */
   deeds: string | null
-  /** Whether the county's parcel record is read for the Property line. Bexar County's is; the others open at the appraisal district. */
+  /** Whether the county's parcel record is read for the Property line: Bexar's by `permitLookup.ts`, the other four by `permitParcels.ts`. A city added without a layer opens at the appraisal district. */
   parcels: boolean
   feeds: readonly FeedReader[]
 }
@@ -500,7 +500,7 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     center: { lat: 30.2672, lng: -97.7431 },
     permitSearch: 'https://abc.austintexas.gov/web/permit/public-search-other',
     deeds: 'https://www.tccsearch.org/',
-    parcels: false,
+    parcels: true,
     feeds: [AUSTIN_READER],
   },
   {
@@ -510,7 +510,7 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     permitSearch: 'https://nbpermits.nbtexas.org/publicaccess',
     // The Comal County Clerk's page links here for land records.
     deeds: 'https://comal.landrecordsonline.com/',
-    parcels: false,
+    parcels: true,
     feeds: [NEW_BRAUNFELS_READER],
   },
   {
@@ -520,7 +520,7 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     permitSearch: 'https://www.mygovernmentonline.org/',
     // The Hays County Clerk's self-service records search, on the county's own address.
     deeds: 'https://erss.co.hays.tx.us/web/',
-    parcels: false,
+    parcels: true,
     feeds: [SAN_MARCOS_READER],
   },
   {
@@ -530,7 +530,7 @@ export const PERMIT_CITIES: readonly PermitCity[] = [
     permitSearch: 'https://eportal.seguintexas.gov/EnerGov_Prod/SelfService',
     // The Guadalupe County Clerk's official public records page links here.
     deeds: 'https://roam.guadalupetx.gov/',
-    parcels: false,
+    parcels: true,
     feeds: [SEGUIN_READER],
   },
 ]

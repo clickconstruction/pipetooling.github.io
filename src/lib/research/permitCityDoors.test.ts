@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appraisalDoor, askingCountyWords, cityDeedsDoor, cityReadsParcels, countyWords, noParcelWords, permitSearchDoor, scoresMiles } from './permitCityDoors'
+import { appraisalDoor, askingCountyWords, cityDeedsDoor, cityReadsParcels, countyGivesBuildingFacts, countyWords, lotWords, noParcelWords, parcelPointWords, permitSearchDoor, scoresMiles } from './permitCityDoors'
 
 describe('what a card says for the city it is in (punch list #292, revision 4)', () => {
   it('names the county that keeps the land records', () => {
@@ -9,13 +9,30 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(askingCountyWords('San Antonio')).toBe('Asking Bexar County…')
   })
 
-  it("reads Bexar County's parcels, and says so plainly where a county's record is not read yet", () => {
-    expect(cityReadsParcels('San Antonio')).toBe(true)
-    expect(cityReadsParcels('Austin')).toBe(false)
+  it("reads every city's county parcels, and says so plainly for a city the list does not hold", () => {
+    for (const city of ['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin']) expect(cityReadsParcels(city)).toBe(true)
+    expect(cityReadsParcels('Nowhere')).toBe(false)
     expect(noParcelWords('San Antonio')).toBe('The county’s parcel layer has no row for this street address.')
-    expect(noParcelWords('San Antonio', true)).toBe('The county has no parcel under this street address.')
-    expect(noParcelWords('Austin')).toBe('Travis County’s record is not read here yet. Its appraisal district has it.')
+    expect(noParcelWords('Austin', true)).toBe('The county has no parcel under this street address.')
     expect(noParcelWords(null)).toBe('The county’s record is not read here yet.')
+  })
+
+  it('says what stands on the lot from what the county gives', () => {
+    const none = { building_sf: null, year_built: null, improvement_value: null, acres: null }
+    expect(lotWords({ ...none, building_sf: 6200, year_built: '2001', acres: 0.9 })).toBe('6,200 sq ft built in 2001, 0.9 acres')
+    expect(lotWords(none)).toBe('nothing built on the roll')
+    // Outside Bexar the layer has no built area: the buildings' value says whether anything stands there.
+    expect(lotWords({ ...none, improvement_value: 14_308_838, acres: 0.92 })).toBe('buildings on the roll at $14M, 0.92 acres')
+    expect(lotWords({ ...none, improvement_value: 1_604_850, year_built: '2004' })).toBe('buildings on the roll at $1.6M, built 2004')
+    expect(lotWords({ ...none, improvement_value: 167_290, matched_by: 'point' })).toBe('buildings on the roll at $167k, read at the permit’s point')
+    expect(countyGivesBuildingFacts('San Antonio')).toBe(true)
+    expect(countyGivesBuildingFacts('Austin')).toBe(false)
+  })
+
+  it('says when the parcel was read at the permit’s point', () => {
+    expect(parcelPointWords({ situs: '210 W COURT ST', matched_by: 'point' })).toBe('The county has no parcel under this street address, so this is the parcel at the permit’s point. The county calls it 210 W COURT ST.')
+    expect(parcelPointWords({ situs: null, matched_by: 'point' })).toBe('The county has no parcel under this street address, so this is the parcel at the permit’s point.')
+    expect(parcelPointWords({ situs: '210 W COURT ST' })).toBeNull()
   })
 
   it("points at each city's own doors", () => {
@@ -32,9 +49,7 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     for (const city of ['New Braunfels', 'San Marcos', 'Seguin']) {
       expect(appraisalDoor(city)).toMatch(/^https:\/\//)
       expect(permitSearchDoor(city)).toMatch(/^https:\/\//)
-      expect(cityReadsParcels(city)).toBe(false)
     }
-    expect(noParcelWords('Seguin')).toBe('Guadalupe County’s record is not read here yet. Its appraisal district has it.')
     expect(appraisalDoor('Nowhere')).toBeNull()
   })
 

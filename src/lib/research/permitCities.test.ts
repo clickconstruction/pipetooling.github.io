@@ -56,7 +56,7 @@ describe('the cities the pull reads (punch list #292, revision 4)', () => {
     expect(permitCity('Seguin')?.county).toBe('Guadalupe')
     expect(permitCity('austin')?.county).toBe('Travis')
     expect(permitCity(' San Antonio ')?.parcels).toBe(true)
-    expect(permitCity('Austin')?.parcels).toBe(false)
+    for (const c of PERMIT_CITIES) expect(c.parcels).toBe(true)
     expect(permitCity('Nowhere')).toBeNull()
     for (const c of PERMIT_CITIES) {
       expect(c.permitSearch).toMatch(/^https:\/\//)
