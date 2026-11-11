@@ -33,7 +33,9 @@ Under the permit that looks like your job, the block asks once. It reads **Do yo
 - **Someone else…** asks who it is. Pick the owner, an architect or engineer, a name that files for others, or another GC.
 - **Not sure** hides the question from you alone. The rest of the team still sees it.
 
-Every answer keeps your name and the day. Press **Undo** to take one back.
+Sometimes the name begins the GC's own name. A branch or a longer legal name reads this way. The block then asks **Same company?** instead. Pick **Same company**, **Not them…** or **Not sure**. They work as the three answers above do.
+
+Every answer keeps your name and the day. Press **Undo** to take one back. The builder's sheet takes one back too. See [Know the builders](/help/research-permits-for-work-to-bid#know-the-builders).
 
 ## When there is nothing to show
 

@@ -164,6 +164,11 @@ export type BuilderRow = {
   bids: number
   won: number
   last_bid_on: string | null
+  /**
+   * The part of `bids` and `won` that came from an answer on the name (punch list #307): our bids
+   * with the customers someone tied it to, by name. Not on the read; `withAnsweredBids` adds it.
+   */
+  by_word?: { bids: number; won: number; customers: string[] }
 }
 
 /** What to call a builder: the name the office gave it, else the company on its newest permit, else the line itself. */
@@ -201,7 +206,7 @@ export function builderChipCounts(rows: readonly BuilderRow[]): Record<BuilderSh
   return { all: rows.length, good: rows.filter((r) => r.mark === 'good').length, avoid: rows.filter((r) => r.mark === 'avoid').length, unmarked: rows.filter((r) => r.mark == null).length, never_bid: rows.filter(neverBid).length }
 }
 
-/** "5 priced, 3 won" or "never". */
+/** "5 priced, 3 won" or "never". The count is the same-name hint plus the customers tied to the name (`withAnsweredBids`). */
 export function ourBidsWords(row: Pick<BuilderRow, 'bids' | 'won'>): string {
   if (row.bids === 0) return 'never'
   return `${row.bids} priced, ${row.won === 0 ? 'none won' : `${row.won} won`}`

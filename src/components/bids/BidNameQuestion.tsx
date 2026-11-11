@@ -5,7 +5,7 @@ import { shortDay } from '../../lib/research/permitResearch'
 import { sitePermitLines as feedLines, type SitePermit } from '../../lib/research/permitPublic'
 import { loadPermitsOfBuilder, loadResearchers, saveBuilder } from '../../lib/research/permitResearchIo'
 import { loadBuilderKinds, loadNameAnswers, onNameAnswered, recordNameAnswer } from '../../lib/research/bidSiteIo'
-import { SOMEONE_ELSE_KINDS, answeredWords, foldNameAnswers, nameStanding, questionWords, standingChip, tiePreviewWords, wordOfWords, type NameAnswerRow, type NameStanding } from '../../lib/research/nameAnswers'
+import { SOMEONE_ELSE_KINDS, answeredWords, foldNameAnswers, nameGrade, nameStanding, questionWords, standingChip, tiePreviewWords, wordOfWords, type NameAnswerRow, type NameStanding } from '../../lib/research/nameAnswers'
 import type { BuilderKind } from '../../lib/research/permitBuilders'
 import type { SitePermitRow } from '../../lib/research/bidSitePanel'
 import { PermitChip } from './PermitChip'
@@ -15,7 +15,9 @@ import { PermitChip } from './PermitChip'
  * one question, asked once. *The city lists Dana Whitlow on this permit. Do you know who that
  * is?* Works for the GC, Someone else, Not sure. "Works for" shows the name's other permits
  * before it ties any, with This permit only beside it, since one person can file for more than
- * one builder. Every answer keeps who gave it and can be undone here.
+ * one builder. Every answer keeps who gave it and can be undone here. When the name begins the
+ * GC's own, or is begun by it, the question reads *Same company?* instead: the likely grade,
+ * the same three answers and the same rows.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const primary: CSSProperties = { background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', font: 'inherit' }
@@ -137,11 +139,13 @@ export function BidNameQuestion({ permit, city, customerIds, customerName }: { p
     )
   }
 
-  const q = questionWords(name, customerName)
+  // The likely grade asks Same company?; a person who passed and came back is asked the same way.
+  const grade = standing.kind === 'ask' ? standing.grade : nameGrade(name, customerName)
+  const q = questionWords(name, customerName, grade)
   const box: CSSProperties = { background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 8, marginTop: 4, fontSize: '0.8125rem', lineHeight: 1.45 }
 
   if (step === 'preview') {
-    const preview = tiePreviewWords(name, customerName, otherCount)
+    const preview = tiePreviewWords(name, customerName, otherCount, grade)
     const lines = others ? feedLines(others, null).slice(0, 3) : []
     return (
       <div style={box} data-testid="bid-name-question">
@@ -212,7 +216,7 @@ export function BidNameQuestion({ permit, city, customerIds, customerName }: { p
           {q.worksFor}
         </button>
         <button type="button" disabled={busy} onClick={() => setStep('who')} style={ghost}>
-          Someone else…
+          {q.someoneElse}
         </button>
         <button type="button" disabled={busy} onClick={() => void answer({ answer: 'not_sure' })} style={ghost}>
           Not sure

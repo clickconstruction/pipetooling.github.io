@@ -169,6 +169,35 @@ describe('the answer on a name', () => {
     await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'danawhitlow', customerId: 'c1', answer: 'works_for', scope: 'all', permitId: 'p1', name: 'Dana Whitlow' }))
   })
 
+  it('asks Same company? when the name on the permit begins the GC’s own, and ties through the same preview', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    io.loadPermitsByHouseNumber.mockResolvedValue([permit({ contact: 'Ridgeway Builders of Texas LLC', builder_key: 'ridgewaybuildersoftexas' })])
+    research.loadPermitsOfBuilder.mockResolvedValue([other('p7', '310 ALDER ROW')])
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    expect(await screen.findByText('The city lists Ridgeway Builders of Texas LLC on this permit. Your customer is Ridgeway Builders.')).toBeTruthy()
+    expect(screen.getByText('Same company?')).toBeTruthy()
+    expect(screen.getByText('Asked because one name begins the other. Asked once.')).toBeTruthy()
+    expect(screen.queryByText('Do you know who that is?')).toBeNull()
+    // The same three answers, and nothing tied until the list is shown.
+    expect(screen.getByRole('button', { name: 'Not them…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Not sure' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Same company' }))
+    expect(await screen.findByText('Ridgeway Builders of Texas LLC is the same company as Ridgeway Builders. The city lists Ridgeway Builders of Texas LLC on 1 other permit we can see.')).toBeTruthy()
+    expect(io.recordNameAnswer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 1 under Ridgeway Builders' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'ridgewaybuildersoftexas', customerId: 'c1', answer: 'works_for', scope: 'all', permitId: 'p1', name: 'Ridgeway Builders of Texas LLC' }))
+  })
+
+  it('takes a No on the likely grade with what they are, as any other name', async () => {
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    io.loadPermitsByHouseNumber.mockResolvedValue([permit({ contact: 'Ridgeway Builders of Texas LLC', builder_key: 'ridgewaybuildersoftexas' })])
+    renderWithProviders(<BidSitePermits {...SITE} customerIds={['c1']} customerName="Ridgeway Builders" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Not them…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Another GC' }))
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith(expect.objectContaining({ builderKey: 'ridgewaybuildersoftexas', answer: 'someone_else', scope: null })))
+    await waitFor(() => expect(research.saveBuilder).toHaveBeenCalledWith('ridgewaybuildersoftexas', 'Ridgeway Builders of Texas LLC', 'gc', 'u1'))
+  })
+
   it('ties this permit only, on the second press', async () => {
     io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
     research.loadPermitsOfBuilder.mockResolvedValue([other('p7', '310 ALDER ROW')])
