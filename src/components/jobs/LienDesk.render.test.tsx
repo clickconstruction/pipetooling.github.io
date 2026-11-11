@@ -1015,6 +1015,35 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(screen.queryByRole('button', { name: 'Fill in the record ›' })).toBeNull()
   })
 
+  it('a sworn month whose notice went late, with no copy to the contractor, is flagged for the attorney and holds nothing (punch list #314)', async () => {
+    const lateNotice = { ...notice, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-20' }] }
+    const d = data([], [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.filingsByJob = { j650: [lateNotice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const flag = document.querySelector('[data-lien-affidavit-notice-check]') as HTMLElement
+    expect(flag.textContent).toContain('Ask the attorney before this is filed.')
+    expect(flag.textContent).toContain("The owner's notice went after its date, or is not on record, for July 2026.")
+    expect(flag.textContent).toContain('No copy to the original contractor is on record for July 2026.')
+    // A flag, not a hold: the paper is still ready to draft and its press is live.
+    expect(d.affidavits.entries[0]!.pile).toBe('to_draft')
+    expect(document.body.textContent).not.toContain('Blocked until every gate above is clear.')
+    expect(paper().textContent).toContain('Payment is requested for work done and materials furnished in July 2026.')
+  })
+
+  it('a notice mailed on time to the owner and the contractor raises no flag', async () => {
+    const whole = { ...notice, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-08-14' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-08-14' }] }
+    const d = data([], [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.filingsByJob = { j650: [whole] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-notice-check]')).toBeNull()
+  })
+
   it('a GC with no address on file holds the affidavit: the gate says so, the door opens the GC’s record, and the paper keeps its words', async () => {
     const d = data([], [], true)
     d.gcsById = { loberg: { ...d.gcsById.loberg!, address: '' } }
