@@ -23,6 +23,8 @@ import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers
 import { useAuth } from '../hooks/useAuth'
 import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import { isOfficeRole } from '../lib/doorRoles'
+import { canResearchPermits } from '../lib/research/permitResearch'
+import { CustomerPermitNamesCard } from '../components/customers/CustomerPermitNamesCard'
 import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
 import InKindChip from '../components/inKind/InKindChip'
 import { useInKindStandings } from '../hooks/useInKindStandings'
@@ -553,6 +555,9 @@ export default function CustomerDetail() {
 
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}
           {canSeeWhatCustomersSee(myRole) && customerId ? <CustomerAgreementsCard customerId={customerId} customerName={data.customer.name} /> : null}
+
+          {/* v2.6886: Names on permits — the names a city lists that are this customer's, and the press that finds more (punch list #307). The people who research permits. */}
+          {canResearchPermits(myRole) && customerId ? <CustomerPermitNamesCard customerId={customerId} customerName={data.customer.name ?? ''} /> : null}
 
           {/* v2.3508: Their journey — the What-customers-see strips for this customer, as it actually went. Office roles only; reads only. */}
           {canSeeWhatCustomersSee(myRole) ? (

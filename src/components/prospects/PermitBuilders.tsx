@@ -24,6 +24,8 @@ import {
 import { googleAskForCompany, sitePermitLines, type SitePermit } from '../../lib/research/permitPublic'
 import { historyAsk, historyDoneWords, permitsColumnWords, reachWords, recordsReach, recordsStartLine, theirPermitsTitle, type RecordsReach } from '../../lib/research/permitReach'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
+import { usePermitLookAlikes } from '../../hooks/usePermitLookAlikes'
+import { PermitLookAlikes } from './PermitLookAlikes'
 import { loadBuilders, loadPermitsOfBuilder, markBuilder, pullPermitsBack, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
@@ -103,6 +105,9 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   }
 
   const all = useMemo(() => rows ?? [], [rows])
+  // Names that may be one of our customers (punch list #307): a chip with its count, and the list behind it.
+  const lookAlikes = usePermitLookAlikes(city, all)
+  const [looking, setLooking] = useState(false)
   const counts = useMemo(() => builderChipCounts(all), [all])
   const list = useMemo(() => buildersShowing(all, showing, search), [all, showing, search])
   const open = useMemo(() => all.find((r) => r.key === openKey) ?? null, [all, openKey])
@@ -128,6 +133,11 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
             {BUILDER_SHOWING_WORDS[s]} {counts[s]}
           </button>
         ))}
+        {lookAlikes.pairs != null && (
+          <button type="button" aria-pressed={looking} onClick={() => setLooking((v) => !v)} style={chip(looking)}>
+            Looks like a customer {lookAlikes.pairs.length}
+          </button>
+        )}
         <input type="search" aria-label="Search builders" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a builder or a plumber" style={{ flex: '1 1 200px', minWidth: 0, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 11px', font: 'inherit', fontSize: '0.875rem', minHeight: 36, background: 'var(--surface)', color: 'var(--text)' }} />
       </div>
 
@@ -142,7 +152,16 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
         </div>
       )}
 
-      {list.length === 0 ? (
+      {looking && lookAlikes.pairs != null ? (
+        <PermitLookAlikes
+          pairs={lookAlikes.pairs}
+          busy={lookAlikes.busy}
+          error={lookAlikes.error}
+          onAnswer={(pair, tie) => {
+            void lookAlikes.answer(pair, tie).then(() => onChanged())
+          }}
+        />
+      ) : list.length === 0 ? (
         all.length === 0 ? (
           <EmptyState main="No builders yet." tail="A builder shows here once the next pull has read who pulled each permit." compact />
         ) : (

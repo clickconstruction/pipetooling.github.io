@@ -84,7 +84,7 @@ The Labels window asks first what the labels print on. Pick **Brother tape** for
 
 The app prints straight to the P-touch from Chrome or Edge on a computer. There is nothing to install. The first time, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Quit Brother's P-touch Editor if it is open. Press **Connect the P-touch** and pick the printer in the browser's list. The browser remembers it.
 
-Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one.
+Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one. A run wastes one blank square of tape at its start, however many strips it holds. Print strips together to save tape.
 
 Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
 
@@ -98,11 +98,11 @@ After the first print the window opens on tape on that computer. Press **Change*
 
 Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
-Signed out, the scan still opens a page. The top matches the label, with the stencil in a box and the code under it. A line under that says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. A part that ran out since the last count stays on the list as None left. A part the crew pressed Can't find on says how many could not be found. The page never names the job.
+Signed out, the scan still opens a page. The top is a dark plate with the stencil in large letters and the code under it. The foot of the plate says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. A part that ran out since the last count stays on the list as None left. A part the crew pressed Can't find on says how many could not be found. The page never names the job.
 
 Looking for a part that is not in that box? Type the part, the maker or a stencil in the search field and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site.
 
-Is something missing or wrong with the box? Press **Text the office**. Your phone opens a text to the office with the box's name already in it.
+Is something missing or wrong with the box? Press **Text the office**. Your phone opens a text to the office with the box's name already in it. Press **Call the office** to ring them.
 
 To record a part used, moved or counted, press **Sign in to record a use or a count**. After you sign in you land on that box. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 

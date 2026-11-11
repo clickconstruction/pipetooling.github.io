@@ -112,7 +112,7 @@ An affidavit drafted before the short form keeps the earlier form. A grey line u
 
 When the gate clears, click {{button:outline-blue|Print for notarization}}. Sign before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}.
 
-The paper prints with nothing of the browser on it. It should not show the date and time, a web address or a page count. If yours does, open **More settings** in the print window. Untick **Headers and footers** there. The last numbered statement, the signature and the notary's block print together on one page. The short affidavit fits on one sheet. A paper too long for one sheet moves that closing to the next page whole.
+The paper prints with nothing of the browser on it. It should not show the date and time, a web address or a page count. If yours does, open **More settings** in the print window. Untick **Headers and footers** there. The last numbered statement, the signature and the notary's block print together on one page. The short affidavit fits on one sheet. A paper too long for one sheet moves that closing to the next page whole. When that happens, a line under the print buttons says how many pages the paper takes.
 
 Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day.
 

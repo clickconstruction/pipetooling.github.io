@@ -142,3 +142,49 @@ describe('PartFormModal addModeSaveLabel (v2.1392)', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
   })
 })
+
+// Punch list #308: a typed name is checked against the book, so a part on file is not made twice.
+describe('PartFormModal: already in the book', () => {
+  const knownParts = [
+    { id: 'kit', name: 'AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD', manufacturer: 'Arlo' },
+    { id: 'nip', name: '1-1/2XCL BLK STL NIPP S40', manufacturer: null },
+    { id: 'robot', name: 'NW-2BL NORDIC COOLER', manufacturer: null, is_robot: true },
+  ]
+
+  function typeName(value: string) {
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value } })
+  }
+
+  it('names the part on file when the model number is typed another way', async () => {
+    renderWithProviders(<PartFormModal {...makeProps({ knownParts })} />)
+    typeName('ARLO AX8802XL LR PC SUPPLY KIT')
+    expect(await screen.findByText('Already in the book, by its model number.')).toBeTruthy()
+    expect(screen.getByText('AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Use that part' })).toBeTruthy()
+  })
+
+  it('Mine is different puts the warning away', async () => {
+    renderWithProviders(<PartFormModal {...makeProps({ knownParts })} />)
+    typeName('ARLO AX8802XL LR PC SUPPLY KIT')
+    fireEvent.click(await screen.findByRole('button', { name: 'Mine is different' }))
+    expect(screen.queryByTestId('part-form-already-in-book')).toBeNull()
+  })
+
+  it('says nothing for another size of a part on file, a new name, or a robot part', async () => {
+    renderWithProviders(<PartFormModal {...makeProps({ knownParts })} />)
+    for (const name of ['2XCL BLK STL NIPP S40', 'KESSLER K-4410 CLOSET CARRIER', 'NW-2BL NORDIC COOLER']) {
+      typeName(name)
+      await new Promise((r) => setTimeout(r, 260))
+      await settle()
+      expect(screen.queryByTestId('part-form-already-in-book'), name).toBeNull()
+    }
+  })
+
+  it('never warns while a part is being edited', async () => {
+    const editingPart = { id: 'kit', name: 'AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD', manufacturer: 'Arlo' } as never
+    renderWithProviders(<PartFormModal {...makeProps({ knownParts, editingPart })} />)
+    await new Promise((r) => setTimeout(r, 260))
+    await settle()
+    expect(screen.queryByTestId('part-form-already-in-book')).toBeNull()
+  })
+})

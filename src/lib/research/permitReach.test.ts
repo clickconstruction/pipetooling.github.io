@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HISTORY_GOAL_YMD, historyAsk, historyDoneWords, permitsColumnWords, reachDay, reachWords, recordsReach, recordsStartLine, recordsStartOf, theirPermitsTitle } from './permitReach'
+import { HISTORY_CITIES, HISTORY_GOAL_YMD, historyAsk, historyDoneWords, permitsColumnWords, reachDay, reachWords, recordsReach, recordsStartLine, recordsStartOf, theirPermitsTitle } from './permitReach'
 
 const TODAY = '2026-11-10'
 
@@ -65,8 +65,11 @@ describe('the Builders page', () => {
 })
 
 describe('a read back as history', () => {
+  /** The cities a read back is open for once it is no longer held. */
+  const OPEN = ['San Antonio']
+
   it('asks for one step further back, up to the day the records start', () => {
-    expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toEqual({
+    expect(historyAsk('San Antonio', '2026-08-26', TODAY, OPEN)).toEqual({
       since: '2026-05-26',
       until: '2026-08-26',
       words: "San Antonio's records here start Aug 26.",
@@ -76,12 +79,15 @@ describe('a read back as history', () => {
   })
 
   it('stops at the goal, and asks nothing once the records reach it or their start is not known', () => {
-    expect(historyAsk('San Antonio', '2025-02-10', TODAY)).toMatchObject({ since: HISTORY_GOAL_YMD, until: '2025-02-10', press: 'Read back to Jan 1, 2025', busy: 'Reading Jan 1, 2025 to Feb 10, 2025…' })
-    expect(historyAsk('San Antonio', HISTORY_GOAL_YMD, TODAY)).toBeNull()
-    expect(historyAsk('San Antonio', '2024-06-01', TODAY)).toBeNull()
-    expect(historyAsk('San Antonio', null, TODAY)).toBeNull()
+    expect(historyAsk('San Antonio', '2025-02-10', TODAY, OPEN)).toMatchObject({ since: HISTORY_GOAL_YMD, until: '2025-02-10', press: 'Read back to Jan 1, 2025', busy: 'Reading Jan 1, 2025 to Feb 10, 2025…' })
+    expect(historyAsk('San Antonio', HISTORY_GOAL_YMD, TODAY, OPEN)).toBeNull()
+    expect(historyAsk('San Antonio', '2024-06-01', TODAY, OPEN)).toBeNull()
+    expect(historyAsk('San Antonio', null, TODAY, OPEN)).toBeNull()
     // A city whose feed cannot be read up to a day has no read back yet.
-    expect(historyAsk('Seguin', '2026-08-26', TODAY)).toBeNull()
+    expect(historyAsk('Seguin', '2026-08-26', TODAY, OPEN)).toBeNull()
+    // Held: until the Permits reads are index-driven no city has a read back, so nothing is asked.
+    expect(HISTORY_CITIES).toEqual([])
+    expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toBeNull()
   })
 
   it('says what a read back kept', () => {

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { GcBid, SitePermitRow } from '../../lib/research/bidSitePanel'
 
-const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), recordNameAnswer: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn() }))
-const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn(), loadPermitsOfBuilder: vi.fn(), loadResearchers: vi.fn(), saveBuilder: vi.fn() }))
+const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), recordNameAnswer: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(), loadPermitsOfName: vi.fn() }))
+const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn(), loadPermitsOfBuilder: vi.fn(), loadResearchers: vi.fn(), saveBuilder: vi.fn(), loadBuilders: vi.fn() }))
 const mobile = vi.hoisted(() => ({ value: false }))
 vi.mock('../../lib/research/bidSiteIo', () => io)
 vi.mock('../../lib/research/permitResearchIo', () => research)
@@ -42,6 +42,8 @@ beforeEach(() => {
   research.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
   research.loadResearchers.mockReset().mockResolvedValue([{ id: 'u1', name: 'Eve' }, { id: 'u2', name: 'Sam' }])
   research.saveBuilder.mockReset().mockResolvedValue(undefined)
+  research.loadBuilders.mockReset().mockResolvedValue([])
+  io.loadPermitsOfName.mockReset().mockResolvedValue([])
 })
 afterEach(() => cleanup())
 
@@ -235,5 +237,58 @@ describe('the answer on a name', () => {
     expect(screen.getByText('A name on a permit is the contact the city lists. It is not always the builder.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
     await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'danawhitlow', customerId: 'c1', answer: 'taken_back', scope: null, permitId: null, name: 'Dana Whitlow' }))
+  })
+})
+
+describe('Find their names on permits', () => {
+  const builder = (key: string, name: string, permits: number) => ({ key, name: null, sample_contact: name, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits, open: 0, last_permit_on: '2026-11-03', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null })
+
+  async function openSheet() {
+    io.loadBidsOfCustomers.mockResolvedValue([bid()])
+    io.loadNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+    // The permit on the bid's own address is listed under the longer name.
+    io.loadPermitsByHouseNumber.mockResolvedValue([permit({ contact: 'Ridgeway Builders of Texas LLC', builder_key: 'ridgewaybuilderstexas' })])
+    research.loadBuilders.mockImplementation(async (city: string) => (city === 'San Antonio' ? [builder('ridgewaybuilderstexas', 'Ridgeway Builders of Texas LLC', 7), builder('ridgewayroofing', 'Ridgeway Roofing Co', 11), builder('hartwellinteriors', 'Hartwell Interiors', 4), builder('ridgewaybuilders', 'Ridgeway Builders', 2)] : []))
+    renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId="b1" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Find their names on permits ›' }))
+    return await screen.findByRole('dialog', { name: 'Find Ridgeway Builders on permits' })
+  }
+
+  it('suggests the names that may be them, the one on an address we bid first, and never their own name', async () => {
+    const sheet = await openSheet()
+    await waitFor(() => expect(within(sheet).getByText('1 permit on addresses you bid to them')).toBeTruthy())
+    expect(within(sheet).getByText('One name begins the other')).toBeTruthy()
+    expect(within(sheet).getByText('Shares the word Ridgeway')).toBeTruthy()
+    expect(within(sheet).getAllByRole('button', { name: 'Same company' })).toHaveLength(2)
+    expect(within(sheet).queryByText('Hartwell Interiors')).toBeNull()
+  })
+
+  it('ties the same company on the press, and keeps a No', async () => {
+    const sheet = await openSheet()
+    const ties = await within(sheet).findAllByRole('button', { name: 'Same company' })
+    fireEvent.click(ties[0]!)
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'ridgewaybuilderstexas', customerId: 'c1', answer: 'works_for', scope: 'all', permitId: null, name: 'Ridgeway Builders of Texas LLC' }))
+    fireEvent.click(within(sheet).getAllByRole('button', { name: 'Not them' })[1]!)
+    await waitFor(() => expect(io.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'ridgewayroofing', customerId: 'c1', answer: 'someone_else', scope: null, permitId: null, name: 'Ridgeway Roofing Co' }))
+  })
+
+  it('compares ours with the city’s and marks the address they share', async () => {
+    io.loadPermitsOfName.mockResolvedValue([{ id: 'p1', city: 'San Antonio', address: '4120 MILL ST', zip: '78215', contact: 'Paula Kemp, Ridgeway Builders of Texas LLC', work_type: 'Commercial project', permit_type: 'Commercial Project Application', kind: 'building', stage: 'applied', issued_on: null, submitted_on: '2026-09-11' }])
+    const sheet = await openSheet()
+    fireEvent.click((await within(sheet).findAllByRole('button', { name: 'Compare ›' }))[0]!)
+    expect(await within(sheet).findByText('Addresses you bid to them')).toBeTruthy()
+    expect(io.loadPermitsOfName).toHaveBeenCalledWith('ridgewaybuilderstexas')
+    expect(within(sheet).getByText('4120 Mill Street')).toBeTruthy()
+    expect(within(sheet).getByText('Ridgeway Builders of Texas LLC · with Paula Kemp (1)')).toBeTruthy()
+    // The zip is on both sides: ours and the city's.
+    expect(within(sheet).getAllByText(/78215 \(1\)/)).toHaveLength(2)
+  })
+
+  it('searches every name on permits', async () => {
+    const sheet = await openSheet()
+    fireEvent.change(within(sheet).getByLabelText('Search every name on permits'), { target: { value: 'hart' } })
+    expect(await within(sheet).findByText('Hartwell Interiors')).toBeTruthy()
+    fireEvent.change(within(sheet).getByLabelText('Search every name on permits'), { target: { value: 'zzz' } })
+    expect(await within(sheet).findByText('No name on permits begins with those words.')).toBeTruthy()
   })
 })

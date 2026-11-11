@@ -8,18 +8,7 @@
  * label's own length in time, cut short when the printer does say, and the next label opens with a status request the
  * printer must answer before any dots go.
  */
-import {
-  BROTHER_USB_VENDOR_ID,
-  PTOUCH_BUSY,
-  PTOUCH_NOT_ANSWERING,
-  cmdInit,
-  cmdStatusRequest,
-  labelPrintMs,
-  parsePtouchStatus,
-  ptouchLabelJob,
-  ptouchTapeFits,
-  type PtouchStatus,
-} from './ptouchRaster'
+import { BROTHER_USB_VENDOR_ID, chainsToNext, cmdInit, cmdStatusRequest, labelPrintMs, parsePtouchStatus, PTOUCH_BUSY, PTOUCH_NOT_ANSWERING, ptouchLabelJob, ptouchTapeFits, type PtouchStatus } from './ptouchRaster'
 
 // The slice of WebUSB this file uses; the DOM typings the app builds with do not carry it.
 type UsbEndpoint = { endpointNumber: number; direction: 'in' | 'out'; type: string }
@@ -60,7 +49,7 @@ export type PtouchLink = {
   model: string
   /** The printer's last answer. */
   status: PtouchStatus
-  /** Prints the labels one at a time, each cut and fed out; `onLabel` is told how many are done. Stops at the first error with its reason. */
+  /** Prints the labels one at a time, each cut from the next and the last fed out; `onLabel` is told how many are done. Stops at the first error with its reason. */
   print(labels: ReadonlyArray<ReadonlyArray<Uint8Array>>, onLabel?: (done: number) => void): Promise<void>
   close(): Promise<void>
 }
@@ -119,7 +108,8 @@ async function openLink(device: UsbDevice): Promise<PtouchLink> {
           link.status = before
           if (before.errors.length > 0) throw new Error(before.errors.join(' '))
           if (!ptouchTapeFits(before)) throw new Error(`The printer has ${before.tapeMm} mm tape in it. Load 18 or 24 mm tape for box labels.`)
-          for (const chunk of ptouchLabelJob(lines, before.tapeMm)) await send(chunk)
+          // Every label but the run's last stays in the printer for the next to print against: one blank lead-in a run.
+          for (const chunk of ptouchLabelJob(lines, before.tapeMm, chainsToNext(n, labels.length))) await send(chunk)
           // Wait out the print. The printer may say when it is done; when it does not, the label's own time is the wait.
           const until = Date.now() + labelPrintMs(lines.length)
           while (Date.now() < until) {
