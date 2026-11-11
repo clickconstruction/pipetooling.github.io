@@ -178,6 +178,10 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
     expect(a.sub).toContain('late is allowed')
     expect(a.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
   })
+  it('a public owner: the row says no lien attaches and offers no press (punch list #314)', () => {
+    const r = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true), { key: 'public_owner' as const, ok: false, label: '' }] })] }).find((x) => x.kind === 'affidavit')!
+    expect([r.action, r.button, r.sub]).toEqual(['fix_property', null, 'Affidavit · public property, no lien attaches. Ask the attorney about the bond'])
+  })
   it('the GC has no address on file and the property record is whole: the row names it and offers Add the address (punch list #305)', () => {
     const contractor = (ok: boolean) => ({ key: 'contractor' as const, ok, label: '' })
     const only = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true), contractor(false)] })] }).find((r) => r.kind === 'affidavit')!
