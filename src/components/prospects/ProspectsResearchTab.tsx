@@ -174,9 +174,22 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     }
   }, [city, windowDays, residential, todayYmd, authUserId])
 
+  // The ledger's rows are a heavy read, and so is the every-permit read below. Run together they
+  // crowd each other past the database's time limit, so the ledger reads only where it is drawn
+  // (Ledger and Map), and the line that says when the feed was pulled reads on its own, lightly.
+  const loadPull = useCallback(async () => {
+    try {
+      setPull(await loadLatestPull(city))
+    } catch {
+      // The Pulled line stands empty; the lists do not wait on it.
+    }
+  }, [city])
   useEffect(() => {
-    void load()
-  }, [load])
+    void loadPull()
+  }, [loadPull])
+  useEffect(() => {
+    if (wide) void load()
+  }, [load, wide])
 
   const loadAll = useCallback(async () => {
     setAllError(null)
@@ -191,6 +204,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   useEffect(() => {
     void loadAll()
   }, [loadAll])
+  /** After a write: the every-permit read, then the ledger's where it is on screen. One at a time. */
+  const reloadLists = async () => {
+    await loadAll()
+    if (wide) await load()
+  }
   useEffect(() => {
     let live = true
     void loadResearchers().then((list) => live && setResearchers(list))
@@ -290,8 +308,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       }
       await recordVerdict({ permitId: row.id, verdict: d.verdict, reason: d.reason, lookAgainOn: d.lookAgainOn, prospectId, userId: authUserId })
       setDeciding(null)
-      await load()
-      void loadAll()
+      await reloadLists()
       setCountKey((k) => k + 1)
     } catch (e) {
       setDecideError(formatErrorMessage(e))
@@ -307,8 +324,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       const kept = out.feeds.reduce((n, f) => n + f.kept, 0)
       const stopped = out.feeds.find((f) => f.error)
       showToast(stopped ? `The pull kept ${kept} rows and stopped on ${stopped.source}: ${stopped.error}` : `Pulled ${kept} rows from the feed.`, stopped ? 'warning' : 'success')
-      await load()
-      void loadAll()
+      void loadPull()
+      await reloadLists()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     } finally {
@@ -403,8 +420,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
               type="button"
               aria-pressed={on}
               onClick={() => {
-                // An answer changes the rows the ledger and the map show, so they read again when they open.
-                if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
+                // The ledger and the map read their rows when they open (the effect on `wide`), so an answer given since shows.
                 setView(step.v)
               }}
               style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined, ...(joined ? { borderRadius: '999px 0 0 999px', paddingRight: 10 } : null) }}
@@ -434,9 +450,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         })}
       </div>
 
-      {!phoneSkim && <div style={mutedStyle}>{loading ? 'Reading the permits…' : wide ? line : pulledAtWords(pull)}</div>}
+      {!phoneSkim && <div style={mutedStyle}>{wide ? (loading ? 'Reading the permits…' : line) : pulledAtWords(pull)}</div>}
 
-      {error && (
+      {wide && error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700, var(--text-red-700))', fontSize: '0.875rem' }}>
           <span>{error}</span>
           <button type="button" onClick={() => void load()} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', cursor: 'pointer' }}>
@@ -479,7 +495,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
 
-      {!wide && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
+      {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
+      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
 
       {wide && !loading && !error && visible.length === 0 && emptyState()}
 
