@@ -84,7 +84,7 @@ describe('PriceSheetPanel', () => {
     await settle()
     const strip = screen.getByTestId('price-sheet-house')
     expect(strip.textContent).toContain('Which house is this sheet from? Nothing on it names one.')
-    expect(strip.textContent).toContain('Nothing is filed until you say.')
+    expect(strip.textContent).toContain('A price is filed only after you say.')
     expect(screen.queryByRole('button', { name: /file \$/ })).toBeNull()
   })
 

@@ -424,7 +424,7 @@ export function PriceSheetPanel({
                     ))}
                   </select>
                 </span>
-                <span style={{ color: 'var(--text-700)' }}>Nothing is filed until you say.</span>
+                <span style={{ color: 'var(--text-700)' }}>A price is filed only after you say.</span>
               </div>
             )}
 
