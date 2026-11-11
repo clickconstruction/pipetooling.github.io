@@ -1117,7 +1117,10 @@ export function canonicalJson(value: unknown): string {
  * carry the dry run's own timestamps and ids. For clock sessions (v2.6524): the counts and each
  * op whole, its after image without `approved_at` — an approve stamps the dry run's own now(),
  * so with the stamp in, no approve plan could ever apply (the fifty of 2026-11-04 hashed three
- * ways in three runs). For an HR entry the whole reply is stable.
+ * ways in three runs). For a person's document (v2.6948): the reply whole, the named document's
+ * `archived_at` as whether it is archived and never when — an archive's dry run answers with its
+ * own now(), the same fault, and the instant before is still held under `changes`. For an HR
+ * entry the whole reply is stable.
  */
 export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   const r = obj(reply)
@@ -1130,7 +1133,18 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   if (verb === 'plan_clock_sessions' || verb === 'apply_clock_sessions') {
     return { ...rest, ops: Array.isArray(r.ops) ? r.ops.map(clockOpCommitment) : r.ops ?? null }
   }
+  if (verb === 'plan_person_doc' || verb === 'apply_person_doc') {
+    return { ...rest, document: personDocCommitment(r.document) }
+  }
   return rest
+}
+
+/** A named document as its plan commits to it: everything the dry run said, archived or not in place of the archive's stamp. */
+export function personDocCommitment(document: unknown): unknown {
+  const d = obj(document)
+  if (!d) return document ?? null
+  const { archived_at: stamp, ...rest } = d
+  return { ...rest, archived: stamp != null }
 }
 
 /** One clock op as its plan commits to it: everything the dry run said, the after image without the approval stamp. */
