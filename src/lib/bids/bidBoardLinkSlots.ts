@@ -3,7 +3,8 @@
  * link the bid has and centred what it drew, so the folder on one row sat where the plans icon sat on the next, and
  * the photos icon moved with them. Every link kind now has a fixed slot, in one order, so an icon is always found in
  * the same spot down the column: Photos first (the tab draws it), then these four. A kind the bid has none of leaves
- * its slot empty; a second link of a kind (a second CountTooling project) follows the slots.
+ * its slot empty here, and the tab draws a grey icon there that opens the bid's Files window (`bidFilesWindow.ts`);
+ * a second link of a kind (a second CountTooling project) follows the slots.
  */
 
 export type BoardLinkKind = 'folder' | 'plans' | 'count' | 'submission'
