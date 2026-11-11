@@ -6,9 +6,13 @@
  * One look is the default, for everyone who has not picked. Switching a look off moves the people
  * on it to the default: their next footer and card are drawn in the default.
  *
- * The setting is one row of `app_settings`, which any signed-in person reads and only a dev
- * writes, so the card shows for a dev alone. Each look is drawn with the dev's own facts, so the
- * owner judges it on a real card.
+ * Under the looks sit the card sizes (`lib/brandKit/sizes.ts`): the standard card, one with a
+ * larger photo and one with larger words. They are offered the same way, by a switch and a
+ * default, and kept in a setting of their own so that saving one never rewrites the other.
+ *
+ * Each setting is one row of `app_settings`, which any signed-in person reads and only a dev
+ * writes, so the card shows for a dev alone. Each look and each size is drawn with the dev's own
+ * facts, so the owner judges it on a real card.
  */
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
@@ -20,6 +24,7 @@ import { drawKit, type KitDrawOptions, type KitPerson } from '../../lib/brandKit
 import { LOOK_IDS, THEMES, lookCounts, lookLayouts, withDefaultLook, withLookSwitched, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
 import { kitPersonFromUser } from '../../lib/brandKit/person'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
+import { SIZES, SIZE_IDS, cardBackFor, sizeCounts, withDefaultSize, withSizeSwitched, type CardSizesSetting, type KitSizeId } from '../../lib/brandKit/sizes'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 const card: CSSProperties = { marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }
@@ -49,7 +54,8 @@ export function CardLooksCard({
 
   // undefined while reading, null when the read failed
   const [setting, setSetting] = useState<CardLooksSetting | null | undefined>(undefined)
-  const [picks, setPicks] = useState<(string | null)[]>([])
+  const [sizes, setSizes] = useState<CardSizesSetting | null>(null)
+  const [picks, setPicks] = useState<{ look: string | null; size: string | null }[]>([])
   const [person, setPerson] = useState<KitPerson | null>(null)
   const [kit, setKit] = useState<Required<Pick<KitDrawOptions, 'assets' | 'measure'>> | null>(null)
   const [busy, setBusy] = useState(false)
@@ -67,9 +73,10 @@ export function CardLooksCard({
     setProblem(null)
     void (async () => {
       try {
-        const [looks, everyone] = await Promise.all([io.looks(), io.picks()])
+        const [looks, everyone, offeredSizes] = await Promise.all([io.looks(), io.picks(), io.sizes()])
         if (!on) return
         setSetting(looks)
+        setSizes(offeredSizes)
         setPicks(everyone)
       } catch (e) {
         if (!on) return
@@ -98,9 +105,35 @@ export function CardLooksCard({
     return Object.fromEntries(LOOK_IDS.map((id) => [id, drawKit(lookLayouts(id).footer, person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}${id.replace(/[^a-z]/g, '')}` })])) as Record<KitLookId, string>
   }, [kit, person, clipId])
 
+  /** The card's back in each size, in the default look, so the owner sees what a size changes. */
+  const defaultLook = setting?.default ?? 'classic'
+  const sizePreviews = useMemo(() => {
+    if (!kit || !person) return null
+    return Object.fromEntries(SIZE_IDS.map((id) => [id, drawKit(cardBackFor(defaultLook, id), person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}size${id}` })])) as Record<KitSizeId, string>
+  }, [kit, person, clipId, defaultLook])
+
   if (!isDev) return null
 
-  const counts = setting ? lookCounts(picks, setting) : null
+  const counts = setting ? lookCounts(picks.map((p) => p.look), setting) : null
+  const sizeUse = sizes ? sizeCounts(picks.map((p) => p.size), sizes) : null
+
+  const saveSizes = async (next: CardSizesSetting) => {
+    if (!sizes || busy || next === sizes) return
+    const before = sizes
+    setSizes(next)
+    setBusy(true)
+    setProblem(null)
+    try {
+      await io.saveSizes(next)
+      if (live.current) showToast(W.sizesSaved, 'success')
+    } catch (e) {
+      if (!live.current) return
+      setSizes(before)
+      setProblem(formatErrorMessage(e, W.sizesNotSaved))
+    } finally {
+      if (live.current) setBusy(false)
+    }
+  }
 
   const save = async (next: CardLooksSetting) => {
     if (!setting || busy || next === setting) return
@@ -160,12 +193,52 @@ export function CardLooksCard({
             )
           })
         : null}
+      {setting ? <p style={{ ...muted, marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>{W.foot}</p> : null}
+
+      {setting && sizes ? (
+        <div data-card-sizes>
+          <h3 style={{ margin: '1.1rem 0 0.4rem', fontSize: '0.9375rem', fontWeight: 600 }}>{W.sizesTitle}</h3>
+          <p style={{ ...muted, marginBottom: '0.6rem' }}>{W.sizesLead}</p>
+          {SIZE_IDS.map((id) => {
+            const on = sizes.approved.includes(id)
+            const isDefault = sizes.default === id
+            return (
+              <div key={id} data-card-size={id} style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '0.6rem 0', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                <div style={{ flex: '0 0 220px', maxWidth: '100%' }}>
+                  {sizePreviews ? (
+                    // eslint-disable-next-line react/no-danger
+                    <div style={art} dangerouslySetInnerHTML={{ __html: sizePreviews[id] }} />
+                  ) : (
+                    <div style={{ ...art, height: 50, background: THEMES[defaultLook].cardGround, borderBottom: `6px solid ${THEMES[defaultLook].accent}` }} />
+                  )}
+                </div>
+                <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {SIZES[id].name} {on ? null : <span style={chip}>{W.notOffered}</span>}
+                  </div>
+                  <p style={muted}>
+                    {SIZES[id].says} {on && sizeUse ? lookUseWords(sizeUse[id]) : null}
+                  </p>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}>
+                  <input type="radio" name={`${clipId}-default-size`} checked={isDefault} disabled={busy} onChange={() => void saveSizes(withDefaultSize(sizes, id))} />
+                  {W.defaultLabel}
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }} title={isDefault ? W.defaultStays : undefined}>
+                  <input type="checkbox" role="switch" aria-label={`${W.offered}: ${SIZES[id].name}`} checked={on} disabled={busy || isDefault} onChange={(e) => void saveSizes(withSizeSwitched(sizes, id, e.target.checked))} />
+                  {W.offered}
+                </label>
+              </div>
+            )
+          })}
+          <p style={{ ...muted, marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>{W.sizesFoot}</p>
+        </div>
+      ) : null}
       {problem ? (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.6rem' }}>
           {problem}
         </div>
       ) : null}
-      {setting ? <p style={{ ...muted, marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>{W.foot}</p> : null}
     </div>
   )
 }

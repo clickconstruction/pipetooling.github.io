@@ -42,6 +42,7 @@ import { usePriceMatrixReadyNudge } from './usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from './usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from './useGcFollowUpNeeds'
 import { usePermitSkimNudge } from './usePermitSkimNudge'
+import { useLookAlikeNudge } from './useLookAlikeNudge'
 import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
 import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
@@ -199,6 +200,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   const permitSkimEnabled = on('permitSkim')
   const permitSkim = usePermitSkimNudge(permitSkimEnabled, role)
+  // Looks like a customer (punch list #307): the chips' numbers on Builders, added up; remembered half an hour.
+  const lookAlikesEnabled = on('lookAlikes')
+  const lookAlikes = useLookAlikeNudge(lookAlikesEnabled)
   // Since v2.6098 (punch list #178) the two lines are sources of their own, carried by Quickfill's Messages station.
   const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && on('customerMessages')
   // On Quickfill the Texts station holds the texts (v2.5823), so the Customers line there leaves them out.
@@ -309,6 +313,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     gcFollowUp,
     permitSkimEnabled,
     permitSkim,
+    lookAlikesEnabled,
+    lookAlikes,
     customerMessagesEnabled,
     customerMessages,
     todaysSendsEnabled,
@@ -405,6 +411,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     customerWaitingInboxHref: customerWaitingCtx?.inboxHref ?? null,
     lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
     whileOffFirst: whileOff.need?.first ?? null,
+    lookAlikeCity: lookAlikes?.city ?? null,
     bridgeMoveDoor: bridgeMoves.need?.door?.to ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,

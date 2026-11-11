@@ -41,6 +41,8 @@ export type KitRow = {
   opacity?: number
   /** The widest the line may run; a longer one shrinks. */
   fit?: number
+  /** The smallest it may shrink to; 55% of its size when absent. */
+  min?: number
   /** The step down from the row above it. */
   advance?: number
   /** A different step when it follows a certain row. */

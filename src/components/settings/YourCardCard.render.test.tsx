@@ -12,6 +12,7 @@ import type { CardIo, CardLoad } from '../../lib/brandKit/cardIo'
 import { guessTextWidth } from '../../lib/brandKit/draw'
 import type { CardLooksSetting } from '../../lib/brandKit/looks'
 import type { KitRenderer } from '../../lib/brandKit/render'
+import type { CardSizesSetting } from '../../lib/brandKit/sizes'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { YourCardCard } from './YourCardCard'
 
@@ -32,12 +33,17 @@ const MARISOL: CardLoad = {
   columnsOn: true,
   look: null,
   lookOn: true,
+  size: null,
+  sizeOn: true,
 }
 
 const ONE_LOOK: CardLooksSetting = { approved: ['classic'], default: 'classic' }
 const THREE_LOOKS: CardLooksSetting = { approved: ['classic', 'navy-orange', 'navy-yellow'], default: 'classic' }
 
-function fakeIo(load: CardLoad, looks: CardLooksSetting = ONE_LOOK) {
+const ONE_SIZE: CardSizesSetting = { approved: ['standard'], default: 'standard' }
+const THREE_SIZES: CardSizesSetting = { approved: ['standard', 'photo', 'text'], default: 'standard' }
+
+function fakeIo(load: CardLoad, looks: CardLooksSetting = ONE_LOOK, sizes: CardSizesSetting = ONE_SIZE) {
   return {
     load: vi.fn(async () => load),
     photo: vi.fn(async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 })),
@@ -46,6 +52,8 @@ function fakeIo(load: CardLoad, looks: CardLooksSetting = ONE_LOOK) {
     saveFacts: vi.fn(async () => undefined),
     looks: vi.fn(async () => looks),
     saveLook: vi.fn(async () => undefined),
+    sizes: vi.fn(async () => sizes),
+    saveSize: vi.fn(async () => undefined),
   } satisfies CardIo
 }
 
@@ -124,7 +132,57 @@ describe('YourCardCard', () => {
     renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo(MARISOL)} renderer={fakeRenderer()} />)
     await waitFor(() => expect(footer()).toContain('Marisol Vega'))
     expect(document.querySelector('[data-your-card-looks]')).toBeNull()
+    expect(document.querySelector('[data-your-card-sizes]')).toBeNull()
     expect(footer()).toContain('fill="#000000"')
+  })
+
+  it('offers the card sizes the owner switched on, draws the back in the pick, saves it, and leaves the footer alone', async () => {
+    const io = fakeIo(MARISOL, ONE_LOOK, THREE_SIZES)
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={io} renderer={fakeRenderer()} />)
+    const larger = await screen.findByRole('radio', { name: /Larger photo/ })
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.getByRole('radio', { name: /Standard/ })).toHaveProperty('ariaChecked', 'true')
+    // the standard card sets the name at 52 and the photo's ring at 140
+    expect(back()).toContain('font-size="52.0"')
+    const before = footer()
+    fireEvent.click(larger)
+    await waitFor(() => expect(io.saveSize).toHaveBeenCalledWith('u-marisol', 'photo'))
+    await waitFor(() => expect(back()).toContain('font-size="62.0"'))
+    expect(back()).not.toContain('font-size="52.0"')
+    expect(footer()).toBe(before)
+    expect(larger).toHaveProperty('ariaChecked', 'true')
+  })
+
+  it('prints the card in the size picked', async () => {
+    const renderer = fakeRenderer()
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo({ ...MARISOL, size: 'text' }, ONE_LOOK, THREE_SIZES)} renderer={renderer} />)
+    await waitFor(() => expect(back()).toContain('font-size="66.0"'))
+    fireEvent.click(screen.getByRole('button', { name: 'Download the print file' }))
+    await waitFor(() => expect(renderer.pdf).toHaveBeenCalledTimes(1))
+    const pages = (renderer.pdf.mock.calls[0] as unknown as [{ svg: string }[]])[0]
+    expect(pages[1]?.svg).toContain('font-size="66.0"')
+  })
+
+  it('draws a size the owner has since switched off in the default, and offers no size before its column lands', async () => {
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo({ ...MARISOL, size: 'text' }, ONE_LOOK, { approved: ['standard', 'photo'], default: 'standard' })} renderer={fakeRenderer()} />)
+    await screen.findByRole('radio', { name: /Larger photo/ })
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
+    expect(back()).toContain('font-size="52.0"')
+    cleanup()
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo({ ...MARISOL, sizeOn: false }, ONE_LOOK, THREE_SIZES)} renderer={fakeRenderer()} />)
+    await waitFor(() => expect(footer()).toContain('Marisol Vega'))
+    expect(document.querySelector('[data-your-card-sizes]')).toBeNull()
+  })
+
+  it('puts the size back and says why when the save is refused', async () => {
+    const io = fakeIo(MARISOL, ONE_LOOK, THREE_SIZES)
+    io.saveSize.mockRejectedValueOnce(new Error('The card size was not saved. You may not have leave to change this account.'))
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={io} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('radio', { name: /Larger text/ }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toContain('The card size was not saved')
+    expect(screen.getByRole('radio', { name: /Standard/ })).toHaveProperty('ariaChecked', 'true')
+    expect(back()).toContain('font-size="52.0"')
   })
 
   it('offers the looks the owner switched on, draws the card in the pick, and saves it', async () => {

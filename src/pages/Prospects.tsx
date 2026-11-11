@@ -83,6 +83,7 @@ import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
 import { canResearchPermits } from '../lib/research/permitResearch'
+import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { SubsBoard } from '../components/prospects/SubsBoard'
 import { subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
@@ -966,7 +967,8 @@ export default function Prospects() {
   const openResearchTab = () => {
     setTopTab('research')
     setSearchParams((p) => {
-      const next = new URLSearchParams(p)
+      // The tab's name opens it on Skim: what Builders left on the address from an earlier visit is dropped.
+      const next = permitsLinkCleared(p)
       next.set('tab', 'permits')
       next.delete('prospect_id')
       return next

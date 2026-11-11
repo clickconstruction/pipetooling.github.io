@@ -24,6 +24,9 @@ import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHe
 import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
+import { useLienAskPeople } from './lienAskPeopleChoice'
+import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
+import { lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -391,6 +394,7 @@ export default function LienFilingTabs({
 
   // The affidavit's help sheet (punch list #314): the job's facts as the paper states them, so the sheet and the paper agree.
   const [helpSheetOn, setHelpSheetOn] = useLienHelpSheetChoice()
+  const askFor = useLienAskPeople()
   const helpPaper = useMemo(
     () =>
       lienHelpPaperFromFields({
@@ -400,8 +404,11 @@ export default function LienFilingTabs({
         fields: affidavitFields,
         // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
         checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines },
+        // The clerk as Settings hold it, and who to ask: the job's lien leader, or the dev (changes 9 and 10).
+        clerk: lienClerkFor(issuer?.countyClerksText, affidavitFields.county),
+        ask: askFor(job.master_user_id ?? null),
       }),
-    [jobNumber, job.job_name, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines],
+    [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, issuer?.countyClerksText, askFor],
   )
 
   const printDoc = useCallback(() => {
@@ -410,7 +417,7 @@ export default function LienFilingTabs({
     const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id] }
     // A short-form affidavit prints behind its help sheet (punch list #314). The sheet is never the paper: the copy filed on the job is the paper alone.
     if (currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && helpSheetOn) {
-      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd())), LIEN_HELP_STYLES))) {
+      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd()), { guideCode: lienHelpGuideCode() }), LIEN_HELP_STYLES))) {
         showToast('Popup blocked — allow popups to print.', 'error')
         return
       }
@@ -425,7 +432,7 @@ export default function LienFilingTabs({
   // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
   const printGuideCopy = useCallback(() => {
     if (!currentDoc || currentDoc.kind !== 'affidavit') return
-    const page = lienHelpPrintHtml(lienHelpGuideCopyHtml(filingDocHtml(currentDoc.blocks), helpPaper), `Guide copy — Job ${jobNumber}`)
+    const page = lienHelpPrintHtml(lienHelpGuideCopyHtml(filingDocHtml(currentDoc.blocks), helpPaper, { guideCode: lienHelpGuideCode() }), `Guide copy — Job ${jobNumber}`)
     if (!openHtmlPrintWindow(page)) showToast('Popup blocked — allow popups to print.', 'error')
   }, [currentDoc, helpPaper, jobNumber, showToast])
 

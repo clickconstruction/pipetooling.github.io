@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -30,6 +31,7 @@ import { byWordWords, openLookAlikes, throughWords, withAnsweredBids } from '../
 import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
 import { BuilderNameTies } from './BuilderNameTies'
 import { PermitLookAlikes } from './PermitLookAlikes'
+import { permitsLinkWithLooks, readPermitsLink } from '../../lib/research/permitsLink'
 import { loadBuilders, loadPermitsOfBuilder, markBuilder, pullPermitsBack, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
@@ -118,7 +120,13 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   const lookAlikes = usePermitLookAlikes(city, all)
   // A pair answered from a builder's sheet leaves the worklist at once.
   const pairs = useMemo(() => (lookAlikes.pairs == null ? null : ground ? openLookAlikes(lookAlikes.pairs, ground.book) : lookAlikes.pairs), [lookAlikes.pairs, ground])
-  const [looking, setLooking] = useState(false)
+  // The chip rides the address (`looks=1`), so the Needs you line opens on it and a reload comes back to it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [looking, setLooking] = useState(() => readPermitsLink(searchParams).looks)
+  const showLooks = (on: boolean) => {
+    setLooking(on)
+    setSearchParams(permitsLinkWithLooks(searchParams, on), { replace: true })
+  }
   const counts = useMemo(() => builderChipCounts(all), [all])
   const list = useMemo(() => buildersShowing(all, showing, search), [all, showing, search])
   const open = useMemo(() => all.find((r) => r.key === openKey) ?? null, [all, openKey])
@@ -145,7 +153,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
           </button>
         ))}
         {pairs != null && (
-          <button type="button" aria-pressed={looking} onClick={() => setLooking((v) => !v)} style={chip(looking)}>
+          <button type="button" aria-pressed={looking} onClick={() => showLooks(!looking)} style={chip(looking)}>
             Looks like a customer {pairs.length}
           </button>
         )}
