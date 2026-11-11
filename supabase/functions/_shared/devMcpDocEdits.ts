@@ -79,9 +79,9 @@ export function docHeadings(md: string): DocHeading[] {
     if (fence) return
     const m = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line)
     if (!m) return
-    const heading = m[2].split('`').join('').split('**').join('').trim()
+    const heading = (m[2] ?? '').split('`').join('').split('**').join('').trim()
     if (!heading) return
-    out.push({ line: i + 1, level: m[1].length, heading })
+    out.push({ line: i + 1, level: (m[1] ?? '').length, heading })
   })
   return out
 }
@@ -160,8 +160,9 @@ export function applyDocOps(text: string, ops: unknown, what = 'document'): DocO
       const listed = headings.slice(0, 60).map((h) => h.heading).join(' | ') || '(none)'
       return { ok: false, error: `no heading "${String(op.heading)}" in the ${what}. Its headings: ${listed}` }
     }
-    if (matches.length > 1) return { ok: false, error: `the heading "${String(op.heading)}" appears ${matches.length} times in the ${what}; make it unique first` }
-    const { line: start, level, heading: found } = matches[0]
+    const match = matches[0]
+    if (!match || matches.length > 1) return { ok: false, error: `the heading "${String(op.heading)}" appears ${matches.length} times in the ${what}; make it unique first` }
+    const { line: start, level, heading: found } = match
     const nextHeading = headings.find((h) => h.line > start && h.level <= level)
     // 1-based: the heading is line `start`, the section's own lines run start + 1 … end.
     const end = nextHeading ? nextHeading.line - 1 : n
@@ -187,7 +188,7 @@ export function applyDocOps(text: string, ops: unknown, what = 'document'): DocO
       // The first line of the section that holds words; the blank lines under the heading stay where they are.
       let first = -1
       for (let i = start; i < end; i += 1) {
-        if (lines[i].trim() !== '') {
+        if ((lines[i] ?? '').trim() !== '') {
           first = i
           break
         }
@@ -201,7 +202,7 @@ export function applyDocOps(text: string, ops: unknown, what = 'document'): DocO
       }
       const placed = keepBlankUnder ? [...newLines, ''] : newLines
       const next = [...lines.slice(0, first), ...placed, ...lines.slice(first)]
-      changes.push({ op: 'prepend_section', heading: found, level, at_line: first + 1, added_lines: placed.length, added: md, above: left(lines[first], ABOVE_CAP) })
+      changes.push({ op: 'prepend_section', heading: found, level, at_line: first + 1, added_lines: placed.length, added: md, above: left(lines[first] ?? '', ABOVE_CAP) })
       after = next.join('\n')
       continue
     }
@@ -215,11 +216,13 @@ export function applyDocOps(text: string, ops: unknown, what = 'document'): DocO
     const bodyFrom = lines.slice(0, start).reduce((sum, l) => sum + l.length + 1, 0)
     const body = lines.slice(start, end).join('\n')
     const hits = occurrences(body, find)
-    if (hits.length === 0) {
+    const hit = hits[0]
+    if (hit === undefined) {
       const elsewhere = occurrences(after, find)
+      const firstElsewhere = elsewhere[0]
       let where = ''
-      if (elsewhere.length > 0) {
-        const line = lineOfOffset(after, elsewhere[0])
+      if (firstElsewhere !== undefined) {
+        const line = lineOfOffset(after, firstElsewhere)
         const under = [...headings].reverse().find((h) => h.line <= line)
         where = ` They occur ${elsewhere.length} ${elsewhere.length === 1 ? 'time' : 'times'} elsewhere in the ${what}, first on line ${line}${under ? ` under "${under.heading}"` : ''}.`
       }
@@ -229,7 +232,7 @@ export function applyDocOps(text: string, ops: unknown, what = 'document'): DocO
       const onLines = hits.map((h) => lineOfOffset(after, bodyFrom + h)).join(', ')
       return { ok: false, error: `op replace_text: the words to find occur ${hits.length} times in the section "${found}" (lines ${onLines}); send a longer run that occurs once, so the plan changes one place.` }
     }
-    const at = bodyFrom + hits[0]
+    const at = bodyFrom + hit
     const next = after.slice(0, at) + op.replace + after.slice(at + find.length)
     const line = lineOfOffset(after, at)
     // The whole lines the run now stands in, so the reader sees the sentence it changed.
