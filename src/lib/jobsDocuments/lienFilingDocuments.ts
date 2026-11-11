@@ -63,7 +63,8 @@ export type FilingDocBlock =
   | { kind: 'letterhead'; company: string; licenseLine: string; contactLines: string[] }
   | { kind: 'refstrip'; items: string[] }
   | { kind: 'title'; lines: string[] }
-  | { kind: 'jurisdiction'; county: string }
+  /** `note` (punch list #314): a few words after a blank county that say which county the blank wants, as the short lien affidavit's *where signed*. Drawn on the county's own line, so the paper keeps its height. */
+  | { kind: 'jurisdiction'; county: string; note?: string }
   /** `field` names the fields key the value came from (v2.3522) — the preview marks it; print and PDF ignore it. `ghost` (v2.3694): an optional line the desk shows empty so it can be typed; never emitted for print. */
   | { kind: 'formLine'; label: string; value: string; field?: string; ghost?: boolean }
   | { kind: 'paragraph'; text: string }
@@ -207,7 +208,7 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         parts.push(`<p style="text-align:center;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 1em">${b.lines.map(esc).join('<br/>')}</p>`)
         break
       case 'jurisdiction':
-        parts.push(`<p style="margin:0 0 0.9em"><strong>STATE OF TEXAS</strong><br/><strong>COUNTY OF ${esc(b.county.toUpperCase() || '___________')}</strong></p>`)
+        parts.push(`<p style="margin:0 0 0.9em"><strong>STATE OF TEXAS</strong><br/><strong>COUNTY OF ${esc(b.county.toUpperCase() || '___________')}</strong>${jurisdictionNote(b) ? ` <span data-county-note style="font-size:0.85em">${esc(jurisdictionNote(b))}</span>` : ''}</p>`)
         break
       case 'windowAddress':
         // The window zone, kept as a box so the preview shows where the envelope's window falls.
@@ -330,7 +331,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         out.push(b.lines.map((l) => (l.startsWith('(') ? l : l.toUpperCase())).join('\n'))
         break
       case 'jurisdiction':
-        out.push(`STATE OF TEXAS\nCOUNTY OF ${b.county.toUpperCase() || '___________'}`)
+        out.push(`STATE OF TEXAS\nCOUNTY OF ${b.county.toUpperCase() || '___________'}${jurisdictionNote(b) ? ` ${jurisdictionNote(b)}` : ''}`)
         break
       case 'windowAddress':
         out.push(b.lines.join('\n'))
@@ -611,7 +612,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         break
       case 'jurisdiction':
         write('STATE OF TEXAS', 6, { bold: true })
-        write(`COUNTY OF ${b.county.toUpperCase() || '___________'}`, 6, { bold: true })
+        write(`COUNTY OF ${b.county.toUpperCase() || '___________'}${jurisdictionNote(b) ? ` ${jurisdictionNote(b)}` : ''}`, 6, { bold: true })
         y += 3
         break
       case 'windowAddress': {
@@ -1086,6 +1087,14 @@ const sameParty = (a: string, b: string) => a.trim().toLowerCase() === b.trim().
  * heading the clerk asks for (Local Government Code § 191.007). The county above the opening is left for the
  * notary, as the jurat's is: the paper is sworn where it is signed, not where the property is.
  */
+/** What the short form's county blank wants (punch list #314): the venue of an affidavit is where it is sworn, and the property's county is in paragraph 2. */
+export const AFFIDAVIT_VENUE_NOTE = 'where signed'
+
+/** A blank county's note in parentheses; nothing once the county is named, or with no note. */
+function jurisdictionNote(b: { county: string; note?: string }): string {
+  return !b.county.trim() && b.note?.trim() ? `(${b.note.trim()})` : ''
+}
+
 function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDocExtras): FilingDocBlock[] {
   const signer = f.claimantPersonName.trim()
   const company = f.claimantCompany.trim() || AFFIDAVIT_BLANK
@@ -1116,7 +1125,8 @@ function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDo
     // On a homestead the statute's notice is the first thing on the page, above the title.
     ...(f.homestead ? [{ kind: 'topNotice', text: HOMESTEAD_AFFIDAVIT_NOTICE } as FilingDocBlock] : []),
     { kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] },
-    { kind: 'jurisdiction', county: '' },
+    // The blank is the county where the paper is signed, and says so (punch list #314): the office's first signed batch wrote the property's county in it on every sheet.
+    { kind: 'jurisdiction', county: '', note: AFFIDAVIT_VENUE_NOTE },
     { kind: 'paragraph', text: `BEFORE ME, the undersigned authority, on this day personally appeared ${signer || AFFIDAVIT_BLANK}, who being by me duly sworn, upon oath states the following:` },
     ...texts.map((text, i): FilingDocBlock => ({ kind: 'numbered', n: i + 1, text })),
     { kind: 'signature', lines: [signer, f.claimantCompany.trim()].filter((l) => l) },

@@ -13,6 +13,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
+import { CARD_LOOKS_SETTING_KEY, DEFAULT_CARD_LOOKS, parseCardLooks, serializeCardLooks, type CardLooksSetting, type KitLookId } from './looks'
 import { readCrop, type KitCrop, type KitUserFacts } from './person'
 import type { TeamCardRow } from './team'
 
@@ -24,6 +25,10 @@ export type CardLoad = {
   crop: KitCrop
   /** False until the migration is pushed: the card then shows a line and no fields. */
   columnsOn: boolean
+  /** The look the person picked (`users.card_look`), or null for the company's default. */
+  look: string | null
+  /** False until the look's own migration is pushed: the card then offers no pick. */
+  lookOn: boolean
 }
 
 export type CardPhoto = { href: string; w: number; h: number }
@@ -36,12 +41,24 @@ export interface CardIo {
   savePhoto(userId: string, blob: Blob, crop: KitCrop, oldPath: string | null): Promise<string>
   saveCrop(userId: string, crop: KitCrop): Promise<void>
   saveFacts(userId: string, facts: { card_name: string; title: string }): Promise<void>
+  /** Which looks the owner offers, and the default. With nothing on file, the look in use alone. */
+  looks(): Promise<CardLooksSetting>
+  saveLook(userId: string, look: KitLookId): Promise<void>
 }
 
 /** The team window's reads: everyone a card can be made for, and one person's photo. */
 export interface TeamCardIo {
   team(): Promise<TeamCardRow[]>
   photo(path: string): Promise<CardPhoto>
+  looks(): Promise<CardLooksSetting>
+}
+
+/** The owner's card: which looks are on, the default, and everyone's pick for the counts. */
+export interface LooksAdminIo {
+  looks(): Promise<CardLooksSetting>
+  saveLooks(setting: CardLooksSetting): Promise<void>
+  /** Each person's pick, null for the default. */
+  picks(): Promise<(string | null)[]>
 }
 
 /** A picture's data and size, read in the browser. */
@@ -67,7 +84,7 @@ export function photoPathFor(userId: string, now: number, type: string): string 
 }
 
 /** Typed as plain strings on purpose: the client cannot parse columns its generated types do not know yet. */
-const SELECTS: string[] = ['name, email, phone, title, card_name, photo_path, photo_crop', 'name, email, phone, title']
+const SELECTS: string[] = ['name, email, phone, title, card_name, photo_path, photo_crop, card_look', 'name, email, phone, title, card_name, photo_path, photo_crop', 'name, email, phone, title']
 
 export function supabaseCardIo(client: unknown = supabase): CardIo {
   const db = client as SupabaseClient
@@ -83,7 +100,9 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
           facts: { name: text(row.name), card_name: text(row.card_name), title: text(row.title), email: text(row.email), phone: text(row.phone) },
           photoPath: text(row.photo_path),
           crop: readCrop(row.photo_crop),
-          columnsOn: i === 0,
+          columnsOn: i <= 1,
+          look: text(row.card_look),
+          lookOn: i === 0,
         }
       }
       throw new Error('The card could not be read.')
@@ -112,6 +131,12 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
       checkSupabaseError(saved, 'save the photo')
       if (!saved.data?.length) throw new Error('The photo was not saved. You may not have leave to change this account.')
     },
+    looks: () => readLooks(db),
+    async saveLook(userId, look) {
+      const saved = await db.from('users').update({ card_look: look }).eq('id', userId).select('id')
+      checkSupabaseError(saved, 'save the look')
+      if (!saved.data?.length) throw new Error('The look was not saved. You may not have leave to change this account.')
+    },
     async saveFacts(userId, facts) {
       const saved = await db.from('users').update({ card_name: facts.card_name.trim() || null, title: facts.title.trim() || null }).eq('id', userId).select('id')
       checkSupabaseError(saved, 'save the card')
@@ -120,7 +145,26 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
   }
 }
 
-const TEAM_COLUMNS: string = 'id, name, email, phone, title, card_name, photo_path, photo_crop, role, archived_at, is_sample, is_digital_twin, is_walk_tester'
+const TEAM_BASE: string = 'id, name, email, phone, title, card_name, photo_path, photo_crop, role, archived_at, is_sample, is_digital_twin, is_walk_tester'
+/** With the look first; without it until the look's migration is pushed. */
+const TEAM_SELECTS: string[] = [`${TEAM_BASE}, card_look`, TEAM_BASE]
+
+/** The company's looks setting. A missing row or a failed read is the look in use alone: nobody is offered a look by accident. */
+async function readLooks(db: SupabaseClient): Promise<CardLooksSetting> {
+  const read = await db.from('app_settings').select('value_text').eq('key', CARD_LOOKS_SETTING_KEY).maybeSingle()
+  if (read.error) return { ...DEFAULT_CARD_LOOKS, approved: [...DEFAULT_CARD_LOOKS.approved] }
+  return parseCardLooks((read.data as { value_text?: string | null } | null)?.value_text ?? null)
+}
+
+async function readTeam(db: SupabaseClient): Promise<Record<string, unknown>[]> {
+  for (const [i, columns] of TEAM_SELECTS.entries()) {
+    const read = await db.from('users').select(columns).is('archived_at', null)
+    if (read.error && i < TEAM_SELECTS.length - 1) continue
+    checkSupabaseError(read, 'read the team')
+    return ((read.data ?? []) as unknown as Record<string, unknown>[]).filter((r) => !r.is_sample && !r.is_digital_twin && !r.is_walk_tester && r.role !== 'subcontractor')
+  }
+  return []
+}
 
 /** Everyone on the company's card: every login that is not archived, not a sample, a twin or a walk tester, and not a subcontractor. */
 export function supabaseTeamCardIo(client: unknown = supabase): TeamCardIo {
@@ -128,19 +172,34 @@ export function supabaseTeamCardIo(client: unknown = supabase): TeamCardIo {
   const one = supabaseCardIo(client)
   return {
     async team() {
-      const read = await db.from('users').select(TEAM_COLUMNS).is('archived_at', null)
-      checkSupabaseError(read, 'read the team')
       const text = (v: unknown) => (typeof v === 'string' ? v : null)
-      return ((read.data ?? []) as unknown as Record<string, unknown>[])
-        .filter((r) => !r.is_sample && !r.is_digital_twin && !r.is_walk_tester && r.role !== 'subcontractor')
+      return (await readTeam(db))
         .map((r) => ({
           id: String(r.id),
           role: String(r.role ?? ''),
           facts: { name: text(r.name), card_name: text(r.card_name), title: text(r.title), email: text(r.email), phone: text(r.phone) },
           photoPath: text(r.photo_path),
           crop: readCrop(r.photo_crop),
+          look: text(r.card_look),
         }))
     },
     photo: one.photo,
+    looks: () => readLooks(db),
+  }
+}
+
+/** The owner's reads and the one write. Only a dev may write the setting; the database refuses anyone else. */
+export function supabaseLooksAdminIo(client: unknown = supabase): LooksAdminIo {
+  const db = client as SupabaseClient
+  return {
+    looks: () => readLooks(db),
+    async saveLooks(setting) {
+      const saved = await db.from('app_settings').upsert({ key: CARD_LOOKS_SETTING_KEY, value_text: serializeCardLooks(setting) }, { onConflict: 'key' }).select('key')
+      checkSupabaseError(saved, 'save the looks')
+      if (!saved.data?.length) throw new Error('The looks were not saved. Only a dev may change them.')
+    },
+    async picks() {
+      return (await readTeam(db)).map((r) => (typeof r.card_look === 'string' ? r.card_look : null))
+    },
   }
 }

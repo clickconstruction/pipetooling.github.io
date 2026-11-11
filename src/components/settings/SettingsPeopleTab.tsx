@@ -3,6 +3,7 @@
  * in Account on the desk PR D2), group memberships, non-user people, and the page-access table.
  * Presentational; remaining state/handlers live in the parent (Settings.tsx). */
 import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { CardLooksCard } from './CardLooksCard'
 import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
 import type { UserRole } from '../../hooks/useAuth'
@@ -154,6 +155,8 @@ export default function SettingsPeopleTab({
 }: SettingsPeopleTabProps) {
   return (
     <>
+          {/* Punch list #313: which looks of the card and the footer the team is offered. A dev's card. */}
+          <CardLooksCard role={myRole} />
           {/* v2.3705 (People spine PR 6): accounts live on the roster — the same pattern Team feedback took (v2.2835). */}
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Accounts</span>

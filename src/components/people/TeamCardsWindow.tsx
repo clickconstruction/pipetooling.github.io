@@ -16,7 +16,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { supabaseTeamCardIo, type TeamCardIo } from '../../lib/brandKit/cardIo'
 import { drawKit, printPage, type KitDrawOptions } from '../../lib/brandKit/draw'
-import { CHOSEN_LOOK, LAYOUTS } from '../../lib/brandKit/layouts'
+import { DEFAULT_CARD_LOOKS, lookLayouts, resolveLook, type CardLooksSetting } from '../../lib/brandKit/looks'
 import { kitFileSlug } from '../../lib/brandKit/person'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
 import { defaultTicks, teamCards, teamPressWords, type TeamCard } from '../../lib/brandKit/team'
@@ -57,6 +57,7 @@ export function TeamCardsWindow({
   const renderer = useMemo(() => rendererProp ?? browserKitRenderer(), [rendererProp])
   // undefined while reading, null when the read failed
   const [cards, setCards] = useState<TeamCard[] | null | undefined>(undefined)
+  const [setting, setSetting] = useState<CardLooksSetting>(DEFAULT_CARD_LOOKS)
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [making, setMaking] = useState<'cards' | 'footers' | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -72,8 +73,10 @@ export function TeamCardsWindow({
     setProblem(null)
     void (async () => {
       try {
-        const rows = teamCards(await io.team(), PORTAL_COMPANY.phone)
+        const [team, looks] = await Promise.all([io.team(), io.looks()])
+        const rows = teamCards(team, PORTAL_COMPANY.phone)
         if (!on) return
+        setSetting(looks)
         setCards(rows)
         setTicked(defaultTicks(rows))
       } catch (e) {
@@ -92,16 +95,20 @@ export function TeamCardsWindow({
 
   /** Each ready person with their photo fetched and their drawings made; a person whose photo will not load fails by name. */
   const gather = async (kit: Required<Pick<KitDrawOptions, 'assets' | 'measure'>>) => {
-    const done: { card: TeamCard; footer: string; back: string }[] = []
+    // each person in the look they picked, or the company's default
+    const done: { card: TeamCard; footer: string; front: string; back: string; footerSize: [number, number] }[] = []
     const failures: Failed[] = []
     for (const c of words.ready) {
       try {
         const photo = await io.photo(c.photoPath ?? '')
         const person = { ...c.person, photo: { ...photo, ...c.crop } }
+        const look = lookLayouts(resolveLook(c.look, setting))
         done.push({
           card: c,
-          footer: drawKit(LAYOUTS[CHOSEN_LOOK.footer], person, { ...kit, id: `team-f-${c.id}` }),
-          back: drawKit(LAYOUTS[CHOSEN_LOOK.back], person, { ...kit, id: `team-b-${c.id}` }),
+          footer: drawKit(look.footer, person, { ...kit, id: `team-f-${c.id}` }),
+          front: drawKit(look.front, null, kit),
+          back: drawKit(look.back, person, { ...kit, id: `team-b-${c.id}` }),
+          footerSize: look.footer.size,
         })
       } catch (e) {
         failures.push({ name: c.name, why: formatErrorMessage(e, 'The photo could not be read.') })
@@ -119,14 +126,12 @@ export function TeamCardsWindow({
       const kit = await renderer.ready()
       const { done, failures } = await gather(kit)
       if (what === 'cards' && done.length) {
-        const front = printPage(drawKit(LAYOUTS[CHOSEN_LOOK.front], null, kit))
-        const pages = done.flatMap((d) => [front, printPage(d.back)]).map((svg) => ({ svg, widthIn: 4.25, heightIn: 2.75, dpi: 600 }))
+        const pages = done.flatMap((d) => [printPage(d.front), printPage(d.back)]).map((svg) => ({ svg, widthIn: 4.25, heightIn: 2.75, dpi: 600 }))
         saveBlobAs(await renderer.pdf(pages), 'cards-team.pdf')
       }
       if (what === 'footers') {
-        const [w, h] = LAYOUTS[CHOSEN_LOOK.footer].size
         for (const d of done) {
-          saveBlobAs(await renderer.png(d.footer, w, h), `footer-${kitFileSlug(d.card.name)}.png`)
+          saveBlobAs(await renderer.png(d.footer, d.footerSize[0], d.footerSize[1]), `footer-${kitFileSlug(d.card.name)}.png`)
           // a browser asks before it saves many files at once; a beat between them keeps each one
           await new Promise((r) => window.setTimeout(r, 350))
         }

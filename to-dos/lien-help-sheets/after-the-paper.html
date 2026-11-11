@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Punch list #314. The best-we-can-do pass on the paper: the signing county printed, a place marked for the seal. Every name, address, county, date and amount is made up; no job, owner or contractor here is real. -->
+<title>Affidavit, Polished</title>
+<style>
+  /* Layout: a note for the reader on screen, then one letter sheet drawn as paper. Only the sheet prints. */
+  :root { --bg: #e9edf2; --ink: #17202b; --soft: #4a5868; --rule: #c9d1db; --card: #ffffff; --accent: #1f4e8c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12161c; --ink: #e6ebf2; --soft: #a3aebc; --rule: #313a47; --card: #1a2029; --accent: #8db8f0; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #12161c; --ink: #e6ebf2; --soft: #a3aebc; --rule: #313a47; --card: #1a2029; --accent: #8db8f0; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.5; }
+  .note { max-width: 8.5in; margin: 0 auto; padding: 1.5rem 16px 0.5rem; }
+  .note h1 { font-size: 1.4rem; line-height: 1.2; margin: 0 0 0.4rem; }
+  .note p { margin: 0 0 0.6rem; max-width: 70ch; color: var(--soft); }
+  .note .eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+  .note table { border-collapse: collapse; font-size: 0.875rem; margin: 0.4rem 0 0.8rem; }
+  .note th, .note td { border: 1px solid var(--rule); padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+  .scroll { overflow-x: auto; padding: 0 16px 2.5rem; }
+  /* The sheet is paper: always light, sized as a letter page with half-inch margins. */
+  .sheet { width: 8.5in; min-height: 11in; margin: 0.75rem auto; padding: 0.5in; background: #fff; color: #111418; box-shadow: 0 1px 6px rgba(0,0,0,0.25); font-size: 10.5pt; line-height: 1.35; }
+  .sheet h2 { font-size: 15pt; margin: 0; line-height: 1.15; }
+  .sheet h3 { font-size: 10.5pt; margin: 0 0 3pt; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sheet p { margin: 0 0 4pt; }
+  .sheet ol, .sheet ul { margin: 0; padding-left: 15pt; }
+  .sheet li { margin: 0 0 2.5pt; }
+  .band { display: flex; justify-content: space-between; gap: 10pt; align-items: flex-start; border: 2pt solid #111418; padding: 6pt 8pt; margin-bottom: 7pt; }
+  .band .tag { font-weight: 800; font-size: 9pt; letter-spacing: 0.08em; text-transform: uppercase; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1pt solid #111418; margin-bottom: 7pt; }
+  .facts > div { padding: 4pt 6pt; border-right: 1pt solid #111418; }
+  .facts > div:last-child { border-right: none; }
+  .facts .k { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #444; }
+  .facts .v { font-weight: 700; }
+  .box { border: 1pt solid #111418; padding: 6pt 8pt; margin-bottom: 7pt; break-inside: avoid; }
+  .stop { border: 2.5pt solid #111418; background: #f1f1f1; }
+  .stop h3::before { content: 'STOP \00a0'; background: #111418; color: #fff; padding: 0 4pt; margin-right: 4pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 7pt; }
+  .tick { display: inline-block; width: 9pt; height: 9pt; border: 1pt solid #111418; margin-right: 4pt; vertical-align: -1pt; }
+  .hand { font-family: 'Bradley Hand', 'Segoe Script', 'Comic Sans MS', cursive; font-size: 12pt; }
+  .num { display: inline-flex; align-items: center; justify-content: center; width: 13pt; height: 13pt; border-radius: 50%; background: #111418; color: #fff; font-size: 8pt; font-weight: 700; font-family: system-ui, sans-serif; vertical-align: 1pt; margin-right: 3pt; }
+  .small { font-size: 8.5pt; color: #333; }
+  .foot { border-top: 1pt solid #111418; margin-top: 6pt; padding-top: 3pt; font-size: 8pt; display: flex; justify-content: space-between; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 7pt; }
+  table.rows th, table.rows td { border: 1pt solid #111418; padding: 3pt 4pt; text-align: left; vertical-align: top; }
+  table.rows th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; background: #ececec; }
+  .flag { font-weight: 800; }
+  /* The paper itself, as the app prints it. */
+  .paper { font-family: Georgia, 'Times New Roman', serif; font-size: 9.5pt; line-height: 1.35; }
+  .paper .title { text-align: center; font-weight: 700; margin-bottom: 6pt; }
+  .paper p { margin: 0 0 5pt; }
+  .blank { display: inline-block; min-width: 70pt; border-bottom: 1pt solid #111418; text-align: center; }
+  @page { size: letter; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .note { display: none; }
+    .scroll { overflow: visible; padding: 0; }
+    .sheet { margin: 0; box-shadow: none; break-after: page; }
+    .sheet:last-child { break-after: auto; }
+  }
+
+  /* The best-we-can-do pass: a stripe that marks a help sheet in a stack, checks the app answered, and roles side by side. */
+  .stripe { height: 9pt; margin: -0.5in -0.5in 8pt; background: repeating-linear-gradient(135deg, #111418 0 9pt, #fff 9pt 18pt); }
+  .checks { border: 1pt solid #111418; margin-bottom: 7pt; }
+  .checks h3 { padding: 4pt 8pt; margin: 0; border-bottom: 1pt solid #111418; background: #ececec; }
+  .checks ul { list-style: none; padding: 4pt 8pt; margin: 0; }
+  .checks li { display: grid; grid-template-columns: 13pt 1fr; gap: 3pt; margin: 0 0 2pt; }
+  .ok { font-weight: 800; }
+  .ask { border: 2.5pt solid #111418; background: #f1f1f1; padding: 5pt 8pt; margin-bottom: 7pt; }
+  .ask strong.tag { background: #111418; color: #fff; padding: 0 4pt; margin-right: 5pt; letter-spacing: 0.05em; }
+  .role { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em; color: #444; margin-bottom: 2pt; }
+  .thumb { border: 1pt solid #111418; padding: 5pt 6pt; font-family: Georgia, serif; font-size: 6.6pt; line-height: 1.3; position: relative; }
+  .thumb .line { height: 3.2pt; background: #cfcfcf; margin: 2.6pt 0; }
+  .thumb .short { width: 55%; }
+  .write { display: inline-block; min-width: 86pt; border-bottom: 1pt solid #111418; }
+  .qr { width: 44pt; height: 44pt; border: 1pt solid #111418; background: conic-gradient(#111418 0 25%, #fff 0 50%, #111418 0 75%, #fff 0) 0 0 / 11pt 11pt; }
+  .group td { background: #ececec; font-weight: 800; }
+  .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 34pt system-ui, sans-serif; color: rgba(0,0,0,0.11); transform: rotate(-28deg); pointer-events: none; letter-spacing: 0.08em; }
+  .seal { display: inline-block; margin-left: 18pt; border: 1pt dashed #555; border-radius: 50%; width: 58pt; height: 58pt; text-align: center; line-height: 58pt; font: 7pt system-ui, sans-serif; color: #555; vertical-align: middle; }
+  /* The before/after page: two sheets side by side, each at a little over half size. */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 76rem; margin: 0 auto; padding: 0 16px 1.5rem; }
+  .pair > div { min-width: 0; }
+  .pair > div > h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.4rem; color: var(--soft); }
+  /* Each sheet is drawn at its real size and shrunk to fit its column. */
+  .frame { border: 1px solid var(--rule); background: #fff; overflow: hidden; }
+  .shrink { zoom: 0.68; }
+  .shrink .sheet { margin: 0; box-shadow: none; min-height: 0; }
+  @media (max-width: 1180px) { .shrink { zoom: 0.5; } }
+  @media (max-width: 760px) { .shrink { zoom: 0.42; } }
+  .change { max-width: 76rem; margin: 0 auto; padding: 1.2rem 16px 0.4rem; }
+  .change h1 { font-size: 1.15rem; margin: 0 0 0.3rem; }
+  .change table { border-collapse: collapse; font-size: 0.875rem; width: 100%; margin: 0.4rem 0 0.2rem; }
+  .change th, .change td { border: 1px solid var(--rule); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+  .change th { width: 50%; color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="note">
+
+<p class="eyebrow">Punch list #314 · the best we can do · the paper itself</p>
+<h1>The affidavit, after the polish</h1>
+<p>Both county lines are printed from one setting, the county where the company signs. A dotted circle shows where the seal goes. Nothing sworn changes. The wording of a sworn paper is the attorney's to confirm.</p>
+
+</div>
+<div class="scroll">
+
+<div class="sheet" data-theme="light">
+  
+    <div class="paper">
+      <div class="title">MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT</div>
+      <p><strong>STATE OF TEXAS<br>COUNTY OF BIRCH</strong></p>
+      <p>BEFORE ME, the undersigned authority, on this day personally appeared Pat Sample, Master Plumber, who being by me duly sworn, upon oath states the following:</p>
+      <p>1. I am authorized to make this affidavit for Sample Plumbing LLC ("Claimant"). Claimant's mailing address is 100 Made Up Rd, Marlow, TX 75001.</p>
+      <p>2. Claimant furnished plumbing labor and materials to improve this property in Alder County, Texas: SAMPLE ESTATES, BLOCK 2, LOT 4, 18 Sample Ln, Marlow, TX 75001.</p>
+      <p>3. Claimant did so under a contract with Ridgeway Builders, 40 Example Pkwy, Marlow, TX 75001, the original contractor.</p>
+      <p>4. The owner or reputed owner is Jordan and Casey Sample, 9 Placeholder Ct, Marlow, TX 75001.</p>
+      <p>5. Payment is requested for work done and materials furnished in August 2026.</p>
+      <p>6. Notice of the claim was sent to the owner by certified mail on October 14, 2026.</p>
+      <p>7. The amount of the claim is $2,650.00. Claimant claims a lien on the property for that amount.</p>
+      <p style="margin:14pt 0 0 55%"><span class="blank" style="min-width:100%">&nbsp;</span><br><span class="small">Pat Sample, Master Plumber<br>Sample Plumbing LLC</span></p>
+      <p style="margin-top:12pt"><strong>STATE OF TEXAS<br>COUNTY OF BIRCH</strong></p>
+      <p>SWORN TO AND SUBSCRIBED BEFORE ME on this <span class="blank" style="min-width:28pt">&nbsp;</span> day of <span class="blank">&nbsp;</span>, <span class="blank" style="min-width:36pt">&nbsp;</span>, by Pat Sample, Master Plumber.</p>
+      <p style="margin-top:10pt"><span class="blank" style="min-width:45%">&nbsp;</span><br>Notary Public, State of Texas<br>Printed name: <span class="blank" style="min-width:35%">&nbsp;</span><span class="seal">notary seal</span></p>
+      <div class="foot" style="font-family:system-ui,sans-serif"><span>Filed pursuant to Texas Property Code §§ 53.052–53.055</span></div>
+    </div>
+    
+</div>
+
+</div>
+</body>
+</html>

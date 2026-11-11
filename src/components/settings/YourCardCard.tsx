@@ -19,7 +19,7 @@ import { supabaseCardIo, type CardIo, type CardLoad, type CardPhoto } from '../.
 import { CARD_NAME_MAX, cardWordsFor } from '../../lib/brandKit/cardWords'
 import { stagePlacement } from '../../lib/brandKit/cropMath'
 import { drawKit, printPage, sheetOfTen, type KitDrawOptions } from '../../lib/brandKit/draw'
-import { BRAND, CHOSEN_LOOK, LAYOUTS } from '../../lib/brandKit/layouts'
+import { DEFAULT_CARD_LOOKS, THEMES, lookLayouts, resolveLook, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
 import { cardHold, kitFileSlug, kitPersonFromUser, type KitCrop } from '../../lib/brandKit/person'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -78,6 +78,9 @@ export function YourCardCard({
   const [photo, setPhoto] = useState<CardPhoto | null>(null)
   const [crop, setCrop] = useState<KitCrop | null>(null)
   const [draft, setDraft] = useState({ cardName: '', title: '' })
+  // which looks the owner offers, and this person's pick among them
+  const [setting, setSetting] = useState<CardLooksSetting>(DEFAULT_CARD_LOOKS)
+  const [pick, setPick] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [making, setMaking] = useState<Making>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -98,10 +101,12 @@ export function YourCardCard({
     setProblem(null)
     void (async () => {
       try {
-        const [row, ready] = await Promise.all([io.load(userId), renderer.ready()])
+        const [row, ready, looks] = await Promise.all([io.load(userId), renderer.ready(), io.looks()])
         if (!on) return
         setKit(ready)
         setLoaded(row)
+        setSetting(looks)
+        setPick(row.look)
         setCrop(row.crop)
         setDraft({ cardName: row.facts.card_name ?? '', title: row.facts.title ?? '' })
         if (row.photoPath) {
@@ -127,15 +132,24 @@ export function YourCardCard({
     return kitPersonFromUser({ ...loaded.facts, card_name: draft.cardName, title: draft.title }, PORTAL_COMPANY.phone, kitPhoto)
   }, [loaded, photo, crop, draft])
 
+  const lookId = resolveLook(pick, setting)
+  const look = lookLayouts(lookId)
+
   const drawings = useMemo(() => {
     if (!person || !kit) return null
     const opts = { assets: kit.assets, measure: kit.measure }
     return {
-      footer: drawKit(LAYOUTS[CHOSEN_LOOK.footer], person, { ...opts, width: '100%', id: `${clipId}f` }),
-      front: drawKit(LAYOUTS[CHOSEN_LOOK.front], null, { ...opts, width: '100%' }),
-      back: drawKit(LAYOUTS[CHOSEN_LOOK.back], person, { ...opts, width: '100%', id: `${clipId}b` }),
+      footer: drawKit(look.footer, person, { ...opts, width: '100%', id: `${clipId}f` }),
+      front: drawKit(look.front, null, { ...opts, width: '100%' }),
+      back: drawKit(look.back, person, { ...opts, width: '100%', id: `${clipId}b` }),
     }
-  }, [person, kit, clipId])
+  }, [person, kit, clipId, look])
+
+  /** The footer in each look the owner offers, drawn with this person's own facts, for the picker. */
+  const offered = useMemo(() => {
+    if (!person || !kit || !loaded?.lookOn || setting.approved.length < 2) return null
+    return setting.approved.map((id) => ({ id, name: THEMES[id].name, svg: drawKit(lookLayouts(id).footer, person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}k${id.replace(/[^a-z]/g, '')}` }) }))
+  }, [person, kit, loaded?.lookOn, setting, clipId])
 
   if (hidden) return null
 
@@ -162,6 +176,21 @@ export function YourCardCard({
     }
   }
 
+  const chooseLook = async (id: KitLookId) => {
+    if (!userId || id === lookId) return
+    const before = pick
+    setPick(id)
+    setProblem(null)
+    try {
+      await io.saveLook(userId, id)
+      if (live.current) showToast(W.lookSaved, 'success')
+    } catch (e) {
+      if (!live.current) return
+      setPick(before)
+      setProblem(formatErrorMessage(e, W.lookNotSaved))
+    }
+  }
+
   const savePhoto = async (blob: Blob | null, next: KitCrop) => {
     if (!userId || !loaded) return
     if (blob) {
@@ -184,9 +213,9 @@ export function YourCardCard({
     if (!person || !kit) return null
     const opts = { assets: kit.assets, measure: kit.measure }
     return {
-      footer: drawKit(LAYOUTS[CHOSEN_LOOK.footer], person, { ...opts, id: `${clipId}ff` }),
-      front: drawKit(LAYOUTS[CHOSEN_LOOK.front], null, opts),
-      back: drawKit(LAYOUTS[CHOSEN_LOOK.back], person, { ...opts, id: `${clipId}fb` }),
+      footer: drawKit(look.footer, person, { ...opts, id: `${clipId}ff` }),
+      front: drawKit(look.front, null, opts),
+      back: drawKit(look.back, person, { ...opts, id: `${clipId}fb` }),
       slug: kitFileSlug(person.name ?? ''),
     }
   }
@@ -197,7 +226,7 @@ export function YourCardCard({
     setMaking(what)
     setProblem(null)
     try {
-      const [fw, fh] = LAYOUTS[CHOSEN_LOOK.footer].size
+      const [fw, fh] = look.footer.size
       if (what === 'picture') {
         saveBlobAs(await renderer.png(d.footer, fw, fh), `footer-${d.slug}.png`)
         showToast(W.pictureDone, 'success')
@@ -247,7 +276,7 @@ export function YourCardCard({
         <div style={{ display: 'grid', gridTemplateColumns: wide ? '300px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: '1.25rem', alignItems: 'start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.9rem' }}>
-              <div data-your-card-ring style={{ position: 'relative', width: RING, height: RING, flex: 'none', borderRadius: '50%', overflow: 'hidden', border: `4px solid ${BRAND.orange}`, boxSizing: 'border-box', background: 'var(--bg-muted)' }}>
+              <div data-your-card-ring style={{ position: 'relative', width: RING, height: RING, flex: 'none', borderRadius: '50%', overflow: 'hidden', border: `4px solid ${look.footer.orange}`, boxSizing: 'border-box', background: 'var(--bg-muted)' }}>
                 {photo && ringAt ? <img alt="" src={photo.href} style={{ position: 'absolute', left: ringAt.x, top: ringAt.y, width: ringAt.w, height: ringAt.h, maxWidth: 'none' }} /> : null}
               </div>
               <div>
@@ -289,6 +318,28 @@ export function YourCardCard({
           <div>
             {drawings ? (
               <>
+                {offered ? (
+                  <div data-your-card-looks style={{ marginBottom: '1rem' }}>
+                    <h3 style={head}>{W.lookLabel}</h3>
+                    <div role="radiogroup" aria-label={W.lookLabel} style={{ display: 'grid', gridTemplateColumns: wide ? `repeat(${Math.min(3, offered.length)}, minmax(0, 1fr))` : 'minmax(0, 1fr)', gap: '0.6rem' }}>
+                      {offered.map((o) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={o.id === lookId}
+                          onClick={() => void chooseLook(o.id)}
+                          style={{ padding: '0.35rem', borderRadius: 8, border: o.id === lookId ? '2px solid #2563eb' : '2px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+                        >
+                          {/* eslint-disable-next-line react/no-danger */}
+                          <span style={{ ...art, display: 'block' }} dangerouslySetInnerHTML={{ __html: o.svg }} />
+                          <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.8125rem', fontWeight: 600 }}>{o.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ ...muted, marginTop: '0.4rem' }}>{W.lookHint}</p>
+                  </div>
+                ) : null}
                 <h3 style={head}>{W.footerHead}</h3>
                 {/* The string is drawKit's own: it escapes every fact, and the pictures in it are data. */}
                 {/* eslint-disable-next-line react/no-danger */}

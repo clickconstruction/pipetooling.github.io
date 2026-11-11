@@ -30,6 +30,11 @@ export const CARD_WORDS = {
   officeHint: 'The company’s line. It is the same for everyone.',
   tooLong: `Keep it to ${CARD_NAME_MAX} characters.`,
 
+  lookLabel: 'Look',
+  lookHint: 'The owner approved these. Pick one and your footer and your card both change.',
+  lookSaved: 'Look saved',
+  lookNotSaved: 'The look was not saved.',
+
   save: 'Save the card',
   saving: 'Saving…',
   saved: 'Card saved',
@@ -84,6 +89,7 @@ export function cardWordsFor(teammate: string | null) {
     lead: 'Their photo and their facts make their email footer and their business card. Change one here and both redraw.',
     loading: 'Reading the card…',
     notRead: 'The card could not be read.',
+    lookHint: 'The owner approved these. Pick one and their footer and their card both change.',
     nameHint: 'Their full name, as a customer should read it.',
     titleHint: 'The same title their email signature uses. Leave it empty and the line is left off.',
     emailHint: 'Their sign-in email.',
@@ -98,3 +104,23 @@ export function cardWordsFor(teammate: string | null) {
 }
 
 export type CardWords = ReturnType<typeof cardWordsFor>
+
+/** The owner's card, *Card and footer looks*, on Settings → People & teams. */
+export const LOOKS_WORDS = {
+  title: 'Card and footer looks',
+  lead: 'Switch a look on to offer it to the team. The default is what a person gets until they pick.',
+  loading: 'Reading the looks…',
+  notRead: 'The looks could not be read.',
+  defaultLabel: 'Default',
+  offered: 'Offered',
+  notOffered: 'Not offered',
+  defaultStays: 'Pick another default first.',
+  saved: 'Looks saved',
+  notSaved: 'The looks were not saved.',
+  foot: 'Switching a look off moves the people on it to the default. Their next footer and card are drawn in the default.',
+} as const
+
+/** How many people a look is drawn for, as the owner's card says it. */
+export function lookUseWords(n: number): string {
+  return n === 1 ? '1 person uses it.' : `${n} people use it.`
+}
