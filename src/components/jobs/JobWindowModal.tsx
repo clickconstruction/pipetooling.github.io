@@ -37,7 +37,7 @@ import InKindChip from '../inKind/InKindChip'
 import { isOfficeRole } from '../../lib/doorRoles'
 import JobInKindStrip from '../inKind/JobInKindStrip'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
-import { jobIsOffTheDeal } from '../../lib/inKind/inKindChip'
+import { jobInKindPayer, jobIsOffTheDeal } from '../../lib/inKind/inKindChip'
 
 /**
  * The tabbed Job window (v2.1675, owner-approved mockup): ONE modal for a job
@@ -252,7 +252,11 @@ export function JobWindowModal({
   const titleParts = headJob ? formatJobDetailModalTitleParts(headJob.hcp_number, headJob.job_name) : { num: null, name: 'Job' }
   const headNumber = (headJob?.hcp_number ?? '').trim() || (headJob?.click_number ?? '').trim()
   const headStatus = headJob?.status ? (headJob.collections_at ? 'Collections' : (JOB_STEPPER_LABELS[headJob.status as JobStepperStatus] ?? headJob.status)) : null
+  // The chip sits beside the customer's name, so it reads that customer. The strip is about this job's bill, so
+  // it reads whoever the bill goes to: the GC on a job billed to its GC, as Bill Customer does (v2.6946).
   const headStanding = headJob?.customer_id ? inKindStandings.get(headJob.customer_id) : undefined
+  const billPayer = jobInKindPayer(headJob)
+  const payerStanding = billPayer.id ? inKindStandings.get(billPayer.id) : undefined
   const quietParts = [headJob?.development?.name?.trim() || null, headJob?.customer_name?.trim() || null, priorNumbersBare(headJob?.prior_numbers) || null].filter((p): p is string => !!p)
   const closeButton = (
     <button
@@ -442,11 +446,11 @@ export function JobWindowModal({
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
         <div className="job-window-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}>
-          {headJob && headStanding && jobIsOffTheDeal(headJob, headStanding) ? (
+          {headJob && payerStanding && jobIsOffTheDeal(headJob, payerStanding) ? (
             <JobInKindStrip
               jobId={headJob.id}
-              customerName={headJob.customer_name ?? ''}
-              standing={headStanding}
+              customerName={billPayer.name ?? headJob.customer_name ?? ''}
+              standing={payerStanding}
               onAdded={(arrangementId) => setFullJob((prev) => (prev ? { ...prev, in_kind_arrangement_id: arrangementId } : prev))}
             />
           ) : null}

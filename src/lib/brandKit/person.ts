@@ -6,6 +6,7 @@
  * signature uses, the sign-in email, the phone as the mobile, and the company's one office
  * line. The photo is the one thing it has to ask for.
  */
+import { formatChasePhone } from '../jobs/paymentChase'
 import type { KitPerson, KitPhoto } from './draw'
 
 /** The part of a `users` row the card reads. */
@@ -30,6 +31,15 @@ export function readCrop(raw: unknown): KitCrop {
   return { fx: n(o.fx, DEFAULT_CROP.fx, 0, 1), fy: n(o.fy, DEFAULT_CROP.fy, 0, 1), zoom: n(o.zoom, DEFAULT_CROP.zoom, 1, 4) }
 }
 
+/**
+ * A phone number as the card and the footer print it: (512) 555-0142, whatever way it was typed on the
+ * account. The mobile and the office line then read the same way side by side. A number that is not ten
+ * digits (or eleven with a leading 1) is printed as it was typed.
+ */
+export function kitPhone(raw: string | null | undefined): string {
+  return formatChasePhone(raw)
+}
+
 /** The facts a card is drawn from. `photo` is the picture's address and size with its crop, or null. */
 export function kitPersonFromUser(user: KitUserFacts, officePhone: string, photo: KitPhoto | null): KitPerson {
   const clean = (s: string | null | undefined) => (s ?? '').trim()
@@ -37,8 +47,8 @@ export function kitPersonFromUser(user: KitUserFacts, officePhone: string, photo
     name: clean(user.card_name) || clean(user.name),
     title: clean(user.title),
     email: clean(user.email),
-    mobile: clean(user.phone),
-    office: clean(officePhone),
+    mobile: kitPhone(user.phone),
+    office: kitPhone(officePhone),
     photo,
   }
 }

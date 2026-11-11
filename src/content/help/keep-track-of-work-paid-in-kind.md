@@ -128,6 +128,8 @@ On the Customers list, **Total open balance** counts money owed only. The part a
 
 A new job is not on the arrangement until a person puts it there. The job window says so in a strip under the tabs. Press **Put it on the arrangement** to add the job.
 
+Some jobs send their bills to a builder. On such a job the strip and Bill Customer read the builder's arrangement. The builder owes that bill, so the job's own customer is not asked about.
+
 Bill Customer asks the same thing once. It says the customer pays in kind and asks how this bill is paid. Nothing is picked for you.
 
 Pick **In kind, on the arrangement** to put the job on the deal. Then press **Record the bill in kind**. The bill is recorded and sent to nobody.

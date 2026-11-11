@@ -318,7 +318,32 @@ the rows it touches; an apply that plans again and writes only on a match; never
    cloned to the bid first, as the tab does. Before it, as its own PR, the pricing kernels join
    the edge copy (a generated copy, no rewrite), so the plan states the total the screen would
    show and `get_bid.totals` becomes a figure. The margin stamp only where the screen would stamp.
-6. **After the five**, when asked for: per-GC sends and outcomes on a bid with versions
+6. **`plan_bid_submission` / `apply_bid_submission`** — the paper that was sent, filed on its bid. The owner,
+   2026-11-11, on old proposal files to be copied into company Drive, a folder a bid: "connected to
+   their bids where a user links the submissions" and "if we don't have dev verbs to support this,
+   we should add those too". The need as the session working the real case met it:
+   - **The links are PR 1's.** The Files window (`bidFilesIo.ts`) writes `bid_submission_link`,
+     `drive_link` and `count_tooling_plans_link` as plain PATCHes on `bids`, and `plan_bid_update`
+     takes all three and `plans_link`. A bid adopted into another still takes its link.
+   - **The project folder** is made by the `bid-photos` function's `make` (the Files window's Make
+     the project folder), which names it by the office's pattern, puts it in the company's shared
+     Drive and writes `bids.drive_link` itself. The apply calls it as the dev when the bid has none.
+   - **The filing** has no screen: a person pastes a link. The pair takes
+     `{ bid, drive_file_id | file_name + size_bytes + sha256, replace? }`, reads the source on the
+     server as `devMcpDriveDoc.ts` reads a Drive file (or from a one-shot upload, as
+     `plan_file_plans` does), and copies it into a Submission folder inside the bid's project
+     folder. One column holds one link and a bid can hold several papers, so the link is the file
+     when there is one and the Submission folder when there are more. The plan commits to the
+     file's name, size and sha256 and to the link before.
+   - **A read first.** The seat cannot list a Drive folder or read a file's owner, sharing and
+     modified time, so the real case was read through a browser. A `read_drive_folder` verb over
+     the service account goes in the same PR.
+   Until it is built: `plan_bid_update` sets the link to a file that is already where it belongs,
+   `plan_mail_file` files a submission that came by mail
+   (`to: { kind: 'job', bid_id, where: 'sent' }`), and what was said when it went out is a note on
+   the bid (`plan_activity_note`). A contact with its method is the Log contact press and has no
+   verb yet.
+7. **After those**, when asked for: per-GC sends and outcomes on a bid with versions
    (`bid_version_sends`, `setGcPacketOutcome`'s writes), the letter's boxes and schedule of values.
 
 For a proposal on paper the order of entry is the order of the PRs: the bid, its counts, takeoff,
