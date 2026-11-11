@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   CHUNK_RECOVERY_KEY,
   CHUNK_RECOVERY_MIN_INTERVAL_MS,
+  chunkBoundaryView,
+  chunkRecoveryReloadStarted,
+  forgetChunkRecoveryReload,
   isChunkLoadError,
+  startChunkRecoveryReload,
   tryClaimChunkRecoveryReload,
 } from './chunkLoadRecovery'
 
@@ -97,5 +101,48 @@ describe('tryClaimChunkRecoveryReload', () => {
       },
     }
     expect(tryClaimChunkRecoveryReload(1_000_000, throwing)).toBe(true)
+  })
+})
+
+describe('startChunkRecoveryReload', () => {
+  beforeEach(() => forgetChunkRecoveryReload())
+
+  it('claims the guard, reloads once and remembers that the reload is on its way', () => {
+    const storage = fakeStorage()
+    let reloads = 0
+    expect(chunkRecoveryReloadStarted()).toBe(false)
+    expect(startChunkRecoveryReload(1_000_000, storage, () => reloads++)).toBe(true)
+    expect(reloads).toBe(1)
+    expect(storage.dump()[CHUNK_RECOVERY_KEY]).toBe('1000000')
+    expect(chunkRecoveryReloadStarted()).toBe(true)
+  })
+
+  it('starts nothing when a reload already ran inside the interval', () => {
+    const storage = fakeStorage({ [CHUNK_RECOVERY_KEY]: '1000000' })
+    let reloads = 0
+    expect(startChunkRecoveryReload(1_000_000 + 5_000, storage, () => reloads++)).toBe(false)
+    expect(reloads).toBe(0)
+    expect(chunkRecoveryReloadStarted()).toBe(false)
+  })
+})
+
+describe('chunkBoundaryView', () => {
+  const lostChunk = new TypeError('Failed to fetch dynamically imported module: https://x/assets/BoxCode-abc123.js')
+  // What React reports when the preload handler cancelled Vite's throw: the lazy page resolved to nothing.
+  const emptyLazy = new TypeError("Cannot read properties of undefined (reading 'default')")
+
+  it('draws the page while nothing is caught, a reload on its way or not', () => {
+    expect(chunkBoundaryView(null, false)).toBe('page')
+    expect(chunkBoundaryView(null, true)).toBe('page')
+  })
+
+  it('draws Updating for any error while a recovery reload is on its way', () => {
+    expect(chunkBoundaryView(lostChunk, true)).toBe('updating')
+    expect(chunkBoundaryView(emptyLazy, true)).toBe('updating')
+  })
+
+  it('names a lost chunk apart from any other error when no reload is on its way', () => {
+    expect(chunkBoundaryView(lostChunk, false)).toBe('lost-chunk')
+    expect(chunkBoundaryView(emptyLazy, false)).toBe('broken')
   })
 })

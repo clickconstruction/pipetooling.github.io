@@ -106,6 +106,7 @@ import { JobDetailOpenerBridgeProvider } from './contexts/JobDetailOpenerBridgeC
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { RouteChunkBoundary } from './components/RouteChunkBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
@@ -221,6 +222,7 @@ function NavigateToEditCustomer() {
 
 function AppContent() {
   const { showToast } = useToastContext()
+  const { pathname } = useLocation()
 
   useEffect(() => {
     const handleSessionExpiring = ((event: CustomEvent) => {
@@ -241,6 +243,10 @@ function AppContent() {
       <UpdatePrompt />
       {/* Freezes the page behind ANY blocking overlay (modal, sheet, dialog) on every route, the public pages too; opt-out via data-page-scroll="allow". */}
       <BodyScrollLockSentinel />
+      {/* Every route sits in a chunk boundary: a page outside the Layout (a box label's scan, a public room), or a provider
+          above it, whose chunk the newest deploy no longer serves used to unmount the whole app and leave an empty page.
+          The Layout keeps its own around the outlet, so a lost page chunk there still leaves the nav standing. */}
+      <RouteChunkBoundary resetKey={pathname}>
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
         <Route path="/dev-login" element={<DevLogin />} />
@@ -439,6 +445,7 @@ function AppContent() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </RouteChunkBoundary>
     </>
   )
 }

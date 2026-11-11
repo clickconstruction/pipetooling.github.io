@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './hooks/useAuth'
-import { tryClaimChunkRecoveryReload } from './lib/chunkLoadRecovery'
+import { startChunkRecoveryReload } from './lib/chunkLoadRecovery'
 import { hardReloadFromRoot } from './lib/hardReload'
 import { markInvitePendingFromHash, safeSessionStorage } from './lib/acceptInviteState'
 import { installModalBackdropGuard } from './lib/modalBackdropGuard'
@@ -18,11 +18,17 @@ installModalBackdropGuard()
 
 // A deploy replaces all hashed assets; when Vite's preload helper hits a stale-chunk 404
 // mid-navigation, reload once (guarded) for the fresh build instead of white-screening.
-// The route boundary (RouteChunkBoundary) handles the import()-rejection variant.
+// The route boundary (RouteChunkBoundary) handles the import()-rejection variant, and draws
+// "Updating app…" over what this cancelled throw leaves behind: the lazy page resolves to nothing.
 window.addEventListener('vite:preloadError', (event) => {
-  if (tryClaimChunkRecoveryReload(Date.now(), typeof sessionStorage !== 'undefined' ? sessionStorage : null)) {
+  if (
+    startChunkRecoveryReload(
+      Date.now(),
+      typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+      hardReloadFromRoot,
+    )
+  ) {
     event.preventDefault()
-    hardReloadFromRoot()
   }
 })
 
