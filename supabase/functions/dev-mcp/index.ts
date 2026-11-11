@@ -2314,7 +2314,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const res = await restRows(session, 'PATCH', 'bids', `id=eq.${bid.id}`, patch)
       if (!res.ok) return errored(restError(res.status, res.body))
       // return=minimal says nothing about a row RLS kept: read the bid back and say what landed.
-      const back = await restGet(session, 'bids', `select=id,bid_number,project_name,outcome,bid_date_sent,loss_category,${Object.keys(patch).join(',')}&id=eq.${bid.id}`)
+      const backColumns = [...new Set(['id', 'bid_number', 'project_name', 'outcome', 'bid_date_sent', 'loss_category', ...Object.keys(patch)])]
+      const back = await restGet(session, 'bids', `select=${backColumns.join(',')}&id=eq.${bid.id}`)
       const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
       const landed = bidUpdateLanded(planned, row)
       // The outcome line goes on after the row, as the form leaves it; a line the notes refuse never undoes the change.
