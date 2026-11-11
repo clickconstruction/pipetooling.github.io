@@ -17,6 +17,11 @@ export type FeedReader = {
   stage: PermitStage
   /** The URL of one page: rows filed on or after `sinceDay`, oldest first, `limit` rows from `offset`. */
   pageUrl: (sinceDay: string, limit: number, offset: number) => string
+  /**
+   * The same page stopped before `untilDay`, for a read back as history (punch list #307). A feed
+   * without it cannot be read back yet, and `permit-pull` says so.
+   */
+  pageUrlBefore?: (sinceDay: string, untilDay: string, limit: number, offset: number) => string
   /** The records in the door's answer. Throws with the door's own words when it refused the read. */
   recordsOf: (body: unknown) => Record<string, unknown>[]
   /** One record as a `permits` row, or null when the pull does not keep it. */
@@ -37,6 +42,7 @@ function sanAntonioReader(feed: PermitFeed): FeedReader {
     city: feed.city,
     stage: feed.stage,
     pageUrl: (sinceDay, limit, offset) => `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, sinceDay, limit, offset))}`,
+    pageUrlBefore: (sinceDay, untilDay, limit, offset) => `${SAN_ANTONIO_CKAN}?sql=${encodeURIComponent(feedPageSql(feed, sinceDay, limit, offset, untilDay))}`,
     recordsOf: (body) => {
       const b = body as { success?: boolean; result?: { records?: Record<string, unknown>[] }; error?: unknown } | null
       if (!b?.success) throw new Error(`the feed refused the read: ${JSON.stringify(b?.error ?? {}).slice(0, 300)}`)

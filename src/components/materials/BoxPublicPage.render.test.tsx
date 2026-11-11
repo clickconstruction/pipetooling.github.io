@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BoxPublicPage } from './BoxPublicPage'
 import { POST_LOGIN_REDIRECT_KEY } from '../../lib/iosPwa'
 
@@ -25,13 +25,20 @@ function mount(code = '4F2A9C18') {
       <Routes>
         <Route path="/b/:code" element={<BoxPublicPage code={code} />} />
         <Route path="/sign-in" element={<div data-testid="sign-in-page">sign in</div>} />
+        <Route path="/b" element={<div data-testid="scan-page">scan a label</div>} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
+// The verdict reads the last count against today: hold the clock at noon Central on 2026-11-10 (timers stay real).
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-10T18:00:00Z') })
+})
+
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   localStorage.clear()
 })
@@ -45,16 +52,41 @@ describe('BoxPublicPage', () => {
     expect(screen.getByTestId('box-page-photo').getAttribute('src')).toContain('box-read?code=4F2A9C18&photo=ph1')
     expect(screen.getByTestId('box-page-lines').textContent).toContain('3/4" copper 90° elbows')
     expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
-    expect(screen.getByTestId('box-page-counted').textContent).toContain('Last counted Thursday, Nov 5')
+    // v2.6868: the top reads as the label does, and the count is a verdict by the 14-day rule.
+    expect(screen.getByTestId('box-page-tile').textContent).toBe('B3')
+    expect(screen.getByTestId('box-page-code').textContent).toBe('4F2A-9C18')
+    expect(screen.getByTestId('box-page-counted').textContent).toBe('Counted 5 days agoThursday, Nov 5')
+    expect(screen.getByTestId('box-page-counted').getAttribute('data-verdict')).toBe('fresh')
+    expect(screen.getByTestId('box-page-parts').textContent).toBe('2 parts')
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('/functions/v1/box-read?code=4F2A9C18')
     // The title is set by an effect after the box is drawn. On a slow runner the read above can land a tick before it (two
     // CI runs failed here on 2026-11-10 reading 'Box label'), so wait for it instead of reading once.
     await waitFor(() => expect(document.title).toBe('Cage B3 · Click Plumbing & Electrical'))
   })
 
-  it('Sign in to change a count remembers the box and goes to the sign-in', async () => {
+  it('a cage last counted 14 days ago or more is due a count', async () => {
+    answer(200, { ...box, box: { ...box.box, lastCountedOn: '2026-10-19' } })
+    mount()
+    const counted = await screen.findByTestId('box-page-counted')
+    expect(counted.textContent).toBe('Due a countlast counted 22 days ago')
+    expect(counted.getAttribute('data-verdict')).toBe('due')
+  })
+
+  it('the photo is a band, and a tap opens it whole', async () => {
     answer(200, box)
     mount()
+    const press = await screen.findByTestId('box-page-photo-press')
+    expect(press.textContent).toContain('Photo from Saturday, Nov 7 · tap to see it whole')
+    expect(screen.getByTestId('box-page-photo').style.height).toBe('150px')
+    fireEvent.click(press)
+    expect(screen.getByTestId('box-page-photo').style.height).toBe('auto')
+    expect(press.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('Sign in to record a use or a count remembers the box and goes to the sign-in', async () => {
+    answer(200, box)
+    mount()
+    expect((await screen.findByTestId('box-page-sign-in')).textContent).toBe('Sign in to record a use or a count')
     fireEvent.click(await screen.findByTestId('box-page-sign-in'))
     expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/4f2a9c18')
     expect(await screen.findByTestId('sign-in-page')).toBeTruthy()
@@ -65,7 +97,15 @@ describe('BoxPublicPage', () => {
     mount()
     expect((await screen.findByTestId('box-page-empty')).textContent).toContain('Nothing is recorded in this cage yet')
     expect(screen.getByTestId('box-page-counted').textContent).toContain('Never counted')
-    expect(screen.getByTestId('box-page-sign-in')).toBeTruthy()
+    expect(screen.getByTestId('box-page-sign-in').textContent).toBe('Sign in to add a part')
+    // The search stays: an empty cage is when a person most needs the others.
+    expect(screen.getByTestId('box-page-find-form')).toBeTruthy()
+  })
+
+  it('a cage counted down to nothing says nothing is on hand', async () => {
+    answer(200, { ...box, box: { ...box.box, lines: [], photo: null } })
+    mount()
+    expect((await screen.findByTestId('box-page-empty')).textContent).toContain('Nothing on hand in this cage')
   })
 
   it('a code no box carries, a retired box and a locked source each say so in words', async () => {
@@ -76,10 +116,39 @@ describe('BoxPublicPage', () => {
     answer(410, { error: 'retired', retiredOn: '2026-11-08' })
     mount()
     expect((await screen.findByTestId('box-page-retired')).textContent).toContain('It left the job on Sunday, Nov 8')
+    // v2.6868: no search from a retired label (the function refuses it); the way on is another label.
+    expect(screen.queryByTestId('box-page-find-open-press')).toBeNull()
+    expect(screen.getByTestId('box-page-scan-another').getAttribute('href')).toBe('/b')
     cleanup()
     answer(429, { error: 'x', code: 'locked' })
     mount()
     expect((await screen.findByTestId('box-page-locked')).textContent).toContain('Too many wrong codes')
+  })
+
+  it('a code no box carries offers the typed code, and the site this phone last scanned', async () => {
+    answer(404, { error: 'not_found' })
+    mount('4F2A9C19')
+    await screen.findByTestId('box-page-not-found')
+    expect(screen.getByTestId('box-page-type-code').getAttribute('href')).toBe('/b')
+    expect(screen.queryByTestId('box-page-last-site')).toBeNull()
+    cleanup()
+    localStorage.setItem('pt.boxPage.last', JSON.stringify({ code: 'AAAA1111', stencil: 'A1', kind: 'cage', at: Date.now() - 60_000 }))
+    mount('4F2A9C19')
+    await screen.findByTestId('box-page-not-found')
+    expect(screen.getByTestId('box-page-last-site').getAttribute('href')).toBe('/b/aaaa1111?find=1')
+  })
+
+  it('a retired label opened on the search shows the retired words, not a search that cannot answer', async () => {
+    answer(410, { error: 'retired', retiredOn: '2026-11-08' })
+    render(
+      <MemoryRouter initialEntries={['/b/4F2A9C18?find=1']}>
+        <Routes>
+          <Route path="/b/:code" element={<BoxPublicPage code="4F2A9C18" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByTestId('box-page-retired')).toBeTruthy()
+    expect(screen.queryByTestId('box-page-find')).toBeNull()
   })
 
   it('a lost signal offers Try again', async () => {
@@ -113,6 +182,17 @@ describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
     expect(screen.getByTestId('box-page-find-open').getAttribute('href')).toBe('/b/aaaa1111')
     fireEvent.click(screen.getByTestId('box-page-find-back'))
     expect(await screen.findByTestId('box-page-title')).toBeTruthy()
+  })
+
+  it('words typed in the field on the box\'s own page are asked at once (v2.6868)', async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? found : box) }))
+    vi.stubGlobal('fetch', fetchMock)
+    mount()
+    fireEvent.change(await screen.findByTestId('box-page-find-first'), { target: { value: 'copper' } })
+    fireEvent.click(screen.getByTestId('box-page-find-open-press'))
+    expect((await screen.findByTestId('box-page-find-count')).textContent).toBe('2 boxes hold a line that matches.')
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('box-read?code=4F2A9C18&find=copper'))).toBe(true)
+    expect((screen.getByTestId('box-page-find-input') as HTMLInputElement).value).toBe('copper')
   })
 
   it('nothing matching says so in words', async () => {
