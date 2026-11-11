@@ -330,11 +330,11 @@ export function hintFor(contact: string | null | undefined, history: ReadonlyMap
     onDeck = onDeck || h.on_deck
     if (h.last_bid_on && (!last || h.last_bid_on > last)) last = h.last_bid_on
   }
-  const deck = onDeck ? ' · on the GCs deck' : ''
+  const deck = onDeck ? ' · on a calling deck' : ''
   if (won > 0) return { tone: 'warm', word: 'warm', detail: `we won ${won} of ${bids} bids with this name${deck}` }
   if (bids >= 3) return { tone: 'cold', word: 'cold', detail: `${bids} bids priced, nothing won${deck}` }
   if (bids > 0) return { tone: 'seen', word: 'seen', detail: `${bids} bid${bids === 1 ? '' : 's'} priced, none won yet${deck}` }
-  if (onDeck) return { tone: 'seen', word: 'on the deck', detail: 'an open GC lead of this name is on the GCs deck' }
+  if (onDeck) return { tone: 'seen', word: 'on the deck', detail: 'an open lead of this name is on a calling deck, Customers or Jobs to GC' }
   return { tone: 'new', word: 'new name', detail: 'no bid to this name in our history' }
 }
 
