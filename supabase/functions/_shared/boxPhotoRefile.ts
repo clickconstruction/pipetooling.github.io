@@ -11,6 +11,44 @@
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/**
+ * The engine (v2.6915): the database marks a filed photo due a move the moment its job changes
+ * (`job_box_photos.refile_due_at`, trigger `job_box_photos_job_changed`), and the photo sweep, which already runs every
+ * five minutes while anything waits, moves what is due. So a whole-job combine's files follow with no caller, an ask
+ * that failed or was cut short is finished by the sweep, and a held file is tried again a day later.
+ */
+
+/** How many due photos one run of the sweep takes, as its other sources take twenty. */
+export const REFILE_SWEEP_BATCH = 20
+
+/** How long a held file waits before the sweep tries it again: a day, so a file restored from Drive's trash follows by itself. */
+export const REFILE_RETRY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * What a row keeps after a try. A file that is where it belongs (moved now, or there already) carries no mark and no
+ * reason. A held one is due again a day on, with its reason, as a failed filing keeps its reason in `fail_why`.
+ */
+export function refileRowPatch(outcome: { settled: true } | { held: string }, now: Date): { refile_due_at: string | null; fail_why: string | null } {
+  if ('settled' in outcome) return { refile_due_at: null, fail_why: null }
+  return { refile_due_at: new Date(now.getTime() + REFILE_RETRY_MS).toISOString(), fail_why: outcome.held.slice(0, 300) }
+}
+
+/** Whether a row has anything for a settled try to clear: a write is made only for a row that carries a mark or a reason. */
+export function refileRowNeedsClearing(row: { refile_due_at?: string | null; fail_why?: string | null }): boolean {
+  return Boolean(row.refile_due_at) || Boolean(row.fail_why)
+}
+
+/** The sweep's due rows grouped by their job, in the order they came (oldest due first), so each job's folder is read once. */
+export function dueRowsByJob<T extends { job_id: string }>(rows: readonly T[]): Map<string, T[]> {
+  const byJob = new Map<string, T[]>()
+  for (const r of rows) {
+    const list = byJob.get(r.job_id)
+    if (list) list.push(r)
+    else byJob.set(r.job_id, [r])
+  }
+  return byJob
+}
+
 /** How long one ask may spend moving files before it answers what is left; the caller asks again for the rest. */
 export const REFILE_BUDGET_MS = 40_000
 
@@ -112,7 +150,7 @@ export function refileWords(r: Pick<RefileResult, 'in_drive' | 'already' | 'left
   if (renamed > 0) parts.push(`${renamed === 1 ? '1 takes' : `${renamed} take`} a numbered name, since the folder holds ${renamed === 1 ? 'its' : 'their'} own.`)
   if (r.already > 0) parts.push(`${r.already === 1 ? '1 was' : `${r.already} were`} already there.`)
   if (r.held.length > 0) parts.push(`${r.held.length === 1 ? '1 was' : `${r.held.length} were`} held: ${r.held.map((h) => `${h.file_name} (${h.why})`).join('; ')}`.replace(/[.;]*$/, '.'))
-  if (r.left > 0) parts.push(`${r.left === 1 ? '1 was' : `${r.left} were`} not reached in this ask’s time. Ask again for the rest.`)
+  if (r.left > 0) parts.push(`${r.left === 1 ? '1 was' : `${r.left} were`} not reached in this ask’s time. The photo sweep moves the rest by itself within a few minutes, or ask again.`)
   return parts.join(' ')
 }
 
@@ -131,16 +169,17 @@ export function refileResult(input: { jobId: string; folderId: string | null; in
   }
 }
 
-/** The ask a dev makes of photo-save again, in words, for a reply that could not finish. */
-export function refileAskAgainWords(jobId: string): string {
-  return `photo-save takes the ask again from a dev: POST { "refile_box_photos": "${jobId}" }.`
-}
+/** What happens to a file that did not move in the ask, in words: the sweep finishes it, since the row is marked due. */
+export const REFILE_SWEEP_FINISHES_WORDS = 'Each photo that did not move is marked due, and the photo sweep moves what is due by itself within a few minutes.'
+export const REFILE_HELD_RETRY_WORDS = 'A held file is tried again a day later by itself, so one put right in the meantime follows without an ask.'
 
 /**
  * What the dev seat adds to `apply_materials_move`'s reply as `photos.refiled`, from photo-save's answer to the ask. A
- * failed ask never undoes the move: the rows stand, the files stay where they were and still open from their boxes.
+ * failed ask never undoes the move: the rows stand, the files stay where they were and still open from their boxes,
+ * and since v2.6915 the sweep moves them anyway. The job's id is taken as before and no longer named in the words: nobody
+ * has to make the ask again.
  */
-export function refiledForSeat(jobId: string, asked: { ok: boolean; status: number; body: unknown }): Record<string, unknown> {
+export function refiledForSeat(_jobId: string, asked: { ok: boolean; status: number; body: unknown }): Record<string, unknown> {
   const body = asked.body && typeof asked.body === 'object' && !Array.isArray(asked.body) ? (asked.body as Record<string, unknown>) : {}
   if (!asked.ok || typeof body.words !== 'string') {
     const reason = typeof body.error === 'string' && body.error ? body.error : `photo-save answered ${asked.status}`
@@ -148,7 +187,7 @@ export function refiledForSeat(jobId: string, asked: { ok: boolean; status: numb
       asked: true,
       ok: false,
       why: reason,
-      next: `The move stands and every photo still opens from its box. The photos’ files were not moved to the new job’s photo folder: ${reason.replace(/[.\s]+$/, '')}. ${refileAskAgainWords(jobId)}`,
+      next: `The move stands and every photo still opens from its box. The ask to move the photos’ files did not finish: ${reason.replace(/[.\s]+$/, '')}. ${REFILE_SWEEP_FINISHES_WORDS}`,
     }
   }
   const held = Array.isArray(body.held) ? body.held : []
@@ -163,7 +202,7 @@ export function refiledForSeat(jobId: string, asked: { ok: boolean; status: numb
     folder_url: typeof body.folder_url === 'string' ? body.folder_url : null,
     words: body.words,
   }
-  if (held.length > 0 || left > 0) out.next = `The move stands and every photo still opens from its box. ${left > 0 ? 'For the photos not reached, ' : 'Once what held a photo is put right, '}${refileAskAgainWords(jobId)}`
+  if (held.length > 0 || left > 0) out.next = ['The move stands and every photo still opens from its box.', left > 0 ? REFILE_SWEEP_FINISHES_WORDS : null, held.length > 0 ? REFILE_HELD_RETRY_WORDS : null].filter(Boolean).join(' ')
   return out
 }
 

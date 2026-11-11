@@ -21,9 +21,10 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55568}"
 NAME="pgtest-on-site-move"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The move, applied a second time below.
+# The move and the photos' due mark (#297), each applied a second time below.
 PRESSES=(
   supabase/migrations/*_on_site_move_job.sql
+  supabase/migrations/*_box_photo_refile_due.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

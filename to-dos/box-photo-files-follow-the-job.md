@@ -1,9 +1,9 @@
 ---
 name: "Box photos: the Drive files follow a job that moved"
 number: 297
-mockup: not required — no screen changes; a sweep moves files between two Drive folders and the plan's words say what it did
+mockup: box-photo-files-follow-the-job-combine.html — the combine's finish line; the owner chose section 2 on 2026-11-11 (the files start by themselves, a strip shows the count and a held file)
 group: ready
-status: carded 2026-11-09 from the on-site move (v2.6808) · the seat's move takes the files with it since v2.6885 · a combine and asking alone are left
+status: the seat's move takes the files with it (v2.6885) · any change of job is followed by the sweep, a combine included (v2.6915) · the finish line is left
 summary: >
   A box photo's row moves with its box when a job's Materials on site are moved to another job
   (v2.6808) or carried by a whole-job combine (v2.6423), but the file the photo sweep already
@@ -12,7 +12,7 @@ summary: >
   job's Drive folder does not list the photos, and the old job's folder keeps pictures of a site
   that was never its own. The fix is a re-file step in the photo sweep's function that moves each
   file to the folder its row's job now names.
-next: Decide how a whole-job combine asks (widen `photo-save`'s dev-only gate to whoever may combine, or a nightly pass), and give the seat a way to ask alone for a move applied before v2.6885 (one was, on prod, 2026-11-10).
+next: Build the finish line of the mock-up's section 2 — the sentence after a combine, the ask opened to the roles that may combine so the app can start it at once, and the strip on Jobs → Materials and the phone's On site tab with its count, a held file's reason and Try again.
 size: S
 blocker: None.
 opinion: build when a move has been applied on prod and the office looks for the photos in the job's Drive folder — the photos work without it, so it is tidiness, not a repair
@@ -32,7 +32,9 @@ The move's dry run does the write, reads both jobs and unwinds it, and the plan 
 
 ## Where it stands
 
-Steps 1 and 2 below shipped in v2.6885 (`docs/recent-features/v2.6885.md`): `photo-save` takes `{ refile_box_photos: <job_id> }` from a dev or the cron, and the seat's `apply_materials_move` makes the ask after its rows land and reports it as `photos.refiled`. Step 3 is open, and so is a way to ask alone from the seat: a move applied before v2.6885 cannot be applied again.
+- **v2.6885** (`docs/recent-features/v2.6885.md`): `photo-save` takes `{ refile_box_photos: <job_id> }` from a dev or the cron, and the seat's `apply_materials_move` makes the ask after its rows land (`photos.refiled`). Steps 1 and 2 below.
+- **v2.6915** (`docs/recent-features/v2.6915.md`): the engine. The database marks a filed photo due when its job changes, and the sweep moves what is due, so a combine's files follow within minutes with no caller, a failed ask heals, and a held file is tried again a day later. Step 3 below, by the nightly pass's cousin.
+- **Left**: the finish line the owner chose from the mock-up on 2026-11-11 (section 2). The one move applied on prod before v2.6885 was re-filed by hand that day, 91 files, so asking alone from the seat is no longer needed.
 
 ## The build
 
