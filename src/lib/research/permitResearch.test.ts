@@ -108,7 +108,9 @@ describe('the words', () => {
     })
   })
   it('names the day short and the window since-day right', () => {
-    expect(shortDay('2026-11-06')).toBe('Nov 6')
+    expect(shortDay('2026-11-06', '2026-11-10')).toBe('Nov 6')
+    // A day from another year says its year, so a year of records never reads as this year's.
+    expect(shortDay('2025-12-17', '2026-11-10')).toBe('Dec 17, 2025')
     expect(shortDay(null)).toBe('—')
     expect(windowSinceYmd('2026-11-09', 30)).toBe('2026-10-10')
     expect(defaultLookAgainYmd('2026-11-09')).toBe('2026-11-23')
