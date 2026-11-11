@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
-import type { CallLink, CallMove, CallOutcome, MoveDone } from '../../lib/bridge/calls'
+import type { CallLink, CallOutcome, MoveDone } from '../../lib/bridge/calls'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_HOW, movesShown, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { chipName, type CallPerson, type RecordedMove } from '../../lib/bridge/callPeople'
 
 /**
  * The Bridge's first screen (punch list #303, PR 1): three tiles and the week's call with its
@@ -20,6 +21,9 @@ const fine: CSSProperties = { fontSize: '0.76rem', color: 'var(--text-muted)' }
 
 const toneText = (t: WeekTone): string => (t === 'red' ? 'var(--text-red-700)' : t === 'green' ? 'var(--text-green-700)' : t === 'amber' ? 'var(--text-amber-800)' : 'var(--text)')
 const doneColor = (d: MoveDone | null): string => (d === 'yes' ? 'var(--text-green-700)' : d === 'part' ? 'var(--text-amber-800)' : d === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)')
+
+/** The pick that switches the chip to a typed name. */
+const TYPE_A_NAME = '__type_a_name__'
 
 const pressBase: CSSProperties = { font: 'inherit', fontSize: '0.95rem', fontWeight: 700, minHeight: 48, borderRadius: 10, border: 'none', padding: '0.5rem 0.9rem', cursor: 'pointer', width: '100%' }
 const smallPress: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 36, borderRadius: 8, padding: '0.25rem 0.8rem', cursor: 'pointer' }
@@ -77,12 +81,13 @@ export function BridgeWeek({
   onPickStep,
   onCashNote,
   strip,
+  people = [],
 }: {
   model: WeekCallModel
   recording: boolean
   answering: boolean
-  /** `note` is the line typed under Add a note, or null. */
-  onRecord: (link: CallLink, moves: CallMove[], note: string | null) => void
+  /** `note` is the line typed under Add a note, or null. A move carries its person's account when one was picked (PR 4). */
+  onRecord: (link: CallLink, moves: RecordedMove[], note: string | null) => void
   onAnswer: (outcome: CallOutcome) => void
   /** Opens The flow, where a press on a step makes it the proposal. */
   onPickStep: () => void
@@ -90,6 +95,8 @@ export function BridgeWeek({
   onCashNote: () => void
   /** The strip of pipe (PR 3): under the tiles in a usual week, under the card in a week cash leads. */
   strip?: ReactNode
+  /** The accounts a move can go to (PR 4). With none, the chip takes a typed name, which reaches nobody. */
+  people?: ReadonlyArray<CallPerson>
 }) {
   const narrow = useIsNarrowScreen()
   const proposing = model.state === 'propose'
@@ -97,27 +104,45 @@ export function BridgeWeek({
   const movesKey = `${model.link ?? ''}|${model.card.moves.map((m) => m.title).join('|')}`
   const [off, setOff] = useState<Set<number>>(new Set())
   const [who, setWho] = useState<Map<number, string>>(new Map())
+  // The account picked with a changed name (PR 4); a typed name has none.
+  const [whoIds, setWhoIds] = useState<Map<number, string | null>>(new Map())
+  // The chip being changed, and whether it is taking a typed name in place of a pick.
   const [editing, setEditing] = useState<number | null>(null)
+  const [typing, setTyping] = useState(false)
   // A note on the call (v2.6840): one line, typed before the press, read again under the call on Friday.
   const [note, setNote] = useState('')
   const [noteOpen, setNoteOpen] = useState(false)
   useEffect(() => {
     setOff(new Set())
     setWho(new Map())
+    setWhoIds(new Map())
     setEditing(null)
+    setTyping(false)
     setNote('')
     setNoteOpen(false)
   }, [movesKey])
   // While it proposes, the card shows `cap` moves still on the call: one taken off stays, greyed, and the next comes on.
   const shown = useMemo(() => (proposing ? movesShown(model.card.moves, off, cap) : model.card.moves.slice(0, cap)), [proposing, model.card.moves, off, cap])
 
-  const toRecord = proposing ? movesToRecord(shown, off, who) : []
+  const toRecord = proposing ? movesToRecord(shown, off, who, whoIds) : []
   const canRecord = proposing && model.link != null && toRecord.length > 0 && !recording
   const border = model.card.tone === 'lit' ? '#dc2626' : model.card.tone === 'ask' ? '#2563eb' : 'var(--border-strong)'
 
   const moveRow = (m: WeekMove, i: number) => {
     const isOff = off.has(i)
     const name = who.get(i) ?? m.who
+    // The account on the move as it stands: the pick, none for a typed name, or the one it was proposed with.
+    const id = whoIds.has(i) ? (whoIds.get(i) ?? null) : who.has(i) ? null : (m.whoId ?? null)
+    const pick = (value: string) => {
+      if (value === TYPE_A_NAME) {
+        setTyping(true)
+        return
+      }
+      const person = people.find((p) => p.id === value) ?? null
+      setWho((w) => new Map(w).set(i, person ? chipName(person, people) : ''))
+      setWhoIds((w) => new Map(w).set(i, person ? person.id : null))
+      setEditing(null)
+    }
     return (
       <li key={m.title} data-testid="bridge-week-move" style={{ display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr) auto', gap: '2px 8px', alignItems: 'start', padding: '6px 0', borderTop: '1px solid var(--border)', minHeight: 48, opacity: isOff ? 0.5 : 1 }}>
         <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
@@ -140,16 +165,41 @@ export function BridgeWeek({
         </span>
         {proposing ? (
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-            {editing === i ? (
+            {editing === i && people.length > 0 && !typing ? (
+              // A pick from the accounts: the move then reaches that person's Needs you.
+              <select
+                autoFocus
+                aria-label={`Who does: ${m.title}`}
+                value={id ?? ''}
+                onChange={(e) => pick(e.target.value)}
+                onBlur={() => setEditing(null)}
+                data-testid="bridge-week-who-pick"
+                style={{ font: 'inherit', fontSize: '0.8rem', maxWidth: 150, minHeight: 32, padding: '0.1rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }}
+              >
+                <option value="">Nobody</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+                <option value={TYPE_A_NAME}>Type a name…</option>
+              </select>
+            ) : editing === i ? (
               <input
                 autoFocus
                 aria-label={`Who does: ${m.title}`}
                 placeholder="who"
-                defaultValue={name}
+                defaultValue={id ? '' : name}
                 onBlur={(e) => {
                   const v = e.target.value
                   setWho((w) => new Map(w).set(i, v))
+                  setWhoIds((w) => {
+                    const next = new Map(w)
+                    next.delete(i)
+                    return next
+                  })
                   setEditing(null)
+                  setTyping(false)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
@@ -160,10 +210,14 @@ export function BridgeWeek({
               <button
                 type="button"
                 disabled={isOff}
-                onClick={() => setEditing(i)}
+                onClick={() => {
+                  setTyping(false)
+                  setEditing(i)
+                }}
+                title={name && !id && people.length > 0 ? 'No account, so this move reaches nobody’s Needs you.' : undefined}
                 aria-label={name ? `${name} does: ${m.title} Press to change.` : `Name who does: ${m.title}`}
                 data-testid="bridge-week-who"
-                style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, minHeight: 32, padding: '0 0.6rem', borderRadius: 999, border: `1px ${name ? 'solid' : 'dashed'} var(--border-strong)`, background: 'transparent', color: name ? 'var(--text)' : 'var(--text-muted)', cursor: isOff ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, minHeight: 32, padding: '0 0.6rem', borderRadius: 999, border: `1px ${name && (id || people.length === 0) ? 'solid' : 'dashed'} var(--border-strong)`, background: 'transparent', color: name ? 'var(--text)' : 'var(--text-muted)', cursor: isOff ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
               >
                 {name || 'who?'}
               </button>

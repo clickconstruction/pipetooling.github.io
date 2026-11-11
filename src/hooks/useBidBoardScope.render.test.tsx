@@ -54,6 +54,8 @@ vi.mock('./useBidBoardBudgetChips', () => ({
 vi.mock('./useBidCountSourcesByBid', () => ({ useBidCountSourcesByBid: () => new Map() }))
 // v2.6169: the plan sets behind the board's bids are their own read too.
 vi.mock('./useBidPlanSetsByBid', () => ({ useBidPlanSetsByBid: () => new Map() }))
+// The board's photo counts (punch list #306) are their own hook, with their own read of the page's bids.
+vi.mock('./useBidPhotoCountsByBid', () => ({ useBidPhotoCountsByBid: () => new Map() }))
 // The money strips (v2.5651) are the page's other one read; the lens's own smokes cover them.
 vi.mock('./useBidBoardMoneyStrips', () => ({
   useBidBoardMoneyStrips: () => ({ byBid: new Map(), lines: [], loaded: true, reload: () => {} }),

@@ -84,12 +84,14 @@ const jobPromiseMock = vi.fn()
 vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
+const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
+const redrawManyMock = vi.fn(async (papers: Array<{ jobId: string }>, _userId: unknown) => ({ done: papers.map((p) => p.jobId), failed: [] as Array<{ jobId: string; reason: string }> }))
 const signMock = vi.fn()
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
+  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -970,7 +972,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
   })
 
   it('an affidavit approved before the short form keeps its ten paragraphs, and Redraw on the short form takes it back to a marked draft', async () => {
-    saveDraftMock.mockClear()
+    redrawOneMock.mockClear()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {}, gcEmail: '' })])} initialKind="affidavit" />)
     await settle()
     expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('long')
@@ -981,12 +983,54 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // The press asks once, in words that say what happens to the approval.
     fireEvent.click(screen.getByRole('button', { name: 'Redraw on the short form…' }))
     expect(note.textContent).toContain('It needs approval again before it is filed.')
-    expect(saveDraftMock).not.toHaveBeenCalled()
+    expect(redrawOneMock).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Redraw on the short form' }))
-    await waitFor(() => expect(saveDraftMock).toHaveBeenCalledTimes(1))
-    const saved = (saveDraftMock.mock.calls[0] as unknown as [{ itemId: string; kind: string; fields: { affidavitForm?: string } }])[0]
-    expect(saved).toMatchObject({ itemId: 'aff1', kind: 'affidavit' })
-    expect(saved.fields.affidavitForm).toBe('short')
+    // One write (`redrawLienAffidavitShort`): the item back to a draft with the short form's mark.
+    await waitFor(() => expect(redrawOneMock).toHaveBeenCalledTimes(1))
+    expect((redrawOneMock.mock.calls[0] as unknown as [{ id: string }])[0].id).toBe('aff1')
+  })
+
+  it('the list offers one press for every ready earlier-form paper: it names the count, asks once, and redraws them', async () => {
+    redrawManyMock.mockClear()
+    // Two jobs ready on the earlier form, one already on the short form.
+    const rows = ['j650', 'j651', 'j652'].map((job_id) => ({ ...affRow, job_id }))
+    const items = [draft({ notice: {} }), { ...draft({ notice: {} }), id: 'aff2', job_id: 'j651' }, { ...draft({ notice: {}, affidavitForm: 'short' }), id: 'aff3', job_id: 'j652' }] as LienDeskItemRow[]
+    const d = data([], items, true)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, items, TODAY)
+    d.jobsById = { ...d.jobsById, j651: { ...d.jobsById.j650!, id: 'j651', hcp_number: '651' }, j652: { ...d.jobsById.j650!, id: 'j652', hcp_number: '652' } }
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-redraw]') as HTMLElement
+    expect(bar.textContent).toContain('2 ready affidavits are on the earlier form.')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Redraw 2 on the short form…' }))
+    // The confirm window says what happens to the approval, and its button names the act with the count.
+    expect(await screen.findByText('Redraw 2 affidavits on the short form?')).toBeTruthy()
+    expect(screen.getByText('Each affidavit goes back to To draft on the short form. Each needs approval again before it is filed.')).toBeTruthy()
+    expect(redrawManyMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Redraw 2 on the short form' }))
+    await waitFor(() => expect(redrawManyMock).toHaveBeenCalledTimes(1))
+    expect((redrawManyMock.mock.calls[0]![0] as Array<{ jobId: string; item: { id: string } }>).map((p) => [p.jobId, p.item.id])).toEqual([['j650', 'aff1'], ['j651', 'aff2']])
+  })
+
+  it('a paper that did not take stays listed under the press with its reason and a door to its row', async () => {
+    redrawManyMock.mockClear()
+    redrawManyMock.mockImplementationOnce(async () => ({ done: [], failed: [{ jobId: 'j650', reason: 'This affidavit is no longer a draft on the desk.' }] }))
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {} })])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Redraw 1 on the short form…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Redraw 1 on the short form' }))
+    await waitFor(() => expect(document.querySelector('[data-lien-affidavit-redraw-failed]')).toBeTruthy())
+    const failed = document.querySelector('[data-lien-affidavit-redraw-failed]') as HTMLElement
+    expect(failed.textContent).toContain('1 affidavit did not redraw. It stays here with the reason.')
+    expect(failed.textContent).toContain('This affidavit is no longer a draft on the desk.')
+    expect(within(failed).getByRole('button').textContent).toContain('650')
+  })
+
+  it('no ready paper on the earlier form: no press on the list', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {}, affidavitForm: 'short' })])} initialKind="affidavit" />)
+    await settle()
+    expect(document.querySelector('[data-lien-affidavit-redraw]')).toBeNull()
   })
 
   it('a draft that carries the mark is drawn on the short form, with no redraw press', async () => {

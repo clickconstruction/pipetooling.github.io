@@ -7,15 +7,16 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { isOfficeRole } from '../doorRoles'
+import { PERMIT_CITY_NAMES } from '../../../supabase/functions/_shared/permitCities'
 
 /** Who researches: the office and every estimator, the same set `user_can_research_permits()` names. */
 export function canResearchPermits(role: UserRole | null): boolean {
   return role != null && (isOfficeRole(role) || role === 'estimator')
 }
 
-/** The cities with a feed today; a city is one row of this list until a second feed lands. */
 export const DEFAULT_RESEARCH_CITY = 'San Antonio'
-export const RESEARCH_CITIES: readonly string[] = [DEFAULT_RESEARCH_CITY]
+/** The cities the pull reads, San Antonio first (`_shared/permitCities.ts`). */
+export const RESEARCH_CITIES: readonly string[] = PERMIT_CITY_NAMES
 
 export type PermitVerdict = 'look' | 'approach' | 'not_for_us' | 'taken'
 /** What a pursue is for (punch list #302): the plumber is sometimes chosen already, and then the relationship is the point. */
