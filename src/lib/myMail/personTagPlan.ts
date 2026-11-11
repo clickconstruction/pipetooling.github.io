@@ -10,6 +10,7 @@
  * later mail.
  */
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { fileKeep } from '../emailIn/emailLine'
 import type { EmailAddress, EmailIn } from '../emailIn/gmailMessage'
 import { MY_MAIL_NO_SUBJECT, type MyMailPersonTagCounts } from './contract'
 import { MY_MAIL_NEVER_LABELS, type MyMailTagSkip, type MyMailThread } from './tagPlan'
@@ -91,7 +92,8 @@ export function mailEntryContent(email: EmailIn): string {
   lines.push(`Subject: ${email.subject.trim() || MY_MAIL_NO_SUBJECT}`)
   const sent = mailSentWords(email.at)
   if (sent) lines.push(`Sent: ${sent}`)
-  const files = email.files.filter((f) => !f.inline)
+  // A file is anything but a small picture placed in the body (v2.6909): Apple Mail places a PDF in the body too, and it is still a file.
+  const files = email.files.filter((f) => fileKeep(f) !== 'skip')
   if (files.length > 0) lines.push(`Files: ${files.map((f) => `${f.name} (${fileSizeWords(f.size)})`).join(', ')}`)
   const body = email.text.replace(/\r\n/g, '\n').trim()
   const kept = body.length > MY_MAIL_ENTRY_BODY_MAX ? `${body.slice(0, MY_MAIL_ENTRY_BODY_MAX).trimEnd()}\n\n[${body.length - MY_MAIL_ENTRY_BODY_MAX} more characters stay in Gmail]` : body
@@ -139,7 +141,7 @@ export function planPersonTag(thread: MyMailThread, known: MyMailPersonKnown, to
       threadId: email.threadId ?? thread.threadId,
       entryDate: mailEntryDate(email.at, todayYmd),
       content: mailEntryContent(email),
-      files: email.files.filter((f) => !f.inline).length,
+      files: email.files.filter((f) => fileKeep(f) !== 'skip').length,
       at: email.at,
     })
   }

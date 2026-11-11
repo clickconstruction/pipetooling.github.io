@@ -32,8 +32,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-/** True while a read back as history is refused. See the note where it is read. */
-const HISTORY_HELD = true
 const PAGE = 2000
 const MAX_PAGES_PER_FEED = 12
 const UPSERT_BATCH = 500
@@ -95,10 +93,6 @@ serve(async (req) => {
   const until = typeof body.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.until) ? body.until : null
   const history = until != null
   if (history) {
-    // Held (2026-11-10): the skim's and Builders' reads pair every building permit with every plumbing
-    // permit in a city, so older rows would slow them past the statement timeout. Until those reads are
-    // index-driven a read back is refused here, whatever the client shows.
-    if (HISTORY_HELD) return jsonResponse({ error: 'Reading further back is switched off for now. The Permits reads have to be made faster first, or older records would slow the tab down.' }, 400)
     if (!sinceOverride || sinceOverride >= until) return jsonResponse({ error: 'A read back needs since before until.' }, 400)
     if (!askedCity) return jsonResponse({ error: 'A read back needs its city.' }, 400)
     if (feedsToPull(askedCity).some((f) => !f.pageUrlBefore)) return jsonResponse({ error: `No read back is set up for ${askedCity} yet.` }, 400)

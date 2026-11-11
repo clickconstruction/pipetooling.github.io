@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PERMIT_LEAD_ROLE_WORDS, type PermitLeadRole, type PursueFor, type ResearchPermitRow } from '../../lib/research/permitResearch'
+import { leadLandsWords, PERMIT_LEAD_ROLE_WORDS, type PermitLeadRole, type PursueFor, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { NOT_PURSUING_REASONS, PURSUE_FOR_WORDS, builderNameOfPermit, type NotPursuingCode } from '../../lib/research/permitBuilders'
 import { skimTitle } from '../../lib/research/permitSkim'
 import type { Researcher } from './PermitSkimDeck'
@@ -93,7 +93,7 @@ export function PermitCloseOutSheet({
                 </option>
               ))}
             </select>
-            <p style={{ ...muted, margin: '12px 0' }}>A lead goes on the GCs deck with the permit as a job on it. A lead of the same name is reused.</p>
+            <p style={{ ...muted, margin: '12px 0' }}>{leadLandsWords(role)}</p>
           </>
         ) : (
           <>
