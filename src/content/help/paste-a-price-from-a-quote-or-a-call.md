@@ -11,7 +11,7 @@ The app finds the part on file for you. Nothing is made twice.
 
 ## Paste a row
 
-1. Press **Paste a price**. It sits at the top of **Bids → Takeoffs**, and on **Materials → Parts Book**.
+1. Press {{button:gray|Price sheet ▾}} and then **Paste a price**. The button is at the top of **Bids → Takeoffs**, and on **Materials → Parts Book**.
 2. Pick the supply house. The houses this bid asked for prices come first.
 3. Paste the row into the box. You can also type it: the house's number, the words and the price.
 
@@ -30,6 +30,8 @@ You paste `512207  AX8802XL-LR-PC ARLO SUPPLY KIT  18.40` and pick Hillcrest Sup
 :::
 
 You can paste several rows at once. Each row gets its own card and its own press.
+
+For a whole quote, see [read a supply house's price sheet](/help/read-a-supply-houses-price-sheet).
 
 ## When the card asks a question
 

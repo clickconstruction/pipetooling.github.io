@@ -10,6 +10,9 @@ import { duplicatePartsEmptyWords } from '../lib/materials/duplicatePartsEmptyWo
 import { EmptyState } from '../components/EmptyState'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { sameModelGroups } from '../lib/materials/partMatch'
+import { addMergeCounts, allCalledDistinct, callDistinct, loadDistinctPairs, mergeAsk, mergeOutcome, mergeParts, NO_MERGE_COUNTS } from '../lib/materials/mergeParts'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -45,11 +48,21 @@ export default function Duplicates() {
   // number in the name equal) are opt-in, so a size family never reads as "duplicates".
   const [showNearMatches, setShowNearMatches] = useState(false)
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<Set<string>>(new Set())
+  // Punch list #308 (PR 8): copies found by their model number, a merge in place of a delete, and
+  // the pairs a person said are not the same.
+  const confirmDialog = useConfirmDialog()
+  const [byModel, setByModel] = useState(false)
+  const [distinctPairs, setDistinctPairs] = useState<Set<string>>(new Set())
+  const [reloadTick, setReloadTick] = useState(0)
+  const [working, setWorking] = useState(false)
+  const [outcome, setOutcome] = useState<string | null>(null)
 
-  const duplicateGroups = useMemo(
-    () => buildDuplicateGroups(parts, showNearMatches ? 'near' : 'exact'),
-    [parts, showNearMatches],
-  )
+  const duplicateGroups = useMemo(() => {
+    const groups = byModel
+      ? sameModelGroups(parts.filter((p) => !p.is_robot)).map((g) => g.parts)
+      : buildDuplicateGroups(parts, showNearMatches ? 'near' : 'exact')
+    return groups.filter((g) => !allCalledDistinct(g.map((p) => p.id), distinctPairs))
+  }, [parts, showNearMatches, byModel, distinctPairs])
 
   useEffect(() => {
     if (!user?.id) return
@@ -111,8 +124,44 @@ export default function Duplicates() {
       setBestPriceByPartId(bestByPart)
       setLoading(false)
     })
+    void loadDistinctPairs(supabase).then((pairs) => {
+      if (!cancelled) setDistinctPairs(pairs)
+    })
     return () => { cancelled = true }
-  }, [myRole])
+  }, [myRole, reloadTick])
+
+  /** Keep this one: every other part of the group goes into it, one merge at a time. A merge that fails stops the rest and says why. */
+  async function handleKeep(keep: MaterialPart, group: MaterialPart[]) {
+    const others = group.filter((p) => p.id !== keep.id)
+    if (others.length === 0) return
+    if (!(await confirmDialog({ ...mergeAsk(keep.name, others.map((p) => p.name)), danger: true }))) return
+    setWorking(true)
+    setError(null)
+    setOutcome(null)
+    let counts = NO_MERGE_COUNTS
+    let merged = 0
+    for (const other of others) {
+      const res = await mergeParts(supabase, keep.id, other.id)
+      if (!res.ok) {
+        setError(`“${other.name}” was not merged: ${res.error}`)
+        break
+      }
+      counts = addMergeCounts(counts, res.counts)
+      merged += 1
+    }
+    if (merged > 0) setOutcome(mergeOutcome(keep.name, merged, counts))
+    setWorking(false)
+    setReloadTick((n) => n + 1)
+  }
+
+  async function handleNotTheSame(group: MaterialPart[]) {
+    setWorking(true)
+    setError(null)
+    const { error: why } = await callDistinct(supabase, group.map((p) => p.id))
+    if (why) setError(why)
+    else setDistinctPairs(await loadDistinctPairs(supabase))
+    setWorking(false)
+  }
 
   async function handleDelete() {
     if (!deleteConfirmPart) return
@@ -164,21 +213,33 @@ export default function Duplicates() {
       </div>
 
       <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-        {showNearMatches
-          ? 'Parts whose names are the same or 80%+ similar are grouped below — but only when every number in the name (sizes, lengths, model numbers) agrees, so a 1/2" fitting never pairs with the 3/4". Delete true duplicates to clean up the Parts Book.'
-          : 'Parts with the same name (ignoring case and spacing) are grouped below. Delete duplicates to clean up the Parts Book.'}
+        {byModel
+          ? 'Parts whose names carry the same model number are grouped below, however the number is dashed or spaced, and only when their sizes agree. Press Keep this one on the part that should stay: the others are merged into it, with their prices, assemblies and takeoff lines.'
+          : showNearMatches
+            ? 'Parts whose names are the same or 80%+ similar are grouped below — but only when every number in the name (sizes, lengths, model numbers) agrees, so a 1/2" fitting never pairs with the 3/4". Press Keep this one on the part that should stay, or delete a copy nothing points at.'
+            : 'Parts with the same name (ignoring case and spacing) are grouped below. Press Keep this one on the part that should stay, or delete a copy nothing points at.'}
       </p>
 
       {!loading && (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-            <input
-              type="checkbox"
-              checked={showNearMatches}
-              onChange={(e) => setShowNearMatches(e.target.checked)}
-            />
-            Show near-matches (80%+ similar, same numbers)
-          </label>
+          <span role="tablist" aria-label="How copies are found" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden', fontSize: '0.875rem' }}>
+            <button type="button" role="tab" aria-selected={!byModel} onClick={() => setByModel(false)} style={{ padding: '0.3rem 0.8rem', border: 'none', cursor: 'pointer', background: !byModel ? 'var(--text-strong)' : 'var(--surface)', color: !byModel ? 'var(--surface)' : 'var(--text-base)' }}>
+              Same name
+            </button>
+            <button type="button" role="tab" aria-selected={byModel} onClick={() => setByModel(true)} style={{ padding: '0.3rem 0.8rem', border: 'none', cursor: 'pointer', background: byModel ? 'var(--text-strong)' : 'var(--surface)', color: byModel ? 'var(--surface)' : 'var(--text-base)' }}>
+              Same model number
+            </button>
+          </span>
+          {!byModel ? (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              <input
+                type="checkbox"
+                checked={showNearMatches}
+                onChange={(e) => setShowNearMatches(e.target.checked)}
+              />
+              Show near-matches (80%+ similar, same numbers)
+            </label>
+          ) : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             <span>Only show service types:</span>
             {serviceTypes.map((st) => (
@@ -208,10 +269,20 @@ export default function Duplicates() {
         </div>
       )}
 
+      {outcome && (
+        <div role="status" data-testid="duplicates-merge-outcome" style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-green-100)', borderRadius: 4, fontSize: '0.875rem' }}>
+          {outcome}
+        </div>
+      )}
+
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : duplicateGroups.length === 0 ? (
-        <EmptyState {...duplicatePartsEmptyWords(showNearMatches, () => setShowNearMatches(true))} />
+        byModel ? (
+          <EmptyState main="Nothing waiting on a merge." tail="No two parts carry the same model number." />
+        ) : (
+          <EmptyState {...duplicatePartsEmptyWords(showNearMatches, () => setShowNearMatches(true))} />
+        )
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {(() => {
@@ -231,8 +302,17 @@ export default function Duplicates() {
                 background: 'var(--surface)',
               }}
             >
-              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>
-                {isExactGroup(group) ? `${group.length} with the same name` : `${group.length} near-matches`}
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <span>{byModel ? `${group.length} with the same model number` : isExactGroup(group) ? `${group.length} with the same name` : `${group.length} near-matches`}</span>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => void handleNotTheSame(group)}
+                  title="These are different parts. They are not offered together again."
+                  style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: working ? 'wait' : 'pointer', padding: 0, fontSize: '0.8125rem', fontWeight: 400 }}
+                >
+                  Not the same part
+                </button>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-muted)' }}>
@@ -257,7 +337,16 @@ export default function Duplicates() {
                       <td style={{ padding: '0.5rem 0.75rem' }}>{serviceTypeMap[part.service_type_id]?.name ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{best ? `$${formatCurrency(best.price)}` : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{best?.supplyHouseName ?? '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          disabled={working}
+                          onClick={() => void handleKeep(part, group)}
+                          title="Merge the other parts of this group into this one"
+                          style={{ marginRight: '0.4rem', padding: '0.25rem 0.5rem', background: working ? DEAD_PRESS_FILL : '#2563eb', color: working ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: working ? 'wait' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                        >
+                          Keep this one
+                        </button>
                         <button
                           type="button"
                           onClick={() => {

@@ -39,7 +39,8 @@ import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
-import { QuickPriceWindow } from '../materials/QuickPriceWindow'
+import { PriceSheetDoor } from '../materials/PriceSheetDoor'
+import type { PriceSheetRowOffer, PriceSheetTakeoff } from '../materials/PriceSheetPanel'
 import { TakeoffViewChooser } from './TakeoffViewChooser'
 import { RfqComposeModal } from './RfqComposeModal'
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
@@ -371,8 +372,9 @@ export function BidsTakeoffTab({
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
   const prevPartPricesModalRef = useRef<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
-  // One price from a quote or a call, filed onto the part it is (punch list #308, PR 3).
-  const [quickPriceOpen, setQuickPriceOpen] = useState(false)
+  // A price sheet's fixtures on this takeoff (punch list #308, PR 6): what the open sheet offers each row, and its press.
+  const [sheetOffers, setSheetOffers] = useState<PriceSheetRowOffer[]>([])
+  const sheetPlaceRef = useRef<((groupId: string) => void) | null>(null)
   const [bundleBreakdownModal, setBundleBreakdownModal] = useState<{ templateId: string; lineId: string; assemblyName: string } | null>(null)
 
   // Bundle breakdown modal: parts-vs-bundle comparison for a rough Assembly bundle line.
@@ -1263,6 +1265,40 @@ export function BidsTakeoffTab({
    * through it, New 1 one fixture at a time (v2.2778). One drag context, the
    * same header, rows, and add-line footer, so the views cannot drift apart.
    */
+  /** What Takeoffs lends the price sheet panel: the bid's rows, and the writes of a bundle line under this user's own access. */
+  const priceSheetTakeoff: PriceSheetTakeoff = {
+    countRows: takeoffCountRows.map((r) => ({ id: r.id, fixture: r.fixture, planTag: (r as { plan_tag?: string | null }).plan_tag ?? null, count: Number(r.count) || 0 })),
+    lineCount: (countRowId) => takeoffRoughPartLines.filter((l) => l.countRowId === countRowId).length,
+    placeBundle: async (countRowId, templateId, unitPrice, replace) => {
+      if (!selectedBidForTakeoff?.id) return { error: 'No bid is open.' }
+      if (replace) {
+        const saved = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId && l.isSaved).map((l) => l.id)
+        if (saved.length > 0) {
+          const { error } = await supabase.from('bids_takeoff_rough_part_lines').delete().in('id', saved)
+          if (error) return { error: `The fixture's own lines could not be replaced: ${formatErrorMessage(error, 'they were not removed')}` }
+        }
+        setTakeoffRoughPartLines((prev) => prev.filter((l) => l.countRowId !== countRowId))
+      }
+      const { data, error } = await supabase
+        .from('bids_takeoff_rough_part_lines')
+        .insert({ bid_id: selectedBidForTakeoff.id, bid_version_id: selectedBidVersionId, count_row_id: countRowId, part_id: null, quantity: 1, unit_price: unitPrice, sequence_order: 1, source_material_part_price_id: null, source_template_id: templateId })
+        .select('id')
+        .single()
+      if (error || !data) return { error: `The line could not be put on the takeoff: ${formatErrorMessage(error, 'it was not saved')}` }
+      const lineId = (data as { id: string }).id
+      setTakeoffRoughPartLines((prev) => [...prev, { id: lineId, countRowId, partId: null, quantity: 1, unitPrice, sourceMaterialPartPriceId: null, sourceTemplateId: templateId, sequenceOrder: 1, isSaved: true }])
+      return { lineId }
+    },
+    removeLines: async (lineIds) => {
+      if (lineIds.length === 0) return { error: null }
+      const { error } = await supabase.from('bids_takeoff_rough_part_lines').delete().in('id', lineIds)
+      if (error) return { error: `The lines could not be taken off the takeoff: ${formatErrorMessage(error, 'they were not removed')}` }
+      setTakeoffRoughPartLines((prev) => prev.filter((l) => !lineIds.includes(l.id)))
+      return { error: null }
+    },
+    reloadAssemblies: () => void loadMaterialTemplates(),
+  }
+
   const renderRoughLinesTable = (rowsToRender: BidCountRow[], opts?: { suggestionFor?: (row: BidCountRow) => ReactNode }) => (
                   <DndContext
                     sensors={roughPartLinesSensors}
@@ -1401,6 +1437,23 @@ export function BidsTakeoffTab({
                                       >
                                         Add assembly
                                       </span>
+                                      {(() => {
+                                        const offer = sheetOffers.find((o) => o.countRowId === row.id)
+                                        return offer ? (
+                                          <span data-testid="takeoff-sheet-offer" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)' }}>
+                                            <span>
+                                              <strong>{offer.houseName}&apos;s sheet:</strong> {offer.parts === 1 ? '1 part' : `${offer.parts} parts`} on file · ${offer.each.toFixed(2)} each
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => sheetPlaceRef.current?.(offer.groupId)}
+                                              style={{ padding: '0.2rem 0.6rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                                            >
+                                              Use
+                                            </button>
+                                          </span>
+                                        ) : null
+                                      })()}
                                       {opts?.suggestionFor?.(row)}
                                     </div>
                                   </td>
@@ -1678,14 +1731,19 @@ export function BidsTakeoffTab({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {/* v2.4416 (owner): the view pills ride the right end of the title row, beside Print. */}
-                  <button
-                    type="button"
-                    onClick={() => setQuickPriceOpen(true)}
-                    title="Paste a row from a quote or a mail, or type a price from a call. It is filed onto the part it is, under the supply house it came from."
-                    style={{ padding: '0.5rem 0.9rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Paste a price
-                  </button>
+                  <PriceSheetDoor
+                    bid={{ id: selectedBidForTakeoff.id, label: `BP${selectedBidForTakeoff.bid_number?.trim() || '?'} ${selectedBidForTakeoff.project_name?.trim() || ''}`.trim() }}
+                    serviceTypeId={selectedServiceTypeId}
+                    supplyHouses={supplyHouses}
+                    knownParts={takeoffAddTemplateParts}
+                    takeoff={priceSheetTakeoff}
+                    onRowOffers={setSheetOffers}
+                    placeRef={sheetPlaceRef}
+                    onBookChanged={() => {
+                      // The book's prices may have moved: read the lowest again for the parts on this takeoff.
+                      if (takeoffRoughCatalogLowestPartIdsKey) void refreshTakeoffRoughCatalogLowest(takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean))
+                    }}
+                  />
                   <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                   <button
                     type="button"
@@ -2012,19 +2070,6 @@ export function BidsTakeoffTab({
         serviceTypes={serviceTypes}
         knownParts={takeoffAddTemplateParts}
       />
-      {quickPriceOpen && selectedBidForTakeoff ? (
-        <QuickPriceWindow
-          onClose={() => {
-            setQuickPriceOpen(false)
-            // The book's prices may have moved: read the lowest again for the parts on this takeoff.
-            if (takeoffRoughCatalogLowestPartIdsKey) void refreshTakeoffRoughCatalogLowest(takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean))
-          }}
-          serviceTypeId={selectedServiceTypeId}
-          bid={{ id: selectedBidForTakeoff.id, label: `BP${selectedBidForTakeoff.bid_number?.trim() || '?'} ${selectedBidForTakeoff.project_name?.trim() || ''}`.trim() }}
-          supplyHouses={supplyHouses}
-          knownParts={takeoffAddTemplateParts}
-        />
-      ) : null}
 
       {/* Assembly authoring modal cluster (T7): Add Assembly / Add Parts to
           Template / Edit Template. Open pointers, the PartFormModal-routed

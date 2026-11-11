@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allRows, bookPrice, parsePasted, parsePastedRow, PRICING_UNIT_FACTOR } from './pastedRow'
+import { allRows, bookPrice, pageMark, parsePasted, parsePastedRow, PRICING_UNIT_FACTOR } from './pastedRow'
 
 // Every house, part, number and price here is made up.
 describe('parsePastedRow', () => {
@@ -105,6 +105,22 @@ describe('parsePasted', () => {
     const s = parsePasted('WC-1 WATER CLOSET\n1ea 318845 KESSLER K-4410 CARRIER\nSubtotal --- WC-1 EACH 410.00\n\n702291 NORDIC NW-2BL COOLER 1,284.00')
     expect(s.groups).toHaveLength(1)
     expect(s.loose.map((r) => r.houseCode)).toEqual(['702291'])
+  })
+})
+
+describe('pages', () => {
+  it('a fixture that runs over a page keeps its rows, and each row says its page', () => {
+    const text = [pageMark(3), 'LAV-2 LAVATORY', '1ea 512260 ARLO AX7702-PC GRID DRAIN', pageMark(4), 'ORDER QTY  ITEM NO  DESCRIPTION  UNIT PRICE', '1ea 318002 AX87029-BPC ARLO P-TRAP', 'Subtotal --- LAV-2 EACH 184.20'].join('\n')
+    const sheet = parsePasted(text)
+    expect(sheet.groups).toHaveLength(1)
+    expect(sheet.groups[0]!.page).toBe(3)
+    expect(sheet.groups[0]!.rows.map((r) => r.page)).toEqual([3, 4])
+    expect(sheet.groups[0]!.each).toBe(184.2)
+  })
+  it('a description does not run on across a page', () => {
+    const sheet = parsePasted([pageMark(1), '1ea 512207 ARLO SUPPLY KIT', pageMark(2), 'HILLCREST SUPPLY CO.'].join('\n'))
+    expect(sheet.loose).toHaveLength(1)
+    expect(sheet.loose[0]!.description).toBe('ARLO SUPPLY KIT')
   })
 })
 

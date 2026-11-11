@@ -12,7 +12,7 @@
 export type TwinKind = 'estimator' | 'pricer'
 
 export const PRICER_VERBS: ReadonlySet<string> = new Set([
-  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules', 'get_component_corrections',
+  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'put_price_sheet', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules', 'get_component_corrections',
 ])
 export const SHARED_VERBS: ReadonlySet<string> = new Set(['get_directory', 'get_harness_guide', 'get_answers', 'ask_question', 'heartbeat', 'add_bid_note', 'submit_report'])
 /** The submittal robot (v2.3544) — estimator or pricer keys. */

@@ -8,7 +8,7 @@ covers:
   - supabase/functions/twin-mcp/index.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-10
 ---
 
 ## Overview
@@ -41,7 +41,7 @@ The file has **48 tools**. The 48 entries in `TOOLS` (38–664) are exactly the 
 | Shadows (8) | `get_shadow_queue`, `open_shadow`, `next_shadow`, `void_shadow`, `lock_shadow`, `score_shadows` (6) | 357 | yes | none |
 | Question lanes (9) | `ask_question`, `get_answers` (2) | 123 | `twin_questions` | both |
 | Plan pages (10) | `get_plan_pages`, `stage_plan_pdf` (2) | 133 | storage + ledger | `get_plan_pages` only, and only on the bid of a held `read_schedule` task |
-| Pricer seat (11) | `get_pricing_guide`, `get_component_rules`, `get_component_corrections`, `next_price_matrix`, `get_quote_documents`, `put_quote`, `finish_price_matrix`, `extend_component_rules` (8) | 417 | yes (money) | all 8 (an estimator key is refused all 8) |
+| Pricer seat (11) | `get_pricing_guide`, `get_component_rules`, `get_component_corrections`, `next_price_matrix`, `get_quote_documents`, `put_quote`, `put_price_sheet`, `finish_price_matrix`, `extend_component_rules` (9) | 417 | yes (money) | all 9 (an estimator key is refused all 9) |
 | Submittal robot (12) | `get_submittal_guide`, `next_submittal_task`, `put_submittal_result`, `finish_submittal_task` (4) | 107 | yes | all 4 |
 | **Total** | **48** | **2,241** (+15 head, +4 default/close = 2,260) | | 20 of 48 |
 

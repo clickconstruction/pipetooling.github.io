@@ -1583,6 +1583,9 @@ A named, nestable kit of material parts (e.g. "Toilet rough-in") — the canonic
 ### House number
 The number a supply house prints for a part on its quotes and bills (its item number). Kept on the part in `supply_part_codes`, one row per house and number, shown as **Their numbers** under the part's prices and listed by **House numbers** on the Parts Book. One number means one part at a house; a part may carry several. It is the first key the part matcher tries (`matchRow` in `src/lib/materials/partMatch.ts`), ahead of the model number and the words. Punch list #298 calls the same table the crosswalk. Not the **model number**, which is the maker's and is read out of the part's name.
 
+### Price sheet
+A supply house's quote read into rows (punch list #308): a `supply_papers` row of kind `quote` with `came_by = 'sheet'`, its fixtures in `supply_paper_groups` and its rows in `supply_paper_lines`. Opened from **Price sheet ▾** on Takeoffs, by a drop or by a paste, and shown in a panel beside the takeoff. A row is **filed** when its price is written to the parts book under the sheet's house, and can be **taken back**. Not a bill: a quote is never counted as a purchase.
+
 ### Assembly Type
 Category for organizing material assemblies/templates (Bathroom, Kitchen, Utility, Commercial, Residential, etc.). Service-type-specific categorization for grouping and filtering assemblies.
 

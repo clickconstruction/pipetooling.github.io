@@ -293,7 +293,7 @@ export default function SettingsCatalogsTab({
           <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Duplicate Materials</h2>
           <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Find and delete duplicate material parts in the Parts Book (matching names or 80%+ similarity).
+            Find and merge duplicate material parts in the Parts Book, by name or by model number.
           </p>
           <Link
             to="/duplicates"
