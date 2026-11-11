@@ -170,6 +170,38 @@
   };
   var CHOSEN = 'reworked';
 
+  /* ── Alternative looks: candidates, none approved ─────────────────────────────────────────
+     A look here is the chosen layouts in other colours: the ground, the accent (the pipes, the
+     ring, the panels, the name on the card), the ink of the two words where they sit on the
+     accent, and which mark. The bones do not move, so every look fits the same names and lines.
+     looks.html draws them side by side. `classic` is the look in use. */
+  var THEMES = {
+    classic: { name: 'Classic', says: 'Black and orange, the look in use', ground: '#000000', cardGround: '#050708', accent: '#e17232', ink: '#ffffff', front: 'cardFrontReworked' },
+    'navy-orange': { name: 'Navy and orange', says: 'Navy where the black was. The logo is untouched.', ground: '#16283c', cardGround: '#16283c', accent: '#e17232', ink: '#ffffff', front: 'cardFrontPipes' },
+    'navy-yellow': { name: 'Navy and safety yellow', says: 'Yellow pipes, ring and panels, and a yellow hand in the logo.', ground: '#16283c', cardGround: '#16283c', accent: '#f6c700', ink: '#16283c', mark: 'mark-yellow.png', front: 'cardFrontPipes' },
+    'navy-yellow-orange-hand': { name: 'Navy and yellow, the orange hand kept', says: 'Yellow pipes, ring and panels. The logo keeps its orange hand.', ground: '#16283c', cardGround: '#16283c', accent: '#f6c700', ink: '#16283c', front: 'cardFrontPipes' },
+  };
+  function themed(base, t, isCard) {
+    return reworked(base, function (L) {
+      L.ground = isCard ? t.cardGround : t.ground;
+      L.orange = t.accent;
+      delete L.photo;
+      if (L.logo) {
+        if (t.mark) L.logo.mark = t.mark;
+        /* on the card front the two words sit on the accent panel */
+        if (isCard) L.logo.ink = t.ink;
+      }
+    });
+  }
+  Object.keys(THEMES).forEach(function (id) {
+    var t = THEMES[id];
+    if (id === 'classic') { LOOKS[id] = LOOKS.reworked; return; }
+    LAYOUTS['footer@' + id] = themed('footerReworked', t, false);
+    LAYOUTS['back@' + id] = themed('cardBackReworked', t, true);
+    LAYOUTS['front@' + id] = themed(t.front, t, true);
+    LOOKS[id] = { footer: 'footer@' + id, back: 'back@' + id, front: 'front@' + id };
+  });
+
   /* print: 300 units to the inch. The card is 3.5 x 2 in with an eighth-inch bleed all round,
      and nothing that matters goes within an eighth of an inch of the cut. */
   var CARD = { w: 1125, h: 675, bleed: 37.5, safe: 37.5 };
@@ -250,10 +282,11 @@
 
   /* the logo: the mark as a picture, the two words as type */
   function logo(at, opts) {
+    /* a look may bring its own mark (a yellow hand), and its own ink for the two words where they sit on a light panel */
     var m = BRAND.mark, out = '<g transform="translate(' + at.x + ' ' + at.y + ') scale(' + (at.scale || 1) + ')">' +
-      '<image href="' + asset(m.file, opts) + '" width="' + m.width + '" height="' + m.height + '" preserveAspectRatio="none"/>';
+      '<image href="' + asset(at.mark || m.file, opts) + '" width="' + m.width + '" height="' + m.height + '" preserveAspectRatio="none"/>';
     BRAND.wordmark.forEach(function (w) {
-      out += textLine(w.text, w.x, w.y, { weight: w.weight, size: w.size, tracking: w.tracking, colour: 'white' });
+      out += textLine(w.text, w.x, w.y, { weight: w.weight, size: w.size, tracking: w.tracking, colour: at.ink || 'white' });
     });
     return out + '</g>';
   }
@@ -328,7 +361,8 @@
     placed.forEach(function (q) {
       if (q.row.icon) {
         var ic = block.icons;
-        out += icon(q.row.icon, ic.x, q.y - (q.row.rise || ic.rise), ic.size, colourOf('orange', layout));
+        /* the envelope's flap is cut out in the ground's own colour */
+        out += icon(q.row.icon, ic.x, q.y - (q.row.rise || ic.rise), ic.size, colourOf('orange', layout)).replace(/#050708/g, layout.ground);
         out += textLine(q.text, ic.textX + (q.row.dx || 0), q.y, q.row, layout);
       } else {
         out += textLine(q.text, q.row.x || block.x, q.y, q.row, layout);
@@ -432,7 +466,7 @@
   ];
 
   window.ClickKit = {
-    BRAND: BRAND, LAYOUTS: LAYOUTS, LOOKS: LOOKS, CHOSEN: CHOSEN, CARD: CARD, FONT: BRAND.font, PEOPLE: PEOPLE,
+    BRAND: BRAND, LAYOUTS: LAYOUTS, LOOKS: LOOKS, THEMES: THEMES, CHOSEN: CHOSEN, CARD: CARD, FONT: BRAND.font, PEOPLE: PEOPLE,
     draw: draw, footer: footer, cardBack: cardBack, cardFront: cardFront,
     printPage: printPage, sheetOfTen: sheetOfTen, htmlFooter: htmlFooter, bust: bust, guides: guides,
   };
