@@ -137,17 +137,26 @@ export async function findSheetByHash(supabase: Db, sha256: string): Promise<She
   return toPaper(data[0] as unknown as PaperRow)
 }
 
-export type SheetSummary = { paper: SheetPaper; rows: number; filed: number; waiting: number }
+/** The newest read of a quote by its house and number, other than the sheet itself: a later copy is measured against it. */
+export async function findSheetByNumber(supabase: Db, supplyHouseId: string, number: string): Promise<SheetPaper | null> {
+  if (!number.trim()) return null
+  const { data, error } = await supabase.from('supply_papers').select(PAPER_SELECT).eq('came_by', 'sheet').eq('supply_house_id', supplyHouseId).eq('number', number.trim()).order('created_at', { ascending: false }).limit(1)
+  if (error || !data?.length) return null
+  return toPaper(data[0] as unknown as PaperRow)
+}
+
+export type SheetSummary = { paper: SheetPaper; rows: number; filed: number; waiting: number; /** The bid the sheet is for, as the app labels it, when it has one. */ bidLabel: string | null }
 
 /** A bid's sheets (or every sheet with no bid filter), newest first, each with how many rows still wait. */
 export async function listSheets(supabase: Db, filter: { bidId?: string } = {}): Promise<SheetSummary[]> {
-  let q = supabase.from('supply_papers').select(`${PAPER_SELECT}, supply_paper_lines(line_kind,filed_at,held_why)`).eq('came_by', 'sheet').order('created_at', { ascending: false }).limit(100)
+  let q = supabase.from('supply_papers').select(`${PAPER_SELECT}, supply_paper_lines(line_kind,filed_at,held_why), bids(bid_number,project_name)`).eq('came_by', 'sheet').order('created_at', { ascending: false }).limit(100)
   if (filter.bidId) q = q.eq('bid_id', filter.bidId)
   const { data, error } = await q
   if (error) return []
-  return ((data ?? []) as unknown as (PaperRow & { supply_paper_lines: { line_kind: string; filed_at: string | null; held_why: string }[] })[]).map((r) => {
+  return ((data ?? []) as unknown as (PaperRow & { supply_paper_lines: { line_kind: string; filed_at: string | null; held_why: string }[]; bids?: { bid_number: string | null; project_name: string | null } | null })[]).map((r) => {
     const lines = r.supply_paper_lines ?? []
     return {
+      bidLabel: r.bids ? `BP${r.bids.bid_number?.trim() || '?'} ${r.bids.project_name?.trim() || ''}`.trim() : null,
       paper: toPaper(r),
       rows: lines.length,
       filed: lines.filter((l) => l.filed_at).length,

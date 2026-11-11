@@ -172,6 +172,51 @@ export function sheetVerdict(plan: SheetPlan, pages: number | null): { head: str
   return { head: `${head}.`, chips, foot }
 }
 
+export type SheetRevision = { changed: number; added: number; gone: number; same: number }
+
+/**
+ * A later copy of a quote against the read on file: rows whose price moved, rows that are new, rows
+ * that are gone, and rows that are the same. A row is known by the house's number, else by its words.
+ */
+export function sheetRevision(
+  earlier: Pick<SheetLine, 'houseCode' | 'description' | 'unitPrice'>[],
+  later: { houseCode: string; description: string; unitPrice: number | null }[],
+): SheetRevision {
+  const key = (r: { houseCode: string; description: string }) => (r.houseCode.trim() ? `#${r.houseCode.toUpperCase().replace(/[^A-Z0-9]/g, '')}` : r.description.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim())
+  const before = new Map<string, (number | null)[]>()
+  for (const r of earlier) before.set(key(r), [...(before.get(key(r)) ?? []), r.unitPrice])
+  const out: SheetRevision = { changed: 0, added: 0, gone: 0, same: 0 }
+  for (const r of later) {
+    const prices = before.get(key(r))
+    if (!prices || prices.length === 0) {
+      out.added += 1
+      continue
+    }
+    const at = prices.findIndex((p) => p === r.unitPrice || (p != null && r.unitPrice != null && Math.abs(p - r.unitPrice) < 0.005))
+    if (at >= 0) {
+      prices.splice(at, 1)
+      out.same += 1
+    } else {
+      prices.shift()
+      out.changed += 1
+    }
+  }
+  for (const prices of before.values()) out.gone += prices.length
+  return out
+}
+
+/** A later copy, in one sentence: what moved since the read on file. */
+export function revisionWords(rev: SheetRevision, number: string, readOn: string): string {
+  const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+  const parts = [
+    rev.changed ? `${n(rev.changed, 'price', 'prices')} changed` : null,
+    rev.added ? `${n(rev.added, 'row is', 'rows are')} new` : null,
+    rev.gone ? `${n(rev.gone, 'row is', 'rows are')} gone` : null,
+  ].filter(Boolean)
+  const moved = parts.length ? `${parts.join(', ')}, and ${n(rev.same, 'row is', 'rows are')} the same` : 'every row is the same'
+  return `${number || 'This quote'} was read on ${readOn}. This copy is later: ${moved}.`
+}
+
 /** How many rows of a sheet still wait on a person or a press: the chip's count. */
 export function waitingCount(plan: SheetPlan): number {
   return plan.counts.ready + plan.counts.confirm + plan.counts.needs_you

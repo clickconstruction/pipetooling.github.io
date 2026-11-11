@@ -7,7 +7,7 @@ import { EmptyState } from '../EmptyState'
 import { partsBookEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { supabase } from '../../lib/supabase'
 import { HouseNumbersWindow } from './HouseNumbersWindow'
-import { QuickPriceWindow } from './QuickPriceWindow'
+import { PriceSheetDoor } from './PriceSheetDoor'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -91,8 +91,6 @@ export function MaterialsPartsBookTab({
 }: MaterialsPartsBookTabProps) {
   // House numbers (punch list #308): what each supply house calls a part.
   const [houseNumbersOpen, setHouseNumbersOpen] = useState(false)
-  // One price from a quote or a call (punch list #308, PR 3).
-  const [quickPriceOpen, setQuickPriceOpen] = useState(false)
   // Parts are already filtered and sorted server-side, so just use them directly
   const sortedParts = parts
 
@@ -137,23 +135,8 @@ export function MaterialsPartsBookTab({
               House numbers
             </button>
             {houseNumbersOpen ? <HouseNumbersWindow onClose={() => setHouseNumbersOpen(false)} /> : null}
-            <button
-              type="button"
-              onClick={() => setQuickPriceOpen(true)}
-              title="Paste a row from a quote or a mail, or type a price from a call. It is filed onto the part it is, under the supply house it came from."
-              style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Paste a price
-            </button>
-            {quickPriceOpen && serviceTypeId ? (
-              <QuickPriceWindow
-                onClose={() => {
-                  setQuickPriceOpen(false)
-                  void reloadPartsFirstPage()
-                }}
-                serviceTypeId={serviceTypeId}
-              />
-            ) : null}
+            {/* A supply house's price sheet, or one price, with no bid behind it: part prices only (punch list #308, PR 7). */}
+            {serviceTypeId ? <PriceSheetDoor serviceTypeId={serviceTypeId} onBookChanged={() => void reloadPartsFirstPage()} /> : null}
             <input
               type="text"
               placeholder={loadAllMode ? "Search all parts (instant)..." : "Search parts..."}

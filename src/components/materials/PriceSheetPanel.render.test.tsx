@@ -13,7 +13,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { PriceSheetPanel } from './PriceSheetPanel'
-import { TakeoffPriceSheetDoor } from '../bids/TakeoffPriceSheetDoor'
+import { PriceSheetDoor } from './PriceSheetDoor'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { LoadedSheet } from '../../lib/materials/priceSheet/priceSheetIo'
 import type { SheetLine } from '../../lib/materials/priceSheet/sheetPlan'
@@ -95,15 +95,24 @@ describe('PriceSheetPanel', () => {
   })
 })
 
-describe('TakeoffPriceSheetDoor', () => {
+describe('PriceSheetDoor', () => {
   it('is one press in the title row that offers a file or one price', async () => {
     const takeoff = { countRows: [], lineCount: () => 0, placeBundle: async () => ({ error: 'not in this test' }), removeLines: async () => ({ error: null }), reloadAssemblies: () => {} }
-    renderWithProviders(<TakeoffPriceSheetDoor bid={bid} serviceTypeId="st1" supplyHouses={houses} knownParts={parts} onBookChanged={() => {}} takeoff={takeoff} onRowOffers={() => {}} placeRef={{ current: null }} />)
+    renderWithProviders(<PriceSheetDoor bid={bid} serviceTypeId="st1" supplyHouses={houses} knownParts={parts} onBookChanged={() => {}} takeoff={takeoff} onRowOffers={() => {}} placeRef={{ current: null }} />)
     await settle()
     const door = screen.getByRole('button', { name: 'Price sheet ▾' })
     fireEvent.click(door)
     expect(screen.getByRole('menuitem', { name: /Read a file…/ })).toBeTruthy()
     fireEvent.click(screen.getByRole('menuitem', { name: /Paste a price/ }))
     expect(await screen.findByRole('heading', { name: 'One price' })).toBeTruthy()
+  })
+
+  it('with no bid, on the Parts Book, it lists every sheet and says so when there is none', async () => {
+    renderWithProviders(<PriceSheetDoor serviceTypeId="st1" onBookChanged={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Price sheet ▾' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'All price sheets…' }))
+    expect(await screen.findByRole('heading', { name: 'Price sheets' })).toBeTruthy()
+    expect(screen.getByText('Nothing waiting on a price sheet.')).toBeTruthy()
   })
 })

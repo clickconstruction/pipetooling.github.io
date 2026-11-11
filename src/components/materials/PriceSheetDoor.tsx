@@ -1,20 +1,26 @@
 /**
- * The way in to a supply house's prices from Takeoffs (punch list #308, PR 4): one press in the
- * tab's title row, in both views, and two ways that need no press. A file dropped anywhere on the
- * tab, or pasted, is read as a price sheet; a row pasted from a mail opens as one price. A chip says
- * when a sheet on this bid still has rows waiting, and opens it where it was left.
+ * The way in to a supply house's prices (punch list #308, PR 4 and 7): one press, and two ways that
+ * need no press. A file dropped anywhere on the tab, or pasted, is read as a price sheet; a row
+ * pasted from a mail opens as one price. A chip says when a sheet still has rows waiting, and opens
+ * it where it was left.
+ *
+ * On Takeoffs it sits in the tab's title row with a bid behind it, so a sheet's fixtures can land on
+ * the takeoff. On the Parts Book it has no bid: a house's general list, part prices only.
  */
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { supabase } from '../../lib/supabase'
+import { loadPartsCatalog } from '../../lib/materials/partsCatalog'
 import { loadBidAskedHouseIds } from '../../lib/materials/priceSheet/priceRowIo'
-import { findSheetByHash, listSheets, saveSheet, type SheetSummary } from '../../lib/materials/priceSheet/priceSheetIo'
+import { findSheetByHash, findSheetByNumber, listSheets, loadSheet, saveSheet, type SheetSummary } from '../../lib/materials/priceSheet/priceSheetIo'
 import { allRows, parsePasted } from '../../lib/materials/priceSheet/pastedRow'
 import { shortDay } from '../../lib/materials/priceSheet/rowCard'
 import { houseVerdict, letterheadHouse, sheetHeader } from '../../lib/materials/priceSheet/sheetHouse'
+import { revisionWords, sheetRevision } from '../../lib/materials/priceSheet/sheetPlan'
 import { readSheetFile, sha256Hex } from '../../lib/materials/priceSheet/sheetText'
-import type { KnownPart } from '../materials/PriceRowCardView'
-import { PRICE_SHEET_DOCK_MIN_WINDOW, PRICE_SHEET_DOCK_WIDTH, PriceSheetPanel, type PriceSheetRowOffer, type PriceSheetTakeoff } from '../materials/PriceSheetPanel'
-import { QuickPriceWindow } from '../materials/QuickPriceWindow'
+import type { KnownPart } from './PriceRowCardView'
+import { PRICE_SHEET_DOCK_MIN_WINDOW, PRICE_SHEET_DOCK_WIDTH, PriceSheetPanel, type PriceSheetRowOffer, type PriceSheetTakeoff } from './PriceSheetPanel'
+import { QuickPriceWindow } from './QuickPriceWindow'
+import { EmptyState } from '../EmptyState'
 
 type House = { id: string; name: string }
 type OpenSheet = { paperId: string; firstRead: { letterhead: { houseId: string | null; printed: string | null } | null; fileName: string | null } | null }
@@ -24,7 +30,7 @@ const isTyping = (el: EventTarget | null): boolean => {
   return !!node && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.tagName === 'SELECT' || node.isContentEditable)
 }
 
-export function TakeoffPriceSheetDoor({
+export function PriceSheetDoor({
   bid,
   serviceTypeId,
   supplyHouses,
@@ -34,18 +40,36 @@ export function TakeoffPriceSheetDoor({
   onRowOffers,
   placeRef,
 }: {
-  bid: { id: string; label: string }
+  /** The bid the sheets are for. Without one, a sheet files part prices only. */
+  bid?: { id: string; label: string } | null
   serviceTypeId: string
-  supplyHouses: House[]
-  knownParts: KnownPart[]
-  /** The book's prices may have moved: the takeoff reads its catalog prices again. */
+  /** The supply houses and the book's parts, when the caller already holds them. Left out, the door reads them itself. */
+  supplyHouses?: House[]
+  knownParts?: KnownPart[]
+  /** The book's prices may have moved: the caller reads its prices again. */
   onBookChanged: () => void
   /** What the panel needs to put a sheet's fixture on this bid (PR 6). */
-  takeoff: PriceSheetTakeoff
+  takeoff?: PriceSheetTakeoff
   /** The open sheet's ready fixtures, by the bid's row: Takeoffs draws each on its own row. */
-  onRowOffers: (offers: PriceSheetRowOffer[]) => void
-  placeRef: MutableRefObject<((groupId: string) => void) | null>
+  onRowOffers?: (offers: PriceSheetRowOffer[]) => void
+  placeRef?: MutableRefObject<((groupId: string) => void) | null>
 }) {
+  const [loadedHouses, setLoadedHouses] = useState<House[]>([])
+  const [loadedParts, setLoadedParts] = useState<KnownPart[] | null>(null)
+  const houses = supplyHouses ?? loadedHouses
+  const parts = knownParts ?? loadedParts ?? []
+  const [listOpen, setListOpen] = useState(false)
+
+  useEffect(() => {
+    if (supplyHouses) return
+    let cancelled = false
+    void supabase.from('supply_houses').select('id,name').order('name').then(({ data }) => {
+      if (!cancelled) setLoadedHouses((data ?? []) as House[])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [supplyHouses])
   const [menuOpen, setMenuOpen] = useState(false)
   const [quickPrice, setQuickPrice] = useState<{ text: string } | null>(null)
   const [openSheet, setOpenSheet] = useState<OpenSheet | null>(null)
@@ -55,9 +79,9 @@ export function TakeoffPriceSheetDoor({
   const [dragging, setDragging] = useState(false)
   const [wide, setWide] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= PRICE_SHEET_DOCK_MIN_WINDOW))
   const fileInput = useRef<HTMLInputElement>(null)
-  const bidId = bid.id
+  const bidId = bid?.id ?? null
 
-  const refreshSheets = useCallback(async () => setSheets(await listSheets(supabase, { bidId })), [bidId])
+  const refreshSheets = useCallback(async () => setSheets(await listSheets(supabase, bidId ? { bidId } : {})), [bidId])
   useEffect(() => {
     setOpenSheet(null)
     setNote(null)
@@ -69,6 +93,23 @@ export function TakeoffPriceSheetDoor({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // The Parts Book holds one page of parts at a time: a sheet needs them all, read once when one opens.
+  const needsParts = openSheet != null && !knownParts && loadedParts == null
+  useEffect(() => {
+    if (!needsParts || !serviceTypeId) return
+    let cancelled = false
+    loadPartsCatalog<KnownPart>(supabase, serviceTypeId, 'id,name,manufacturer,is_robot')
+      .then((rows) => {
+        if (!cancelled) setLoadedParts(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setNote({ tone: 'problem', text: 'The parts book could not be read, so nothing on the sheet could be matched. Open the sheet again.' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [needsParts, serviceTypeId])
 
   // Docked, the drawer takes the right of the window and the page keeps its width beside it.
   const docked = wide
@@ -102,19 +143,25 @@ export function TakeoffPriceSheetDoor({
           return
         }
       }
-      const letterhead = letterheadHouse(text, supplyHouses)
-      const asked = await loadBidAskedHouseIds(supabase, bidId)
-      const verdict = houseVerdict({ houses: supplyHouses, letterhead, askedHouseIds: asked })
-      const saved = await saveSheet(supabase, { sheet: parsed, header: sheetHeader(text), supplyHouseId: verdict.sure ? verdict.houseId : null, bidId, sha256: from.sha256, pages: from.pages })
+      const letterhead = letterheadHouse(text, houses)
+      const asked = bidId ? await loadBidAskedHouseIds(supabase, bidId) : []
+      const verdict = houseVerdict({ houses, letterhead, askedHouseIds: asked })
+      const header = sheetHeader(text)
+      // A quote with the same number from the same house, read before: this is a later copy, and it says what moved.
+      const earlier = verdict.sure && verdict.houseId ? await findSheetByNumber(supabase, verdict.houseId, header.number) : null
+      const earlierRead = earlier ? await loadSheet(supabase, earlier.id) : null
+      const saved = await saveSheet(supabase, { sheet: parsed, header, supplyHouseId: verdict.sure ? verdict.houseId : null, bidId, sha256: from.sha256, pages: from.pages })
       if (!saved.ok) {
         setNote({ tone: 'problem', text: saved.error })
         return
       }
-      setNote(null)
+      if (earlier && earlierRead?.ok && earlierRead.sheet) {
+        setNote({ tone: 'info', text: revisionWords(sheetRevision(earlierRead.sheet.lines, rows), header.number, shortDay(earlier.createdAt.slice(0, 10))) })
+      } else setNote(null)
       setOpenSheet({ paperId: saved.paperId, firstRead: { letterhead, fileName: from.fileName } })
       void refreshSheets()
     },
-    [supplyHouses, bidId, refreshSheets],
+    [houses, bidId, refreshSheets],
   )
 
   const startFromFile = useCallback(
@@ -172,7 +219,7 @@ export function TakeoffPriceSheetDoor({
     }
   }, [startFromFile, startFromText])
 
-  const houseName = (id: string | null) => supplyHouses.find((h) => h.id === id)?.name ?? 'A'
+  const houseName = (id: string | null) => houses.find((h) => h.id === id)?.name ?? 'A'
   const waiting = sheets.filter((s) => s.waiting > 0 && s.paper.id !== openSheet?.paperId)
   const item = { display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', width: '100%', textAlign: 'left' as const, padding: '0.45rem 0.6rem', background: 'none', border: 'none', borderRadius: 5, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem', color: 'var(--text-base)' }
 
@@ -212,7 +259,7 @@ export function TakeoffPriceSheetDoor({
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>a row, or a call</span>
             </button>
             {sheets.length > 0 ? <div style={{ borderTop: '1px solid var(--border)', margin: '3px 0' }} /> : null}
-            {sheets.slice(0, 6).map((s) => (
+            {sheets.slice(0, bidId ? 6 : 4).map((s) => (
               <button key={s.paper.id} type="button" role="menuitem" style={item} onClick={() => { setMenuOpen(false); setOpenSheet({ paperId: s.paper.id, firstRead: null }) }}>
                 <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                   {houseName(s.paper.supplyHouseId)}
@@ -221,9 +268,60 @@ export function TakeoffPriceSheetDoor({
                 <span style={{ color: s.waiting ? 'var(--text-amber-800)' : 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{s.waiting ? (s.waiting === 1 ? '1 waits' : `${s.waiting} wait`) : `${s.filed} filed`}</span>
               </button>
             ))}
+            {!bidId || sheets.length > 6 ? (
+              <button type="button" role="menuitem" style={{ ...item, color: 'var(--text-link)' }} onClick={() => { setMenuOpen(false); setListOpen(true) }}>
+                All price sheets…
+              </button>
+            ) : null}
           </div>
         ) : null}
       </span>
+      {listOpen ? (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div role="dialog" aria-modal="true" aria-label="Price sheets" style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(820px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1.25rem 1.5rem', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Price sheets</h2>
+              <button type="button" onClick={() => setListOpen(false)} style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+            {sheets.length === 0 ? (
+              <EmptyState compact main="Nothing waiting on a price sheet." tail="Drop a supply house's quote on this tab to read one." />
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.3rem 0.5rem' }}>Supply house</th>
+                    <th style={{ padding: '0.3rem 0.5rem' }}>Quote</th>
+                    <th style={{ padding: '0.3rem 0.5rem' }}>For</th>
+                    <th style={{ padding: '0.3rem 0.5rem' }}>Read</th>
+                    <th style={{ padding: '0.3rem 0.5rem' }}>Rows</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sheets.map((s) => (
+                    <tr key={s.paper.id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{s.paper.supplyHouseId ? houseName(s.paper.supplyHouseId) : 'Not settled yet'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{s.paper.number || '—'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', overflowWrap: 'anywhere' }}>{s.bidLabel ?? 'No bid'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{shortDay(s.paper.createdAt.slice(0, 10))}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
+                        {s.filed} of {s.rows} filed{s.waiting ? ` · ${s.waiting === 1 ? '1 waits' : `${s.waiting} wait`}` : ''}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
+                        <button type="button" onClick={() => { setListOpen(false); setOpenSheet({ paperId: s.paper.id, firstRead: null }) }} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                          Open
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      ) : null}
       <input
         ref={fileInput}
         type="file"
@@ -246,7 +344,7 @@ export function TakeoffPriceSheetDoor({
       {dragging ? (
         <div style={{ position: 'fixed', inset: 12, zIndex: 1500, pointerEvents: 'none', border: '3px dashed #2563eb', borderRadius: 14, background: 'rgba(37, 99, 235, 0.08)', display: 'grid', placeItems: 'center' }}>
           <span style={{ background: 'var(--surface)', color: 'var(--text-blue-700)', padding: '0.8rem 1.2rem', borderRadius: 10, fontWeight: 700, boxShadow: '0 8px 24px rgba(0,0,0,0.16)' }}>
-            Drop it to read it for {bid.label}
+            {bid ? `Drop it to read it for ${bid.label}` : 'Drop it to read it'}
           </span>
         </div>
       ) : null}
@@ -257,7 +355,7 @@ export function TakeoffPriceSheetDoor({
             onBookChanged()
           }}
           serviceTypeId={serviceTypeId}
-          bid={bid}
+          bid={bid ?? null}
           supplyHouses={supplyHouses}
           knownParts={knownParts}
           initialText={quickPrice.text}
@@ -266,10 +364,10 @@ export function TakeoffPriceSheetDoor({
       {openSheet ? (
         <PriceSheetPanel
           paperId={openSheet.paperId}
-          bid={bid}
+          bid={bid ?? null}
           serviceTypeId={serviceTypeId}
-          supplyHouses={supplyHouses}
-          knownParts={knownParts}
+          supplyHouses={houses}
+          knownParts={parts}
           firstRead={openSheet.firstRead}
           docked={docked}
           takeoff={takeoff}

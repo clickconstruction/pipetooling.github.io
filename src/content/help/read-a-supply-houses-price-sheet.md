@@ -100,9 +100,25 @@ Every price the sheet filed returns to what it was. A price someone changed sinc
 
 The sheet itself stays. You can settle it and file it again.
 
+## A sheet with no bid
+
+A supply house may send its general price list. It is not for one bid.
+
+Open **Materials → Parts Book** and press {{button:gray|Price sheet ▾}}, or drop the file there.
+
+The sheet works the same way. It files part prices only. No fixture is placed, and no assembly is made.
+
+## Find a sheet again
+
+Press {{button:gray|Price sheet ▾}} and then **All price sheets…**. The list shows every sheet, with how many rows are filed and how many wait.
+
+Press **Open** on a sheet to carry on where it was left.
+
 ## A sheet you already read
 
 Drop the same file again and the app opens the read you already have. It does not read the sheet twice.
+
+A house may send a later copy of the same quote. The app reads it as a new sheet and says what moved. The line counts the prices that changed and the rows that are new or gone.
 
 ## What it cannot read yet
 

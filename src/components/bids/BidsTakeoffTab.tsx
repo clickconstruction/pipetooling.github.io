@@ -39,7 +39,7 @@ import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
-import { TakeoffPriceSheetDoor } from './TakeoffPriceSheetDoor'
+import { PriceSheetDoor } from '../materials/PriceSheetDoor'
 import type { PriceSheetRowOffer, PriceSheetTakeoff } from '../materials/PriceSheetPanel'
 import { TakeoffViewChooser } from './TakeoffViewChooser'
 import { RfqComposeModal } from './RfqComposeModal'
@@ -1731,7 +1731,7 @@ export function BidsTakeoffTab({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {/* v2.4416 (owner): the view pills ride the right end of the title row, beside Print. */}
-                  <TakeoffPriceSheetDoor
+                  <PriceSheetDoor
                     bid={{ id: selectedBidForTakeoff.id, label: `BP${selectedBidForTakeoff.bid_number?.trim() || '?'} ${selectedBidForTakeoff.project_name?.trim() || ''}`.trim() }}
                     serviceTypeId={selectedServiceTypeId}
                     supplyHouses={supplyHouses}

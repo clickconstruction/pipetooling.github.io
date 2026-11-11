@@ -11,7 +11,7 @@ The app finds the part on file for you. Nothing is made twice.
 
 ## Paste a row
 
-1. On **Bids → Takeoffs**, press {{button:gray|Price sheet ▾}} and then **Paste a price**. On **Materials → Parts Book**, press **Paste a price**.
+1. Press {{button:gray|Price sheet ▾}} and then **Paste a price**. The button is at the top of **Bids → Takeoffs**, and on **Materials → Parts Book**.
 2. Pick the supply house. The houses this bid asked for prices come first.
 3. Paste the row into the box. You can also type it: the house's number, the words and the price.
 

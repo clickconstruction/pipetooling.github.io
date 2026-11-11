@@ -121,3 +121,29 @@ describe('a page of text items', () => {
     expect(sheet.groups[0]!.rows[0]).toMatchObject({ houseCode: '512207', lines: 2, page: 1 })
   })
 })
+
+describe('a later copy of a quote', () => {
+  const earlier = [
+    { houseCode: '512207', description: 'ARLO SUPPLY KIT', unitPrice: 18.4 },
+    { houseCode: '277310', description: 'TANNER PRE RINSE', unitPrice: 312.5 },
+    { houseCode: '', description: '3/4 FROSTPROOF WALL HYDRANT', unitPrice: 61.75 },
+    { houseCode: '440118', description: 'MISC CHARGE', unitPrice: null },
+    { houseCode: '655012', description: 'OLD ROW', unitPrice: 9 },
+  ]
+  it('counts what moved, what is new, what is gone and what is the same', async () => {
+    const { sheetRevision, revisionWords } = await import('./sheetPlan')
+    const rev = sheetRevision(earlier, [
+      { houseCode: '512-207', description: 'ARLO SUPPLY KIT (REV)', unitPrice: 18.4 },
+      { houseCode: '277310', description: 'TANNER PRE RINSE', unitPrice: 329 },
+      { houseCode: '', description: '3/4 Frostproof wall hydrant', unitPrice: 61.75 },
+      { houseCode: '440118', description: 'MISC CHARGE', unitPrice: null },
+      { houseCode: '702291', description: 'NORDIC COOLER', unitPrice: 1284 },
+    ])
+    expect(rev).toEqual({ changed: 1, added: 1, gone: 1, same: 3 })
+    expect(revisionWords(rev, 'Q-88213', 'Nov 6')).toBe('Q-88213 was read on Nov 6. This copy is later: 1 price changed, 1 row is new, 1 row is gone, and 3 rows are the same.')
+  })
+  it('says so when nothing moved', async () => {
+    const { sheetRevision, revisionWords } = await import('./sheetPlan')
+    expect(revisionWords(sheetRevision(earlier, earlier), '', 'Nov 6')).toBe('This quote was read on Nov 6. This copy is later: every row is the same.')
+  })
+})
