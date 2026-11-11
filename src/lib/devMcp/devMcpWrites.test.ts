@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
-import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, clockOpCommitment, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, clockOpCommitment, driveFilingRefusal, isWriteVerb, personDocCommitment, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { DEFAULT_JOB_LEDGER_PREFIX, formatJobLedgerNumberLabel } from '../ledgerDisplayPrefixes'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
@@ -1447,6 +1447,33 @@ describe('named documents on the HR file (v2.6613, punch list #277)', () => {
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: DOC, archive: true } })).toMatchObject({ ok: true, body: { p: { person_id: PERSON, doc_id: DOC, archive: true } } })
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: ' Interview guide ', markdown: '## Before the call', counsel_only: true } })).toMatchObject({
       ok: true, target: PERSON, body: { p: { person_id: PERSON, title: 'Interview guide', markdown: '## Before the call', counsel_only: true } } })
+  })
+
+  it('an archive planned at two different times hashes the same: the plan holds archived or not, never the dry run\'s own now() (v2.6948)', async () => {
+    // dev_person_doc_write's dry run answers document.archived_at with now() when the ask archives: with the stamp
+    // in the hash, the apply's second dry run could never match and no named document could be archived.
+    const payload = { person_id: PERSON, doc_id: DOC, archive: true }
+    const run = (stamp: string | null, before: string | null = null) => ({
+      dry_run: true,
+      person: { id: PERSON, name: 'Curly' },
+      kind: 'document',
+      document: { id: DOC, title: 'Interview guide', counsel_only: false, archived_at: stamp, source: null, evidence: null, source_before: null },
+      before: { exists: true, chars: 40, lines: 2, updated_at: '2026-11-07T20:00:00+00:00', author_label: 'Robert', covered_through: null },
+      after: { chars: 40, lines: 2 },
+      changes: [{ op: 'archive', before }],
+      sections: [],
+      author_label: 'Robert',
+    })
+    const planned = await planHash('plan_person_doc', payload, run('2026-11-11T18:27:31.104+00:00'))
+    expect(await planHash('apply_person_doc', payload, run('2026-11-11T18:27:39.870+00:00'))).toBe(planned)
+    expect(planCommitment('plan_person_doc', run('2026-11-11T18:27:31.104+00:00'))).toMatchObject({ document: { id: DOC, archived: true }, changes: [{ op: 'archive', before: null }] })
+    expect((planCommitment('plan_person_doc', run('x')) as { document: Record<string, unknown> }).document).not.toHaveProperty('archived_at')
+    // Still the world as the plan saw it: a document someone archived or restored since moves the hash both ways.
+    expect(await planHash('plan_person_doc', payload, run(null))).not.toBe(planned)
+    expect(await planHash('plan_person_doc', payload, run('2026-11-11T18:27:31.104+00:00', '2026-11-10T09:00:00+00:00'))).not.toBe(planned)
+    // The summary and the narrative name no document; the commitment says so the same way every run.
+    expect(planCommitment('plan_person_doc', { dry_run: true, kind: 'summary', document: null })).toEqual({ kind: 'summary', document: null })
+    expect(personDocCommitment(undefined)).toBeNull()
   })
 
   it('refuses two targets or none, a bad doc_id, a title over 160, a new title with no text or with archive, and the mark or archive on the fixed two', () => {

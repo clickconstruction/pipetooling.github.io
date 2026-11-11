@@ -8,6 +8,7 @@ import {
   activityNoteDryRun,
   activityNoteInput,
   activityNoteLands,
+  activityNotePlannedWrite,
   activityNoteRow,
   isActivityNoteVerb,
   noonInAppTz,
@@ -194,7 +195,7 @@ describe('readActivityNoteWorld — the reads', () => {
 describe('activityNoteDryRun — the plan', () => {
   it('says where the line lands, shows the latest lines, the row and what it does not do; the hash moves with a new line', async () => {
     const world = jobWorld([{ id: 'n1', at: '2026-11-08T10:00:00Z', by: 'Robert', text: 'x'.repeat(200) }])
-    const dry = activityNoteDryRun(p(), world, ME, TODAY, NOW)
+    const dry = activityNoteDryRun(p(), world, ME, TODAY)
     expect(dry.ok).toBe(true)
     if (!dry.ok) return
     expect(dry.reply).toMatchObject({
@@ -203,14 +204,14 @@ describe('activityNoteDryRun — the plan', () => {
       job: { id: JOB, label: 'JP1113' },
       reads: 'WC-1 carriers ordered today, PO 119.',
       by: 'Robert',
-      at: 'now',
+      at: 'the time of the apply',
       lands: expect.stringContaining("JP1113's Job activity / notes"),
       writes: { table: 'jobs_ledger_thread_notes', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.' } },
     })
     expect((dry.reply.latest as Array<{ text: string }>)[0]?.text).toHaveLength(161)
     expect(dry.reply.not_done).toEqual(expect.arrayContaining([expect.stringContaining('tells nobody')]))
     const h1 = await planHash('plan_activity_note', p(), dry.reply)
-    const later = activityNoteDryRun(p(), jobWorld([{ id: 'n2', at: NOW, by: 'Taunya', text: 'Landed.' }, ...world.latest]), ME, TODAY, NOW)
+    const later = activityNoteDryRun(p(), jobWorld([{ id: 'n2', at: NOW, by: 'Taunya', text: 'Landed.' }, ...world.latest]), ME, TODAY)
     expect(later.ok).toBe(true)
     if (!later.ok) return
     expect(await planHash('plan_activity_note', p(), later.reply)).not.toBe(h1)
@@ -219,11 +220,11 @@ describe('activityNoteDryRun — the plan', () => {
     expect(String(reply.next)).toContain('apply_activity_note')
   })
   it('stamps a past day at noon and refuses a day ahead of today', () => {
-    const dated = activityNoteDryRun(p({ on: '2026-11-01' }), jobWorld(), ME, TODAY, NOW)
+    const dated = activityNoteDryRun(p({ on: '2026-11-01' }), jobWorld(), ME, TODAY)
     expect(dated).toMatchObject({ ok: true, reply: { at: "2026-11-01 (noon, the app's calendar)", writes: { row: { created_at: '2026-11-01T18:00:00.000Z' } } } })
-    const bidDated = activityNoteDryRun(p({ job: undefined, bid: 'BP398', on: '2026-11-01' }), bidWorld(), ME, TODAY, NOW)
+    const bidDated = activityNoteDryRun(p({ job: undefined, bid: 'BP398', on: '2026-11-01' }), bidWorld(), ME, TODAY)
     expect(bidDated).toMatchObject({ ok: true, reply: { writes: { table: 'bids_submission_entries', row: { occurred_at: '2026-11-01T18:00:00.000Z', contact_method: null } } } })
-    expect(activityNoteDryRun(p({ on: '2026-11-10' }), jobWorld(), ME, TODAY, NOW)).toMatchObject({ ok: false, refused: expect.stringContaining('ahead of today') })
+    expect(activityNoteDryRun(p({ on: '2026-11-10' }), jobWorld(), ME, TODAY)).toMatchObject({ ok: false, refused: expect.stringContaining('ahead of today') })
   })
   it('names the bid’s Notes, or the GC line, and the apply says what landed and the read that lists it', () => {
     expect(activityNoteLands(bidWorld())).toContain("BP398's Notes (the bid's own)")
@@ -231,5 +232,75 @@ describe('activityNoteDryRun — the plan', () => {
     expect(activityNoteAppliedWords(jobWorld(), { id: 'n9', at: NOW })).toMatchObject({ note_id: 'n9', on: 'job', label: 'JP1113', at: NOW, next: expect.stringContaining('jobs_ledger_thread_notes by job_id') })
     expect(activityNoteAppliedWords(bidWorld(), { id: 'e9', at: null })).toMatchObject({ note_id: 'e9', on: 'bid', label: 'BP398', next: expect.stringContaining('bids_submission_entries by bid_id') })
     expect(alreadyApplied('apply_activity_note', { target: JOB, at: NOW })).toContain('the line is on the thread')
+  })
+})
+
+describe('the hash of an undated note — what the caller decided, never the moment of the dry run (v2.6948)', () => {
+  // The dry run once took its own clock as a fifth argument and put it in the bid row's occurred_at. Hand it one
+  // anyway: the plan and the apply's second dry run run seconds apart, and must hash the same.
+  const dryAt = (payload: ActivityNotePayload, world: ActivityNoteWorld, clock: string) => {
+    const dry = (activityNoteDryRun as unknown as (...args: unknown[]) => ReturnType<typeof activityNoteDryRun>)(payload, world, ME, TODAY, clock)
+    if (!dry.ok) throw new Error(dry.refused)
+    return dry.reply
+  }
+  const PLANNED = '2026-11-09T21:30:00.123Z'
+  const APPLIED = '2026-11-09T21:30:07.456Z'
+  const bidNote = () => p({ job: undefined, bid: 'BP398' })
+
+  it('gives one hash for the same undated bid note planned at two different times', async () => {
+    const first = await planHash('plan_activity_note', bidNote(), dryAt(bidNote(), bidWorld(), PLANNED))
+    const second = await planHash('apply_activity_note', bidNote(), dryAt(bidNote(), bidWorld(), APPLIED))
+    expect(second).toBe(first)
+    // About one GC on the bid, the same.
+    const gc = { id: GC, name: 'Dana Whitfield' }
+    const forGc = () => p({ job: undefined, bid: 'BP398', gc_customer_id: GC })
+    expect(await planHash('plan_activity_note', forGc(), dryAt(forGc(), bidWorld(gc), PLANNED))).toBe(await planHash('plan_activity_note', forGc(), dryAt(forGc(), bidWorld(gc), APPLIED)))
+    // A job's undated note never carried a stamp; it holds too.
+    expect(await planHash('plan_activity_note', p(), dryAt(p(), jobWorld(), PLANNED))).toBe(await planHash('plan_activity_note', p(), dryAt(p(), jobWorld(), APPLIED)))
+    // And across midnight: today only refuses a day ahead, it is not in the plan.
+    const before = activityNoteDryRun(bidNote(), bidWorld(), ME, '2026-11-09')
+    const after = activityNoteDryRun(bidNote(), bidWorld(), ME, '2026-11-10')
+    expect(before.ok && after.ok && JSON.stringify(before.reply) === JSON.stringify(after.reply)).toBe(true)
+  })
+  it('leaves the stamp out of the planned row and says which column the apply stamps', () => {
+    const bid = dryAt(bidNote(), bidWorld(), PLANNED)
+    expect(bid.at).toBe('the time of the apply')
+    expect(bid.writes).toEqual({
+      table: 'bids_submission_entries',
+      row: { bid_id: BID, gc_customer_id: null, notes: 'WC-1 carriers ordered today, PO 119.', contact_method: null, created_by: DEV },
+      stamped_at_apply: expect.stringContaining('occurred_at'),
+    })
+    const job = dryAt(p(), jobWorld(), PLANNED)
+    expect(job.writes).toEqual({ table: 'jobs_ledger_thread_notes', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.' }, stamped_at_apply: expect.stringContaining('created_at') })
+    // No instant of any kind in what an undated plan hashes: the thread's own lines are the only times, and there are none here.
+    expect(JSON.stringify(dryAt(bidNote(), { ...bidWorld(), latest: [] } as ActivityNoteWorld, PLANNED))).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:/)
+    expect(JSON.stringify(job)).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:/)
+  })
+  it('keeps a dated note whole: noon of its day comes from the payload, so it is in the row and in the hash', async () => {
+    const dated = (day: string) => p({ job: undefined, bid: 'BP398', on: day })
+    expect(activityNotePlannedWrite(dated('2026-11-01'), bidWorld(), ME)).toEqual({ table: 'bids_submission_entries', row: { bid_id: BID, gc_customer_id: null, notes: 'WC-1 carriers ordered today, PO 119.', contact_method: null, occurred_at: '2026-11-01T18:00:00.000Z', created_by: DEV } })
+    expect(activityNotePlannedWrite(p({ on: '2026-11-01' }), jobWorld(), ME)).toEqual({ table: 'jobs_ledger_thread_notes', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.', created_at: '2026-11-01T18:00:00.000Z' } })
+    const h1 = await planHash('plan_activity_note', dated('2026-11-01'), dryAt(dated('2026-11-01'), bidWorld(), PLANNED))
+    expect(await planHash('plan_activity_note', dated('2026-11-01'), dryAt(dated('2026-11-01'), bidWorld(), APPLIED))).toBe(h1)
+    expect(await planHash('plan_activity_note', dated('2026-11-02'), dryAt(dated('2026-11-02'), bidWorld(), PLANNED))).not.toBe(h1)
+  })
+  it('still moves with the words, the GC and a new line on the thread', async () => {
+    const base = await planHash('plan_activity_note', bidNote(), dryAt(bidNote(), bidWorld(), PLANNED))
+    const other = p({ job: undefined, bid: 'BP398', text: 'Other words.' })
+    expect(await planHash('plan_activity_note', other, dryAt(other, bidWorld(), PLANNED))).not.toBe(base)
+    const forGc = p({ job: undefined, bid: 'BP398', gc_customer_id: GC })
+    expect(await planHash('plan_activity_note', forGc, dryAt(forGc, bidWorld({ id: GC, name: 'Dana Whitfield' }), PLANNED))).not.toBe(base)
+    const grown: ActivityNoteWorld = { ...bidWorld(), latest: [{ id: 'e2', at: APPLIED, by: 'Taunya', text: 'Landed.' }, ...bidWorld().latest] } as ActivityNoteWorld
+    expect(await planHash('plan_activity_note', bidNote(), dryAt(bidNote(), grown, PLANNED))).not.toBe(base)
+  })
+  it('stamps the undated row with the clock of the write, and the server hands the dry run no clock', () => {
+    expect(activityNoteRow(bidNote(), bidWorld(), ME, PLANNED).row).toMatchObject({ occurred_at: PLANNED })
+    expect(activityNoteRow(bidNote(), bidWorld(), ME, APPLIED).row).toMatchObject({ occurred_at: APPLIED })
+    expect(SERVER).toContain('const dry = activityNoteDryRun(p, world, me, todayYmdInAppTz())')
+    expect(SERVER).toContain('const write = activityNoteRow(p, world, me, new Date().toISOString())')
+    // The write is built after the hash matched and the one-apply check, never before.
+    const at = (needle: string) => SERVER.indexOf(needle, SERVER.indexOf("case 'apply_activity_note': {"))
+    expect(at('if (fresh !== built.planHash)')).toBeLessThan(at('const write = activityNoteRow('))
+    expect(at('hooks.priorApply(name, fresh)')).toBeLessThan(at('const write = activityNoteRow('))
   })
 })

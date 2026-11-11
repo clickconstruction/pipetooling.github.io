@@ -9,6 +9,11 @@
 // nobody: no email, text or push goes out; the feed shows the line to whoever opens the job or the bid. Pure: no env
 // reads, no network; the reads come in through the Reader so the tests run over a fake
 // (src/lib/devMcp/devMcpActivityNote.test.ts).
+//
+// The hash covers what the caller decided and the thread as the plan read it, never the moment of the dry run
+// (v2.6948): a note with no `on` is stamped when the apply writes it, so the plan's row leaves that column out and
+// names it under `stamped_at_apply`. Before, a bid note's planned row carried the dry run's own clock in
+// `occurred_at`, the apply's second dry run read a later clock, and no undated bid note could ever be applied.
 
 import { findBid, findJob, resolve, type Reader, type Row } from './devMcpComposites.ts'
 import type { RowFilter } from './devMcpDoor.ts'
@@ -196,7 +201,10 @@ export type ActivityNoteWrite =
   | { table: 'jobs_ledger_thread_notes'; select: 'id,created_at'; row: { job_id: string; author_user_id: string; body: string; created_at?: string } }
   | { table: 'bids_submission_entries'; select: 'id,occurred_at'; row: { bid_id: string; gc_customer_id: string | null; notes: string; contact_method: null; occurred_at: string; created_by: string } }
 
-/** The row the insert sends — the app's own payload, column for column (useJobThreadNotes / BidGcNotesPopover). */
+/**
+ * The row the insert sends — the app's own payload, column for column (useJobThreadNotes / BidGcNotesPopover). `now`
+ * is the clock of the write itself: the apply calls this after the hash matched, never the dry run.
+ */
 export function activityNoteRow(p: ActivityNotePayload, world: ActivityNoteWorld, me: { userId: string }, now: string): ActivityNoteWrite {
   const at = noonInAppTz(p.on_day)
   if (world.on === 'job') {
@@ -209,6 +217,29 @@ export function activityNoteRow(p: ActivityNotePayload, world: ActivityNoteWorld
     select: 'id,occurred_at',
     row: { bid_id: world.bid.id, gc_customer_id: world.gc?.id ?? null, notes: p.text, contact_method: null, occurred_at: at ?? now, created_by: me.userId },
   }
+}
+
+/** Which column the write stamps, and who stamps it, when the note names no day. */
+const STAMPED_AT_APPLY = {
+  jobs_ledger_thread_notes: 'created_at: the table stamps it when the row lands',
+  bids_submission_entries: 'occurred_at: the server stamps it when the apply writes the row',
+} as const
+
+export type ActivityNotePlannedWrite = { table: ActivityNoteWrite['table']; row: Json; stamped_at_apply?: string }
+
+/**
+ * The row as the plan shows it and the hash commits to it: the insert's row without the column the clock fills. A
+ * dated note's row is whole (noon of its day comes from the payload); an undated one leaves the stamp out and says
+ * which column the apply stamps. No clock comes in, so the same note planned twice reads the same.
+ */
+export function activityNotePlannedWrite(p: ActivityNotePayload, world: ActivityNoteWorld, me: { userId: string }): ActivityNotePlannedWrite {
+  const write = activityNoteRow(p, world, me, '')
+  if (noonInAppTz(p.on_day)) return { table: write.table, row: write.row }
+  if (write.table === 'bids_submission_entries') {
+    const { occurred_at: _stampedAtApply, ...row } = write.row
+    return { table: write.table, row, stamped_at_apply: STAMPED_AT_APPLY[write.table] }
+  }
+  return { table: write.table, row: write.row, stamped_at_apply: STAMPED_AT_APPLY[write.table] }
 }
 
 // ── the dry run ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -224,11 +255,11 @@ export function activityNoteLands(world: ActivityNoteWorld): string {
 /**
  * What the plan says and what the hash commits to: the job or the bid as it reads, the latest lines already there,
  * the row as it will land and where it shows. Refuses in words before anything is hashed when the day is ahead of
- * today.
+ * today. `today` only refuses; nothing of the clock reaches the reply, so the apply's second dry run hashes the same.
  */
-export function activityNoteDryRun(p: ActivityNotePayload, world: ActivityNoteWorld, me: { userId: string; name: string | null }, today: string, now: string): DryRun {
+export function activityNoteDryRun(p: ActivityNotePayload, world: ActivityNoteWorld, me: { userId: string; name: string | null }, today: string): DryRun {
   if (p.on_day && p.on_day > today) return { ok: false, refused: `on is ${p.on_day}, ahead of today (${today}): a note is about a day that has come. Leave it out for now, or name a day that has.` }
-  const write = activityNoteRow(p, world, me, now)
+  const write = activityNotePlannedWrite(p, world, me)
   const at = noonInAppTz(p.on_day)
   const reply: Json = {
     action: 'note',
@@ -238,10 +269,10 @@ export function activityNoteDryRun(p: ActivityNotePayload, world: ActivityNoteWo
       : { bid: { id: world.bid.id, label: world.bid.label, project_name: world.bid.projectName, outcome: world.bid.outcome }, gc: world.gc }),
     reads: p.text,
     by: me.name ?? 'you',
-    at: at ? `${p.on_day} (noon, the app's calendar)` : 'now',
+    at: at ? `${p.on_day} (noon, the app's calendar)` : 'the time of the apply',
     lands: activityNoteLands(world),
     latest: world.latest.map((l) => ({ id: l.id, at: l.at, by: l.by, text: l.text.length > 160 ? `${l.text.slice(0, 160)}…` : l.text })),
-    writes: { table: write.table, row: write.row },
+    writes: write,
     not_done: [
       'tells nobody: no email, text or push goes out; the line waits in the app for whoever opens the job or the bid',
       world.on === 'job' ? "the customer's own thread, a text or an email to them: the job window's Note · Text · Email" : 'a call or an email logged against the GC (contact_method): the Bid Board\'s Log contact',

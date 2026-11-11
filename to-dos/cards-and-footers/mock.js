@@ -12,6 +12,11 @@
     all('[data-footer]').forEach(function (el) { el.innerHTML = K.footer(people[el.dataset.footer]); });
     all('[data-back]').forEach(function (el) { el.innerHTML = K.cardBack(people[el.dataset.back], { guides: el.hasAttribute('data-guides') }); });
     all('[data-front]').forEach(function (el) { el.innerHTML = K.cardFront({ guides: el.hasAttribute('data-guides') }); });
+    /* a look's piece: data-look="look:footer|back|front:person" */
+    all('[data-look]').forEach(function (el) {
+      var parts = el.dataset.look.split(':');
+      el.innerHTML = K.draw(K.LOOKS[parts[0]][parts[1]], parts[2] ? people[parts[2]] : null);
+    });
     /* any layout by name: data-draw="layout:person", or "layout" alone for a piece with no person on it */
     all('[data-draw]').forEach(function (el) {
       var parts = el.dataset.draw.split(':');
