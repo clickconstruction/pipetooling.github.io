@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), the homestead hold is built on PR #7667 and waits on the owner's word
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), that print press names each paper that takes a second sheet (v2.6930), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), the homestead hold is built on PR #7667 and waits on the owner's word
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -152,7 +152,8 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    Since v2.6896 a line under the print press says when a paper takes a second sheet and that its
    closing moved there whole. Since v2.6918 two presses under the redraw bar finish a re-issue:
    **Send N for approval…** for every drafted paper, **Print N for notarization** for every ready one
-   on the short form.
+   on the short form. Since v2.6930 the print bar names each paper of the run that takes a second
+   sheet, by its job, with the line its own Lien window shows. The press still prints every paper.
 2. **The § 53.254(f) notice on a homestead** (S). Shipped as v2.6884
    (`docs/recent-features/v2.6884.md`): on a property marked homestead the short form opens with the
    notice above the title, bold at 12 point. The paper side only; the desk still holds every
@@ -202,8 +203,9 @@ live, checked read only on clicktooling.com.
   filed paper stores its own fields. A hold changes which pile a paper sits in, never its words.
 - **What is live to build on:** the short form (v2.6855), the one-press redraw (v2.6867), the
   homestead notice on the paper (v2.6884), one-sheet printing (v2.6895), the page-count line under
-  the Lien window's print press (v2.6896), and the Affidavits list's **Send N for approval…** and
-  **Print N for notarization** (v2.6918). Each `docs/recent-features/v2.NNNN.md` says how.
+  the Lien window's print press (v2.6896), the Affidavits list's **Send N for approval…** and
+  **Print N for notarization** (v2.6918), and the second-sheet line under that print press
+  (v2.6930). Each `docs/recent-features/v2.NNNN.md` says how.
 - **The hold's words** go where the gates already speak: the gate list on the Affidavits pane
   and the Lien window's affidavit tab, which draws no paper while a gate is closed.
 
@@ -214,3 +216,10 @@ live, checked read only on clicktooling.com.
   makes the desk stricter, and before the 16th it would take ready papers out of Ready.
 - **The 13 affidavits approved on the earlier form: leave them, or redraw them?** Decided
   2026-11-10: redraw them, they go out on the short form.
+- **Should the leader's phone buzz when an affidavit is sent for his approval?** Open, found
+  2026-11-11. A notice sent for approval tells him: his phone, or an email
+  (`tellLeaderOfLienApproval`, v2.4872). An affidavit does not. Neither the pane's **Send for
+  approval ▸** nor the list's **Send N for approval…** makes that call, so the paper waits in his
+  queue until he opens the desk or the Dashboard. A yes is not a one-line change:
+  `notify-lien-approval` writes its words from a notice's claim, so it needs an affidavit's words
+  and a redeploy, and a batch of twelve should buzz once, not twelve times. Nothing was changed.
