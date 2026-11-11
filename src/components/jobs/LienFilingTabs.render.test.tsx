@@ -282,6 +282,19 @@ describe('LienFilingTabs · the affidavit prints on the short form (punch list #
   const paper = () => document.body.textContent ?? ''
   const gcProps = { job: sub, activeTab: 'affidavit' as const, isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' }
 
+  it('a GC whose row was read with no address holds the paper: the gate says so and nothing is drawn (punch list #305)', () => {
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, originalContractorAddress: '', originalContractorAddressRead: true })} />)
+    expect(paper()).toContain('✗ The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)')
+    expect(paper()).not.toContain('Claimant did so under a contract with')
+    expect(paper()).not.toContain('The claim it swears:')
+  })
+
+  it('a GC row not read yet holds nothing, and a job contracted with the owner names no GC', () => {
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, originalContractorAddress: '' })} />)
+    expect(paper()).toContain("✓ The general contractor's last known address")
+    expect(paper()).toContain('The claim it swears:')
+  })
+
   it('a job under a GC: the months and the notice come from the record, and nothing prints above the title', () => {
     renderWithProviders(<LienFilingTabs {...props(gcProps)} />)
     expect(paper()).toContain('Claimant did so under a contract with Harborline Builders, 9 Yard St, Devine TX 78016, the original contractor.')

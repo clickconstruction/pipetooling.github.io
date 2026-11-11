@@ -34,6 +34,14 @@ describe('lienPaperGaps (v2.4632)', () => {
     ])
     expect(withGapTokens({ county: 'Bexar' }, gaps)).toEqual({ county: 'Bexar' })
   })
+  it("a GC with no address on file is a blank on the form, fixed on its customer record (punch list #305)", () => {
+    const gaps = lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'contractor', ok: false }] })
+    expect(gaps.map((g) => [g.n, g.key, g.where, g.fix, g.fixWords, g.field ?? null])).toEqual([[1, 'gc_address', 'form', 'customer', 'Add it on the customer record', 'originalContractorAddress']])
+    expect(withGapTokens({ originalContractorAddress: '' }, gaps)).toEqual({ originalContractorAddress: '⟦GAP:1⟧' })
+    // No GC named at all is the older blank, the job's own pick; the address is not asked twice.
+    expect(lienPaperGaps('affidavit', { ...whole, gcName: '', affidavitGates: [{ key: 'contractor', ok: false }] }).map((g) => g.key)).toEqual(['gc'])
+    expect(lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'contractor', ok: true }] })).toEqual([])
+  })
   it('the tokens ride inside the fields and paint as numbered marks in the HTML; the envelope token paints the same way', () => {
     const gaps = lienPaperGaps('affidavit', { ...whole, county: '', legalDescription: '' })
     const fields = withGapTokens({ county: 'x', legalDescription: 'y', ownerName: 'kept' }, gaps)

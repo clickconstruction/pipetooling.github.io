@@ -83,6 +83,7 @@ export default function LienDeskAffidavitPane({
   onChanged,
   onOpenEditJob,
   onFixProperty,
+  onFixContractor,
   onOpenJob,
   onOpenLienAffidavit,
   onOpenLegalDesk,
@@ -109,6 +110,8 @@ export default function LienDeskAffidavitPane({
   onOpenEditJob: (jobId: string) => void
   /** Fill in the property record in a window over the desk (v2.4724); without it the gate's door opens Edit Job. */
   onFixProperty?: (jobId: string, focus: 'owner' | 'legal') => void
+  /** The general contractor's customer record, where its address is typed (punch list #305); without it the gate is words alone. */
+  onFixContractor?: (gcCustomerId: string) => void
   /** The heading's job number opens the job itself (v2.4535). */
   onOpenJob?: (jobId: string) => void
   /** The Lien window on its affidavit tab — print for notarization, file, record. */
@@ -288,6 +291,10 @@ export default function LienDeskAffidavitPane({
       'Redrawn on the short form. It is back in To draft and needs approval again.',
     )
 
+  // The door on the contractor's-address gate (punch list #305): the GC's own customer record.
+  const contractorGcId = entry.gcCustomerId
+  const contractorDoor = onFixContractor && contractorGcId ? () => onFixContractor(contractorGcId) : null
+
   // ---------- footer ----------
   let footer: React.ReactNode = null
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
@@ -405,7 +412,7 @@ export default function LienDeskAffidavitPane({
               if ((step.kind !== 'affidavit' && step.kind !== 'serve') || step.state === 'done' || step.state === 'missed') return null
               const gate = entry.gates.find((g) => !g.ok) ?? null
               if (!gate) return null
-              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : null
+              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
               return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
             }}
           />
@@ -417,8 +424,9 @@ export default function LienDeskAffidavitPane({
           {entry.gates.map((g) => (
             <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
-              <span>{g.label}{g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}{g.key === 'legal' && property.county ? ` — ${property.county}` : ''}</span>
+              <span>{g.label}{g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}{g.key === 'legal' && property.county ? ` — ${property.county}` : ''}{g.key === 'contractor' && entry.isSub && gc?.name ? ` — ${gc.name}` : ''}</span>
               {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => (onFixProperty ? onFixProperty(entry.jobId, g.key === 'owner' ? 'owner' : 'legal') : onOpenEditJob(entry.jobId))} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{onFixProperty ? 'Fill in the record ›' : 'Property record ›'}</button> : null}
+              {!g.ok && g.key === 'contractor' && contractorDoor ? <button type="button" data-lien-affidavit-contractor-door onClick={contractorDoor} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Add the address ›</button> : null}
               {!g.ok && g.key === 'notice' ? <button type="button" onClick={() => onShowNotices(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Send the notice first ›</button> : null}
             </div>
           ))}

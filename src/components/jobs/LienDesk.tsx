@@ -165,7 +165,7 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
-import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -205,6 +205,8 @@ export type LienDeskProps = {
   onOpenEditJob: (jobId: string, focus?: 'property-record' | 'gc' | 'lien-contract') => void
   /** A plain value's door to Settings → Company (v2.3697): the claimant's name or address, landed on and ringed. */
   onOpenCompanySettings?: (field: 'companyName' | 'addressText') => void
+  /** A customer's own record, to edit (punch list #305): where a general contractor's address is typed when an affidavit holds for it. */
+  onOpenCustomerRecord?: (customerId: string) => void
   /** The send door until the run ships: the Lien window on its notice tab. */
   onOpenLienInstruments: (jobId: string) => void
   /** Affidavits (v2.3412): the Lien window on its affidavit tab — print for notarization, file, record. */
@@ -358,6 +360,7 @@ export default function LienDesk({
   aimKey,
   onPutGcOnNotice,
   onOpenCompanySettings,
+  onOpenCustomerRecord,
   layout = 'columns',
   onOpenNotice,
   onShowList,
@@ -2815,7 +2818,7 @@ export default function LienDesk({
               const j = data?.jobsById[e.jobId]
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
               const sel = e.jobId === affSelected?.jobId
-              const missing = e.gates.filter((x) => !x.ok).map((x) => x.key)
+              const missing = e.gates.filter((x) => !x.ok).map((x) => affidavitGateMissingWord(x.key))
               return (
                 <button
                   key={e.jobId}
@@ -2871,6 +2874,7 @@ export default function LienDesk({
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
         onFixProperty={office ? (jobId, focus) => setPaneFix({ jobId, focus }) : undefined}
+        onFixContractor={office ? onOpenCustomerRecord : undefined}
         onOpenJob={onOpenJob}
         ownerCall={data.ownerCallByJob[affSelected.jobId] ?? null}
         bond={parsePaymentBond(data.jobsById[affSelected.jobId]?.lien_payment_bond)}
