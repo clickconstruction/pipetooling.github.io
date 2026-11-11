@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in five PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -88,7 +88,7 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 ## Left
 
 - **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again. The customer's one job that was off the deal was put on it and its bill recorded in kind the same day, on the owner's word.
-- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips, the Customers list's open balance. Each has its own row list and select.
+- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips. Each has its own row list and select. (The Customers list's open balance is split since v2.6845.)
 - **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. Still open beside them: the Pay speeds window's **By customer** list colours a deal's bill late, and the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips.
 - **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
@@ -110,4 +110,4 @@ Walked on prod on 2026-11-10 from a dev server against a customer named *ZZ Test
 
 ## The live case
 
-The landlord customer's record is the live case: fifteen bills, fourteen In kind payments, $14,643.46 open as of 2026-11-09, and November 2026's credit not entered as of 2026-11-10. The mock-up uses made-up names and amounts.
+The landlord customer's record is the live case: fifteen bills, fourteen In kind payments, $14,643.46 open as of 2026-11-09, and November 2026's credit of $1,000 entered on 2026-11-10 through *Enter it early*. The mock-up uses made-up names and amounts.

@@ -120,6 +120,8 @@ describe('lienFootBlockedSentence (v2.4797)', () => {
     expect(lienAffidavitFootBlockedSentence({ key: 'legal', label: '' })).toBe("Don't file yet. Add the county and the legal description on the property record first.")
     expect(lienAffidavitFootBlockedSentence({ key: 'notice', label: '' })).toBe("Don't file yet. Send the § 53.056 notice first. A late one counts while this window is open.")
     expect(lienAffidavitFootBlockedSentence({ key: 'homestead', label: '' })).toContain('§ 53.254')
+    expect(lienAffidavitFootBlockedSentence({ key: 'contractor', label: '' })).toBe("Don't file yet. Add the general contractor's address on its customer record first.")
+    expect(lienAffidavitGateShortWords({ key: 'contractor' })).toBe('no address for the general contractor')
     expect(lienAffidavitFootBlockedSentence(null)).toBe("Don't file yet. Clear what the gates show first.")
     expect(lienAffidavitGateShortWords({ key: 'legal' })).toBe('county or legal description missing')
   })

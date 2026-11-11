@@ -5,7 +5,7 @@ file: docs/TAKEOFFS_REFRESH_PLAN.md
 type: Plan
 purpose: Build plan for the Bids → Takeoffs refresh: keep today's tab as "Old", ship the owner-picked mockups B ("One fixture at a time") as "New 1" and C ("Cost rail") as "New 2" behind per-device pills, on one shared substrate (coverage, a book that learns, fixture history, the RFQ door), then retire Old the way Counts / Pricing / Cover Letter did in v2.2707.
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-11-11
 key_sections:
   - name: "Status"
   - name: "Why (ground truth, 2026-09-04)"
@@ -197,4 +197,4 @@ Old retires (PR 8) when, over one week of real use: every bid costed that week w
 
 ## Out of scope (say no unless re-asked)
 
-By Stage retirement or port; a server-side part search (`ilike`) — revisit if the catalog passes ~5k parts; a near-duplicate guard on Add Part (worth its own small PR, not part of this train); purchase-order generation from Combined takeoffs (0 uses since June).
+By Stage retirement or port; a server-side part search (`ilike`) — revisit if the catalog passes ~5k parts; a near-duplicate guard on Add Part (worth its own small PR, not part of this train; built as v2.6898, punch list #308 PR 1); purchase-order generation from Combined takeoffs (0 uses since June).

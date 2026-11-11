@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; PeopleContractsTab dossiers; PeopleOverheadTab dossiers; Stage-A candidates; Test coverage; Cross-surface duplication; Recommended extraction order; What must stay in the parents; Preserve-quirks list; Recent churn
-last_updated: 2026-10-09
+last_updated: 2026-11-11
 ---
 
 ## What this surface is
@@ -160,7 +160,7 @@ Stage A is **largely done** for this tab — the calc core lives in tested libs:
 - **Loading flags:** effects 2–5 each drive one flag: `overheadSessionsLoading` (228), `overheadOtherJobsSessionsLoading` (268), `overheadOfficePartsLoading` (249) and `overheadOtherJobsPartsLoading` (272). Only the day table's combined gate (1554) reads them.
 - **Error surfacing:** `overheadLoadErrorBySource` (353) via `reportOverheadLoadError` / `clearOverheadLoadError` (355–370) — per-source red banner (render 1205–1224) **and** forwarded to the page-level `setError` prop.
 - **Memos:** `overheadWageInputsKey` + `overheadWageLookup` (690–709, JSON content key so identity survives pay-config refetches), `overheadLabor` / `overheadOtherJobsLabor` (818–840), `overheadOfficePartsUsdByDay` / `overheadOtherJobsPartsUsdByDay` (845–861, Internal Transfers excluded), `overheadMergedByDay` (863–879), `overheadTableTotals` (890–916, column sums — untested), `overheadTableColCount` (918, 4 simple / 7 advanced).
-- **Supabase:** `clock_sessions`, `people`, `jobs_ledger`; inside libs: `app_settings`, Mercury allocations, supply invoices, tally parts, drag-sort labels.
+- **Supabase:** `clock_sessions`, `people`, `jobs_ledger`; inside libs: `app_settings`, Mercury allocations, supply invoices, tally parts, drag-sort labels, and since v2.6836 `in_kind_lines` (source `in_kind`, *given in kind*: a live line on no job or on the office job, on its `given_on` day).
 
 ### 90-day snapshot (effect 711–787 → `loadOverheadPoolSnapshot`)
 

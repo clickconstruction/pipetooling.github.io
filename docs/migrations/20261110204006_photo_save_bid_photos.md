@@ -9,3 +9,5 @@ What the photo sweep needs from the database to file a bid's photos (v2.6856). N
 The bed `npm run test:pg:bid-photos` applies it twice and reads the cron back: one row, every five minutes, naming all ten sources.
 
 Apply order: after `20261110195527_bid_photos.sql`, which makes the table. Push both before `photo-save` and `bid-photos` deploy. Nothing on screen writes a `bid_photos` row until PR 3, so the clause finds nothing until then.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7576.

@@ -10,3 +10,5 @@ The dev MCP's dry-run wrapper for the review of theme marks already on the recor
 Held by `npm run test:pg:theme-review` (`supabase/tests/theme_review/`, in `scripts/sql-beds.txt`).
 
 Deploy order: push this migration, then deploy `dev-mcp` (server 0.59.0).
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7572.

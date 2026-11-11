@@ -15,6 +15,6 @@ Punch list #301, PR 1 of four: one place for work paid in kind. The ground under
 - Every function is SECURITY DEFINER, office only, answers `{ok, …}` or `{error}`, and is granted to `authenticated` and `service_role` by name.
 - The four fences close the file. Additive and idempotent; the push may come at any time after the merge.
 - **Bed**: `npm run test:pg:in-kind` (`supabase/tests/in_kind/`, in `scripts/sql-beds.txt`), 52 checks on the whole schema.
-- **Not here**: a combine of two jobs carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables; a deleted job's lines fall back to overhead and its link is cleared), and pay speed still counts an In kind payment (PR 2).
+- **Not here**: a combine of two jobs carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables; a deleted job's lines fall back to overhead and its link is cleared), and pay speed still counts an In kind payment (left for `20261110081541`, v2.6834).
 
 **Applied** to prod 2026-11-10, read the same day through `npm run check:migration-drift`: 1218 local files against 1218 remote versions, fully applied, this one among them.

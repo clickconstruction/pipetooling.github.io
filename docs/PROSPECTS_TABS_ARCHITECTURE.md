@@ -11,7 +11,7 @@ covers:
   - src/lib/prospects/ (the lanes' kernels: prospectKinds, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones)
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-11-11
 sections: What this surface is; Master summary table; Shared substrate; Per-tab dossiers; TeamProspectsTab sub-decomposition; Page-level modals; URL / navigation router; Test coverage by region; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order
 ---
 
@@ -36,7 +36,7 @@ activeTab: 'follow-up' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review' (TeamProspectsTab 803; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-One `?tab=` param selects both upper levels: `team` selects the Hiring tab (its label changed from Team to Hiring in v2.1253, and the key stayed `team`), and the four `PROSPECTS_TABS` values select the Customers sub-tabs. `?stage=` (+ `?rate=`) is applied once inside TeamProspectsTab and then stripped.
+One `?tab=` param selects both upper levels: `team` selects the Hiring tab (its label changed from Team to Hiring in v2.1253, and the key stayed `team`), `permits` (or the older `research`, rewritten to `permits`) selects the Permits tab, which `ProspectsResearchTab` draws whole and this map does not cover (PROJECT_DOCUMENTATION.md §17 holds its skim, lists, Find and count; since v2.6869 the page's padding for every tab comes from `prospectsPagePadding` in `src/lib/prospects/pagePadding.ts`, almost none on a phone), and the four `PROSPECTS_TABS` values select the Customers sub-tabs. `?stage=` (+ `?rate=`) is applied once inside TeamProspectsTab and then stripped.
 
 Access gates:
 - **`canAccessFollowUp`** (1983): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates Follow Up, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (1993–2001), except on the Permits tab since v2.6782 (`canResearchPermits`: the office and every estimator), where they land with no calling-deck tabs.

@@ -443,7 +443,7 @@ one count dropped from the kernel's copy disagreed on that line. The types and t
   `dev_on_site_write` (`docs/MATERIALS_ON_SITE_ARCHITECTURE.md` → The agent's door);
 - ~~a count recorded under the wrong job could not be moved~~ built 2026-11-09 as v2.6808: the seat's
   `plan_materials_move` → `apply_materials_move` moves everything a job holds on site to another job, every box
-  keeping its id and printed code; no office press yet, and the photos' Drive files stay put (#297);
+  keeping its id and printed code; no office press yet, and the photos' Drive files follow since v2.6885 (any change of job since v2.6915, #297);
 - ~~the Needs you line for stale containers and missing money~~ built 2026-11-08 as v2.6728: two lines on
   the office's Needs you card, the week's shortfalls with the parts book's money (amber) and the boxes not
   counted in 14 days (gray), each opening the desk or the one job that holds every row; ~~the Procure

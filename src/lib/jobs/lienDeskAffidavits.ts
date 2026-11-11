@@ -8,8 +8,12 @@ import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienD
  * date per job, the 15th of the 4th month after the LAST month worked (3rd
  * residential). Sub jobs need a recorded § 53.056 notice first; every job
  * needs the owner of record, the county and legal description, and must not
- * be a homestead (§ 53.254 — attorney territory). The same draft → approve →
- * file flow as notices; "sent" means the affidavit was filed with the clerk.
+ * be a homestead (§ 53.254 — attorney territory). A job under a general
+ * contractor also needs that contractor's address on file (punch list #305):
+ * § 53.054(a)(4) and (a)(5) ask for the hiring party's and the original
+ * contractor's last known address, as the app reads them, and on a job under
+ * a GC both are the GC. The same draft → approve → file flow as notices;
+ * "sent" means the affidavit was filed with the clerk.
  */
 
 export type LienAffidavitRow = {
@@ -27,6 +31,12 @@ export type LienAffidavitRow = {
   has_owner: boolean
   has_legal: boolean
   homestead: boolean
+  /**
+   * Whether the general contractor's customer row holds an address (punch list #305). Not from the RPC: the desk
+   * fills it from the GC rows it reads (`withContractorAddress`). Absent, nobody read the row and the gate does
+   * not judge, as on the firm's portal.
+   */
+  has_contractor_address?: boolean | null
   desk_item_id: string | null
   desk_status: string | null
   /** 'job_created' when the job has no approved hours and last_month is its creation month (v2.3747). Absent on an older RPC. */
@@ -45,7 +55,32 @@ export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label
   { key: 'missed', label: 'Missed' },
 ]
 
-export type LienAffidavitGate = { key: 'owner' | 'legal' | 'notice' | 'homestead'; ok: boolean; label: string }
+export type LienAffidavitGateKey = 'owner' | 'legal' | 'contractor' | 'notice' | 'homestead'
+
+export type LienAffidavitGate = { key: LienAffidavitGateKey; ok: boolean; label: string }
+
+/**
+ * The words of the contractor's-address gate, one place for the desk's list and the Lien window's tab (punch list
+ * #305). On a job under a general contractor the paper names that contractor as the hiring party and the original
+ * contractor, with its last known address (§ 53.054(a)(4) and (a)(5), the app's reading). On a job contracted with
+ * the owner the hiring party is the owner, whose mailing address the owner gate already needs, and the original
+ * contractor is our own company. `hasAddress` absent means nobody read the GC's row: the gate does not judge.
+ */
+export function contractorAddressGate(f: { isSub: boolean; hasAddress: boolean | null | undefined }): LienAffidavitGate {
+  if (!f.isSub) return { key: 'contractor', ok: true, label: 'No general contractor to name (contracted with the owner)' }
+  if (f.hasAddress === false) return { key: 'contractor', ok: false, label: 'The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)' }
+  return { key: 'contractor', ok: true, label: "The general contractor's last known address" }
+}
+
+/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address. */
+export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
+  return key === 'contractor' ? "the GC's address" : key
+}
+
+/** A row with the GC's address fact filled from the GC rows the desk read. A job with no GC is left as it was. */
+export function withContractorAddress<R extends Pick<LienAffidavitRow, 'gc_customer_id'>>(rows: ReadonlyArray<R>, gcAddressById: Readonly<Record<string, { address?: string | null } | undefined>>): Array<R & { has_contractor_address?: boolean | null }> {
+  return rows.map((r) => (r.gc_customer_id ? { ...r, has_contractor_address: Boolean((gcAddressById[r.gc_customer_id]?.address ?? '').trim()) } : { ...r }))
+}
 
 export type LienAffidavitEntry = {
   jobId: string
@@ -76,10 +111,11 @@ export type LienAffidavitQueue = {
 
 const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
 
-export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead'>): LienAffidavitGate[] {
+export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address'>): LienAffidavitGate[] {
   return [
     { key: 'owner', ok: r.has_owner, label: 'Owner of record with a mailing address' },
     { key: 'legal', ok: r.has_legal, label: 'County + legal description on the property record' },
+    contractorAddressGate({ isSub: r.is_sub, hasAddress: r.has_contractor_address }),
     { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job — a late one counts while this window is open' : 'No monthly notice required (contracted with the owner)' },
     { key: 'homestead', ok: !r.homestead, label: r.homestead ? 'Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney' : 'Not a homestead' },
   ]
