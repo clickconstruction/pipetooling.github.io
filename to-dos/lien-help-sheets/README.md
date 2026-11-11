@@ -2,7 +2,7 @@
 name: "Help sheets printed with every lien paper"
 number: 314
 group: gated
-status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names
+status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names · the owner the same day, *build it all I like it all* · built the same day as four PRs · then *is this the best we can do?*: a before and after page with eleven changes
 summary: >
   The office signed and notarized its first batch of short-form lien affidavits on 2026-11-11.
   Read against the record, none could be filed as it stood: the county blank at the top was
@@ -10,10 +10,10 @@ summary: >
   should have been stopped before they were printed. The owner asked for help sheets that print
   with every paper. Three shapes are drawn: a cover sheet for each paper, one sheet for the whole
   batch, and a marked guide copy of the paper itself.
-next: The owner picks a shape, or a mix. The pick here is B for the batch press and A for a single paper printed from the Lien window, with the top blank's label fixed on the form either way.
+next: The owner picks from the eleven changes on `before-after.html`. The pick here is the first four, in that order: a held paper is never printed, the app answers its own checks on the sheet, the signing county is printed, and the seal has a place.
 size: M as a train of three (S the form's label · M the sheet on the batch print and the Lien window · S the same sheet for the two notices)
-blocker: The owner's pick of a mock-up. The three holds listed under *What a sheet cannot fix* are separate work and are his to order.
-opinion: your call — pick A, B or C; the pick is B for a batch and A for one paper, and the form's top blank gets a label whichever wins
+blocker: The owner's pick from the polish list. Printing the signing county and marking the seal change the paper's face, so counsel should see them.
+opinion: your call — the first build is in review; of the eleven polish changes, do 1 to 4 first
 ---
 
 # Help sheets printed with every lien paper (#314)
@@ -90,6 +90,30 @@ sheet.
 only shape that follows a paper past the notary to the clerk, the app and the mail. A is the same
 blocks for a single paper printed from the Lien window. C is the best teacher and could be the
 training handout, but as a daily sheet it puts a second copy of a sworn paper in the stack.
+
+## Is this the best we can do?
+
+The owner, 2026-11-11, once the first build was on its PRs: *Please give it a polish, asking yourself is this the best we can do? And let me know the before and after changes you think we should make.*
+
+Read again as a first-week employee would read them, the built sheets fall short in eleven places. `before-after.html` draws the three that change a page beside what was built; `after-a-cover-sheet.html`, `after-a-cover-sheet-flagged.html`, `after-b-batch-sheet.html` and `after-the-paper.html` are the polished pages by themselves, each one letter sheet.
+
+| # | Before, as built | After | Size |
+|---|---|---|---|
+| 1 | A paper with a closed gate still prints in a batch. The mock-up promised it would not | The batch leaves it out and its row says why | S |
+| 2 | The sheet lists six warnings the reader checks by eye, the same on every paper | The sheet says what the app checked on this paper, with its answers. One check is left to the reader: read the names, the addresses and the amount | M |
+| 3 | The top county is a blank with *(where signed)*, written by hand | Both county lines are printed from one setting, the county where the company signs. A different county is typed before printing | S |
+| 4 | Nothing on the paper shows where the seal goes | A dotted circle beside the notary's name | S |
+| 5 | One list for everyone | Two halves by who does it: at the notary, and after the notary | S |
+| 6 | Six blanks described in words | A small picture of the paper with numbered spots. With the counties printed, four are left | S |
+| 7 | Batch rows in the desk's order | Rows grouped by county clerk, one trip for each | S |
+| 8 | No word on the sheets about a late notice | *Ask first* on that paper's row and on its cover sheet, from the notice check | S |
+| 9 | *Call the office* | A name to ask: the lien leader on the job | S |
+| 10 | *The app shows the last day to mail* | Lines to write the filing day and the mail-by day; each clerk's address and fee, once the office has typed them in Settings | M |
+| 11 | A plain band, and the guide copy has bands alone | A striped edge on every help sheet, a GUIDE COPY watermark across the guide copy's paper, and a code to scan for the full guide | S |
+
+**The pick: 1 to 4 first, in that order.** 1 is a promise the mock-up made and the build did not keep. 2 is the largest gain: a warning that prints on every paper is one people stop reading, and the app already knows four of the six answers. 3 removes the mistake all eleven sheets made, where the label only explains it. 4 answers the other mistake all eleven made. The rest is tidying and can ride with them.
+
+**Two of these change the paper's face** (3 and 4). Neither changes a sworn word, and the Legal desk's own affidavits already print a typed venue (`affidavitPaper.ts`, `venueCounty`), but a recorded paper's form is counsel's to see first. v2.6249 took a seal caption off the jurat on the reasoning that a notary knows where it goes; the first batch says otherwise.
 
 ## What a sheet cannot fix
 
