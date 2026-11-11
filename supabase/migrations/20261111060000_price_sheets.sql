@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS public.supply_paper_groups (
   -- The printed Subtotal EACH, in dollars to four places; null when the paper prints none.
   each_price numeric(14, 4),
   -- Where the fixture landed on the bid (PR 6): the bid's row, the assembly used and the takeoff line placed.
-  count_row_id uuid REFERENCES public.bids_count_rows(id) ON DELETE SET NULL,
+  -- The bid's row is a record, not a reference: a foreign key here would let a count row that History's Undo
+  -- removes empty this column unseen (supabase/tests/bid_changes case 21 refuses one).
+  count_row_id uuid,
   template_id uuid REFERENCES public.material_templates(id) ON DELETE SET NULL,
   placed_line_id uuid REFERENCES public.bids_takeoff_rough_part_lines(id) ON DELETE SET NULL,
   placed_at timestamptz,
