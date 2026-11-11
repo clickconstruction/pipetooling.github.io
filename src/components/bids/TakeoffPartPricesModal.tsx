@@ -4,6 +4,7 @@ import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementFields, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { PartHouseNumbers } from '../materials/PartHouseNumbers'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -319,6 +320,7 @@ export function TakeoffPartPricesModal({
                     </div>
                   ) : null
                 })()}
+                <PartHouseNumbers partId={partPricesModal.partId} supplyHouses={supplyHouses} pricedHouseIds={(partPricesModalData ?? []).map((r) => r.supply_house_id)} />
               </>
             )}
           </div>
