@@ -5,6 +5,7 @@
  * price sheet (PriceSheetPanel) shows many.
  */
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { cardInput, cardLink, cardPress, CHIP_TONE } from '../../lib/materials/priceSheet/cardStyles'
 import type { BookPart, PartMatch } from '../../lib/materials/partMatch'
 import { bookPrice, PRICING_UNIT_FACTOR, type PricingUnit } from '../../lib/materials/priceSheet/pastedRow'
@@ -123,6 +124,11 @@ export function PriceRowCardView({
             </div>
           ))
         : null}
+      {c.status === 'pick' && match.how !== 'words' ? (
+        <Link to="/duplicates" target="_blank" rel="noreferrer" style={{ ...cardLink, textDecoration: 'none' }}>
+          They are one part. Merge them on Duplicates ↗
+        </Link>
+      ) : null}
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {part && each != null && c.unitAsk && !serverAsk ? (

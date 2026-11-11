@@ -509,6 +509,86 @@ RESET ROLE;
 SELECT bedt.ok('anon cannot place or take off a fixture',
   NOT has_function_privilege('anon', 'public.price_sheet_group_place(uuid, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_group_unplace(uuid)', 'EXECUTE'));
 
+-- 25 · two copies of one part are merged: everything that pointed at the copy points at the part that stays.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-00000000a002', 'Bed Electrical');
+INSERT INTO public.material_parts (id, name, service_type_id, manufacturer, notes) VALUES
+  ('00000000-0000-0000-0000-00000000e101', 'AX7702-PC ARLO 1-1/4 GRID DRAIN CP', '00000000-0000-0000-0000-00000000a001', NULL, 'stock item'),
+  ('00000000-0000-0000-0000-00000000e102', 'ARLO AX7702PC GRID DRAIN', '00000000-0000-0000-0000-00000000a001', 'Arlo', NULL),
+  ('00000000-0000-0000-0000-00000000e103', 'A PART OF ANOTHER TRADE', '00000000-0000-0000-0000-00000000a002', NULL, NULL);
+INSERT INTO public.material_part_prices (id, part_id, supply_house_id, price, effective_date) VALUES
+  ('00000000-0000-0000-0000-00000000f101', '00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000d001', 17.90, '2026-08-12'),
+  ('00000000-0000-0000-0000-00000000f102', '00000000-0000-0000-0000-00000000e102', '00000000-0000-0000-0000-00000000d001', 18.40, '2026-11-06'),
+  ('00000000-0000-0000-0000-00000000f103', '00000000-0000-0000-0000-00000000e102', '00000000-0000-0000-0000-00000000d002', 19.05, '2026-09-02');
+INSERT INTO public.material_templates (id, name, service_type_id) VALUES
+  ('00000000-0000-0000-0000-00000000aa11', 'Bed both copies', '00000000-0000-0000-0000-00000000a001'),
+  ('00000000-0000-0000-0000-00000000aa12', 'Bed the copy alone', '00000000-0000-0000-0000-00000000a001');
+INSERT INTO public.material_template_items (template_id, item_type, part_id, quantity, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000aa11', 'part', '00000000-0000-0000-0000-00000000e101', 1, 1),
+  ('00000000-0000-0000-0000-00000000aa11', 'part', '00000000-0000-0000-0000-00000000e102', 2, 2),
+  ('00000000-0000-0000-0000-00000000aa12', 'part', '00000000-0000-0000-0000-00000000e102', 4, 1);
+INSERT INTO public.bids_takeoff_rough_part_lines (id, bid_id, count_row_id, part_id, source_material_part_price_id, quantity, unit_price, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000cc11', '00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-00000000bb01', '00000000-0000-0000-0000-00000000e102', '00000000-0000-0000-0000-00000000f102', 3, 18.40, 5);
+INSERT INTO public.supply_part_codes (supply_house_id, code, part_id) VALUES ('00000000-0000-0000-0000-00000000d001', '512260', '00000000-0000-0000-0000-00000000e102');
+SET LOCAL ROLE authenticated;
+INSERT INTO public.material_part_distinct_pairs (low_part_id, high_part_id) VALUES ('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000e103');
+SELECT bedt.ok('a pair a person called not the same is kept, by the caller', (SELECT said_by = '00000000-0000-0000-0000-0000000000a1' FROM public.material_part_distinct_pairs));
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO public.material_part_distinct_pairs (low_part_id, high_part_id) VALUES ('00000000-0000-0000-0000-00000000e103', '00000000-0000-0000-0000-00000000e101');
+    RAISE EXCEPTION 'FAILED: a pair was kept the wrong way round';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: a pair is kept one way round only';
+  END;
+  BEGIN
+    PERFORM public.merge_material_parts('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000e103');
+    RAISE EXCEPTION 'FAILED: parts of two service types were merged';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+    RAISE NOTICE 'ok: parts of two service types are not merged';
+  END;
+  BEGIN
+    PERFORM public.merge_material_parts('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000e101');
+    RAISE EXCEPTION 'FAILED: a part was merged into itself';
+  EXCEPTION WHEN invalid_parameter_value THEN RAISE NOTICE 'ok: a part is not merged into itself';
+  END;
+END $$;
+INSERT INTO bed_out VALUES ('merge', public.merge_material_parts('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000e102'));
+SELECT bedt.ok('the merge says what it moved',
+  (SELECT v = jsonb_build_object('prices_moved', 1, 'prices_merged', 1, 'assemblies', 2, 'takeoff_lines', 1, 'purchase_order_lines', 0, 'house_numbers', 1, 'also_known_as', 'ARLO AX7702PC GRID DRAIN') FROM bed_out WHERE k = 'merge'));
+SELECT bedt.ok('the copy is gone', NOT EXISTS (SELECT 1 FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e102'));
+SELECT bedt.ok('where both had a price from one house, the newer one stays, on the survivor''s own row',
+  (SELECT price = 18.40 AND effective_date = '2026-11-06' AND id = '00000000-0000-0000-0000-00000000f101' FROM public.material_part_prices
+   WHERE part_id = '00000000-0000-0000-0000-00000000e101' AND supply_house_id = '00000000-0000-0000-0000-00000000d001'));
+SELECT bedt.ok('a price only the copy had moves over', (SELECT price = 19.05 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e101' AND supply_house_id = '00000000-0000-0000-0000-00000000d002'));
+SELECT bedt.ok('the history of both copies is the survivor''s', (SELECT count(*) >= 4 FROM public.material_part_price_history WHERE part_id = '00000000-0000-0000-0000-00000000e101'));
+SELECT bedt.ok('an assembly that held both holds the survivor once, the quantities summed',
+  (SELECT count(*) = 1 AND max(quantity) = 3 FROM public.material_template_items WHERE template_id = '00000000-0000-0000-0000-00000000aa11'));
+SELECT bedt.ok('an assembly that held the copy holds the survivor',
+  (SELECT part_id = '00000000-0000-0000-0000-00000000e101' AND quantity = 4 FROM public.material_template_items WHERE template_id = '00000000-0000-0000-0000-00000000aa12'));
+SELECT bedt.ok('the takeoff line names the survivor, and the price row that stayed',
+  (SELECT part_id = '00000000-0000-0000-0000-00000000e101' AND source_material_part_price_id = '00000000-0000-0000-0000-00000000f101' AND unit_price = 18.40
+   FROM public.bids_takeoff_rough_part_lines WHERE id = '00000000-0000-0000-0000-00000000cc11'));
+SELECT bedt.ok('the house''s number is the survivor''s', (SELECT part_id = '00000000-0000-0000-0000-00000000e101' FROM public.supply_part_codes WHERE code_key = '512260'));
+SELECT bedt.ok('the copy''s name is kept in the notes, and its maker is taken',
+  (SELECT notes = E'stock item\nAlso known as: ARLO AX7702PC GRID DRAIN' AND manufacturer = 'Arlo' FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e101'));
+RESET ROLE;
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a2');
+SET LOCAL ROLE authenticated;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.merge_material_parts('00000000-0000-0000-0000-00000000e101', '00000000-0000-0000-0000-00000000e001');
+    RAISE EXCEPTION 'FAILED: a helper merged two parts';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a helper merges nothing';
+  END;
+END $$;
+SELECT bedt.ok('a helper reads no pair', (SELECT count(*) = 0 FROM public.material_part_distinct_pairs));
+RESET ROLE;
+SELECT bedt.ok('anon cannot merge, and the pairs table carries the fences',
+  NOT has_function_privilege('anon', 'public.merge_material_parts(uuid, uuid)', 'EXECUTE')
+  AND (SELECT count(*) >= 3 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'material_part_distinct_pairs' AND permissive = 'RESTRICTIVE'));
+
 -- 7 · a number goes with its part.
 SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
 DELETE FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e002';
