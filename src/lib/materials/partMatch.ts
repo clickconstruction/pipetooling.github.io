@@ -26,10 +26,12 @@ export type PartMatch<T extends BookPart = BookPart> = {
   rivals: T[]
   /** The model number that matched, as folded, when `how` is `model_number`. */
   model: string | null
+  /** The unit factor kept with the house's number, when `how` is `house_number`. */
+  unitFactor?: number
 }
 
 /** A house's own number for a part, or the mark that the number is not a part at all. */
-export type HouseCode = { supplyHouseId: string; code: string; partId: string | null; notAPart?: boolean }
+export type HouseCode = { supplyHouseId: string; code: string; partId: string | null; notAPart?: boolean; /** How many book units one of the house's prices covers. */ unitFactor?: number }
 
 export type MatchRowInput = {
   supplyHouseId?: string | null
@@ -295,7 +297,7 @@ export function matchRow<T extends BookPart>(
     const hit = codes.get(houseKey(row.supplyHouseId, row.houseCode!))
     if (hit?.notAPart) return { how: 'not_a_part', part: null, rivals: [], model: null }
     const part = hit?.partId ? book.byId.get(hit.partId) : undefined
-    if (part && part.id !== except) return { how: 'house_number', part, rivals: [part], model: null }
+    if (part && part.id !== except) return { how: 'house_number', part, rivals: [part], model: null, unitFactor: hit?.unitFactor ?? 1 }
   }
 
   // 2. The model number, from the row's own column and from its words.

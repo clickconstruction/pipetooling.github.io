@@ -5,6 +5,8 @@ import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementFields, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PartHouseNumbers } from '../materials/PartHouseNumbers'
+import { usePriceSources } from '../../hooks/usePriceSources'
+import { priceSourceWords } from '../../lib/materials/priceSheet/rowCard'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -52,6 +54,9 @@ export function TakeoffPartPricesModal({
   const [soldInDraft, setSoldInDraft] = useState('')
   const [soldInUnit, setSoldInUnit] = useState<OrderIncrementUnitKey>(DEFAULT_ORDER_INCREMENT_UNIT)
   const [soldInSaving, setSoldInSaving] = useState(false)
+  // A price filed from a quote or a call (punch list #308): read the rows again, and where each came from.
+  const [pricesReload, setPricesReload] = useState(0)
+  const priceSources = usePriceSources(partPricesModal?.partId, partPricesModalData)
   useEffect(() => {
     if (!partPricesModal) {
       setSoldIn(null)
@@ -121,7 +126,7 @@ export function TakeoffPartPricesModal({
         setPartPricesModalData(rows)
         setPartPricesModalEditing({})
       })
-  }, [partPricesModal?.partId])
+  }, [partPricesModal?.partId, pricesReload])
 
   async function updatePartPriceInModal(priceId: string, newPrice: number) {
     if (!partPricesModal) return
@@ -237,6 +242,9 @@ export function TakeoffPartPricesModal({
                             <td style={{ padding: '0.5rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                 <span>{row.supply_house_name}</span>
+                                {priceSources.get(row.price_id) ? (
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{priceSourceWords(priceSources.get(row.price_id)!)}</span>
+                                ) : null}
                                 <SupplyHouseWebsiteLink websiteUrl={row.website_url} />
                               </div>
                             </td>
@@ -320,7 +328,7 @@ export function TakeoffPartPricesModal({
                     </div>
                   ) : null
                 })()}
-                <PartHouseNumbers partId={partPricesModal.partId} supplyHouses={supplyHouses} pricedHouseIds={(partPricesModalData ?? []).map((r) => r.supply_house_id)} />
+                <PartHouseNumbers partId={partPricesModal.partId} partName={partPricesModal.partName} supplyHouses={supplyHouses} pricedHouseIds={(partPricesModalData ?? []).map((r) => r.supply_house_id)} onPricesChanged={() => setPricesReload((n) => n + 1)} />
               </>
             )}
           </div>
