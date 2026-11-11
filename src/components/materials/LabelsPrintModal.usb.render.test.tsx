@@ -109,7 +109,7 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     usb.print.mockImplementation(async (_labels: unknown[], onLabel?: (n: number) => void) => { onLabel?.(1); throw new Error('The printer’s cover is open.') })
     setup()
     fireEvent.click(await screen.findByTestId('labels-print'))
-    await waitFor(() => expect(screen.getByTestId('labels-usb-slip').textContent).toBe('1 of 2 printed, then the printer stopped: The printer’s cover is open.'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-slip').textContent).toBe('1 of 2 printed, then the printer stopped: The printer’s cover is open. A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out.'))
     expect(usb.close).toHaveBeenCalled()
   })
 

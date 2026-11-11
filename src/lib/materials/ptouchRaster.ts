@@ -71,6 +71,15 @@ export function cmdFeedAndCutAfter(): Uint8Array {
   return Uint8Array.of(0x1b, 0x69, 0x4b, 0x08)
 }
 
+/**
+ * ESC i K with bit 3 clear: chain printing. The label is printed and not fed out, so the next label prints straight
+ * after it and the cut between the two falls on their seam. The tape between the head and the cutter, about an inch,
+ * is then blank once a run where it was blank once a strip. The run's last label is sent with `cmdFeedAndCutAfter`.
+ */
+export function cmdChainToNext(): Uint8Array {
+  return Uint8Array.of(0x1b, 0x69, 0x4b, 0x00)
+}
+
 /** G, the length, then the line's dots. */
 export function cmdRasterLine(line: Uint8Array): Uint8Array {
   const b = new Uint8Array(3 + line.length)
@@ -86,9 +95,17 @@ export function cmdPrintAndFeed(): Uint8Array {
   return Uint8Array.of(0x1a)
 }
 
-/** One label as one whole job, in the order the printer takes it. Sent after a status reply says the printer is ready. */
-export function ptouchLabelJob(lines: ReadonlyArray<Uint8Array>, tapeMm: number): Uint8Array[] {
-  return [cmdRasterMode(), cmdPrintInfo(tapeMm, lines.length), cmdMarginAndPlainLines(), cmdAutoCut(), cmdFeedAndCutAfter(), ...lines.map(cmdRasterLine), cmdPrintAndFeed()]
+/**
+ * One label as one whole job, in the order the printer takes it. Sent after a status reply says the printer is ready.
+ * `chain` is for a label another label follows in the same run: it stays in the printer for the next to print against.
+ */
+export function ptouchLabelJob(lines: ReadonlyArray<Uint8Array>, tapeMm: number, chain = false): Uint8Array[] {
+  return [cmdRasterMode(), cmdPrintInfo(tapeMm, lines.length), cmdMarginAndPlainLines(), cmdAutoCut(), chain ? cmdChainToNext() : cmdFeedAndCutAfter(), ...lines.map(cmdRasterLine), cmdPrintAndFeed()]
+}
+
+/** Which labels of a run chain to the next: every one but the last, which feeds the run out and cuts it. */
+export function chainsToNext(index: number, total: number): boolean {
+  return index < total - 1
 }
 
 // ── a drawing as raster lines ────────────────────────────────────────────────────────────────
@@ -200,4 +217,6 @@ export const PTOUCH_NEEDS_BROWSER = 'Needs Chrome or Edge'
 export const PTOUCH_COPY_LINK_LABEL = 'Copy the link to this page'
 export const PTOUCH_LINK_COPIED = 'Link copied. Paste it into Chrome or Edge.'
 export const PTOUCH_LINK_NOT_COPIED = 'Could not copy. Copy the address from the bar at the top.'
+/** Said when a run stops part way: a chained strip is printed but still short of the cutter. */
+export const PTOUCH_STRIP_INSIDE = 'A printed strip may still be inside the printer. Feed and cut the tape on the printer to get it out.'
 export const PTOUCH_CONNECT_LABEL = 'Connect the P-touch'

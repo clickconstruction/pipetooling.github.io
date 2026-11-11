@@ -84,7 +84,7 @@ The Labels window asks first what the labels print on. Pick **Brother tape** for
 
 The app prints straight to the P-touch from Chrome or Edge on a computer. There is nothing to install. The first time, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Quit Brother's P-touch Editor if it is open. Press **Connect the P-touch** and pick the printer in the browser's list. The browser remembers it.
 
-Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one.
+Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one. A run wastes one blank square of tape at its start, however many strips it holds. Print strips together to save tape.
 
 Safari and Firefox cannot reach a USB printer. There the Brother tape choice says Needs Chrome or Edge. Press **Copy the link to this page** and paste it into Chrome or Edge. Brother makes no printer driver for a Mac, so the print window cannot print tape on one.
 
