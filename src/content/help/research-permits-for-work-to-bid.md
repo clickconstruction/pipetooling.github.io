@@ -85,7 +85,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. A line over the list says the day the records start. Press **Read back to** beside it to read about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
+Press **Builders**. The list shows every name on a commercial permit we can see. A line over the list says the day the records start. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
