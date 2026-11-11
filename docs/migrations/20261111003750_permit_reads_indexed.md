@@ -16,19 +16,19 @@ Nothing else in the three bodies changes: the window, the residential filter, th
 
 Each rewritten body was run beside the live function with the same arguments and compared with `EXCEPT` both ways: no row differs in San Antonio (the whole window, with houses, and a 30-day window), Austin, New Braunfels, San Marcos or Seguin, on the skim's two reads and on Builders.
 
-Timed with every column read, twice over: as the database owner, where no row security runs, and as a signed-in dev, the way the app's reads meet it.
+Timed with every column read, as a signed-in dev, the way the app's reads meet row security:
 
-| Read | Owner, before | Owner, after | Signed in, before | Signed in, after |
-| --- | --- | --- | --- | --- |
-| `research_permits`, San Antonio | 1.1 s | 42 ms | 2.0 s | 1.1 s |
-| `research_permits_v2`, San Antonio | 1.1 to 1.3 s | 67 ms | 2.9 s | 1.4 s |
-| `research_builders`, San Antonio | 2.3 to 2.8 s | 36 to 43 ms | 3.0 s | 0.7 s |
-| `research_permits_v2`, Austin | 1.0 to 1.1 s | 52 ms | 2.1 s | 0.75 s |
-| `research_builders`, Austin | — | — | 2.7 s | 0.28 s |
+| Read | Before both | After the policies alone | After both |
+| --- | --- | --- | --- |
+| `research_permits`, San Antonio | 2.0 s | 0.76 s | 49 ms |
+| `research_permits_v2`, San Antonio | 2.9 s | 0.78 s | 68 ms |
+| `research_builders`, San Antonio | 3.0 s | 1.76 s | 61 ms |
+| `research_permits_v2`, Austin | 2.1 s | 0.51 s | 59 ms |
+| `research_builders`, Austin | 2.7 s | 1.43 s | 45 ms |
 
-## What this does not fix
+## The other half
 
-The gap between the two *after* columns is the access rule. The functions are `SECURITY INVOKER`, and the tables' policies call `user_can_research_permits()` bare, so Postgres asks it for every row a read touches. The Permits session's migration `*_permit_policies_once.sql` writes it as `(SELECT …)`, asked once a read. Until that is pushed a signed-in read is about half as slow as it was, not fast, and the read back as history stays held.
+These reads were slow for two reasons, and this file fixes one. The functions are `SECURITY INVOKER`, and the tables' policies called `user_can_research_permits()` bare, so Postgres asked it for every row a read touched. The Permits session's `20261111013000_permit_policies_once.sql` writes it as `(SELECT …)`, asked once a read; it was pushed first. With this file's bodies and without that one a signed-in read took 0.7 to 1.4 seconds; with that one and the old bodies, the middle column. Neither alone makes the tab fast.
 
 ## Tested
 
@@ -36,4 +36,4 @@ The gap between the two *after* columns is the access rule. The functions are `S
 
 ## Release order
 
-Merge, then `supabase db push`. The client reads the same names with the same arguments. `check:calls-ahead` still labels the PR *push right after the merge*, because it replaces functions the client calls.
+Merge, `supabase db push`, time the reads signed in, then `supabase functions deploy permit-pull` (the read back, no longer refused). `check:calls-ahead` labels the PR *push right after the merge*, because it replaces functions the client calls; the client reads the same names with the same arguments.
