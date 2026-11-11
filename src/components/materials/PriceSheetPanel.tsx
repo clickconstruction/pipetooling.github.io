@@ -18,7 +18,7 @@ import { cardInput, cardLink, cardPress, CHIP_TONE } from '../../lib/materials/p
 import { filePriceRow, loadBidAskedHouseIds, loadOnFilePrices, takeBackPriceRow } from '../../lib/materials/priceSheet/priceRowIo'
 import { discardSheet, holdSheetLine, loadSheet, pickSheetLinePart, setSheet, takeBackSheet, type LoadedSheet } from '../../lib/materials/priceSheet/priceSheetIo'
 import { dollars, shortDay, type OnFilePrice } from '../../lib/materials/priceSheet/rowCard'
-import { assemblyName, findSameItemsAssembly, fixtureStatus, type CountRow, type FixtureStatus, type KnownAssembly } from '../../lib/materials/priceSheet/sheetFixtures'
+import { assemblyName, countRowName, findSameItemsAssembly, fixtureStatus, type CountRow, type FixtureStatus, type KnownAssembly } from '../../lib/materials/priceSheet/sheetFixtures'
 import { loadAssemblies, makeAssembly, recordPlaced, recordUnplaced, restoreBundlePrice, setBundlePrice } from '../../lib/materials/priceSheet/sheetFixturesIo'
 import { houseVerdict, type HouseVerdict } from '../../lib/materials/priceSheet/sheetHouse'
 import { planSheet, readerWords, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
@@ -261,7 +261,8 @@ export function PriceSheetPanel({
   }, [sheet, codes])
 
   const verdict: HouseVerdict = useMemo(
-    () => houseVerdict({ houses: supplyHouses, letterhead: firstRead?.letterhead ?? null, requestHouseId: firstRead?.requestHouseId ?? null, askedHouseIds, codeShare }),
+    // Opened again later, the sheet's words are gone: its letterhead is left out rather than said to name no house.
+    () => houseVerdict({ houses: supplyHouses, letterhead: firstRead ? firstRead.letterhead : undefined, requestHouseId: firstRead?.requestHouseId ?? null, askedHouseIds, codeShare }),
     [supplyHouses, firstRead, askedHouseIds, codeShare],
   )
   const anyFiled = sheet?.lines.some((l) => l.filedAt) ?? false
@@ -653,7 +654,7 @@ export function PriceSheetPanel({
                   <option value="">It is…</option>
                   {takeoff.countRows.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.fixture}
+                      {countRowName(r)}
                     </option>
                   ))}
                 </select>

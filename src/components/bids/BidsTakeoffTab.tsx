@@ -1267,7 +1267,7 @@ export function BidsTakeoffTab({
    */
   /** What Takeoffs lends the price sheet panel: the bid's rows, and the writes of a bundle line under this user's own access. */
   const priceSheetTakeoff: PriceSheetTakeoff = {
-    countRows: takeoffCountRows.map((r) => ({ id: r.id, fixture: r.fixture, planTag: (r as { plan_tag?: string | null }).plan_tag ?? null, count: Number(r.count) || 0 })),
+    countRows: takeoffCountRows.map((r) => ({ id: r.id, fixture: r.fixture, planTag: (r as { plan_tag?: string | null }).plan_tag ?? null, groupTag: (r as { group_tag?: string | null }).group_tag ?? null, count: Number(r.count) || 0 })),
     lineCount: (countRowId) => takeoffRoughPartLines.filter((l) => l.countRowId === countRowId).length,
     placeBundle: async (countRowId, templateId, unitPrice, replace) => {
       if (!selectedBidForTakeoff?.id) return { error: 'No bid is open.' }

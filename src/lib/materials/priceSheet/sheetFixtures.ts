@@ -9,8 +9,14 @@
 import type { BookPart } from '../partMatch'
 import type { PlannedGroup, PlannedRow } from './sheetPlan'
 
-/** One of the bid's fixture rows, as Takeoffs lists them. */
-export type CountRow = { id: string; fixture: string; planTag?: string | null; count: number }
+/** One of the bid's fixture rows, as Takeoffs lists them, with the area it sits under (`Restroom A`). */
+export type CountRow = { id: string; fixture: string; planTag?: string | null; groupTag?: string | null; count: number }
+
+/** A row as the panel names it: `WC · Restroom A`, so two rows called WC can be told apart. */
+export function countRowName(row: Pick<CountRow, 'fixture' | 'groupTag'>): string {
+  const area = row.groupTag?.trim()
+  return area ? `${row.fixture} · ${area}` : row.fixture
+}
 
 const fold = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 
@@ -121,7 +127,7 @@ export function fixtureStatus<T extends BookPart>(input: {
   const items = groupItems(group.rows)
   const chosen = input.chosenRowIds?.length ? countRows.filter((r) => input.chosenRowIds!.includes(r.id)) : null
   const rows = chosen ?? rowsForTag(g.tag, countRows)
-  const names = rows.map((r) => r.fixture).join(' and ')
+  const names = rows.map(countRowName).join(' and ')
   const base = { each, rows, items }
 
   if (g.placedAt) return { ...base, state: 'placed', why: `On the takeoff${names ? `, on ${names}` : ''}.` }

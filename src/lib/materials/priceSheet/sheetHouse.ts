@@ -47,7 +47,10 @@ export type HouseEvidence = {
   houses: House[]
   /** The house whose price request this sheet answers, when it was opened from that request. */
   requestHouseId?: string | null
-  /** The house the letterhead names, with the words as printed. */
+  /**
+   * The house the letterhead names, with the words as printed; null when the read found none. Left out when the
+   * sheet was not read just now (opened again later): the words are gone, so nothing is said of the letterhead.
+   */
   letterhead?: { houseId: string | null; printed: string | null } | null
   /** The houses this bid asked for prices. */
   askedHouseIds?: string[]
@@ -74,7 +77,8 @@ export function houseVerdict(e: HouseEvidence): HouseVerdict {
 
   if (picked.length === 0) {
     const hint = asked.length === 1 ? ` This bid asked ${name(asked[0])} for prices.` : ''
-    return { houseId: null, sure: false, reasons: [], question: `Which house is this sheet from? Nothing on it names one.${hint}`, offers }
+    const read = e.letterhead !== undefined ? ' Nothing on it names one.' : ''
+    return { houseId: null, sure: false, reasons: [], question: `Which house is this sheet from?${read}${hint}`, offers }
   }
   if (picked.length > 1) {
     return { houseId: null, sure: false, reasons: votes.map((v) => v.reason), question: `Which house is this sheet from? ${votes.map((v) => `${v.reason}.`).join(' ')}`, offers }

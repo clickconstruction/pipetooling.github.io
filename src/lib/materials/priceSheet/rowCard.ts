@@ -160,9 +160,12 @@ export function rowCard(input: RowCardInput): RowCard {
   if (match.how === 'house_number') {
     return { ...common, status: 'ready', chip: { tone: 'green', label: howChip(match.how, houseName) }, question: onFileLine ?? `${houseName} has no price on file for this part yet.` }
   }
+  // A row with no number of the house's own has nothing to say about it.
   const offer =
     match.how === 'model_number'
-      ? `The model number is on this part. ${houseName}'s number is new for it.`
+      ? row.houseCode.trim()
+        ? `The model number is on this part. ${houseName}'s number is new for it.`
+        : 'The model number is on this part.'
       : match.how === 'same_name'
         ? 'A part in the book has this name.'
         : 'A part in the book says the same words, and its sizes agree.'
