@@ -6,9 +6,17 @@
 // injected `Reader` as the dev under RLS and fail-soft: a source that cannot be read is named in `held` and takes only
 // itself out, as the panel names it under the strip. Nothing here reads the network. Tests:
 // src/lib/devMcp/devMcpPersonFile.test.ts, whose fake reader enforces the generated catalog.
+//
+// v2.6935: the file fits the door. Three things on a large file: the HR entries are read a page at a time (one read of
+// 200 rows left the 201st out, and the chip read "200 HR entries"); `brief` (or `line_chars`) answers each line short —
+// the day, the lane, the kind, the first characters of its words, who, and the row behind it — with the docs' sizes in
+// place of their text; and a reply still past the door's 80,000 characters is shortened by devMcpReplyFit.ts in a fixed
+// order, down to the newest months that fit, with `shortened` naming each block and `next_until` the day to read on from.
+// Tests: src/lib/devMcp/devMcpBigCase.test.ts.
 
-import type { Reader, Row } from './devMcpComposites.ts'
+import { ALL_ROWS_MAX, readAllRows, type Reader, type Row } from './devMcpComposites.ts'
 import type { RowFilter } from './devMcpDoor.ts'
+import { cutText, fitReply, replyChars, type FitStep, type Shortened, type ShortenedBlock } from './devMcpReplyFit.ts'
 import {
   PERSON_TIMELINE_LANES,
   PERSON_TIMELINE_SOURCES,
@@ -31,9 +39,11 @@ import {
   type PersonTimelineNcns,
   type PersonTimelineReport,
   type PersonTimelineSource,
+  type PersonTimelineState,
   type PersonTimelineStatement,
   type PersonTimelineWriteup,
   statementRows,
+  ymdShift,
 } from './personTimeline.ts'
 import { evidenceDriveWords, sortEvidenceNewestFirst, type PersonEvidenceFile } from './personEvidence.ts'
 
@@ -42,6 +52,15 @@ const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 /** The door's own cap on one read; a source that answers exactly this many rows may hold more. */
 export const PERSON_FILE_READ_CAP = 200
 const FIND_LIMIT = 20
+/** A brief line's words (v2.6935): this many characters of `what` unless `line_chars` says otherwise. */
+export const PERSON_FILE_LINE_CHARS = 160
+export const PERSON_FILE_LINE_CHARS_MIN = 40
+export const PERSON_FILE_LINE_CHARS_MAX = 2000
+/** The fit's steps for the lists a long file carries beside its lines. */
+const FIT_DOCUMENTS = 20
+const FIT_OLD_FILES = 20
+const FIT_EVIDENCE_STEPS = [50, 25, 10] as const
+const FIT_LINE_STEPS = [80, 40] as const
 
 const LANES = new Set<string>(PERSON_TIMELINE_LANES.map((l) => l.lane))
 const SOURCES = new Set<string>(PERSON_TIMELINE_SOURCES.map((s) => s.source))
@@ -53,8 +72,52 @@ export type PersonFileAsk = {
   source?: unknown
   /** YYYY-MM-DD: only lines on or after this day. */
   since?: unknown
-  /** false leaves the summary and narrative out (a long file). */
+  /** YYYY-MM-DD: only lines on or before this day (v2.6935) — how a long Timeline is read on, a stretch at a time. */
+  until?: unknown
+  /** false leaves the summary and narrative out (a long file); true keeps their text under brief. */
   docs?: unknown
+  /** true answers each line short, and the docs' sizes in place of their text (v2.6935). */
+  brief?: unknown
+  /** How many characters of a line's words brief keeps, 40 to 2,000; asking it asks for brief. */
+  line_chars?: unknown
+}
+
+/** A Timeline line as `brief` answers it: the words cut, the row behind it one read away. */
+export type PersonFileBriefLine = {
+  ymd: string
+  lane: PersonTimelineLane
+  source: PersonTimelineSource
+  kindWords: string
+  what: string
+  /** The characters of `what` left out; absent when it is whole. */
+  more?: number
+  /** The line's second line, cut the same way; absent when empty. */
+  notes?: string
+  byName: string
+  /** Absent when live. */
+  state?: PersonTimelineState
+  /** How many files hang on the entry; absent when none. */
+  files?: number
+  /** The row behind the line, `table:id`: read_rows on the table with id eq answers it whole. */
+  row: string
+}
+
+export function briefPersonFileLine(l: PersonTimelineLine, max: number): PersonFileBriefLine {
+  const what = cutText(l.what, max)
+  const notes = cutText(l.notes, max).text
+  return {
+    ymd: l.ymd,
+    lane: l.lane,
+    source: l.source,
+    kindWords: l.kindWords,
+    what: what.text,
+    ...(what.more > 0 ? { more: what.more } : {}),
+    ...(notes ? { notes } : {}),
+    byName: l.byName,
+    ...(l.state !== 'live' ? { state: l.state } : {}),
+    ...(l.attachmentIds.length > 0 ? { files: l.attachmentIds.length } : {}),
+    row: `${l.ref.table}:${l.ref.id}`,
+  }
 }
 
 export type PersonFileReader = { role: string; todayYmd: string }
@@ -78,14 +141,22 @@ const likeTerm = (text: string): string => `*${text.trim().replace(/[*,()]/g, ' 
 const eq = (column: string, value: string): RowFilter[] => [{ column, op: 'eq', value }]
 
 /** The ask's filters, checked against the kernel's own lists; a wrong one is refused in words. */
-export function personFileFilter(ask: PersonFileAsk): { ok: true; lane: PersonTimelineLane | null; source: PersonTimelineSource | null; since: string | null; docs: boolean } | { ok: false; refused: string } {
+export function personFileFilter(
+  ask: PersonFileAsk,
+): { ok: true; lane: PersonTimelineLane | null; source: PersonTimelineSource | null; since: string | null; until: string | null; docs: boolean; docsAsked: boolean; brief: boolean; lineChars: number } | { ok: false; refused: string } {
   const lane = typeof ask.lane === 'string' && ask.lane.trim() ? ask.lane.trim().toLowerCase() : ''
   if (lane && !LANES.has(lane)) return { ok: false, refused: `lane must be one of ${[...LANES].join(', ')} (Ahead is planned).` }
   const source = typeof ask.source === 'string' && ask.source.trim() ? ask.source.trim().toLowerCase() : ''
   if (source && !SOURCES.has(source)) return { ok: false, refused: `source must be one of ${[...SOURCES].join(', ')}.` }
   const since = typeof ask.since === 'string' && ask.since.trim() ? ask.since.trim() : ''
   if (since && !YMD_RE.test(since)) return { ok: false, refused: 'since must be a day, YYYY-MM-DD.' }
-  return { ok: true, lane: (lane || null) as PersonTimelineLane | null, source: (source || null) as PersonTimelineSource | null, since: since || null, docs: ask.docs !== false }
+  const until = typeof ask.until === 'string' && ask.until.trim() ? ask.until.trim() : ''
+  if (until && !YMD_RE.test(until)) return { ok: false, refused: 'until must be a day, YYYY-MM-DD.' }
+  if (since && until && since > until) return { ok: false, refused: `since (${since}) is after until (${until}): no day is in both.` }
+  const asksChars = ask.line_chars != null && ask.line_chars !== ''
+  const lineChars = asksChars ? Number(ask.line_chars) : PERSON_FILE_LINE_CHARS
+  if (!Number.isInteger(lineChars) || lineChars < PERSON_FILE_LINE_CHARS_MIN || lineChars > PERSON_FILE_LINE_CHARS_MAX) return { ok: false, refused: `line_chars must be a whole number from ${PERSON_FILE_LINE_CHARS_MIN} to ${PERSON_FILE_LINE_CHARS_MAX}: the characters of a line's words brief keeps (${PERSON_FILE_LINE_CHARS} when left out).` }
+  return { ok: true, lane: (lane || null) as PersonTimelineLane | null, source: (source || null) as PersonTimelineSource | null, since: since || null, until: until || null, docs: ask.docs !== false, docsAsked: ask.docs === true, brief: ask.brief === true || asksChars, lineChars }
 }
 
 /** The person the ask names: a people.id, a login's users.id, or a name that matches exactly one. */
@@ -132,14 +203,15 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const held: PersonFileHeld[] = []
   const atCap: string[] = []
 
-  async function read<T>(source: PersonTimelineSource, allowed: boolean, why: string, table: string, run: () => Promise<Row[]>): Promise<T[]> {
+  /** `paged` (v2.6935): the run read every row itself, a page at a time, and names its own cap. */
+  async function read<T>(source: PersonTimelineSource, allowed: boolean, why: string, table: string, run: () => Promise<Row[]>, paged = false): Promise<T[]> {
     if (!allowed) {
       held.push({ source, reason: why })
       return []
     }
     try {
       const rows = await run()
-      if (rows.length >= PERSON_FILE_READ_CAP) atCap.push(table)
+      if (!paged && rows.length >= PERSON_FILE_READ_CAP) atCap.push(table)
       return rows as unknown as T[]
     } catch (e) {
       held.push({ source, reason: e instanceof Error ? e.message : String(e) })
@@ -150,8 +222,20 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const devOnly = 'dev only'
   const noLogin = 'needs a login'
   const CONTRACT_SELECT = 'id,document_name,status,created_at,sent_at,signed_at,office_completed_at,signer_printed_name,expires_at,doc_type,signer_consented_at,signer_signature_storage_path,form_scan_storage_path,form_source'
-  const [entries, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, statementRowsRaw, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
-    read<PersonTimelineEntry>('file', isDev, devOnly, 'person_file_entries', () => reader.rows('person_file_entries', { select: 'id,entry_date,content,source,created_by,created_at,author_label', filters: eq('person_id', personId), order: [{ column: 'entry_date', ascending: false }], limit: PERSON_FILE_READ_CAP })),
+  const [entryRows, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, statementRowsRaw, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
+    // v2.6935: every entry, a page at a time in id order (readAllRows) — one read of 200 left the 201st out and the chip said 200.
+    read<PersonTimelineEntry>(
+      'file',
+      isDev,
+      devOnly,
+      'person_file_entries',
+      async () => {
+        const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,content,source,created_by,created_at,author_label', filters: eq('person_id', personId) })
+        if (all.capped) atCap.push('person_file_entries')
+        return all.rows
+      },
+      true,
+    ),
     read<AttachmentRow>('file', isDev, devOnly, 'person_file_attachments', () => reader.rows('person_file_attachments', { select: 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', filters: eq('person_id', personId), order: [{ column: 'created_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<DocRow>('file', isDev, devOnly, 'person_files', () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
     read<EvidenceRow>('evidence', isDev, devOnly, 'person_file_evidence', () => reader.rows('person_file_evidence', { select: 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why', filters: eq('person_id', personId), order: [{ column: 'dated_on', ascending: false }], limit: PERSON_FILE_READ_CAP })),
@@ -165,6 +249,9 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     read<PersonTimelineNcns>('attendance', Boolean(userId), noLogin, 'attendance_incidents', () => reader.rows('attendance_incidents', { select: 'id,work_date,created_at,created_by_user_id,details', filters: [...eq('subject_user_id', userId as string), ...eq('incident_type', 'no_call_no_show')], limit: PERSON_FILE_READ_CAP })),
     read<ExcuseRow>('attendance', Boolean(userId), noLogin, 'attendance_annotations', () => reader.rows('attendance_annotations', { select: 'id,work_date,note,created_at,author:users!attendance_annotations_author_id_fkey(name)', filters: eq('subject_user_id', userId as string), limit: PERSON_FILE_READ_CAP })),
   ])
+
+  // The pages come in id order; the entries go on newest day first, as the one read ordered them.
+  const entries = [...entryRows].sort((a, b) => (a.entry_date !== b.entry_date ? (a.entry_date < b.entry_date ? 1 : -1) : a.created_at !== b.created_at ? (a.created_at < b.created_at ? 1 : -1) : 0))
 
   // The same copy can answer both contract reads (person_id and person_name): keep one.
   const contracts = new Map<string, PersonTimelineContract>()
@@ -258,8 +345,9 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const facts = personFileFacts(input, all)
   let lines: PersonTimelineLine[] = filterPersonTimeline(all, { lane: filter.lane, source: filter.source })
   if (filter.since) lines = lines.filter((l) => l.ymd >= filter.since!)
+  if (filter.until) lines = lines.filter((l) => l.ymd <= filter.until!)
   const { ahead, past } = splitPersonTimeline(lines, who.todayYmd)
-  const months = groupPersonTimelineByMonth(past).map((m) => ({ month: m.monthKey, label: m.label, lines: m.lines }))
+  const monthsWhole = groupPersonTimelineByMonth(past)
 
   // v2.6554: counsel-only records are refused to this seat by RLS (the X-Dev-Seat header); the count is a definer's answer, never a row.
   if (isDev) {
@@ -290,10 +378,66 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
     .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
 
-  const filtered = Boolean(filter.lane || filter.source || filter.since)
-  return {
+  // v2.6935: the blocks a long file fills, each behind the dial `brief` or a fit step turns. The rows stay whole in
+  // here; a block is drawn again from them each time a dial moves.
+  let lineChars: number | null = filter.brief ? filter.lineChars : null
+  let monthsKept: number | null = null
+  let evidenceChars: number | null = filter.brief ? filter.lineChars : null
+  let evidenceNewest: number | null = null
+  let summaryOut = filter.brief && !filter.docsAsked
+  let narrativeOut = filter.brief && !filter.docsAsked
+  const drawLine = (l: PersonTimelineLine): PersonTimelineLine | PersonFileBriefLine => (lineChars == null ? l : briefPersonFileLine(l, lineChars))
+  const monthsShown = () => (monthsKept == null ? monthsWhole : monthsWhole.slice(0, monthsKept))
+  const aheadBlock = () => ahead.map(drawLine)
+  const monthsBlock = () => monthsShown().map((m) => ({ month: m.monthKey, label: m.label, lines: m.lines.map(drawLine) }))
+  const shownCount = () => ahead.length + monthsShown().reduce((n, m) => n + m.lines.length, 0)
+
+  const evidenceSorted = sortEvidenceNewestFirst(evidenceRows)
+  const evidenceBy = (r: EvidenceRow): string => namesById[r.created_by ?? ''] ?? r.author_label ?? ''
+  const evidenceDrive = (r: EvidenceRow) => evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] })
+  const evidenceWhole = (r: EvidenceRow) => {
+    const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files }
+  }
+  const evidenceShort = (r: EvidenceRow, max: number) => {
+    const memo = cutText(r.memo, max)
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length }
+  }
+  const evidenceBlock = () => (evidenceNewest == null ? evidenceSorted : evidenceSorted.slice(0, evidenceNewest)).map((r) => (evidenceChars == null ? evidenceWhole(r) : evidenceShort(r, evidenceChars)))
+
+  const docOut = (d: DocRow | undefined, out: boolean) =>
+    !d ? null : out ? { kind: d.kind, content: null, chars: d.content.length, updated_at: d.updated_at, covered_through: d.covered_through, author_label: d.author_label, read: `get_person_document { person, kind: "${d.kind}" } reads it a section at a time` } : d
+  const docsBlock = () => (filter.docs ? { summary: docOut(docs.summary, summaryOut), narrative: docOut(docs.narrative, narrativeOut) } : 'left out (docs: false)')
+  const oldFiles = attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at }))
+
+  // What each shortening says of itself: the block, what is still there, the call that reads the rest.
+  const lineNote = (max: number): ShortenedBlock => ({
+    block: 'ahead and months',
+    kept: `each line short: the day, the lane, the kind, the first ${max} characters of its words (more counts the rest), who, and row, the table and id behind it`,
+    read_whole: 'read_rows on the row\'s table with id eq (row is table:id), or get_person_file without brief over a shorter stretch (since, until)',
+  })
+  const evidenceNote = (max: number, newest: number | null): ShortenedBlock => ({
+    block: 'evidence',
+    kept: `${newest == null ? 'each record' : `the newest ${newest} of ${evidenceSorted.length} records, each`} short: the first ${max} characters of its memo (more counts the rest), the Drive state and a count of its files`,
+    read_whole: 'read_rows on person_file_evidence by id, and on person_file_attachments with evidence_id eq for its files; get_case_brief lists every record',
+  })
+  const docsNote = (): ShortenedBlock => ({
+    block: 'docs',
+    kept: `the size of ${[summaryOut && docs.summary ? 'the summary' : '', narrativeOut && docs.narrative ? 'the narrative' : ''].filter(Boolean).join(' and ')} in place of the text`,
+    read_whole: 'get_person_document { person, kind } reads the summary or the narrative a section at a time; docs: true keeps the text here',
+  })
+  const asked: ShortenedBlock[] = filter.brief
+    ? [lineNote(filter.lineChars), ...(evidenceSorted.length > 0 ? [evidenceNote(filter.lineChars, null)] : []), ...(filter.docs && !filter.docsAsked && (docs.summary || docs.narrative) ? [docsNote()] : [])]
+    : []
+
+  const filtered = Boolean(filter.lane || filter.source || filter.since || filter.until)
+  const whole = {
     person: { id: person.id, name: person.name, kind: person.kind, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at, user_id: userId, login: Boolean(userId) },
     read_as: { role: who.role, today: who.todayYmd },
+    // v2.6935: null when the reply is whole; else why it was shortened and each block with what it kept and the call that reads the rest.
+    shortened: (filter.brief ? { why: filter.lineChars === PERSON_FILE_LINE_CHARS ? 'You asked for brief.' : `You asked for brief, ${filter.lineChars} characters a line.`, blocks: asked } : null) as Shortened | null,
+    // The day to pass as until to read the lines this reply left out; null when every line asked for is here.
+    next_until: null as string | null,
     source: 'buildPersonTimeline + personFileFacts — the People → HR tab\'s own kernel (supabase/functions/_shared/personTimeline.ts) over the tab\'s sources and keys',
     facts,
     chips: personFileFactChips(facts),
@@ -305,21 +449,113 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     // waiting, signed back — the job, the period, the basis, and the door: the signed record, the file in Drive, or the job window.
     hours_statements: statementRows(input),
     hours_statements_note: 'The person\'s hours statements (hours_statements, punch list #212), newest first, each with its standing: draft · printed, not signed back · sent for signature · signed back. A signed one names its signed copy (signed_copy_id, a person_contract_documents row, also in signed_papers) and its door opens that record, where the signed PDF opens; an unsigned one\'s door opens the file in Drive when the office put it there, else the job window, whose Documents tab holds the sheet. A printed statement is not a signature.',
+    // total and the two breakdowns count the whole file; shown counts the lines in this reply.
     counts: { ...countPersonTimeline(all), shown: lines.length },
     lanes: PERSON_TIMELINE_LANES,
     sources: PERSON_TIMELINE_SOURCES,
     held: heldOnce,
-    at_cap: atCap.length ? { tables: atCap, note: `A source answered ${PERSON_FILE_READ_CAP} rows, the door's cap on one read: it may hold more. Narrow with since, or read_rows the table with filters.` } : null,
-    filter: filtered ? { lane: filter.lane, source: filter.source, since: filter.since } : null,
-    ahead,
-    months,
-    evidence: sortEvidenceNewestFirst(evidenceRows).map((r) => {
-      const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
-      return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, by: namesById[r.created_by ?? ''] ?? r.author_label ?? '', created_at: r.created_at, drive: evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] }), drive_folder_url: r.drive_folder_url, files }
-    }),
-    files_before_records: attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at })),
-    docs: filter.docs ? { summary: docs.summary ?? null, narrative: docs.narrative ?? null } : 'left out (docs: false)',
+    at_cap: atCap.length ? { tables: atCap, note: `A source answered ${PERSON_FILE_READ_CAP} rows, the door's cap on one read: it may hold more. Narrow with since, or read_rows the table with filters. The HR entries are read a page at a time and are named here only past ${ALL_ROWS_MAX}.` } : null,
+    filter: filtered ? { lane: filter.lane, source: filter.source, since: filter.since, until: filter.until } : null,
+    ahead: aheadBlock(),
+    months: monthsBlock(),
+    evidence: evidenceBlock(),
+    files_before_records: oldFiles,
+    docs: docsBlock(),
     documents,
     documents_note: isDev ? 'The named documents on the file (v2.6613), newest first, without their text: read one with get_person_document { doc_id, section? } or read_rows on documents (select content) by id; change one with plan_person_doc { doc_id }; archived ones are left out.' : 'dev only',
   }
+
+  // v2.6935: the steps that shorten a reply too long for the door, mildest first (devMcpReplyFit.ts runs each only while
+  // the reply is still over): the docs' text, which get_person_document reads a section at a time; the evidence short
+  // and the lists another verb carries, since a record is on the Timeline as a line too; then the lines short; then
+  // fewer evidence records; and last the Timeline's oldest months, with next_until to read on.
+  type Reply = typeof whole
+  const steps: FitStep<Reply>[] = [
+    (r) => {
+      if (!filter.docs || narrativeOut || !docs.narrative) return null
+      narrativeOut = true
+      return { reply: { ...r, docs: docsBlock() }, note: docsNote() }
+    },
+    (r) => {
+      if (!filter.docs || summaryOut || !docs.summary) return null
+      summaryOut = true
+      return { reply: { ...r, docs: docsBlock() }, note: docsNote() }
+    },
+    (r) => {
+      if (evidenceChars != null || evidenceSorted.length === 0) return null
+      evidenceChars = filter.lineChars
+      return { reply: { ...r, evidence: evidenceBlock() }, note: evidenceNote(evidenceChars, evidenceNewest) }
+    },
+    (r) => {
+      if (documents.length <= FIT_DOCUMENTS) return null
+      return { reply: { ...r, documents: documents.slice(0, FIT_DOCUMENTS) }, note: { block: 'documents', kept: `the ${FIT_DOCUMENTS} most lately changed of ${documents.length} documents`, read_whole: 'get_case_brief lists every document with its section index' } }
+    },
+    (r) => {
+      if (oldFiles.length <= FIT_OLD_FILES) return null
+      return { reply: { ...r, files_before_records: oldFiles.slice(0, FIT_OLD_FILES) }, note: { block: 'files_before_records', kept: `the newest ${FIT_OLD_FILES} of ${oldFiles.length} files`, read_whole: 'read_rows on person_file_attachments with person_id eq and evidence_id is null' } }
+    },
+    (r) => {
+      if (lineChars != null) return null
+      lineChars = filter.lineChars
+      return { reply: { ...r, ahead: aheadBlock(), months: monthsBlock() }, note: lineNote(lineChars) }
+    },
+    ...FIT_EVIDENCE_STEPS.map(
+      (newest): FitStep<Reply> =>
+        (r) => {
+          if (evidenceSorted.length <= newest) return null
+          evidenceNewest = newest
+          return { reply: { ...r, evidence: evidenceBlock() }, note: evidenceNote(evidenceChars ?? filter.lineChars, evidenceNewest) }
+        },
+    ),
+    (r, budget) => {
+      if (monthsWhole.length <= 1) return null
+      // The newest months that fit, found by halves; the newest month alone when even two do not.
+      const at = (kept: number): Reply => {
+        monthsKept = kept
+        return { ...r, months: monthsBlock(), counts: { ...r.counts, shown: shownCount() }, next_until: ymdShift(`${monthsWhole[kept - 1]!.monthKey}-01`, -1) }
+      }
+      const room = budget - 900
+      let best = 1
+      let lo = 2
+      let hi = monthsWhole.length - 1
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2)
+        if (replyChars(at(mid)) <= room) {
+          best = mid
+          lo = mid + 1
+        } else hi = mid - 1
+      }
+      const reply = at(best)
+      const oldest = monthsWhole[best - 1]!
+      // The call that reads on keeps what this one asked: the stretch's start, the lane, the source, the line's length.
+      const narrowed = [filter.since ? `, since: "${filter.since}"` : '', filter.lane ? `, lane: "${filter.lane}"` : '', filter.source ? `, source: "${filter.source}"` : ''].join('')
+      const short = filter.lineChars === PERSON_FILE_LINE_CHARS ? 'brief: true' : `line_chars: ${filter.lineChars}`
+      return {
+        reply,
+        note: {
+          block: 'months',
+          kept: `the newest ${best} of ${monthsWhole.length} months: ${reply.counts.shown} of ${lines.length} lines`,
+          read_whole: `get_person_file { person, until: "${reply.next_until}"${narrowed}, ${short} } reads the ${lines.length - reply.counts.shown} lines before ${oldest.label}; next_until carries that day`,
+        },
+      }
+    },
+    ...FIT_LINE_STEPS.map(
+      (max): FitStep<Reply> =>
+        (r) => {
+          if (lineChars != null && lineChars <= max) return null
+          lineChars = max
+          return { reply: { ...r, ahead: aheadBlock(), months: monthsBlock() }, note: lineNote(max) }
+        },
+    ),
+  ]
+  return fitReply(whole, steps)
+}
+
+/** The reply of a file that was read (not refused). */
+export type PersonFileReply = Exclude<Awaited<ReturnType<typeof getPersonFile>>, { refused: string }>
+/** The same reply when nothing was shortened: every line and every evidence record as the kernel wrote it. */
+export type PersonFileWholeReply = Omit<PersonFileReply, 'ahead' | 'months' | 'evidence'> & {
+  ahead: PersonTimelineLine[]
+  months: { month: string; label: string; lines: PersonTimelineLine[] }[]
+  evidence: Extract<PersonFileReply['evidence'][number], { files: unknown[] }>[]
 }

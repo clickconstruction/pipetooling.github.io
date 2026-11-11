@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { PERSON_FILE_READ_CAP, getPersonFile, personFileFilter } from '../../../supabase/functions/_shared/devMcpPersonFile'
+import { PERSON_FILE_READ_CAP, getPersonFile, personFileFilter, type PersonFileWholeReply } from '../../../supabase/functions/_shared/devMcpPersonFile'
 import { buildPersonTimeline, personFileFactChips, personFileFacts, signedPapers, statementRows, type PersonTimelineInput } from '../people/personTimeline'
 import { catalogReader } from './catalogReader'
 
@@ -42,7 +42,8 @@ function rows() {
 }
 
 const dev = { role: 'dev', todayYmd: TODAY }
-type Reply = Exclude<Awaited<ReturnType<typeof getPersonFile>>, { refused: string }>
+// These files are small, so nothing is shortened and every line and record is whole (v2.6935; the long file is devMcpBigCase.test.ts).
+type Reply = PersonFileWholeReply
 
 describe('get_person_file (the person file from the dev seat)', () => {
   it('every read is one the door accepts, and the lines are the tab\'s own kernel over the same rows', async () => {
@@ -99,6 +100,9 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(out.person).toEqual({ id: PERSON, name: 'Pat Doe', kind: 'helper', start_date: '2026-02-01', end_date: null, archived_at: null, user_id: LOGIN, login: true })
     expect(out.at_cap).toBeNull()
     expect(out.filter).toBeNull()
+    // v2.6935: a file that fits the door is whole — nothing shortened, nothing left to read on.
+    expect(out.shortened).toBeNull()
+    expect(out.next_until).toBeNull()
   })
 
   it('finds the person by a login\'s users.id (find_person\'s key) and by a name matching exactly one', async () => {
@@ -165,7 +169,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
 
   it('narrows by lane, source and since, and leaves the docs out on docs: false; a wrong filter is refused in words', async () => {
     const paper = (await getPersonFile(catalogReader({ rows: rows() }), { person: PERSON, lane: 'paper', docs: false }, dev)) as Reply
-    expect(paper.filter).toEqual({ lane: 'paper', source: null, since: null })
+    expect(paper.filter).toEqual({ lane: 'paper', source: null, since: null, until: null })
     expect(new Set([...paper.ahead, ...paper.months.flatMap((m) => m.lines)].map((l) => l.lane))).toEqual(new Set(['paper']))
     expect(paper.counts.shown).toBeLessThan(paper.counts.total)
     expect(paper.docs).toBe('left out (docs: false)')
@@ -184,7 +188,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(SERVER).toContain("case 'get_person_file':")
     expect(SERVER.indexOf("case 'get_person_file':")).toBeGreaterThan(SERVER.indexOf("case 'get_history':"))
     expect(SERVER).toContain("getPersonFile(readerAs(await jwt())")
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.62\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.63\.0'/)
     expect(README).toContain('`get_person_file(person')
   })
 })

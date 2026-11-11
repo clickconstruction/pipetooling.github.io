@@ -5,8 +5,15 @@
 // the door whole: the section indexes come from person_file_index / person_document_index (20261107060000), the summary
 // is a page by rule, and the agent's own notes come back as their first lines. Dev-only, like the HR file: another
 // role gets the person and `held: dev only` for every source.
-import type { Reader, Row } from './devMcpComposites.ts'
+//
+// v2.6935: the brief fits the door. A file with fifty documents, one of them with hundreds of headings, answered past
+// the door's 80,000 characters and lost every block after `documents`. The small blocks now come first, the entries are
+// counted a page at a time (one read stopped the count at 200), and a brief that is still too long is shortened by
+// devMcpReplyFit.ts in a fixed order — the documents' section indexes first, as outlines — with each shortened block
+// named in `shortened` beside the call that reads it whole.
+import { readAllRows, type Reader, type Row } from './devMcpComposites.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
+import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 
 export type CaseBriefAsk = { person: string }
 export type CaseBriefReader = { role: string; todayYmd: string }
@@ -18,9 +25,16 @@ export const AGENT_NOTES_CHARS = 1200
 const NEWEST_ENTRIES = 10
 const HEADLINES = 5
 const READ_CAP = 200
+/** The fit's steps (v2.6935), mildest first: how many headings a document keeps, then the lists' newest rows. */
+export const BRIEF_DOC_SECTION_STEPS = [40, 24, 16, 12, 8, 5, 3] as const
+const BRIEF_OUTLINE_STEPS = [60, 30, 15] as const
+const BRIEF_EVIDENCE_STEPS = [100, 50, 25] as const
+const BRIEF_DOCUMENT_STEPS = [60, 30, 15] as const
+const BRIEF_MATTER_ROWS = 40
+const BRIEF_SUMMARY_CHARS = 6000
 
 type Heading = { n: number | null; level: number; heading: string; line: number }
-type EntryRow = { id: string; entry_date: string; content: string; source: string }
+type EntryRow = { id: string; entry_date: string; source: string; created_at?: string | null }
 type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null }
 type FileIndexRow = { kind: string; chars: number; sections: number; headings: Heading[] | null; updated_at: string; covered_through: string | null; author_label: string | null }
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null; evidence_id?: string | null }
@@ -56,7 +70,9 @@ export function headingsOf(md: string): Heading[] {
   return out
 }
 
-const sections = (h: Heading[] | null | undefined) => (h ?? []).map((x) => ({ n: x.n, heading: x.heading, line: x.line }))
+/** A section index as the brief carries it; `max` keeps an outline of that many headings (outlineHeadings). */
+const sections = (h: Heading[] | null | undefined, max: number | null = null) => (max == null ? h ?? [] : outlineHeadings(h ?? [], max)).map((x) => ({ n: x.n, heading: x.heading, line: x.line }))
+const count = (h: Heading[] | null | undefined): number => (h ?? []).length
 
 export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseBriefReader) {
   const resolved = await resolvePerson(reader, ask.person)
@@ -78,8 +94,14 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     }
   }
 
-  const [entries, evidence, fileIndex, docIndex, matters, marks, themes] = await Promise.all([
-    read<EntryRow>('entries', () => reader.rows('person_file_entries', { select: 'id,entry_date,content,source', filters: eq('person_id', personId), order: [{ column: 'entry_date', ascending: false }], limit: READ_CAP })),
+  // v2.6935: every entry, a page at a time, without its words — the count is exact past the door's 200 rows a read.
+  let entriesCapped = false
+  const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes] = await Promise.all([
+    read<EntryRow>('entries', async () => {
+      const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,source,created_at', filters: eq('person_id', personId) })
+      entriesCapped = all.capped
+      return all.rows
+    }),
     read<EvidenceRow>('evidence', () => reader.rows('person_file_evidence', { select: 'id,dated_on,title,counsel_only', filters: eq('person_id', personId), order: [{ column: 'dated_on', ascending: false }], limit: READ_CAP })),
     read<FileIndexRow>('summary and narrative', () => reader.rows('person_file_index', { select: 'kind,chars,sections,headings,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 4 })),
     // v2.6713 (punch list #287): evidence_id, the record a document transcribes; read without it when the catalog does not know the column yet.
@@ -94,6 +116,12 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     read<MarkRow>('themes', () => reader.rows('legal_theme_marks', { select: 'theme_id,proposed,removed_at', filters: eq('person_id', personId), limit: 1000 })),
     read<ThemeRow>('themes', () => reader.rows('legal_themes', { select: 'id,name', filters: [{ column: 'retired_at', op: 'is', value: null }], limit: READ_CAP })),
   ])
+
+  // Newest first, as the Timeline orders them: the day, then when it was written. The newest ten's words are one more read.
+  const entries = [...entryRows].sort((a, b) => (a.entry_date !== b.entry_date ? (a.entry_date < b.entry_date ? 1 : -1) : (a.created_at ?? '') !== (b.created_at ?? '') ? ((a.created_at ?? '') < (b.created_at ?? '') ? 1 : -1) : a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const newestIds = entries.slice(0, NEWEST_ENTRIES).map((e) => e.id)
+  const newestRows = newestIds.length ? await read<{ id: string; content: string }>('entries', () => reader.rows('person_file_entries', { select: 'id,content', filters: [{ column: 'id', op: 'in', value: newestIds }], limit: NEWEST_ENTRIES })) : []
+  const wordsOf = new Map(newestRows.map((r) => [r.id, r.content]))
 
   // The summary whole (a page by rule), the agent's notes' first lines: two small reads after the indexes.
   const summaryIndex = fileIndex.find((f) => f.kind === 'summary') ?? null
@@ -164,45 +192,142 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const transcriptByRecord = new Map<string, string>()
   for (const d of docs) if (d.evidence_id && !transcriptByRecord.has(d.evidence_id)) transcriptByRecord.set(d.evidence_id, d.id)
 
-  return {
+  // The lists as the brief carries them, each behind the dial a fit step turns (v2.6935).
+  const listed = docs.filter((d) => d.id !== notesDoc?.id)
+  const documentsAt = (sectionMax: number | null, newest: number | null) =>
+    (newest == null ? listed : listed.slice(0, newest)).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, section_count: count(d.headings), sections: sections(d.headings, sectionMax), evidence_id: d.evidence_id ?? null }))
+  const evidenceAt = (newest: number | null) =>
+    (newest == null ? evidence : evidence.slice(0, newest)).map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null }))
+  const matterHeadings = headingsOf(matter?.narrative_md ?? '')
+  const matterSteps = matterEntries
+    .filter((e) => e.kind === 'plan' && !e.voided_at)
+    .sort((a, b) => ((a.occurred_on ?? '') < (b.occurred_on ?? '') ? -1 : (a.occurred_on ?? '') > (b.occurred_on ?? '') ? 1 : 0))
+    .map((e) => ({ id: e.id, on: e.occurred_on, body: firstLine(e.body ?? '', 160), done: Boolean(e.meta?.done_at) }))
+  const matterDocuments = matterDocs.filter((d) => !d.voided_at).map((d) => ({ id: d.id, title: d.title, state: d.state, dated_on: d.dated_on, text: Boolean(d.mime && /^text\//.test(d.mime)) }))
+
+  // The small blocks first, the long lists last: what a cut would take is the part another verb reads anyway.
+  const whole = {
     person: { id: person.id, name: person.name, kind: person.kind, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at, login: Boolean(userId) },
     read_as: { role: who.role, today: who.todayYmd },
+    // v2.6935: null when the brief is whole; else why it was shortened and each block with what it kept and the call that reads the rest.
+    shortened: null as Shortened | null,
+    held: heldOnce,
+    counts: { entries: entries.length, evidence: evidence.length, documents: listed.length },
     agent_notes: notesDoc
       ? { doc_id: notesDoc.id, updated_at: notesDoc.updated_at, chars: notesDoc.chars, first_lines: (notesRows[0]?.content ?? '').slice(0, AGENT_NOTES_CHARS), more: (notesRows[0]?.content.length ?? 0) > AGENT_NOTES_CHARS }
       : null,
     summary: summaryIndex
-      ? { chars: summaryIndex.chars, updated_at: summaryIndex.updated_at, covered_through: summaryIndex.covered_through, kept_by: summaryIndex.author_label ?? '', sections: sections(summaryIndex.headings), text: summaryText }
+      ? { chars: summaryIndex.chars, updated_at: summaryIndex.updated_at, covered_through: summaryIndex.covered_through, kept_by: summaryIndex.author_label ?? '', section_count: count(summaryIndex.headings), sections: sections(summaryIndex.headings), text: summaryText }
       : null,
-    narrative: narrativeIndex ? { chars: narrativeIndex.chars, updated_at: narrativeIndex.updated_at, kept_by: narrativeIndex.author_label ?? '', sections: sections(narrativeIndex.headings) } : null,
-    documents: docs.filter((d) => d.id !== notesDoc?.id).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: sections(d.headings), evidence_id: d.evidence_id ?? null })),
     entries: {
       count: entries.length,
-      at_cap: entries.length >= READ_CAP,
+      // Paged since v2.6935: true only past readAllRows' own stop, when the file holds more entries than the count says.
+      at_cap: entriesCapped,
       first: entryDates[0] ?? null,
       last: entryDates[entryDates.length - 1] ?? null,
       by_source: bySource,
-      newest: entries.slice(0, NEWEST_ENTRIES).map((e) => ({ id: e.id, ymd: e.entry_date, source: e.source, first_line: firstLine(e.content) })),
+      newest: entries.slice(0, NEWEST_ENTRIES).map((e) => ({ id: e.id, ymd: e.entry_date, source: e.source, first_line: firstLine(wordsOf.get(e.id) ?? '') })),
     },
-    evidence: evidence.map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null })),
     matter: matter
       ? {
           id: matter.id,
           stage: matter.stage,
-          narrative: { chars: (matter.narrative_md ?? '').length, updated_at: matter.narrative_updated_at, sections: sections(headingsOf(matter.narrative_md ?? '')) },
-          steps: matterEntries
-            .filter((e) => e.kind === 'plan' && !e.voided_at)
-            .sort((a, b) => ((a.occurred_on ?? '') < (b.occurred_on ?? '') ? -1 : (a.occurred_on ?? '') > (b.occurred_on ?? '') ? 1 : 0))
-            .map((e) => ({ id: e.id, on: e.occurred_on, body: firstLine(e.body ?? '', 160), done: Boolean(e.meta?.done_at) })),
+          narrative: { chars: (matter.narrative_md ?? '').length, updated_at: matter.narrative_updated_at, section_count: matterHeadings.length, sections: sections(matterHeadings) },
+          steps: matterSteps,
           events: matterEntries.filter((e) => e.kind !== 'plan' && !e.voided_at).length,
-          documents: matterDocs.filter((d) => !d.voided_at).map((d) => ({ id: d.id, title: d.title, state: d.state, dated_on: d.dated_on, text: Boolean(d.mime && /^text\//.test(d.mime)) })),
+          documents: matterDocuments,
           // v2.6720 (punch list #288): how many of the matter's documents are for counsel alone and refused to the seat; a count, never a row.
           counsel_only_held: counselOnlyHeld,
         }
       : null,
     themes: themeRows,
     developments,
-    held: heldOnce,
     read_next:
-      'A document whole: read_rows on documents (select content) by id (a section at a time: get_person_document, or get_matter_document for a matter\'s text document), or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file; a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }. A document\'s evidence_id is the record it transcribes (document_id on the record is the same pair); tie one with plan_person_doc { doc_id, evidence_id }.',
+      'A document whole: read_rows on documents (select content) by id (a section at a time, or its whole section index when the brief kept an outline: get_person_document, or get_matter_document for a matter\'s text document), or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file (brief: true for short lines); a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }. A document\'s evidence_id is the record it transcribes (document_id on the record is the same pair); tie one with plan_person_doc { doc_id, evidence_id }. section_count is a text\'s whole heading count: sections holds fewer only when shortened names the block.',
+    narrative: narrativeIndex ? { chars: narrativeIndex.chars, updated_at: narrativeIndex.updated_at, kept_by: narrativeIndex.author_label ?? '', section_count: count(narrativeIndex.headings), sections: sections(narrativeIndex.headings) } : null,
+    evidence: evidenceAt(null),
+    documents: documentsAt(null, null),
   }
+
+  // v2.6935: the steps that shorten a brief too long for the door, mildest first (devMcpReplyFit.ts runs each only while
+  // the brief is still over). The documents' section indexes go first: they are what filled the reply on a large file,
+  // and get_person_document answers any one of them whole.
+  type Brief = typeof whole
+  let docSections: number | null = null
+  let docNewest: number | null = null
+  const docSectionStep = (max: number): FitStep<Brief> => (r) => {
+    const over = listed.filter((d) => count(d.headings) > max).length
+    if (over === 0) return null
+    docSections = max
+    return {
+      reply: { ...r, documents: documentsAt(docSections, docNewest) },
+      note: {
+        block: 'documents.sections',
+        kept: max > 0 ? `at most ${max} headings a document, the shallowest levels first; ${over} of ${listed.length} documents have more, and section_count is each one's whole count` : `no headings; section_count is each document's whole count`,
+        read_whole: 'get_person_document { person, doc_id } answers one document\'s whole section index, and one section with section',
+      },
+    }
+  }
+  const narrativeStep = (max: number): FitStep<Brief> => (r) => {
+    if (!r.narrative || count(narrativeIndex?.headings) <= max) return null
+    return {
+      reply: { ...r, narrative: { ...r.narrative, sections: sections(narrativeIndex?.headings, max) } },
+      note: { block: 'narrative.sections', kept: `${max} of ${count(narrativeIndex?.headings)} headings, the shallowest levels first`, read_whole: 'get_person_document { person, kind: "narrative" } answers the whole section index' },
+    }
+  }
+  const matterNarrativeStep = (max: number): FitStep<Brief> => (r) => {
+    if (!r.matter || matterHeadings.length <= max) return null
+    return {
+      reply: { ...r, matter: { ...r.matter, narrative: { ...r.matter.narrative, sections: sections(matterHeadings, max) } } },
+      note: { block: 'matter.narrative.sections', kept: `${max} of ${matterHeadings.length} headings, the shallowest levels first`, read_whole: 'read_rows on legal_matters (select narrative_md) by id' },
+    }
+  }
+  const evidenceStep = (newest: number): FitStep<Brief> => (r) => {
+    if (evidence.length <= newest) return null
+    return {
+      reply: { ...r, evidence: evidenceAt(newest) },
+      note: { block: 'evidence', kept: `the newest ${newest} of ${evidence.length} records`, read_whole: 'get_person_file lists the records with their files; read_rows on person_file_evidence by person_id reads them a page at a time' },
+    }
+  }
+  const documentStep = (newest: number): FitStep<Brief> => (r) => {
+    if (listed.length <= newest) return null
+    docNewest = newest
+    return {
+      reply: { ...r, documents: documentsAt(docSections, docNewest) },
+      note: { block: 'documents', kept: `the ${newest} most lately changed of ${listed.length} documents`, read_whole: 'get_person_file lists every document, newest first, without its headings' },
+    }
+  }
+  const summaryStep: FitStep<Brief> = (r) => {
+    const text = r.summary?.text ?? ''
+    if (!r.summary || text.length <= BRIEF_SUMMARY_CHARS) return null
+    return {
+      reply: { ...r, summary: { ...r.summary, text: cutText(text, BRIEF_SUMMARY_CHARS).text } },
+      note: { block: 'summary.text', kept: `the first ${BRIEF_SUMMARY_CHARS} of ${text.length} characters`, read_whole: 'get_person_document { person, kind: "summary" }, a section at a time' },
+    }
+  }
+  const matterRowsStep: FitStep<Brief> = (r) => {
+    if (!r.matter || (matterSteps.length <= BRIEF_MATTER_ROWS && matterDocuments.length <= BRIEF_MATTER_ROWS)) return null
+    return {
+      reply: { ...r, matter: { ...r.matter, steps: matterSteps.slice(-BRIEF_MATTER_ROWS), documents: matterDocuments.slice(0, BRIEF_MATTER_ROWS) } },
+      note: { block: 'matter.steps and matter.documents', kept: `the latest ${BRIEF_MATTER_ROWS} of ${matterSteps.length} steps and the newest ${BRIEF_MATTER_ROWS} of ${matterDocuments.length} documents`, read_whole: 'read_rows on legal_matter_entries (kind eq plan) and on legal_matter_documents, by matter_id' },
+    }
+  }
+  const headlinesStep: FitStep<Brief> = (r) => {
+    if (!r.developments.some((d) => d.headlines.length > 1)) return null
+    return {
+      reply: { ...r, developments: r.developments.map((d) => ({ ...d, headlines: d.headlines.slice(0, 1) })) },
+      note: { block: 'developments.headlines', kept: 'the newest line of each development\'s History', read_whole: 'get_history { development_id }' },
+    }
+  }
+  return fitReply(whole, [
+    ...BRIEF_DOC_SECTION_STEPS.map(docSectionStep),
+    ...BRIEF_OUTLINE_STEPS.map(narrativeStep),
+    ...BRIEF_OUTLINE_STEPS.map(matterNarrativeStep),
+    ...BRIEF_EVIDENCE_STEPS.map(evidenceStep),
+    docSectionStep(0),
+    ...BRIEF_DOCUMENT_STEPS.map(documentStep),
+    summaryStep,
+    matterRowsStep,
+    headlinesStep,
+  ])
 }
