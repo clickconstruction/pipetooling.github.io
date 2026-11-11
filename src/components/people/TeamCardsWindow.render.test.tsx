@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TeamCardIo } from '../../lib/brandKit/cardIo'
 import { guessTextWidth } from '../../lib/brandKit/draw'
 import { DEFAULT_CROP } from '../../lib/brandKit/person'
+import type { CardLooksSetting } from '../../lib/brandKit/looks'
 import type { KitRenderer } from '../../lib/brandKit/render'
 import type { TeamCardRow } from '../../lib/brandKit/team'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -30,9 +31,10 @@ const row = (id: string, name: string, photoPath: string | null, over: Partial<T
 })
 const TEAM = [row('m', 'Marisol Vega', 'm/photo-1.jpg'), row('d', 'Dale Okafor', 'd/photo-1.jpg'), row('h', 'Hank Brewer', null), row('l', 'Lucia Ferrante', 'l/photo-1.jpg', { phone: null })]
 
-function fakeIo(photo?: TeamCardIo['photo']) {
+function fakeIo(photo?: TeamCardIo['photo'], team: TeamCardRow[] = TEAM, looks: CardLooksSetting = { approved: ['classic'], default: 'classic' }) {
   return {
-    team: vi.fn(async () => TEAM),
+    team: vi.fn(async () => team),
+    looks: vi.fn(async () => looks),
     photo: vi.fn(photo ?? (async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 }))),
   } satisfies TeamCardIo
 }
@@ -76,6 +78,21 @@ describe('TeamCardsWindow', () => {
     expect(pages[1]?.svg).toContain('Dale Okafor')
     expect(pages[5]?.svg).toContain('Marisol Vega')
     expect(await screen.findByText('Made 3 cards.')).toBeTruthy()
+  })
+
+  it('prints each person in the look they picked, and the rest in the default', async () => {
+    const renderer = fakeRenderer()
+    const team = [{ ...row('m', 'Marisol Vega', 'm/photo-1.jpg'), look: 'navy-yellow' }, row('d', 'Dale Okafor', 'd/photo-1.jpg')]
+    renderWithProviders(<TeamCardsWindow io={fakeIo(undefined, team, { approved: ['classic', 'navy-yellow'], default: 'classic' })} renderer={renderer} onClose={() => undefined} onOpenCard={() => undefined} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Make 2 cards' }))
+    await waitFor(() => expect(renderer.pdf).toHaveBeenCalledTimes(1))
+    const pages = (renderer.pdf.mock.calls[0] as unknown as [{ svg: string }[]])[0]
+    // Dale, then Marisol: a front and a back each
+    expect(pages[1]?.svg).toContain('Dale Okafor')
+    expect(pages[1]?.svg).toContain('#050708')
+    expect(pages[3]?.svg).toContain('Marisol Vega')
+    expect(pages[3]?.svg).toContain('fill="#f6c700"')
+    expect(pages[2]?.svg).toContain('fill="#16283c">CLICK</text>')
   })
 
   it('keeps going past a person whose photo will not load, and names them', async () => {
