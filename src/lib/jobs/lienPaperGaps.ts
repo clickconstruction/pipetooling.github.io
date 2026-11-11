@@ -108,6 +108,7 @@ const GAP_FIELDS: Record<LienPaperGap['key'], ReadonlyArray<string>> = {
   owner: ['ownerName', 'ownerAddress'],
   owner_address: ['ownerAddress'],
   gc: ['originalContractorName'],
+  gc_address: ['originalContractorAddress'],
   signer: ['contactPerson'],
   company_address: ['claimantAddress'],
   notices: [],
