@@ -170,7 +170,7 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
             ))}
           </div>
         )}
-        <div style={muted}>{n.permits > 0 ? `Listed on ${n.permits} commercial permit${n.permits === 1 ? '' : 's'} in the last year${n.lastOn ? ` · last ${shortDay(n.lastOn)}` : ''}` : 'Listed on a permit on an address you bid to them'}</div>
+        <div style={muted}>{n.permits > 0 ? `Listed on ${n.permits} commercial permit${n.permits === 1 ? '' : 's'} we can see${n.lastOn ? ` · last ${shortDay(n.lastOn)}` : ''}` : 'Listed on a permit on an address you bid to them'}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" disabled={busy} onClick={() => void answer(n, true)} style={primary}>
             {tiePressWords(isCompany)}
@@ -205,7 +205,8 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
           <>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <PermitChip chip={{ words: `${known.names.length.toLocaleString('en-US')} names on permits`, tone: 'grey' }} />
-              <PermitChip chip={{ words: RESEARCH_CITIES.join(' · '), tone: 'blue' }} />
+              {/* One chip a city: a single chip of five names is wider than a phone and pushed the whole sheet sideways. */}
+              {RESEARCH_CITIES.map((city) => <PermitChip key={city} chip={{ words: city, tone: 'blue' }} />)}
             </div>
             <div style={sub}>Names that may be them</div>
             {suggestions.length === 0 ? <EmptyState main={`Nothing on permits resembles ${customerName}, and no permit sits on an address you bid to them. Search below.`} compact /> : suggestions.slice(0, 8).map((s, i) => row(s, { reasons: s.reasons, marked: s.marked, top: i === 0 && s.onOurSites > 0 }))}
