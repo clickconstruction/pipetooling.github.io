@@ -15,7 +15,6 @@ export {
   boxPageKind,
   boxPageLines,
   boxPageNoun,
-  boxPageOfficePhone,
   boxPagePhotoUrl,
   buildBoxPagePayload,
   compareStencils,
