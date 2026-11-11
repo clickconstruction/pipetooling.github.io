@@ -1999,6 +1999,7 @@ export function BidsTakeoffTab({
         supplyHouses={supplyHouses}
         partTypes={partTypes}
         serviceTypes={serviceTypes}
+        knownParts={takeoffAddTemplateParts}
       />
 
       {/* Assembly authoring modal cluster (T7): Add Assembly / Add Parts to

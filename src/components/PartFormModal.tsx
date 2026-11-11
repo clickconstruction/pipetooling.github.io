@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Database } from '../types/database'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
@@ -8,9 +8,14 @@ import { applyPartPriceRowPatch, withTrailingBlankPartPriceRow, type PartPriceRo
 import { todayYmdChicago } from '../lib/formatJobDetailModalDateYmd'
 import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementUnitKey } from '../lib/materials/orderIncrement'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { alreadyInBook, indexBook, type BookPart } from '../lib/materials/partMatch'
+import { loadPartsCatalog } from '../lib/materials/partsCatalog'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
+/** A part the form checks a typed name against (punch list #308): the book's parts for this service type. */
+export type PartFormKnownPart = BookPart & { is_robot?: boolean | null }
 
 // This modal is always the leaf dialog (opened FROM other modals, e.g. Bids
 // Takeoff Edit Template at z 1100 and its pickers at 1200), so the overlay sits
@@ -56,6 +61,12 @@ interface PartFormModalProps {
   supplyHouses: SupplyHouse[]
   partTypes: PartType[]
   serviceTypes: ServiceType[]
+  /**
+   * The book's parts for this service type, when the caller already holds them (Takeoffs does).
+   * A typed name is checked against them so a part on file is not made twice (punch list #308).
+   * Left out, the form reads the names itself when it opens.
+   */
+  knownParts?: PartFormKnownPart[]
 }
 
 export function PartFormModal({
@@ -70,6 +81,7 @@ export function PartFormModal({
   supplyHouses,
   partTypes,
   serviceTypes,
+  knownParts,
 }: PartFormModalProps) {
   const narrowViewport = useNarrowViewport640()
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -87,6 +99,48 @@ export function PartFormModal({
   const [lastSavedName, setLastSavedName] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  // Already in the book? (punch list #308) The typed name, a beat behind the keys, checked against the book.
+  const [loadedParts, setLoadedParts] = useState<PartFormKnownPart[] | null>(null)
+  const [checkedName, setCheckedName] = useState('')
+  const [differentFor, setDifferentFor] = useState<string | null>(null)
+  const [openingPartId, setOpeningPartId] = useState<string | null>(null)
+
+  const adding = isOpen && !editingPart
+  useEffect(() => {
+    if (!adding || knownParts) return
+    let cancelled = false
+    loadPartsCatalog<PartFormKnownPart>(supabase, selectedServiceTypeId, 'id,name,manufacturer,is_robot')
+      .then((rows) => { if (!cancelled) setLoadedParts(rows) })
+      // The check is a help, never a gate: with no book to read, the form saves as it always has.
+      .catch((e) => console.error('Could not read the parts book for the Add Part check:', e))
+    return () => { cancelled = true }
+  }, [adding, knownParts, selectedServiceTypeId])
+
+  useEffect(() => {
+    const t = setTimeout(() => setCheckedName(partName), 200)
+    return () => clearTimeout(t)
+  }, [partName])
+
+  const bookParts = knownParts ?? loadedParts
+  const book = useMemo(() => indexBook((bookParts ?? []).filter((p) => !p.is_robot)), [bookParts])
+  const already = useMemo(() => (adding ? alreadyInBook(checkedName, book) : null), [adding, checkedName, book])
+  const alreadyKey = already ? already.parts.map((p) => p.id).join(',') : null
+  const showAlready = already != null && alreadyKey !== differentFor
+  const typedAPrice = partPrices.some((p) => p.supply_house_id || p.price)
+
+  /** Use that part: hand the part on file to whoever opened the form, as a save would, and make nothing. */
+  async function pickExistingPart(id: string) {
+    setOpeningPartId(id)
+    setError(null)
+    const { data, error: e } = await supabase.from('material_parts').select('*, part_types(*)').eq('id', id).single()
+    if (e || !data) {
+      setError(`Could not open that part: ${formatErrorMessage(e, 'it was not found')}`)
+      setOpeningPartId(null)
+      return
+    }
+    await onSave(data as MaterialPart)
+    setOpeningPartId(null)
+  }
 
   function resetToBlankForm(nextName: string) {
     setPartName(nextName)
@@ -101,6 +155,7 @@ export function PartFormModal({
     setPartPrices(withTrailingBlankPartPriceRow([]))
     setDeleteConfirmOpen(false)
     setDeleteConfirmName('')
+    setDifferentFor(null)
   }
 
   // Initialize form when modal opens or editing part changes
@@ -347,6 +402,44 @@ export function PartFormModal({
                 style={inputStyle}
               />
             </div>
+            {showAlready && already ? (
+              <div
+                role="status"
+                aria-live="polite"
+                data-testid="part-form-already-in-book"
+                style={{ gridColumn: '1 / -1', padding: '0.65rem 0.8rem', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 6, display: 'grid', gap: '0.45rem' }}
+              >
+                <strong style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem' }}>{already.headline}</strong>
+                {already.parts.map((p) => (
+                  <div key={p.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    <span style={{ minWidth: 0, fontSize: '0.875rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                      {p.name}
+                      {p.manufacturer ? <span style={{ color: 'var(--text-muted)' }}> · {p.manufacturer}</span> : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void pickExistingPart(p.id)}
+                      disabled={openingPartId != null}
+                      style={{ padding: '0.35rem 0.75rem', background: openingPartId != null ? DEAD_PRESS_FILL : '#2563eb', color: openingPartId != null ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: openingPartId != null ? 'wait' : 'pointer', fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                    >
+                      {openingPartId === p.id ? 'Opening…' : already.parts.length === 1 ? 'Use that part' : 'Use this one'}
+                    </button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDifferentFor(alreadyKey)}
+                    style={{ padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                  >
+                    Mine is different
+                  </button>
+                  {typedAPrice ? (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>A price typed here is not saved on that part. Add it from its Prices.</span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div>
               <label style={labelStyle}>
                 Part Type <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
