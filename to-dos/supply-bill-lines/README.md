@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 v2.6817 on main and pushed, then PR 2 and the measure) and the screens (1b v2.6819 on main, its migration pushed, walked live 2026-11-09 on a ZZ test house: a made-up bill filled from its PDF read *7 lines · The subtotal with tax and freight is $36.00 short of the total*, Look drew the paper beside the lines, Count it as read turned the row to *counted as read by Robert*) · step 0 done 2026-11-10 (the bills' folder, kept apart from the jobs Shared Drive by the owner's call, is shared with the app's account as a viewer) · left: PR 2, the measure, then 2a, 2b and the views
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · left: the checks and the match the measure asks for (1c), the held list's screen (3), then the views and the matching list
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: PR 2 on the pipe side, now that step 0 is done (2026-11-10): the Drive read as the service account, a bill opened by its link's file id, and the sweep. Then the measure; the office's first real bill saved from its PDF shows the Lines cell on a real paper.
+next: PR 1c, small and from the measure: four rules the check kernel does not know (a price rounded on the paper, a pack priced by the piece, a charge outside the subtotal, a rebate line that is negative) and a number that matches when the paper prints a suffix the office did not type. Then PR 3, the held list as a screen, since 34 held or off bills need a person. The owner's calls are in *The calls the measure raises*.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
-blocker: None since 2026-11-10. The bills' folder is shared with the app's account as a viewer, so PR 2's sweep can open a bill on file.
-opinion: build PR 1 and PR 2 first — the reader, the sum check and the PDFs all exist, and the real lines are what the matching list and the views should be designed from; the rest after a week of measured data
-ver: v2.6817 · v2.6819 (PR 1 and 1b) · v2.6088 · v2.6095 (the bill reader this builds on)
+blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
+opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after
+ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -336,7 +336,7 @@ the jobs: the folder stays in that My Drive, renamed `_Bills` so it sorts first,
 `drive-intake@pipetooling-drive.iam.gserviceaccount.com` as a **viewer** (the sweep only reads),
 beside the office users who already had it. Read back the same day from Drive's own permission
 list: the folder, two of the newest bills and one of the oldest (March 2026) each name the service
-account as a reader. The sweep's probe (below) has not run, since PR 2 is not built.
+account as a reader. The sweep's probe ran on 2026-11-10 once PR 2 was deployed: the app opened 20 of 20 linked files.
 
 Two things follow for PR 2. The bills are not in the jobs Shared Drive, so `file-index-sweep` never
 lists one and the sweep opens each bill by the file id in its `link`. And the files are owned by an
@@ -519,7 +519,125 @@ New:
 - The repo is public. This card states the evidence in general terms and names no supplier, part,
   price or bill.
 
+## The measure
+
+Run on 2026-11-10, the evening PR 2 was deployed, over every bill on file and not a week of them: the
+backfill read thirteen months of bills in twenty minutes. Counts only. Read through the app as a dev;
+nothing below names a house, a part, a price or a bill.
+
+### What was read
+
+| | |
+| --- | --- |
+| Bills on file | 539 |
+| With a Drive link | 520, on 307 files. 94 files stand behind more than one row; the most on one file is 19 |
+| Lines read | on **469** bills, 90 percent of the linked ones |
+| Adding up | **433** of the 469, 92 percent. 36 are off and wait for a person |
+| Held | 51: the number is not in its file 42, the app cannot open the file 7, the file is a statement 2 |
+| No PDF | 19 |
+| Papers with no bill | 50: 42 invoices, 4 credits, 4 statements, kept and not counted |
+| Model reads | 374, every one answered whole. $13.40 in all, **2.9 cents a bill**, not the 1.2 this card guessed |
+
+- **The reader is right.** Nine bills picked across three houses were compared to their PDFs: every
+  line's code, quantity, price and extension, the subtotal, the tax, the total and the pages
+  matched. In a file of four bills each row took its own paper.
+- **No bill on file is a scan.** All 469 had a text layer, so the code check ran on every one, and
+  **no part code failed it**. OCR is not needed for the backfill, and neither is a parser per layout.
+- **The probe** opened 20 of 20 files. Seven bills still link a file that answered 404: it sits
+  outside the shared folder.
+
+### The lines
+
+- **4,257 lines** read, 3,817 of them on bills. The median bill has 5 lines; the longest has 69.
+- 44 are charges and 22 are kit components. **Charges are 1.2 percent of the spend.**
+- **91 percent of part lines print the house's code** and 57 percent print the manufacturer's
+  number too. 1,062 manufacturer's numbers were read, and 72 of them appear at two houses or more.
+- **2 percent of part lines are priced per hundred or per thousand** (74 lines).
+- Twelve houses have bills read. The top three hold 74 percent of the bills, and one house alone
+  holds half.
+
+### Codes by spend
+
+A code here is a house and its own part code.
+
+| | |
+| --- | --- |
+| Codes | **2,060** |
+| Bought on one bill only | 1,434, 70 percent |
+| Bought on five bills or more | 94 |
+| Bought on ten bills or more | 14 |
+| Spend behind lines that print a code | 93 percent of the part spend |
+| **The top 40 codes** | **34 percent of the spend** |
+| The top 100 | 49 percent |
+| The top 200 | 61 percent |
+| Codes to reach 80 percent | 574 |
+
+The tail is long. The first forty codes reach a third of the money, and the next quarter of it
+takes a hundred and sixty codes more.
+
+### Why 36 bills are off
+
+Each was worked out again from its lines.
+
+| Bills | Why | Whose |
+| --- | --- | --- |
+| 11 | One line's quantity times its price misses its extension by 2 to 9 cents. The house sells pipe by the stick and prints a price a foot, rounded to three places. | The check: allow what the rounding allows |
+| 2 | A box or a case is the quantity and the price is for one piece. | The check: a pack factor, kept for the crosswalk's unit factor |
+| 2 | A line has an extension and no price was read. | The reader |
+| 1 | A shipping charge is printed outside the subtotal and was read as a line. | The check |
+| 2 | A rebate or a credit is a line among the parts and was read as a positive. | The reader's schema: a line needs a sign |
+| 4 | The lines sum to more than the subtotal for another reason. | A person, in Look |
+| 3 | The lines sum to less: two bills print no extension on any line, one is missing a line. | A person, in Look |
+| 11 | The paper adds up and its total is not the amount typed on the row. Five differ by $30 or less, six by more than $70. | The office: the row or the link is wrong |
+
+Four rules in the check kernel and one in the schema would turn 16 of the 36 green. Eleven are the
+office's, and are a finding of their own: the amount on file is not the amount on the paper.
+
+### Why 42 rows did not find their number
+
+- **23** are in their file under a longer number. The paper prints a suffix the office did not
+  type, and the paper sits in the file with no bill.
+- **16** carry a link to another bill's file. Three files account for them; one is pasted on 12
+  rows and one on 9.
+- **3** are a digit apart from a paper in the file, or match it by total alone.
+
+### What the measure changes
+
+1. **PR 1c comes first**: the four check rules, the signed line, and a match that takes the paper
+   whose number is the row's number with a short suffix when the totals agree. It is small, pure
+   and tested, and it moves about 39 bills (16 off, 23 held) with no press.
+2. **PR 3 moves ahead of the matching list.** 34 bills need a person today: 16 with the wrong
+   link, 7 the app cannot open, 11 whose amount is not the paper's. Only the held list shows them.
+3. **What we buy (4a) can be built on the house's code before any code is matched.** 93 percent of
+   the spend carries a code, and the views already group by house and code where there is no part.
+4. **The matching list (2a) is worth its hour for about two hundred codes**, 61 percent of the
+   spend. Past that the manufacturer's number has to do the offering, and it is on 57 percent of
+   the lines.
+5. **What to stock (4c) has its signal**: 94 codes were bought on five bills or more, 14 on ten or
+   more. Big-box purchases are still missing from it, as stage 4 says.
+6. **The parsers stay unbuilt** and call 3 stands on its default.
+7. **The cost** is 2.9 cents a bill. At the pace of the last year that is under $2 a month.
+
+### The calls the measure raises
+
+- **May a bill take a paper whose number is longer than the one typed?** *Default:* yes, when the
+  typed number is the start of the printed one and the paper's total is the row's amount. The other
+  choice keeps 23 bills held until someone retypes each number.
+- **Who fixes the 34?** *Default:* the office, from PR 3's held list. The other choice is a list
+  handed over now, before the screen exists.
+- **Which is built first after 1c and 3, What we buy or the matching list?** *Default:* What we
+  buy, on the house's code.
+
 ## Where it stands
+
+**PR 2 (v2.6882) is on main, its migration pushed and its functions deployed** (2026-11-10). The
+edge function `bill-lines-sweep` opens the Drive file a bill's row links as the service account,
+asks the reader for every paper in the file, gives each row its paper by the invoice number and
+writes it with its lines. A file over three pages is read three pages at a time and joined. A bill
+it cannot give a paper is held with its reason in `supply_bill_holds`. It runs every ten minutes,
+with its own cap of 600 reads a day. The backfill ran the same evening through the dev's door, and
+the measure above is what it found. Two things PR 1 planned landed here instead: a file that
+answers with several papers, and the page ranges.
 
 **PR 1 (v2.6817) and PR 1b (v2.6819) are on main and their migrations on prod** (2026-11-09). The
 live walk of 1b ran from a worktree dev server against prod, signed in through dev-login: the
@@ -548,6 +666,6 @@ counted as read by Robert*. No console error. What the walk left and found:
 Earlier: a design card with its mock-up. Nothing was built until 2026-11-09 evening. The owner said on 2026-11-09 they want to build
 it; the nine frames were drawn the same day for their critique, and a measurement run on real bills
 the same evening answered the Drive question and reshaped the checks and the order of the PRs. The
-research above was read on 2026-11-09; the prod counts will drift. Two things were not checked and
-are named where they matter: how many supplier mails with a bill reach a mailbox the app does not
-read, and how much of the spend the top unmatched codes cover, which the measure after PR 2 answers.
+research above was read on 2026-11-09; the prod counts will drift. One thing was not checked and
+is named where it matters: how many supplier mails with a bill reach a mailbox the app does not
+read. How much of the spend the top codes cover is answered in *The measure*.
