@@ -58,7 +58,7 @@ export type BoxPagePayload = {
     lastCountedOn: string | null
     photo: BoxPagePhoto | null
   }
-  /** The company's own number, for *Text the office* (v2.6874): the team box's line since v2.6910 (`boxPageOfficePhone`). Never a person's. */
+  /** The company's own number, for *Text the office* (v2.6874); null when the letterhead carries none. Never a person's. */
   office: { phone: string } | null
 }
 
@@ -132,20 +132,6 @@ export function boxPageGoneLines(lines: ReadonlyArray<BoxPageServerLine>, contai
     .sort((a, b) => a.partName.localeCompare(b.partName))
 }
 
-/**
- * The number *Text the office* and *Call the office* go to (v2.6910): the first of these that is there. The function
- * hands them in order: the team box's number from Settings → Phone and texts (`messages_boxes_v1`), the line the Messages
- * page sees, so a text about a cage lands where the office reads it; then that box's fallback secret; then the
- * letterhead's number, which rings but whose texts reach nobody in the app. Empty when none is there.
- */
-export function boxPageOfficePhone(candidates: ReadonlyArray<string | null | undefined>): string {
-  for (const c of candidates) {
-    const phone = (c ?? '').trim()
-    if (phone) return phone
-  }
-  return ''
-}
-
 /** The function's address for a photo's bytes. */
 export function boxPagePhotoUrl(supabaseUrl: string, code: string, photoId: string): string {
   return `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/box-read?code=${encodeURIComponent(code)}&photo=${encodeURIComponent(photoId)}`
@@ -161,7 +147,7 @@ export function buildBoxPagePayload(input: {
   lastCountAt?: string | null
   /** Now, as the function reads it. Without it no line at zero is kept by its age. */
   now?: string
-  /** The company's own number, as `boxPageOfficePhone` picked it. */
+  /** The company's own number off the letterhead. */
   officePhone?: string | null
 }): BoxPagePayload {
   const c = input.container

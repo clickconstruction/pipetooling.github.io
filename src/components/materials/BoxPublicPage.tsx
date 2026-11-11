@@ -12,7 +12,7 @@
  * function refuses for it, and a code no box carries offers the typed code and the site this phone last scanned.
  *
  * v2.6874, the second half: a line emptied since the box's last count stays as *None left*, a line the crew pressed Can't
- * find on says so, and **Text the office** opens the phone's own Messages to the office's number (the team text line since v2.6910) with the box's name
+ * find on says so, and **Text the office** opens the phone's own Messages to the letterhead's number with the box's name
  * filled in. That press is a link: nothing signed out writes to the app. A retired label names its box.
  *
  * v2.6899, the look (the owner, on the live page: *visually it could be better*; his pick of the navy plate): the stencil,
