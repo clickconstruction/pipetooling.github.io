@@ -4,6 +4,7 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { leadDoor, shortDay, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
 import { mayKeepFromClosed } from '../../lib/research/permitHistory'
+import { ResearchMapCard } from './ResearchMapCard'
 import {
   CLOSED_WORDS,
   PURSUE_FOR_WORDS,
@@ -86,6 +87,7 @@ export function PermitPlaceList({
   onPutBack,
   onKeep,
   onSkim,
+  isMobile = false,
 }: {
   place: 'kept' | 'pursuing' | 'closed'
   rows: readonly ResearchPermitRow[]
@@ -102,10 +104,14 @@ export function PermitPlaceList({
   onKeep?: (row: ResearchPermitRow) => void
   /** Back to the skim, for the press an empty list offers. */
   onSkim: () => void
+  isMobile?: boolean
 }) {
   const [keptShowing, setKeptShowing] = useState<KeptShowing>('everyone')
   const [closedWhy, setClosedWhy] = useState<ClosedWhy>('passed')
   const [search, setSearch] = useState('')
+  // Closed can be read as a list or as a map: every permit on the chip, however old, as a pin.
+  const [closedMap, setClosedMap] = useState(false)
+  const [pinId, setPinId] = useState<string | null>(null)
 
   const keptCounts = useMemo(() => keptChipCounts(rows, floor, me, todayYmd), [rows, floor, me, todayYmd])
   const closedCounts = useMemo(() => closedChipCounts(rows, floor), [rows, floor])
@@ -114,6 +120,7 @@ export function PermitPlaceList({
     if (place === 'pursuing') return pursuingRows(rows, floor)
     return closedRows(rows, floor, closedWhy, search)
   }, [place, rows, floor, keptShowing, me, todayYmd, closedWhy, search])
+  const pinned = useMemo(() => (pinId ? (list.find((r) => r.id === pinId) ?? null) : null), [pinId, list])
   // Kept permits a plumber has since taken sit in Closed; Kept says so once, with the door.
   const tookPlumber = useMemo(() => (place === 'kept' ? rows.filter(tookPlumberSinceKept).length : 0), [place, rows])
 
@@ -155,6 +162,15 @@ export function PermitPlaceList({
                 {CLOSED_WORDS[w]} {closedCounts[w]}
               </button>
             ))}
+            <span style={{ flex: '1 1 auto' }} />
+            <span role="group" aria-label="List or map" style={{ display: 'inline-flex', gap: 6 }}>
+              <button type="button" aria-pressed={!closedMap} onClick={() => setClosedMap(false)} style={chip(!closedMap)}>
+                List
+              </button>
+              <button type="button" aria-pressed={closedMap} onClick={() => setClosedMap(true)} style={chip(closedMap)}>
+                On a map
+              </button>
+            </span>
           </div>
           <div style={{ padding: '0 14px 10px' }}>
             <input
@@ -171,7 +187,31 @@ export function PermitPlaceList({
 
       {list.length === 0 && <div style={{ borderTop: '1px solid var(--border)' }}>{empty()}</div>}
 
-      {list.map((row) => {
+      {place === 'closed' && closedMap && list.length > 0 && (
+        <div style={{ padding: '0 14px 14px' }}>
+          <ResearchMapCard rows={list} selectedId={pinId} onSelect={setPinId} isMobile={isMobile} noPinsWords="None of these permits has a point the city gave.">
+            {pinned && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.875rem' }}>
+                <Head row={pinned} onOpen={onOpen} />
+                <div style={muted}>{closedWhy === 'plumber' ? (pinned.plumber ? `${pinned.plumber} has it` : 'A plumbing permit is on file, no plumber named') : `${pinned.verdict_by_name ?? 'Someone'}, ${shortDay(pinned.verdict_at ? pinned.verdict_at.slice(0, 10) : null)}`}</div>
+                {closedWhy !== 'plumber' && pinned.verdict_reason && <div style={muted}>“{pinned.verdict_reason}”</div>}
+                {onKeep && mayKeepFromClosed(pinned) && (
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <button type="button" disabled={busyId === pinned.id} onClick={() => onKeep(pinned)} style={{ ...linkPress, fontWeight: 700 }}>
+                      Investigate
+                    </button>
+                    <button type="button" disabled={busyId === pinned.id} onClick={() => onPutBack(pinned)} style={linkPress}>
+                      Put back
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </ResearchMapCard>
+        </div>
+      )}
+
+      {!(place === 'closed' && closedMap) && list.map((row) => {
         const busy = busyId === row.id
         const due = row.verdict_look_again_on != null && row.verdict_look_again_on <= todayYmd
         return (

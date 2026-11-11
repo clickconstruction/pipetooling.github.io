@@ -394,6 +394,78 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       })
     })
 
+    describe('Find a permit, and the map of what is closed', () => {
+      const byCity = (city: string): ResearchPermitRow[] =>
+        city === 'San Antonio'
+          ? [row(), passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })]
+          : city === 'Austin'
+            ? [row({ id: 'a1', city: 'Austin', address: '900 LAMAR SAMPLE BLVD', permit_number: '2026-000900 BP', contact: 'Hill Country Builders', project_name: 'Lamar Clinic' })]
+            : []
+
+      it('finds a permit on any list and in any city, says where it sits, and opens it', async () => {
+        io.loadResearchPermits.mockImplementation(async (city: string) => byCity(city))
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Find a permit' }))
+        const box = screen.getByRole('searchbox', { name: 'Find a permit' })
+        // The other cities are read when the search opens.
+        await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledWith('Austin', '2000-01-01', false))
+
+        // A street in the city on screen: the passed permit, with its place and its last move.
+        fireEvent.change(box, { target: { value: 'millrace' } })
+        expect(await screen.findByText('Closed · passed')).toBeTruthy()
+        expect(screen.getByText('Sam passed, Nov 9: too far')).toBeTruthy()
+        expect(await screen.findByText('1 found')).toBeTruthy()
+        // A pass can be turned around from the result.
+        expect(screen.getByRole('button', { name: 'Investigate' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Put back' })).toBeTruthy()
+
+        // A city and a builder: the permit in the other city, still waiting on its skim.
+        fireEvent.change(box, { target: { value: 'austin hill country' } })
+        expect(await screen.findByText(/900 LAMAR SAMPLE BLVD, Austin/)).toBeTruthy()
+        expect(screen.getByText('Waiting on a skim')).toBeTruthy()
+        expect(screen.queryByText('Closed · passed')).toBeNull()
+        fireEvent.click(screen.getByRole('button', { name: /^Lamar Clinic/ }))
+        const sheet = await screen.findByRole('dialog')
+        expect(within(sheet).getByText('900 LAMAR SAMPLE BLVD')).toBeTruthy()
+      })
+
+      it('looks in one city when asked, and says so when nothing matches', async () => {
+        io.loadResearchPermits.mockImplementation(async (city: string) => byCity(city))
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Find a permit' }))
+        fireEvent.click(screen.getByRole('button', { name: 'San Antonio only' }))
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Find a permit' }), { target: { value: 'lamar' } })
+        expect(await screen.findByText('No permits match ‘lamar’.')).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+        expect((screen.getByRole('searchbox', { name: 'Find a permit' }) as HTMLInputElement).value).toBe('')
+      })
+
+      it('a city that cannot be read is named, and the others are still searched', async () => {
+        io.loadResearchPermits.mockImplementation(async (city: string) => {
+          if (city === 'Seguin') throw new Error('the read timed out')
+          return byCity(city)
+        })
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Find a permit' }))
+        expect(await screen.findByText(/Seguin could not be read: .*the read timed out.* The other cities are searched\./)).toBeTruthy()
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Find a permit' }), { target: { value: 'lamar' } })
+        expect(await screen.findByText(/900 LAMAR SAMPLE BLVD, Austin/)).toBeTruthy()
+      })
+
+      it('Closed can be read on a map, where a pin opens the permit with Investigate and Put back', async () => {
+        io.loadResearchPermits.mockResolvedValue([passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })])
+        renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Closed 1' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'On a map' }))
+        // The list gives way to the map, with the same permits as pins.
+        fireEvent.click(await screen.findByRole('button', { name: /^pin / }))
+        expect(await screen.findByRole('button', { name: 'Investigate' })).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Put back' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'List' }))
+        expect(await screen.findByText('Passed on the skim: too far.')).toBeTruthy()
+      })
+    })
+
     describe('the second look at what someone else passed', () => {
       const samPassed = () => passed({ verdict_by: 'u2', verdict_by_name: 'Sam' })
 
