@@ -37,3 +37,5 @@ select policyname from pg_policies where schemaname = 'storage' and policyname l
 ```
 
 Three columns, one private bucket at 2097152, four policies.
+
+**Applied** to prod on 2026-11-11, right after #7672 merged, from `main` at `e0588ca50`, together with `20261111180000_case_search_phrases.sql`, which was also pending. `npm run check:migration-drift` then read 1241 local files and 1241 remote versions, fully applied. The card read the three columns from prod the same hour.

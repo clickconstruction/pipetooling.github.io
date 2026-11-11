@@ -29,7 +29,8 @@ export type KitDrawOptions = {
   measure?: (text: string, weight: number, size: number) => number
   /** The cut line and the safe margin, drawn over a card. */
   guides?: boolean
-  width?: number
+  /** The drawing's width on the page: a number of px, or '100%' to fill its box. */
+  width?: number | string
   /** Keeps two drawings on one page from sharing a clip id. */
   id?: string
 }
