@@ -19067,6 +19067,7 @@ export type Database = {
           height: number
           id: string
           job_id: string
+          refile_due_at: string | null
           status: string
           storage_path: string | null
           taken_at: string
@@ -19085,6 +19086,7 @@ export type Database = {
           height?: number
           id?: string
           job_id: string
+          refile_due_at?: string | null
           status?: string
           storage_path?: string | null
           taken_at?: string
@@ -19103,6 +19105,7 @@ export type Database = {
           height?: number
           id?: string
           job_id?: string
+          refile_due_at?: string | null
           status?: string
           storage_path?: string | null
           taken_at?: string
