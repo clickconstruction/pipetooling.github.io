@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { drawKit, fitSize, guessTextWidth, pipePath, placePhoto, placeRows, printPage, sheetOfTen, type KitPerson } from './draw'
 import { CARD, CHOSEN_LOOK, LAYOUTS, LOOKS } from './layouts'
-import { cardHold, kitFileSlug, kitPersonFromUser, readCrop } from './person'
+import { cardHold, kitFileSlug, kitPersonFromUser, kitPhone, readCrop } from './person'
 
 const photo = { href: 'data:image/png;base64,AAAA', w: 400, h: 600, fx: 0.5, fy: 0.4, zoom: 1 }
 const dale: KitPerson = { name: 'Dale Okafor', title: 'Master Plumber', email: 'dale@example.com', mobile: '(512) 555-0177', office: '(512) 555-0100', photo }
@@ -142,6 +142,19 @@ describe('a person’s facts', () => {
   it('prefers the name on the card and trims every fact', () => {
     const p = kitPersonFromUser({ name: 'Renee', card_name: ' Renee Castillo ', title: null, email: 'renee@example.com', phone: ' (512) 555-0131 ' }, '(512) 555-0100', null)
     expect(p).toEqual({ name: 'Renee Castillo', title: '', email: 'renee@example.com', mobile: '(512) 555-0131', office: '(512) 555-0100', photo: null })
+  })
+  it('prints every number one way, however it was typed', () => {
+    for (const typed of ['617 939 6295', '6179396295', '617-939-6295', '(617) 939-6295', '+1 617 939 6295', '1.617.939.6295']) {
+      expect(kitPhone(typed), typed).toBe('(617) 939-6295')
+    }
+    const p = kitPersonFromUser({ name: 'Renee', phone: '617 939 6295' }, '512.360.0599', null)
+    expect([p.mobile, p.office]).toEqual(['(617) 939-6295', '(512) 360-0599'])
+  })
+  it('leaves a number that is not ten digits as it was typed, and an empty one empty', () => {
+    expect(kitPhone('555-0142')).toBe('555-0142')
+    expect(kitPhone('+44 20 7946 0958')).toBe('+44 20 7946 0958')
+    expect(kitPhone('  ')).toBe('')
+    expect(kitPhone(null)).toBe('')
   })
   it('falls back to the account name', () => {
     expect(kitPersonFromUser({ name: 'Renee', card_name: '  ' }, '', null).name).toBe('Renee')

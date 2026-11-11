@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_IN_KIND_CHOICE_MANY, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billPickDealWords, billQuestionState, billQuestionWords,inKindChipHref, inKindChipTitle, inKindChipWords, billOnDealWords, inKindStandings, jobIsOffTheDeal, jobIsOnTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_IN_KIND_CHOICE_MANY, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billPickDealWords, billQuestionState, billQuestionWords, inKindChipHref, inKindChipTitle, inKindChipWords, billOnDealWords, inKindStandings, jobInKindPayer, jobIsOffTheDeal, jobIsOnTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
 import type { InKindListRow } from './inKindList'
 import { plainWordsFailures } from '../plainWords'
 
@@ -81,6 +81,25 @@ describe('moneyApart', () => {
   it('names the in kind part under a total, or says nothing', () => {
     expect(scheduledInKindWords(9375.4)).toBe('$9,375.40 more is scheduled in kind')
     expect(scheduledInKindWords(0)).toBeNull()
+  })
+})
+
+describe('whose in kind deals a job’s bill reads (jobInKindPayer, v2.6946)', () => {
+  const gc = { id: 'gc1', name: 'Done Right Foundation' }
+  it('is the job’s customer when the bill goes to the customer', () => {
+    expect(jobInKindPayer({ customer_id: 'c1', customer_name: 'Randy Vargo', bill_to_party: 'customer' })).toEqual({ id: 'c1', name: 'Randy Vargo' })
+    // A GC on the job changes nothing while the rule still says the customer pays.
+    expect(jobInKindPayer({ customer_id: 'c1', customer_name: 'Randy Vargo', bill_to_party: 'customer', gc_customer_id: 'gc1', gcCustomer: gc })).toEqual({ id: 'c1', name: 'Randy Vargo' })
+  })
+  it('is the GC when the bill goes to the GC, never the job’s customer', () => {
+    expect(jobInKindPayer({ customer_id: 'c1', customer_name: 'Randy Vargo', bill_to_party: 'gc', gc_customer_id: 'gc1', gcCustomer: gc })).toEqual({ id: 'gc1', name: 'Done Right Foundation' })
+    // A GC job with no customer row bills its GC whatever the rule says.
+    expect(jobInKindPayer({ customer_id: null, customer_name: null, bill_to_party: 'customer', gc_customer_id: 'gc1', gcCustomer: gc })).toEqual({ id: 'gc1', name: 'Done Right Foundation' })
+  })
+  it('falls back to the customer when the rule says GC and the job has none, and reads nobody for no job', () => {
+    expect(jobInKindPayer({ customer_id: 'c1', customer_name: 'Randy Vargo', bill_to_party: 'gc' })).toEqual({ id: 'c1', name: 'Randy Vargo' })
+    expect(jobInKindPayer(null)).toEqual({ id: null, name: null })
+    expect(jobInKindPayer({})).toEqual({ id: null, name: null })
   })
 })
 

@@ -724,7 +724,7 @@ const TOOLS: McpTool[] = [
   {
     name: 'plan_activity_note',
     description: "Dry-run a note onto a job's Activity or a bid's notes (v2.6822): one line of your words where the team reads it in the app — a job's Job activity / notes (the Pipeline row's thread, the job window's Activity; the row the Note press writes) or a bid's Notes on the Bid Board (the bid's own, or about one GC on it), as you, under the same RLS as the screen. The plan names the job or the bid as it reads, shows the latest lines already there, the row as it will land and where it shows. It tells nobody: no email, text or push. Use it after a submittal or an order moved to leave the word on the job; the customer's own thread is the job window's Note · Text · Email. Replies with plan_hash.",
-    inputSchema: { type: 'object', properties: { note: { type: 'object', description: '{ job (an id, or text that finds one job — find_job) OR bid (an id, or text that finds one bid — find_bid), text (the note, under 4,000 characters), on? (YYYY-MM-DD, the day it is about when not today, never ahead; stamped noon that day), gc_customer_id? (a bid note about one GC on the bid, a customers.id; left out, the bid\'s own note) }' } }, required: ['note'] },
+    inputSchema: { type: 'object', properties: { note: { type: 'object', description: '{ job (an id, or text that finds one job — find_job) OR bid (an id, or text that finds one bid — find_bid), text (the note, under 4,000 characters), on? (YYYY-MM-DD, the day it is about when not today, never ahead; stamped noon that day; left out, stamped when the apply writes it), gc_customer_id? (a bid note about one GC on the bid, a customers.id; left out, the bid\'s own note) }' } }, required: ['note'] },
   },
   {
     name: 'apply_activity_note',
@@ -2348,7 +2348,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if ('refused' in world) return refused(world.refused, { target: built.target })
       const target = world.on === 'job' ? world.job.id : world.bid.id
       const me = { userId: who.userId, name: who.name }
-      const dry = activityNoteDryRun(p, world, me, todayYmdInAppTz(), new Date().toISOString())
+      // v2.6948: no clock goes into the dry run. An undated bid note's planned row once carried the dry run's own
+      // now in occurred_at, so the apply's second dry run hashed differently and no such note could be applied.
+      const dry = activityNoteDryRun(p, world, me, todayYmdInAppTz())
       if (!dry.ok) return refused(dry.refused, { target })
       const fresh = await planHash(name, p, dry.reply)
       if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
