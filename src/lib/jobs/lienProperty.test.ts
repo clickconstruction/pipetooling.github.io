@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   customerAddressLienGaps,
   customerAddressLienReady,
+  lienAttentionLine,
   lienPropertyOwnerDisplayName,
   resolveLienProperty,
   suggestCustomerAddressForJob,
@@ -118,6 +119,20 @@ describe('resolveLienProperty · the homestead answer (punch list #305)', () => 
     expect(resolveLienProperty({ ...(legalRow as object), homestead_answered_at: '2026-11-17T15:00:00Z' } as never, null).homesteadAnswered).toBe(true)
     expect(resolveLienProperty(legalRow, null).homesteadAnswered).toBeNull()
     expect(resolveLienProperty(null, null).homesteadAnswered).toBeNull()
+  })
+})
+
+describe('an attention line is never the owner (punch list #314)', () => {
+  const owner = (over: Partial<Parameters<typeof lienPropertyOwnerDisplayName>[0]>) => ({ ownerMode: 'building_owner', ownerName: 'SAMPLE CITY OF', ownerCompany: 'ATTN REAL ESTATE MANAGER', mailingAddress: '1 Civic Dr', email: '', phone: '', source: 'property_record' as const, ...over })
+  it('a building owner whose company box holds ATTN prints the owner’s name', () => {
+    expect(lienPropertyOwnerDisplayName(owner({}))).toBe('SAMPLE CITY OF')
+    expect(lienPropertyOwnerDisplayName(owner({ ownerCompany: 'c/o Sample Management' }))).toBe('SAMPLE CITY OF')
+    expect(lienPropertyOwnerDisplayName(owner({ ownerCompany: 'Sample Holdings LLC' }))).toBe('Sample Holdings LLC')
+    expect(lienPropertyOwnerDisplayName(owner({ ownerMode: 'homeowner', ownerName: 'Attention: Billing', ownerCompany: 'Sample Holdings LLC' }))).toBe('Sample Holdings LLC')
+  })
+  it('knows an attention line by how it opens, not by a word inside a name', () => {
+    for (const line of ['ATTN REAL ESTATE MANAGER', 'Attn: Tax Dept', 'attention accounts payable', 'C/O Sample Trust', '% Sample Agent']) expect(lienAttentionLine(line), line).toBe(true)
+    for (const name of ['Attnang Holdings LLC', 'Sample Attention Media', '', null]) expect(lienAttentionLine(name), String(name)).toBe(false)
   })
 })
 

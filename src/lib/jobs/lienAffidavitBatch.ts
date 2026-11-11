@@ -1,6 +1,8 @@
 import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome } from '../batchWords'
 import { filingSheetWords, type FilingSheetBreak } from '../jobsDocuments/filingSheetBreak'
-import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, filingDocsPrintHtml, lienAffidavitPrintOptions, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
+import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, filingDocsPrintHtml, lienAffidavitPrintOptions, prependToFilingPrintHtml, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
+import { demandMoney } from '../jobsDocuments/demandLetter'
+import { LIEN_HELP_STYLES, lienHelpBatchSheetHtml, lienHelpPaperFromFields, type LienHelpLeftOut, type LienHelpPaper } from './lienHelpSheet'
 import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
@@ -113,19 +115,30 @@ export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'read
   }
 }
 
-/** One paper of the print: the job, its number as the ledger shows it, and the fields the desk filled. */
-export type LienAffidavitPrintPaper = { jobId: string; jobNumber: string; fields: LienAffidavitFields }
+/** One paper of the print: the job, its number as the ledger shows it, and the fields the desk filled. `label` and `fileBy` are the help sheet's (punch list #314): the job as the desk names it and its last day to file, in words. */
+export type LienAffidavitPrintPaper = { jobId: string; jobNumber: string; fields: LienAffidavitFields; label?: string; fileBy?: string }
+
+/** The batch's help sheet (punch list #314): a row for each paper from the paper's own fields, and the ones left out with their reason. */
+export function lienAffidavitBatchHelpSheet(papers: ReadonlyArray<LienAffidavitPrintPaper>, leftOut: ReadonlyArray<LienHelpLeftOut>, printedOn: string): string {
+  const rows: LienHelpPaper[] = papers.map((p) => lienHelpPaperFromFields({ jobLabel: p.label?.trim() || `Job ${p.jobNumber}`, fileBy: p.fileBy ?? '', claimWords: demandMoney(p.fields.unpaidAmount), fields: p.fields }))
+  return lienHelpBatchSheetHtml({ papers: rows, leftOut, printedOn })
+}
+
+/** Why a ready paper on the earlier form is not in the batch, on the help sheet. */
+export const LIEN_HELP_EARLIER_FORM_REASON = 'It is on the earlier form. Redraw it, or print it from its own Lien window.'
 
 /**
  * The print: one document with every paper on its own sheet, and for each job the copy to file on it. A print counts
  * as a send (`docs/SENT_COPIES.md`), and each job keeps its own paper alone, under the kind and title the Lien
  * window's **Print for notarization** files, so a job's sent copies read the same whichever press printed it.
  */
-export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPaper>): { html: string; copies: Array<{ filing: Omit<SentFiling, 'how'>; html: string }> } {
+export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPaper>, helpSheetHtml?: string | null): { html: string; copies: Array<{ filing: Omit<SentFiling, 'how'>; html: string }> } {
   const footer = filingDocFooter('affidavit')
   const drawn = papers.map((p) => ({ paper: p, blocks: buildLienAffidavitBlocks(p.fields), opts: lienAffidavitPrintOptions(p.fields) }))
+  const sheets = filingDocsPrintHtml(drawn.map((d) => ({ blocks: d.blocks, footer, opts: d.opts })), count(papers.length, 'Lien affidavit', 'Lien affidavits · #'))
   return {
-    html: filingDocsPrintHtml(drawn.map((d) => ({ blocks: d.blocks, footer, opts: d.opts })), count(papers.length, 'Lien affidavit', 'Lien affidavits · #')),
+    // The help sheet prints first and is in no job's filed copy (punch list #314).
+    html: helpSheetHtml ? prependToFilingPrintHtml(sheets, helpSheetHtml, LIEN_HELP_STYLES) : sheets,
     copies: drawn.map((d) => {
       const title = `Lien Affidavit — Job ${d.paper.jobNumber}`
       return { filing: { kind: 'lien_affidavit', title, jobIds: [d.paper.jobId] }, html: filingDocPrintHtml(d.blocks, title, footer, d.opts) }

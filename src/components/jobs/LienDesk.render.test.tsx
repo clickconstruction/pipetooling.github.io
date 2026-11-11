@@ -21,7 +21,7 @@ import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow,
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
@@ -1035,6 +1035,24 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(document.querySelector('[data-lien-affidavit-homestead-door]')).toBeNull()
   })
 
+  it('a public owner holds the affidavit: the gate says no lien attaches, and offers no record to fill in (punch list #314)', async () => {
+    const d = data([], [], true, { owner_name: 'SAMPLE CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', owner_mode: 'building_owner' })
+    const rows = withPublicOwner([affRow], { j650: 'addr1' }, d.addressesById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
+    expect(document.body.textContent).toContain("Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney.")
+    expect(document.body.textContent).toContain('missing a private owner')
+    expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
+    // The paper names the owner, never the attention line.
+    expect(paper().textContent).toContain('The owner or reputed owner is SAMPLE CITY OF')
+    expect(paper().textContent).not.toContain('ATTN REAL ESTATE MANAGER')
+    expect(screen.queryByRole('button', { name: 'Fill in the record ›' })).toBeNull()
+  })
+
   it('a GC with no address on file holds the affidavit: the gate says so, the door opens the GC’s record, and the paper keeps its words', async () => {
     const d = data([], [], true)
     d.gcsById = { loberg: { ...d.gcsById.loberg!, address: '' } }
@@ -1201,6 +1219,32 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(fileCopyMock.mock.calls.map(([f]) => [f.kind, f.how, f.jobIds])).toEqual([['lien_affidavit', 'print', ['j650']], ['lien_affidavit', 'print', ['j651']]])
     expect(fileCopyMock.mock.calls.map(([f]) => f.title)).toEqual([expect.stringMatching(/^Lien Affidavit — Job .*650$/), expect.stringMatching(/^Lien Affidavit — Job .*651$/)])
     expect(fileCopyMock.mock.calls[0]![1].html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
+    // The help sheet prints first (punch list #314): a row for each paper and the one left out, and no job's filed copy carries it.
+    expect(html.indexOf('data-lien-help="batch"')).toBeGreaterThan(0)
+    expect(html.indexOf('data-lien-help="batch"')).toBeLessThan(html.indexOf('<div class="filing-paper'))
+    expect(html).toContain('Lien affidavits: this batch of 2')
+    expect(html).toContain('Not printed. It is on the earlier form. Redraw it, or print it from its own Lien window.')
+    expect(fileCopyMock.mock.calls.every(([, body]) => !body.html.includes('lien-help'))).toBe(true)
+  })
+
+  it('the help sheet box is ticked until someone unticks it, and an unticked box prints the papers alone (punch list #314)', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    const box = within(bar.querySelector('[data-lien-affidavit-help-sheet]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(bar.querySelector('[data-lien-affidavit-help-sheet]')?.textContent).toBe('Print the help sheet first')
+    expect(box.checked).toBe(true)
+    fireEvent.click(box)
+    expect(box.checked).toBe(false)
+    expect(window.localStorage.getItem('pt.lienHelpSheet.v1')).toBe('off')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-help')
+    expect(fileCopyMock).toHaveBeenCalledTimes(2)
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
   })
 
   it('under the print press the list names a paper that takes a second sheet, by its job, and the press still prints every paper (v2.6930)', async () => {

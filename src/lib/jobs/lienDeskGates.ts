@@ -36,6 +36,8 @@ export interface LienGateVerdict {
 
 export interface LienDeskGatesInput {
   ownerName: string
+  /** Whether any name the record gives for the owner is a public body (`lienOwnerIsPublic`, punch list #314); absent, the printed name alone is asked, as before. */
+  ownerIsPublic?: boolean
   ownerMailingAddress: string
   gcName: string
   gcAddress: string
@@ -65,7 +67,7 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
   const gcName = input.gcName.trim()
   const kind = (input.propertyKind ?? '').trim()
   const county = input.county.trim()
-  const isPublic = owner !== '' && ownerKind(owner) === 'public'
+  const isPublic = owner !== '' && (input.ownerIsPublic ?? ownerKind(owner) === 'public')
 
   const ownerGate: LienGate =
     !owner
@@ -270,6 +272,7 @@ export function lienAffidavitFootBlockedSentence(gate: { key: LienAffidavitGateK
   const stop = "Don't file yet."
   if (!gate) return `${stop} Clear what the gates show first.`
   if (gate.key === 'owner') return `${stop} Enter the owner of record and a mailing address on the property record first.`
+  if (gate.key === 'public_owner') return `${stop} This is public property, so no lien can be filed. Ask the attorney about the payment bond.`
   if (gate.key === 'legal') return `${stop} Add the county and the legal description on the property record first.`
   if (gate.key === 'contractor') return `${stop} Add the general contractor's address on its customer record first.`
   if (gate.key === 'notice') return `${stop} Send the § 53.056 notice first. A late one counts while this window is open.`
@@ -279,5 +282,5 @@ export function lienAffidavitFootBlockedSentence(gate: { key: LienAffidavitGateK
 
 /** The affidavit's red chip words (v2.4806). */
 export function lienAffidavitGateShortWords(gate: { key: LienAffidavitGateKey }): string {
-  return gate.key === 'owner' ? 'owner of record missing' : gate.key === 'legal' ? 'county or legal description missing' : gate.key === 'contractor' ? 'no address for the general contractor' : gate.key === 'homestead_answer' ? 'homestead question not answered' : gate.key === 'notice' ? 'no § 53.056 notice on the job' : 'homestead'
+  return gate.key === 'owner' ? 'owner of record missing' : gate.key === 'public_owner' ? 'public property' : gate.key === 'legal' ? 'county or legal description missing' : gate.key === 'contractor' ? 'no address for the general contractor' : gate.key === 'homestead_answer' ? 'homestead question not answered' : gate.key === 'notice' ? 'no § 53.056 notice on the job' : 'homestead'
 }

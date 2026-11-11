@@ -16,7 +16,7 @@ export type LienPaperFix = 'find_owner' | 'fix_property' | 'edit_job' | 'custome
 export type LienPaperGap = {
   /** 1-based, in page order. */
   n: number
-  key: 'owner' | 'owner_address' | 'county' | 'legal' | 'gc' | 'gc_address' | 'signer' | 'company_address' | 'notices' | 'homestead' | 'homestead_answer'
+  key: 'owner' | 'owner_address' | 'county' | 'legal' | 'gc' | 'gc_address' | 'signer' | 'company_address' | 'notices' | 'homestead' | 'homestead_answer' | 'public_owner'
   label: string
   why: string
   /** On the envelope line above a notice (the form itself does not name the owner), on the form, or on the record alone (a gate the paper does not print). */
@@ -73,6 +73,8 @@ export function lienPaperGaps(kind: LienPaperKind, f: LienPaperFacts): LienPaper
       if (g.key === 'notice') out.push({ key: 'notices', label: 'Notices on record', why: 'A sub\u2019s affidavit needs its § 53.056 notices sent and recorded on the job first.', where: 'record', fix: 'notices', fixWords: FIX_WORDS.notices })
       // Punch list #305: nobody answered the homestead question. The property window holds the yes or no.
       if (g.key === 'homestead_answer') out.push({ key: 'homestead_answer', label: 'Homestead question', why: 'Nobody has answered whether this home is the owner’s homestead. A lien on a homestead needs a contract recorded before the work (§ 53.254).', where: 'record', fix: 'fix_property', fixWords: FIX_WORDS.fix_property })
+      // Punch list #314: the owner is a public body. A mechanic's lien does not attach there, so nothing on the record fixes it.
+      if (g.key === 'public_owner') out.push({ key: 'public_owner', label: 'Public property', why: 'A mechanic’s lien does not attach to public property. The remedy is a claim on the payment bond.', where: 'record', fix: 'counsel', fixWords: FIX_WORDS.counsel })
       if (g.key === 'homestead') out.push({ key: 'homestead', label: 'Homestead', why: 'Lien rights on a homestead need a pre-work contract signed by both spouses and recorded (§ 53.254).', where: 'record', fix: 'counsel', fixWords: FIX_WORDS.counsel })
     }
   }
@@ -116,6 +118,7 @@ const GAP_FIELDS: Record<LienPaperGap['key'], ReadonlyArray<string>> = {
   notices: [],
   homestead: [],
   homestead_answer: [],
+  public_owner: [],
 }
 
 /**

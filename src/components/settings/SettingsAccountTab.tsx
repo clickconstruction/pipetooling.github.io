@@ -11,6 +11,7 @@ import PasswordInput from '../PasswordInput'
 import { YourBioCard } from './YourBioCard'
 import { MyWayCard } from './MyWayCard'
 import { SignatureCard } from './SignatureCard'
+import { YourCardCard } from './YourCardCard'
 import { MyMailCard } from './MyMailCard'
 import { MyMailCountCard } from './MyMailCountCard'
 import { PushHoursBlock } from './PushHoursBlock'
@@ -162,6 +163,8 @@ export default function SettingsAccountTab({
       <MyWayCard role={myRole} />
       {/* Punch list #207 PR 1: the signature under every email sent from Messages, the office team's own. */}
       <SignatureCard role={myRole} />
+      {/* Punch list #313: a person's email footer and business card, drawn from their own facts and photo. */}
+      <YourCardCard role={myRole} />
       {/* Punch list #230 PR 3: the switch for the My email tab on Messages, and the labels it leaves out. */}
       <MyMailCard role={myRole} />
       <MyMailCountCard role={myRole} />

@@ -1,8 +1,8 @@
 ---
 name: "Cards and footers: a business card and an email footer made from a person's facts and photo"
 number: 313
-group: ready
-status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · nothing built in the app yet, nothing changed in anyone's mail
+group: close
+status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · built the same day as way A on the picks: the facts and the photo's home (v2.6941, pushed to prod), the designs as kernels (v2.6942), and the screens, Your card and footer on Your account with the People doors (v2.6943) · the owner then asked for other looks, navy and safety yellow among them, and a plan to offer approved alternatives: three candidates drawn beside the look in use, with how the owner approves a look and how a person picks one, none approved or built · the owner took two of the three the same day, navy and orange and navy and yellow with the orange hand kept, passed on the yellow hand, and said to build the plan: built as v2.6951, the looks in the kernels, the owner's card and the Look row, with its migration · nothing changed in anyone's mail
 mockup: to-dos/cards-and-footers/a-in-place.html
 summary: >
   Every footer and card today is a flat picture a designer made for one person, so a new photo
@@ -21,10 +21,10 @@ summary: >
   the designer's file to hairline edges. The owner then took five changes to the designs
   themselves: one orange, even lines on the card, a title, a phone on the footer, and the photo
   front kept.
-next: Build way A in the plan's order, PR 1 first (the facts and the photo's home). The owner said to build it all on 2026-11-11 without answering calls 1 to 10 one by one, so each goes with its pick until he says otherwise.
-size: M as a train of six (S · S · S · S · S · S); two more wait on a call each, the footer with live words (S) and Gmail set by the app (M)
-blocker: None to build. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer.
-opinion: build A, the footer first — the footer is what was asked for and it needs no print shop, no vector and no new scope. The card follows on the same photo and the same facts.
+next: The owner tries it: his own card on Settings → Your account, then a teammate's from People → Users. A real photo save was not walked by the session, since it writes to prod. Then the designer's two files, the owner's word on calls 1 to 10, and the three checks on a device in v2.6943's fragment.
+size: M as a train of six (S · S · S · S · S · S), built as three PRs; left: the designer's vector and photo dropped in (XS), then on a call each the footer with live words (S), Gmail set by the app (M), the letterhead (S)
+blocker: The owner's try of it. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer.
+opinion: built as recommended, way A with the footer and the card together. Next the designer's two files, since the mark is a cut-out and the card front still carries the designer's own logo under the drawn one.
 ---
 
 # Cards and footers (#313)
@@ -43,7 +43,15 @@ The media is a designer's hand-off: flat pictures, one made per person. No vecto
 
 ## Where it stands
 
-**Drawn, and cleared to build.** Five pages sit beside this card. Nothing in the app has changed yet and nothing was sent.
+**Built, 2026-11-11.** Way A, on the picks, in three PRs: v2.6941 (the migration, pushed to prod the same day), v2.6942 (the kernels) and v2.6943 (the screens). Five mock-up pages sit beside this card as the record of what was drawn. Nothing was sent to anyone and nothing was changed in anyone's mail.
+
+**What is in the app.** Settings → Your account → *Your card and footer*: the photo sheet, the name on the card and the title, the footer as a picture, the card as a print file and as a sheet of ten. People → Users: *Card and footer…* in a person's row menu, and *Cards and footers* for the team. The help guide is `make-my-email-footer-and-business-card`.
+
+**What was not walked.** A real photo save, since it writes to prod: the session walked the screens on the dev server with every write refused, and the migration on a local database. The owner's first photo is the first real one.
+
+**What is left.** The designer's two files. The owner's word on calls 1 to 10, which went with their picks. The footer with live words, Gmail set by the app and the letterhead, each on its call. Footers 02, 03 and 05 and card 2 as layouts, if wanted.
+
+The record of the day, as it went:
 
 The owner, 2026-11-11, after taking the rework's five picks:
 
@@ -53,6 +61,7 @@ He did not answer calls 1 to 10 one by one. The build goes with each call's pick
 
 - [`templates.html`](templates.html): the two designs rebuilt as code, with made-up people. Type in a field or drag the ring and every picture redraws.
 - [`rework.html`](rework.html): five changes to the designs themselves, each before and after. The owner took all five.
+- [`looks.html`](looks.html): three other looks beside the one in use, how well each reads, and how an approved look is offered. None is approved.
 - [`a-in-place.html`](a-in-place.html): way A, the pick. One card on Your account, one line in a row menu.
 - [`b-desk.html`](b-desk.html): way B. A tab of its own on People.
 - [`c-walk.html`](c-walk.html): way C. A three-step walk, phone first.
@@ -270,6 +279,56 @@ So the five stand as drawn, the fifth as picked: the photo front is kept and the
 
 The words on the footer stay centred between the pipes however many rows a person has. A person with no title and no phone still gets the designer's footer, to the pixel. Four rows is the most that space holds.
 
+## Other looks, and offering approved ones
+
+The owner, 2026-11-11, with his own card on the live site in front of him:
+
+> Do you like these visuals, I think we can make some alternative, such as in a navy and saftey yellow
+
+> help me come up with a plan to offer approved alternatives
+
+[`looks.html`](looks.html) draws it.
+
+The owner's answer the same day, with two of the candidates in a screenshot:
+
+> I like these as two other alternatives, the 3rd yellow hand we can pass on for now
+>
+> Build the approved-looks plan, with these
+
+**Built as v2.6951.** Three looks: Classic, Navy and orange, and Navy and yellow with the orange hand kept. The four PRs of the train below went as one, for the same reason the screens did. The owner's card is on Settings → People & teams, not Company. The page still shows the yellow hand as the candidate it was.
+
+**What a look is.** The same layouts in other colours: the ground, the accent (the pipes, the ring, the panels, the name on the card), the ink of the logo's two words where they sit on the accent, and which mark. Nothing moves, so every look fits the same names and lines. In `kit.js` a look is one entry in `THEMES`.
+
+**The four on the page.**
+
+| Look | What changes | What it costs |
+|---|---|---|
+| Classic | Nothing. Black and orange, the look in use. | The black block is heavy in a white mail. |
+| Navy and orange | Navy where the black was. | Nothing. The logo is untouched. It matches the app's signed-out pages, which are navy with the orange hand. |
+| Navy and safety yellow | Yellow pipes, ring and panels, and a yellow hand in the logo. | It changes the logo. The page recolours the logo's picture; the real one is the designer's to draw. |
+| Navy and yellow, the orange hand kept | Yellow pipes, ring and panels. The logo as it is. | Three colours on one card. |
+
+**How well each reads.** The page works the numbers. Yellow on navy is the strongest pair, 9.3 to 1. White words on the orange panel are the weakest, 3.2 to 1, in the look in use as well; they are the logo's two large words, so they pass.
+
+**Who does what.**
+
+- **A developer draws a look.** It is code: one entry of colours. It ships switched off.
+- **The owner approves.** Settings → Company gets a card, *Card and footer looks*: each look with a switch, which one is the default, and how many people use it. A look nobody has approved shows there as *Drawn, not approved* and nowhere else.
+- **A person picks.** *Your card and footer* gets a row, *Look*, that shows only the approved looks, each drawn with their own facts. With one approved look there is no row.
+- **The office picks for a teammate** on that teammate's card. The team's batch prints each person in their own look.
+- **A look that is switched off** moves the people on it to the default. Their next footer and card are drawn in the default.
+
+**Where it is kept.** The looks in code. The approved list and the default in one company setting. A person's pick on their own row. No look is ever stored as a picture.
+
+**The rules a look must pass.** The same bones. Every pair of colours reads, held by a test. Three looks on at once at most. The footer and the card go together. The owner approves, a person picks.
+
+**The train**, four small PRs, after the calls below:
+
+1. **Looks as themes in the kernels (S).** `THEMES` beside `LAYOUTS`, with a test that every look keeps the bones and every pair of its colours reads. Only the look in use is on. No screen.
+2. **The setting and the pick (S).** A migration: the company setting for the approved list and the default, and a person's pick on their row.
+3. **The owner's card (S).** *Card and footer looks* on Settings → Company.
+4. **The Look row (S).** On *Your card and footer*, on a teammate's card, and the team's batch in each person's look.
+
 ## The calls, each with a pick
 
 1. **Which design is the company's one?** Four footers, two cards. **Pick: footer 01 and card 1,** the two rebuilt here, for everyone. A second design is a later option, not a choice each person makes.
@@ -287,6 +346,12 @@ The words on the footer stay centred between the pipes however many rows a perso
 13. **A title on the card and the footer?** **Pick: yes, on both.** **Answered 2026-11-11: taken.**
 14. **A phone on the footer?** It puts that number on every mail the person sends. The app's own signature already carries the cell. **Pick: yes, the mobile.** **Answered 2026-11-11: taken.**
 15. **The card front: the photo or the drawn one?** **Pick: the photo,** once the designer sends it clean and says the company may use it. The drawn front until then, if cards must be printed sooner. **Answered 2026-11-11: taken.**
+16. **Offer other looks at all?** One look for everyone is the simplest brand. **Pick: yes, but three on at once at most,** and only looks the owner has switched on. **Answered 2026-11-11: yes, built.**
+17. **Which candidate first?** **Pick: navy and orange.** It changes no logo, it is ready today, and it matches the signed-out pages. Navy and yellow follows once call 18 is settled. **Answered 2026-11-11: both navy looks, the yellow one with the orange hand kept.**
+18. **May the logo's hand turn yellow?** It is a second version of the company's mark. **Pick: only when the designer draws it.** Until then a yellow look keeps the orange hand. **Answered 2026-11-11: passed on for now.**
+19. **A look by taste or by trade?** Yellow is already Electrical's colour in the app, and the logo's second word is type. So navy and yellow with *Electrical* under CLICK could be the electrical side's card, and orange the plumbing side's. **Pick: by trade first.** It gives the second look a reason, and a customer can tell the two crews apart. A free pick per person can follow. **Not answered; built as a free pick per person, as the plan drew it.** By trade is still open, and needs the logo's second word to follow the trade.
+20. **What happens to people on a look that is switched off?** **Pick: they move to the default,** and their card says so once.
+21. **The exact navy and yellow.** The page uses `#16283c`, the navy of the signed-out pages, and `#f6c700` as a stand-in for safety yellow. **Pick: the app's navy, and the yellow from the designer** or from the yellow the crews already wear.
 
 ## Where it plugs in
 
@@ -301,7 +366,7 @@ The words on the footer stay centred between the pipes however many rows a perso
 
 ## The plan
 
-Six small PRs. Each one ships alone.
+Six small PRs were planned. They were built as three: PR 1 as v2.6941, PR 2 as v2.6942, and PRs 3 to 6 together as v2.6943, since CI's test step runs over half an hour a PR.
 
 1. **The facts and the photo's home (S).** The migration: the name on the card, the photo's path and crop on `users`, the bucket and its policies. No screen.
 2. **The templates as kernels (S).** The brand, the three layouts and the parts, the fit of a long name, the ring's crop math, the font, the mark. Tests hold the numbers measured here.

@@ -16,6 +16,7 @@ const blocksFor = (html) => ({
     `<script data-inline="kit.js">\nwindow.ClickKitAssets = ${JSON.stringify({
       'mark.png': dataUri('mark.png', 'image/png'),
       ...(html.includes('data-html=') ? { 'logo-on-dark.png': dataUri('logo-on-dark.png', 'image/png') } : {}),
+      ...(html.includes('data-look=') ? { 'mark-yellow.png': dataUri('mark-yellow.png', 'image/png') } : {}),
       'card-front.jpg': dataUri('card-front.jpg', 'image/jpeg'),
     })};\n${read('kit.js')}\n</script>`,
   'mock.js': `<script data-inline="mock.js">\n${read('mock.js')}\n</script>`,
@@ -26,7 +27,7 @@ const firstTime = {
   'mock.js': /<script src="mock\.js"><\/script>/,
 };
 
-for (const page of ['templates.html', 'rework.html', 'a-in-place.html', 'b-desk.html', 'c-walk.html']) {
+for (const page of ['templates.html', 'rework.html', 'looks.html', 'a-in-place.html', 'b-desk.html', 'c-walk.html']) {
   let html = readFileSync(join(here, page), 'utf8');
   for (const [name, block] of Object.entries(blocksFor(html))) {
     const tag = name.endsWith('.css') ? 'style' : 'script';

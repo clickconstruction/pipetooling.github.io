@@ -38,6 +38,9 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
+import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
+import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
+import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -204,6 +207,17 @@ export const WRITE_VERBS = {
   // (devMcpActivityNote.ts). It tells nobody.
   plan_activity_note: { rpc: null, step: 'plan' },
   apply_activity_note: { rpc: null, step: 'apply' },
+  // v2.6940 / 0.65.0: a payment on a job — removed through the Job window's own remove_jobs_ledger_payment_and_reconcile
+  // with the reason left on the job's activity, recorded as the payments table's own row under RLS, or tied to its bank
+  // row through Accounts Receivable's apply_mercury_bank_payment_allocations; rpc is null, the dry run the server's read
+  // of the job, its payment rows, its bills and the bank row (devMcpJobPayment.ts).
+  plan_job_payment: { rpc: null, step: 'plan' },
+  apply_job_payment: { rpc: null, step: 'apply' },
+  // v2.6940 / 0.65.0: one job combined into another through Pipeline's own migrate_job_ledger_costs_and_delete; rpc is
+  // null, the dry run the server's read of both jobs, what would move and every hold (devMcpJobCombine.ts). No undo:
+  // apply needs confirm_no_undo: true beside the hash.
+  plan_job_combine: { rpc: null, step: 'plan' },
+  apply_job_combine: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -348,6 +362,19 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isJobPaymentVerb(verb)) {
+    // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
+    // dry run is the server's read of the job, its payment rows and the bank row.
+    const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobCombineVerb(verb)) {
+    // v2.6940: the shape check is devMcpJobCombine's, confirm_no_undo with it; the dry run is the server's read of both jobs.
+    const built = jobCombineInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isPlanPartVerb(verb)) {
     // v2.6317: the shape check is devMcpPlanSets'; the dry run is the server's read of the part, not an RPC's.
     const built = planPartInput(verb, input)
@@ -375,7 +402,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown } | { op: prepend_section, heading, markdown } | { op: replace_text, heading, find, replace }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -386,6 +413,9 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const ops = Array.isArray(doc.ops) ? doc.ops : null
     if (hasMarkdown && ops) return { ok: false, error: shape }
     if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
+    // v2.6949: a small edit is worked out by the server before it gets here (devMcpDocEdits.ts) and arrives as markdown;
+    // one still in the ops means its doc had no usable target, and the database knows neither op.
+    if (ops && hasSmallEdits(ops)) return { ok: false, error: shape }
     const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
     const archive = typeof doc.archive === 'boolean' ? doc.archive : null
     // v2.6713 (punch list #287): the record the document transcribes — a uuid, or null to untie; a named document only.
@@ -406,7 +436,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (docId) p.doc_id = docId
     if (title) p.title = title
     if (hasMarkdown) p.markdown = doc.markdown
-    if (ops) p.ops = ops
+    if (ops) p.ops = sectionOpsForRpc(ops)
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
     if (evidenceSet) p.evidence_id = evidenceId
@@ -421,14 +451,14 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
     const narrative = obj(input.narrative)
     const matterId = narrative && typeof narrative.matter_id === 'string' ? narrative.matter_id.trim() : ''
-    const shape = `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown (the whole text, which replaces what is there; '' clears it) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20, one of the two; v2.6623), expect_updated_at? (the narrative_updated_at you read; refused when the narrative was saved since) }.`
+    const shape = `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown (the whole text, which replaces what is there; '' clears it) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown } | { op: prepend_section, heading, markdown } | { op: replace_text, heading, find, replace }], at most 20, one of the two; v2.6623), expect_updated_at? (the narrative_updated_at you read; refused when the narrative was saved since) }.`
     if (!narrative || !UUID_RE.test(matterId)) return { ok: false, error: shape }
     const hasMarkdown = typeof narrative.markdown === 'string'
     const ops = Array.isArray(narrative.ops) ? narrative.ops : null
-    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20))) return { ok: false, error: shape }
+    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20 || hasSmallEdits(ops)))) return { ok: false, error: shape }
     const p: Json = { matter_id: matterId }
     if (hasMarkdown) p.markdown = narrative.markdown
-    else p.ops = ops
+    else p.ops = sectionOpsForRpc(ops ?? [])
     if (typeof narrative.expect_updated_at === 'string' && narrative.expect_updated_at.trim()) p.expect_updated_at = narrative.expect_updated_at.trim()
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
@@ -1091,7 +1121,10 @@ export function canonicalJson(value: unknown): string {
  * carry the dry run's own timestamps and ids. For clock sessions (v2.6524): the counts and each
  * op whole, its after image without `approved_at` — an approve stamps the dry run's own now(),
  * so with the stamp in, no approve plan could ever apply (the fifty of 2026-11-04 hashed three
- * ways in three runs). For an HR entry the whole reply is stable.
+ * ways in three runs). For a person's document (v2.6948): the reply whole, the named document's
+ * `archived_at` as whether it is archived and never when — an archive's dry run answers with its
+ * own now(), the same fault, and the instant before is still held under `changes`. For an HR
+ * entry the whole reply is stable.
  */
 export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   const r = obj(reply)
@@ -1104,7 +1137,18 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   if (verb === 'plan_clock_sessions' || verb === 'apply_clock_sessions') {
     return { ...rest, ops: Array.isArray(r.ops) ? r.ops.map(clockOpCommitment) : r.ops ?? null }
   }
+  if (verb === 'plan_person_doc' || verb === 'apply_person_doc') {
+    return { ...rest, document: personDocCommitment(r.document) }
+  }
   return rest
+}
+
+/** A named document as its plan commits to it: everything the dry run said, archived or not in place of the archive's stamp. */
+export function personDocCommitment(document: unknown): unknown {
+  const d = obj(document)
+  if (!d) return document ?? null
+  const { archived_at: stamp, ...rest } = d
+  return { ...rest, archived: stamp != null }
 }
 
 /** One clock op as its plan commits to it: everything the dry run said, the after image without the approval stamp. */
@@ -1185,6 +1229,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
+  if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`

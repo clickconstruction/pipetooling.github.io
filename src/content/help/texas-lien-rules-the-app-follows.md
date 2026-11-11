@@ -158,13 +158,14 @@ The old demand for payment to the owner was repealed. The notice is the paper th
 
 ### What the affidavit needs before it can be filed
 
-Six things. The owner of record, the county and the legal description, and no homestead. A sub job also needs the GC's address and a recorded notice. A house also needs the homestead question answered.
+Six things. A private owner of record, the county and the legal description, and no homestead. A sub job also needs the GC's address and a recorded notice. A house also needs the homestead question answered.
 
 **What it says.** The affidavit is the lien itself. It is sworn. It is filed with the County Clerk of the property's county. It is due by the 15th of the fourth month after the last month worked. On a residential property it is due by the 15th of the third month. A copy is served on the owner and the GC within 5 days of filing.
 
 The affidavit needs six things.
 
 - The owner of record.
+- An owner that is not a public body. A lien does not attach to a city's, a county's, a school district's or the State's property.
 - The county and the legal description.
 - The GC's address, on a sub job. The affidavit gives the last known address of whoever hired you.
 - A recorded notice, on a sub job.
