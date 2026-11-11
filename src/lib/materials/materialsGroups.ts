@@ -62,11 +62,11 @@ export const MATERIALS_PRESS_LABELS: Record<MaterialsPress, string> = {
 }
 
 /**
- * The presses beside On site. Whoever may open a job's boxes may print its labels (the card's call
+ * The presses at the right end of On site's row, in order: Scan a label, then Print labels (the owner, 2026-11-10). Whoever may open a job's boxes may print its labels (the card's call
  * 3): a label shows a stencil and a code, no money.
  */
 export function materialsPressesFor(role: string | null | undefined): MaterialsPress[] {
-  return materialsTabsFor(role).includes('on-site') ? ['print-labels', 'scan-label'] : []
+  return materialsTabsFor(role).includes('on-site') ? ['scan-label', 'print-labels'] : []
 }
 
 export type MaterialsBadge = { text: string; tone: 'amber' | 'red' }

@@ -55,6 +55,7 @@ import { BidDeleteConfirmModal } from '../components/bids/BidDeleteConfirmModal'
 import { BidEvaluateChecklistModal } from '../components/bids/BidEvaluateChecklistModal'
 import { BidSentAttestationModal } from '../components/bids/BidSentAttestationModal'
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
+import { canResearchPermits } from '../lib/research/permitResearch'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { BID_FORM_FOCUS_ELEMENT_ID } from '../lib/bids/bidFormFocus'
@@ -1974,6 +1975,7 @@ export default function Bids() {
       ) : null}
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
+          showPermitNews={canResearchPermits(myRole)}
           contactPersonNameById={contactPersonNameById}
           jobAccountStrips={jobAccountStrips}
           onOpenJobAccountsLens={() => selectBidsTab('job-accounts')}

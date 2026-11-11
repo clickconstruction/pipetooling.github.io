@@ -22,9 +22,9 @@ import {
   type BuilderShowing,
 } from '../../lib/research/permitBuilders'
 import { googleAskForCompany, sitePermitLines, type SitePermit } from '../../lib/research/permitPublic'
-import { permitsColumnWords, reachWords, recordsReach, recordsStartLine, theirPermitsTitle, type RecordsReach } from '../../lib/research/permitReach'
+import { historyAsk, historyDoneWords, permitsColumnWords, reachWords, recordsReach, recordsStartLine, theirPermitsTitle, type RecordsReach } from '../../lib/research/permitReach'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
-import { loadBuilders, loadPermitsOfBuilder, markBuilder, saveBuilder } from '../../lib/research/permitResearchIo'
+import { loadBuilders, loadPermitsOfBuilder, markBuilder, pullPermitsBack, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
 /**
@@ -59,8 +59,13 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   const [search, setSearch] = useState('')
   const [openKey, setOpenKey] = useState<string | null>(null)
   // How far back every count here can see (punch list #307): the day the records start, or a year.
-  const recordsStart = usePermitRecordsStart(city)
+  const { showToast } = useToastContext()
+  const [readBacks, setReadBacks] = useState(0)
+  const [reading, setReading] = useState(false)
+  const recordsStart = usePermitRecordsStart(city, readBacks)
   const reach = useMemo(() => recordsReach(recordsStart, todayYmd), [recordsStart, todayYmd])
+  // One step further back as history, while the records are short of the goal (punch list #307).
+  const ask = historyAsk(city, recordsStart, todayYmd)
   const reachSays = reachWords(reach, todayYmd)
   const startLine = recordsStartLine(city, reach, todayYmd)
 
@@ -80,6 +85,22 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   useEffect(() => {
     void load()
   }, [load])
+
+  const readBack = async () => {
+    if (!ask || reading) return
+    setReading(true)
+    try {
+      const kept = await pullPermitsBack(city, ask.since, ask.until)
+      showToast(historyDoneWords(kept, ask.since, todayYmd), 'success')
+      setReadBacks((n) => n + 1)
+      await load()
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setReading(false)
+    }
+  }
 
   const all = useMemo(() => rows ?? [], [rows])
   const counts = useMemo(() => builderChipCounts(all), [all])
@@ -110,7 +131,16 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
         <input type="search" aria-label="Search builders" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a builder or a plumber" style={{ flex: '1 1 200px', minWidth: 0, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 11px', font: 'inherit', fontSize: '0.875rem', minHeight: 36, background: 'var(--surface)', color: 'var(--text)' }} />
       </div>
 
-      {startLine && all.length > 0 && <div style={{ ...muted, background: 'var(--bg-200)', color: 'var(--text-700)', borderRadius: 8, padding: '8px 12px' }}>{startLine}</div>}
+      {(startLine || ask) && all.length > 0 && (
+        <div style={{ ...muted, background: 'var(--bg-200)', color: 'var(--text-700)', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ flex: '1 1 260px' }}>{startLine ?? ask?.words}</span>
+          {ask && (
+            <button type="button" disabled={reading} onClick={() => void readBack()} style={{ ...smallPress, cursor: reading ? 'default' : 'pointer' }}>
+              {reading ? ask.busy : ask.press}
+            </button>
+          )}
+        </div>
+      )}
 
       {list.length === 0 ? (
         all.length === 0 ? (

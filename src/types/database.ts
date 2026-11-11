@@ -39975,6 +39975,23 @@ export type Database = {
         Args: { p_lang: string; p_user_id: string }
         Returns: string
       }
+      bridge_mark_my_move_done: {
+        Args: { p_call_id: string; p_idx: number }
+        Returns: Json
+      }
+      bridge_my_moves: {
+        Args: never
+        Returns: {
+          call_id: string
+          called_by_name: string
+          called_on: string
+          idx: number
+          link: string
+          move_key: string
+          title: string
+          week_start: string
+        }[]
+      }
       bulk_apply_tally_payroll_rule_flags: {
         Args: { p_rows: Json }
         Returns: number
