@@ -7,6 +7,8 @@ import {
   filingDocHtml,
   appendToFilingPrintHtml,
   filingDocPrintHtml,
+  FILING_PRINT_TIGHT_LEADING,
+  lienAffidavitPrintOptions,
   filingKeepTogetherRuns,
   filingDocText,
   filingLetterheadFromIssuer,
@@ -238,6 +240,30 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     it('a paper on the earlier form stays as it was drafted', () => {
       const { form: _form, ...earlier } = short
       expect(text({ ...earlier, homestead: true })).not.toContain('THIS IS NOT A LIEN')
+    })
+  })
+
+  describe('on the printed sheet (v2.6895)', () => {
+    // Chrome's print put the seven paragraphs under a GC a few lines over one Letter sheet at the paper's own leading.
+    const printBody = (html: string) => /@media print \{[\s\S]*?body \{([^}]*)\}/.exec(html)?.[1] ?? ''
+
+    it('the short form prints at the PDF’s leading, so the notary gets one page', () => {
+      expect(lienAffidavitPrintOptions(short)).toEqual({ leading: 'tight' })
+      const html = filingDocPrintHtml(buildLienAffidavitBlocks(short), 'Lien Affidavit', filingDocFooter('affidavit'), lienAffidavitPrintOptions(short))
+      expect(printBody(html)).toContain(`line-height: ${FILING_PRINT_TIGHT_LEADING};`)
+      expect(FILING_PRINT_TIGHT_LEADING).toBe(1.45)
+      // The screen keeps the paper's own leading, and the closing is still one run a page does not split.
+      expect(html).toContain('line-height: 1.75; }')
+      expect(html).toContain('<div class="filing-keep">')
+    })
+
+    it('the earlier form and every other paper keep the sheet they had', () => {
+      const earlier: LienAffidavitFields = { ...short, form: 'long' }
+      expect(lienAffidavitPrintOptions(earlier)).toBeUndefined()
+      expect(lienAffidavitPrintOptions({ ...short, form: undefined })).toBeUndefined()
+      const long = filingDocPrintHtml(buildLienAffidavitBlocks(earlier), 'Lien Affidavit', filingDocFooter('affidavit'), lienAffidavitPrintOptions(earlier))
+      expect(printBody(long)).not.toContain('line-height')
+      expect(printBody(filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS), 'Notice'))).not.toContain('line-height')
     })
   })
 })

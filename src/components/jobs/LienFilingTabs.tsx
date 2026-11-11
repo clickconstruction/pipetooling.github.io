@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { appendToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { appendToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, lienAffidavitPrintOptions, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type FilingPrintOptions, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
@@ -359,13 +359,14 @@ export default function LienFilingTabs({
   const printDoc = useCallback(() => {
     if (!currentDoc) return
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
-    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))), {
+    // The short affidavit prints on its tight sheet, one page for the notary (v2.6895).
+    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), currentDoc.kind === 'affidavit' ? lienAffidavitPrintOptions(affidavitFields) : undefined)), {
       kind: `lien_${currentDoc.kind}`,
       title: currentDoc.title,
       jobIds: [job.id],
     })
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, affidavitFields])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return
@@ -575,6 +576,7 @@ export default function LienFilingTabs({
     }
     let blocks: FilingDocBlock[] | null = null
     let kind: 'notice_53_056' | 'retainage_53_057' | 'affidavit' | 'release_of_record' = 'notice_53_056'
+    let printOpts: FilingPrintOptions | undefined
     if (snap && typeof snap === 'object') {
       if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras)
       else if (f.kind === 'retainage_53_057') {
@@ -583,6 +585,7 @@ export default function LienFilingTabs({
       } else if (f.kind === 'affidavit') {
         blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, snapExtras)
         kind = 'affidavit'
+        printOpts = lienAffidavitPrintOptions(snap as LienAffidavitFields)
       } else if (f.kind === 'release_of_record') {
         blocks = buildReleaseOfRecordBlocks(snap as ReleaseOfRecordFields, snapExtras)
         kind = 'release_of_record'
@@ -592,7 +595,7 @@ export default function LienFilingTabs({
       showToast('This record has no stored document snapshot.', 'error')
       return
     }
-    const ok = openHtmlPreviewWindow(filingDocPrintHtml(blocks, `Lien filing — Job ${jobNumber}`, filingDocFooter(kind)))
+    const ok = openHtmlPreviewWindow(filingDocPrintHtml(blocks, `Lien filing — Job ${jobNumber}`, filingDocFooter(kind), printOpts))
     if (!ok) showToast('Popup blocked — allow popups to view the document.', 'error')
   }
 
