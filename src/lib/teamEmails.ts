@@ -52,7 +52,6 @@ export type TeamSampleEmailId =
   | 'gc_word_ask'
   | 'gc_money_monday'
   | 'people_week'
-  | 'bridge_monday_sheet'
   | 'bridge_weekly_sheet'
   | 'gc_office_notice'
   | 'lien_desk_summary'
@@ -391,25 +390,14 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     guide: 'get-a-monday-email-of-your-peoples-week',
   },
   {
-    id: 'bridge_monday_sheet',
-    label: 'The Bridge, the Monday sheet',
-    when: { kind: 'once', label: 'When the owner or a dev presses Email me this sheet on the Bridge', order: 35 },
-    recipients: { roles: ['dev', 'master_technician'], decidedBy: 'event', rule: 'Whoever pressed it, the owner or a dev, at their own address, and nobody else.' },
-    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: contribution ≈ +$38k, net down $37.4k, cash lowest point $15.4k`,
-    render: { kind: 'sample', sample: 'bridge_monday_sheet' },
-    manage: emails('The Bridge → Monday sheet → Email me this sheet'),
-    reflects: ['the Bridge’s top line, lights, moves and people lines'],
-    guide: 'the-bridge',
-  },
-  {
     id: 'bridge_weekly_sheet',
-    label: 'The Bridge, the Monday sheet, every Monday',
+    label: 'The Bridge, the week’s call, every Monday',
     when: { kind: 'weekly', label: 'Monday at 6 AM Central, while the Weekly email switch on the Bridge is on', order: 35 },
     recipients: { roles: ['dev', 'master_technician'], decidedBy: 'role', rule: 'The owner and every dev with a real account, each at their own address, and nobody else — the function picks them by role.' },
-    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: contribution ≈ +$38k, net down $37.4k, cash lowest point $15.4k`,
-    render: { kind: 'sample', sample: 'bridge_monday_sheet' },
-    manage: emails('The Bridge → Monday sheet → Weekly email'),
-    reflects: ['the Bridge’s top line, lights, moves and people lines, the same sheet Email me this sheet mails'],
+    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: Bill is the slowest step. Cash low point $22.0k. Made last week $31.0k.`,
+    render: { kind: 'sample', sample: 'bridge_weekly_sheet' },
+    manage: emails('The Bridge → The flow → Weekly email'),
+    reflects: ['the Bridge’s first screen: the three tiles, the strip of pipe and the week’s call with its moves'],
     guide: 'the-bridge',
   },
   {

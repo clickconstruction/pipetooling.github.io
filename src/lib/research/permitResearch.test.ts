@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   canResearchPermits,
   defaultLookAgainYmd,
+  leadDeck,
   leadDoor,
   leadFromPermit,
+  leadLandsWords,
+  leadMadeWords,
+  pursuedLeadIds,
   lensCounts,
   newSinceLooked,
   pulledWords,
@@ -127,13 +131,37 @@ describe('the verdict', () => {
     expect(verdictHold('   ')).toBe('Say why in a line. The next estimator reads it.')
     expect(verdictHold('Our size, we have won with them.')).toBeNull()
   })
-  it('makes a GC lead and its job from the permit, source A permit', () => {
-    const { prospect, job, companyName } = leadFromPermit(row(), 'gc', { userId: 'u1', masterUserId: 'm1' })
+  it('puts an owner on Jobs to GC with the permit as a job, source A permit', () => {
+    const { prospect, job, companyName, deck } = leadFromPermit(row(), 'owner', { userId: 'u1', masterUserId: 'm1' })
     expect(companyName).toBe('Ridgeway Builders')
-    expect(prospect).toMatchObject({ kind: 'gc_lead', source: 'A permit', company_role: 'gc', company_name: 'Ridgeway Builders', created_by: 'u1', master_user_id: 'm1', address: '100 SAMPLE ST, San Antonio, 78245' })
+    expect(deck).toBe('gc_lead')
+    expect(prospect).toMatchObject({ kind: 'gc_lead', source: 'A permit', company_role: 'owner', company_name: 'Ridgeway Builders', created_by: 'u1', master_user_id: 'm1', address: '100 SAMPLE ST, San Antonio, 78245' })
     expect(String(prospect.notes)).toContain('COM-BLG-PMT26-00000001')
     expect(job).toMatchObject({ name: 'New commercial · 6,200 sq ft at 100 SAMPLE ST', sq_ft: 6200, status: 'open' })
+    expect(leadFromPermit(row(), 'architect', { userId: 'u1', masterUserId: 'm1' }).prospect).toMatchObject({ kind: 'gc_lead', company_role: 'architect' })
+  })
+  it('puts a general contractor on the Customers deck, the permit in its notes and no job', () => {
+    const { prospect, job, note, deck } = leadFromPermit(row(), 'gc', { userId: 'u1', masterUserId: 'm1' })
+    expect(deck).toBe('customer')
+    expect(prospect).toMatchObject({ kind: 'customer', source: 'A permit', company_role: null, company_name: 'Ridgeway Builders' })
+    expect(job).toBeNull()
+    expect(note).toContain('COM-BLG-PMT26-00000001')
+    expect(prospect.notes).toBe(note)
+  })
+  it('says where the lead lands, before the press and after it', () => {
+    expect(leadDeck('gc')).toBe('customer')
+    expect(leadDeck('owner')).toBe('gc_lead')
+    expect(leadDeck('architect')).toBe('gc_lead')
+    expect(leadLandsWords('gc')).toBe('A lead goes on the Customers deck with the permit in its notes. A lead of the same name is reused.')
+    expect(leadLandsWords('owner')).toBe('A lead goes on the Jobs to GC deck with the permit as a job on it. A lead of the same name is reused.')
+    expect(leadMadeWords({ companyName: 'Ridgeway Builders', reused: false, deck: 'customer' })).toBe('Lead made: Ridgeway Builders, on the Customers deck.')
+    expect(leadMadeWords({ companyName: 'Ridgeway Builders', reused: true, deck: 'gc_lead' })).toBe('Put the permit on Ridgeway Builders’s lead on the Jobs to GC deck.')
+  })
+  it('opens a lead on the deck it sits on, Jobs to GC until its deck is read', () => {
     expect(leadDoor('abc')).toBe('/prospects?tab=follow-up&kind=gc-leads&prospect_id=abc')
+    expect(leadDoor('abc', 'gc_lead')).toBe('/prospects?tab=follow-up&kind=gc-leads&prospect_id=abc')
+    expect(leadDoor('abc', 'customer')).toBe('/prospects?tab=follow-up&kind=customers&prospect_id=abc')
+    expect(pursuedLeadIds([{ verdict: 'approach', verdict_prospect_id: 'b' }, { verdict: 'approach', verdict_prospect_id: 'a' }, { verdict: 'approach', verdict_prospect_id: 'b' }, { verdict: 'look', verdict_prospect_id: 'z' }, { verdict: 'approach', verdict_prospect_id: null }])).toEqual(['a', 'b'])
   })
   it('names an unnamed puller so the lead still has a company', () => {
     expect(leadFromPermit(row({ contact: null }), 'owner', { userId: 'u1', masterUserId: 'm1' }).companyName).toBe('Who pulled the permit')
@@ -195,7 +223,7 @@ describe('plumberWords', () => {
 describe('the lead carries the card\'s facts', () => {
   it('takes the phone, the website, the company address and the owner of record when the card found them', async () => {
     const { leadFromPermit } = await import('./permitResearch')
-    const { prospect, job } = leadFromPermit(row(), 'gc', { userId: 'u1', masterUserId: 'm1' }, { companyName: 'Ridgeway Builders LLC', contactName: 'Dana Whitfield', phone: '(210) 555-0199', website: 'https://example.com', companyAddress: '1 Office Park, San Antonio, TX 78201', ownerOfRecord: 'SAMPLE HOLDINGS LLC' })
+    const { prospect, job } = leadFromPermit(row(), 'owner', { userId: 'u1', masterUserId: 'm1' }, { companyName: 'Ridgeway Builders LLC', contactName: 'Dana Whitfield', phone: '(210) 555-0199', website: 'https://example.com', companyAddress: '1 Office Park, San Antonio, TX 78201', ownerOfRecord: 'SAMPLE HOLDINGS LLC' })
     expect(prospect).toMatchObject({ company_name: 'Ridgeway Builders LLC', contact_name: 'Dana Whitfield', phone_number: '(210) 555-0199', links_to_website: 'https://example.com', address: '1 Office Park, San Antonio, TX 78201' })
     expect(String(prospect.notes)).toContain('owner of record: SAMPLE HOLDINGS LLC')
     expect(job).toMatchObject({ address: '100 SAMPLE ST, San Antonio, 78245' })

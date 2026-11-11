@@ -65,7 +65,7 @@ describe('the Builders page', () => {
 })
 
 describe('a read back as history', () => {
-  /** The cities a read back is open for once it is no longer held. */
+  /** A list handed in, so the steps are tested whatever cities the app opens. */
   const OPEN = ['San Antonio']
 
   it('asks for one step further back, up to the day the records start', () => {
@@ -85,9 +85,10 @@ describe('a read back as history', () => {
     expect(historyAsk('San Antonio', null, TODAY, OPEN)).toBeNull()
     // A city whose feed cannot be read up to a day has no read back yet.
     expect(historyAsk('Seguin', '2026-08-26', TODAY, OPEN)).toBeNull()
-    // Held: until the Permits reads are index-driven no city has a read back, so nothing is asked.
-    expect(HISTORY_CITIES).toEqual([])
-    expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toBeNull()
+    // San Antonio is the city with a read back, so the press asks there with no list handed in.
+    expect(HISTORY_CITIES).toEqual(['San Antonio'])
+    expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toMatchObject({ since: '2026-05-26', until: '2026-08-26' })
+    expect(historyAsk('Austin', '2026-08-26', TODAY)).toBeNull()
   })
 
   it('says what a read back kept', () => {

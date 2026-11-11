@@ -59,6 +59,10 @@ type Props = {
   searchParts: (term: string) => Promise<OnSitePart[]>
   /** `?container=<id>` from a label's QR: open that container first. */
   initialContainerId: string | null
+  /** Goes up each time the address asks for a box, so a box asked for a second time opens again (v2.6904). */
+  askSeq?: number
+  /** Told which box's screen is open, null on the list, so the page can keep it on the address (v2.6904). */
+  onOpenContainer?: (containerId: string | null) => void
 }
 
 const TOUCH_MIN = 48
@@ -107,7 +111,7 @@ type Sheet =
   | { kind: 'pin'; container: Container }
   | { kind: 'pick-box' }
 
-export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId }: Props) {
+export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, askSeq = 0, onOpenContainer }: Props) {
   const { showToast, showActionToast } = useToastContext()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
@@ -191,7 +195,11 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     setQuery('')
     setScope('job')
     setPlaceFilter('all')
-  }, [jobId, initialContainerId])
+  }, [jobId, initialContainerId, askSeq])
+
+  // The box on screen, its count walk included: the page keeps it on the address, so a reload or Back comes back to it.
+  const openContainerId = view.kind === 'containers' ? null : view.id
+  useEffect(() => { onOpenContainer?.(openContainerId) }, [openContainerId, onOpenContainer])
 
   if (jobsLoading) return <p style={muted}>Loading jobs…</p>
   if (jobs.length === 0) return <p style={muted}>No jobs assigned. Ask your supervisor to add you as a team member on a job.</p>

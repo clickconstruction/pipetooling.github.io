@@ -288,6 +288,8 @@ percent by hand. A house's code for a part is stable and printed on every line.
 - **`supply_part_codes`**, the crosswalk: house, code, `part_id`, a unit factor (the house sells a
   stick, the book prices a foot), who taught it and when, and the line it was taught on. Unique on
   house and code. A code may also be marked *not a part* (a freight line that prints a code).
+  **Built by punch list #308's PR 2** (`20261111020000_supply_part_codes.sql`), with the matcher
+  `src/lib/materials/partMatch.ts` and *Their numbers* under a part's prices; 2a adds its list on top.
 - **Learned once, reused everywhere.** Teaching a code matches every past line with that code and
   every future one. Nobody matches the same part twice.
 - **How a line finds its part, in order:**
@@ -324,7 +326,7 @@ price view reads the lines.
 
 | PR | What | Size | Live check |
 | --- | --- | --- | --- |
-| 2a | The crosswalk, the matcher kernel, the list on the Parts Book, the guide. | M | Teach five real codes. Every past line with each code now carries the part. A newly read bill with one of them is matched with no press. |
+| 2a | The list on the Parts Book and its guide. The crosswalk and the matcher kernel came with #308's PR 1 and PR 2. | S | Teach five real codes. Every past line with each code now carries the part. A newly read bill with one of them is matched with no press. |
 | 2b | The price refresh, the widened trigger, the offer on a big move. | S | On a ZZ test house and part, a bill with a higher price moves the book's price and writes a history row that names the bill. A tenfold price is offered and not written. |
 
 ### Step 0: the owner's door

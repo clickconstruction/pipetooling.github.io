@@ -70,12 +70,11 @@ describe('weeklySendRecipients — the owner and every dev with a real account a
     expect([...BRIDGE_ROLES].sort()).toEqual(['dev', 'master_technician'])
   })
 
-  it('the two functions under the page gate on that list and on no role of their own', () => {
-    const fn = (name: string) => readFileSync(join(process.cwd(), 'supabase', 'functions', name, 'index.ts'), 'utf8')
-    expect(fn('bridge-sheet-email')).toContain('!isBridgeRole(row.role)')
-    expect(fn('bridge-weekly-sheet')).toContain("in('role', [...BRIDGE_ROLES])")
-    expect(fn('bridge-weekly-sheet')).toContain('isBridgeRole(who?.role)')
-    for (const name of ['bridge-sheet-email', 'bridge-weekly-sheet']) expect(fn(name)).not.toMatch(/role\s*[!=]==\s*'dev'/)
+  it('the function under the page gates on that list and on no role of its own', () => {
+    const fn = readFileSync(join(process.cwd(), 'supabase', 'functions', 'bridge-weekly-sheet', 'index.ts'), 'utf8')
+    expect(fn).toContain("in('role', [...BRIDGE_ROLES])")
+    expect(fn).toContain('isBridgeRole(who?.role)')
+    expect(fn).not.toMatch(/role\s*[!=]==\s*'dev'/)
   })
 })
 

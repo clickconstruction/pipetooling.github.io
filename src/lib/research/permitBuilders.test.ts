@@ -19,6 +19,7 @@ import {
   notPursuingVerdict,
   nudgeAsks,
   nudgeWords,
+  sumCityWaits,
   ourBidsWords,
   placeCounts,
   stripCounts,
@@ -170,11 +171,24 @@ describe('builders', () => {
 
 describe('the nudge and the count', () => {
   it('says how many wait and how long the oldest has, and asks the Leader first', () => {
-    expect(nudgeWords(14, 3)).toEqual({ title: '14 permits wait on a skim', detail: 'The oldest has waited 3 days. About a minute.' })
+    expect(nudgeWords(12, 3)).toEqual({ title: '12 permits wait on a skim', detail: 'The oldest has waited 3 days. About a minute.' })
+    // A long deck is not a minute, so the words do not promise one.
+    expect(nudgeWords(14, 3)).toEqual({ title: '14 permits wait on a skim', detail: 'The oldest has waited 3 days.' })
     expect(nudgeWords(1, 1)).toEqual({ title: '1 permit waits on a skim', detail: 'The oldest has waited 1 day. About a minute.' })
     expect(nudgeWords(2, 0)?.detail).toBe('The oldest arrived today. About a minute.')
     expect(nudgeWords(2, null)?.detail).toBe('About a minute.')
     expect(nudgeWords(0, null)).toBeNull()
+    // More than one city: the line says where they wait, the fullest first.
+    const all = sumCityWaits([
+      { city: 'San Antonio', waiting: 340, oldestDays: 2 },
+      { city: 'Austin', waiting: 577, oldestDays: 1 },
+      { city: 'Seguin', waiting: 0, oldestDays: null },
+    ])
+    expect(all).toEqual({ waiting: 917, oldestDays: 2, byCity: [{ city: 'Austin', waiting: 577 }, { city: 'San Antonio', waiting: 340 }] })
+    expect(nudgeWords(all.waiting, all.oldestDays, all.byCity)).toEqual({ title: '917 permits wait on a skim', detail: 'Austin 577 · San Antonio 340. The oldest has waited 2 days.' })
+    // One city with some: no need to name it.
+    expect(nudgeWords(3, 0, [{ city: 'Austin', waiting: 3 }])?.detail).toBe('The oldest arrived today. About a minute.')
+    expect(sumCityWaits([])).toEqual({ waiting: 0, oldestDays: null, byCity: [] })
     expect(nudgeAsks('master_technician', 0)).toBe(true)
     expect(nudgeAsks('dev', null)).toBe(true)
     expect(nudgeAsks('estimator', 1)).toBe(false)
