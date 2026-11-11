@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { buildJobsListCacheKey, useJobsListCache } from '../contexts/JobsListCacheContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useLienDeskData } from '../hooks/useLienDeskData'
@@ -67,6 +68,7 @@ export default function LienDeskPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const jobFormModal = useJobFormModal()
+  const editCustomerModal = useEditCustomerModal()
   const jobDetail = useJobDetailModal()
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
@@ -303,6 +305,8 @@ export default function LienDeskPage() {
         onChanged={refetch}
         onOpenEditJob={openEditJob}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
+        // Punch list #305: an affidavit that holds for the GC's address opens the GC's own record; a save re-reads the desk.
+        onOpenCustomerRecord={editCustomerModal ? (customerId) => editCustomerModal.openEditCustomerModal(customerId, { onSaved: refetchAll }) : undefined}
         onOpenLienInstruments={(jobId) => {
           const months = data?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
           withJob(jobId, (job) => setLienWindow({ job, initialTab: 'notice', noticeMonths: months }))

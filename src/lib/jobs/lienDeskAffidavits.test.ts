@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { affidavitGates, buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
+import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, withContractorAddress, type LienAffidavitRow } from './lienDeskAffidavits'
 
 const TODAY = '2026-09-14'
 
@@ -31,7 +31,7 @@ function item(partial: Partial<LienDeskItemRow> & { job_id: string; status: Lien
 describe('affidavit gates and piles', () => {
   it('a sub job needs owner, legal description, a recorded notice, and no homestead; a direct job skips the notice', () => {
     const sub = affidavitGates(row({ job_id: 'a', noticed: false }))
-    expect(sub.map((g) => [g.key, g.ok])).toEqual([['owner', true], ['legal', true], ['notice', false], ['homestead', true]])
+    expect(sub.map((g) => [g.key, g.ok])).toEqual([['owner', true], ['legal', true], ['contractor', true], ['notice', false], ['homestead', true]])
     expect(sub.find((g) => g.key === 'notice')?.label).toContain('a late one counts while this window is open')
     const direct = affidavitGates(row({ job_id: 'b', is_sub: false, noticed: false, gc_customer_id: null }))
     expect(direct.find((g) => g.key === 'notice')?.ok).toBe(true)
@@ -65,6 +65,44 @@ describe('affidavit gates and piles', () => {
     const old = item({ job_id: 'f2', status: 'sent', sent_at: '2026-07-01T10:00:00Z' })
     const q = buildLienAffidavitQueue([row({ job_id: 'f1', filed: true }), row({ job_id: 'f2', filed: true })], [fresh, old], TODAY)
     expect(q.entries.map((e) => [e.jobId, e.pile])).toEqual([['f1', 'filed']])
+  })
+})
+
+describe("the general contractor's address (punch list #305)", () => {
+  it('a job under a GC holds while the GC has no address on file; a job contracted with the owner names no GC', () => {
+    expect(contractorAddressGate({ isSub: true, hasAddress: false })).toEqual({ key: 'contractor', ok: false, label: 'The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)' })
+    expect(contractorAddressGate({ isSub: true, hasAddress: true })).toEqual({ key: 'contractor', ok: true, label: "The general contractor's last known address" })
+    expect(contractorAddressGate({ isSub: false, hasAddress: false })).toEqual({ key: 'contractor', ok: true, label: 'No general contractor to name (contracted with the owner)' })
+  })
+
+  it('a row nobody read the GC for is not judged: the firm’s portal and an older caller hold nothing', () => {
+    expect(contractorAddressGate({ isSub: true, hasAddress: undefined }).ok).toBe(true)
+    expect(contractorAddressGate({ isSub: true, hasAddress: null }).ok).toBe(true)
+    expect(affidavitGates(row({ job_id: 'a' })).find((g) => g.key === 'contractor')?.ok).toBe(true)
+  })
+
+  it('the desk fills the fact from the GC rows it read: a blank or a missing row is no address, a job with no GC is left alone', () => {
+    const rows = withContractorAddress(
+      [row({ job_id: 'has', gc_customer_id: 'g1' }), row({ job_id: 'blank', gc_customer_id: 'g2' }), row({ job_id: 'gone', gc_customer_id: 'g3' }), row({ job_id: 'direct', is_sub: false, gc_customer_id: null })],
+      { g1: { address: ' 9 Yard St, Devine TX ' }, g2: { address: '   ' } },
+    )
+    expect(rows.map((r) => [r.job_id, r.has_contractor_address])).toEqual([['has', true], ['blank', false], ['gone', false], ['direct', undefined]])
+  })
+
+  it('the hold changes the pile of a paper not yet sent for approval, and leaves an approved one where its item put it', () => {
+    const rows = withContractorAddress([row({ job_id: 'new', gc_customer_id: 'g2' }), row({ job_id: 'drafted', gc_customer_id: 'g2' }), row({ job_id: 'approved', gc_customer_id: 'g2' }), row({ job_id: 'fine', gc_customer_id: 'g1' })], { g1: { address: '9 Yard St' }, g2: { address: '' } })
+    const q = buildLienAffidavitQueue(rows, [item({ job_id: 'drafted', status: 'drafted' }), item({ job_id: 'approved', status: 'approved', approval_mode: 'leader' })], TODAY)
+    const of = (id: string) => q.entries.find((e) => e.jobId === id)!
+    expect([of('new').pile, of('new').ready]).toEqual(['needs_property', false])
+    expect(of('drafted').pile).toBe('needs_property')
+    expect([of('approved').pile, of('approved').ready]).toEqual(['ready', false])
+    expect([of('fine').pile, of('fine').ready]).toEqual(['to_draft', true])
+    expect(of('new').gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['contractor'])
+  })
+
+  it('the list row’s missing words name the address, and keep the other gates’ keys', () => {
+    expect(affidavitGateMissingWord('contractor')).toBe("the GC's address")
+    expect(affidavitGateMissingWord('owner')).toBe('owner')
   })
 })
 

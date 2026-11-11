@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-11-04
+last_updated: 2026-11-11
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -153,7 +153,7 @@ Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing 
 
 ## The three billing channels (Bill Customer)
 
-`src/components/jobs/SendRecordInvoiceModal.tsx` ("Bill Customer"; payload `SendRecordInvoiceModal.types.ts`: `kind:'job'` or `kind:'invoice'`). Three tabs: **Stripe bill · Physical invoice · ▾** (the caret reveals **HouseCall Pro**); since v2.1531 it always opens on `stripe`, and a missing customer email is fixed inline by the banner above the tabs. No amount input — for `kind:'job'` the amount is the client-side `planPrimaryRtbForBillCustomer` plan (v2.2885; the ensure RPC runs only at commit, see above), for `kind:'invoice'` the passed invoice. All three submit paths finish with `maybePromoteJobToBilledAfterCustomerInvoice`.
+`src/components/jobs/SendRecordInvoiceModal.tsx` ("Bill Customer"; payload `SendRecordInvoiceModal.types.ts`: `kind:'job'` or `kind:'invoice'`). Three tabs: **Stripe bill · Physical invoice · ▾** (the caret reveals **HouseCall Pro**); since v2.1531 it opens on `stripe`, and a missing customer email is fixed inline by the banner above the tabs; since v2.6848 (punch list #301) a job an in kind arrangement already pays opens on HouseCall Pro with the tab bar and the missing-email banner hidden and the press reading **Record the bill in kind**, and a job of such a customer that the deal does not pay yet asks first how the bill is paid (`InKindBillQuestion`, every submit dead until it is answered; *In kind, on the arrangement* puts the job on the deal through `in_kind_arrangement_set_jobs`, then records the bill the same way). No amount input — for `kind:'job'` the amount is the client-side `planPrimaryRtbForBillCustomer` plan (v2.2885; the ensure RPC runs only at commit, see above), for `kind:'invoice'` the passed invoice. All three submit paths finish with `maybePromoteJobToBilledAfterCustomerInvoice`.
 
 ```mermaid
 flowchart LR
@@ -352,6 +352,7 @@ All routes render inside the authed layout in `src/App.tsx`. Billing-relevant:
 | `/quickfill` | `src/pages/Quickfill.tsx` | no URL params; billing sections: "Billed Awaiting Payment", "Complete, no Total Bill", unallocated-deposits banner linking to `/accounts-receivable` |
 | `/dashboard` | `src/pages/Dashboard.tsx` | Billing Pipeline card + field RTB/collect queues (role-driven, no params) |
 | `/customers`, `/customers/:id/edit` | customer records incl. `customer_email` used by billing | `customers/new` redirects with modal state |
+| `/in-kind` | `src/pages/InKind.tsx` (v2.6836, punch list #301) — every in kind arrangement, office only, linked from `/accounts-receivable`'s header | none; a row opens the customer's page on that deal, **Set up paying in kind** opens `/customers/:id?inKindNew=1` |
 | `/settings` | Settings → Data → "Recently deleted" (dev-only archive restore UI) | |
 
 ## Cleanup and deletion

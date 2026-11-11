@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-11-07
+last_updated: 2026-11-11
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -121,7 +121,7 @@ the grant holds three scopes: `https://www.googleapis.com/auth/gmail.readonly` (
 `read_mail`, v2.6565, which ask for it alone), `https://www.googleapis.com/auth/gmail.modify` (the bids@ reader
 `gmail-sync`, Messages → My email `gmail-mine`) and `https://www.googleapis.com/auth/drive` (granted, though
 `DRIVE_IMPERSONATE_USER` stays unset: the Shared Drive is the chosen path for files — tighter blast radius than
-impersonating a user — and the SA sits in a drive a person makes). **Not on it**: `gmail.metadata`, so the Email
+impersonating a user — and the SA sits in a drive a person makes). While it is unset, a bid photo whose project folder sits in a personal Drive waits in the app with the reason, and `photo-save` files it once the folder moves into the shared Drive (v2.6856, v2.6883). **Not on it**: `gmail.metadata`, so the Email
 station's counter (`gmail-count`, punch list #159) fails at the token exchange until the admin adds that line; its
 switch `email_count_on_v1` is off. A grant is per scope, never per account: every login of the Workspace is readable
 under it, the admins' included, and the fences are the scope (read-only cannot label, trash or delete; `gmail.modify`

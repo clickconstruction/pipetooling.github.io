@@ -26,7 +26,7 @@ opinion: build the pick, PR 1 first, and give it four Mondays. If the call is st
 Asked 2026-11-10: *"I feel like the bridge page could be better. How could we make it better? I
 think we need to look at it holistically, even if it means we refresh it under a new narrative."*
 
-Design only. Nothing in the app changed and nothing was written to prod.
+Design only when asked. Built since as v2.6832 to v2.6888, with v2.6902 after them (see Where it stands).
 
 ## What was drawn before
 

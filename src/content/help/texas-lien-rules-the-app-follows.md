@@ -158,18 +158,19 @@ The old demand for payment to the owner was repealed. The notice is the paper th
 
 ### What the affidavit needs before it can be filed
 
-Four things. The owner of record, the county and the legal description, a recorded notice on a sub job, and no homestead.
+Five things. The owner of record, the county and the legal description, and no homestead. A sub job also needs the GC's address and a recorded notice.
 
 **What it says.** The affidavit is the lien itself. It is sworn. It is filed with the County Clerk of the property's county. It is due by the 15th of the fourth month after the last month worked. On a residential property it is due by the 15th of the third month. A copy is served on the owner and the GC within 5 days of filing.
 
-The affidavit needs four things.
+The affidavit needs five things.
 
 - The owner of record.
 - The county and the legal description.
+- The GC's address, on a sub job. The affidavit gives the last known address of whoever hired you.
 - A recorded notice, on a sub job.
 - A property that is not a homestead.
 
-**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the four facts first. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. [Open the Affidavits list](/lien-desk?tab=affidavits).
+**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the five facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.054, § 53.055*
 

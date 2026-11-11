@@ -178,6 +178,15 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
     expect(a.sub).toContain('late is allowed')
     expect(a.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
   })
+  it('the GC has no address on file and the property record is whole: the row names it and offers Add the address (punch list #305)', () => {
+    const contractor = (ok: boolean) => ({ key: 'contractor' as const, ok, label: '' })
+    const only = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true), contractor(false)] })] }).find((r) => r.kind === 'affidavit')!
+    expect([only.action, only.button, only.sub]).toEqual(['fix_property', 'Add the address', 'Affidavit · the general contractor has no address on file'])
+    expect(only.target).toEqual({ open: 'affidavits', jobId: 'j1' })
+    // A property fact also missing: the property record leads, as before.
+    const both = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true, false), contractor(false)] })] }).find((r) => r.kind === 'affidavit')!
+    expect([both.button, both.sub]).toEqual(['Fix the property', 'Affidavit · the property record is not complete'])
+  })
   it('the affidavit window closed too: the notice row is Note it, as before; a property gate still failing keeps Fix the property', () => {
     const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-09-15', daysLeft: -20, severity: 'red', gates: gates(false, false) })] })
     expect(rows.find((r) => r.kind === 'notice')!.action).toBe('note_missed')

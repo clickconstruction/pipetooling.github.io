@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parts book house links</title>
+<style>
+  /* Punch list #311. Every house, maker, model number, item number, address, price, date and count here is made up:
+     Hillcrest Supply and Borden Pipe & Supply; the makers Arlo, Kessler and Tanner; the estimator Marisol. Tokens are
+     src/index.css's (light values and the [data-theme="dark"] block), copied from the #308 mock-up so the two pages
+     match. Frames are fixed at 1,248 (the desk); this is desk work and no phone frame is drawn. Green dashes mark
+     what is new inside a screen the app has today. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-700: #b45309; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --text-blue-500: #3b82f6; --ghost: #c3c9d2; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace; --scrim: rgba(15, 23, 42, .38); --paper: #fffef9; --paper-ink: #1f2430; --hi: #fde68a; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --text-blue-500: #60a5fa; --ghost: #56607080; --shadow: 0 8px 24px rgba(0, 0, 0, .45); --scrim: rgba(0, 0, 0, .55); --hi: #a16207; }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 40ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 110ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; position: sticky; top: 0; z-index: 20; background: var(--bg-page); padding: 8px 0; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 60px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .num.today { background: var(--text-muted); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; box-shadow: none; }
+  .screen { width: 1248px; font-size: 13.5px; line-height: 1.4; font-family: var(--font); color: var(--text-base); padding: 14px; display: grid; gap: 12px; }
+  .new { outline: 2px dashed var(--text-green-700); outline-offset: 3px; border-radius: 6px; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 12px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .num-r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .win > .bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .win > .bar .t { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+  .win > .bar .x { margin-left: auto; color: var(--text-muted); font-size: 16px; }
+  .win > .body { padding: 12px 14px; display: grid; gap: 10px; }
+  .win > .foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 5px 11px; font: 600 12.5px var(--font); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.link { border: none; background: none; color: var(--text-link); padding: 5px 2px; }
+  a.ext { color: var(--text-link); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg-muted); color: var(--text-700); white-space: nowrap; }
+  .chip.g { background: var(--bg-green-100); color: var(--text-green-700); border-color: transparent; }
+  .chip.a { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: transparent; }
+  .chip.r { background: var(--bg-red-100); color: var(--text-red-700); border-color: transparent; }
+  .chip.b { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: transparent; }
+  table.t { width: 100%; border-collapse: collapse; }
+  table.t th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.t tr:last-child td { border-bottom: none; }
+  .field { display: grid; gap: 3px; }
+  .field label { font-size: 11.5px; font-weight: 600; color: var(--text-700); }
+  .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 9px; background: var(--surface); min-height: 31px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .rowhead { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .rowhead .n { font-weight: 700; color: var(--text-strong); font-size: 14.5px; }
+  .strip { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--surface); }
+  .strip.ask { border-color: #d97706; background: var(--bg-amber-100); }
+  .strip.done { border-color: var(--text-green-700); background: var(--bg-green-100); }
+  .price-in { display: inline-block; border: 1px solid var(--border-strong); border-radius: 6px; padding: 3px 8px; min-width: 74px; background: var(--surface); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #311 · mock-up · made-up data</p>
+  <h1>A supply house's page on every price, and the day it was last checked</h1>
+  <p>The estimator asked for the parts book to be filled from two supply houses' websites, with a link kept on every part so prices can be checked again. Today a part holds one link and a price holds none. This page draws the part's row as it is, the row with a house's number and page beside each house's price, the check that uses them, and the fill that teaches them. No frame here has a tool reading a supply house's website.</p>
+  <p class="stamp">Drawn 2026-11-11 from main at v2.6929. Green dashes mark what is new inside a screen the app has today. The Parts Book row, the Prices window and Check 20 prices are redrawn in shape only. Hillcrest Supply and Borden Pipe &amp; Supply stand in for the two houses.</p>
+  <div class="controls">
+    <span><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button> <button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+  </div>
+  <nav class="jump">
+    <a href="#today">0 · Today</a>
+    <a href="#row">1 · The row</a>
+    <a href="#check">2 · The check</a>
+    <a href="#fill">3 · The fill</a>
+  </nav>
+</header>
+
+<h2 id="today"><span class="num today">0</span> Today: one link on the part, none on a price</h2>
+<p class="lede">The part has one <b>Link</b> field. The estimator pastes a supply house's product page there. The link says nothing of which house it is, a second house has nowhere to go, and the price beside it does not know the page it was read from.</p>
+<div class="frame now"><div class="screen">
+  <div class="rowhead"><span class="n">3IN WYE PVC</span><span class="chip">Fitting</span><span class="muted small">3 prices · best $15.80</span></div>
+  <div class="win">
+    <div class="bar"><span class="t">Edit part</span><span class="x">✕</span></div>
+    <div class="body">
+      <div class="grid2">
+        <div class="field"><label>Name</label><div class="in">3IN WYE PVC</div></div>
+        <div class="field"><label>Manufacturer</label><div class="in muted">&nbsp;</div></div>
+      </div>
+      <div class="field"><label>Link</label><div class="in mono">https://www.hillcrestsupply.example/product/pvc-dwv/3-pvc-dwv-45-degree-wye-hub/hw3y/40412</div></div>
+      <table class="t">
+        <tr><th>Supply house</th><th class="num-r">Price</th><th>Dated</th><th></th></tr>
+        <tr><td>Hillcrest Supply</td><td class="num-r">$15.80</td><td>Jul 2</td><td class="muted small">132 days old</td></tr>
+        <tr><td>Borden Pipe &amp; Supply</td><td class="num-r">$17.25</td><td class="muted">no date</td><td></td></tr>
+        <tr><td>Canyon Wholesale</td><td class="num-r">$16.10</td><td>Mar 14</td><td class="muted small">242 days old</td></tr>
+      </table>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="lose">To check Hillcrest's price she opens the part, copies the link, opens it, signs in, reads the price and comes back. Borden's page she finds again by searching.</p>
+  <p class="lose">Nothing can check a link by itself, because a link does not say which house's price it stands behind.</p>
+</div>
+
+<h2 id="row"><span class="num">1</span> The row: each house's number, page and last check beside its price</h2>
+<p class="lede">A house's page lives with that house's own number for the part, in <b>Their numbers</b>. The price line shows both, and the day the price was last checked. The part's own <b>Link</b> stays, for the maker's page or a cut sheet.</p>
+<div class="frame"><div class="screen">
+  <div class="rowhead"><span class="n">3IN WYE PVC</span><span class="chip">Fitting</span><span class="muted small">3 prices · best $15.80</span></div>
+  <div class="win">
+    <div class="bar"><span class="t">Prices · 3IN WYE PVC</span><span class="x">✕</span></div>
+    <div class="body">
+      <table class="t">
+        <tr><th>Supply house</th><th class="num-r">Price</th><th>Their number</th><th>Their page</th><th>Last checked</th><th></th></tr>
+        <tr>
+          <td>Hillcrest Supply</td><td class="num-r">$15.80 <span class="muted small">each</span></td>
+          <td class="new"><span class="mono">HS-40412</span></td>
+          <td class="new"><a class="ext" href="#row">Open their page ↗</a></td>
+          <td class="new">Nov 3 <span class="chip g">Same</span></td>
+          <td><span class="btn">Check now</span></td>
+        </tr>
+        <tr>
+          <td>Borden Pipe &amp; Supply</td><td class="num-r">$17.25 <span class="muted small">each</span></td>
+          <td class="new"><span class="mono">BP3WYE45</span></td>
+          <td class="new"><a class="ext" href="#row">Open their page ↗</a> <span class="chip r">Page gone</span></td>
+          <td class="new"><span class="muted">never</span> <span class="chip a">Check due</span></td>
+          <td><span class="btn">Find it again…</span></td>
+        </tr>
+        <tr>
+          <td>Canyon Wholesale</td><td class="num-r">$16.10 <span class="muted small">each</span></td>
+          <td class="new muted">none yet</td>
+          <td class="new"><span class="btn link">Paste their page…</span></td>
+          <td class="new">Mar 14 <span class="chip a">242 days</span></td>
+          <td></td>
+        </tr>
+      </table>
+      <div class="field new"><label>Part's own page <span class="muted">(the maker's page or a cut sheet, not a supply house)</span></label><div class="in mono">https://www.arlo.example/dwv/wye-3in-cut-sheet.pdf</div></div>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">One press opens the right page for the right house. A second house has its own page.</p>
+  <p class="gain">A pasted page teaches the house's number too. The number sits in the address of both houses' pages, so nobody types it.</p>
+  <p class="rule"><b>Last checked</b> is the price's own date, as today. <b>Same</b> sets it to today and Price History logs <i>Checked</i>. No second date is kept.</p>
+  <p class="rule">A page that has moved or gone is said in words, with the press that fixes it. The price is kept as it was.</p>
+</div>
+
+<h2 id="check"><span class="num">2</span> The check: the house's list beside the book, and a move waits for her press</h2>
+<p class="lede"><b>Check 20 prices</b> exists today: the parts with the most spend, oldest check first, with <b>Same</b> or a typed price. With a page on each row a person walks it in minutes. For a whole house she downloads the house's own list, signed in herself, and drops it here. What the list says is shown beside what is on file. Nothing is kept until a press.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="bar"><span class="t">Check prices · Hillcrest Supply</span><span class="chip b new">from their list of Nov 11 · downloaded by Marisol</span><span class="x">✕</span></div>
+    <div class="body">
+      <div class="strip done new"><b>20 rows read.</b> 14 are the same. 4 moved a little. 1 moved a lot and waits. 1 is not on their list.</div>
+      <table class="t">
+        <tr><th>Part</th><th>Their number</th><th class="num-r">On file</th><th class="num-r">Their list says</th><th>Move</th><th></th></tr>
+        <tr><td>3IN WYE PVC</td><td class="mono">HS-40412</td><td class="num-r">$15.80</td><td class="num-r new">$15.80</td><td><span class="chip g">Same</span></td><td><span class="muted small">ready</span></td></tr>
+        <tr><td>1/2IN PEX TUBING <span class="muted small">100 ft coil, booked by the foot</span></td><td class="mono">HS-28683</td><td class="num-r">$0.66 /ft</td><td class="num-r new">$71.00 /coil · $0.71 /ft</td><td><span class="chip b">▲ 8%</span></td><td><span class="muted small">ready</span></td></tr>
+        <tr><td>3/4IN BALL VALVE <span class="muted small">Kessler K-7010</span></td><td class="mono">HS-23716</td><td class="num-r">$58.10</td><td class="num-r new">$81.40</td><td><span class="chip a">▲ 40% · waits</span></td><td><span class="btn">File $81.40</span> <span class="btn">Keep $58.10</span> <a class="ext" href="#check">Open ↗</a></td></tr>
+        <tr><td>2IN T CAST IRON</td><td class="mono">HS-12604</td><td class="num-r">$28.97</td><td class="num-r new muted">not listed</td><td><span class="chip r">Not on their list</span></td><td><a class="ext" href="#check">Open their page ↗</a></td></tr>
+        <tr><td class="muted" colspan="6">16 more rows…</td></tr>
+      </table>
+    </div>
+    <div class="foot new"><span class="btn pri">File 18 prices</span><span class="muted small">14 the same get today's date. 4 small moves are filed <i>From their list</i>. 2 are held: one waits on you, one is not on their list.</span><span class="btn link" style="margin-left:auto">Take this check back</span></div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="rule">A check never changes a price by itself. What the list says waits beside what is on file. Her press files it.</p>
+  <p class="rule">A move past 25% waits alone, as a price sheet's row does. The rest go on one press, and the press says its count.</p>
+  <p class="rule">Each filed price says where it came from with its day, and the whole check can be taken back.</p>
+  <p class="gain">The unit is kept with the house's number. A coil priced as one thing is booked by the foot without anyone dividing.</p>
+</div>
+
+<h2 id="fill"><span class="num">3</span> The fill: a house's own list, matched to the book before anything is made</h2>
+<p class="lede">The first fill is not a crawl of a catalog. It is the house's own list for this account, dropped on the Parts Book, or the pages already pasted on parts. Each row is matched the way a price sheet's row is. A part is only made on a press.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="bar"><span class="t">Fill from a house's list · Hillcrest Supply</span><span class="chip">account-list-nov.csv · 1,204 rows</span><span class="x">✕</span></div>
+    <div class="body">
+      <div class="strip new"><b>1,204 rows read.</b> <span class="chip g">862 already in the book</span> <span class="chip b">171 offered by model number</span> <span class="chip a">44 offered by their words</span> <span class="chip">127 not in the book</span></div>
+      <table class="t">
+        <tr><th>Their row</th><th>Their number</th><th class="num-r">Their price</th><th>In the book</th><th>How</th><th></th></tr>
+        <tr><td>3" PVC DWV 45 WYE HUB</td><td class="mono">HS-40412</td><td class="num-r">$15.80 ea</td><td>3IN WYE PVC</td><td><span class="chip g">their page is on the part</span></td><td><span class="muted small">ready: number, page, price</span></td></tr>
+        <tr><td>K-7010 3/4 BRZ BALL VLV FPT</td><td class="mono">HS-23716</td><td class="num-r">$58.10 ea</td><td>K-7010 3/4" Bronze Ball Valve, FPT</td><td><span class="chip b">same model number</span></td><td><span class="btn">It is this part</span> <span class="btn">No</span></td></tr>
+        <tr><td>2 CI NH SAN TEE</td><td class="mono">HS-12604</td><td class="num-r">$28.97 ea</td><td>2IN T CAST IRON</td><td><span class="chip a">same words, sizes agree</span></td><td><span class="btn">It is this part</span> <span class="btn">No</span></td></tr>
+        <tr><td>TANNER T-88 TRAP PRIMER 1/2</td><td class="mono">HS-77105</td><td class="num-r">$44.20 ea</td><td class="muted">Nothing on file</td><td><span class="chip">none</span></td><td><span class="btn">New part in the book…</span> <span class="btn link">Skip</span></td></tr>
+      </table>
+    </div>
+    <div class="foot"><span class="btn pri">File 862 rows</span><span class="muted small">Each gains Hillcrest's number, its page and today's price. 342 rows wait on a press. Nothing is made.</span></div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="rule">Rows that are not in the book stay out until she presses <b>New part in the book…</b> on one. A catalog is never poured in.</p>
+  <p class="rule">The robot's parts are never matched and never touched.</p>
+  <p class="gain">After the fill, the next list from that house is ready by itself, because every row is known by the house's own number.</p>
+</div>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-theme-pick') === t)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

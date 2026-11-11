@@ -81,7 +81,7 @@ and tape in hand: should the new view make label printing more apparent).
 are the labels window's first choice, the three first-time steps sit in the window, **Print 1
 test strip** and **None · Every box** are new, and a computer that printed tape opens on tape.
 Client only; its release note and fragment carry the detail. Still his: three strips off the
-real printer (the tape format, #294, has never been printed on it), and the tape width in the
+real printer on 18 mm tape (the PT-D610BT printed 24 mm runs straight over USB from Chrome, v2.6865 and v2.6881), and the tape width in the
 box, since the app lays out 18 and 24 mm only.
 
 **Walked** on localhost against prod as the dev login, read only, at 1,400 wide and at 375: the

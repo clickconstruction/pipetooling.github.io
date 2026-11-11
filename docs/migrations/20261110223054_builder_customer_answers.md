@@ -17,3 +17,5 @@ Bids and permits: the answer on a name (punch list #307, PR 6 and 7; `to-dos/bid
 ## Release order
 
 Merge the PR, then push. Before the push `loadNameAnswers` reads a missing table as nothing to ask: no question is drawn and the GC's panel leaves its second half off.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7602.

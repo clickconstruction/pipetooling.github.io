@@ -21,7 +21,7 @@ import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow,
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
@@ -995,6 +995,38 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(top.textContent).toBe('NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.')
     expect(paper().textContent!.indexOf('THIS IS NOT A LIEN')).toBeLessThan(paper().textContent!.indexOf('Lien Affidavit'))
     expect(document.body.textContent).toContain('Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney')
+  })
+
+  it('a GC with no address on file holds the affidavit: the gate says so, the door opens the GC’s record, and the paper keeps its words', async () => {
+    const d = data([], [], true)
+    d.gcsById = { loberg: { ...d.gcsById.loberg!, address: '' } }
+    const rows = withContractorAddress([affRow], d.gcsById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    const onOpenCustomerRecord = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" onOpenCustomerRecord={onOpenCustomerRecord} />)
+    await settle()
+    expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
+    expect(document.body.textContent).toContain('The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054) — Loberg Contracting')
+    expect(document.body.textContent).toContain("missing the GC's address")
+    expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
+    // The hold changes the pile, never the words: the paper still names the GC, with a blank where its address goes.
+    expect(paper().textContent).toContain('Claimant did so under a contract with Loberg Contracting')
+    fireEvent.click(document.querySelector('[data-lien-affidavit-contractor-door]') as HTMLElement)
+    expect(onOpenCustomerRecord).toHaveBeenCalledWith('loberg')
+  })
+
+  it('the address gate offers no door to a role that cannot edit the record, and none without the page’s handler', async () => {
+    const d = data([], [], true)
+    d.gcsById = { loberg: { ...d.gcsById.loberg!, address: '' } }
+    const rows = withContractorAddress([affRow], d.gcsById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(document.body.textContent).toContain('The general contractor has no address on its customer record.')
+    expect(document.querySelector('[data-lien-affidavit-contractor-door]')).toBeNull()
   })
 
   it('an affidavit approved before the short form keeps its ten paragraphs, and Redraw on the short form takes it back to a marked draft', async () => {
