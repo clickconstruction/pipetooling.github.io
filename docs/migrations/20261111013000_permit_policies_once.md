@@ -33,3 +33,5 @@ The 140 ms that is left is the plumbing pairing's join, which `20261111003750_pe
 ## Release order
 
 Merge the PR, then `bash scripts/db-push.sh` from a clean checkout of `main`. The client needs nothing: no name it calls is added, renamed or removed, so it is correct on either side of the push. `ALTER POLICY` takes a brief exclusive lock on each table; `lock_timeout = '3s'` fails the push fast if a table is busy, and it is then run again.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); no change to `database.ts`, since the migration alters policies alone.

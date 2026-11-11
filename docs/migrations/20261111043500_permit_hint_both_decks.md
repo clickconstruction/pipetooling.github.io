@@ -19,3 +19,5 @@ No CREATE TABLE, so the four fence appliers are not run.
 ## Release order
 
 Merge the PR, `supabase db push`. Nothing to deploy. The client reads the same columns, so either order is safe.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); no change to `database.ts`, since the function was replaced in place with the same signature and columns.

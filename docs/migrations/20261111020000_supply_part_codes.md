@@ -18,7 +18,7 @@ The parts book knows a part by its name alone, and every supply house writes the
 - **A part or not a part, never both and never neither**: `supply_part_codes_part_or_not`.
 - **A number has a letter or a digit**: `supply_part_codes_key_not_empty`.
 - **`unit_factor` is above zero**, 1 by default.
-- **A number goes with its part and with its house**: both are `ON DELETE CASCADE`. A merge of two parts (PR 9) moves them first.
+- **A number goes with its part and with its house**: both are `ON DELETE CASCADE`. A merge of two parts (PR 8, v2.6921, `merge_material_parts`) moves them first.
 
 ## Access
 
@@ -31,3 +31,5 @@ Read, insert, update and delete for `may_edit_parts_book()`, the same people who
 ## Bed
 
 `npm run test:pg:price-sheets` (`scripts/pgtest-price-sheets.sh`, `supabase/tests/price_sheets/20_scenario.sql`), 19 checks through RLS inside one transaction that rolls back.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7643.

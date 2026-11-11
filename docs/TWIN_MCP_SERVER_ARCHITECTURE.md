@@ -8,7 +8,7 @@ covers:
   - supabase/functions/twin-mcp/index.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 ---
 
 ## Overview
@@ -20,6 +20,8 @@ last_updated: 2026-11-10
 > **v2.6207 (after `mapped_at`) — `put_plan_memo` (twin-mcp 1.10.0):** writes a memo on the plan set the robot reads (the `bid_plan_sets` row whose link is `bids.plans_link`) or the set named, making the row when a bid has a plans link and none; the same bid fence as `add_bid_note` (`docs/recent-features/v2.6207.md`).
 
 > **v2.6237 (after `mapped_at`) — the hand-over step named (twin-mcp 1.10.1):** `paste_counts` on a shadow shell with no pull returns `fixtures_next`, `lock_shadow` returns `fixtures_handed_over`, and `score_shadows` counts an assisted run (one whose fixtures the estimator took) with practice and reports `assisted_runs`, so an assisted run never gates an axis. The `serverInfo` version reads `1.10.1` now, not the `1.4.2` counted at `mapped_at` (`docs/recent-features/v2.6237.md`).
+
+> **v2.6923 (after `mapped_at`) — `put_price_sheet` (twin-mcp 1.12.0):** a pricer-seat write that leaves a supply house's quote as a price sheet draft (one `supply_papers` row with its `supply_paper_groups` and `supply_paper_lines`, service role, held to a request the twin claimed) and files nothing. It is in the Pricer seat row and `PRICER_VERBS` above. The live `TOOLS` array holds 54 at v2.6923; the census table predates `put_plan_text`, `next_plan_question`, `put_plan_answer`, `put_fixtures` and `put_plan_memo` (`docs/recent-features/v2.6923.md`).
 
 **What this surface is.** [`supabase/functions/twin-mcp/index.ts`](../supabase/functions/twin-mcp/index.ts) has **3,362 lines**. It is a Deno edge function, not React: the stateless JSON-RPC MCP server that lets any MCP-capable agent hold a digital-twin seat. It has 0 components, 0 hooks and 22 module functions. Churn is **42 commits in 90 days**; the last was `67e865b14` on 2026-09-20 (v2.3630). The purpose, endpoint, auth, secrets and every verb's contract are documented in [EDGE_FUNCTIONS.md → twin-mcp](./EDGE_FUNCTIONS.md#twin-mcp). This map links there and does not restate verb behavior.
 
@@ -43,9 +45,9 @@ The file has **48 tools**. The 48 entries in `TOOLS` (38–664) are exactly the 
 | Plan pages (10) | `get_plan_pages`, `stage_plan_pdf` (2) | 133 | storage + ledger | `get_plan_pages` only, and only on the bid of a held `read_schedule` task |
 | Pricer seat (11) | `get_pricing_guide`, `get_component_rules`, `get_component_corrections`, `next_price_matrix`, `get_quote_documents`, `put_quote`, `put_price_sheet`, `finish_price_matrix`, `extend_component_rules` (9) | 417 | yes (money) | all 9 (an estimator key is refused all 9) |
 | Submittal robot (12) | `get_submittal_guide`, `next_submittal_task`, `put_submittal_result`, `finish_submittal_task` (4) | 107 | yes | all 4 |
-| **Total** | **48** | **2,241** (+15 head, +4 default/close = 2,260) | | 20 of 48 |
+| **Total** | **48** at `mapped_at` (49 with `put_price_sheet`, v2.6923) | **2,241** (+15 head, +4 default/close = 2,260) | | 21 of 49 |
 
-Seat sets come from `_shared/twinSeatGate.ts`: `PRICER_VERBS` 8, `SHARED_VERBS` 7, `SUBMITTAL_VERBS` 4 and `PRICER_TASK_FENCED_VERBS` 1. **28 verbs are estimator-only**, and that includes `get_brief` and `mint_session`.
+Seat sets come from `_shared/twinSeatGate.ts`: `PRICER_VERBS` 9 (8 at `mapped_at`; `put_price_sheet` joined in v2.6923), `SHARED_VERBS` 7, `SUBMITTAL_VERBS` 4 and `PRICER_TASK_FENCED_VERBS` 1. **28 verbs are estimator-only**, and that includes `get_brief` and `mint_session`.
 
 ### Monster blocks
 
