@@ -2,7 +2,7 @@
 name: "A price sheet read into the parts book, with no second copy of a part"
 number: 308
 group: gated
-status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · nothing built
+status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · the owner said *build all the PRs* the same day, taking every call's default · PR 1 shipped as v2.6898 (the matcher and the Add Part warning) · PR 2 is v2.6901 (house numbers) on `claude/price-sheet-pr2-house-numbers`, with PR 3 (one price) and PR 4 (the sheet in a panel) stacked behind it · a search of company mail for a real quote to measure on was refused without the owner's word, so the reader is unproven on a real sheet
 mockup: to-dos/price-sheet-reader/mockup.html
 summary: >
   The estimator reads a supply house's quote fixture by fixture, finds or makes each part, builds an
@@ -19,10 +19,10 @@ summary: >
   it, and a file dropped or pasted on Takeoffs is the door. A row is matched by the house's number,
   then the model number, then the words, and a part is only ever made on her press. The first PR is
   the matcher alone, as a warning on the Add Part form.
-next: The owner's go, with his word on call 1 (who builds the table of house numbers, this card or #298) and call 2 (whether a quote's price goes into the parts book). Then PR 1.
+next: Merge and push PR 2, then PR 3 and PR 4 in order, each walked live on a ZZ part and house after its push. Then PR 5 (file a sheet's ready rows in one press, take a sheet back).
 size: L as a train of nine (S · M · M · M · M · M · S · M · M); PR 1 alone stops a second copy at the part form, and PR 3 is one price in two presses
-blocker: The owner's go. PR 2 waits on call 1, and PR 5 on three to five real sheets from the estimator for a measure.
-opinion: build — PR 1 first, since it risks nothing and works the day it ships; the reader after the owner's word on calls 1 and 2
+blocker: None for the build. The measure on three to five real sheets is still the estimator's: the first real quote she drops is it.
+opinion: build — in train; the words-only match was tightened after the real book showed letter-closeness pairs black with galvanized
 ---
 
 # A price sheet read into the parts book, with no second copy of a part (#308)
