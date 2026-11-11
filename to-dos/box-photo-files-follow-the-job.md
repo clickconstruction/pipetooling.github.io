@@ -3,7 +3,7 @@ name: "Box photos: the Drive files follow a job that moved"
 number: 297
 mockup: not required — no screen changes; a sweep moves files between two Drive folders and the plan's words say what it did
 group: ready
-status: carded 2026-11-09 from the on-site move (v2.6808) · nothing built
+status: carded 2026-11-09 from the on-site move (v2.6808) · the seat's move takes the files with it since v2.6885 · a combine and asking alone are left
 summary: >
   A box photo's row moves with its box when a job's Materials on site are moved to another job
   (v2.6808) or carried by a whole-job combine (v2.6423), but the file the photo sweep already
@@ -12,7 +12,7 @@ summary: >
   job's Drive folder does not list the photos, and the old job's folder keeps pictures of a site
   that was never its own. The fix is a re-file step in the photo sweep's function that moves each
   file to the folder its row's job now names.
-next: Build the re-file step in `photo-save` behind a dev-only ask, then call it from the seat's `apply_materials_move` after the rows land.
+next: Decide how a whole-job combine asks (widen `photo-save`'s dev-only gate to whoever may combine, or a nightly pass), and give the seat a way to ask alone for a move applied before v2.6885 (one was, on prod, 2026-11-10).
 size: S
 blocker: None.
 opinion: build when a move has been applied on prod and the office looks for the photos in the job's Drive folder — the photos work without it, so it is tidiness, not a repair
@@ -29,6 +29,10 @@ opinion: build when a move has been applied on prod and the office looks for the
 ## Why it was not built with the move
 
 The move's dry run does the write, reads both jobs and unwinds it, and the plan hash commits to what it read. A Drive move cannot be unwound or dry-run that way. It also has outcomes per file (a name the folder already holds, a folder that cannot be made, a file someone moved by hand), and making the target job's photo folder is itself a write in Drive. `photo-save` takes only the cron secret today, so a seat call needs a gate of its own. That is a function change with its own tests and deploy, not a line in a migration.
+
+## Where it stands
+
+Steps 1 and 2 below shipped in v2.6885 (`docs/recent-features/v2.6885.md`): `photo-save` takes `{ refile_box_photos: <job_id> }` from a dev or the cron, and the seat's `apply_materials_move` makes the ask after its rows land and reports it as `photos.refiled`. Step 3 is open, and so is a way to ask alone from the seat: a move applied before v2.6885 cannot be applied again.
 
 ## The build
 

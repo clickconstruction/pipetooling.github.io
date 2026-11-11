@@ -46,6 +46,7 @@ import { recordsDue, recordsPass } from '../_shared/fileIndexRecords.ts'
 import { recordBytesWhere } from '../_shared/fileIndexRecordsKernel.ts'
 import { INDEX_PDF_LIMITS, INDEX_READ_MS, SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
 import { readWithin, textFromBytes } from '../_shared/fileText.ts'
+import { NO_REFILE_NEEDED, moveReplyWithRefileWords, movedPhotosInDrive, refiledForSeat } from '../_shared/boxPhotoRefile.ts'
 import { ACCOUNT_PERSON_SELECT, ACCOUNT_USER_SELECT, NAME_KEYED_PAY_TABLES, accountAppliedWords, accountDryRun, accountFacts, addWorkerArgs, argsWithoutPasswords, authStateOf, createLoginBody, isAccountVerb, likeTerm as accountLikeTerm, loginAppliedWords, loginDryRun, loginStateReading, passwordResetAppliedWords, passwordResetDryRun, payConfigRow, personRefKind, pickByName, salaryTemplateRow, type AccountPayload, type AccountPersonRow, type AccountStep, type AccountUserRow, type AccountWorld, type AuthState, type LoginPayload, type PasswordResetPayload } from '../_shared/devMcpAccount.ts'
 import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob, personBackfillApplyReply, personBackfillCommitment, personBackfillPlanReply, recordsBatch, type PersonBackfillFile } from '../_shared/devMcpIndexBackfill.ts'
 
@@ -133,10 +134,16 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // function keeps nothing between calls: 40 written pages measured about 120 ms locally, about 350 ms on the platform,
 // inside the reader's 800 ms for one file. A scan answers in words that name read_mail_file. Read-only and logged.
 //
+// The files follow a job that moved (v2.6885 / 0.61.0, punch list #297): after apply_materials_move's rows land, the
+// server asks photo-save, as the dev, to move the box photos already filed in Drive into the new job's photo folder
+// ({ refile_box_photos: to_job }), and adds the answer to the reply as photos.refiled — moved, already there, held with
+// the reason each. A failed ask never undoes the move. The plan's and the apply's photo words say so
+// (boxPhotoRefile.ts → movePhotoWordsWithRefile); the hash is still of the database's own reply.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.60.0'
+const SERVER_VERSION = '0.61.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -739,12 +746,12 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_materials_move',
-    description: "Dry-run moving everything one job holds on site to another job (v2.6808, punch list #209), for a count that was recorded under the wrong job: its places, cages and boxes, the whole ledger, the boxes' own moves and their photos. Every cage and box keeps its id and the code printed on its label, and no ledger row is rewritten, only the job it sits under. The rule is the whole-job combine's own: a place of the same name becomes one, the source's Unsorted folds into the target's, and a live stencil the target already holds takes a numbered label (A1 (2)). The source job itself stays, with nothing on site. The dry run does the move, reads both jobs and unwinds it: it replies with the counts moved per table, the places that became one, every label renumbered with its code, where the photos' files are (a file already in Drive stays in the source job's photo folder and still opens from its box; one still waiting is filed for the new job), the row counts and parts on hand on both jobs before and after, and the note each job will carry, under a plan_hash; nothing is written. read_on_site both jobs first. Refused when the two jobs are the same or the source holds nothing.",
+    description: "Dry-run moving everything one job holds on site to another job (v2.6808, punch list #209), for a count that was recorded under the wrong job: its places, cages and boxes, the whole ledger, the boxes' own moves and their photos. Every cage and box keeps its id and the code printed on its label, and no ledger row is rewritten, only the job it sits under. The rule is the whole-job combine's own: a place of the same name becomes one, the source's Unsorted folds into the target's, and a live stencil the target already holds takes a numbered label (A1 (2)). The source job itself stays, with nothing on site. The dry run does the move, reads both jobs and unwinds it: it replies with the counts moved per table, the places that became one, every label renumbered with its code, where the photos' files are (a file already in Drive is moved into the new job's photo folder by the apply, its Drive id kept, so it still opens from its box; one still waiting is filed for the new job), the row counts and parts on hand on both jobs before and after, and the note each job will carry, under a plan_hash; nothing is written. read_on_site both jobs first. Refused when the two jobs are the same or the source holds nothing.",
     inputSchema: { type: 'object', properties: { move: { type: 'object', description: "{ from_job (the jobs_ledger.id the material is recorded under — find_job), to_job (the jobs_ledger.id it belongs on) }" } }, required: ['move'] },
   },
   {
     name: 'apply_materials_move',
-    description: "Make the move you planned: the same move plus the plan_hash from plan_materials_move. Runs the dry run again first and writes only when it still matches — a press, a box, a photo or a place on either job since, plan again. Written as you through dev_on_site_move_job, with a note on both jobs in your name; the crew and the office see the boxes under the new job at once, and a press sent from a phone that still has the old job open lands on the box's job (refused for someone who is not on the new job's team, so put the crew on it first). A second apply is refused: the source holds nothing.",
+    description: "Make the move you planned: the same move plus the plan_hash from plan_materials_move. Runs the dry run again first and writes only when it still matches — a press, a box, a photo or a place on either job since, plan again. Written as you through dev_on_site_move_job, with a note on both jobs in your name; the crew and the office see the boxes under the new job at once; the photos already filed in Drive are then moved into the new job's photo folder by photo-save (photos.refiled: moved, already there, held with the reason each; a failed ask never undoes the move), and a press sent from a phone that still has the old job open lands on the box's job (refused for someone who is not on the new job's team, so put the crew on it first). A second apply is refused: the source holds nothing.",
     inputSchema: { type: 'object', properties: { move: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['move', 'plan_hash'] },
   },
   {
@@ -2918,7 +2925,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (built.step === 'plan') {
         const res = await restPost(session, rpcPath, built.body)
         if (!res.ok) return fail(res.status, res.body)
-        const planned = planReply(name, redactSecrets(res.body), await planHash(name, built.body.p, res.body))
+        // #297: the move's photo words say what the apply now does with a file already in Drive; the hash is of the database's own reply.
+        const planned = planReply(name, name === 'plan_materials_move' ? moveReplyWithRefileWords(redactSecrets(res.body)) : redactSecrets(res.body), await planHash(name, built.body.p, res.body))
         return ok(driveDoc ? { ...planned, ...driveDocPlanExtra(driveDoc.facts) } : planned, { target: built.target })
       }
       let writeBody: Record<string, unknown> = built.body
@@ -2985,6 +2993,15 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // #285 (v2.6714): the document's words into the file index at once, so search_case finds them; fail-soft, the
         // sweep's records step takes a document the pass missed within ten minutes.
         reply = { ...(reply as Record<string, unknown>), index: await indexRecordsAfterWrite({ matterId: String(built.target) }) }
+      }
+      if (name === 'apply_materials_move' && reply && typeof reply === 'object' && !Array.isArray(reply)) {
+        // #297 (0.61.0): the rows are on the new job; the files the sweep already filed follow them. photo-save moves each
+        // into the new job's photo folder as the dev, and its answer rides in the reply as photos.refiled. A failed ask
+        // never undoes the move: the reply says the move stands and names the ask to make again.
+        const toJob = String((built.body.p as { to_job?: unknown }).to_job ?? '')
+        const withWords = moveReplyWithRefileWords(reply) as Record<string, unknown>
+        const refiled = movedPhotosInDrive(reply) > 0 ? refiledForSeat(toJob, await invokeAsDev(session, 'photo-save', { refile_box_photos: toJob })) : NO_REFILE_NEEDED
+        reply = { ...withWords, photos: { ...((withWords.photos as Record<string, unknown> | undefined) ?? {}), refiled } }
       }
       if (name === 'apply_license' && reply && typeof reply === 'object') {
         // As the Licenses tab's Save: a license inside its last 30 days opened a dispatch request; the push goes now.

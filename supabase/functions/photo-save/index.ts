@@ -2,7 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
-import { freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import { driveFileState, folderFiles, freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import { REFILE_BUDGET_MS, nextFreeName, refileAskOf, refileResult, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
 import { roadmapTaskFolderPath, taskFolderName, taskPhotoDriveName, type TaskPhotoKind } from '../_shared/taskPhotoNames.ts'
@@ -10,7 +11,8 @@ import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { buildStageChecklistPdf, recordPdfFileName, type RecordPdfRow } from '../_shared/stageChecklistPdf.ts'
 import { machineFolderOrWhy } from '../_shared/driveMachineFolder.ts'
 import { ticketFolderOrWhy } from '../_shared/driveTicketFolder.ts'
-import { moveFolder } from '../_shared/jobFolders.ts'
+import { moveFile, moveFolder } from '../_shared/jobFolders.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { COUNTER_TICKETS_BUCKET, ticketDriveName } from '../_shared/ticketNames.ts'
 import { NO_TASKS_FOLDER_WORDS, driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
@@ -91,10 +93,26 @@ import {
  * keeps fail_why and tried_at, and is left alone for an hour (the cron's clause holds the same hour), since a held bid
  * folder is common and stays held until someone moves it. The bucket copy is deleted once the file is in Drive.
  *
+ * The files follow a job that moved (punch list #297, v2.6885): a box photo's row moves with its box when a job's
+ * Materials on site are moved to another job (the dev seat's `apply_materials_move`) or carried by a whole-job combine,
+ * but a file already filed stays in the first job's photo folder. One ask moves them:
+ *
+ *   POST { refile_box_photos: <job_id> } (a dev's JWT, or X-Cron-Secret) → { job_id, folder_id, folder_url, in_drive,
+ *     moved: [{ id, file_name, drive_file_id, renamed_to? }], already, held: [{ id, file_name, why }], left, words }
+ *
+ * For each `job_box_photos` row of the job with a `drive_file_id`, a file not in the folder the job's photos land in
+ * (`photoFolderOrWhy`, the sweep's own resolver, which makes the folder as a first photo would) is moved there with
+ * Drive's addParents / removeParents (`moveFile`), its id and every link to it kept, under the next free name when
+ * the folder holds its own. It does what is ready: a file Drive no longer holds, one in Drive's trash or one Drive
+ * refuses is held with its reason, written on the row as fail_why (the app draws that only on a photo not filed), and
+ * the rest move. The folder is listed once, so a second ask reads one page and moves nothing. An ask that runs past
+ * REFILE_BUDGET_MS answers how many are left. Rules and words: `_shared/boxPhotoRefile.ts`.
+ *
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
  * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
  *
- * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON; DRIVE_IMPERSONATE_USER
+ * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY (the re-file ask's dev check), CRON_SECRET,
+ * GOOGLE_SERVICE_ACCOUNT_JSON; DRIVE_IMPERSONATE_USER
  * (optional) lets a bid photo reach a folder in a personal Drive. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
  */
@@ -258,19 +276,6 @@ const CHECKLIST_SOURCE: WaitingSource = {
   filedExtra: {},
 }
 
-/** The row's own name, or the next free "(2)", "(3)" when the folder already holds it (any case). */
-function nextFreeName(name: string, taken: ReadonlySet<string>): string {
-  const lower = new Set([...taken].map((t) => t.toLowerCase()))
-  if (!lower.has(name.toLowerCase())) return name
-  const m = /^(.*?)(\.[a-z0-9]{1,5})?$/i.exec(name)
-  const stem = m?.[1] ?? name
-  const ext = m?.[2] ?? ''
-  for (let n = 2; ; n++) {
-    const candidate = `${stem} (${n})${ext}`
-    if (!lower.has(candidate.toLowerCase())) return candidate
-  }
-}
-
 async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
   const { data, error } = await source.waiting(admin)
   if (error) return { saved: 0, failed: [{ id: '', why: `the ${source.kind === 'boxes' ? 'box' : 'checklist'} photos did not read: ${error.message}` }] }
@@ -333,6 +338,93 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
   }
   if (failed.length) console.warn(`photo-save: some ${source.kind === 'boxes' ? 'box' : 'checklist'} photos were not filed`, failed)
   return { saved, failed }
+}
+
+// ---------------------------------------------------------------------------
+// The files follow a job that moved (#297): every filed box photo of one job into the folder its photos land in.
+// ---------------------------------------------------------------------------
+
+const BOX_REFILE_MAX_ROWS = 2000
+
+type BoxRefileRow = { id: string; file_name: string; drive_file_id: string; fail_why: string | null }
+
+async function refileBoxPhotos(admin: SupabaseClient, jobId: string): Promise<{ result: RefileResult } | { error: string; status: number }> {
+  const { data: job, error: jobError } = await admin.from('jobs_ledger').select('id').eq('id', jobId).maybeSingle()
+  if (jobError) return { error: `The job did not read: ${jobError.message}`, status: 500 }
+  if (!job) return { error: 'There is no job with that id.', status: 404 }
+  const { data, error } = await admin
+    .from('job_box_photos')
+    .select('id, file_name, drive_file_id, fail_why')
+    .eq('job_id', jobId)
+    .not('drive_file_id', 'is', null)
+    .order('taken_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(BOX_REFILE_MAX_ROWS)
+  if (error) return { error: `The box photos did not read: ${error.message}`, status: 500 }
+  const rows = (data ?? []) as BoxRefileRow[]
+  if (rows.length === 0) return { result: refileResult({ jobId, folderId: null, inDrive: 0, moved: [], already: 0, held: [], left: 0 }) }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return { error: 'Drive is not set up here yet.', status: 503 }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    return { error: `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`, status: 502 }
+  }
+  const moved: RefileMoved[] = []
+  const held: RefileHeld[] = []
+  let already = 0
+  let left = 0
+  // A reason lands on the row, as a failed filing's does; a row that is where it belongs carries none.
+  const hold = async (r: BoxRefileRow, why: string) => {
+    held.push({ id: r.id, file_name: r.file_name, why })
+    await admin.from('job_box_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id)
+  }
+  const settled = async (r: BoxRefileRow) => {
+    if (r.fail_why) await admin.from('job_box_photos').update({ fail_why: null }).eq('id', r.id)
+  }
+  const landing = await photoFolderOrWhy(admin, google, { jobs_ledger_id: jobId })
+  if ('why' in landing) {
+    for (const r of rows) await hold(r, landing.why)
+    return { result: refileResult({ jobId, folderId: null, inDrive: rows.length, moved, already, held, left }) }
+  }
+  let inFolder: Map<string, string>
+  try {
+    inFolder = await folderFiles(google, landing.id)
+  } catch (e) {
+    return { error: `The job’s photo folder did not read: ${e instanceof Error ? e.message : String(e)}`, status: 502 }
+  }
+  const names = new Set(inFolder.values())
+  const started = Date.now()
+  for (const r of rows) {
+    if (inFolder.has(r.drive_file_id)) {
+      already += 1
+      await settled(r)
+      continue
+    }
+    if (Date.now() - started > REFILE_BUDGET_MS) {
+      left += 1
+      continue
+    }
+    try {
+      const step = refileStep(await driveFileState(google, r.drive_file_id), landing.id, names)
+      if (step.kind === 'held') {
+        await hold(r, step.why)
+      } else if (step.kind === 'already') {
+        already += 1
+        await settled(r)
+      } else {
+        await moveFile(google, r.drive_file_id, step.removeParents, landing.id, step.renamed ? step.name : undefined)
+        names.add(step.name)
+        moved.push({ id: r.id, file_name: r.file_name, drive_file_id: r.drive_file_id, ...(step.renamed ? { renamed_to: step.name } : {}) })
+        await settled(r)
+      }
+    } catch (e) {
+      await hold(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (held.length) console.warn('photo-save: some box photos were not moved to their job’s folder', held)
+  return { result: refileResult({ jobId, folderId: landing.id, inDrive: rows.length, moved, already, held, left }) }
 }
 
 // ---------------------------------------------------------------------------
@@ -1027,7 +1119,31 @@ serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
   const cronSecret = Deno.env.get('CRON_SECRET')
   const headerSecret = req.headers.get('X-Cron-Secret') ?? req.headers.get('x-cron-secret')
-  if (!cronSecret || headerSecret !== cronSecret) return json({ error: 'Unauthorized' }, 401)
+  const isCron = Boolean(cronSecret) && headerSecret === cronSecret
+  // The sweep's call carries no body; the re-file ask (#297) names its job in one.
+  const ask = refileAskOf(await req.json().catch(() => null))
+  if (ask) {
+    try {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      // The one ask a person may make: a dev, with their own session. Everything else here is the cron's.
+      if (!isCron) {
+        const asUser = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
+        const { data: me } = await asUser.auth.getUser()
+        const archivedRefusal = await refuseArchivedCaller(admin, me?.user?.id, corsHeaders)
+        if (archivedRefusal) return archivedRefusal
+        if (!me?.user) return json({ error: 'Sign in first.' }, 401)
+        const { data: isDev } = await asUser.rpc('is_dev')
+        if (isDev !== true) return json({ error: 'Only a dev moves a job’s box photos to its folder.' }, 403)
+      }
+      if (!ask.ok) return json({ error: ask.error }, 400)
+      const out = await refileBoxPhotos(admin, ask.jobId)
+      return 'error' in out ? json({ error: out.error }, out.status) : json(out.result)
+    } catch (e) {
+      console.error('photo-save refile', e)
+      return json({ error: e instanceof Error ? e.message : 'The move failed.' }, 500)
+    }
+  }
+  if (!isCron) return json({ error: 'Unauthorized' }, 401)
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const messages = await sweep(admin)
