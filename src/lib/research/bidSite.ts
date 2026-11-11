@@ -12,6 +12,8 @@
  */
 import { daysBetween } from './permitSkim'
 import { reachDay } from './permitReach'
+import { shortDay } from './permitResearch'
+import { isOurName, NO_OUR_KEYS, type OurNameKeys } from './ourNames'
 import { builderKeyOf } from '../../../supabase/functions/_shared/permitLookup'
 
 /** An address in the shape both sides are compared in. */
@@ -225,12 +227,18 @@ export function permitsOnSite<P extends Pick<BidSitePermit, 'address' | 'id'> & 
 /**
  * Who a general plumbing permit lists, read against the building permit beside it. In this feed
  * a job's plumbing permit is often filed under the building permit's own contact, which names no
- * plumber: `same` says so. Else the name the city lists, or null when it lists nobody.
+ * plumber: `same` says so. Else the name the city lists, or null when it lists nobody. `ours`
+ * says the name is one the office named as us (`ourNames.ts`): read it first, since our own
+ * permit is never another plumber's, whoever the building permit lists.
  */
-export function plumbingListing(general: Pick<BidSitePermit, 'contact'>, building: Pick<BidSitePermit, 'contact'> | null): { same: boolean; name: string | null } {
+export function plumbingListing(
+  general: Pick<BidSitePermit, 'contact'>,
+  building: Pick<BidSitePermit, 'contact'> | null,
+  ourKeys: OurNameKeys = NO_OUR_KEYS,
+): { same: boolean; name: string | null; ours: boolean } {
   const name = general.contact?.replace(/\s+/g, ' ').trim() || null
   const same = name != null && building?.contact != null && builderKeyOf(name) != null && builderKeyOf(name) === builderKeyOf(building.contact)
-  return { same, name }
+  return { same, name, ours: isOurName(name, ourKeys) }
 }
 
 export type PlumbingType = 'general' | 'gas' | 'irrigation' | 'sewer' | 'other'
@@ -320,7 +328,7 @@ export function bidSiteWords(
   site: BidSite,
   bidProjectName: string | null | undefined,
   onSite: readonly BidSitePermit[],
-  ctx: { todayYmd: string; recordsStartYmd: string | null; readCities: readonly string[] },
+  ctx: { todayYmd: string; recordsStartYmd: string | null; readCities: readonly string[]; ourKeys?: OurNameKeys },
 ): { state: BidSiteState; main: string; detail: string | null } {
   const state = bidSiteState(site, onSite.length)
   if (site.kind === 'unreadable') return { state, main: UNREADABLE_WORDS[site.why], detail: site.reads === '' ? null : `It reads: ${site.reads}.` }
@@ -347,8 +355,10 @@ export function bidSiteWords(
   const general = [...onSite].sort(newestFirst).find((p) => plumbingTypeOf(p.permit_type) === 'general')
   if (!general) parts.push('No general plumbing permit seen on it.')
   else {
-    const listing = plumbingListing(general, lead && lead.kind === 'building' ? lead : null)
-    parts.push(listing.same ? 'A general plumbing permit is on this address, under the building permit’s own name.' : listing.name ? `A general plumbing permit is on this address. The city lists ${listing.name}.` : 'A general plumbing permit is on this address.')
+    const listing = plumbingListing(general, lead && lead.kind === 'building' ? lead : null, ctx.ourKeys)
+    const day = dayOf(general)
+    if (listing.ours) parts.push(`A general plumbing permit on this address lists us, as ${listing.name}.`, day ? `${general.stage === 'applied' ? 'Applied for' : 'Issued'} ${shortDay(day, ctx.todayYmd)}.` : '')
+    else parts.push(listing.same ? 'A general plumbing permit is on this address, under the building permit’s own name.' : listing.name ? `A general plumbing permit is on this address. The city lists ${listing.name}.` : 'A general plumbing permit is on this address.')
   }
   return { state, main: parts.filter(Boolean).join(' '), detail: null }
 }

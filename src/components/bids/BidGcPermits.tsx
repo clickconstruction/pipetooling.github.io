@@ -3,6 +3,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
+import { useOurPermitNames } from '../../hooks/useOurPermitNames'
 import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
 import { reachDay } from '../../lib/research/permitReach'
 import { gcJobsView, numbersToAsk, type GcBid, type SitePermitRow } from '../../lib/research/bidSitePanel'
@@ -16,7 +17,8 @@ import { BidGcTiedNames } from './BidGcTiedNames'
  * jobs we priced for them, each with what the city shows on its address. It stands on the bids'
  * own addresses, so no name has to match. It says which city it reads, the day the records
  * start, and how many of our bids with them it covers. Never "the permits they pulled": the
- * records are one city's from one day on.
+ * records are one city's from one day on. A job whose general plumbing permit lists one of our
+ * own names (Settings → Company) reads Ours, and is counted apart from another name.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
@@ -37,6 +39,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
   const [open, setOpen] = useState(false)
   const idsKey = [...customerIds].sort().join(',')
+  const ourKeys = useOurPermitNames()
   const today = todayYmdInAppTz()
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function BidGcPermits({ customerIds, customerName, currentBidId }: { cust
     }
   }, [idsKey])
 
-  const view = useMemo(() => (loaded.state === 'done' ? gcJobsView(loaded.bids, loaded.permits, RESEARCH_CITIES, currentBidId) : null), [loaded, currentBidId])
+  const view = useMemo(() => (loaded.state === 'done' ? gcJobsView(loaded.bids, loaded.permits, RESEARCH_CITIES, currentBidId, ourKeys) : null), [loaded, currentBidId, ourKeys])
 
   const box: CSSProperties = { marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 8, minWidth: 0 }
   const title = <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>What we can see about {customerName}</div>

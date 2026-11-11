@@ -66,6 +66,7 @@ import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import { BidBoardPermitNews } from './BidBoardPermitNews'
 import { PermitChip } from './PermitChip'
 import { useBidPermitNews } from '../../hooks/useBidPermitNews'
+import { useOurPermitNames } from '../../hooks/useOurPermitNames'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -314,7 +315,9 @@ export function BidsBidBoardTab({
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   // What the city has on each undecided bid's address: one read for the board (punch list #307).
-  const permitNews = useBidPermitNews(bids, showPermitNews)
+  // The names that are us on a plumbing permit (Settings → Company): our own permit reads ours, never another name.
+  const ourPermitNames = useOurPermitNames(showPermitNews)
+  const permitNews = useBidPermitNews(bids, showPermitNews, ourPermitNames)
   // The development on bids (punch list #208, v2.6019): the house filter beside the search, the
   // Pipeline's house filter mirrored — it appears once any bid on the board has a development.
   const [developmentFilter, setDevelopmentFilter] = useState('')
