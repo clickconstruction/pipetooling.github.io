@@ -8,7 +8,7 @@ import {
   parsePhysicalInvoiceIssuerStoredJson,
 } from './physicalInvoiceIssuer'
 
-const EMPTY = { companyName: '', addressText: '', phone: '', email: '', tagline: '', licenseLine: '', signerName: '', signerTitle: '' }
+const EMPTY = { companyName: '', addressText: '', physicalAddressText: '', phone: '', email: '', tagline: '', licenseLine: '', signerName: '', signerTitle: '' }
 
 describe('parsePhysicalInvoiceIssuerStoredJson', () => {
   it('returns all-empty fields for anything that is not an object', () => {
@@ -32,6 +32,7 @@ describe('parsePhysicalInvoiceIssuerStoredJson', () => {
     ).toEqual({
       companyName: 'Click Plumbing',
       addressText: '12925 FM 20\nKingsbury TX',
+      physicalAddressText: '',
       phone: '',
       email: 'office@example.com',
       tagline: '',
@@ -39,6 +40,14 @@ describe('parsePhysicalInvoiceIssuerStoredJson', () => {
       signerName: 'Malachi Whites',
       signerTitle: 'Owner',
     })
+  })
+})
+
+describe('the physical address (punch list #305)', () => {
+  it('is kept when stored as a string, and blank on a setting saved before the field existed', () => {
+    expect(parsePhysicalInvoiceIssuerStoredJson({ addressText: 'PO Box 9\nKingsbury TX', physicalAddressText: '12925 FM 20\nKingsbury TX' }).physicalAddressText).toBe('12925 FM 20\nKingsbury TX')
+    expect(parsePhysicalInvoiceIssuerStoredJson({ addressText: 'PO Box 9' }).physicalAddressText).toBe('')
+    expect(parsePhysicalInvoiceIssuerStoredJson({ physicalAddressText: 7 }).physicalAddressText).toBe('')
   })
 })
 
