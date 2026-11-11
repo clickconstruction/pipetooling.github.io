@@ -3,6 +3,7 @@
  * its own text layer, which costs nothing to read and has every digit right; `parsePasted` then reads
  * that text as rows. A scan or a photo has no text and waits for the reader that looks at the picture.
  */
+import { formatErrorMessage } from '../../../utils/errorHandling'
 import { pageMark } from './pastedRow'
 
 export type TextItem = { x: number; y: number; str: string }
@@ -75,6 +76,6 @@ export async function readSheetFile(file: File): Promise<SheetRead> {
     }
     return { ok: false, needsReader: false, error: 'Drop a PDF or a text file, or paste the rows.' }
   } catch (e) {
-    return { ok: false, needsReader: false, error: `That file could not be read: ${e instanceof Error ? e.message : 'it would not open'}` }
+    return { ok: false, needsReader: false, error: `That file could not be read: ${formatErrorMessage(e, 'it would not open')}` }
   }
 }
