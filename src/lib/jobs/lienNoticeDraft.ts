@@ -374,6 +374,9 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
   const originalContractor = lienOriginalContractor({ isSub: f.isSub, gcName: f.originalContractorName, gcAddress: f.originalContractorAddress, issuer: f.issuer })
   // The period paragraph 5 swears (v2.6061): the first approved day through the last, or the day set by hand; the month's first to last day as the fallback. Until v2.6061 both ends were the 28th of the last month.
   const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  // The company's second address (punch list #305), when Settings hold one: the short form prints it after the mailing address when the two differ.
+  // Line by line, so a field holding only blank lines is no address.
+  const physicalAddress = (f.issuer?.physicalAddressText ?? '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join(', ')
   return {
     county: f.county,
     claimantPersonName: f.contactPerson,
@@ -400,6 +403,7 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
           form: 'short' as const,
           isSub: f.isSub,
           ...(f.homestead === true ? { homestead: true } : {}),
+          ...(physicalAddress ? { claimantPhysicalAddress: physicalAddress } : {}),
           // A job contracted with the owner names no months and no notices: neither is asked of an original contractor.
           // The months are the noticed ones inside this job's own span: a notice mailed for several jobs stores the whole paper's months on each.
           ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),
