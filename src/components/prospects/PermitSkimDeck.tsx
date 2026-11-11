@@ -24,7 +24,7 @@ import {
   type SkimAnswer,
   type SkimCard,
 } from '../../lib/research/permitSkim'
-import { noParcelWords, scoresMiles } from '../../lib/research/permitCityDoors'
+import { lotWords, noParcelWords, scoresMiles } from '../../lib/research/permitCityDoors'
 import { cardHistory, earlierWords, type HistoryEvent } from '../../lib/research/permitHistory'
 import { loadContactHistory, loadPermitHistory, lookupParcel, recordVerdict } from '../../lib/research/permitResearchIo'
 import { passedByWords, secondLookAnsweredWords, secondLookCaughtUpWords, secondLookCount, secondLookDeck, secondLookVerdict, waitsOnSecondLook } from '../../lib/research/permitSecondLook'
@@ -76,11 +76,6 @@ export type AnsweredPatch = Pick<ResearchPermitRow, 'verdict' | 'verdict_reason'
 type Parcel = { state: 'loading' } | { state: 'done'; facts: ParcelFacts | null }
 
 /** The property line's words from the county's parcel: the owner, and what stands on the lot. */
-function lotWords(facts: ParcelFacts): string {
-  const built = facts.building_sf ? `${Math.round(facts.building_sf).toLocaleString('en-US')} sq ft built${facts.year_built ? ` in ${facts.year_built}` : ''}` : 'nothing built on the roll'
-  return [built, facts.acres ? `${facts.acres} acres` : null].filter(Boolean).join(', ')
-}
-
 export function PermitSkimDeck({
   authUserId,
   city,
@@ -276,17 +271,19 @@ export function PermitSkimDeck({
   // The county's owner of record for the top card: the same cached call the sheets make.
   const topId = top?.row.id ?? null
   const topAddress = top?.row.address ?? null
+  const topLat = top?.row.lat ?? null
+  const topLng = top?.row.lng ?? null
   useEffect(() => {
     if (!topId || !topAddress) return
     let live = true
     setParcels((prev) => (prev.has(topId) ? prev : new Map(prev).set(topId, { state: 'loading' })))
-    lookupParcel(topAddress, city)
+    lookupParcel(topAddress, city, false, { lat: topLat, lng: topLng })
       .then((a) => live && setParcels((prev) => new Map(prev).set(topId, { state: 'done', facts: a.facts })))
       .catch(() => live && setParcels((prev) => new Map(prev).set(topId, { state: 'done', facts: null })))
     return () => {
       live = false
     }
-  }, [topId, topAddress, city])
+  }, [topId, topAddress, topLat, topLng, city])
 
   // What was done on the top card before: who moved it, where to and when. Fail-soft, the card stands without it.
   useEffect(() => {

@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
-import { appraisalDoor, askingCountyWords, cityReadsParcels, noParcelWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
+import { appraisalDoor, askingCountyWords, cityReadsParcels, countyGivesBuildingFacts, noParcelWords, parcelPointWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
 import { mapsDoor, plumberWords, shortDay, shortMoney, sqFtWords, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { deedsDoor, feedRowFields, permitOwnPage, googleAskForAddress, googleAskForCompany, sitePermitLines, siteWords, type SitePermit } from '../../lib/research/permitPublic'
 import { historyWords } from '../../lib/research/permitHistory'
@@ -95,14 +95,14 @@ export function PermitBuildingSheet({
         })
       if (row.address) {
         setParcel({ state: 'loading' })
-        lookupParcel(row.address, row.city, refresh)
+        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng })
           .then((value) => setParcel({ state: 'done', value }))
           .catch((e) => setParcel({ state: 'failed', message: formatErrorMessage(e) }))
       } else {
         setParcel({ state: 'done', value: { found: false, facts: null, error: 'the permit has no street address', cached: false, lookedUpAt: null } })
       }
     },
-    [row.id, row.city, row.permit_number, row.address],
+    [row.id, row.city, row.permit_number, row.address, row.lat, row.lng],
   )
 
   useEffect(() => {
@@ -151,6 +151,7 @@ export function PermitBuildingSheet({
     ['Plumber', plumber.under ? `${plumber.chip}, ${plumber.under}` : plumber.chip],
   ]
 
+  const allFacts = countyGivesBuildingFacts(row.city)
   const countyFacts: Array<[string, ReactNode]> = parcelFacts
     ? [
         [
@@ -160,16 +161,18 @@ export function PermitBuildingSheet({
           </span>,
         ],
         ['Mailing address', parcelFacts.owner_address ?? 'not given'],
-        ['Doing business as', parcelFacts.dba ?? 'none given'],
+        // The DBA, the use, the year and the built area are on every Bexar parcel; another county's layer may not carry them at all.
+        ...(parcelFacts.dba || allFacts ? ([['Doing business as', parcelFacts.dba ?? 'none given']] as Array<[string, ReactNode]>) : []),
         ['Land', shortMoney(parcelFacts.land_value) ?? 'not given'],
         ['Buildings', shortMoney(parcelFacts.improvement_value) ?? 'none on the roll'],
         ['Appraised', shortMoney(parcelFacts.total_value) ?? 'not given'],
-        ['Use', parcelFacts.use_code ?? 'not given'],
-        ['Built', parcelFacts.year_built ?? 'not given'],
-        ['Built area', parcelFacts.building_sf ? `${Math.round(parcelFacts.building_sf).toLocaleString('en-US')} sq ft` : 'not given'],
+        ...(parcelFacts.use_code || allFacts ? ([['Use', parcelFacts.use_code ?? 'not given']] as Array<[string, ReactNode]>) : []),
+        ...(parcelFacts.year_built || allFacts ? ([['Built', parcelFacts.year_built ?? 'not given']] as Array<[string, ReactNode]>) : []),
+        ...(parcelFacts.building_sf || allFacts ? ([['Built area', parcelFacts.building_sf ? `${Math.round(parcelFacts.building_sf).toLocaleString('en-US')} sq ft` : 'not given']] as Array<[string, ReactNode]>) : []),
         ['Lot', parcelFacts.acres ? `${parcelFacts.acres} acres` : 'not given'],
       ]
     : []
+  const pointWords = parcelFacts ? parcelPointWords(parcelFacts) : null
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
@@ -240,6 +243,7 @@ export function PermitBuildingSheet({
           )}
           {parcelFacts && (
             <>
+              {pointWords && <div style={{ ...muted, marginBottom: 6 }}>{pointWords}</div>}
               <Facts rows={countyFacts} />
               <div style={{ ...muted, marginTop: 6 }}>
                 {parcelFacts.detail_url && (

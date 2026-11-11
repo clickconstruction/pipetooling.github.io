@@ -223,7 +223,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     await waitFor(() => expect(screen.getByText('(210) 555-0199')).toBeTruthy())
     expect(screen.getByText('SAMPLE HOLDINGS LLC')).toBeTruthy()
     expect(io.lookupCompany).toHaveBeenCalledWith('Ridgeway Builders', 'San Antonio', false)
-    expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false)
+    expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false, expect.objectContaining({ lat: expect.anything(), lng: expect.anything() }))
     fireEvent.click(screen.getByRole('button', { name: 'Pursue with these facts…' }))
     expect(screen.getByText(/The lead carries the phone, the website, the office address, the owner of record/)).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Why'), { target: { value: 'Found the phone; calling Monday.' } })
@@ -239,7 +239,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     expect(screen.getByRole('dialog').textContent).toContain('The building')
     expect(io.loadPermitFeedRow).toHaveBeenCalledWith('p1')
     expect(io.loadSitePermits).toHaveBeenCalledWith('San Antonio', 'COM-BLG-PMT26-00000001', '100 sample st')
-    expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false)
+    expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false, expect.objectContaining({ lat: expect.anything(), lng: expect.anything() }))
     // The Google press is a link to a search for the address, in a new tab.
     const google = screen.getByRole('link', { name: 'Search Google for 100 SAMPLE ST' })
     expect(google.getAttribute('href')).toBe('https://www.google.com/search?q=%22100%20SAMPLE%20ST%22%20San%20Antonio%20TX%2078245')
@@ -399,17 +399,20 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     })
 
     describe('more than one city (punch list #292, revision 4)', () => {
-      it('the picker lists Austin, reads its permits, pulls it by name, and says whose county keeps the record', async () => {
+      it('the picker lists Austin, reads its permits, pulls it by name, and reads its county for the owner', async () => {
         window.localStorage.removeItem('permits.lastCity')
         io.loadResearchPermits.mockImplementation(async (city: string) => (city === 'Austin' ? [row({ id: 'a1', city: 'Austin', address: '100 SAMPLE LN', permit_number: '2026-000001 BP' })] : []))
-        io.lookupParcel.mockResolvedValue({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
+        io.lookupParcel.mockResolvedValue({ found: true, facts: { prop_id: '9', situs: '100 SAMPLE LN 78701', owner: 'SAMPLE TRAVIS HOLDINGS LLC', owner_address: null, dba: null, land_value: 1, improvement_value: 1_600_000, total_value: 2, use_code: 'F1', year_built: null, building_sf: null, acres: 1.5, detail_url: 'https://travis.prodigycad.com/property-detail/9', matched_by: 'point' }, error: null, cached: false, lookedUpAt: null })
         renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
         const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
         expect([...picker.options].map((o) => o.value)).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
         fireEvent.change(picker, { target: { value: 'Austin' } })
         await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledWith('Austin', '2000-01-01', false))
         expect(await screen.findByText('100 SAMPLE LN, 78245')).toBeTruthy()
-        await waitFor(() => expect(screen.getByText('Travis County’s record is not read here yet. Its appraisal district has it.')).toBeTruthy())
+        // Travis County is asked with the permit's point, and the card says the parcel was read there.
+        await waitFor(() => expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE LN', 'Austin', false, expect.objectContaining({ lat: expect.anything(), lng: expect.anything() })))
+        expect(await screen.findByText('SAMPLE TRAVIS HOLDINGS LLC')).toBeTruthy()
+        expect(screen.getByText('buildings on the roll at $1.6M, 1.5 acres, read at the permit’s point')).toBeTruthy()
         // The browser remembers the city, and Pull now pulls the one on screen.
         expect(window.localStorage.getItem('permits.lastCity')).toBe('Austin')
         fireEvent.click(screen.getByRole('button', { name: 'Pull now' }))
