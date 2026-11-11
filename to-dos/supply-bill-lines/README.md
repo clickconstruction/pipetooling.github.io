@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: PR 1c, small and from the measure: four rules the check kernel does not know (a price rounded on the paper, a pack priced by the piece, a charge outside the subtotal, a rebate line that is negative) and a number that matches when the paper prints a suffix the office did not type. Then PR 3, the held list as a screen, since 34 held or off bills need a person. The owner's calls are in *The calls the measure raises*.
+next: PR 1c, small and from the measure: four rules the check kernel does not know (a price rounded on the paper, a pack priced by the piece, a charge outside the subtotal, a rebate line that is negative). The suffix match the measure also asked for is built (v2.6897, the owner's yes of 2026-11-10). Then PR 3, the held list as a screen, since 34 held or off bills need a person. The owner's two open calls are in *The calls the measure raises*.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
 opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after
-ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6088 · v2.6095 (the bill reader this builds on)
+ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -603,9 +603,9 @@ office's, and are a finding of their own: the amount on file is not the amount o
 
 ### What the measure changes
 
-1. **PR 1c comes first**: the four check rules, the signed line, and a match that takes the paper
-   whose number is the row's number with a short suffix when the totals agree. It is small, pure
-   and tested, and it moves about 39 bills (16 off, 23 held) with no press.
+1. **PR 1c comes first**: the four check rules and the signed line. It is small, pure and tested,
+   and it turns about 16 off bills green with no press. The match that takes a paper whose number
+   is the row's with a short suffix went ahead of it as v2.6897, for the 23 held.
 2. **PR 3 moves ahead of the matching list.** 34 bills need a person today: 16 with the wrong
    link, 7 the app cannot open, 11 whose amount is not the paper's. Only the held list shows them.
 3. **What we buy (4a) can be built on the house's code before any code is matched.** 93 percent of
@@ -620,9 +620,10 @@ office's, and are a finding of their own: the amount on file is not the amount o
 
 ### The calls the measure raises
 
-- **May a bill take a paper whose number is longer than the one typed?** *Default:* yes, when the
-  typed number is the start of the printed one and the paper's total is the row's amount. The other
-  choice keeps 23 bills held until someone retypes each number.
+- **May a bill take a paper whose number is longer than the one typed?** **Answered 2026-11-10:
+  yes, match them.** Built as v2.6897: the typed number is the start of the printed one, what is
+  left is one to three digits, and the paper's total is the row's amount. Every hold is read once
+  more under the new rule.
 - **Who fixes the 34?** *Default:* the office, from PR 3's held list. The other choice is a list
   handed over now, before the screen exists.
 - **Which is built first after 1c and 3, What we buy or the matching list?** *Default:* What we
