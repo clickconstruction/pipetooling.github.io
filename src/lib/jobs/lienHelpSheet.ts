@@ -408,7 +408,7 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
   const printedCounty = counties.length === 1 && counties[0] ? counties[0] : ''
   // Who to ask: once on the sheet when every paper names the same people, on each row when they differ.
   const askWords = [...new Set(papers.map((p) => (p.ask ?? '').trim()).filter(Boolean))]
-  const oneAsk = askWords.length === 1 ? askWords[0] : ''
+  const oneAsk = askWords.length === 1 ? (askWords[0] ?? '') : ''
   const COLS = 10
   const clerkOf = (p: LienHelpPaper): string => p.propertyCounty.trim()
   const rows = papers
