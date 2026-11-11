@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -57,11 +57,23 @@ Press **Investigating** and press a permit's name. It opens with what was done o
 
 Press **Put back** on a row under Investigating to send it to the skim again.
 
+## Find a permit on any list
+
+Press the magnifier at the start of the strip. Type what you remember. A street, a permit number, a project, a builder or a city all work. Two words narrow it, like *austin lamar*.
+
+The search looks on every list in every city. Each result says where the permit sits now and the last thing done to it. Press its name to open it.
+
+A passed permit has **Investigate** and **Put back** on its row. Press **San Antonio only** to look in one city. The box names the city on screen.
+
+The other cities are read one after another. The count says which city is still being read.
+
 ## Find a closed permit
 
 Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has a plumber** holds the ones a plumber took. **Not pursuing** holds the ones dropped after a look.
 
 Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
+
+Press **On a map** to see the same permits as pins. Every permit on the chip is there, however old. Press a pin to read its permit beside the map. Press **List** to go back.
 
 Anyone can press **Investigate** on a passed row. The press moves the permit to **Investigating** under your name. The press works on your own pass too.
 
