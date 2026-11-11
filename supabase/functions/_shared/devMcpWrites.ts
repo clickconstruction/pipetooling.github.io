@@ -42,6 +42,7 @@ import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { bidUpdateInput, isBidUpdateVerb } from './devMcpBidUpdate.ts'
+import { bidCountsInput, isBidCountsVerb } from './devMcpBidCounts.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -225,6 +226,12 @@ export const WRITE_VERBS = {
   // it and each row a new id names (devMcpBidUpdate.ts).
   plan_bid_update: { rpc: null, step: 'plan' },
   apply_bid_update: { rpc: null, step: 'apply' },
+  // v2.6967 (the bid train's PR 2): a bid's count rows as the Counts tab writes them — a row added as the Count Sheet's
+  // quick add adds it, changed as its inline edit changes it, removed as its delete removes it, an alternate joined to
+  // the bid's; rpc is null, the dry run the server's read of the bid, its versions and the active version's rows
+  // (devMcpBidCounts.ts). A row with a fault is held and the rest goes on.
+  plan_bid_counts: { rpc: null, step: 'plan' },
+  apply_bid_counts: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -373,6 +380,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
     // dry run is the server's read of the job, its payment rows and the bank row.
     const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidCountsVerb(verb)) {
+    // v2.6967: the shape is devMcpBidCounts'; a row with a fault is kept for the plan to hold, never a refusal here.
+    const built = bidCountsInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1244,6 +1257,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_bid_counts') return `Nothing written: this plan was already applied on this bid${when}. The Count Sheet already reads that way; get_bid lists the rows. A further change needs a new plan from the sheet as it stands.`
   if (verb === 'apply_bid_update') return `Nothing written: this plan was already applied on this bid${when}. The bid already reads that way; get_bid shows it. A plan commits to the columns' before values and the bid's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
