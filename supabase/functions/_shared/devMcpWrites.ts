@@ -38,6 +38,8 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
+import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
+import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -204,6 +206,17 @@ export const WRITE_VERBS = {
   // (devMcpActivityNote.ts). It tells nobody.
   plan_activity_note: { rpc: null, step: 'plan' },
   apply_activity_note: { rpc: null, step: 'apply' },
+  // v2.6940 / 0.65.0: a payment on a job — removed through the Job window's own remove_jobs_ledger_payment_and_reconcile
+  // with the reason left on the job's activity, recorded as the payments table's own row under RLS, or tied to its bank
+  // row through Accounts Receivable's apply_mercury_bank_payment_allocations; rpc is null, the dry run the server's read
+  // of the job, its payment rows, its bills and the bank row (devMcpJobPayment.ts).
+  plan_job_payment: { rpc: null, step: 'plan' },
+  apply_job_payment: { rpc: null, step: 'apply' },
+  // v2.6940 / 0.65.0: one job combined into another through Pipeline's own migrate_job_ledger_costs_and_delete; rpc is
+  // null, the dry run the server's read of both jobs, what would move and every hold (devMcpJobCombine.ts). No undo:
+  // apply needs confirm_no_undo: true beside the hash.
+  plan_job_combine: { rpc: null, step: 'plan' },
+  apply_job_combine: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -345,6 +358,19 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isActivityNoteVerb(verb)) {
     // v2.6822: the shape check is devMcpActivityNote's; the dry run is the server's read of the job or the bid and its latest lines.
     const built = activityNoteInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobPaymentVerb(verb)) {
+    // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
+    // dry run is the server's read of the job, its payment rows and the bank row.
+    const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobCombineVerb(verb)) {
+    // v2.6940: the shape check is devMcpJobCombine's, confirm_no_undo with it; the dry run is the server's read of both jobs.
+    const built = jobCombineInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1185,6 +1211,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
+  if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`
