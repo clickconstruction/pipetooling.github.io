@@ -55,6 +55,14 @@ function expand(p) {
   return p.startsWith('~') ? join(homedir(), p.slice(1)) : resolve(p);
 }
 
+/** A phone number as the card prints it: (512) 555-0142, however it was typed. Not ten digits: as typed. The app's rule (`kitPhone`). */
+function phoneOf(raw) {
+  const typed = String(raw ?? '').trim()
+  const digits = typed.replace(/\D/g, '')
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : typed
+}
+
 function slugOf(name) {
   return String(name).normalize('NFKD').replace(/[^\w\s-]/g, '').trim().toLowerCase().replace(/[\s_]+/g, '-') || 'someone';
 }
@@ -151,7 +159,7 @@ try {
         ph = { href: photo, w: img.naturalWidth, h: img.naturalHeight, fx: p.focus ? p.focus[0] : 0.5, fy: p.focus ? p.focus[1] : 0.4, zoom: p.zoom || 1 };
       }
       (window.__P = window.__P || {})[slug] = { name: p.name, email: p.email, title: p.title || '', mobile: p.mobile || '', office: p.office || '', photo: ph };
-    }, { p: { ...p, photo: undefined }, slug, photo });
+    }, { p: { ...p, mobile: phoneOf(p.mobile), office: phoneOf(p.office), photo: undefined }, slug, photo });
     people.push({ slug, name: p.name, email: p.email, hasPhoto: !!photo });
   }
 
