@@ -1133,6 +1133,39 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(fileCopyMock.mock.calls[0]![1].html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
   })
 
+  it('under the print press the list names a paper that takes a second sheet, by its job, and the press still prints every paper (v2.6930)', async () => {
+    openPrintMock.mockClear()
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="affidavit" />)
+    // No wait before the frames are stood in for: jsdom loads a frame by itself a tick later, with no layout to read.
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    const frame = () => bar.querySelector('iframe[data-filing-sheet-measure]') as HTMLIFrameElement
+    // jsdom lays nothing out, so the frame's document is stood in for: a paper this tall, its closing run from here to there.
+    const layOut = (paperPx: number, run: { top: number; bottom: number }) => {
+      const rect = (top: number, bottom: number) => ({ top, bottom, height: bottom - top })
+      const f = frame()
+      Object.defineProperty(f, 'contentDocument', { configurable: true, value: { querySelector: () => ({ getBoundingClientRect: () => rect(0, paperPx), querySelectorAll: () => [{ getBoundingClientRect: () => rect(run.top, run.bottom) }] }) } })
+      fireEvent.load(f)
+    }
+    // Each paper is laid out alone, as its own Lien window lays it out: the first job's paper, on the sheet's rules.
+    expect(frame().getAttribute('srcdoc')).toContain('@media all {')
+    expect(frame().getAttribute('srcdoc')!.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
+    expect(bar.querySelector('[data-lien-affidavit-print-all-sheets]')).toBeNull()
+    layOut(870, { top: 560, bottom: 870 })
+    layOut(995, { top: 561, bottom: 995 })
+    const flags = bar.querySelector('[data-lien-affidavit-print-all-sheets]') as HTMLElement
+    expect(flags.textContent).toContain('1 paper in this print takes a second sheet.')
+    const row = flags.querySelector('[data-lien-affidavit-print-all-sheet="j651"]') as HTMLElement
+    expect(row.textContent).toMatch(/651.* · This paper prints on 2 pages\. The last statement, the signature and the notary’s block moved to page 2 together, so none of it is cut\.$/)
+    expect(flags.querySelector('[data-lien-affidavit-print-all-sheet="j650"]')).toBeNull()
+    await settle()
+    expect(bar.querySelector('[data-lien-affidavit-print-all-sheet="j651"]')).toBeTruthy()
+    // The flag holds nothing back: the press keeps its count and prints both papers.
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    expect(openPrintMock.mock.calls[0]![0].match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(2)
+  })
+
   it('a blocked print window files nothing', async () => {
     openPrintMock.mockClear()
     fileCopyMock.mockClear()

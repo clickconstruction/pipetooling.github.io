@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSubmitOutcome, type LienAffidavitSendContext } from './lienAffidavitBatch'
+import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
@@ -116,5 +116,60 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     const run = lienAffidavitPrintRun([{ jobId: 'job-1', jobNumber: 'J700', fields: fields('12 Sample Rd') }])
     expect(run.html).toContain('<title>Lien affidavit</title>')
     expect(run.html).not.toContain('class="filing-paper filing-next-paper')
+  })
+
+  // A paper on one sheet, one whose closing moved to page 2 whole, and one whose closing was on page 2 already.
+  const ONE = { pages: 1, closing: { page: 1, moved: false } }
+  const MOVED = { pages: 2, closing: { page: 2, moved: true } }
+  const LONG = { pages: 2, closing: { page: 2, moved: false } }
+  const sheets = [{ jobId: 'job-1', sheetHtml: '<p>one</p>' }, { jobId: 'job-2', sheetHtml: '<p>two</p>' }, { jobId: 'job-3', sheetHtml: '<p>three</p>' }]
+  const read = (jobId: string, sheet: typeof ONE | null, sheetHtml = sheets.find((p) => p.jobId === jobId)!.sheetHtml) => ({ [jobId]: { sheetHtml, sheet } })
+
+  it('each paper is laid out alone as its own Lien window lays it out: the sheet’s rules for the screen, on the tight sheet (v2.6930)', () => {
+    const papers = [
+      { jobId: 'job-1', jobNumber: 'J700', fields: fields('12 Sample Rd, San Antonio, TX 78209') },
+      { jobId: 'job-2', jobNumber: 'J701', fields: fields('14 Other Ln, San Antonio, TX 78209') },
+    ]
+    const laid = lienAffidavitSheetPapers(papers)
+    expect(laid.map((p) => p.jobId)).toEqual(['job-1', 'job-2'])
+    expect(laid[0]!.sheetHtml).toContain('@media all {')
+    expect(laid[0]!.sheetHtml).toContain('line-height: 1.45;')
+    expect(laid[0]!.sheetHtml).toContain('12 Sample Rd')
+    expect(laid[0]!.sheetHtml).not.toContain('14 Other Ln')
+    // The same paper the job keeps as its sent copy, but for the sheet's rules: what is measured is what prints.
+    const copy = lienAffidavitPrintRun(papers).copies[0]!.html
+    expect(laid[0]!.sheetHtml.replace('@media all {', '@media print {').replace('html { margin: 0; padding: 0; overflow: hidden; }', 'html { margin: 0; padding: 0; }')).toBe(copy)
+  })
+
+  it('the papers are read one at a time, in the print’s order, and a paper whose words changed is read again', () => {
+    expect(lienAffidavitSheetNext(sheets, {})?.jobId).toBe('job-1')
+    expect(lienAffidavitSheetNext(sheets, read('job-1', ONE))?.jobId).toBe('job-2')
+    // A frame with no layout is still a read: the walk moves on and says nothing of that paper.
+    expect(lienAffidavitSheetNext(sheets, { ...read('job-1', ONE), ...read('job-2', null) })?.jobId).toBe('job-3')
+    const all: LienAffidavitSheetReads = { ...read('job-1', ONE), ...read('job-2', MOVED), ...read('job-3', ONE) }
+    expect(lienAffidavitSheetNext(sheets, all)).toBeNull()
+    expect(lienAffidavitSheetNext(sheets, { ...all, ...read('job-2', MOVED, '<p>two, before the edit</p>') })?.jobId).toBe('job-2')
+    expect(lienAffidavitSheetNext([], all)).toBeNull()
+  })
+
+  it('names each paper that takes a second sheet, with the line its own Lien window shows', () => {
+    expect(lienAffidavitSheetFlags(sheets, { ...read('job-1', ONE), ...read('job-2', MOVED), ...read('job-3', ONE) })).toEqual({
+      lead: '1 paper in this print takes a second sheet. Keep its sheets together for the notary, or print it alone from its own Lien window.',
+      rows: [{ jobId: 'job-2', words: 'This paper prints on 2 pages. The last statement, the signature and the notary’s block moved to page 2 together, so none of it is cut.' }],
+    })
+    expect(lienAffidavitSheetFlags(sheets, { ...read('job-3', LONG), ...read('job-1', MOVED), ...read('job-2', ONE) })).toEqual({
+      lead: '2 papers in this print take a second sheet. Keep each one’s sheets together for the notary, or print each alone from its own Lien window.',
+      rows: [
+        { jobId: 'job-1', words: 'This paper prints on 2 pages. The last statement, the signature and the notary’s block moved to page 2 together, so none of it is cut.' },
+        { jobId: 'job-3', words: 'This paper prints on 2 pages. The signature and the notary’s block are on page 2.' },
+      ],
+    })
+  })
+
+  it('says nothing while every paper fits one sheet, of a paper not read yet, of one read before its words changed, or of one that left the print', () => {
+    expect(lienAffidavitSheetFlags(sheets, {})).toBeNull()
+    expect(lienAffidavitSheetFlags(sheets, { ...read('job-1', ONE), ...read('job-2', ONE), ...read('job-3', null) })).toBeNull()
+    expect(lienAffidavitSheetFlags(sheets, read('job-2', MOVED, '<p>two, before the edit</p>'))).toBeNull()
+    expect(lienAffidavitSheetFlags(sheets.slice(0, 1), { ...read('job-1', ONE), ...read('job-2', MOVED) })).toBeNull()
   })
 })
