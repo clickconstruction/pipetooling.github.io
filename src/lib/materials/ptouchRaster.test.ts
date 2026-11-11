@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   PTOUCH_LINE_BYTES,
   cmdAutoCut,
+  chainsToNext,
+  cmdChainToNext,
   cmdFeedAndCutAfter,
   cmdInit,
   cmdMarginAndPlainLines,
@@ -142,5 +144,16 @@ describe('the words and the sizes', () => {
     // 363 lines is about 51 mm: about 5.3 seconds with the lead-in and the cut
     expect(labelPrintMs(363)).toBeGreaterThan(4500)
     expect(labelPrintMs(363)).toBeLessThan(6500)
+  })
+
+  it('a run chains every label but its last, so the strips share one lead-in', () => {
+    expect(hex(cmdChainToNext())).toBe('1b 69 4b 00')
+    expect([0, 1, 2].map((n) => chainsToNext(n, 3))).toEqual([true, true, false])
+    expect(chainsToNext(0, 1)).toBe(false)
+    const lines = [new Uint8Array(16), new Uint8Array(16)]
+    const flat = (job: Uint8Array[]) => job.map(hex).join(' | ')
+    // the same job, one byte apart: the last label feeds out and cuts, the others stay for the next
+    expect(flat(ptouchLabelJob(lines, 24, true))).toBe(flat(ptouchLabelJob(lines, 24)).replace('1b 69 4b 08', '1b 69 4b 00'))
+    expect(flat(ptouchLabelJob(lines, 24, false))).toContain('1b 69 4b 08')
   })
 })

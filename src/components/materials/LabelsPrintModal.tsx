@@ -20,6 +20,7 @@
  * Since v2.6878 the window reads in the order it is worked: what it prints on, which boxes and **Copies of each** (a
  * box with more than one side; its strips print together, 1 1 2 2), the strips, then the presses in a foot that
  * stays at the window's bottom. A connected printer is one line, and the print window's switch sits with the setup.
+ * Since v2.6881 a run's strips share one blank lead-in (`chainsToNext`), where every strip threw an inch away.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -32,7 +33,7 @@ import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
-import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, PTOUCH_STRIP_INSIDE, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
 import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import TapeStripBitmap from './TapeStripBitmap'
@@ -170,7 +171,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
       setChoosing(false)
       setSentWords(tapeSentWords(done, labels.length))
     } catch (e) {
-      setUsbSlip(tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING)))
+      // A run that stops part way leaves its last printed strip short of the cutter: the strips share one lead-in (v2.6881).
+      const inside = done > 0 && done < labels.length ? ` ${PTOUCH_STRIP_INSIDE}` : ''
+      setUsbSlip(`${tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`)
       // A printer that stopped answering needs connecting again.
       void link.close()
       setLink(null)
