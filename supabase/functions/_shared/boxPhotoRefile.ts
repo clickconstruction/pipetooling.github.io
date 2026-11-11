@@ -49,6 +49,18 @@ export function dueRowsByJob<T extends { job_id: string }>(rows: readonly T[]): 
   return byJob
 }
 
+/**
+ * Who may make the ask (v2.6927): the roles that may combine two jobs (`migrate_job_ledger_costs_and_delete`), since the
+ * app makes the ask for them right after a combine so the count moves at once. Anyone else leaves it to the sweep.
+ */
+export const REFILE_ASK_ROLES = ['dev', 'master_technician', 'assistant', 'controller'] as const
+
+export const REFILE_ASK_REFUSAL = 'Moving a job’s box photos to its Drive folder is for the office roles that may combine jobs. The photo sweep moves them by itself within a few minutes.'
+
+export function mayAskRefile(role: string | null | undefined): boolean {
+  return (REFILE_ASK_ROLES as readonly string[]).includes(String(role ?? ''))
+}
+
 /** How long one ask may spend moving files before it answers what is left; the caller asks again for the rest. */
 export const REFILE_BUDGET_MS = 40_000
 
