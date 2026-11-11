@@ -17,8 +17,8 @@ import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
  * answer. Nothing is tied until a person presses.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.45 }
-const primary: CSSProperties = { background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
-const ghost: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
+const primary: CSSProperties = { font: 'inherit', background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', whiteSpace: 'nowrap' }
+const ghost: CSSProperties = { font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', whiteSpace: 'nowrap' }
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 
 export function BuilderNameTies({ row, ground, onAnswered }: { row: BuilderRow; ground: BuilderAnswersGround; /** An answer was saved: the list reads the answers again. */ onAnswered: () => void }) {
