@@ -9,7 +9,7 @@ import { daysBetween, type BuilderMark, type SkimAnswer, type SkimContext } from
 
 /** Where a permit sits. Every permit above the filter is in exactly one. */
 export type PermitPlace = 'skim' | 'kept' | 'pursuing' | 'closed'
-export const PLACE_WORDS: Record<PermitPlace, string> = { skim: 'Skim', kept: 'Kept', pursuing: 'Pursuing', closed: 'Closed' }
+export const PLACE_WORDS: Record<PermitPlace, string> = { skim: 'Skim', kept: 'Investigating', pursuing: 'Pursuing', closed: 'Closed' }
 
 /** Why a permit is closed: passed on the skim, dropped after a closer look, or a plumber has it. */
 export type ClosedWhy = 'passed' | 'not_pursuing' | 'plumber'
@@ -125,7 +125,7 @@ export function keptByWords(row: Pick<ResearchPermitRow, 'verdict_by_name' | 've
   const day = row.verdict_at ? row.verdict_at.slice(0, 10) : null
   const days = daysBetween(day, todayYmd)
   const when = days == null ? '' : days <= 0 ? ', today' : days === 1 ? ', yesterday' : `, ${days} days ago`
-  return `Kept by ${row.verdict_by_name ?? 'someone'}${row.verdict_for_name ? ` for ${row.verdict_for_name}` : ', for nobody yet'}${when}`
+  return `Marked to investigate by ${row.verdict_by_name ?? 'someone'}${row.verdict_for_name ? ` for ${row.verdict_for_name}` : ', for nobody yet'}${when}`
 }
 
 // ---------- builders ----------
@@ -316,7 +316,7 @@ export function funnelTiles(f: PermitFunnel): Array<{ n: number; words: string }
   return [
     { n: f.arrived, words: 'arrived' },
     { n: f.skimmed, words: 'skimmed' },
-    { n: f.kept, words: 'kept' },
+    { n: f.kept, words: 'investigating' },
     { n: f.pursuing, words: 'pursuing' },
     { n: f.bid, words: 'bid' },
     { n: f.won, words: 'won' },

@@ -2,7 +2,7 @@
  * Research (punch list #292): the permit ledger's words and rules. A city's building permits come
  * from `research_permits` (migration 20261109070000) with the plumber pairing and the newest verdict
  * already on each row; this file reads them for the screen. Four verdicts, a reason on each, one
- * press per row. Since punch list #302 the four read Keep, Pass, Pursue and Has a plumber on every
+ * press per row. The four read Investigate (Keep until v2.6879), Pass, Pursue and Has a plumber on every
  * screen (the stored values are unchanged). Pure: no React, no Supabase.
  */
 import type { UserRole } from '../../hooks/useAuth'
@@ -27,7 +27,7 @@ export const PERMIT_VERDICTS: readonly PermitVerdict[] = ['approach', 'look', 'n
 
 export const VERDICT_WORDS: Record<PermitVerdict, { press: string; chip: string; hint: string }> = {
   approach: { press: 'Pursue', chip: 'Pursuing', hint: 'Go after it. A GC lead is made on the GCs deck.' },
-  look: { press: 'Keep', chip: 'Kept', hint: 'Worth a closer look. It waits under Kept with a day to look again.' },
+  look: { press: 'Investigate', chip: 'Investigating', hint: 'Worth a closer look. It waits under Investigating with a day to look again.' },
   not_for_us: { press: 'Pass', chip: 'Passed', hint: 'Wrong trade, wrong size or wrong part of town.' },
   taken: { press: 'Has a plumber', chip: 'Has a plumber', hint: 'A plumber has it. The row leaves the list.' },
 }
@@ -87,7 +87,7 @@ export type ResearchPermitRow = {
 export type ResearchShowing = 'waiting' | 'look' | 'approach' | 'not_for_us' | 'taken' | 'all'
 export const RESEARCH_SHOWING_WORDS: Record<ResearchShowing, string> = {
   waiting: 'To skim',
-  look: 'Kept',
+  look: 'Investigating',
   approach: 'Pursuing',
   not_for_us: 'Passed',
   taken: 'Has a plumber',
@@ -203,7 +203,7 @@ export function pulledWords(input: { ranAt: string | null; error: string | null;
   const parts = pulledParts(input)
   parts.push(input.lastLookedYmd ? `${input.newCount} new since you looked` : `${input.newCount} filed in the window`)
   const c = input.counts
-  parts.push(`${c.waiting} to skim`, `${c.look} kept`, `${c.approach} pursuing`, `${c.not_for_us} passed`, `${c.taken} have a plumber`)
+  parts.push(`${c.waiting} to skim`, `${c.look} investigating`, `${c.approach} pursuing`, `${c.not_for_us} passed`, `${c.taken} have a plumber`)
   return parts.join(' · ')
 }
 

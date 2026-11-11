@@ -21,6 +21,7 @@ export function ResearchMapCard({
   onSelect,
   isMobile,
   children,
+  noPinsWords,
 }: {
   rows: readonly ResearchPermitRow[]
   selectedId: string | null
@@ -28,6 +29,8 @@ export function ResearchMapCard({
   isMobile: boolean
   /** The selected row's card, drawn beside the map (under it on a phone). */
   children?: React.ReactNode
+  /** What the map says when no row has a point, for a caller that is not the ledger. */
+  noPinsWords?: string
 }) {
   const [fitSignal, setFitSignal] = useState(0)
   const [googleFailed, setGoogleFailed] = useState(false)
@@ -93,7 +96,7 @@ export function ResearchMapCard({
             </Suspense>
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Nothing to place on this lens. Pick another under Showing, or widen the window.
+              {noPinsWords ?? 'Nothing to place on this lens. Pick another under Showing, or widen the window.'}
             </div>
           )}
         </div>
