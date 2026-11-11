@@ -6,6 +6,7 @@ import {
   leadPermit,
   looksLikeThisJob,
   permitsOnSite,
+  plumbingListing,
   plumbingTypeOf,
   readBidAddress,
   sameSite,
@@ -14,6 +15,7 @@ import {
   type BidSite,
   type BidSitePermit,
 } from './bidSite'
+import { ourNameKeys } from './ourNames'
 
 // Every address, name and number here is made up.
 const READ = ['San Antonio']
@@ -257,6 +259,22 @@ describe('the four honest states and their words', () => {
     // A plumbing permit filed under the building permit's own contact names no plumber.
     expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, { ...plumbing, contact: 'Dana Whitlow' }], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address, under the building permit’s own name.')
     expect(bidSiteWords(mill, 'Mill Street Lofts', [{ ...plumbing, contact: null }], CTX).main).toBe('The city has 1 permit on this address, and it is not a building permit. A general plumbing permit is on this address.')
+  })
+
+  it('reads a general plumbing permit under one of our names as ours, with its day, and never as another name', () => {
+    const ourKeys = ourNameKeys({ names: ['Blue Heron Plumbing LLC'], companyName: null })
+    const issued = permit({ stage: 'issued', permit_type: 'Comm New Building Permit', issued_on: '2026-11-03' })
+    const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', project_name: null, stage: 'issued', issued_on: '2026-11-05', contact: 'BLUE HERON PLUMBING' })
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, plumbing], { ...CTX, ourKeys }).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit on this address lists us, as BLUE HERON PLUMBING. Issued Nov 5.')
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, { ...plumbing, stage: 'applied', issued_on: null, submitted_on: '2026-11-01' }], { ...CTX, ourKeys }).main).toMatch(/lists us, as BLUE HERON PLUMBING\. Applied for Nov 1\.$/)
+    // Ours is read first: the building permit under our own name is still our plumbing permit.
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [{ ...issued, contact: 'Blue Heron Plumbing LLC' }, plumbing], { ...CTX, ourKeys }).main).toMatch(/lists us, as BLUE HERON PLUMBING\. Issued Nov 5\.$/)
+    expect(plumbingListing(plumbing, issued, ourKeys)).toEqual({ same: false, name: 'BLUE HERON PLUMBING', ours: true })
+    // With no name that is us, the line reads as it always did.
+    expect(plumbingListing(plumbing, issued)).toEqual({ same: false, name: 'BLUE HERON PLUMBING', ours: false })
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, plumbing], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address. The city lists BLUE HERON PLUMBING.')
+    // Another plumber's permit stays another plumber's.
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, { ...plumbing, contact: 'Lone Oak Plumbing' }], { ...CTX, ourKeys }).main).toMatch(/The city lists Lone Oak Plumbing\.$/)
   })
 
   it('says none seen, never none, with the day the records start', () => {

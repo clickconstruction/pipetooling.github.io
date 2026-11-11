@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -20,6 +20,8 @@ Three tiles can sit under that line. They show the value the applicant declared,
 A list follows with every permit we can see on the address. A {{chip:green|Looks like this job}} chip marks a permit whose project name shares a word with your bid. It is a hint. A shared address can carry another tenant's permit, so read the names.
 
 Each row says the name the city lists on the permit. That name is the contact the city has. It is not always the builder.
+
+A {{chip:green|Ours}} chip marks a plumbing permit that lists one of our own names. The first line then says the permit lists us, with the name and the day. You say which names are ours [in Settings](#say-which-names-are-us).
 
 The last line says where the records come from and the day they start.
 
@@ -47,9 +49,9 @@ The block never says a site has no permits. It says one of three things.
 
 Look under **People**, below the GC's card. The block is named **What we can see about** the GC.
 
-It lists the bids you priced for that GC on street addresses in a city we read. Each one shows what the city has on its address. A {{chip:red|Plumbing permit · another name}} chip means a general plumbing permit lists someone other than the building permit's contact.
+It lists the bids you priced for that GC on street addresses in a city we read. Each one shows what the city has on its address. A {{chip:red|Plumbing permit · another name}} chip means a general plumbing permit lists someone other than the building permit's contact. A {{chip:green|Ours}} chip means that permit lists one of our own names.
 
-One line counts the sites. It says how many have a permit, out of how many we can see. A chip says how many of your bids with that GC the count covers.
+One line counts the sites. It says how many have a permit, out of how many we can see. The same line counts the sites where a general plumbing permit lists us. A chip says how many of your bids with that GC the count covers.
 
 Another line names the towns where the GC's other bids are. No permit records are read there.
 
@@ -82,11 +84,12 @@ Open the **Bid Board**. A strip named **Permit news on your bids** sits above th
 
 Each line is one bid that is not yet won or lost. It says what is new on the bid's address. Press {{button:outline|Open the bid}} to open that bid.
 
-Three things count as news.
+Four things count as news.
 
 - A permit application was filed in the last 30 days.
 - A building permit was issued in the last 30 days.
 - A general plumbing permit lists a name other than the building permit's contact. This one comes first. It stays until you mark the bid won or lost.
+- A general plumbing permit that lists us was applied for or issued in the last 30 days.
 
 The plumbing line on a sent bid has a second press, {{button:blue|Mark lost…}}. Press it and the board's own window opens under the line.
 
@@ -97,8 +100,27 @@ Nothing is saved until you pick. Press **Cancel** or **Close** to leave the bid 
 
 The strip marks nothing for you. Read the line, then decide.
 
-A bid with a permit on its address also carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A {{chip:red|Plumbing permit · another name}} chip matches the first kind of news.
+A bid with a permit on its address also carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A {{chip:red|Plumbing permit · another name}} chip matches the third kind of news. A {{chip:green|Plumbing permit · ours}} chip means the plumbing permit lists one of our own names. That chip stays after the news line is gone.
+
+Our own permit never marks a bid won. Mark the bid yourself when you know.
+
+## Say which names are us
+
+A city lists one name on a plumbing permit. The app cannot know that name is us until someone says so. The owner or a dev keeps the list.
+
+Open [Settings → Company](/settings?tab=settings-company#settings-company-our-permit-names). The card is named **Our names on plumbing permits**.
+
+1. Type a name as the city lists it. Use the company name on a permit, or a master plumber's own name when he files under it.
+2. Press {{button:blue|Add the name}}.
+
+Capitals and punctuation make no difference. LLC and Inc make no difference either.
+
+The company name on paper bills counts already. The card says so, and you do not add it.
+
+Press {{button:outline|Take back}} beside a name to take it off the list. A permit under that name then reads as another name again.
+
+The name must be the same as the one on the permit. A name that is only close does not count. Read a permit's row under **This site** to see how the city writes it.
 
 ## Who sees it
 
-The office and estimators see the two blocks, the strip and the chips. They are the same people who see **Prospects → Permits**.
+The office and estimators see the two blocks, the strip and the chips. They are the same people who see **Prospects → Permits**. Only the owner and a dev see the card in Settings.

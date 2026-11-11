@@ -131,6 +131,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Fix app', keywords: ['clear cache', 'stale bundle', 'white screen', 'reload'], tabId: 'settings-templates' },
   // Company
   { label: 'Office address', keywords: ['company address', 'shop address'], tabId: 'settings-company' },
+  // Punch list #307: the names a city lists on a plumbing permit that are us.
+  { label: 'Our names on plumbing permits', keywords: ['ours', 'our permit', 'our name', 'names that are us', 'plumbing permit name', 'another name', 'master plumber name', 'permit news'], tabId: 'settings-company', anchorId: 'settings-company-our-permit-names' },
   { label: 'Map default view', keywords: ['map center', 'map zoom'], tabId: 'settings-company' },
   // Jobs, bills and liens (moved from Templates in v2.2088; anchored since punch list #261)
   { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer', 'signs for the company'], tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-issuer' },
