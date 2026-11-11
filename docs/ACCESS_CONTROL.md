@@ -308,6 +308,12 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 - **`supply_bill_reads`** — **read** `is_office_staff()`; **write** the service role only (the function). The three fences apply.
 - **The switch row** `bill_read_on_v1` — read by every signed-in user with the rest of `app_settings`; **update** `is_master_or_dev()`, key-scoped, the line beside the Accounts payable heading.
 
+### House numbers — what each supply house calls a part (punch list #308, v2.6901, `20261111020000_supply_part_codes.sql`)
+
+- **`supply_part_codes`** — **read, insert, update, delete** `may_edit_parts_book()`: `dev`, `master_technician`, `assistant`, `controller`, `estimator`, `primary`, `superintendent`, the roles the `material_part_prices` policies name. Nothing for `anon`. The four fences apply.
+- **`may_edit_parts_book()`** — SECURITY DEFINER, stable; `EXECUTE` to `authenticated` and the service role, revoked from `anon`.
+- **The doors**: *Their numbers* under a part's prices (Parts Book and Takeoffs) and **House numbers** on the Parts Book, each open to whoever opens that screen; the table refuses a write from anyone else.
+
 ### Supply house bill lines — the paper beside the row (punch list #298, v2.6817 · v2.6819 · v2.6882, `20261109170000_supply_paper_lines.sql`, `20261109210000_supply_paper_save.sql`, `20261110230000_bill_lines_sweep.sql`)
 
 - **`supply_papers`, `supply_paper_lines`, the view `supply_purchase_lines`** — **read** `is_office_staff()`; **write** the service role (the edge function `bill-lines-sweep`, v2.6882) and the two RPCs below. The four fences apply.

@@ -1580,6 +1580,9 @@ A named, nestable kit of material parts (e.g. "Toilet rough-in") — the canonic
 
 **URL slug**: `assemblies-po` (renamed from `templates-po` in v2.1258; the old slug rewrites itself for saved pins).
 
+### House number
+The number a supply house prints for a part on its quotes and bills (its item number). Kept on the part in `supply_part_codes`, one row per house and number, shown as **Their numbers** under the part's prices and listed by **House numbers** on the Parts Book. One number means one part at a house; a part may carry several. It is the first key the part matcher tries (`matchRow` in `src/lib/materials/partMatch.ts`), ahead of the model number and the words. Punch list #298 calls the same table the crosswalk. Not the **model number**, which is the maker's and is read out of the part's name.
+
 ### Assembly Type
 Category for organizing material assemblies/templates (Bathroom, Kitchen, Utility, Commercial, Residential, etc.). Service-type-specific categorization for grouping and filtering assemblies.
 
