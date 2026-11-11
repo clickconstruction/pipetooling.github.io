@@ -796,6 +796,8 @@ export default function LienInstrumentsModal({
   const affidavitWorkMonths = job ? windowWorkMonths?.[job.id] ?? null : null
   // The GC's address on file (v2.6809), for the affidavit's original contractor line; the desk's draft always carried it.
   const originalContractorAddress = isSub && job?.gc_customer_id ? payerRows[job.gc_customer_id]?.address ?? '' : ''
+  // Punch list #305: the affidavit holds for a blank GC address only once the GC's row is read.
+  const originalContractorAddressRead = Boolean(isSub && job?.gc_customer_id && payerRows[job.gc_customer_id])
 
   // A stop's paper (v2.4793): what the window shows for each stop, from the job's Lien window — a filing's own snapshot once it
   // went out, else the tab here that prints it; the notice and the retainage notice are drafted and sent on the Lien desk.
@@ -1758,6 +1760,7 @@ export default function LienInstrumentsModal({
             isSub={isSub}
             originalContractorName={originalContractorName}
             originalContractorAddress={originalContractorAddress}
+            originalContractorAddressRead={originalContractorAddressRead}
             claimCorrection={claimRead.correction}
             claimCorrectionUnread={claimRead.failed}
             ownerEmail={(jobOwnerRow?.owner_email ?? '').trim()}
