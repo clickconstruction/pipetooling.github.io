@@ -2,7 +2,7 @@
 title: add a part and its prices fast
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: add part, new part, part type, supply house, prices, takeoffs, materials, parts book, keyboard, tab, save and add another, sold in, sticks, coil, box, minimum order, 20 ft
+keywords: add part, new part, duplicate, already in the book, model number, same part twice, use that part, part type, supply house, prices, takeoffs, materials, parts book, keyboard, tab, save and add another, sold in, sticks, coil, box, minimum order, 20 ft
 order: 82
 ---
 The **Add Part** form is the same everywhere it appears. It is built for the keyboard, so you can add a run of parts without touching the mouse.
@@ -18,6 +18,24 @@ It opens from any part picker in Bids → Takeoffs, from the assembly modals, an
 5. Press **Enter** anywhere, or click {{button:blue|Save}}, to save.
 
 The **×** remove buttons are mouse-only. Tabbing skips them, so the keyboard path stays supply house → price → date → next row.
+
+## When the part is already in the book
+
+As you type the name, the form checks the parts book. If the part is on file, a yellow strip says so and shows the part.
+
+- It knows a model number however it is typed. `Z8702-9B-PC` and `Z87029BPC` are one number.
+- It also catches the same name spelled another way, such as `TEE` for `T`.
+- It never warns for another size. A 3/4 valve is not the 1/2 valve.
+
+Press {{button:blue|Use that part}} to take the part on file. In Takeoffs it lands in the picker you started from, just as a new part would. Nothing is made twice.
+
+Press {{button:gray|Mine is different}} when your part really is another part. The strip goes away and you save as usual.
+
+:::example the same supply kit, typed two ways
+You type `ARLO AX8802XL LR PC SUPPLY KIT`. The strip reads *Already in the book, by its model number* and shows `AX8802XL-LR-PC ARLO SUPPLY KIT`. You press **Use that part**, and the kit on file drops into your takeoff row with its prices.
+:::
+
+A price you typed on the form is not saved when you use the part on file. Add it from that part's **Prices**.
 
 ## Entering several parts in a row
 
