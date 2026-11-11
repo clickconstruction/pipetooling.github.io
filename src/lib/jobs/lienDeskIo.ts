@@ -171,6 +171,26 @@ export async function redrawLienAffidavitsShort(
   return { done, failed }
 }
 
+/**
+ * Send every drafted affidavit for approval (punch list #305, v2.6918): each paper is its own write, the pane's own
+ * **Send for approval ▸**, and the batch keeps going past one that fails. A paper that did not take stays in To draft.
+ */
+export async function submitLienAffidavits(
+  papers: ReadonlyArray<{ jobId: string; itemId: string; outcome: LienSubmitOutcome }>,
+): Promise<{ done: string[]; failed: Array<{ jobId: string; reason: string }> }> {
+  const done: string[] = []
+  const failed: Array<{ jobId: string; reason: string }> = []
+  for (const p of papers) {
+    try {
+      await submitLienDeskItem(p.itemId, p.outcome)
+      done.push(p.jobId)
+    } catch (e) {
+      failed.push({ jobId: p.jobId, reason: formatErrorMessage(e, 'The affidavit could not be sent for approval.') })
+    }
+  }
+  return { done, failed }
+}
+
 /** The leader's click. The trigger refuses it from anyone else. */
 export async function approveLienDeskItem(itemId: string): Promise<void> {
   await withSupabaseRetry(

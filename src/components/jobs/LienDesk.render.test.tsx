@@ -86,12 +86,24 @@ const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
 const redrawManyMock = vi.fn(async (papers: Array<{ jobId: string }>, _userId: unknown) => ({ done: papers.map((p) => p.jobId), failed: [] as Array<{ jobId: string; reason: string }> }))
+const submitManyMock = vi.fn(async (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => ({ done: papers.map((p) => p.jobId), failed: [] as Array<{ jobId: string; reason: string }> }))
+// The list's print (v2.6918): the window it opens and the copy it files on each job.
+const openPrintMock = vi.fn((_html: string) => true)
+vi.mock('../../lib/jobsDocuments/printWindow', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobsDocuments/printWindow')>('../../lib/jobsDocuments/printWindow')
+  return { ...actual, openHtmlPrintWindow: (html: string) => openPrintMock(html) }
+})
+const fileCopyMock = vi.fn(async (_filing: { kind: string; title: string; how: string; jobIds?: ReadonlyArray<string> }, _body: { html: string }) => true)
+vi.mock('../../lib/sent/sentCopiesIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/sent/sentCopiesIo')>('../../lib/sent/sentCopiesIo')
+  return { ...actual, fileSentCopy: (filing: { kind: string; title: string; how: string; jobIds?: ReadonlyArray<string> }, body: { html: string }) => fileCopyMock(filing, body) }
+})
 const signMock = vi.fn()
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
+  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -1052,6 +1064,84 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
     expect(document.querySelector('[data-lien-affidavit-form]')).toBeNull()
+  })
+
+  // Three jobs at one GC whose standing rule is "send", with a notice to it on record.
+  const three = (items: LienDeskItemRow[]) => {
+    const rows = ['j650', 'j651', 'j652'].map((job_id) => ({ ...affRow, job_id }))
+    const d = data([], items, true)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, items, TODAY)
+    d.jobsById = { ...d.jobsById, j651: { ...d.jobsById.j650!, id: 'j651', hcp_number: '651' }, j652: { ...d.jobsById.j650!, id: 'j652', hcp_number: '652' } }
+    d.gcsById = { loberg: { ...d.gcsById.loberg!, policy: 'send' } }
+    d.gcsWithPriorNotice = new Set(['loberg'])
+    d.filingsByJob = { j650: [notice], j651: [{ ...notice, id: 'f-n2', job_id: 'j651' }], j652: [{ ...notice, id: 'f-n3', job_id: 'j652' }] } as unknown as LienDeskData['filingsByJob']
+    return d
+  }
+
+  it('the list sends every drafted affidavit for approval in one press: it names the count, says where each goes, and leaves a paper nobody drafted (v2.6918)', async () => {
+    submitManyMock.mockClear()
+    const drafted = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id, status: 'drafted', approval_mode: null }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([drafted('aff1', 'j650'), drafted('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-send-all]') as HTMLElement
+    expect(bar.textContent).toContain('2 drafted affidavits are ready to send.')
+    expect(bar.querySelector('[data-lien-affidavit-send-all-foot]')?.textContent).toBe('1 in To draft has no draft yet. Draft it from its own paper.')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Send 2 for approval…' }))
+    expect(await screen.findByText('Send 2 affidavits for approval?')).toBeTruthy()
+    expect(screen.getByText('2 are approved at once by a GC’s standing rule and move to Ready to file.')).toBeTruthy()
+    expect(submitManyMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval' }))
+    await waitFor(() => expect(submitManyMock).toHaveBeenCalledTimes(1))
+    expect(submitManyMock.mock.calls[0]![0].map((p) => [p.jobId, p.itemId, p.outcome.status])).toEqual([['j650', 'aff1', 'approved'], ['j651', 'aff2', 'approved']])
+    // Nothing is ready to print yet, so the print press is not offered.
+    expect(document.querySelector('[data-lien-affidavit-print-all]')).toBeNull()
+  })
+
+  it('a paper that was not sent stays listed under the press with its reason', async () => {
+    submitManyMock.mockClear()
+    submitManyMock.mockImplementationOnce(async () => ({ done: [], failed: [{ jobId: 'j650', reason: 'The affidavit could not be sent for approval.' }] }))
+    const drafted = { ...draft({ notice: {}, affidavitForm: 'short' }), status: 'drafted', approval_mode: null } as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([drafted])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 1 for approval' }))
+    await waitFor(() => expect(document.querySelector('[data-lien-affidavit-send-all-failed]')).toBeTruthy())
+    const failed = document.querySelector('[data-lien-affidavit-send-all-failed]') as HTMLElement
+    expect(failed.textContent).toContain('1 affidavit did not send. It stays here with the reason.')
+    expect(failed.textContent).toContain('The affidavit could not be sent for approval.')
+  })
+
+  it('the list prints every ready short-form affidavit in one press: one window, each paper on its own sheet, and each job files its own copy (v2.6918)', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    const ready = (id: string, job_id: string, short: boolean) => ({ ...draft(short ? { notice: {}, affidavitForm: 'short' } : { notice: {} }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650', true), ready('aff2', 'j651', true), ready('aff3', 'j652', false)])} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    expect(bar.textContent).toContain('2 affidavits on the short form are ready to file.')
+    expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')?.textContent).toBe('1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    const html = openPrintMock.mock.calls[0]![0]
+    expect(html.match(/<div class="filing-paper[^"]*"/g)).toEqual(['<div class="filing-paper filing-tight"', '<div class="filing-paper filing-next-paper filing-tight"'])
+    expect(html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(2)
+    // A print counts as a send: each job keeps its own paper, as the Lien window's print files it.
+    expect(fileCopyMock).toHaveBeenCalledTimes(2)
+    expect(fileCopyMock.mock.calls.map(([f]) => [f.kind, f.how, f.jobIds])).toEqual([['lien_affidavit', 'print', ['j650']], ['lien_affidavit', 'print', ['j651']]])
+    expect(fileCopyMock.mock.calls.map(([f]) => f.title)).toEqual([expect.stringMatching(/^Lien Affidavit — Job .*650$/), expect.stringMatching(/^Lien Affidavit — Job .*651$/)])
+    expect(fileCopyMock.mock.calls[0]![1].html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
+  })
+
+  it('a blocked print window files nothing', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    openPrintMock.mockImplementationOnce(() => false)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([draft({ notice: {}, affidavitForm: 'short' })])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Print 1 for notarization' }))
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    expect(fileCopyMock).not.toHaveBeenCalled()
   })
 })
 
