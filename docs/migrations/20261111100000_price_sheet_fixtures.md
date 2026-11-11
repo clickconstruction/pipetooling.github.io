@@ -17,3 +17,5 @@ Each function is SECURITY DEFINER behind `price_sheet_gate`, `EXECUTE` to `authe
 ## Bed
 
 `npm run test:pg:price-sheets`, 97 checks.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7651.

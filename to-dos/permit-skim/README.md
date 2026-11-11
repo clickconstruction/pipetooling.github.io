@@ -8,14 +8,14 @@ ver: v2.6828 (PR 4, on today's ledger and map) · v2.6830 (PR 1 and 2, the skim)
 summary: >
   Prospects → Permits is a ledger. It is good for finding a permit and slow for answering one. The
   owner asked for two steps. Skim: one permit on one screen with everything needed to decide, a
-  street view and a map at its top, and two answers, Keep or Pass, by swipe on a phone and by key
+  street view and a map at its top, and two answers, Investigate or Pass (Keep until v2.6879), by swipe on a phone and by key
   on a desk, best first, with undo, a one-tap reason on a pass and a one-tap hand-off on a keep.
   Dig in: a kept permit opens on the two sheets already built (the building, who pulled it), with
   what we did and a close-out at the foot, Pursue or Not pursuing. Every permit is in exactly one
-  of four places (Skim, Kept, Pursuing, Closed) and none ages out unseen. The longer view is the
+  of four places (Skim, Investigating, Pursuing, Closed) and none ages out unseen. The longer view is the
   builder: a name on a permit becomes a company that later permits match to, with a good or avoid
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
-  and one count says whether any of it turns into bids. The first build is eight small PRs, one
+  and one count says whether any of it turns into bids. The first build is eight small PRs, all
   built, then two weeks of use before more.
 next: Two weeks of use, then a look at the count on Permits and the pass reasons before anything held is built. The owner's six calls stand on the picks drawn until he overturns one; call 4's pick (a general contractor's lead on the Customers deck) was built last, as v2.6907.
 size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 8; left: two weeks of use, then the look at the count

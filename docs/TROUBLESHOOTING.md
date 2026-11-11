@@ -5,7 +5,7 @@ file: TROUBLESHOOTING.md
 type: Troubleshooting guide
 purpose: Common issues and how to resolve them
 audience: Devs + AI agents
-last_updated: 2026-10-28
+last_updated: 2026-11-11
 ---
 
 Common issues and how to resolve them.
@@ -18,7 +18,7 @@ Common issues and how to resolve them.
 
 **Cause**: Service worker or browser cache serving stale/corrupted assets. The classic variant: clicking a nav button while running an old build — the route chunk's hashed URL no longer exists after a deploy, the dynamic import 404s, and (before v2.811) the rejection had no error boundary, unmounting the whole tree.
 
-**Auto-recovery (v2.811+)**: a failed route-chunk load now shows "Updating app…" and reloads the app once automatically ([src/lib/chunkLoadRecovery.ts](../src/lib/chunkLoadRecovery.ts): `vite:preloadError` listener in `main.tsx` + `RouteChunkBoundary` around the route outlet in `Layout`). Repeated failures within 60 s stop auto-reloading and show a visible fallback with a **Reload** button and a **Fix app** link instead of a white screen.
+**Auto-recovery (v2.811+)**: a failed route-chunk load now shows "Updating app…" and reloads the app once automatically ([src/lib/chunkLoadRecovery.ts](../src/lib/chunkLoadRecovery.ts): `vite:preloadError` listener in `main.tsx` + `RouteChunkBoundary` around the route outlet in `Layout`, and since v2.6900 a second one around `<Routes>` in `App`, so a page outside the Layout, such as a box label's `/b/:code`, or a provider above it that loses its chunk shows *Updating app…* or the fallback, not an empty page). Repeated failures within 60 s stop auto-reloading and show a visible fallback with a **Reload** button and a **Fix app** link instead of a white screen.
 
 **Solution** (if a white screen still appears):
 1. Navigate directly to **Fix app**: `https://yoursite.com/fix-cache.html` (replace with your app's base URL)

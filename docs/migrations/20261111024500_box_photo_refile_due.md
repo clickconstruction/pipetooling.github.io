@@ -11,3 +11,5 @@ Materials on site (punch list #297, the engine): a box photo's Drive file follow
 Additive and idempotent. `ALTER TABLE … ADD COLUMN` (nullable, no default) and `CREATE OR REPLACE TRIGGER` each take a brief lock on `job_box_photos`, a small table the crews write a row at a time; the file starts with `SET lock_timeout = '3s'`. Nothing is backfilled: no filed photo is out of place today (the one move applied on prod before v2.6885 was re-filed by hand on 2026-11-11).
 
 **Release order**: push this, then deploy `photo-save` (it reads the new column), then `dev-mcp` (its reply's words). The types PR follows the push.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7648.

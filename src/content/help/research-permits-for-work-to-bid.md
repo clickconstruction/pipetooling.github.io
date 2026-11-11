@@ -47,7 +47,7 @@ Nothing is typed. After a pass a dark bar offers four reasons. Tap one if you li
 
 Press the name beside **Who** to see who pulled it. Press the line beside **Property** to see the building. Both have **Investigate** and **Pass** at the foot.
 
-The count says how many are left. A permit stays in the deck until someone answers it. The Dashboard's **Needs you** card says when permits wait. It counts every city and names each one that has some. The Leader is asked first. The rest of the team is asked once a permit has waited two days. When none are left the card says so. Press **Dig in** to open the ones you kept.
+The count says how many are left. A permit stays in the deck until someone answers it. The Dashboard's **Needs you** card says when permits wait. It counts every city and names each one that has some. The Leader is asked first. The rest of the team is asked once a permit has waited two days. When none are left the card says so. Press **Dig in** to open the ones marked to investigate.
 
 ## Work the ones you are investigating
 
@@ -99,7 +99,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. A line over the list says the day the records start. Press **Read back to** beside it to read about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
+Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
