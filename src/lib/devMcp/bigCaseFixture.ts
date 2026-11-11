@@ -4,7 +4,7 @@ import { clampLimit } from '../../../supabase/functions/_shared/devMcpDoor'
 import { catalogReader } from './catalogReader'
 
 /**
- * A large HR case, made up from a word list (v2.6935): 250 entries over fourteen months, 60 named documents — one with
+ * A large HR case, made up from a word list (v2.6935; `deepCase` since v2.6939): 250 entries over fourteen months, 60 named documents — one with
  * 400 headings — 80 evidence records with their files, a long narrative, a matter and two developments. Nothing here is
  * anyone's file: the person is Pat Doe, the words are plumbing nouns in a fixed order, the same on every run.
  */
@@ -96,10 +96,38 @@ export function bigCase() {
     legal_matter_documents: Array.from({ length: 8 }, (_, i) => ({ id: `md-${i}`, matter_id: BIG_MATTER, title: `Exhibit ${i}: ${words(i + 70, 3)}`, state: 'final', dated_on: ymdPlus('2026-09-01', i * 4), voided_at: null, mime: i % 2 ? 'application/pdf' : 'text/markdown' })),
     legal_theme_marks: Array.from({ length: 30 }, (_, i) => ({ id: `mk-${i}`, person_id: BIG_PERSON, theme_id: `t-${i % 5}`, proposed: i % 3 === 0, removed_at: null })),
     legal_themes: Array.from({ length: 5 }, (_, i) => ({ id: `t-${i}`, name: `Theme ${i}: ${words(i + 80, 2)}`, retired_at: null })),
-    jobs_ledger_team_members: [{ job_id: 'j1', user_id: BIG_LOGIN }, { job_id: 'j2', user_id: BIG_LOGIN }],
-    job_schedule_blocks: [{ job_id: 'j3', assignee_user_id: BIG_LOGIN }],
+    jobs_ledger_team_members: [{ id: 'tm1', job_id: 'j1', user_id: BIG_LOGIN }, { id: 'tm2', job_id: 'j2', user_id: BIG_LOGIN }],
+    job_schedule_blocks: [{ id: 'sb1', job_id: 'j3', assignee_user_id: BIG_LOGIN }],
     jobs_ledger: [{ id: 'j1', job_name: 'Lodge rough-in', development_id: 'dv1', click_number: '101' }, { id: 'j2', job_name: 'Clubhouse', development_id: 'dv1', click_number: '102' }, { id: 'j3', job_name: 'Pump house', development_id: 'dv2', click_number: '103' }],
     developments: [{ id: 'dv1', name: 'Quail Ridge' }, { id: 'dv2', name: 'Mill Creek' }],
+  }
+}
+
+/** How many rows each list of the deep case holds: every one past the door's 200 rows a read. */
+export const DEEP = { evidence: 230, attachments: 460, documents: 215, marks: 430, steps: 260, matterDocuments: 205, licenses: 210, reports: 204, jobs: 240 } as const
+
+/**
+ * The same made-up case with every list past 200 rows (v2.6939): what one read of a source would have cut. Two files on
+ * every evidence record, a theme marked 86 times, a plan of 260 steps, schedule blocks on 240 jobs in one development.
+ */
+export function deepCase() {
+  const base = bigCase()
+  const evidence = Array.from({ length: DEEP.evidence }, (_, i) => ({ ...base.person_file_evidence[i % BIG_EVIDENCE]!, id: `r-${pad(i)}`, entry_id: null, dated_on: ymdPlus('2025-10-01', i), title: `Record ${i}` }))
+  const attachments = Array.from({ length: DEEP.attachments }, (_, i) => ({ ...base.person_file_attachments[0]!, id: `f-${pad(i)}`, evidence_id: `r-${pad(i % DEEP.evidence)}`, filename: `file-${i}.pdf`, created_at: `${ymdPlus('2025-10-01', i % DEEP.evidence)}T18:00:00Z` }))
+  const documents = Array.from({ length: DEEP.documents }, (_, i) => ({ ...base.person_document_index[1 + (i % 5)]!, id: `d-${pad(i)}`, title: i === 0 ? 'Agent notes' : `Paper ${i}`, counsel_only: false, evidence_id: null, updated_at: `${ymdPlus('2026-01-01', i)}T00:00:00Z` }))
+  return {
+    ...base,
+    person_file_evidence: evidence,
+    person_file_attachments: attachments,
+    person_document_index: documents,
+    person_reports: Array.from({ length: DEEP.reports }, (_, i) => ({ ...base.person_reports[0]!, id: `rep-${pad(i)}`, occurred_date: ymdPlus('2026-01-01', i), created_at: `${ymdPlus('2026-01-02', i)}T12:00:00Z` })),
+    person_licenses: Array.from({ length: DEEP.licenses }, (_, i) => ({ ...base.person_licenses[0]!, id: `l-${pad(i)}`, created_at: `${ymdPlus('2025-03-01', i)}T10:00:00Z` })),
+    legal_theme_marks: Array.from({ length: DEEP.marks }, (_, i) => ({ id: `mk-${pad(i)}`, person_id: BIG_PERSON, theme_id: `t-${i % 5}`, proposed: false, removed_at: null })),
+    legal_matter_entries: Array.from({ length: DEEP.steps }, (_, i) => ({ id: `m-${pad(i)}`, matter_id: BIG_MATTER, kind: 'plan', occurred_on: ymdPlus('2026-01-01', i), body: `Step ${i}.`, meta: { done_at: null }, voided_at: null })),
+    legal_matter_documents: Array.from({ length: DEEP.matterDocuments }, (_, i) => ({ id: `md-${pad(i)}`, matter_id: BIG_MATTER, title: `Exhibit ${i}`, state: 'final', dated_on: ymdPlus('2026-01-01', i), voided_at: null, mime: 'application/pdf' })),
+    jobs_ledger_team_members: [],
+    job_schedule_blocks: Array.from({ length: DEEP.jobs }, (_, i) => ({ id: `sb-${pad(i)}`, job_id: `j-${pad(i)}`, assignee_user_id: BIG_LOGIN })),
+    jobs_ledger: Array.from({ length: DEEP.jobs }, (_, i) => ({ id: `j-${pad(i)}`, job_name: `Lot ${i}`, development_id: 'dv1', click_number: String(1000 + i) })),
   }
 }
 
