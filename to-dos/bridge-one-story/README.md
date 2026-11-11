@@ -13,7 +13,7 @@ summary: >
   week, cash first, and the flow as one picture. The pick is the first, with the picture as one
   strip and one rule from the second: when cash goes under the floor, cash leads. Nothing built
   is deleted. It moves behind three doors.
-next: the train is built. Give it four Mondays, then read whether the call gets pressed. His calls 3 and 7 are still open, each with a pick drawn on 2026-11-11. Profit after overhead on recorded time is being built.
+next: the train is built. Give it four Mondays, then read whether the call gets pressed. His calls 3 and 7 are still open, each with a pick drawn on 2026-11-11.
 size: L as a train of five (M · M · S · M · S); left: none
 blocker: None.
 opinion: build the pick, PR 1 first, and give it four Mondays. If the call is still unpressed on the first screen with the moves reaching people, the ritual is the problem and the page falls back to three numbers and one list.
@@ -269,5 +269,5 @@ A third sheet, [`open-items.html`](open-items.html), draws each as the page is a
 |---|---|---|---|
 | His call 3, the first number | Built as both: *Made last week* from Sunday to Thursday, *Made this week so far* from Friday (`madeTile` in `weekCall.ts`). Nobody had said yes to that. | Keep it as built. | Open: his word. |
 | His call 7, who else opens it | Half solved by v2.6864: a named person reads their own move on Needs you, not the step or the other moves. No call has been recorded, so nobody has been named. Opening the page to a controller is one migration over the wage and pay stub tables, and RLS would hide rows without an error. | Leave it to the owner and the devs. If people ask for the rest of the call, show the whole call on Needs you. | Open: his word. |
-| Profit after overhead reads recorded time | The breakdown reads approved hours and the headline reads recorded time. The warning's *with them* figure adds what the waiting hours earn and leaves out their wages. The page already holds every recorded hour, so the loader need not change. | Build it on the page's side. | He said build it, after the saves. |
+| Profit after overhead reads recorded time | The breakdown reads approved hours and the headline reads recorded time. The warning's *with them* figure adds what the waiting hours earn and leaves out their wages. The page already holds every recorded hour, so the loader need not change. | Build it on the page's side. | Built in PR #7710: today's approved figures with what the waiting hours earn and cost added, so nothing moves when no hours wait. |
 | The floor, the typed cash and the account choice | Confirmed dev only: no policy named the three keys. The floor had never been saved. | Build it first, before the first Monday email. | Shipped as v2.6964. |
