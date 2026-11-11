@@ -11,7 +11,8 @@
  *     with its ship ticket), so the answer is a list of papers, each the bill reader's own shape with the pages it
  *     covers (`PAPERS_SCHEMA`, `readPapersAnswer`). A long file is read a few pages at a time (`pageRanges`) and a
  *     paper that runs across two ranges is joined (`joinPapers`).
- *   * Which paper is which row's. By the invoice number, exactly, once both are folded (`matchRows`). A row whose
+ *   * Which paper is which row's. By the invoice number once both are folded: exactly, or the printed number with
+ *     a short suffix the office did not type when the paper's total is the row's amount (`matchRows`). A row whose
  *     number is not in its file is held; a paper with no row is kept with no bill, for the Add invoice door later.
  *   * The rows written (`paperRowOf`): the paper checked by `checkPaper` against the row's amount and the PDF's own
  *     text, so a paper counts only when every sum holds and every part code is on the paper.
@@ -73,9 +74,15 @@ export function foldNumber(n: string | null | undefined): string {
   return (n ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^0+(?=.)/, '')
 }
 
-/** What a hold was made on: the file and the number. A person who changes either makes the row due again. */
+/** The match's rules, counted. A hold made under older rules is due one more read (2: a printed suffix, v2.6897). */
+export const MATCH_RULES = 2
+
+/**
+ * What a hold was made on: the file, the number and the rules of the match. A person who changes the link or the
+ * number makes the row due again, and so does a rule that might now find its paper.
+ */
 export function seenKey(inv: Pick<SweepInvoice, 'link' | 'number'>): string {
-  return `${fileIdOfLink(inv.link) ?? ''}|${foldNumber(inv.number)}`
+  return `${fileIdOfLink(inv.link) ?? ''}|${foldNumber(inv.number)}|r${MATCH_RULES}`
 }
 
 // ---------------------------------------------------------------------------
@@ -410,38 +417,64 @@ const KIND_WORDS: Readonly<Record<PaperKind, string>> = {
   other: 'another kind of paper',
 }
 
+/** The longest run of digits a paper may print after the number the office typed: a shipment or a release, `.001` or ` 01`. */
+export const NUMBER_SUFFIX_MAX = 3
+
 /**
- * Each row to its paper, by the invoice number exactly (both folded). Where two bills in the file carry the number,
- * the one whose total is the row's amount wins. A row whose number is on a paper that is not a bill is held as that;
- * one a statement lists is held as a statement; any other is held as not in its file, with the numbers the file does
- * hold. `unowned` are the papers no row took.
+ * Whether a printed number is the typed one with a short suffix (v2.6897, the owner's call of 2026-11-10): both
+ * folded, the typed number the start of the printed one, and what is left one to three digits. `387374` takes
+ * `387374 01` and `S100200` takes `S100200.001`; `S100200.001` never takes `S100200.002`.
+ */
+export function numberWithSuffix(typed: string, printed: string): boolean {
+  const t = foldNumber(typed)
+  const p = foldNumber(printed)
+  if (!t || p.length <= t.length || !p.startsWith(t)) return false
+  return new RegExp(`^\\d{1,${NUMBER_SUFFIX_MAX}}$`).test(p.slice(t.length))
+}
+
+/**
+ * Each row to its paper, by the invoice number (both folded). First every row takes the bill that carries its
+ * number exactly; where two bills in the file carry it, the one whose total is the row's amount wins. Then a row
+ * still without one takes a bill whose printed number is its own with a short suffix, and only when that paper's
+ * total is the row's amount to the cent (`numberWithSuffix`), since the number alone no longer says it. A row whose
+ * number is on a paper that is not a bill is held as that; one a statement lists is held as a statement; any other
+ * is held as not in its file, with the numbers the file does hold. `unowned` are the papers no row took.
  */
 export function matchRows(papers: readonly FilePaper[], rows: readonly SweepInvoice[]): { outcomes: RowOutcome[]; unowned: number[] } {
   const taken = new Set<number>()
-  const outcomes: RowOutcome[] = []
-  const billNumbers = [...new Set(papers.filter((p) => PURCHASE_KINDS.has(p.read.kind) && p.read.number).map((p) => p.read.number))]
-  for (const invoice of rows) {
+  const picked = new Map<number, number>()
+  const bills = papers.map((p, i) => ({ p, i })).filter(({ p }) => PURCHASE_KINDS.has(p.read.kind))
+  const totalIsRows = (p: FilePaper, invoice: SweepInvoice): boolean => p.read.totalCents != null && Math.abs(p.read.totalCents - Math.abs(invoice.amountCents)) <= 1
+  // The exact numbers first, for every row, so a suffix never takes a paper another row names outright.
+  rows.forEach((invoice, r) => {
     const n = foldNumber(invoice.number)
-    const same = papers.map((p, i) => ({ p, i })).filter(({ p, i }) => n !== '' && !taken.has(i) && foldNumber(p.read.number) === n)
-    const bills = same.filter(({ p }) => PURCHASE_KINDS.has(p.read.kind))
-    if (bills.length) {
-      const pick = bills.find(({ p }) => p.read.totalCents != null && p.read.totalCents === Math.abs(invoice.amountCents)) ?? bills[0]!
-      taken.add(pick.i)
-      outcomes.push({ invoice, paperIndex: pick.i })
-      continue
-    }
+    if (!n) return
+    const same = bills.filter(({ p, i }) => !taken.has(i) && foldNumber(p.read.number) === n)
+    const pick = same.find(({ p }) => totalIsRows(p, invoice)) ?? same[0]
+    if (!pick) return
+    taken.add(pick.i)
+    picked.set(r, pick.i)
+  })
+  rows.forEach((invoice, r) => {
+    if (picked.has(r)) return
+    const pick = bills.find(({ p, i }) => !taken.has(i) && numberWithSuffix(invoice.number, p.read.number) && totalIsRows(p, invoice))
+    if (!pick) return
+    taken.add(pick.i)
+    picked.set(r, pick.i)
+  })
+  const billNumbers = [...new Set(bills.filter(({ p }) => p.read.number).map(({ p }) => p.read.number))]
+  const outcomes: RowOutcome[] = rows.map((invoice, r) => {
+    const paperIndex = picked.get(r)
+    if (paperIndex != null) return { invoice, paperIndex }
+    const n = foldNumber(invoice.number)
+    const same = papers.filter((p, i) => n !== '' && !taken.has(i) && foldNumber(p.read.number) === n)
     const listed = papers.some((p) => p.read.kind === 'statement' && n !== '' && p.read.statementNumbers.some((s) => foldNumber(s) === n))
-    if (same.some(({ p }) => p.read.kind === 'statement') || listed) {
-      outcomes.push({ invoice, hold: 'statement', note: 'The file is a statement that lists this bill.' })
-      continue
-    }
-    if (same.length) {
-      outcomes.push({ invoice, hold: 'not_a_bill', note: `The paper with this number is ${KIND_WORDS[same[0]!.p.read.kind]}, not an invoice.` })
-      continue
-    }
+    if (same.some((p) => p.read.kind === 'statement') || listed) return { invoice, hold: 'statement', note: 'The file is a statement that lists this bill.' }
+    const notBill = same.find((p) => !PURCHASE_KINDS.has(p.read.kind))
+    if (notBill) return { invoice, hold: 'not_a_bill', note: `The paper with this number is ${KIND_WORDS[notBill.read.kind]}, not an invoice.` }
     const holds = !papers.length ? 'No paper was read in the file.' : billNumbers.length ? `The file holds ${billNumbers.slice(0, 6).join(', ')}${billNumbers.length > 6 ? ' and more' : ''}.` : `The file holds ${KIND_WORDS[papers[0]!.read.kind]} and no invoice.`
-    outcomes.push({ invoice, hold: 'number_not_in_file', note: holds })
-  }
+    return { invoice, hold: 'number_not_in_file', note: holds }
+  })
   return { outcomes, unowned: papers.map((_, i) => i).filter((i) => !taken.has(i)) }
 }
 
