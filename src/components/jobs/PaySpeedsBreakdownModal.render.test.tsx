@@ -171,6 +171,24 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByText(/3 more customers are on their usual pace/)).toBeTruthy()
   })
 
+  it('Money waiting: a late bill an in kind deal pays makes no row, and one line counts it (punch list #301)', async () => {
+    // The same 86-day bill as the next test, on a deal: nobody is off pace over it.
+    const onDeal: StageRow = (() => {
+      const base = invRow('knight', 'Knight Contracting', 75585)
+      if (base.kind === 'job') throw new Error('fixture')
+      return {
+        ...base,
+        job: { ...base.job, job_name: 'Knight Ph 1', in_kind_arrangement_id: 'deal-a' },
+        inv: { ...base.inv, billed_at: '2026-06-01T12:00:00Z' },
+      } as StageRow
+    })()
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[onDeal, invRow('ingram', 'Johnny Ingram', 786)]} paySpeeds={speeds} onClose={vi.fn()} />)
+    await settle()
+    expect(screen.queryByText('86d waiting')).toBeNull()
+    expect(screen.getByTestId('money-waiting-in-kind').textContent).toBe('$75,585 on 1 bill is scheduled in kind, not money waiting')
+    expect(screen.getByText(/1 more customer is on their usual pace/)).toBeTruthy()
+  })
+
   it('Money waiting: a dated bill past the baseline makes a row, and expanding lists each job owed', async () => {
     // knight (median 18): bill billed 2026-06-01 → waited 86d vs baseline 18 → off pace, late tone.
     const dated: StageRow = (() => {

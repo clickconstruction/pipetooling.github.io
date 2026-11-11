@@ -26,4 +26,17 @@ describe('moneyWaitingEmail (the digest’s renderer, lifted v2.4161)', () => {
     expect(html).toContain('58d waiting')
     expect(renderMoneyWaitingEmail({ ...p, pay_speeds: null }, 'https://x')).toContain('Pay-speed data was unavailable')
   })
+  it('a bill an in kind deal pays is under no customer, and one line says so (punch list #301)', () => {
+    // job-3 is Sam Sample's one bill, 58 days waiting. On a deal nobody chases it.
+    const stamped = { ...p, rows: p.rows.map((r) => (r.job_id === 'job-3' ? { ...r, in_kind_arrangement_id: 'deal-a' } : r)) }
+    expect(moneyWaitingEmailSubject(stamped)).toBe('Money waiting — 2 customers off pace, $46,840 open')
+    const t = moneyWaitingEmailText(stamped)
+    expect(t).not.toContain('Sam Sample')
+    expect(t.split('\n').pop()).toBe('$4,380 on 1 bill is scheduled in kind, not money waiting.')
+    const html = renderMoneyWaitingEmail(stamped, 'https://clicktooling.com')
+    expect(html).not.toContain('jobDetail=job-3')
+    expect(html).toContain('$4,380 on 1 bill is scheduled in kind, not money waiting.')
+    expect(renderMoneyWaitingEmail(p, 'https://x')).not.toContain('scheduled in kind')
+    expect(moneyWaitingEmailText(p)).not.toContain('scheduled in kind')
+  })
 })

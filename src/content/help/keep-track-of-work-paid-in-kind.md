@@ -26,6 +26,8 @@ The customer's page now shows a card named **Pays in kind**. It says the deal in
 
 The bills of those jobs now read as scheduled in kind. The open balance stops reading as late. The collected line says how much of it was in kind. Pay speed leaves in kind payments out.
 
+The payment forecast and Money waiting leave those bills out. One line on each says how much is scheduled in kind. The emails of both say the same.
+
 ## Add a line when something is given
 
 Each thing given is one line. A line has an amount, a date and a memo of the details.

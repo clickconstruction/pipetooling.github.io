@@ -20,6 +20,7 @@ import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import {
   buildForecastFromPayload,
   formatYmdMonthDay,
+  inKindApartLine,
   type ForecastBucket,
   type ForecastEmailPayload,
   type ForecastRow,
@@ -141,6 +142,8 @@ export function renderPaymentForecastEmail(p: ForecastEmailPayload, appUrl: stri
   const visible = f.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   const tiles = visible.slice(0, 5)
   const empty = f.rowCount === 0
+  // The modal's last line (v2.6834): what a deal pays is open and is not money coming.
+  const inKindLine = inKindApartLine(f.inKind, 'money coming')
   return `
   <div style="background:#f5f5f4;padding:16px;">
     <div style="margin:0 auto;max-width:640px;background:#ffffff;border:1px solid #e7e5e4;border-radius:8px;padding:22px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
@@ -148,8 +151,10 @@ export function renderPaymentForecastEmail(p: ForecastEmailPayload, appUrl: stri
         <h1 style="margin:0 0 2px;font-size:18px;">Payment forecast &mdash; ${esc(reportDate(p.generated_at))}</h1>
         <div style="font-size:12px;color:#57534e;">${
           empty
-            ? 'Nothing open on the board. Nice.'
-            : `${f.rowCount} open bill${f.rowCount === 1 ? '' : 's'} &middot; <b>${money(f.openTotal)}</b> total &middot; expected dates = bill date + each customer's median pay speed`
+            ? inKindLine
+              ? 'No bill is waiting on money.'
+              : 'Nothing open on the board. Nice.'
+            :`${f.rowCount} open bill${f.rowCount === 1 ? '' : 's'} &middot; <b>${money(f.openTotal)}</b> total &middot; expected dates = bill date + each customer's median pay speed`
         }</div>
       </div>
       ${
@@ -166,7 +171,7 @@ export function renderPaymentForecastEmail(p: ForecastEmailPayload, appUrl: stri
       </p>
       <p style="margin:12px 0 0;font-size:10.5px;color:#a8a29e;text-align:center;">${
         senderName ? `Sent by ${esc(senderName)} from ClickTooling &middot; ` : 'ClickTooling &middot; '
-      }numbers as of send time${f.skippedNoMoney > 0 ? ` &middot; ${f.skippedNoMoney} paid-to-zero row${f.skippedNoMoney === 1 ? '' : 's'} not shown` : ''}${
+      }numbers as of send time${f.skippedNoMoney > 0 ? ` &middot; ${f.skippedNoMoney} paid-to-zero row${f.skippedNoMoney === 1 ? '' : 's'} not shown` : ''}${inKindLine ? ` &middot; ${esc(inKindLine)}` : ''}${
         p.pay_speeds == null ? ' &middot; pay speeds unavailable' : ''
       } &middot; click any job to open it in the app</p>
     </div>
@@ -175,7 +180,7 @@ export function renderPaymentForecastEmail(p: ForecastEmailPayload, appUrl: stri
 
 export function paymentForecastEmailSubject(p: ForecastEmailPayload): string {
   const f = buildForecastFromPayload(p)
-  if (f.rowCount === 0) return `Payment forecast — ${reportDate(p.generated_at)} — nothing open`
+  if (f.rowCount === 0) return `Payment forecast — ${reportDate(p.generated_at)} — ${f.inKind.count > 0 ? 'no bill waiting on money' : 'nothing open'}`
   const past = f.buckets.find((b) => b.key === 'past')
   const thisWeek = f.buckets.find((b) => b.key === 'thisWeek')
   const parts: string[] = []
@@ -188,8 +193,9 @@ export function paymentForecastEmailSubject(p: ForecastEmailPayload): string {
 export function paymentForecastEmailText(p: ForecastEmailPayload, appUrl: string): string {
   const f = buildForecastFromPayload(p)
   const lines = [`Payment forecast — ${reportDate(p.generated_at)}`]
+  const inKindLine = inKindApartLine(f.inKind, 'money coming')
   if (f.rowCount === 0) {
-    lines.push('Nothing open on the board.')
+    lines.push(inKindLine ? `No bill is waiting on money. ${inKindLine}.` : 'Nothing open on the board.')
     return lines.join('\n')
   }
   lines.push(`${f.rowCount} open bills · ${money(f.openTotal)} total`, '')
@@ -206,6 +212,7 @@ export function paymentForecastEmailText(p: ForecastEmailPayload, appUrl: string
     }
     lines.push('')
   }
+  if (inKindLine) lines.push(`${inKindLine}.`)
   return lines.join('\n')
 }
 
