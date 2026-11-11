@@ -29,7 +29,7 @@ function stripComments(source: string): string {
 export function lazyComponentNames(appSource: string): string[] {
   const names: string[] = []
   const re = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:React\.)?lazy\s*\(/g
-  for (const m of stripComments(appSource).matchAll(re)) names.push(m[1])
+  for (const m of stripComments(appSource).matchAll(re)) if (m[1]) names.push(m[1])
   return names
 }
 
@@ -64,7 +64,7 @@ export function routesOutsideLayout(appSource: string): RouteOutsideLayout[] {
   for (let i = 0; i < starts.length; i++) {
     const { element, rest } = splitElement(block.slice(starts[i], starts[i + 1]))
     const path = rest.match(/\bpath=(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/)
-    const pathText = path ? (path[1] ?? path[2] ?? path[3]) : NO_PATH
+    const pathText = path?.[1] ?? path?.[2] ?? path?.[3] ?? NO_PATH
     if (pathText === '/') break
     routes.push({ path: pathText, element })
   }

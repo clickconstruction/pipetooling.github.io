@@ -49,7 +49,7 @@ describe('routesOutsideLayout', () => {
   it('stops at the Layout route and leaves out the routes nested in it', () => {
     const routes = routesOutsideLayout(app('<Route path="/sign-in" element={<SignIn />} />\n<Route path="/b" element={<BoxCode />} />'))
     expect(routes.map((r) => r.path)).toEqual(['/sign-in', '/b'])
-    expect(routes[1].element).toBe('<BoxCode />')
+    expect(routes[1]?.element).toBe('<BoxCode />')
   })
 
   it('answers nothing for a file with no <Routes>', () => {
