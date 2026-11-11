@@ -21,6 +21,8 @@ export const MASTER_ROW = 'bbbbbbbb-0000-4000-8000-000000000004'
 export const BENCH_ROW = 'bbbbbbbb-0000-4000-8000-000000000005'
 export const GONE_ROW = 'bbbbbbbb-0000-4000-8000-000000000006'
 export const TWIN_USER = 'bbbbbbbb-0000-4000-8000-000000000007'
+export const PRIMARY_USER = 'bbbbbbbb-0000-4000-8000-000000000008'
+export const PRIMARY_ROW = 'bbbbbbbb-0000-4000-8000-000000000009'
 export const SHEET = 'cccccccc-0000-4000-8000-000000000001'
 export const SHEET_LINE = 'cccccccc-0000-4000-8000-000000000002'
 export const SHEET_PAY = 'cccccccc-0000-4000-8000-000000000003'
@@ -38,6 +40,9 @@ export const subUser = (over: Partial<LaborUserRow> = {}): LaborUserRow => ({ id
 export const subRow = (over: Partial<LaborPersonRow> = {}): LaborPersonRow => ({ id: SUB_ROW, name: 'ZZ Sample Sub', kind: 'sub', email: null, end_date: null, archived_at: null, account_user_id: SUB_USER, ...over })
 export const masterUser = (over: Partial<LaborUserRow> = {}): LaborUserRow => ({ id: MASTER_USER, name: 'ZZ Sample Master', email: 'master@example.test', role: 'master_technician', archived_at: null, is_sample: false, is_digital_twin: false, ...over })
 export const masterRow = (over: Partial<LaborPersonRow> = {}): LaborPersonRow => ({ id: MASTER_ROW, name: 'ZZ Sample Master', kind: 'master_technician', email: 'master@example.test', end_date: null, archived_at: null, account_user_id: MASTER_USER, ...over })
+/** A primary: on the form's Subcontractors list beside the subs, and Crew pay in the Pay ledger. */
+export const primaryUser = (over: Partial<LaborUserRow> = {}): LaborUserRow => ({ id: PRIMARY_USER, name: 'ZZ Sample Primary', email: 'primary@example.test', role: 'primary', archived_at: null, is_sample: false, is_digital_twin: false, ...over })
+export const primaryRow = (over: Partial<LaborPersonRow> = {}): LaborPersonRow => ({ id: PRIMARY_ROW, name: 'ZZ Sample Primary', kind: 'primary', email: 'primary@example.test', end_date: null, archived_at: null, account_user_id: PRIMARY_USER, ...over })
 export const benchRow = (over: Partial<LaborPersonRow> = {}): LaborPersonRow => ({ id: BENCH_ROW, name: 'ZZ Bench Sub', kind: 'sub', email: null, end_date: '2026-08-01', archived_at: null, account_user_id: null, ...over })
 export const goneRow = (over: Partial<LaborPersonRow> = {}): LaborPersonRow => ({ id: GONE_ROW, name: 'ZZ Gone Sub', kind: 'sub', email: null, end_date: null, archived_at: '2026-07-01T12:00:00+00:00', account_user_id: null, ...over })
 export const twinUser = (over: Partial<LaborUserRow> = {}): LaborUserRow => ({ id: TWIN_USER, name: 'ZZ Twin Estimator', email: null, role: 'estimator', archived_at: null, is_sample: false, is_digital_twin: true, ...over })
@@ -65,8 +70,8 @@ export const bankLine = (over: Partial<BankLineWithJob> = {}): BankLineWithJob =
 export function standingWorld(over: Record<string, Row[]> = {}): Record<string, Row[]> {
   return {
     jobs_ledger: [job(), otherJob()],
-    users: [subUser(), masterUser(), twinUser()],
-    people: [subRow(), masterRow(), benchRow(), goneRow()],
+    users: [subUser(), masterUser(), twinUser(), primaryUser()],
+    people: [subRow(), masterRow(), benchRow(), goneRow(), primaryRow()],
     people_labor_jobs: [],
     people_labor_job_items: [],
     people_labor_job_payments: [],

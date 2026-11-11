@@ -6,7 +6,8 @@
 //   add    — Jobs → Subs → Pay → New Sub Labor (JobsSubLaborFormModal.saveLaborJob): the people_labor_jobs row, the
 //            assignee row as the form's backup to the name trigger, then the lines (people_labor_job_items).
 //   change — the Edit window's save: the sheet's day, or its lines replaced whole (every line deleted, the new ones
-//            inserted, the sheet's rate following the first line), as saveEditedLaborJob does.
+//            inserted, the sheet's rate following the first line), as saveEditedLaborJob does; and its change beside
+//            the job (persistPickedJobForEdit), which moves the sheet to another job with its payments.
 //   remove — the Edit window's Delete: the sheet row deleted, its lines with it. Held here while the sheet carries a
 //            payment, which the screen would delete without a trace.
 // plan_sub_labor_payment → apply_sub_labor_payment, two actions:
@@ -74,7 +75,7 @@ export type LaborLine = { what: string; day?: string; amount: number } | { what:
 export type LaborStated = { source: string }
 
 export type SubLaborAdd = { action: 'add'; job_id: string; person: string; date: string; through?: string; lines: LaborLine[]; note?: string; stated?: LaborStated; second_sheet_ok?: true }
-export type SubLaborChange = { action: 'change'; sheet_id: string; date?: string; lines?: LaborLine[]; stated?: LaborStated; reason?: string }
+export type SubLaborChange = { action: 'change'; sheet_id: string; job_id?: string; date?: string; lines?: LaborLine[]; stated?: LaborStated; reason?: string }
 export type SubLaborRemove = { action: 'remove'; sheet_id: string; reason: string }
 export type SubLaborPayload = SubLaborAdd | SubLaborChange | SubLaborRemove
 
@@ -83,7 +84,7 @@ export type SubLaborInput = { ok: true; p: SubLaborPayload; target: string; plan
 const LINE_SHAPE = '{ what (the work in words), day? (YYYY-MM-DD, the day the line is about), amount (a flat dollar amount) } or { what, day?, hours, rate (dollars an hour), count? (units, when hours is per unit) }'
 const LABOR_SHAPE =
   `needs labor — { action?: 'add', job_id (a jobs_ledger.id — find_job), person (a people.id, a users.id or the name of one sub — find_person), date (YYYY-MM-DD, the day the work happened or its first day, never ahead of today), through? (the last day, when the work ran several days), lines: [${LINE_SHAPE}] (1 to ${LINES_MAX}, all flat or all hours at a rate), note? (under ${NOTE_MAX}, kept on the job's activity), stated?: { source } (the days come from a record outside the app and not a punch: name the record), second_sheet_ok? (true when they already hold a sheet on the job for those days and this is other work) } ` +
-  `| { action: 'change', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), date?, lines? (replaces every line, as the Edit window's save does), stated?, reason? } ` +
+  `| { action: 'change', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), job_id? (the job the sheet moves to, as the Edit window's change beside the job does), date?, lines? (replaces every line, as the Edit window's save does), stated?, reason? } ` +
   `| { action: 'remove', sheet_id, reason (why it comes off, kept on the job's activity) }`
 
 function readPlanHash(verb: string, planVerb: string, input: Json): { ok: true; planHash: string | null } | { ok: false; error: string } {
@@ -212,8 +213,10 @@ export function subLaborInput(verb: SubLaborVerb, input: Json, todayYmd: string)
   const stated = statedInput(src.stated, verb)
   if (!stated.ok) return stated
   if (stated.stated && !lines) return { ok: false, error: `${verb}: the stated mark rides in the lines' own words, so a change that names stated sends the lines again.` }
-  if (!date && !lines) return { ok: false, error: `${verb}: a change names date, lines or both. Nothing to do.` }
-  const p: SubLaborChange = { action: 'change', sheet_id: sheetId, ...(date ? { date } : {}), ...(lines ? { lines } : {}), ...(stated.stated ? { stated: stated.stated } : {}), ...(reason ? { reason } : {}) }
+  const moveTo = str('job_id').toLowerCase()
+  if (moveTo && !UUID_RE.test(moveTo)) return { ok: false, error: `${verb}: job_id is a jobs_ledger.id, the job the sheet moves to (find_job resolves a number or a name).` }
+  if (!date && !lines && !moveTo) return { ok: false, error: `${verb}: a change names job_id, date, lines or several of them. Nothing to do.` }
+  const p: SubLaborChange = { action: 'change', sheet_id: sheetId, ...(moveTo ? { job_id: moveTo } : {}), ...(date ? { date } : {}), ...(lines ? { lines } : {}), ...(stated.stated ? { stated: stated.stated } : {}), ...(reason ? { reason } : {}) }
   return { ok: true, p, target: sheetId, planHash: hash.planHash }
 }
 
@@ -340,6 +343,8 @@ export type LaborPerson = {
   user_id: string | null
   kind: string | null
   role: string | null
+  /** How the Pay ledger files their sheets: a roster sub's as the sub's own, anyone else's as Crew pay (`isRosterSub`). */
+  pay_ledger: 'sub' | 'crew'
   sample: boolean
   /** Every roster row of theirs, for finding their sheets. */
   people_ids: string[]
@@ -349,11 +354,15 @@ export type LaborPerson = {
 
 type Candidate = { user: LaborUserRow | null; roster: LaborPersonRow[] }
 
+/** The kinds the form's Subcontractors list offers (`rosterNamesSubcontractors`): subs and primaries, by roster kind or by the account's role. */
+export const SHEET_PERSON_KINDS = ['sub', 'primary'] as const
+export const SHEET_PERSON_ROLES = ['subcontractor', 'primary'] as const
+
 /**
- * The one person an ask means, as a sub the form would offer: a roster row of kind sub whose account, if any, is a
- * subcontractor's (`isRosterSub`), or a subcontractor's account with no roster row. Refused in words for nobody,
- * several, a teammate who is not a sub (their sheet is Crew pay, paid through payroll), an archived person, a sub on
- * the bench and a twin.
+ * The one person an ask means, as the form's Subcontractors list would offer them: an account whose role is
+ * subcontractor or primary, or a roster row of kind sub or primary with no account. Refused in words for nobody,
+ * several, any other teammate (paid through payroll from their hours), an archived person, a sub on the bench and a
+ * twin. A primary's sheet is one the Pay ledger files under Crew pay; the person says which way theirs reads.
  */
 export function laborPersonFacts(read: PersonRead): { ok: true; person: LaborPerson } | { ok: false; refused: string } {
   const candidates: Candidate[] = read.users.map((user) => ({ user, roster: read.people.filter((p) => p.account_user_id === user.id) }))
@@ -362,23 +371,24 @@ export function laborPersonFacts(read: PersonRead): { ok: true; person: LaborPer
   const nameOf = (c: Candidate): string => (c.user?.name ?? '').trim() || (c.roster[0]?.name ?? '').trim() || 'a person with no name'
   if (candidates.length === 0) return { ok: false, refused: `No person "${read.asked}" is visible to you — find_person lists the team by name, and a sub with no login is on People → Subs. Pass a people.id, a users.id or the whole name.` }
   if (candidates.length > 1) {
-    const list = candidates.slice(0, 8).map((c) => `${nameOf(c)} (${c.user ? `users.id ${c.user.id}` : `people.id ${c.roster[0]!.id}`}${c.roster.some((r) => r.kind === 'sub') ? ', a sub' : ''})`)
+    const list = candidates.slice(0, 8).map((c) => `${nameOf(c)} (${c.user ? `users.id ${c.user.id}` : `people.id ${c.roster[0]!.id}`}${c.roster.some((r) => r.kind === 'sub') ? ', a sub' : c.roster.some((r) => r.kind === 'primary') ? ', a primary' : ''})`)
     return { ok: false, refused: `"${read.asked}" matches ${candidates.length} people — pass the id of one: ${list.join('; ')}.` }
   }
   const c = candidates[0]!
   const name = nameOf(c)
-  const subRow = c.roster.find((r) => r.kind === 'sub' && !r.archived_at) ?? c.roster.find((r) => r.kind === 'sub') ?? null
+  const offered = (r: LaborPersonRow): boolean => (SHEET_PERSON_KINDS as readonly string[]).includes(r.kind ?? '')
+  const subRow = c.roster.find((r) => offered(r) && !r.archived_at) ?? c.roster.find(offered) ?? null
   const role = (c.user?.role ?? '').trim() || null
   if (c.user?.is_digital_twin) return { ok: false, refused: `${name} is a digital twin, not a person the company pays.` }
-  const isSub = subRow ? !role || role === 'subcontractor' : role === 'subcontractor'
-  if (!isSub) {
-    const what = subRow ? `a roster sub whose account is ${role}` : `${role ? `a ${role.replace(/_/g, ' ')}` : `on the roster as ${c.roster.map((r) => r.kind).filter(Boolean).join(', ') || 'no kind'}`}`
-    return { ok: false, refused: `${name} is not a subcontractor (${what}). A sheet for a teammate is a Crew pay sheet, paid through payroll from their hours; the seat writes sub sheets only. Their hours are plan_clock_sessions; a new sub is plan_account with kind sub.` }
+  const isOffered = c.user ? (SHEET_PERSON_ROLES as readonly string[]).includes(role ?? '') : !!subRow
+  if (!isOffered) {
+    const what = subRow ? `on the roster as a ${subRow.kind} with a ${(role ?? 'no').replace(/_/g, ' ')} account` : `${role ? `a ${role.replace(/_/g, ' ')}` : `on the roster as ${c.roster.map((r) => r.kind).filter(Boolean).join(', ') || 'no kind'}`}`
+    return { ok: false, refused: `${name} is not a subcontractor or a primary (${what}), the two the form's Subcontractors list offers. Any other teammate is paid through payroll from their hours: plan_clock_sessions writes those. A new sub is plan_account with kind sub.` }
   }
   if (c.user?.archived_at || subRow?.archived_at) return { ok: false, refused: `${name} is archived. People → Archived → Bring back restores them; a sheet is not written for someone who has left.` }
-  if (subRow && has(subRow.end_date)) return { ok: false, refused: `${name} is on the bench since ${String(subRow.end_date).slice(0, 10)}, and the form offers no benched sub for a new sheet. People → Subs takes them off the bench first.` }
+  if (subRow && subRow.kind === 'sub' && has(subRow.end_date)) return { ok: false, refused: `${name} is on the bench since ${String(subRow.end_date).slice(0, 10)}, and the form offers no benched sub for a new sheet. People → Subs takes them off the bench first.` }
   const names = [...new Set([c.user?.name, ...c.roster.map((r) => r.name)].map((n) => (n ?? '').trim()).filter(Boolean))]
-  return { ok: true, person: { name, people_id: subRow?.id ?? c.roster[0]?.id ?? null, user_id: c.user?.id ?? null, kind: subRow?.kind ?? null, role, sample: c.user?.is_sample === true, people_ids: c.roster.map((r) => r.id), names } }
+  return { ok: true, person: { name, people_id: subRow?.id ?? c.roster[0]?.id ?? null, user_id: c.user?.id ?? null, kind: subRow?.kind ?? null, role, pay_ledger: subRow?.kind === 'sub' && (!role || role === 'subcontractor') ? 'sub' : 'crew', sample: c.user?.is_sample === true, people_ids: c.roster.map((r) => r.id), names } }
 }
 
 // ── the world ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -400,9 +410,13 @@ export type SubLaborWorld = {
   /** The job's allocated bank rows, as the Job window reads its card lines. */
   bankLines: BankLineRow[]
   money: JobMoney | null
+  /** The job a change moves the sheet to, read the same way; null when the change names no job. */
+  to: JobSide | null
 }
+/** One job as a plan reads it: the row, its sheets with their lines, payments and assignee rows, its allocated bank rows and its profit band. */
+export type JobSide = Pick<SubLaborWorld, 'job' | 'sheets' | 'items' | 'payments' | 'assignees' | 'settings' | 'bankLines' | 'money'>
 
-async function readJobSide(reads: SubLaborReads, jobId: string | null, lone: SheetRow | null): Promise<Pick<SubLaborWorld, 'job' | 'sheets' | 'items' | 'payments' | 'assignees' | 'settings' | 'bankLines' | 'money'>> {
+async function readJobSide(reads: SubLaborReads, jobId: string | null, lone: SheetRow | null): Promise<JobSide> {
   const settingsRead = reads.rows('app_settings', `select=key,value_num&key=in.(${SUB_LABOR_SETTING_KEYS.join(',')})&limit=10`)
   const [jobs, sheetRows, settings, bankLines, money] = await Promise.all([
     jobId ? reads.rows('jobs_ledger', `select=${LABOR_JOB_COLS}&id=eq.${jobId}`) : Promise.resolve([]),
@@ -426,11 +440,13 @@ async function readJobSide(reads: SubLaborReads, jobId: string | null, lone: She
 export async function readSubLaborWorld(reads: SubLaborReads, p: SubLaborPayload, devUserId: string): Promise<SubLaborWorld> {
   if (p.action === 'add') {
     const [person, side] = await Promise.all([readLaborPerson(reads, p.person), readJobSide(reads, p.job_id, null)])
-    return { devUserId, sheet: null, person, ...side }
+    return { devUserId, sheet: null, person, to: null, ...side }
   }
   const sheet = ((await reads.rows('people_labor_jobs', `select=${SHEET_COLS}&id=eq.${p.sheet_id}`))[0] as unknown as SheetRow | undefined) ?? null
-  if (!sheet) return { devUserId, sheet: null, job: null, person: null, sheets: [], items: [], payments: [], assignees: [], settings: [], bankLines: [], money: null }
-  return { devUserId, sheet, person: null, ...(await readJobSide(reads, sheet.job_ledger_id, sheet)) }
+  if (!sheet) return { devUserId, sheet: null, job: null, person: null, sheets: [], items: [], payments: [], assignees: [], settings: [], bankLines: [], money: null, to: null }
+  const moveTo = p.action === 'change' && p.job_id && p.job_id !== sheet.job_ledger_id ? p.job_id : null
+  const [side, to] = await Promise.all([readJobSide(reads, sheet.job_ledger_id, sheet), moveTo ? readJobSide(reads, moveTo, null) : Promise.resolve(null)])
+  return { devUserId, sheet, person: null, to, ...side }
 }
 
 // ── the sheet's math, from the screens' own kernels ──────────────────────────────────────────────────────────────
@@ -610,7 +626,7 @@ export type DryRun = { ok: true; reply: Json } | { ok: false; refused: string }
 
 /** What the plan hash commits to: everything the plan says but the profit band, which a cost elsewhere on the job moves. */
 export function subLaborCommitment(reply: Json): Json {
-  const { job_money: _money, ...rest } = reply
+  const { job_money: _money, to_job_money: _toMoney, ...rest } = reply
   return rest
 }
 
@@ -619,7 +635,7 @@ function jobCard(job: LaborJobRow): Json {
 }
 
 /** The job's sub labor from its sheets and the profit band, before and after a change of `deltaCents` in sheet cost. */
-function laborAndMoney(world: SubLaborWorld, deltaCents: number): { job_labor: Json; job_money: Json } {
+function laborAndMoney(world: Pick<JobSide, 'sheets' | 'items' | 'settings' | 'money'>, deltaCents: number): { job_labor: Json; job_money: Json } {
   const before = world.sheets.reduce((s, sh) => s + sheetJobCostCents(sh, world.items.filter((i) => i.job_id === sh.id), world.settings), 0)
   const job_labor = { source: 'laborJobSubCost over every sheet on the job — the Job window\'s own kernel', sheets: world.sheets.length, cost_before: before / 100, cost_after: (before + deltaCents) / 100 }
   const money = world.money
@@ -658,8 +674,20 @@ export function subLaborNoteBody(p: SubLaborPayload, world: SubLaborWorld, perso
     return `Sub labor sheet removed: ${who}, ${day}, ${laborDollars(owed)}. Reason: ${p.reason}`
   }
   if (!p.reason) return null
-  const parts = [p.date && p.date !== day ? `its day ${day} → ${p.date}` : '', p.lines ? `its lines replaced (${p.lines.length})` : ''].filter(Boolean)
+  const toJob = p.job_id && p.job_id !== world.sheet.job_ledger_id ? world.to?.job ?? null : null
+  const moved = toJob ? `moved here from ${world.job ? laborJobLabel(world.job) : 'no job'}` : ''
+  const parts = [moved, p.date && p.date !== day ? `its day ${day} → ${p.date}` : '', p.lines ? `its lines replaced (${p.lines.length})` : ''].filter(Boolean)
+  if (toJob) {
+    const owed = sheetOwedCents(world.sheet.labor_rate, world.items.filter((i) => i.job_id === world.sheet!.id))
+    return `Sub labor sheet for ${who} (${day}${p.lines ? '' : `, ${laborDollars(owed)}`}) ${parts.join(', ')}.${p.stated ? ` The days are stated from ${p.stated.source}, not punched.` : ''} Reason: ${p.reason}`
+  }
   return `Sub labor sheet for ${who} (${day}) changed: ${parts.join(', ') || 'no change'}.${p.stated ? ` The days are stated from ${p.stated.source}, not punched.` : ''} Reason: ${p.reason}`
+}
+
+/** The job the apply's note lands on: the job a change moves the sheet to, else the sheet's own; null for a sheet tied to none. */
+export function subLaborNoteJobId(p: SubLaborPayload, world: SubLaborWorld): string | null {
+  if (p.action === 'change' && p.job_id && world.sheet && p.job_id !== world.sheet.job_ledger_id && world.to?.job) return world.to.job.id
+  return world.job?.id ?? null
 }
 
 const noteWords = (body: string | null, label: string): Json => (body ? { note_on_activity: body, note_shows: `${label}'s Job activity / notes, as a note by you` } : { note_on_activity: null })
@@ -670,7 +698,7 @@ const ADD_DOES_NOT = [
   'It moves no bank row. A bank row already allocated to this job stays allocated: plan_cost_batch moves it.',
   'It writes no miles (the form no longer asks), no invoice link, and no work order or agreement for the sub to sign.',
   'It leaves the stage at Working, where the form starts a sheet. Jobs → Subs moves the stage; Paid sets itself once the balance is $0.',
-  'It writes a sheet for one subcontractor. A sheet for several people, or for a teammate who is not a sub, is the form\'s own.',
+  'It writes a sheet for one subcontractor or primary. A sheet for several people, or for any other teammate, is the form\'s own.',
 ]
 
 /**
@@ -709,6 +737,7 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
     if (bank.length) warnings.push(`${label} already carries ${bank.length === 1 ? 'a bank row' : `${bank.length} bank rows`} allocated as cost that may be this same pay (bank_rows_that_may_be_this_pay). Each counts in the job's profit as a card charge, and the sheet would count as sub labor: the same dollars twice. ${TWICE_FIX}`)
     if (overlap.length) warnings.push(`${person.name} already has ${overlap.length === 1 ? 'a sheet' : `${overlap.length} sheets`} on ${label} in these days; this one is written beside ${overlap.length === 1 ? 'it' : 'them'} because second_sheet_ok is true.`)
     if (p.through && !p.lines.some((l) => l.day)) warnings.push(`The sheet covers ${dayWords(p.date, p.through)} and no line names its day. Give each line its day so the sheet says which day was which.`)
+    if (person.pay_ledger === 'crew' && person.people_id) warnings.push(`${person.name} is ${person.kind === 'primary' || person.role === 'primary' ? 'a primary' : `a ${person.kind ?? 'teammate'} with a ${(person.role ?? 'no').replace(/_/g, ' ')} account`}, not a roster sub. The form's Subcontractors list offers them, and the Pay ledger files their sheets under Crew pay (no roster sub on the sheet: pays through payroll), outside what is owed to subs. The sheet still counts on ${label} as sub labor, and a payment on it is still recorded.`)
     if (!person.people_id) warnings.push(`${person.name} has an account and no roster row on People, so no assignee row would tie the sheet to them: their portal and get_hours_statement find a sheet by that row. The sheet still counts on ${label} and in the Pay ledger under their name. People → Subs adds the roster row; then plan again.`)
     if (person.sample) warnings.push(`${person.name} is a sample account: this is a practice sheet on real job cost. Remove it with action remove when the walk is done.`)
     const noteBody = subLaborNoteBody(p, world, person.name)
@@ -717,7 +746,7 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
       reply: {
         action: 'add',
         job: jobCard(job),
-        person: { name: person.name, people_id: person.people_id, user_id: person.user_id, kind: person.kind ?? 'sub', ...(person.sample ? { sample: true } : {}) },
+        person: { name: person.name, people_id: person.people_id, user_id: person.user_id, kind: person.kind ?? (person.role === 'primary' ? 'primary' : 'sub'), pay_ledger: person.pay_ledger === 'sub' ? 'a roster sub: the sheet reads as theirs in the Pay ledger' : 'Crew pay: the Pay ledger files the sheet under Crew pay', ...(person.sample ? { sample: true } : {}) },
         sheet: row,
         lines: linesCard(items, rate),
         totals: { owed_to_them: owed / 100, cost_on_the_job: cost / 100, ...(hours ? { hours } : {}), priced: 'amount' in p.lines[0]! ? 'flat amounts' : 'hours at a rate' },
@@ -782,28 +811,55 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
   // change
   const dayNow = sheetDay(sheet)
   const dateMoves = !!p.date && p.date !== String(sheet.job_date ?? '').slice(0, 10)
+  // The Edit window's change beside the job (persistPickedJobForEdit): the sheet takes the job, its number and its address.
+  const jobMoves = !!p.job_id && p.job_id !== sheet.job_ledger_id
+  const to = jobMoves ? world.to : null
+  if (jobMoves && !to?.job) return { ok: false, refused: `No job ${p.job_id} is visible to you — find_job resolves a number or a name.` }
+  const toJob = to?.job ?? null
+  const toLabel = toJob ? laborJobLabel(toJob) : ''
+  if (toJob && !has(toJob.job_address)) return { ok: false, refused: `${toLabel} has no address, and a sheet takes its job's address. plan_job_update sets job_address first.` }
   const newItems = p.lines ? sheetItemRows(p.lines, p.stated) : null
   const newRate = p.lines ? sheetRateFor(p.lines, world.settings) : Number(sheet.labor_rate) || 0
   const sameLines = !!newItems && newItems.length === oldItems.length && newItems.every((n, i) => {
     const o = oldItems[i]!
     return n.fixture === (o.fixture ?? '') && cents(n.count) === cents(o.count) && cents(n.hrs_per_unit) === cents(o.hrs_per_unit) && n.is_fixed === (o.is_fixed === true) && (n.labor_rate == null ? o.labor_rate == null : o.labor_rate != null && cents(n.labor_rate) === cents(o.labor_rate)) && (n.direct_labor_amount == null ? o.direct_labor_amount == null : o.direct_labor_amount != null && cents(n.direct_labor_amount) === cents(o.direct_labor_amount))
   }) && cents(newRate) === cents(sheet.labor_rate)
-  if (!dateMoves && (!newItems || sameLines)) return { ok: false, refused: `That sheet already reads that way. Nothing to change.` }
-  const patch: Json = { ...(dateMoves ? { job_date: p.date } : {}), ...(newItems && !sameLines && cents(newRate) !== cents(sheet.labor_rate) ? { labor_rate: newRate } : {}) }
+  if (!dateMoves && !jobMoves && (!newItems || sameLines)) return { ok: false, refused: p.job_id && !p.date && !p.lines ? `That sheet is already on ${label}. Nothing to change.` : `That sheet already reads that way. Nothing to change.` }
+  const patch: Json = {
+    ...(toJob ? { job_number: sheetJobNumber(toJob), job_ledger_id: toJob.id, address: (toJob.job_address ?? '').trim() } : {}),
+    ...(dateMoves ? { job_date: p.date } : {}),
+    ...(newItems && !sameLines && cents(newRate) !== cents(sheet.labor_rate) ? { labor_rate: newRate } : {}),
+  }
   const linesMove = !!newItems && !sameLines
   const owedAfter = linesMove ? sheetOwedCents(newRate, newItems!) : oldOwed
   const costAfter = linesMove ? sheetJobCostCents({ labor_rate: newRate, distance_miles: sheet.distance_miles }, newItems!, world.settings) : oldCost
   const bal = sheetBalance(owedAfter, pays)
-  const warnings: string[] = [...noJob]
+  const warnings: string[] = toJob ? [] : [...noJob]
   if (linesMove && bal.paid + bal.backcharged > owedAfter && owedAfter > 0) warnings.push(`The sheet has ${laborDollars(bal.paid)} paid${bal.backcharged ? ` and ${laborDollars(bal.backcharged)} backcharged` : ''}, more than the ${laborDollars(owedAfter)} it would owe: it would read overpaid by ${laborDollars(bal.paid + bal.backcharged - owedAfter)}.`)
   if (linesMove && sheet.step_id) warnings.push('This sheet belongs to a project step, whose agreed amount its line carries. Changing the line leaves the step and the sheet apart.')
   if (linesMove && sheetNames(sheet).length > 1) warnings.push(`This sheet is shared by ${sheetNames(sheet).join(' and ')}. The new lines replace the lines for all of them.`)
-  const noteBody = world.job ? subLaborNoteBody(p, world, who) : null
+  // On the job it moves to: a sheet of the same people on the same day, and bank rows that may be this same pay.
+  let moveCards: Json = {}
+  if (to && toJob) {
+    const dayAfter = p.date && dateMoves ? p.date : dayNow
+    const names = sheetNames(sheet)
+    const lower = new Set(names.map((n) => n.toLowerCase()))
+    const sameDay = to.sheets.filter((s) => s.id !== sheet.id && sheetDay(s) === dayAfter && sheetNames(s).some((n) => lower.has(n.toLowerCase())))
+    if (sameDay.length) warnings.push(`${who} already has ${sameDay.length === 1 ? 'a sheet' : `${sameDay.length} sheets`} on ${toLabel} for ${dayAfter} (${sameDay.map((s) => s.id).join(', ')}). This one would stand beside ${sameDay.length === 1 ? 'it' : 'them'}: if both are the same work, the labor counts twice.`)
+    const bank = bankLinesLikeThisPay(to.bankLines, names, owedAfter)
+    if (bank.length) warnings.push(`${toLabel} already carries ${bank.length === 1 ? 'a bank row' : `${bank.length} bank rows`} allocated as cost that may be this same pay (bank_rows_that_may_be_this_pay). Each counts in the job's profit as a card charge, and the sheet would count there as sub labor: the same dollars twice. ${TWICE_FIX}`)
+    if (sheet.step_id) warnings.push('This sheet belongs to a project step. Moving it to another job leaves the step pointing at a sheet on that job.')
+    const toSide = laborAndMoney(to, costAfter)
+    moveCards = { moves_to: jobCard(toJob), to_job_sheets: to.sheets.map((s) => sheetCard(s, to)), to_job_labor: toSide.job_labor, to_job_money: toSide.job_money, bank_rows_that_may_be_this_pay: bank }
+  }
+  const noteLabel = toJob ? toLabel : label
+  const noteBody = world.job || toJob ? subLaborNoteBody(p, world, who) : null
   return {
     ok: true,
     reply: {
       action: 'change',
       job: world.job ? jobCard(world.job) : null,
+      ...moveCards,
       before,
       after: {
         day: p.date && dateMoves ? p.date : dayNow,
@@ -816,11 +872,20 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
       sheet_patch: patch,
       replaces_lines: linesMove,
       job_sheets: world.sheets.map((s) => sheetCard(s, world)),
-      ...laborAndMoney(world, costAfter - oldCost),
-      door: [Object.keys(patch).length ? 'the sheet row patched as you under RLS' : '', linesMove ? 'every line deleted and the new lines inserted, as the Edit window\'s save does' : ''].filter(Boolean).join('; then '),
-      sets_off: [...(linesMove && world.job ? [`${label}'s sub labor moves by ${laborDollars(costAfter - oldCost)} at once`] : []), ...(dateMoves ? ['the sheet counts on its new day in the Pay ledger and on an hours statement'] : []), 'the sheet\'s payments, stage, people and job stay as they are'],
-      ...noteWords(noteBody, label),
-      does_not: ['It changes no payment, no person and no job on the sheet: those are the Edit window\'s own presses (a payment is plan_sub_labor_payment).', 'It tells nobody.'],
+      // A sheet that moves leaves its job whole; one that stays moves its job by the difference.
+      ...laborAndMoney(world, toJob ? -oldCost : costAfter - oldCost),
+      door: [
+        Object.keys(patch).length ? `the sheet row patched as you under RLS${toJob ? ' — its job, number and address as the Edit window\'s change beside the job writes them' : ''}` : '',
+        linesMove ? 'every line deleted and the new lines inserted, as the Edit window\'s save does' : '',
+      ].filter(Boolean).join('; then '),
+      sets_off: [
+        ...(toJob ? [`${world.job ? `${label}'s sub labor drops by ${laborDollars(oldCost)} and ` : ''}${toLabel}'s rises by ${laborDollars(costAfter)} at once: the profit band, the Cost Timeline and get_job`] : []),
+        ...(linesMove && world.job && !toJob ? [`${label}'s sub labor moves by ${laborDollars(costAfter - oldCost)} at once`] : []),
+        ...(dateMoves ? ['the sheet counts on its new day in the Pay ledger and on an hours statement'] : []),
+        toJob ? 'the sheet\'s payments, stage and people go with it, as they are' : 'the sheet\'s payments, stage, people and job stay as they are',
+      ],
+      ...noteWords(noteBody, noteLabel),
+      does_not: ['It changes no payment and no person on the sheet: those are the Edit window\'s own presses (a payment is plan_sub_labor_payment).', 'It moves no bank row: a row allocated to either job stays where it is (plan_cost_batch).', 'It tells nobody.'],
       ...(warnings.length ? { warnings } : {}),
     },
   }

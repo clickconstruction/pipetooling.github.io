@@ -28,6 +28,7 @@ import {
   subLaborDryRun,
   subLaborInput,
   subLaborNoteBody,
+  subLaborNoteJobId,
   subLaborPaymentAppliedWords,
   subLaborPaymentDryRun,
   subLaborPaymentInput,
@@ -41,7 +42,7 @@ import { CATALOG_RPCS } from '../../../supabase/functions/dev-mcp/catalog'
 import { LABOR_ASSIGNED_DELIMITER as APP_DELIMITER } from '../combinePeople'
 import { lineLaborCost } from '../peopleLaborJobItemLineCost'
 import { DEFAULT_LABOR_RATE_KEY as APP_RATE_KEY } from '../settings/jobsBillingValueLines'
-import { ALLOC, BANK, BENCH_ROW, DEV, GONE_ROW, JOB, MASTER_USER, MONEY, OTHER_JOB, SHEET, SHEET_PAY, SUB_ROW, SUB_USER, TODAY, TWIN_USER, bank, bankLine, fakeRest, job, masterUser, sheet, sheetLine, sheetPay, standingWorld, subRow, subUser, worldWithSheet } from './subLaborFixture'
+import { ALLOC, BANK, BENCH_ROW, DEV, GONE_ROW, JOB, MASTER_USER, MONEY, OTHER_JOB, PRIMARY_ROW, PRIMARY_USER, SHEET, SHEET_PAY, SUB_ROW, SUB_USER, TODAY, TWIN_USER, bank, bankLine, fakeRest, job, masterUser, otherJob, sheet, sheetLine, sheetPay, standingWorld, subRow, subUser, worldWithSheet } from './subLaborFixture'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -200,7 +201,7 @@ describe('devMcpSubLabor — who a sheet is for', () => {
   it('finds the sub by name in any case, by roster row and by account, as one person', async () => {
     for (const asked of ['zz sample sub', SUB_ROW, SUB_USER]) {
       const f = await facts(asked)
-      expect(f).toMatchObject({ ok: true, person: { name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', role: 'subcontractor', sample: false, people_ids: [SUB_ROW], names: ['ZZ Sample Sub'] } })
+      expect(f).toMatchObject({ ok: true, person: { name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', role: 'subcontractor', pay_ledger: 'sub', sample: false, people_ids: [SUB_ROW], names: ['ZZ Sample Sub'] } })
     }
   })
   it('refuses a teammate who is not a sub, an archived sub, a sub on the bench, a twin, nobody and two people of one name', async () => {
@@ -209,17 +210,32 @@ describe('devMcpSubLabor — who a sheet is for', () => {
       if (f.ok) throw new Error('expected a refusal')
       return f.refused
     }
-    expect(await say(MASTER_USER)).toContain('ZZ Sample Master is not a subcontractor (a master technician)')
-    expect(await say(MASTER_USER)).toContain('Crew pay sheet, paid through payroll')
+    expect(await say(MASTER_USER)).toContain('ZZ Sample Master is not a subcontractor or a primary (a master technician)')
+    expect(await say(MASTER_USER)).toContain('paid through payroll from their hours')
     expect(await say(GONE_ROW)).toContain('ZZ Gone Sub is archived')
     expect(await say(BENCH_ROW)).toContain('on the bench since 2026-08-01')
     expect(await say(TWIN_USER)).toContain('is a digital twin')
     expect(await say('ZZ Nobody')).toContain('No person "ZZ Nobody" is visible to you')
     const two = standingWorld({ people: [subRow(), subRow({ id: BENCH_ROW, account_user_id: null, end_date: null })] })
     expect(await say('ZZ Sample Sub', two)).toContain('matches 2 people')
-    // A roster sub whose account is an office role is paid as crew, not as a sub (isRosterSub).
+    // A roster row of kind sub whose account is an office role is not on the form's list: the account's role decides.
     const office = standingWorld({ users: [subUser({ role: 'assistant' })] })
-    expect(await say(SUB_ROW, office)).toContain('a roster sub whose account is assistant')
+    expect(await say(SUB_ROW, office)).toContain('on the roster as a sub with a assistant account')
+  })
+  it('a primary is taken as the form’s Subcontractors list offers one, and the plan says the Pay ledger files the sheet under Crew pay', async () => {
+    for (const asked of ['ZZ Sample Primary', PRIMARY_ROW, PRIMARY_USER]) {
+      expect(await facts(asked)).toMatchObject({ ok: true, person: { name: 'ZZ Sample Primary', people_id: PRIMARY_ROW, user_id: PRIMARY_USER, kind: 'primary', role: 'primary', pay_ledger: 'crew' } })
+    }
+    const r = await reply({ ...FLAT, person: PRIMARY_USER })
+    expect(r.person).toEqual({ name: 'ZZ Sample Primary', people_id: PRIMARY_ROW, user_id: PRIMARY_USER, kind: 'primary', pay_ledger: 'Crew pay: the Pay ledger files the sheet under Crew pay' })
+    expect(r.sheet).toMatchObject({ assigned_to_name: 'ZZ Sample Primary' })
+    const warned = (r.warnings as string[]).join(' ')
+    expect(warned).toContain('ZZ Sample Primary is a primary, not a roster sub')
+    expect(warned).toContain('under Crew pay')
+    expect(warned).toContain('still counts on JP9102 as sub labor')
+    expect(FORM).toContain("const fromPrimaries = byKind('primary')")
+    // A primary with no account is offered by the roster row alone.
+    expect(await facts(PRIMARY_ROW, standingWorld({ users: [] }))).toMatchObject({ ok: true, person: { user_id: null, kind: 'primary', pay_ledger: 'crew' } })
   })
   it('a sample sub is taken, and the plan says it is practice', async () => {
     const r = await reply(FLAT, standingWorld({ users: [subUser({ is_sample: true }), masterUser()] }))
@@ -239,7 +255,7 @@ describe('devMcpSubLabor — a stated three-day sheet', () => {
     if (!dry.ok) throw new Error(dry.refused)
     const r = dry.reply
     expect(r.job).toMatchObject({ id: JOB, label: 'JP9102', address: '12 Cedar Ridge Rd' })
-    expect(r.person).toEqual({ name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub' })
+    expect(r.person).toEqual({ name: 'ZZ Sample Sub', people_id: SUB_ROW, user_id: SUB_USER, kind: 'sub', pay_ledger: 'a roster sub: the sheet reads as theirs in the Pay ledger' })
     expect(r.sheet).toEqual({ master_user_id: DEV, assigned_to_name: 'ZZ Sample Sub', address: '12 Cedar Ridge Rd', job_number: '9102', job_ledger_id: JOB, labor_rate: 45, job_date: '2026-10-14', distance_miles: 0, invoice_link: null })
     expect(sheetItemRows((p as SubLaborAdd).lines, (p as SubLaborAdd).stated)).toEqual([
       { fixture: '2026-10-14 · Rough-in, east wing (stated, their own day log)', count: 1, hrs_per_unit: 8, is_fixed: false, labor_rate: 45, direct_labor_amount: null, sequence_order: 1 },
@@ -386,6 +402,64 @@ describe('devMcpSubLabor — change and remove', () => {
     expect(r.note_on_activity).toBeNull()
     expect(await refusal({ action: 'change', sheet_id: SHEET, lines: [{ what: 'Set fixtures, unit 4', amount: 600 }] }, worldWithSheet())).toContain('already reads that way')
     expect(FORM).toContain(".from('people_labor_job_items').delete().eq('job_id', editingLaborJob.id)")
+  })
+  it('moves a sheet to another job as the Edit window’s change beside the job does: the job, its number and its address', async () => {
+    const MOVE = { action: 'change', sheet_id: SHEET, job_id: OTHER_JOB, reason: 'the work was on Birch Lane' }
+    const withPay = worldWithSheet({ people_labor_job_payments: [sheetPay()] })
+    const { p, world, dry } = await plan(MOVE, withPay)
+    if (!dry.ok) throw new Error(dry.refused)
+    const r = dry.reply
+    expect(r.sheet_patch).toEqual({ job_number: '9103', job_ledger_id: OTHER_JOB, address: '4 Birch Lane' })
+    expect(r.replaces_lines).toBe(false)
+    expect(r.job).toMatchObject({ id: JOB, label: 'JP9102' })
+    expect(r.moves_to).toMatchObject({ id: OTHER_JOB, label: 'JP9103', address: '4 Birch Lane' })
+    expect(r.after).toMatchObject({ day: '2026-10-15', lines: 'as they are', owed: 600, paid: 200, open: 400, job_cost: 600 })
+    expect(r.job_labor).toMatchObject({ sheets: 1, cost_before: 600, cost_after: 0 })
+    expect(r.to_job_labor).toMatchObject({ sheets: 0, cost_before: 0, cost_after: 600 })
+    expect(r.job_money).toMatchObject({ after: { sub_labor: -600, profit: 16600 } })
+    expect(r.to_job_money).toMatchObject({ after: { sub_labor: 600, profit: 15400 } })
+    expect(r.to_job_sheets).toEqual([])
+    expect(String(r.door)).toContain('its job, number and address as the Edit window\'s change beside the job writes them')
+    expect((r.sets_off as string[])[0]).toContain("JP9102's sub labor drops by $600.00 and JP9103's rises by $600.00")
+    expect((r.sets_off as string[]).join(' ')).toContain('payments, stage and people go with it')
+    expect(r.note_on_activity).toBe('Sub labor sheet for ZZ Sample Sub (2026-10-15, $600.00) moved here from JP9102. Reason: the work was on Birch Lane')
+    expect(r.note_shows).toBe("JP9103's Job activity / notes, as a note by you")
+    expect(subLaborNoteJobId(p, world)).toBe(OTHER_JOB)
+    expect(r.warnings).toBeUndefined()
+    expect(subLaborCommitment(r).to_job_money).toBeUndefined()
+    expect(FORM).toContain('job_number: subLaborJobNumberForStorage(job) || null,\n        job_ledger_id: job.id,\n        address: job.job_address ?? \'\',')
+    // A sheet tied to no job moves onto one, and nothing is said about the job it never had.
+    const lone = await reply({ action: 'change', sheet_id: SHEET, job_id: OTHER_JOB }, worldWithSheet({ people_labor_jobs: [sheet({ job_ledger_id: null })] }))
+    expect(lone.job).toBeNull()
+    expect(lone.moves_to).toMatchObject({ label: 'JP9103' })
+    expect(lone.warnings).toBeUndefined()
+    expect(lone.note_on_activity).toBeNull()
+  })
+  it('a move refuses the job it is on, a job RLS hides and a job with no address, and warns of a second sheet or a bank row there', async () => {
+    expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: JOB }, worldWithSheet())).toBe('That sheet is already on JP9102. Nothing to change.')
+    expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: 'aaaaaaaa-0000-4000-8000-00000000000f' }, worldWithSheet())).toContain('No job')
+    expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: OTHER_JOB }, worldWithSheet({ jobs_ledger: [job(), otherJob({ job_address: '' })] }))).toContain('JP9103 has no address')
+    const OTHER_SHEET = 'cccccccc-0000-4000-8000-000000000009'
+    const busy = worldWithSheet({
+      people_labor_jobs: [sheet(), sheet({ id: OTHER_SHEET, job_ledger_id: OTHER_JOB, job_number: '9103' })],
+      people_labor_job_items: [sheetLine(), sheetLine({ id: 'cccccccc-0000-4000-8000-00000000000a', job_id: OTHER_SHEET, direct_labor_amount: 250 })],
+      mercury_transaction_job_allocations: [bankLine({ job_id: OTHER_JOB, amount: -600, mercury_transactions: { posted_at: '2026-10-20T17:00:00+00:00', counterparty_name: 'ZZ SAMPLE SUB LLC', amount: -600 } })],
+    })
+    const r = await reply({ action: 'change', sheet_id: SHEET, job_id: OTHER_JOB, date: '2026-10-15' }, busy)
+    expect(r.to_job_labor).toMatchObject({ sheets: 1, cost_before: 250, cost_after: 850 })
+    expect((r.to_job_sheets as unknown[]).length).toBe(1)
+    const warned = (r.warnings as string[]).join(' ')
+    expect(warned).toContain(`ZZ Sample Sub already has a sheet on JP9103 for 2026-10-15 (${OTHER_SHEET})`)
+    expect(warned).toContain('the same dollars twice')
+    expect(r.bank_rows_that_may_be_this_pay).toMatchObject([{ allocation_id: ALLOC, why: 'paid to a name that reads like theirs, for the same amount' }])
+    // The hash holds the job it moves to: a sheet landed there since refuses the apply.
+    const p = shaped({ action: 'change', sheet_id: SHEET, job_id: OTHER_JOB })
+    const hashOf = async (data: Data) => {
+      const dry = subLaborDryRun(p, await readSubLaborWorld(fakeRest(data), p, DEV))
+      if (!dry.ok) throw new Error(dry.refused)
+      return planHash('plan_sub_labor', p, subLaborCommitment(dry.reply))
+    }
+    expect(await hashOf(worldWithSheet())).not.toBe(await hashOf(busy))
   })
   it('will not remove a sheet that carries a payment, and removes one that does not', async () => {
     const REMOVE = { action: 'remove', sheet_id: SHEET, reason: 'made twice for the same days' }
