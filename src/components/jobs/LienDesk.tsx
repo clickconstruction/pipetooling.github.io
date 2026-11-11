@@ -113,10 +113,13 @@ import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet } from '../../lib/jobs/lienAffidavitBatch'
+import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet } from '../../lib/jobs/lienAffidavitBatch'
 import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
+import { useLienAskPeople } from './lienAskPeopleChoice'
+import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
+import { lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
@@ -1632,10 +1635,13 @@ export default function LienDesk({
   const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
   // The county these are signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
   const affSigning = useLienSigningCounty(issuer)
+  // Who a help sheet says to ask (change 9): the job's lien leader, or the dev.
+  const askFor = useLienAskPeople()
   const affPrintIssuer = affSigning.issuer
   const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
     if (!data) return []
-    return lienAffidavitPrintPlan(data.affidavits.entries).ready.flatMap((e) => {
+    // In clerk order (change 7): each county clerk's papers print together, and the help sheet's rows count them as they lie in the stack.
+    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(data.affidavits.entries).ready.flatMap((e): LienAffidavitPrintPaper[] => {
       const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer: affPrintIssuer, signerNameFor, todayYmd })
       const job = data.jobsById[e.jobId]
       if (!fields) return []
@@ -1644,9 +1650,9 @@ export default function LienDesk({
       const filings = data.filingsByJob[e.jobId] ?? []
       const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings }), filings }))
       const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
-      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked }]
-    })
-  }, [data, affPrintIssuer, signerNameFor, todayYmd])
+      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null) }]
+    }))
+  }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const printReadyAffidavits = () => {
@@ -1661,6 +1667,7 @@ export default function LienDesk({
             ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
           ],
           demandDate(todayYmd),
+          { guideCode: lienHelpGuideCode() },
         )
       : null
     const run = lienAffidavitPrintRun(affPrintPapers, helpSheet)

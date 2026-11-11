@@ -63,6 +63,18 @@ describe('the company block · Physical address, if different', () => {
     expect(issuerIo.save.mock.calls[issuerIo.save.mock.calls.length - 1]![0]).toMatchObject({ signingCounty: 'Travis' })
   })
 
+  it('County clerks takes one clerk a line, and Save hands the list over (punch list #314, change 10)', async () => {
+    renderWithProviders(<PhysicalInvoiceIssuerDevSettingsBlock />)
+    const clerks = (await screen.findByLabelText('County clerks, for the lien help sheets')) as HTMLTextAreaElement
+    expect(clerks.value).toBe('')
+    expect(clerks.getAttribute('data-settings-focus')).toBe('issuer.countyClerksText')
+    expect(document.body.textContent).toContain('One clerk on each line: County | where to file | fee | hours.')
+    fireEvent.change(clerks, { target: { value: 'Alder | 100 Court St, Marlow | $26 first page | 8 to 5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(issuerIo.save).toHaveBeenCalled())
+    expect(issuerIo.save.mock.calls[issuerIo.save.mock.calls.length - 1]![0]).toMatchObject({ countyClerksText: 'Alder | 100 Court St, Marlow | $26 first page | 8 to 5' })
+  })
+
   it('opens on the address Settings hold, and a door that names the field lands on it', async () => {
     issuerIo.draft.physicalAddressText = '1 Shop Rd\nSan Antonio, TX 78201'
     renderWithProviders(<PhysicalInvoiceIssuerDevSettingsBlock focusField="physicalAddressText" />)
