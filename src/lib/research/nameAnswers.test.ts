@@ -144,6 +144,7 @@ describe('tiedNames', () => {
         row({ answered_by: 'u1', answered_at: '2026-11-10T18:00:00Z' }),
         row({ builder_key: 'marlowdesign', name: 'Marlow Design Group', scope: 'this_permit', permit_id: 'p9', answered_by: 'u2', answered_at: '2026-11-09T18:00:00Z' }),
         row({ builder_key: 'hartwell', name: 'Hartwell Interiors', answer: 'someone_else', scope: null }),
+        row({ builder_key: 'ridgewaybuilderstexas', name: 'Ridgeway Builders of Texas LLC', answered_by: 'u2', answered_at: '2026-11-08T18:00:00Z' }),
       ],
       ['c1'],
     )
@@ -151,6 +152,7 @@ describe('tiedNames', () => {
       { key: 'ridgewaybuilders', name: 'Ridgeway Builders', how: 'Their own name', tie: 'own', permitIds: [] },
       { key: 'danawhitlow', name: 'Dana Whitlow', how: 'Works for them · your word, Nov 10', tie: 'all', permitIds: [] },
       { key: 'marlowdesign', name: 'Marlow Design Group', how: 'Tied on 1 permit · Sam’s word, Nov 9', tie: 'permits', permitIds: ['p9'] },
+      { key: 'ridgewaybuilderstexas', name: 'Ridgeway Builders of Texas LLC', how: 'Same company · Sam’s word, Nov 8', tie: 'all', permitIds: [] },
     ])
   })
 

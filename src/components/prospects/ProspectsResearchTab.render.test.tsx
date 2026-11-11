@@ -30,6 +30,8 @@ const io = vi.hoisted(() => ({
   loadPermitFunnel: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
+const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
+vi.mock('../../lib/research/bidSiteIo', () => siteIo)
 const streetView = vi.hoisted(() => ({
   fetchStreetViewMetaWithMonth: vi.fn(),
   fetchStreetViewImageBlob: vi.fn(),
@@ -109,6 +111,12 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.loadLatestPull.mockReset().mockResolvedValue({ ranAt: new Date().toISOString(), error: null })
     io.loadRecordsStart.mockReset().mockResolvedValue(RECORDS_START)
     io.pullPermitsBack.mockReset().mockResolvedValue(6412)
+    // The answers table is not on the database unless a test says so: no look-alike chip.
+    siteIo.loadAllNameAnswers.mockReset().mockResolvedValue(null)
+    siteIo.loadCustomerNames.mockReset().mockResolvedValue([])
+    siteIo.loadRecentBidsWithCustomer.mockReset().mockResolvedValue([])
+    siteIo.loadPermitsByHouseNumber.mockReset().mockResolvedValue([])
+    siteIo.recordNameAnswer.mockReset().mockResolvedValue(undefined)
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
     io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
@@ -589,6 +597,30 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.change(within(sheet).getByLabelText('Why, in a line'), { target: { value: 'Slow pay on the Millrace job.' } })
       fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
       await waitFor(() => expect(io.markBuilder).toHaveBeenCalledWith('tallpinedevelopment', 'avoid', 'Slow pay on the Millrace job.', 'u1'))
+    })
+
+    it('lists the names that look like a customer behind a chip, and ties one on the press', async () => {
+      io.loadBuilders.mockResolvedValue([
+        { key: 'tallpinedevelopmentgroup', name: null, sample_contact: 'Tall Pine Development Group LLC', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+        { key: 'copperlinemechanical', name: null, sample_contact: 'Copperline Mechanical', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 3, open: 0, last_permit_on: '2026-11-01', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null },
+      ])
+      siteIo.loadAllNameAnswers.mockResolvedValue({ rows: [], me: 'u1' })
+      siteIo.loadCustomerNames.mockResolvedValue([{ id: 'c7', name: 'Tall Pine Development' }, { id: 'c8', name: 'Larkspur Dental' }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Looks like a customer 1' }))
+      expect(await screen.findByText('One name begins the other')).toBeTruthy()
+      expect(screen.getByText('Tall Pine Development', { selector: 'strong' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Same company' }))
+      await waitFor(() => expect(siteIo.recordNameAnswer).toHaveBeenCalledWith({ builderKey: 'tallpinedevelopmentgroup', customerId: 'c7', answer: 'works_for', scope: 'all', permitId: null, name: 'Tall Pine Development Group LLC' }))
+    })
+
+    it('draws no look-alike chip before the answers table is on the database', async () => {
+      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Tall Pine Development' })).toBeTruthy())
+      expect(screen.queryByRole('button', { name: /^Looks like a customer/ })).toBeNull()
     })
 
     it('reads one step further back on the press, and reads where the records start again', async () => {

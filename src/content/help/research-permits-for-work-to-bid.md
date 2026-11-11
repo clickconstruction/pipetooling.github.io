@@ -89,6 +89,8 @@ Press **Builders**. The list shows every name on a commercial permit we can see.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
+Press **Looks like a customer** to see names that may be one of our customers. Each row says why. Press **Same company** or **Not them**. Nothing is tied until you press.
+
 Press a builder's name. Pick **Good** or **Avoid** and say why in a line. The mark shows on every skim card of that builder. A Good builder's permits come first. An Avoid builder's permits come last.
 
 Pick **Files for others** under what kind of company for a name that pulls permits for other people. Its cards then lead with the county's owner.

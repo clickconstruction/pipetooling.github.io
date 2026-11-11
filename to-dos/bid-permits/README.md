@@ -2,9 +2,9 @@
 name: "Bids and permits: what the city knows about this site and this GC, on the bid"
 number: 307
 group: gated
-status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit · his word after that: build it all · PR 2 and 3, the bid window's two blocks, built together as v2.6866 with one read · PR 5, permit news on the Bid Board, built as v2.6870 · PR 6 and 7, the answer on a name and the names tied to a GC, built together as v2.6872 with one table · the rest of PR 4, the read back as history, built as v2.6873 · PR 8, Austin, came with #292's revision 4 the same day (v2.6859, v2.6861), with New Braunfels, San Marcos and Seguin, so the bid's panels read all five cities · his word on the first screenshots: let a person link one of our customers to a name on permits and see what the two share · drawn as link-a-name.html with a second look, twelve GCs probed on real rows, not built
+status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit · his word after that: build it all · PR 2 and 3, the bid window's two blocks, built together as v2.6866 with one read · PR 5, permit news on the Bid Board, built as v2.6870 · PR 6 and 7, the answer on a name and the names tied to a GC, built together as v2.6872 with one table · the rest of PR 4, the read back as history, built as v2.6873 · PR 8, Austin, came with #292's revision 4 the same day (v2.6859, v2.6861), with New Braunfels, San Marcos and Seguin, so the bid's panels read all five cities · his word on the first screenshots: let a person link one of our customers to a name on permits and see what the two share · drawn as link-a-name.html with a second look, twelve GCs probed on real rows · his word: yes, build both · PR 9 and 10 built together as v2.6886, with no migration
 mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html; linking a customer to its names: link-a-name.html)
-ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC) · v2.6870 (PR 5, permit news on the Bid Board) · v2.6872 (PR 6 and 7, the answer on a name) · v2.6873 (the rest of PR 4, the read back)
+ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC) · v2.6870 (PR 5, permit news on the Bid Board) · v2.6872 (PR 6 and 7, the answer on a name) · v2.6873 (the rest of PR 4, the read back) · v2.6886 (PR 9 and 10, linking a customer to its names)
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
   a person bidding. The test on real rows says the name is the weak join and the address is the
@@ -19,8 +19,8 @@ summary: >
   its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
   small table of answers. San Antonio covers about three bid sites in ten, so every line says
   what it can see: the city, the first day of the records, and what a count is out of.
-next: The owner's go on linking a customer to its names on permits (PR 9, then PR 10). The read back to January 2025 is run from Builders, a step at a time, once v2.6873 is live. Left unbuilt and named under each PR: the Ours chip, Mark lost on a news line, the likely name grade, Builders' column reading the answers. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
-size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 8; left: PR 9 and 10 (M · M) and the four small pieces named in next (S)
+next: Two weeks of use, then a look at what the answers on names have taught. The read back to January 2025 is run from Builders, a step at a time, once v2.6873 is live. Left unbuilt and named under each PR: the Ours chip, Mark lost on a news line, the likely name grade, Builders' column reading the answers. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
+size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 10; left: the four small pieces named in next (S)
 blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
@@ -305,7 +305,7 @@ this job* is a hint that can be wrong; seven sites in ten have no records until 
 read; knowing a plumbing permit is ours needs the office to say which names are us; and the
 names tied to a GC stay few until people have answered a few dozen times.
 
-## Linking a customer to its names on permits (asked 2026-11-10, drawn, not built)
+## Linking a customer to its names on permits (asked 2026-11-10, built as v2.6886)
 
 The owner, on the first real screenshots of the bid's window:
 
@@ -459,6 +459,8 @@ fences when they make a table, and are pushed from a checkout of main after the 
 10. **Looks like a customer (M).** The same row as a list on Builders behind a chip with its
     count, every customer against every name through one index of telling words, and a Needs
     you line while the count is above zero.
+    **PR 9 and 10 were built together 2026-11-10 as v2.6886** (`docs/recent-features/v2.6886.md`).
+    Not built: the Needs you line, and a phone or web domain in Compare.
 
 **Held:** the same phone or web domain as a grade (it needs Places lookups on hand); the suburbs'
 weekly file (#292); a Permits tab on the customer's page; merging customer rows that are one GC.
