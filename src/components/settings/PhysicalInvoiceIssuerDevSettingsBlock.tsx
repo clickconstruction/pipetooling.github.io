@@ -83,6 +83,18 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
             value={draft.addressText}
             onChange={(e) => setDraft((d) => ({ ...d, addressText: e.target.value }))}
           />
+          <label htmlFor="issuer-physical-address" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Physical address, if different</label>
+          <textarea
+            id="issuer-physical-address"
+            style={{ ...inputStyle, marginBottom: '0.25rem', minHeight: 56, ...ringStyle('physicalAddressText') }}
+            ref={ring === 'physicalAddressText' ? (ringRef as React.RefObject<HTMLTextAreaElement>) : undefined}
+            data-settings-focus="issuer.physicalAddressText"
+            value={draft.physicalAddressText ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, physicalAddressText: e.target.value }))}
+          />
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            A lien affidavit gives the address above as the mailing address. Type where the company is here, only when that is another place. The affidavit then prints both. Nothing else prints it.
+          </p>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Phone</label>
           <input
             style={{ ...inputStyle, marginBottom: '0.75rem' }}
