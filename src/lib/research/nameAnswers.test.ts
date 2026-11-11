@@ -100,6 +100,11 @@ describe('the words', () => {
     })
   })
 
+  it('ends a sentence once after a name that ends in a full stop', () => {
+    expect(questionWords('Dana Whitlow', 'Hartwell & Assoc.').why).toBe('Asked because you are bidding this address to Hartwell & Assoc. Asked once.')
+    expect(tiePreviewWords('Dana Whitlow', 'Hartwell & Assoc.', 0).lead).toBe('Dana Whitlow works for Hartwell & Assoc. The city lists Dana Whitlow on no other permit we can see.')
+  })
+
   it('shows what a tie would do before it does it', () => {
     expect(tiePreviewWords('Dana Whitlow', GC, 7)).toEqual({
       lead: 'Dana Whitlow works for Ridgeway Builders. The city lists Dana Whitlow on 7 other permits we can see.',

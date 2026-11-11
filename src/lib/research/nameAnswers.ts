@@ -149,13 +149,16 @@ export const SOMEONE_ELSE_KINDS: ReadonlyArray<{ kind: 'owner' | 'architect' | '
   { kind: null, words: 'Not sure who' },
 ]
 
+/** A name that ends a sentence. "Burd & Assoc." brings its own full stop, so the sentence adds none. */
+const ending = (name: string): string => (/\.$/.test(name.trim()) ? name.trim() : `${name.trim()}.`)
+
 /** The question as it is asked. */
 export function questionWords(name: string, customerName: string): { lead: string; ask: string; worksFor: string; why: string } {
   return {
     lead: `The city lists ${name} on this permit.`,
     ask: 'Do you know who that is?',
     worksFor: `Works for ${customerName}`,
-    why: `Asked because you are bidding this address to ${customerName}. Asked once.`,
+    why: `Asked because you are bidding this address to ${ending(customerName)} Asked once.`,
   }
 }
 
@@ -165,10 +168,10 @@ export function questionWords(name: string, customerName: string): { lead: strin
  */
 export function tiePreviewWords(name: string, customerName: string, otherPermits: number): { lead: string; all: string; one: string | null; why: string } {
   if (otherPermits <= 0) {
-    return { lead: `${name} works for ${customerName}. The city lists ${name} on no other permit we can see.`, all: `Tie ${name} to ${customerName}`, one: null, why: 'Later permits under this name will show under them too.' }
+    return { lead: `${name} works for ${ending(customerName)} The city lists ${name} on no other permit we can see.`, all: `Tie ${name} to ${customerName}`, one: null, why: 'Later permits under this name will show under them too.' }
   }
   return {
-    lead: `${name} works for ${customerName}. The city lists ${name} on ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} we can see.`,
+    lead: `${name} works for ${ending(customerName)} The city lists ${name} on ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} we can see.`,
     all: `Show all ${otherPermits} under ${customerName}`,
     one: 'This permit only',
     why: 'Look at them first. One person can file for more than one builder.',
@@ -179,10 +182,10 @@ export function tiePreviewWords(name: string, customerName: string, otherPermits
 export function answeredWords(standing: NameStanding, customerName: string, otherPermits: number, word: string): string | null {
   const head = word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}.` : ''
   if (standing.kind === 'tied') {
-    const tail = standing.scope === 'all' ? (otherPermits > 0 ? ` ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} now show${otherPermits === 1 ? 's' : ''} under ${customerName}.` : '') : ' This permit only.'
-    return `${word ? `Tied on ${word}. ` : 'Tied. '}${standing.name} works for ${customerName}.${tail}`
+    const tail = standing.scope === 'all' ? (otherPermits > 0 ? ` ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} now show${otherPermits === 1 ? 's' : ''} under ${ending(customerName)}` : '') : ' This permit only.'
+    return `${word ? `Tied on ${word}. ` : 'Tied. '}${standing.name} works for ${ending(customerName)}${tail}`
   }
-  if (standing.kind === 'someone_else') return `${head ? `${head} ` : ''}${standing.name} does not work for ${customerName}.`
+  if (standing.kind === 'someone_else') return `${head ? `${head} ` : ''}${standing.name} does not work for ${ending(customerName)}`
   if (standing.kind === 'not_sure') return `You said you are not sure who ${standing.name} is. The question stays open for the rest of the team.`
   return null
 }
