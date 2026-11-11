@@ -11,7 +11,8 @@
 // counted a page at a time (one read stopped the count at 200), and a brief that is still too long is shortened by
 // devMcpReplyFit.ts in a fixed order — the documents' section indexes first, as outlines — with each shortened block
 // named in `shortened` beside the call that reads it whole.
-import { readAllRows, type Reader, type Row } from './devMcpComposites.ts'
+import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
+import type { RowFilter } from './devMcpDoor.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 
@@ -24,7 +25,6 @@ export const AGENT_NOTES_TITLE = 'Agent notes'
 export const AGENT_NOTES_CHARS = 1200
 const NEWEST_ENTRIES = 10
 const HEADLINES = 5
-const READ_CAP = 200
 /** The fit's steps (v2.6935), mildest first: how many headings a document keeps, then the lists' newest rows. */
 export const BRIEF_DOC_SECTION_STEPS = [40, 24, 16, 12, 8, 5, 3] as const
 const BRIEF_OUTLINE_STEPS = [60, 30, 15] as const
@@ -94,7 +94,18 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     }
   }
 
-  // v2.6935: every entry, a page at a time, without its words — the count is exact past the door's 200 rows a read.
+  /**
+   * Every row of a source, a page at a time in id order (readAllRows) — v2.6935 for the entries, every list since
+   * v2.6939, so the evidence, the documents, the theme marks and the matter's steps count whole past the door's 200
+   * rows a read. A read that stops at readAllRows' own cap is named in `held`. `newestBy` puts the rows back newest first.
+   */
+  const every = (source: string, table: string, select: string, filters: RowFilter[], newestBy?: string) => async (): Promise<Row[]> => {
+    const r = await readAllRows(reader, table, { select, filters })
+    if (r.capped) held.push({ source, reason: `more than ${ALL_ROWS_MAX} rows of ${table}: the read stopped there` })
+    return newestBy ? newestFirst(r.rows, newestBy) : r.rows
+  }
+
+  // The entries without their words — the count is exact, and `entries.at_cap` is true only past readAllRows' own stop.
   let entriesCapped = false
   const [entryRows, evidence, fileIndex, docIndex, matters, marks, themes] = await Promise.all([
     read<EntryRow>('entries', async () => {
@@ -102,19 +113,20 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       entriesCapped = all.capped
       return all.rows
     }),
-    read<EvidenceRow>('evidence', () => reader.rows('person_file_evidence', { select: 'id,dated_on,title,counsel_only', filters: eq('person_id', personId), order: [{ column: 'dated_on', ascending: false }], limit: READ_CAP })),
+    read<EvidenceRow>('evidence', every('evidence', 'person_file_evidence', 'id,dated_on,title,counsel_only', eq('person_id', personId), 'dated_on')),
     read<FileIndexRow>('summary and narrative', () => reader.rows('person_file_index', { select: 'kind,chars,sections,headings,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 4 })),
     // v2.6713 (punch list #287): evidence_id, the record a document transcribes; read without it when the catalog does not know the column yet.
     read<DocIndexRow>('documents', async () => {
       try {
-        return await reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings,evidence_id', filters: eq('person_id', personId), limit: READ_CAP })
+        return await every('documents', 'person_document_index', 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings,evidence_id', eq('person_id', personId))()
       } catch {
-        return await reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings', filters: eq('person_id', personId), limit: READ_CAP })
+        return await every('documents', 'person_document_index', 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings', eq('person_id', personId))()
       }
     }),
     read<MatterRow>('matter', () => reader.rows('legal_matters', { select: 'id,stage,narrative_md,narrative_updated_at,closed_at', filters: eq('person_id', personId), limit: 2 })),
-    read<MarkRow>('themes', () => reader.rows('legal_theme_marks', { select: 'theme_id,proposed,removed_at', filters: eq('person_id', personId), limit: 1000 })),
-    read<ThemeRow>('themes', () => reader.rows('legal_themes', { select: 'id,name', filters: [{ column: 'retired_at', op: 'is', value: null }], limit: READ_CAP })),
+    // One read asked for 1,000 marks and the door answered 200: paged, a theme's count is whole.
+    read<MarkRow>('themes', every('themes', 'legal_theme_marks', 'id,theme_id,proposed,removed_at', eq('person_id', personId))),
+    read<ThemeRow>('themes', every('themes', 'legal_themes', 'id,name', [{ column: 'retired_at', op: 'is', value: null }])),
   ])
 
   // Newest first, as the Timeline orders them: the day, then when it was written. The newest ten's words are one more read.
@@ -136,8 +148,8 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const counselOnlyHeld = matter ? await reader.rpc('matter_counsel_only_count', { p_matter_id: matter.id }).then((n) => (typeof n === 'number' ? n : 0)).catch(() => 0) : 0
   const [matterEntries, matterDocs] = matter
     ? await Promise.all([
-        read<MatterEntryRow>('matter steps', () => reader.rows('legal_matter_entries', { select: 'id,kind,occurred_on,body,meta,voided_at', filters: eq('matter_id', matter.id), order: [{ column: 'occurred_on', ascending: true }], limit: READ_CAP })),
-        read<MatterDocRow>('matter documents', () => reader.rows('legal_matter_documents', { select: 'id,title,state,dated_on,voided_at,mime', filters: eq('matter_id', matter.id), order: [{ column: 'dated_on', ascending: false }], limit: READ_CAP })),
+        read<MatterEntryRow>('matter steps', async () => newestFirst(await every('matter steps', 'legal_matter_entries', 'id,kind,occurred_on,body,meta,voided_at', eq('matter_id', matter.id))(), 'occurred_on').reverse()),
+        read<MatterDocRow>('matter documents', every('matter documents', 'legal_matter_documents', 'id,title,state,dated_on,voided_at,mime', eq('matter_id', matter.id), 'dated_on')),
       ])
     : [[], []]
 
@@ -145,17 +157,17 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const userId = person.account_user_id
   const [teamRows, blockRows] = userId
     ? await Promise.all([
-        read<{ job_id: string }>('developments', () => reader.rows('jobs_ledger_team_members', { select: 'job_id', filters: eq('user_id', userId), limit: READ_CAP })),
-        read<{ job_id: string }>('developments', () => reader.rows('job_schedule_blocks', { select: 'job_id', filters: eq('assignee_user_id', userId), limit: READ_CAP })),
+        read<{ job_id: string }>('developments', every('developments', 'jobs_ledger_team_members', 'id,job_id', eq('user_id', userId))),
+        read<{ job_id: string }>('developments', every('developments', 'job_schedule_blocks', 'id,job_id', eq('assignee_user_id', userId))),
       ])
     : [[], []]
   const jobIds = [...new Set([...teamRows, ...blockRows].map((r) => r.job_id).filter(Boolean))]
   const jobs = jobIds.length
-    ? await read<{ id: string; job_name: string | null; development_id: string | null }>('developments', () => reader.rows('jobs_ledger', { select: 'id,job_name,development_id', filters: [{ column: 'id', op: 'in', value: jobIds }], limit: READ_CAP }))
+    ? await read<{ id: string; job_name: string | null; development_id: string | null }>('developments', () => readRowsByIds(reader, 'jobs_ledger', 'id,job_name,development_id', jobIds))
     : []
   const developmentIds = [...new Set(jobs.map((j) => j.development_id).filter((d): d is string => Boolean(d)))]
   const developmentRows = developmentIds.length
-    ? await read<{ id: string; name: string }>('developments', () => reader.rows('developments', { select: 'id,name', filters: [{ column: 'id', op: 'in', value: developmentIds }], limit: READ_CAP }))
+    ? await read<{ id: string; name: string }>('developments', () => readRowsByIds(reader, 'developments', 'id,name', developmentIds))
     : []
   const developments = await Promise.all(
     developmentRows.map(async (d) => {
