@@ -407,6 +407,26 @@ export function appendToFilingPrintHtml(html: string, extra: string): string {
 /** The white band at the head and foot of every printed page; nothing on screen. */
 const FILING_PAGE_GAP = '<tr><td><div class="filing-page-gap"></div></td></tr>'
 
+/** How a paper prints, beyond its blocks. */
+export type FilingPrintOptions = { leading?: 'tight' }
+
+/**
+ * The printed body's leading on the short lien affidavit's sheet (v2.6895). The paper's own 1.75 put the seven
+ * paragraphs under a GC a few lines over one Letter sheet in Chrome's print, so the last item, the signature and the
+ * notary's block moved whole to a second page, beside a PDF of the same paper that fits on one. 1.45 is the PDF's own
+ * leading (11.5 pt type on 5.6 to 6 mm lines), so the print and the PDF break alike. The type size does not change.
+ */
+export const FILING_PRINT_TIGHT_LEADING = 1.45
+
+/**
+ * How a lien affidavit prints: the short form on the tight sheet, so it is one page for the notary and the clerk.
+ * The earlier ten paragraphs run to two pages at either leading and keep the paper's own. A paper too long for one
+ * sheet still moves its closing whole (`filingKeepTogetherRuns`).
+ */
+export function lienAffidavitPrintOptions(f: Pick<LienAffidavitFields, 'form'>): FilingPrintOptions | undefined {
+  return f.form === 'short' ? { leading: 'tight' } : undefined
+}
+
 /**
  * Full standalone print document — pinned light like all customer-facing paper.
  *
@@ -415,8 +435,11 @@ const FILING_PAGE_GAP = '<tr><td><div class="filing-page-gap"></div></td></tr>'
  * The margins are the sheet's own instead: the side ones are the body's padding, and the head and foot of every page
  * are a table header and footer the print engine repeats. A signature, the statement above it and the notary's block
  * under it are one run a page does not split (`filingKeepTogetherRuns`); the footer line stays with the last run.
+ *
+ * `opts.leading: 'tight'` (v2.6895) prints the body at `FILING_PRINT_TIGHT_LEADING`, the short lien affidavit's sheet:
+ * see `lienAffidavitPrintOptions`. The screen keeps the paper's own leading.
  */
-export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, footer?: string): string {
+export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, footer?: string, opts?: FilingPrintOptions): string {
   const footerHtml = footer
     ? `<div style="${HTML_LABEL_FONT};margin-top:1.8em;padding-top:0.5em;border-top:1px solid ${HTML_RULE};font-size:0.68em;color:${HTML_MUTED};break-before:avoid;page-break-before:avoid">${esc(footer)}</div>`
     : ''
@@ -442,7 +465,7 @@ export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, f
   .filing-keep { break-inside: avoid; page-break-inside: avoid; }
   @media print {
     html { margin: 0; padding: 0; }
-    body { max-width: none; margin: 0; padding: 0 0.85in; }
+    body { max-width: none; margin: 0; padding: 0 0.85in;${opts?.leading === 'tight' ? ` line-height: ${FILING_PRINT_TIGHT_LEADING};` : ''} }
     .filing-page-gap { height: 0.6in; }
   }
 </style></head><body><table class="filing-page" role="presentation"><thead>${FILING_PAGE_GAP}</thead><tbody><tr><td>${body}${FILING_PRINT_END}</td></tr></tbody><tfoot>${FILING_PAGE_GAP}</tfoot></table></body></html>`
