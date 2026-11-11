@@ -36,6 +36,10 @@ import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } fr
 
 type Bid = Database['public']['Tables']['bids']['Row']
 import { BidGcRecipientsRow, GcCard, type BidGcRecipientRow } from './BidGcRecipientsRow'
+import { BidSitePermits } from './BidSitePermits'
+import { BidGcPermits } from './BidGcPermits'
+import { canResearchPermits } from '../../lib/research/permitResearch'
+import { nameKey } from '../../../supabase/functions/_shared/permitLookup'
 import { PromoteBidGcModal } from './PromoteBidGcModal'
 import { canTakeOffBidGc, latestSendByGcFromVersions, recommendedSuccessor, type PromoteAlternate } from '../../lib/bids/promoteBidGc'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -1236,6 +1240,14 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   ) : null}
                 </div>
+                {/* What the city holds on this address (punch list #307), for the people who read Permits. */}
+                {canResearchPermits(myRole as Parameters<typeof canResearchPermits>[0]) &&
+                  (() => {
+                    // The question under the site's permit is about the bid's GC: every customer row of its name, read as one.
+                    const gc = customers.find((c) => c.id === gcCustomerId) ?? null
+                    const gcIds = gc ? [gc.id, ...customers.filter((c) => c.id !== gc.id && nameKey(c.name) != null && nameKey(c.name) === nameKey(gc.name)).map((c) => c.id)] : []
+                    return <BidSitePermits address={address} projectName={projectName} bidValue={bidValue} customerIds={gcIds} customerName={gc?.name ?? null} />
+                  })()}
               </div>
               <div style={FORM_SECTION_STYLE}>
                 <div style={FORM_SECTION_LABEL_STYLE}>Files &amp; links</div>
@@ -1340,6 +1352,16 @@ export function BidFormModal(props: BidFormModalProps) {
                           ) : undefined
                         }
                       />
+                      {/* The jobs we priced for this GC and what the city shows on each (punch list #307). One GC under two customer rows of one name is read as one. */}
+                      {primaryCustomer && canResearchPermits(myRole as Parameters<typeof canResearchPermits>[0]) && (
+                        <div style={{ marginTop: '0.6rem' }}>
+                          <BidGcPermits
+                            customerIds={[primaryCustomer.id, ...customers.filter((c) => c.id !== primaryCustomer.id && nameKey(c.name) != null && nameKey(c.name) === nameKey(primaryCustomer.name)).map((c) => c.id)]}
+                            customerName={primaryCustomer.name}
+                            currentBidId={editingBid?.id ?? null}
+                          />
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

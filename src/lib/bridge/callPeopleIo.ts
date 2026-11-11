@@ -12,7 +12,7 @@ import { callPeople, parseMoveMarks, parseMyMoves, type CallPerson, type MoveMar
 
 /** The viewer's own open moves on the standing call. Empty when the function is not there yet. */
 export async function loadMyBridgeMoves(db: SupabaseClient<Database>): Promise<MyMove[]> {
-  const { data, error } = await db.rpc('bridge_my_moves' as never)
+  const { data, error } = await db.rpc('bridge_my_moves')
   if (error) {
     if (isMissingRpcError(error.message)) return []
     throw new Error(error.message)
@@ -22,7 +22,7 @@ export async function loadMyBridgeMoves(db: SupabaseClient<Database>): Promise<M
 
 /** The viewer says one of their moves is done. Throws the function's own words when it refuses. */
 export async function markMyBridgeMoveDone(db: SupabaseClient<Database>, callId: string, idx: number): Promise<void> {
-  const { data, error } = await db.rpc('bridge_mark_my_move_done' as never, { p_call_id: callId, p_idx: idx } as never)
+  const { data, error } = await db.rpc('bridge_mark_my_move_done', { p_call_id: callId, p_idx: idx })
   if (error) throw new Error(error.message)
   const answer = (data ?? {}) as { error?: unknown }
   if (typeof answer.error === 'string' && answer.error) throw new Error(answer.error)

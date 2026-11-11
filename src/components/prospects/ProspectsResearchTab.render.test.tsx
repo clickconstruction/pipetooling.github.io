@@ -10,6 +10,7 @@ const io = vi.hoisted(() => ({
   loadResearchPermits: vi.fn(),
   loadLatestPull: vi.fn(),
   loadRecordsStart: vi.fn(),
+  pullPermitsBack: vi.fn(),
   recordVerdict: vi.fn(),
   approachFromPermit: vi.fn(),
   pullPermitsNow: vi.fn(),
@@ -107,6 +108,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.loadResearchPermits.mockReset().mockResolvedValue([row(), row({ id: 'p2', address: '300 HOPKINS ST', plumber: 'Lone Star Plumbing Co.', plumber_permit_on: '2026-11-04' })])
     io.loadLatestPull.mockReset().mockResolvedValue({ ranAt: new Date().toISOString(), error: null })
     io.loadRecordsStart.mockReset().mockResolvedValue(RECORDS_START)
+    io.pullPermitsBack.mockReset().mockResolvedValue(6412)
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
     io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
@@ -587,6 +589,19 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.change(within(sheet).getByLabelText('Why, in a line'), { target: { value: 'Slow pay on the Millrace job.' } })
       fireEvent.click(within(sheet).getByRole('button', { name: 'Mark as Avoid' }))
       await waitFor(() => expect(io.markBuilder).toHaveBeenCalledWith('tallpinedevelopment', 'avoid', 'Slow pay on the Millrace job.', 'u1'))
+    })
+
+    it('reads one step further back on the press, and reads where the records start again', async () => {
+      io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
+      const since = ymdPlusDays(RECORDS_START, -92)
+      const press = await screen.findByRole('button', { name: `Read back to ${reachDay(since, todayYmdInAppTz())}` })
+      const reads = io.loadRecordsStart.mock.calls.length
+      fireEvent.click(press)
+      await waitFor(() => expect(io.pullPermitsBack).toHaveBeenCalledWith('San Antonio', since, RECORDS_START))
+      await waitFor(() => expect(io.loadRecordsStart.mock.calls.length).toBeGreaterThan(reads))
+      expect(io.loadBuilders.mock.calls.length).toBeGreaterThan(1)
     })
 
     it('claims no span when no pull is on record, and a year once the records reach one', async () => {

@@ -98,9 +98,11 @@ After the first print the window opens on tape on that computer. Press **Change*
 
 Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
-Signed out, the scan still opens a page. The top matches the label, with the stencil in a box and the code under it. A line under that says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. The page never names the job.
+Signed out, the scan still opens a page. The top matches the label, with the stencil in a box and the code under it. A line under that says how fresh the count is, such as Counted 2 days ago. It says Due a count once the last count is 14 days old. The page lists what is in the box and shows the newest photo. Tap the photo to see it whole. A part that ran out since the last count stays on the list as None left. A part the crew pressed Can't find on says how many could not be found. The page never names the job.
 
 Looking for a part that is not in that box? Type the part, the maker or a stencil in the search field and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site.
+
+Is something missing or wrong with the box? Press **Text the office**. Your phone opens a text to the office with the box's name already in it.
 
 To record a part used, moved or counted, press **Sign in to record a use or a count**. After you sign in you land on that box. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 

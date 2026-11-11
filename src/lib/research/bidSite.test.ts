@@ -100,6 +100,20 @@ describe('sameSite: both sides read into one shape', () => {
     expect(canonOfStreet('345 NORTH DR')).toEqual({ number: '345', words: ['n'], type: 'dr' })
   })
 
+  it('meets Austin’s feed, which carries the unit and writes a service road its own way', () => {
+    const austin = (bid: string, feedStreet: string) => {
+      const s = readBidAddress(bid, ['San Antonio', 'Austin'])
+      if (s.kind !== 'site') throw new Error(`not a site: ${bid}`)
+      return s.city === 'Austin' && sameSite(s.canon, canonOfStreet(feedStreet)!)
+    }
+    expect(austin('6800 West Gate Blvd, Suite 143, Austin, TX 78745', '6800 WEST GATE BLVD UNIT 143')).toBe(true)
+    expect(austin('2101 E St Elmo Rd Bldg 3, Austin, TX 78744', '2101 E ST ELMO RD BLDG 3 UNIT 347')).toBe(true)
+    expect(austin('10000 Research Blvd, Suite 129, Austin, TX 78759', '10000 RESEARCH BLVD SVRD SB UNIT 129')).toBe(true)
+    expect(austin('9501 FM 969, Austin, TX 78725', '9501 FM 969 RD')).toBe(true)
+    expect(austin('2700 E 5th St, Austin, TX 78702', '2700 E 6TH ST')).toBe(false)
+    expect(canonOfStreet('6800 WEST GATE BLVD UNIT 143')).toEqual({ number: '6800', words: ['gate', 'w'], type: 'blvd' })
+  })
+
   it('has nothing to compare when a line has no number or no street', () => {
     expect(canonOfStreet('MILL ST')).toBeNull()
     expect(canonOfStreet('4120')).toBeNull()
@@ -166,6 +180,14 @@ describe('permitsOnSite', () => {
     expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX 78215'), rows).map((p) => p.id)).toEqual(['p1', 'p2'])
   })
 
+  it('counts a permit once when both of the city’s feeds carry it, and lets the issued row stand', () => {
+    const applied = permit({ id: 'a', permit_number: 'COM-7', permit_type: 'Comm Remodel Permit', stage: 'applied' })
+    const issued = permit({ id: 'b', permit_number: 'COM-7', permit_type: 'Comm Remodel Permit', stage: 'issued', issued_on: '2026-10-01' })
+    const trade = permit({ id: 'c', permit_number: 'COM-7', permit_type: 'Plumbing General Permit', kind: 'plumbing', stage: 'issued' })
+    expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX'), [applied, issued, trade]).map((p) => p.id)).toEqual(['b', 'c'])
+    expect(permitsOnSite(site('4120 Mill Street, San Antonio, TX'), [issued, applied]).map((p) => p.id)).toEqual(['b'])
+  })
+
   it('finds nothing for a bid that is not a site', () => {
     expect(permitsOnSite(readBidAddress('BLANCO', READ), [permit()])).toEqual([])
   })
@@ -178,6 +200,12 @@ describe('what a permit on the address is', () => {
     expect(plumbingTypeOf('Plumbing Irrigation Permit')).toBe('irrigation')
     expect(plumbingTypeOf('Plumbing Sewer Permit')).toBe('sewer')
     expect(plumbingTypeOf('LSR Plumbing Permit')).toBe('other')
+    // The other cities have one plumbing type with no qualifier: it is the building's plumbing.
+    expect(plumbingTypeOf('Plumbing Permit')).toBe('general')
+    expect(plumbingTypeOf('Plumbing')).toBe('general')
+    expect(plumbingTypeOf('Commercial Plumbing')).toBe('general')
+    expect(plumbingTypeOf('Residential Plumbing')).toBe('general')
+    expect(plumbingTypeOf('Plumbing Backflow Permit')).toBe('other')
     expect(plumbingTypeOf('Comm Remodel Permit')).toBeNull()
     expect(plumbingTypeOf(null)).toBeNull()
   })
@@ -226,6 +254,8 @@ describe('the four honest states and their words', () => {
     const issued = permit({ stage: 'issued', permit_type: 'Comm New Building Permit', issued_on: '2026-11-03' })
     const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', project_name: null, stage: 'issued', issued_on: '2026-11-05', contact: 'Lone Oak Plumbing' })
     expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, plumbing], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address. The city lists Lone Oak Plumbing.')
+    // A plumbing permit filed under the building permit's own contact names no plumber.
+    expect(bidSiteWords(mill, 'Mill Street Lofts', [issued, { ...plumbing, contact: 'Dana Whitlow' }], CTX).main).toBe('The city has a building permit on this address. Issued 7 days ago. A general plumbing permit is on this address, under the building permit’s own name.')
     expect(bidSiteWords(mill, 'Mill Street Lofts', [{ ...plumbing, contact: null }], CTX).main).toBe('The city has 1 permit on this address, and it is not a building permit. A general plumbing permit is on this address.')
   })
 

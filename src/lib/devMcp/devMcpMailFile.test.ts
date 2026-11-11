@@ -5,13 +5,14 @@
  * The kernel picks the file by name, shapes the inner verb's arguments and the job landing's commitment; the server
  * declares the verbs, keeps view_as off the writes and asks the log before a second apply. Made-up people only.
  * Server 0.52.0 (v2.6806): `read_mail_file` reads in pieces that fit the door's reply, with the argument that reads on.
+ * Server 0.60.0 (v2.6880, punch list #296): `read_mail_file_text` hands back the file's words, paged by character.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { EmailFile } from '../../../supabase/functions/_shared/gcKernels/lib/emailIn/gmailMessage'
 import type { MailAccount } from '../../../supabase/functions/_shared/devMcpMailSearch'
 import { REPLY_MAX_CHARS, replyText } from '../../../supabase/functions/_shared/devMcpDoor'
-import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadNextWords, mailFileReadReply, mailFileWhole, pickMailFile, type MailFileArgs, type MailFileBytes, type MailFileRaw } from '../../../supabase/functions/_shared/devMcpMailFile'
+import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, MAIL_FILE_TEXT_MAX_CHARS, mailFileReadArgs, mailFileReadNextWords, mailFileReadReply, mailFileTextArgs, mailFileTextHeldWords, mailFileTextReply, mailFileWhole, pickMailFile, textPieceEnd, type MailFileArgs, type MailFileBytes, type MailFileRaw } from '../../../supabase/functions/_shared/devMcpMailFile'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -182,9 +183,127 @@ describe('a file off a mail · read in pieces', () => {
   })
 })
 
+describe('a file off a mail · its words', () => {
+  const raw = (name = 'invoice 4471.pdf', mime = 'application/pdf'): MailFileRaw => ({ name, mime, sha256: 'cd'.repeat(32), bytes: new Uint8Array(180_000) })
+  const ACCOUNT = 'dana@example-plumbing.test'
+  const ID = '18f3a2b9c0d1e2f3'
+  /** Lines of 60 characters and a line end, numbered so a piece says where it sits. */
+  const lines = (n: number): string => Array.from({ length: n }, (_, i) => `line ${String(i + 1).padStart(6, '0')} 3/4 in. copper tee, type L, qty 24 at 4.18 each`.padEnd(60, '.') + '\n').join('')
+
+  it('takes a login, a Gmail id, the file’s name and the character to start at', () => {
+    const r = mailFileTextArgs(base, KNOWN)
+    expect(r.ok && [r.account.email, r.id, r.name, r.offset]).toEqual([ACCOUNT, ID, 'invoice 4471.pdf', 0])
+    expect(mailFileTextArgs({ ...base, offset: 59_963 }, KNOWN)).toMatchObject({ ok: true, offset: 59_963 })
+    expect(mailFileTextArgs({ ...base, offset: '120' }, KNOWN)).toMatchObject({ ok: true, offset: 120 })
+    for (const offset of [-1, 1.5, 'ten']) expect(mailFileTextArgs({ ...base, offset }, KNOWN)).toEqual({ ok: false, error: 'read_mail_file_text: offset is the character to start at, a whole number from 0 (a reply’s next_offset).' })
+    expect(mailFileTextArgs({ ...base, name: '' }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('read_mail_file_text needs account') })
+    expect(mailFileTextArgs({ ...base, account: 'x@gmail.com' }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('read_mail_file_text reads the company’s own mailboxes') })
+  })
+
+  it('a piece ends on a line end where one is near, and never between the halves of one character', () => {
+    expect(textPieceEnd('abc\ndef\nghi', 0, 100)).toBe(11)
+    expect(textPieceEnd('abc\ndef\nghi', 0, 6)).toBe(4)
+    expect(textPieceEnd('abc\ndef\nghi', 4, 6)).toBe(8)
+    // No line end inside the reach: the cut is where the characters run out.
+    const long = `first\n${'x'.repeat(5_000)}`
+    expect(textPieceEnd(long, 0, 4_000)).toBe(4_000)
+    // A line end before the offset is not this piece's.
+    expect(textPieceEnd('abc\ndefghi', 4, 3)).toBe(7)
+    const pair = `ab${'\u{1F527}'}cd`
+    expect(textPieceEnd(pair, 0, 3)).toBe(2)
+    expect(textPieceEnd(pair, 0, 4)).toBe(4)
+  })
+
+  it('a short text comes whole, with where it came from and no words about reading on', () => {
+    const out = mailFileTextReply(ACCOUNT, ID, raw(), { text: 'Invoice 4471\nTotal 1,204.00\n', source: 'pdf_layer', pages: 2, pagesRead: 2 })
+    expect(out).toEqual({
+      ok: true,
+      reply: { account: ACCOUNT, id: ID, name: 'invoice 4471.pdf', mime: 'application/pdf', size_bytes: 180_000, sha256: 'cd'.repeat(32), text_source: 'pdf_layer', pages: 2, pages_read: 2, chars: 28, offset: 0, next_offset: null, text: 'Invoice 4471\nTotal 1,204.00\n' },
+    })
+    const eml = mailFileTextReply(ACCOUNT, ID, raw('quote.eml', 'message/rfc822'), { text: 'From: a\n\nhello', source: 'plain', pages: null })
+    expect(eml.ok && eml.reply).toMatchObject({ text_source: 'plain', pages: null, pages_read: null, next_offset: null })
+    expect(eml.ok && 'read_next' in eml.reply).toBe(false)
+  })
+
+  it('a long text comes in pieces that end on a line, fit the door and rejoin to the whole', () => {
+    const text = lines(2_500)
+    expect(text.length).toBe(152_500)
+    const read = { text, source: 'pdf_layer' as const, pages: 40, pagesRead: 40 }
+    const first = mailFileTextReply(ACCOUNT, ID, raw(), read)
+    if (!first.ok) throw new Error(first.error)
+    // 60,000 characters back to the line end before it: 983 whole lines of 61.
+    expect(first.reply).toMatchObject({ chars: 152_500, offset: 0, next_offset: 59_963, pages: 40, pages_read: 40 })
+    expect(first.reply.read_next).toBe(
+      'These are characters 0 to 59,962 of 152,500, not the whole text: a reply is cut at 80,000 characters, so the words come at most 60,000 at a time, ending on a line. Call read_mail_file_text again with the same account, id and name and offset: 59963, and on until next_offset is null (about 2 more calls).',
+    )
+    // read_next stands before the words, so an agent reads it first.
+    expect(Object.keys(first.reply).slice(-2)).toEqual(['read_next', 'text'])
+    const written = replyText(first.reply)
+    expect(written.length).toBeLessThanOrEqual(REPLY_MAX_CHARS)
+    expect(written).not.toContain('… cut at')
+    expect(JSON.parse(written).text).toBe(text.slice(0, 59_963))
+
+    let joined = ''
+    let offset: number | null = 0
+    let calls = 0
+    while (offset !== null) {
+      const piece = mailFileTextReply(ACCOUNT, ID, raw(), read, { offset })
+      if (!piece.ok) throw new Error(piece.error)
+      expect(String(piece.reply.text).endsWith('\n')).toBe(true)
+      expect(replyText(piece.reply).length).toBeLessThanOrEqual(REPLY_MAX_CHARS)
+      joined += String(piece.reply.text)
+      offset = piece.reply.next_offset as number | null
+      if (offset === null) expect(piece.reply.read_next).toBe('These are the last of the words, characters 119,926 to 152,499 of 152,500.')
+      calls += 1
+    }
+    expect(calls).toBe(3)
+    expect(joined).toBe(text)
+  })
+
+  it('a text that JSON writes long is shortened until the reply fits', () => {
+    // A quote and a line end each cost two characters as JSON: 60,000 of them would write as 120,000.
+    const text = '"\n'.repeat(60_000)
+    const out = mailFileTextReply(ACCOUNT, ID, raw('notes.txt', 'text/plain'), { text, source: 'plain', pages: null })
+    if (!out.ok) throw new Error(out.error)
+    const written = replyText(out.reply)
+    expect(written.length).toBeLessThanOrEqual(REPLY_MAX_CHARS)
+    const back = JSON.parse(written)
+    expect(back.text).toBe(text.slice(0, back.next_offset))
+    expect(back.next_offset).toBeLessThan(MAIL_FILE_TEXT_MAX_CHARS)
+    expect(back.next_offset).toBeGreaterThan(30_000)
+  })
+
+  it('a PDF the reader stopped in says how many pages its words cover', () => {
+    const out = mailFileTextReply(ACCOUNT, ID, raw(), { text: 'Section 1\nGeneral\n', source: 'pdf_layer', pages: 212, pagesRead: 31 })
+    expect(out.ok && out.reply).toMatchObject({ pages: 212, pages_read: 31, next_offset: null })
+    expect(out.ok && out.reply.read_next).toBe(
+      'The reader stopped after page 31 of 212 (its time for one file, or its 200,000 characters), so these 18 characters are the words of the first 31 pages only. The pages past that are read from the file’s bytes with read_mail_file.',
+    )
+    const piece = mailFileTextReply(ACCOUNT, ID, raw(), { text: lines(2_500), source: 'pdf_layer', pages: 212, pagesRead: 31 })
+    expect(piece.ok && String(piece.reply.read_next)).toContain('offset: 59963, and on until next_offset is null (about 2 more calls). The reader stopped after page 31 of 212')
+  })
+
+  it('a file with no words is refused in words that name the next press', () => {
+    const facts = { name: 'delivery ticket.pdf', mime: 'application/pdf', size_bytes: 412_000 }
+    const bytes = 'Read its bytes with read_mail_file (same account, id and name).'
+    expect(mailFileTextHeldWords(facts, 'scan')).toBe(
+      `delivery ticket.pdf is a scan with no text layer, so there are no words to hand back. ${bytes} Or file it on its job with plan_mail_file → apply_mail_file: the file index reads a filed scan by OCR where OCR is set up (read_file_index_status says how many scans wait).`,
+    )
+    expect(mailFileTextHeldWords({ name: 'takeoff.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size_bytes: 9_000 }, 'kind')).toBe(
+      `takeoff.xlsx (application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) is a kind of file the reader does not read: it reads a PDF’s text layer, a text file (.txt, .csv, .md) and an email (.eml). ${bytes}`,
+    )
+    expect(mailFileTextHeldWords({ name: 'thread.eml', mime: 'message/rfc822', size_bytes: 3 * 1024 * 1024 }, 'big')).toBe(`thread.eml is 3.0 MB, past what the reader takes: a PDF up to 12 MB, a text file or an email up to 2 MB. ${bytes}`)
+    expect(mailFileTextHeldWords(facts, 'slow')).toBe(`The read of delivery ticket.pdf ran out of time before a page of it was read. ${bytes}`)
+    expect(mailFileTextHeldWords(facts, 'error')).toBe(`The reader could not open delivery ticket.pdf (a damaged PDF or one locked with a password reads this way). ${bytes}`)
+    for (const why of ['scan', 'kind', 'big', 'slow', 'error'] as const) expect(mailFileTextReply(ACCOUNT, ID, raw(), { why })).toEqual({ ok: false, error: mailFileTextHeldWords({ name: 'invoice 4471.pdf', mime: 'application/pdf', size_bytes: 180_000 }, why) })
+    expect(mailFileTextReply(ACCOUNT, ID, raw('blank.txt', 'text/plain'), { text: ' \n', source: 'plain', pages: null })).toEqual({ ok: false, error: `blank.txt holds no words: the reader read it and found it empty. ${bytes}` })
+    expect(mailFileTextReply(ACCOUNT, ID, raw(), { text: 'twelve chars', source: 'pdf_layer', pages: 1 }, { offset: 12 })).toEqual({ ok: false, error: 'offset 12 is past the end of invoice 4471.pdf’s words, which are 12 characters: offsets run from 0 to 11.' })
+  })
+})
+
 describe('the server and the docs', () => {
   it('declares the three verbs, files a job through drive-link as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.59.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.60.0'")
     for (const verb of ['read_mail_file', 'plan_mail_file', 'apply_mail_file']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
@@ -207,6 +326,20 @@ describe('the server and the docs', () => {
     expect(SERVER).toContain('a piece at a time past 54,000 bytes')
     expect(README).toContain('at most 54,000 bytes')
     expect(SKILL).toContain('54,000 bytes')
+  })
+
+  it('read_mail_file_text reads the words by the file index’s reader, and the words carry the cap', () => {
+    expect(SERVER).toContain("name: 'read_mail_file_text'")
+    expect(SERVER).toContain("case 'read_mail_file_text':")
+    expect(SERVER).toContain('const read = await readWithin(() => textFromBytes(file.bytes, { name: file.name, mimeType: file.mime }, { limits: INDEX_PDF_LIMITS }), `${parsed.id}/${file.name}`, INDEX_READ_MS)')
+    expect(SERVER).toContain('const piece = mailFileTextReply(parsed.account.email, parsed.id, file, read, { offset: parsed.offset })')
+    // A read verb: nothing in it asks for a dev's own key, and the Gmail scope stays read-only.
+    expect(MAIL_FILE_TEXT_MAX_CHARS).toBe(60_000)
+    expect(SERVER).toContain('60,000 characters a reply')
+    expect(README).toContain('`read_mail_file_text(account, id, name, offset?)`')
+    expect(README).toContain('at most 60,000 characters')
+    expect(SKILL).toContain('`read_mail_file_text(account, id, name, offset?)`')
+    expect(EDGE).toContain('Server 0.60.0 — a mailed file’s words')
   })
 
   it('the docs carry the verbs', () => {
