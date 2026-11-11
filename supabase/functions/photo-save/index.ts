@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { driveFileState, folderFiles, freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
-import { REFILE_BUDGET_MS, nextFreeName, refileAskOf, refileResult, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
+import { REFILE_BUDGET_MS, REFILE_SWEEP_BATCH, dueRowsByJob, nextFreeName, refileAskOf, refileResult, refileRowNeedsClearing, refileRowPatch, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
 import { roadmapTaskFolderPath, taskFolderName, taskPhotoDriveName, type TaskPhotoKind } from '../_shared/taskPhotoNames.ts'
@@ -43,7 +43,7 @@ import {
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
  *     checklists: { saved, failed }, jobPhotos: { saved, failed }, machines: { saved, failed }, records: { saved, failed },
- *     taskPhotos: { saved, failed }, tickets: { saved, failed }, bidPhotos: { saved, failed } }
+ *     taskPhotos: { saved, failed }, tickets: { saved, failed }, bidPhotos: { saved, failed }, boxRefiles: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -108,8 +108,14 @@ import {
  * the rest move. The folder is listed once, so a second ask reads one page and moves nothing. An ask that runs past
  * REFILE_BUDGET_MS answers how many are left. Rules and words: `_shared/boxPhotoRefile.ts`.
  *
+ * The engine (v2.6915): an eleventh source after the bid photos. A filed box photo whose job changes is marked due by
+ * the database (`job_box_photos.refile_due_at`, trigger `job_box_photos_job_changed`), so a whole-job combine's files
+ * follow here with no caller, twenty a run, oldest due first (`sweepRefileDue`), and an ask that failed or ran out of
+ * time is finished here. A file that is where it belongs loses its mark; a held one keeps its reason in fail_why and is
+ * due again a day on, so one restored from Drive's trash follows by itself.
+ *
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
- * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
+ * source re-schedules it with every clause (20261111024500_box_photo_refile_due.sql holds all eleven).
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY (the re-file ask's dev check), CRON_SECRET,
  * GOOGLE_SERVICE_ACCOUNT_JSON; DRIVE_IMPERSONATE_USER
@@ -346,63 +352,50 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
 
 const BOX_REFILE_MAX_ROWS = 2000
 
-type BoxRefileRow = { id: string; file_name: string; drive_file_id: string; fail_why: string | null }
+type BoxRefileRow = { id: string; job_id: string; file_name: string; drive_file_id: string; fail_why: string | null; refile_due_at: string | null }
 
-async function refileBoxPhotos(admin: SupabaseClient, jobId: string): Promise<{ result: RefileResult } | { error: string; status: number }> {
-  const { data: job, error: jobError } = await admin.from('jobs_ledger').select('id').eq('id', jobId).maybeSingle()
-  if (jobError) return { error: `The job did not read: ${jobError.message}`, status: 500 }
-  if (!job) return { error: 'There is no job with that id.', status: 404 }
-  const { data, error } = await admin
-    .from('job_box_photos')
-    .select('id, file_name, drive_file_id, fail_why')
-    .eq('job_id', jobId)
-    .not('drive_file_id', 'is', null)
-    .order('taken_at', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(BOX_REFILE_MAX_ROWS)
-  if (error) return { error: `The box photos did not read: ${error.message}`, status: 500 }
-  const rows = (data ?? []) as BoxRefileRow[]
-  if (rows.length === 0) return { result: refileResult({ jobId, folderId: null, inDrive: 0, moved: [], already: 0, held: [], left: 0 }) }
-  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-  if (!saJson) return { error: 'Drive is not set up here yet.', status: 503 }
-  let google: string
-  try {
-    google = await googleAccessToken(saJson)
-  } catch (e) {
-    return { error: `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`, status: 502 }
-  }
+const BOX_REFILE_COLUMNS = 'id, job_id, file_name, drive_file_id, fail_why, refile_due_at'
+
+type RefileTally = { folderId: string | null; moved: RefileMoved[]; already: number; held: RefileHeld[]; left: number }
+
+/**
+ * One job's rows moved into the folder its photos land in: the ask's rows (every filed photo of the job) or the
+ * sweep's (the ones due). A row that is where it belongs loses its mark and its reason; a held one keeps its reason
+ * and is due again a day on (`refileRowPatch`); one not reached before `deadline` stays due, so the sweep takes it.
+ */
+async function refileJobRows(admin: SupabaseClient, google: string, jobId: string, rows: readonly BoxRefileRow[], deadline: number | null): Promise<RefileTally> {
   const moved: RefileMoved[] = []
   const held: RefileHeld[] = []
   let already = 0
   let left = 0
-  // A reason lands on the row, as a failed filing's does; a row that is where it belongs carries none.
   const hold = async (r: BoxRefileRow, why: string) => {
     held.push({ id: r.id, file_name: r.file_name, why })
-    await admin.from('job_box_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id)
+    await admin.from('job_box_photos').update(refileRowPatch({ held: why }, new Date())).eq('id', r.id)
   }
   const settled = async (r: BoxRefileRow) => {
-    if (r.fail_why) await admin.from('job_box_photos').update({ fail_why: null }).eq('id', r.id)
+    if (refileRowNeedsClearing(r)) await admin.from('job_box_photos').update(refileRowPatch({ settled: true }, new Date())).eq('id', r.id)
   }
-  const landing = await photoFolderOrWhy(admin, google, { jobs_ledger_id: jobId })
-  if ('why' in landing) {
-    for (const r of rows) await hold(r, landing.why)
-    return { result: refileResult({ jobId, folderId: null, inDrive: rows.length, moved, already, held, left }) }
-  }
+  let landing: { id: string } | { why: string }
   let inFolder: Map<string, string>
   try {
+    landing = await photoFolderOrWhy(admin, google, { jobs_ledger_id: jobId })
+    if ('why' in landing) {
+      for (const r of rows) await hold(r, landing.why)
+      return { folderId: null, moved, already, held, left }
+    }
     inFolder = await folderFiles(google, landing.id)
   } catch (e) {
-    return { error: `The job’s photo folder did not read: ${e instanceof Error ? e.message : String(e)}`, status: 502 }
+    // The folder could not be read: nothing is known about any file, so every row stays as it is and is tried again.
+    throw new Error(`The job’s photo folder did not read: ${e instanceof Error ? e.message : String(e)}`)
   }
   const names = new Set(inFolder.values())
-  const started = Date.now()
   for (const r of rows) {
     if (inFolder.has(r.drive_file_id)) {
       already += 1
       await settled(r)
       continue
     }
-    if (Date.now() - started > REFILE_BUDGET_MS) {
+    if (deadline !== null && Date.now() > deadline) {
       left += 1
       continue
     }
@@ -423,8 +416,82 @@ async function refileBoxPhotos(admin: SupabaseClient, jobId: string): Promise<{ 
       await hold(r, driveFailWords(e instanceof Error ? e.message : String(e)))
     }
   }
-  if (held.length) console.warn('photo-save: some box photos were not moved to their job’s folder', held)
-  return { result: refileResult({ jobId, folderId: landing.id, inDrive: rows.length, moved, already, held, left }) }
+  return { folderId: landing.id, moved, already, held, left }
+}
+
+async function refileBoxPhotos(admin: SupabaseClient, jobId: string): Promise<{ result: RefileResult } | { error: string; status: number }> {
+  const { data: job, error: jobError } = await admin.from('jobs_ledger').select('id').eq('id', jobId).maybeSingle()
+  if (jobError) return { error: `The job did not read: ${jobError.message}`, status: 500 }
+  if (!job) return { error: 'There is no job with that id.', status: 404 }
+  const { data, error } = await admin
+    .from('job_box_photos')
+    .select(BOX_REFILE_COLUMNS)
+    .eq('job_id', jobId)
+    .not('drive_file_id', 'is', null)
+    .order('taken_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(BOX_REFILE_MAX_ROWS)
+  if (error) return { error: `The box photos did not read: ${error.message}`, status: 500 }
+  const rows = (data ?? []) as BoxRefileRow[]
+  if (rows.length === 0) return { result: refileResult({ jobId, folderId: null, inDrive: 0, moved: [], already: 0, held: [], left: 0 }) }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return { error: 'Drive is not set up here yet.', status: 503 }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    return { error: `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`, status: 502 }
+  }
+  try {
+    const t = await refileJobRows(admin, google, jobId, rows, Date.now() + REFILE_BUDGET_MS)
+    if (t.held.length) console.warn('photo-save: some box photos were not moved to their job’s folder', t.held)
+    return { result: refileResult({ jobId, folderId: t.folderId, inDrive: rows.length, moved: t.moved, already: t.already, held: t.held, left: t.left }) }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e), status: 502 }
+  }
+}
+
+/**
+ * The eleventh source (v2.6915): box photos due a move, twenty a run, oldest due first. The database marks a filed
+ * photo due when its job changes, so a combine's files follow here with no caller, and an ask that failed or ran out of
+ * time is finished here. `saved` counts the rows now where they belong; a held one is listed with its reason.
+ */
+async function sweepRefileDue(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('job_box_photos')
+    .select(BOX_REFILE_COLUMNS)
+    .not('drive_file_id', 'is', null)
+    .lte('refile_due_at', new Date().toISOString())
+    .order('refile_due_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(REFILE_SWEEP_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the box photos due a move did not read: ${error.message}` }] }
+  const rows = (data ?? []) as BoxRefileRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  // Without Drive nothing can be known about a file: the rows stay due and are read again next run.
+  if (!saJson) return { saved: 0, failed: rows.map((r) => ({ id: r.id, why: 'Drive is not set up here yet.' })) }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    const why = `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`
+    return { saved: 0, failed: rows.map((r) => ({ id: r.id, why })) }
+  }
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  for (const [jobId, jobRows] of dueRowsByJob(rows)) {
+    try {
+      const t = await refileJobRows(admin, google, jobId, jobRows, null)
+      saved += t.moved.length + t.already
+      for (const h of t.held) failed.push({ id: h.id, why: h.why })
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e)
+      for (const r of jobRows) failed.push({ id: r.id, why })
+    }
+  }
+  if (failed.length) console.warn('photo-save: some box photos due a move were not moved', failed)
+  return { saved, failed }
 }
 
 // ---------------------------------------------------------------------------
@@ -1156,8 +1223,9 @@ serve(async (req) => {
     const taskPhotos = await sweepTaskPhotos(admin)
     const tickets = await sweepTickets(admin)
     const bidPhotos = await sweepBidPhotos(admin)
+    const boxRefiles = await sweepRefileDue(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets, bidPhotos }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets, bidPhotos, boxRefiles }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

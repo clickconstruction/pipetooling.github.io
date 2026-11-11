@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { contactParts, type CompanyFacts, type ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
-import { askingCountyWords, noParcelWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
+import { askingCountyWords, noParcelWords, parcelPointWords, permitSearchDoor } from '../../lib/research/permitCityDoors'
 import { shortDay, shortMoney, workWords, type Hint, type LeadFacts, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { loadBuilderPermits, lookupCompany, lookupParcel, type LookupAnswer } from '../../lib/research/permitResearchIo'
 import { TEXAS_FRANCHISE_SEARCH, builderPermitLines, builderSearchWord, builderWords, googleAskForCompany, googleAsksForContact, type SitePermit } from '../../lib/research/permitPublic'
@@ -65,14 +65,14 @@ export function WhoPulledItSheet({
       }
       if (row.address) {
         setParcel({ state: 'loading' })
-        lookupParcel(row.address, row.city, refresh)
+        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng })
           .then((answer) => setParcel({ state: 'done', answer }))
           .catch((e) => setParcel({ state: 'failed', message: formatErrorMessage(e) }))
       } else {
         setParcel({ state: 'done', answer: { found: false, facts: null, error: 'the permit has no street address', cached: false, lookedUpAt: null } })
       }
     },
-    [row.contact, row.address, row.city],
+    [row.contact, row.address, row.city, row.lat, row.lng],
   )
 
   // The name's other permits: one word asked of the table, the rows held to the whole name by the kernel.
@@ -212,6 +212,7 @@ export function WhoPulledItSheet({
                 {parcelFacts.dba ? <span style={muted}> · DBA {parcelFacts.dba}</span> : null}
               </div>
               {parcelFacts.owner_address && <div style={line}>Mailing address: {parcelFacts.owner_address}</div>}
+              {parcelPointWords(parcelFacts) && <div style={muted}>{parcelPointWords(parcelFacts)}</div>}
               <div style={muted}>
                 {[
                   parcelFacts.total_value ? `appraised ${shortMoney(parcelFacts.total_value)}` : null,

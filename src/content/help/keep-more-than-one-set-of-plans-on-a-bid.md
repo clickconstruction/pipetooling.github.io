@@ -68,3 +68,5 @@ The plans icon in the **Links** column opens a bid's plans. A bid with one set o
 3. Press {{button:outline|Open ↗}} on the set you want.
 
 Press {{button:outline|Edit bid}} at the bottom of the window to add or change a set.
+
+A bid with no plans shows the plans icon in grey. Press it, then press {{button:outline|Add a set}} on the **Plans** row. See [see what files a bid has](/help/see-what-files-a-bid-has).

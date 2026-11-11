@@ -8,7 +8,8 @@
 import { cityReadsParcels } from './permitCityDoors'
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, type SupabaseClientResult } from '../../utils/errorHandling'
+import { fetchAllRows } from '../supabasePaging'
 import { leadFromPermit, ymdPlusDays, type BuilderMarkValue, type ContactHistory, type LeadFacts, type PermitLeadDeck, type PermitLeadRole, type PermitVerdict, type PursueFor, type ResearchPermitRow } from './permitResearch'
 import type { BuilderKind, BuilderRow, PermitFunnel } from './permitBuilders'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
@@ -24,15 +25,26 @@ function missingFunction(error: { message?: string; code?: string } | null): boo
   return error != null && (error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? ''))
 }
 
+/**
+ * Every row of a Permits read, a page at a time: PostgREST returns at most 1,000 rows with no
+ * error, and a year of records (punch list #307) or a window with houses passes that. Each read
+ * ends on a total order, so the pages do not shuffle. A missing function comes back as null.
+ */
+async function readEveryRow<T>(fn: string, args: Record<string, unknown>, doing: string): Promise<T[] | null> {
+  try {
+    return await fetchAllRows<T>((from, to) => supabase.rpc(fn as never, args as never).range(from, to) as unknown as PromiseLike<SupabaseClientResult<T[]>>, doing)
+  } catch (e) {
+    if (missingFunction(e as { message?: string; code?: string })) return null
+    failed(e, doing)
+  }
+}
+
 export async function loadResearchPermits(city: string, sinceYmd: string, residential: boolean): Promise<ResearchPermitRow[]> {
   const args = { p_city: city, p_since: sinceYmd, p_residential: residential }
   // The builder and the rest of the verdict ride on v2; the older read stands in until the migration is pushed.
-  const v2 = await supabase.rpc('research_permits_v2' as never, args as never)
-  if (!v2.error) return (v2.data ?? []) as ResearchPermitRow[]
-  if (!missingFunction(v2.error)) failed(v2.error, 'read the permits')
-  const { data, error } = await supabase.rpc('research_permits' as never, args as never)
-  if (error) failed(error, 'read the permits')
-  return (data ?? []) as ResearchPermitRow[]
+  const v2 = await readEveryRow<ResearchPermitRow>('research_permits_v2', args, 'read the permits')
+  if (v2) return v2
+  return (await readEveryRow<ResearchPermitRow>('research_permits', args, 'read the permits')) ?? []
 }
 
 /**
@@ -137,12 +149,7 @@ export async function loadResearchers(): Promise<Array<{ id: string; name: strin
 
 /** Builders: every name that pulled a commercial building permit in the city in the last year. Null before the migration is pushed. */
 export async function loadBuilders(city: string): Promise<BuilderRow[] | null> {
-  const { data, error } = await supabase.rpc('research_builders' as never, { p_city: city } as never)
-  if (error) {
-    if (missingFunction(error)) return null
-    failed(error, 'read the builders')
-  }
-  return (data ?? []) as BuilderRow[]
+  return readEveryRow<BuilderRow>('research_builders', { p_city: city }, 'read the builders')
 }
 
 /** Our mark on a builder: good or avoid with its reason, or none to clear it. Append-only; the newest wins. */
@@ -279,10 +286,12 @@ export function lookupCompany(contact: string, city: string, refresh = false): P
 }
 
 /** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
-export function lookupParcel(address: string, city: string, refresh = false): Promise<LookupAnswer<ParcelFacts>> {
-  // Only Bexar County's parcel record is read; another city's card says so and opens the appraisal district.
+export function lookupParcel(address: string, city: string, refresh = false, point: { lat: number | null; lng: number | null } | null = null): Promise<LookupAnswer<ParcelFacts>> {
+  // A city whose county's parcel record is not read says so on its card and opens the appraisal district.
   if (!cityReadsParcels(city)) return Promise.resolve({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
-  return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh })
+  // The permit's point rides along: outside Bexar it is asked when the street address has no parcel, as on new construction.
+  const at = point && point.lat != null && point.lng != null ? { lat: point.lat, lng: point.lng } : {}
+  return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh, ...at })
 }
 
 /** One permit's own feed row: every column the city sent, where it came from and when. */

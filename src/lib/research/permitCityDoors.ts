@@ -1,8 +1,8 @@
 /**
  * Permits (punch list #292, revision 4): what a card says and where it points for the city a
- * permit is in. San Antonio's cards read Bexar County's parcel record; another city's cards say
- * whose county keeps the land records and open its appraisal district, its own permit search and
- * its county clerk. The cities are `_shared/permitCities.ts`. No React, no Supabase.
+ * permit is in. Every city's cards read its county's parcel record (a city added without one
+ * says whose county keeps the land records and opens its appraisal district), and open the
+ * city's own permit search and its county clerk. The cities are `_shared/permitCities.ts`. No React, no Supabase.
  */
 import { permitCity } from '../../../supabase/functions/_shared/permitCities'
 import { haversineMeters, TRAVEL_ROAD_WINDING_FACTOR, type LatLng } from '../jobTravelEstimate'
@@ -31,6 +31,40 @@ export function noParcelWords(city: string | null | undefined, short = false): s
   if (cityReadsParcels(city)) return short ? 'The county has no parcel under this street address.' : 'The county’s parcel layer has no row for this street address.'
   const county = countyWords(city)
   return county === 'the county' ? 'The county’s record is not read here yet.' : `${county}’s record is not read here yet. Its appraisal district has it.`
+}
+
+/** The four facts only Bexar's layer carries for every parcel: the DBA, the use, the year built and the built area. Elsewhere an empty one is left off the card, since the county's layer never had it. */
+export function countyGivesBuildingFacts(city: string | null | undefined): boolean {
+  return permitCity(city)?.county === 'Bexar'
+}
+
+/** The parcel's facts the cards read. */
+type LotFacts = { building_sf: number | null; year_built: string | null; improvement_value: number | null; acres: number | null; situs?: string | null; matched_by?: 'point' }
+
+function shortDollars(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000
+    return `$${millions >= 10 ? Math.round(millions) : Math.round(millions * 10) / 10}M`
+  }
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}k`
+  return `$${Math.round(value)}`
+}
+
+/** The skim card's line under the owner: what stands on the lot, and how big the lot is. */
+export function lotWords(facts: LotFacts): string {
+  const built = facts.building_sf
+    ? `${Math.round(facts.building_sf).toLocaleString('en-US')} sq ft built${facts.year_built ? ` in ${facts.year_built}` : ''}`
+    : facts.improvement_value
+      ? `buildings on the roll at ${shortDollars(facts.improvement_value)}${facts.year_built ? `, built ${facts.year_built}` : ''}`
+      : 'nothing built on the roll'
+  return [built, facts.acres ? `${facts.acres} acres` : null, facts.matched_by === 'point' ? 'read at the permit’s point' : null].filter(Boolean).join(', ')
+}
+
+/** The sheets' line when the parcel was found under the permit's point, not its street address. Null when the address matched. */
+export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by'>): string | null {
+  if (facts.matched_by !== 'point') return null
+  const where = facts.situs ? ` The county calls it ${facts.situs}.` : ''
+  return `The county has no parcel under this street address, so this is the parcel at the permit’s point.${where}`
 }
 
 /** The county appraisal district's property search, or null where the app knows none. */

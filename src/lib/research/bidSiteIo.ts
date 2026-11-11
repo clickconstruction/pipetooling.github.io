@@ -4,7 +4,8 @@
  * sit on a bid's site is decided by `bidSite.ts`. No kernel logic here.
  */
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
+import { fetchAllRows } from '../supabasePaging'
 import type { GcBid, SitePermitRow } from './bidSitePanel'
 import type { AnswerScope, NameAnswer, NameAnswerRow } from './nameAnswers'
 
@@ -134,19 +135,22 @@ export function onNameAnswered(fn: () => void): () => void {
 /** A permit as the name's own list and Compare read it. */
 export type NamePermit = { id: string; city: string; address: string | null; zip: string | null; contact: string | null; work_type: string | null; permit_type: string; kind: string; stage: string; issued_on: string | null; submitted_on: string | null }
 
-/** Every permit on hand under one name key, in every city, newest first. */
+/**
+ * Every permit on hand under one name key, in every city, newest first. Paged: a busy name is on
+ * thousands once the records reach back a year, and Compare counts where all of them are.
+ */
 export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[]> {
-  const rows = await withSupabaseRetry(
-    async () =>
-      await supabase
+  return await fetchAllRows<NamePermit>(
+    (from, to) =>
+      supabase
         .from('permits' as never)
         .select('id, city, address, zip, contact, work_type, permit_type, kind, stage, issued_on, submitted_on')
         .eq('builder_key', builderKey)
         .order('issued_on', { ascending: false, nullsFirst: false })
-        .limit(300),
+        .order('id')
+        .range(from, to) as unknown as PromiseLike<SupabaseClientResult<NamePermit[]>>,
     'read the permits under this name',
   )
-  return ((rows ?? []) as unknown) as NamePermit[]
 }
 
 /** Every answer on a name, for the worklist over all customers. Null before the table is on the database. */

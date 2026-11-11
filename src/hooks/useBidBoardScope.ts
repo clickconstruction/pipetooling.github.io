@@ -68,9 +68,12 @@ export function useBidBoardScope(input: {
   // Won-row chips (v2.3302): the value-matched job and the estimate's state, for the board's job-link roles.
   const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
   // The CountTooling projects behind each bid (v2.5520): the board draws one chip per link beyond the bid's own.
-  const bidBoardCountSources = useBidCountSourcesByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
+  // The bid's Files window sets a link or adds a set (punch list #306, PR 7): the two reads below run again.
+  const [bidFilesGen, setBidFilesGen] = useState(0)
+  const refreshBidFiles = useCallback(() => setBidFilesGen((g) => g + 1), [])
+  const bidBoardCountSources = useBidCountSourcesByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true, bidFilesGen)
   // The plan sets on each bid (v2.6169): the board's plans icon opens one directly and offers two or more in a picker.
-  const bidBoardPlanSets = useBidPlanSetsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
+  const bidBoardPlanSets = useBidPlanSetsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true, bidFilesGen)
   // How many photos each bid has (punch list #306): the board's photos icon is grey at none and blue with the count.
   // The photos window bumps the read after it adds one.
   const [bidPhotoCountsGen, setBidPhotoCountsGen] = useState(0)
@@ -148,6 +151,7 @@ export function useBidBoardScope(input: {
     bidBoardPlanSets,
     bidBoardPhotoCounts,
     refreshBidPhotoCounts,
+    refreshBidFiles,
     jobAccountStrips,
     jobAccountsMissingCount,
     moneyStrips,

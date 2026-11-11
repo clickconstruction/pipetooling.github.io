@@ -3,7 +3,8 @@
  * card makes. A permit's contact line is split into the person and the company; the company
  * is asked of Google Places (Text Search, the New API the address autocomplete already uses);
  * the permit's address is asked of Bexar County's parcel layer, which carries the owner of
- * record, their mailing address and the DBA. `permit-lookup` runs these;
+ * record, their mailing address and the DBA (the other counties' layers are `permitParcels.ts`).
+ * `permit-lookup` runs these;
  * `src/lib/research/permitLookup.test.ts` holds them. No I/O here.
  */
 
@@ -117,6 +118,8 @@ export type ParcelFacts = {
   building_sf: number | null
   acres: number | null
   detail_url: string | null
+  /** Set when the county had no parcel under the street address and the permit's own point was asked instead (`permitParcels.ts`). */
+  matched_by?: 'point'
 }
 
 function num(v: unknown): number | null {

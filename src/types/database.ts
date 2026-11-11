@@ -35360,6 +35360,84 @@ export type Database = {
           },
         ]
       }
+      supply_part_codes: {
+        Row: {
+          code: string
+          code_key: string | null
+          created_at: string
+          id: string
+          not_a_part: boolean
+          part_id: string | null
+          supply_house_id: string
+          taught_by: string | null
+          taught_from: string
+          taught_line_id: string | null
+          unit_factor: number
+        }
+        Insert: {
+          code: string
+          code_key?: string | null
+          created_at?: string
+          id?: string
+          not_a_part?: boolean
+          part_id?: string | null
+          supply_house_id: string
+          taught_by?: string | null
+          taught_from?: string
+          taught_line_id?: string | null
+          unit_factor?: number
+        }
+        Update: {
+          code?: string
+          code_key?: string | null
+          created_at?: string
+          id?: string
+          not_a_part?: boolean
+          part_id?: string | null
+          supply_house_id?: string
+          taught_by?: string | null
+          taught_from?: string
+          taught_line_id?: string | null
+          unit_factor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_part_codes_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_part_codes_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_part_codes_taught_by_fkey"
+            columns: ["taught_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_part_codes_taught_line_id_fkey"
+            columns: ["taught_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_paper_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_part_codes_taught_line_id_fkey"
+            columns: ["taught_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_purchase_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       takeoff_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -44394,6 +44472,7 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: boolean
       }
+      may_edit_parts_book: { Args: never; Returns: boolean }
       mercury_bank_return_reason: {
         Args: {
           p_amount: number

@@ -40,6 +40,11 @@ export type BidPlanSetsFieldProps = {
   pricedOnSetId?: string | null
   /** The pin's reads and write; the real one by default, a fake in tests. */
   pricedOnIo?: BidPricedOnIo
+  /**
+   * Where the field is drawn. The bid's form has the Plans link field over it, and the field's words point there.
+   * The bid's Files window (punch list #306, PR 7) has no such field, so the words name the robot's set by its chip.
+   */
+  host?: 'form' | 'window'
 }
 
 type Draft = { name: string; planDate: string; memo: string; link: string }
@@ -58,7 +63,8 @@ async function probeLink(link: string): Promise<ProbeAnswer | null> {
   }
 }
 
-export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo }: BidPlanSetsFieldProps) {
+export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo, host = 'form' }: BidPlanSetsFieldProps) {
+  const inForm = host === 'form'
   const { user } = useAuth()
   const jobFormModal = useJobFormModal()
   const [rows, setRows] = useState<BidPlanSetRow[]>([])
@@ -227,12 +233,12 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
     <div data-testid="bid-plan-sets" style={{ marginTop: '0.25rem', marginBottom: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 500 }}>Plan sets</span>
-        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Every set of plans on this bid, each with its name, date, memo and link. The robot reads the one in the Plans link above.</span>
+        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Every set of plans on this bid, each with its name, date, memo and link. {inForm ? 'The robot reads the one in the Plans link above.' : 'The robot reads the set marked Robot reads this.'}</span>
       </div>
       {!loaded ? (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>Loading…</div>
       ) : rows.length === 0 ? (
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>The Plans link above is this bid’s one set. Add a set to keep an addendum or a permit set beside it.</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>{inForm ? 'The Plans link above is this bid’s one set. Add a set to keep an addendum or a permit set beside it.' : plansLink.trim() ? 'The bid’s plans link is its one set. Add a set to keep an addendum or a permit set beside it.' : 'This bid has no plans yet. Add a set of plans adds the first, and the robot reads it.'}</div>
       ) : (
         <ul style={{ listStyle: 'none', margin: '0.4rem 0 0', padding: 0, display: 'grid', gap: '0.4rem' }}>
           {rows.map((row) => {
@@ -304,7 +310,7 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnS
                     {rowBusy && pendingRemove !== row.id ? 'Reading…' : 'Check the link'}
                   </button>
                   {!robotReads ? (
-                    <button type="button" onClick={() => onRobotSetChange(row.link)} title="Put this set’s link in the Plans link above, so the robot and the Plans panel read it" style={btn}>
+                    <button type="button" onClick={() => onRobotSetChange(row.link)} title={inForm ? 'Put this set’s link in the Plans link above, so the robot and the Plans panel read it' : 'Make this the set the robot and the Plans panel read'} style={btn}>
                       Robot reads this set
                     </button>
                   ) : null}

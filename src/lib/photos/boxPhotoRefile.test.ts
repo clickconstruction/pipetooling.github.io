@@ -9,14 +9,21 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   NO_REFILE_NEEDED,
+  REFILE_HELD_RETRY_WORDS,
+  REFILE_RETRY_MS,
+  REFILE_SWEEP_BATCH,
+  REFILE_SWEEP_FINISHES_WORDS,
   REFILE_GONE_WORDS,
   REFILE_TRASHED_WORDS,
+  dueRowsByJob,
   movePhotoWordsWithRefile,
   moveReplyWithRefileWords,
   movedPhotosInDrive,
   nextFreeName,
   refileAskOf,
   refileResult,
+  refileRowNeedsClearing,
+  refileRowPatch,
   refileStep,
   refiledForSeat,
   type RefileHeld,
@@ -26,6 +33,7 @@ import {
 const FUNCTION = readFileSync('supabase/functions/photo-save/index.ts', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const MOVE_SQL = readFileSync('supabase/migrations/20261109160000_on_site_move_job.sql', 'utf8')
+const MIGRATION = readFileSync('supabase/migrations/20261111024500_box_photo_refile_due.sql', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
 const EDGE = readFileSync('docs/EDGE_FUNCTIONS.md', 'utf8')
 const MAP = readFileSync('docs/MATERIALS_ON_SITE_ARCHITECTURE.md', 'utf8')
@@ -114,7 +122,9 @@ describe('the reply', () => {
   })
 
   it('says how many were not reached when the ask’s time ran out', () => {
-    expect(result({ inDrive: 300, moved: [moved(1)], already: 249, left: 50 }).words).toBe('Moved 1 box photo into this job’s photo folder. 249 were already there. 50 were not reached in this ask’s time. Ask again for the rest.')
+    expect(result({ inDrive: 300, moved: [moved(1)], already: 249, left: 50 }).words).toBe(
+      'Moved 1 box photo into this job’s photo folder. 249 were already there. 50 were not reached in this ask’s time. The photo sweep moves the rest by itself within a few minutes, or ask again.',
+    )
   })
 })
 
@@ -180,25 +190,82 @@ describe('the dev seat’s half', () => {
     expect(NO_REFILE_NEEDED).toMatchObject({ asked: false, ok: true })
   })
 
-  it('a held photo or one not reached names the ask to make again', () => {
+  it('a held photo or one not reached says what follows by itself', () => {
     const held: RefileHeld[] = [{ id: 'p2', file_name: 'A2.jpg', why: REFILE_TRASHED_WORDS }]
     const out = refiledForSeat(JOB, { ok: true, status: 200, body: refileResult({ jobId: JOB, folderId: FOLDER, inDrive: 2, moved: [moved(1)], already: 0, held, left: 0 }) })
     expect(out).toMatchObject({ asked: true, ok: false, moved: 1, held })
-    expect(out.next).toBe(`The move stands and every photo still opens from its box. Once what held a photo is put right, photo-save takes the ask again from a dev: POST { "refile_box_photos": "${JOB}" }.`)
+    expect(out.next).toBe(`The move stands and every photo still opens from its box. ${REFILE_HELD_RETRY_WORDS}`)
     const left = refiledForSeat(JOB, { ok: true, status: 200, body: refileResult({ jobId: JOB, folderId: FOLDER, inDrive: 90, moved: [moved(1)], already: 0, held: [], left: 89 }) })
-    expect(left.next).toBe(`The move stands and every photo still opens from its box. For the photos not reached, photo-save takes the ask again from a dev: POST { "refile_box_photos": "${JOB}" }.`)
+    expect(left.next).toBe(`The move stands and every photo still opens from its box. ${REFILE_SWEEP_FINISHES_WORDS}`)
+    const both = refiledForSeat(JOB, { ok: true, status: 200, body: refileResult({ jobId: JOB, folderId: FOLDER, inDrive: 90, moved: [], already: 0, held, left: 89 }) })
+    expect(both.next).toBe(`The move stands and every photo still opens from its box. ${REFILE_SWEEP_FINISHES_WORDS} ${REFILE_HELD_RETRY_WORDS}`)
   })
 
-  it('a failed ask never undoes the move: the reply says the move stands and names the ask', () => {
+  it('a failed ask never undoes the move, and the sweep finishes it: nobody has to ask again', () => {
     expect(refiledForSeat(JOB, { ok: false, status: 403, body: { error: 'Only a dev moves a job’s box photos to its folder.' } })).toEqual({
       asked: true,
       ok: false,
       why: 'Only a dev moves a job’s box photos to its folder.',
-      next: `The move stands and every photo still opens from its box. The photos’ files were not moved to the new job’s photo folder: Only a dev moves a job’s box photos to its folder. photo-save takes the ask again from a dev: POST { "refile_box_photos": "${JOB}" }.`,
+      next: 'The move stands and every photo still opens from its box. The ask to move the photos’ files did not finish: Only a dev moves a job’s box photos to its folder. Each photo that did not move is marked due, and the photo sweep moves what is due by itself within a few minutes.',
     })
     expect(refiledForSeat(JOB, { ok: false, status: 0, body: { error: 'photo-save could not be reached: timed out' } }).why).toBe('photo-save could not be reached: timed out')
     // An older photo-save answers the sweep's reply to a body it does not know: no words, so it reads as a failed ask.
     expect(refiledForSeat(JOB, { ok: true, status: 200, body: { ticks: 0, saved: 0 } })).toMatchObject({ asked: true, ok: false, why: 'photo-save answered 200' })
+  })
+})
+
+describe('the engine: marked by the database, moved by the sweep (v2.6915)', () => {
+  const now = new Date('2026-11-11T15:00:00.000Z')
+
+  it('a file that is where it belongs carries no mark and no reason', () => {
+    expect(refileRowPatch({ settled: true }, now)).toEqual({ refile_due_at: null, fail_why: null })
+  })
+
+  it('a held file keeps its reason and is due again a day on', () => {
+    expect(REFILE_RETRY_MS).toBe(24 * 60 * 60 * 1000)
+    expect(refileRowPatch({ held: REFILE_TRASHED_WORDS }, now)).toEqual({ refile_due_at: '2026-11-12T15:00:00.000Z', fail_why: REFILE_TRASHED_WORDS })
+    expect(refileRowPatch({ held: 'x'.repeat(400) }, now).fail_why).toHaveLength(300)
+  })
+
+  it('a settled row is written only when it has something to clear', () => {
+    expect(refileRowNeedsClearing({ refile_due_at: null, fail_why: null })).toBe(false)
+    expect(refileRowNeedsClearing({})).toBe(false)
+    expect(refileRowNeedsClearing({ refile_due_at: '2026-11-11T15:00:00.000Z', fail_why: null })).toBe(true)
+    expect(refileRowNeedsClearing({ refile_due_at: null, fail_why: REFILE_TRASHED_WORDS })).toBe(true)
+  })
+
+  it('the sweep’s due rows are grouped by job in the order they came, so each folder is read once', () => {
+    const rows = [
+      { id: 'p1', job_id: 'B' },
+      { id: 'p2', job_id: 'A' },
+      { id: 'p3', job_id: 'B' },
+    ]
+    expect([...dueRowsByJob(rows)].map(([job, list]) => [job, list.map((r) => r.id)])).toEqual([
+      ['B', ['p1', 'p3']],
+      ['A', ['p2']],
+    ])
+    expect(REFILE_SWEEP_BATCH).toBe(20)
+  })
+
+  it('the migration marks a filed photo whose job changes, and the cron wakes for a photo that is due', () => {
+    expect(MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(MIGRATION).toContain('ALTER TABLE public.job_box_photos ADD COLUMN IF NOT EXISTS refile_due_at timestamptz;')
+    expect(MIGRATION).toContain('IF NEW.job_id IS DISTINCT FROM OLD.job_id AND NEW.drive_file_id IS NOT NULL THEN')
+    expect(MIGRATION).toContain('CREATE OR REPLACE TRIGGER job_box_photos_job_changed BEFORE UPDATE OF job_id ON public.job_box_photos')
+    expect(MIGRATION).toContain('REVOKE ALL ON FUNCTION public.job_box_photo_job_changed() FROM PUBLIC, anon, authenticated;')
+    expect(MIGRATION).toContain('OR EXISTS (SELECT 1 FROM public.job_box_photos WHERE refile_due_at IS NOT NULL AND refile_due_at <= now());')
+    // Every earlier clause is written again: a re-schedule that dropped one would stop that source.
+    for (const table of ['photo_saves', 'report_photos', 'stage_checklist_answers', 'job_photo_notes', 'machine_check_photos', 'stage_checklist_records', 'task_photos', 'counter_ticket_pages', 'bid_photos']) expect(MIGRATION).toContain(`public.${table}`)
+  })
+
+  it('the sweep takes the due rows after its other sources, and the ask and the sweep share one mover', () => {
+    expect(FUNCTION).toContain('const boxRefiles = await sweepRefileDue(admin)')
+    expect(FUNCTION).toContain(".lte('refile_due_at', new Date().toISOString())")
+    expect(FUNCTION).toContain('.limit(REFILE_SWEEP_BATCH)')
+    expect(FUNCTION).toContain('const t = await refileJobRows(admin, google, jobId, rows, Date.now() + REFILE_BUDGET_MS)')
+    expect(FUNCTION).toContain('const t = await refileJobRows(admin, google, jobId, jobRows, null)')
+    expect(FUNCTION).toContain("await admin.from('job_box_photos').update(refileRowPatch({ held: why }, new Date())).eq('id', r.id)")
+    expect(FUNCTION).toContain("if (refileRowNeedsClearing(r)) await admin.from('job_box_photos').update(refileRowPatch({ settled: true }, new Date())).eq('id', r.id)")
   })
 })
 
@@ -214,7 +281,7 @@ describe('the function, the server and the docs', () => {
   })
 
   it('moves by the job’s own photo folder, lists it once, and keeps going past a file that fails', () => {
-    expect(FUNCTION).toContain("const landing = await photoFolderOrWhy(admin, google, { jobs_ledger_id: jobId })")
+    expect(FUNCTION).toContain('landing = await photoFolderOrWhy(admin, google, { jobs_ledger_id: jobId })')
     expect(FUNCTION).toContain('inFolder = await folderFiles(google, landing.id)')
     expect(FUNCTION).toContain('const step = refileStep(await driveFileState(google, r.drive_file_id), landing.id, names)')
     expect(FUNCTION).toContain('await moveFile(google, r.drive_file_id, step.removeParents, landing.id, step.renamed ? step.name : undefined)')

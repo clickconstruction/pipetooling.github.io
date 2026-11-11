@@ -24,7 +24,7 @@ export const HOUSE_CODE_SELECT = 'id,supply_house_id,code,code_key,part_id,not_a
 
 /** The table's rows as the matcher reads them. */
 export function toHouseCodes(rows: HouseCodeRow[]): HouseCode[] {
-  return rows.map((r) => ({ supplyHouseId: r.supply_house_id, code: r.code, partId: r.part_id, notAPart: r.not_a_part }))
+  return rows.map((r) => ({ supplyHouseId: r.supply_house_id, code: r.code, partId: r.part_id, notAPart: r.not_a_part, unitFactor: Number(r.unit_factor) || 1 }))
 }
 
 export type PartNumberRow = { supplyHouseId: string; houseName: string; priced: boolean; codes: HouseCodeRow[] }

@@ -340,7 +340,7 @@ describe('Bids page render smoke — a link to a bid', () => {
     await waitFor(() => expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0))
   })
 
-  it('a bid with no link draws a grey icon in each slot; one opens the Files window on its row, and its press opens Edit bid (punch list #306)', async () => {
+  it('a bid with no link draws a grey icon in each slot; one opens the Files window on its row with the box for the link, and Open Edit bid lands on the field (punch list #306)', async () => {
     renderBidsAt('/bids?tab=bid-board', 'estimator', [{ ...BID, drive_link: 'https://drive.google.com/drive/folders/1Project' }])
     await waitFor(() => expect(document.getElementById('bid-board-row-bid-1')).toBeTruthy())
     const row = document.getElementById('bid-board-row-bid-1')!
@@ -357,7 +357,11 @@ describe('Bids page render smoke — a link to a bid', () => {
     expect(document.querySelector('[data-bid-file-row="folder"]')!.getAttribute('data-there')).toBe('yes')
     expect(document.querySelector('[data-bid-photos-window]')).toBeNull()
 
-    fireEvent.click(document.querySelector('[data-bid-file-set="count"]')!)
+    // The box for the missing link is open, and the row the bid has offers Change.
+    expect(document.querySelector('[data-bid-file-edit="count"]')).toBeTruthy()
+    expect(document.querySelector('[data-bid-file-set="folder"]')!.textContent).toBe('Change')
+
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-bid-file-edit="count"]')!).getByRole('button', { name: 'Open Edit bid' }))
     await waitFor(() => expect(document.querySelector('[data-bid-files-window]')).toBeNull())
     await waitFor(() => expect(document.getElementById('bid-form-count-tooling-link')).toBeTruthy())
   })
