@@ -22,7 +22,7 @@ export type StreetParts = {
 }
 
 const DIRECTIONS: Record<string, string> = { N: 'N', S: 'S', E: 'E', W: 'W', NORTH: 'N', SOUTH: 'S', EAST: 'E', WEST: 'W', NE: 'NE', NW: 'NW', SE: 'SE', SW: 'SW' }
-const SUFFIXES = new Set(['ST', 'STREET', 'AVE', 'AVENUE', 'AV', 'DR', 'DRIVE', 'RD', 'ROAD', 'BLVD', 'BOULEVARD', 'LN', 'LANE', 'CT', 'COURT', 'PKWY', 'PARKWAY', 'WAY', 'CIR', 'CIRCLE', 'PL', 'PLACE', 'TRL', 'TRAIL', 'CV', 'COVE', 'TER', 'TERRACE', 'XING', 'CROSSING', 'BND', 'BEND', 'SQ', 'SQUARE', 'PLZ', 'PLAZA', 'EXPY', 'FWY', 'RDG', 'RIDGE', 'PASS', 'PATH', 'RUN', 'ROW', 'WALK', 'HOLW', 'PT', 'POINT'])
+const SUFFIXES = new Set(['ST', 'STREET', 'AVE', 'AVENUE', 'AV', 'DR', 'DRIVE', 'RD', 'ROAD', 'BLVD', 'BOULEVARD', 'LN', 'LANE', 'CT', 'COURT', 'PKWY', 'PARKWAY', 'WAY', 'CIR', 'CIRCLE', 'PL', 'PLACE', 'TRL', 'TRAIL', 'CV', 'COVE', 'TER', 'TERRACE', 'XING', 'CROSSING', 'BND', 'BEND', 'SQ', 'SQUARE', 'PLZ', 'PLAZA', 'EXPY', 'FWY', 'RDG', 'RIDGE', 'PASS', 'PATH', 'RUN', 'ROW', 'WALK', 'HOLW', 'PT', 'POINT', 'LOOP', 'TRCE', 'TRACE', 'VW', 'HTS', 'GLN'])
 /** Where the street ends and a unit begins. */
 const UNIT_WORDS = new Set(['STE', 'SUITE', 'UNIT', 'APT', 'BLDG', 'BUILDING', 'FL', 'FLOOR', 'RM', 'ROOM', 'LOT', 'SPC', 'SPACE', 'TRLR'])
 
@@ -47,7 +47,15 @@ export function streetParts(address: string | null | undefined): StreetParts | n
   if (rest.length >= 2 && DIRECTIONS[rest[rest.length - 1] ?? '']) rest = rest.slice(0, -1)
   if (rest.length >= 2 && SUFFIXES.has(rest[rest.length - 1] ?? '')) rest = rest.slice(0, -1)
   const name = rest.join(' ')
-  return name === '' ? null : { num, prefix, name }
+  if (name === '') return null
+  const interstate = interstateOf(name)
+  return { num, prefix, name: interstate === null ? name : `IH ${interstate}` }
+}
+
+/** An interstate's number, however the address writes it: "IH 10", "I H 10", "I-35", "INTERSTATE HIGHWAY 35"; null for any other street. */
+export function interstateOf(name: string): number | null {
+  const m = /^(?:IH|I H|I|I-|INTERSTATE|INTERSTATE HIGHWAY)\s*-?\s*(\d+)$/.exec(name)
+  return m ? Number(m[1]) : null
 }
 
 const ORDINAL_WORDS = ['', 'FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH', 'ELEVENTH', 'TWELFTH', 'THIRTEENTH', 'FOURTEENTH', 'FIFTEENTH', 'SIXTEENTH', 'SEVENTEENTH', 'EIGHTEENTH', 'NINETEENTH', 'TWENTIETH']
@@ -58,8 +66,10 @@ export function ordinalOf(name: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-/** Every way a county might write a street's name: "5TH" is also "5" (Travis) and "FIFTH" (Comal, Guadalupe). */
+/** Every way a county might write a street's name: "5TH" is also "5" (Travis) and "FIFTH" (Comal, Guadalupe); "IH 10" is also "I H 10" (Guadalupe). */
 export function nameSpellings(name: string): string[] {
+  const i = interstateOf(name)
+  if (i !== null) return [`IH ${i}`, `I H ${i}`, `I-${i}`, `INTERSTATE HIGHWAY ${i}`, `INTERSTATE ${i}`]
   const n = ordinalOf(name)
   if (n === null) return [name]
   const word = ORDINAL_WORDS[n]
@@ -118,8 +128,11 @@ export const TRAVIS_PARCELS: ParcelSource = {
   outFields: 'PROP_ID,situs_address,situs_num,situs_street_prefx,situs_street,py_owner_name,py_address,land_homesite_val,imprv_homesite_val,imprv_non_homesite_val,market_value,land_state_cd,F1year_imprv,tcad_acres,hyperlink',
   where: (p) => {
     const n = ordinalOf(p.name)
-    const street = n === null ? `UPPER(situs_street) LIKE ${quoted(`${p.name}%`)}` : `(situs_street = ${quoted(String(n))} OR UPPER(situs_street) LIKE ${quoted(`${p.name}%`)})`
-    return `situs_num = ${quoted(p.num)} AND ${street}`
+    const likes = nameSpellings(p.name)
+      .filter((s) => !/^\d+$/.test(s) && !(n !== null && s === ORDINAL_WORDS[n]))
+      .map((s) => `UPPER(situs_street) LIKE ${quoted(`${s}%`)}`)
+    const asked = n === null ? likes : [`situs_street = ${quoted(String(n))}`, ...likes]
+    return `situs_num = ${quoted(p.num)} AND ${asked.length === 1 ? asked[0] : `(${asked.join(' OR ')})`}`
   },
   streetOf: (a) => ({ prefix: str(a.situs_street_prefx)?.toUpperCase() ?? null, street: str(a.situs_street)?.toUpperCase() ?? '' }),
   ownerOf: (a) => str(a.py_owner_name),
@@ -230,7 +243,7 @@ function featuresOf(body: unknown): Attributes[] {
   return Array.isArray(features) ? features.map((f) => f.attributes ?? {}) : []
 }
 
-/** A row's street name without a direction it carries in front and a suffix it carries behind. */
+/** A row's street name without a direction it carries in front or behind ("I H 10 W") and a suffix it carries behind. */
 function bareStreet(street: string): { lead: string | null; name: string } {
   let words = street.split(/\s+/).filter(Boolean)
   let lead: string | null = null
@@ -238,6 +251,7 @@ function bareStreet(street: string): { lead: string | null; name: string } {
     lead = DIRECTIONS[words[0] ?? ''] ?? null
     words = words.slice(1)
   }
+  if (words.length >= 2 && DIRECTIONS[words[words.length - 1] ?? '']) words = words.slice(0, -1)
   if (words.length >= 2 && SUFFIXES.has(words[words.length - 1] ?? '')) words = words.slice(0, -1)
   return { lead, name: words.join(' ') }
 }
@@ -291,6 +305,19 @@ export function parcelFactsByPoint(source: ParcelSource, body: unknown): ParcelF
  */
 export function askedBexarLayer(query: string | null | undefined): boolean {
   return (query ?? '').startsWith('UPPER(Situs)')
+}
+
+/**
+ * Whether a kept "no parcel" was asked with a different question than this code asks today for
+ * the same address: a spelling learned since (a LOOP suffix, an interstate written "I H 10") would
+ * find what the old question missed, so the row is asked again instead of waiting out its month.
+ */
+export function askedOtherQuestion(source: ParcelSource, keptQuery: string | null | undefined, address: string | null | undefined): boolean {
+  const parts = streetParts(address)
+  if (!parts) return false
+  const now = source.where(parts)
+  const kept = (keptQuery ?? '').split(' | ')[0] ?? ''
+  return kept !== now
 }
 
 /** A point the layer can be asked about: both numbers, inside Texas. */
