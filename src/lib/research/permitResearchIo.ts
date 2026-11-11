@@ -1,7 +1,7 @@
 /**
  * Research (punch list #292): the ledger's reads and writes. `research_permits` for the rows,
  * `permit_pulls` for the Pulled line, `permit_verdicts` for a call, `prospects` + `prospect_jobs`
- * for the GC lead Approach them makes, and the `permit-pull` function for Pull now. The tables
+ * for the lead Pursue makes, and the `permit-pull` function for Pull now. The tables
  * and the RPC are newer than the generated types, so the calls use the house `as never` pattern
  * until the next chore(types) regen.
  */
@@ -9,7 +9,7 @@ import { cityReadsParcels } from './permitCityDoors'
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { leadFromPermit, ymdPlusDays, type BuilderMarkValue, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type PursueFor, type ResearchPermitRow } from './permitResearch'
+import { leadFromPermit, ymdPlusDays, type BuilderMarkValue, type ContactHistory, type LeadFacts, type PermitLeadDeck, type PermitLeadRole, type PermitVerdict, type PursueFor, type ResearchPermitRow } from './permitResearch'
 import type { BuilderKind, BuilderRow, PermitFunnel } from './permitBuilders'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { BUILDER_PERMIT_DAYS, type SitePermit } from './permitPublic'
@@ -184,16 +184,18 @@ export async function loadPermitFunnel(city: string, sinceYmd: string): Promise<
 }
 
 /**
- * Approach them: the company on the permit as a GC lead on the GCs deck (an open lead of the same
- * name is reused), with the permit as a job on it. Returns the lead to tie the verdict to.
+ * Pursue: the company on the permit as a lead on the deck its kind belongs on (a general
+ * contractor on Customers, an owner or an architect on Jobs to GC; an open lead of the same name
+ * on that deck is reused). On Jobs to GC the permit is a job on the lead; on Customers it is the
+ * lead's notes, or a comment when the lead was there already. Returns the lead to tie the verdict to.
  */
-export async function approachFromPermit(row: ResearchPermitRow, role: PermitLeadRole, userId: string, facts: LeadFacts = {}): Promise<{ prospectId: string; companyName: string; reused: boolean }> {
+export async function approachFromPermit(row: ResearchPermitRow, role: PermitLeadRole, userId: string, facts: LeadFacts = {}): Promise<{ prospectId: string; companyName: string; reused: boolean; deck: PermitLeadDeck }> {
   const masterUserId = await resolveCompanyOwnerUserId(supabase, userId)
-  const { prospect, job, companyName } = leadFromPermit(row, role, { userId, masterUserId }, facts)
+  const { prospect, job, note, deck, companyName } = leadFromPermit(row, role, { userId, masterUserId }, facts)
   const { data: live, error: liveError } = await supabase
     .from('prospects')
     .select('id')
-    .eq('kind', 'gc_lead')
+    .eq('kind', deck)
     .ilike('company_name', companyName)
     .is('prospect_fit_status', null)
     .limit(1)
@@ -202,13 +204,29 @@ export async function approachFromPermit(row: ResearchPermitRow, role: PermitLea
   let reused = true
   if (!prospectId) {
     const { data: made, error } = await supabase.from('prospects').insert(prospect as never).select('id').single()
-    if (error || !made) failed(error, 'make the GC lead')
+    if (error || !made) failed(error, 'make the lead')
     prospectId = made.id
     reused = false
   }
-  const { error: jobError } = await supabase.from('prospect_jobs').insert({ prospect_id: prospectId, created_by: userId, ...job } as never)
-  if (jobError) failed(jobError, 'put the permit on the lead')
-  return { prospectId, companyName, reused }
+  if (job) {
+    const { error: jobError } = await supabase.from('prospect_jobs').insert({ prospect_id: prospectId, created_by: userId, ...job } as never)
+    if (jobError) failed(jobError, 'put the permit on the lead')
+  } else if (reused) {
+    const { error: noteError } = await supabase.from('prospect_comments').insert({ prospect_id: prospectId, created_by: userId, comment_text: note, interaction_type: 'user_comment' } as never)
+    if (noteError) failed(noteError, 'put the permit on the lead')
+  }
+  return { prospectId, companyName, reused, deck }
+}
+
+/** The deck each lead sits on, for the doors on the lists. One read; a lead that is gone is left out. */
+export async function loadLeadDecks(prospectIds: string[]): Promise<Record<string, PermitLeadDeck>> {
+  const ids = [...new Set(prospectIds)]
+  if (ids.length === 0) return {}
+  const { data, error } = await supabase.from('prospects').select('id, kind').in('id', ids)
+  if (error) failed(error, 'read the leads')
+  const out: Record<string, PermitLeadDeck> = {}
+  for (const r of (data ?? []) as { id: string; kind: string | null }[]) out[r.id] = r.kind === 'customer' ? 'customer' : 'gc_lead'
+  return out
 }
 
 export type PullNowOutcome = { ok: boolean; feeds: Array<{ source: string; seen: number; kept: number; error: string | null }> }
