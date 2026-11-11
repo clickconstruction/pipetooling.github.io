@@ -1163,6 +1163,32 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(fileCopyMock.mock.calls.map(([f]) => [f.kind, f.how, f.jobIds])).toEqual([['lien_affidavit', 'print', ['j650']], ['lien_affidavit', 'print', ['j651']]])
     expect(fileCopyMock.mock.calls.map(([f]) => f.title)).toEqual([expect.stringMatching(/^Lien Affidavit — Job .*650$/), expect.stringMatching(/^Lien Affidavit — Job .*651$/)])
     expect(fileCopyMock.mock.calls[0]![1].html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
+    // The help sheet prints first (punch list #314): a row for each paper and the one left out, and no job's filed copy carries it.
+    expect(html.indexOf('data-lien-help="batch"')).toBeGreaterThan(0)
+    expect(html.indexOf('data-lien-help="batch"')).toBeLessThan(html.indexOf('<div class="filing-paper'))
+    expect(html).toContain('Lien affidavits: this batch of 2')
+    expect(html).toContain('Not printed. It is on the earlier form. Redraw it, or print it from its own Lien window.')
+    expect(fileCopyMock.mock.calls.every(([, body]) => !body.html.includes('lien-help'))).toBe(true)
+  })
+
+  it('the help sheet box is ticked until someone unticks it, and an unticked box prints the papers alone (punch list #314)', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    const box = within(bar.querySelector('[data-lien-affidavit-help-sheet]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(bar.querySelector('[data-lien-affidavit-help-sheet]')?.textContent).toBe('Print the help sheet first')
+    expect(box.checked).toBe(true)
+    fireEvent.click(box)
+    expect(box.checked).toBe(false)
+    expect(window.localStorage.getItem('pt.lienHelpSheet.v1')).toBe('off')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-help')
+    expect(fileCopyMock).toHaveBeenCalledTimes(2)
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
   })
 
   it('under the print press the list names a paper that takes a second sheet, by its job, and the press still prints every paper (v2.6930)', async () => {
