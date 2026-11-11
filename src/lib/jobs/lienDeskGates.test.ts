@@ -122,6 +122,12 @@ describe('lienFootBlockedSentence (v2.4797)', () => {
     expect(lienAffidavitFootBlockedSentence({ key: 'homestead', label: '' })).toContain('§ 53.254')
     expect(lienAffidavitFootBlockedSentence({ key: 'contractor', label: '' })).toBe("Don't file yet. Add the general contractor's address on its customer record first.")
     expect(lienAffidavitGateShortWords({ key: 'contractor' })).toBe('no address for the general contractor')
+    expect(lienAffidavitFootBlockedSentence({ key: 'public_owner', label: '' })).toBe("Don't file yet. This is public property, so no lien can be filed. Ask the attorney about the payment bond.")
+    expect(lienAffidavitGateShortWords({ key: 'public_owner' })).toBe('public property')
+    // The notice's own gate asks every name too (punch list #314): the printed name can be an attention line.
+    expect(buildLienDeskGates({ ...clear, ownerName: 'ATTN REAL ESTATE MANAGER', ownerIsPublic: true }).gates[0]).toMatchObject({ value: 'Public property', tone: 'blocker' })
+    expect(buildLienDeskGates({ ...clear, ownerName: 'ATTN REAL ESTATE MANAGER' }).gates[0]).toMatchObject({ tone: 'ok' })
+    expect(buildLienDeskGates({ ...clear, ownerName: 'City of Sample', ownerIsPublic: undefined }).gates[0]).toMatchObject({ value: 'Public property' })
     expect(lienAffidavitFootBlockedSentence(null)).toBe("Don't file yet. Clear what the gates show first.")
     expect(lienAffidavitGateShortWords({ key: 'legal' })).toBe('county or legal description missing')
   })

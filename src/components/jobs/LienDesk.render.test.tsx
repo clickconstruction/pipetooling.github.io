@@ -21,7 +21,7 @@ import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow,
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withPublicOwner, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
@@ -995,6 +995,24 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(top.textContent).toBe('NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.')
     expect(paper().textContent!.indexOf('THIS IS NOT A LIEN')).toBeLessThan(paper().textContent!.indexOf('Lien Affidavit'))
     expect(document.body.textContent).toContain('Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney')
+  })
+
+  it('a public owner holds the affidavit: the gate says no lien attaches, and offers no record to fill in (punch list #314)', async () => {
+    const d = data([], [], true, { owner_name: 'SAMPLE CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', owner_mode: 'building_owner' })
+    const rows = withPublicOwner([affRow], { j650: 'addr1' }, d.addressesById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
+    expect(document.body.textContent).toContain("Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney.")
+    expect(document.body.textContent).toContain('missing a private owner')
+    expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
+    // The paper names the owner, never the attention line.
+    expect(paper().textContent).toContain('The owner or reputed owner is SAMPLE CITY OF')
+    expect(paper().textContent).not.toContain('ATTN REAL ESTATE MANAGER')
+    expect(screen.queryByRole('button', { name: 'Fill in the record ›' })).toBeNull()
   })
 
   it('a GC with no address on file holds the affidavit: the gate says so, the door opens the GC’s record, and the paper keeps its words', async () => {
