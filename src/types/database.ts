@@ -25424,6 +25424,7 @@ export type Database = {
           id: string
           part_id: string
           price: number
+          source_line_id: string | null
           supply_house_id: string
           updated_at: string | null
         }
@@ -25433,6 +25434,7 @@ export type Database = {
           id?: string
           part_id: string
           price: number
+          source_line_id?: string | null
           supply_house_id: string
           updated_at?: string | null
         }
@@ -25442,6 +25444,7 @@ export type Database = {
           id?: string
           part_id?: string
           price?: number
+          source_line_id?: string | null
           supply_house_id?: string
           updated_at?: string | null
         }
@@ -25451,6 +25454,20 @@ export type Database = {
             columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_part_prices_source_line_id_fkey"
+            columns: ["source_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_paper_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_part_prices_source_line_id_fkey"
+            columns: ["source_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_purchase_lines"
             referencedColumns: ["id"]
           },
           {
@@ -35179,6 +35196,12 @@ export type Database = {
         Row: {
           description: string
           extended_cents: number | null
+          filed_at: string | null
+          filed_by: string | null
+          filed_price: number | null
+          group_label: string
+          group_tag: string
+          held_why: string
           house_code: string
           id: string
           line_kind: string
@@ -35191,12 +35214,22 @@ export type Database = {
           qty_backordered: number | null
           qty_ordered: number | null
           qty_shipped: number | null
+          replaced_effective_date: string | null
+          replaced_price: number | null
+          replaced_source_line_id: string | null
           unit: string
+          unit_factor: number
           unit_price: number | null
         }
         Insert: {
           description?: string
           extended_cents?: number | null
+          filed_at?: string | null
+          filed_by?: string | null
+          filed_price?: number | null
+          group_label?: string
+          group_tag?: string
+          held_why?: string
           house_code?: string
           id?: string
           line_kind?: string
@@ -35209,12 +35242,22 @@ export type Database = {
           qty_backordered?: number | null
           qty_ordered?: number | null
           qty_shipped?: number | null
+          replaced_effective_date?: string | null
+          replaced_price?: number | null
+          replaced_source_line_id?: string | null
           unit?: string
+          unit_factor?: number
           unit_price?: number | null
         }
         Update: {
           description?: string
           extended_cents?: number | null
+          filed_at?: string | null
+          filed_by?: string | null
+          filed_price?: number | null
+          group_label?: string
+          group_tag?: string
+          held_why?: string
           house_code?: string
           id?: string
           line_kind?: string
@@ -35227,10 +35270,21 @@ export type Database = {
           qty_backordered?: number | null
           qty_ordered?: number | null
           qty_shipped?: number | null
+          replaced_effective_date?: string | null
+          replaced_price?: number | null
+          replaced_source_line_id?: string | null
           unit?: string
+          unit_factor?: number
           unit_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supply_paper_lines_filed_by_fkey"
+            columns: ["filed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supply_paper_lines_paper_id_fkey"
             columns: ["paper_id"]
@@ -35251,12 +35305,16 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
+          bid_id: string | null
+          came_by: string
           check_note: string
           check_state: string
           created_at: string
+          created_by: string | null
           dated_on: string | null
           drive_file_id: string | null
           file_path: string | null
+          file_sha256: string | null
           freight_cents: number | null
           id: string
           invoice_id: string | null
@@ -35274,16 +35332,21 @@ export type Database = {
           tax_cents: number | null
           text_layer: boolean | null
           total_cents: number | null
+          valid_until: string | null
         }
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
+          bid_id?: string | null
+          came_by?: string
           check_note?: string
           check_state?: string
           created_at?: string
+          created_by?: string | null
           dated_on?: string | null
           drive_file_id?: string | null
           file_path?: string | null
+          file_sha256?: string | null
           freight_cents?: number | null
           id?: string
           invoice_id?: string | null
@@ -35301,16 +35364,21 @@ export type Database = {
           tax_cents?: number | null
           text_layer?: boolean | null
           total_cents?: number | null
+          valid_until?: string | null
         }
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
+          bid_id?: string | null
+          came_by?: string
           check_note?: string
           check_state?: string
           created_at?: string
+          created_by?: string | null
           dated_on?: string | null
           drive_file_id?: string | null
           file_path?: string | null
+          file_sha256?: string | null
           freight_cents?: number | null
           id?: string
           invoice_id?: string | null
@@ -35328,11 +35396,26 @@ export type Database = {
           tax_cents?: number | null
           text_layer?: boolean | null
           total_cents?: number | null
+          valid_until?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "supply_papers_accepted_by_fkey"
             columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -44901,6 +44984,9 @@ export type Database = {
         Args: { p_bid_id: string; p_price_book_version_id: string }
         Returns: Json
       }
+      price_row_file: { Args: { p: Json }; Returns: Json }
+      price_row_take_back: { Args: { p_line_id: string }; Returns: Json }
+      price_source_words: { Args: { p_line_id: string }; Returns: string }
       primary_can_access_bid: { Args: { p_bid_id: string }; Returns: boolean }
       primary_can_access_estimate: {
         Args: { p_estimate_id: string }
