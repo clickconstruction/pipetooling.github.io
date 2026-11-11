@@ -80,7 +80,7 @@ import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPrevi
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
 import { isOfficeRole } from '../../lib/doorRoles'
-import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, billOnDealWords, jobIsOffTheDeal, jobIsOnTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, billOnDealWords, billQuestionState, jobIsOffTheDeal, jobIsOnTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
 import { addJobToInKindArrangement } from '../../lib/inKind/inKindStandingIo'
 import InKindBillQuestion from '../inKind/InKindBillQuestion'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
@@ -1640,9 +1640,9 @@ export default function SendRecordInvoiceModal({
     }
     setOutsideSubmitting(true)
     setOutsideError(null)
-    if (answeredInKind && billStanding) {
+    if (inKindBill.dealId) {
       try {
-        await addJobToInKindArrangement(billStanding.arrangementIds[0]!, job.id)
+        await addJobToInKindArrangement(inKindBill.dealId, job.id)
       } catch (e) {
         setOutsideError(formatErrorMessage(e, 'The job was not put on the arrangement, so the bill was not recorded.'))
         setOutsideSubmitting(false)
@@ -2215,9 +2215,12 @@ export default function SendRecordInvoiceModal({
     )
   }
 
-  const inKindQuestion = billStanding != null && billStanding.arrangementIds.length === 1 && billCustomerJobDetailsLoaded && jobIsOffTheDeal(billCustomerJobDetails, billStanding)
-  const inKindUnanswered = inKindQuestion && inKindAnswer == null
-  const answeredInKind = inKindQuestion && inKindAnswer === 'in_kind'
+  // The question is asked for any job off the deal, one open deal or several (v2.6934). With several the In kind
+  // answer cannot record here, so it holds the window and opens the customer's page (`billQuestionState`).
+  const inKindBill = billQuestionState(billStanding, billCustomerJobDetailsLoaded && jobIsOffTheDeal(billCustomerJobDetails, billStanding), inKindAnswer)
+  const inKindQuestion = inKindBill.asked
+  const inKindUnanswered = inKindBill.holds
+  const answeredInKind = inKindBill.recordsInKind
   const billInKind = jobOnDeal || answeredInKind
   const outsideReady =
     !inKindUnanswered &&
@@ -2487,8 +2490,12 @@ export default function SendRecordInvoiceModal({
             customerName={job.customer_name ?? ''}
             answer={inKindAnswer}
             disabled={busy}
+            pickDealHref={inKindBill.manyDeals && billStanding ? `/customers/${billStanding.customerId}` : null}
+            onPickDeal={onClose}
             onAnswer={(next) => {
               setInKindAnswer(next)
+              // With several open deals nothing is recorded here, so the channel stays where the person left it.
+              if (inKindBill.manyDeals) return
               if (next === 'in_kind') {
                 setHcpTabRevealed(true)
                 setTab('housecallpro')

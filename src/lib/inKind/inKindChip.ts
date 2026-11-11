@@ -110,6 +110,38 @@ export const billQuestionWords = (customerName: string): string => `${customerNa
 export const BILL_IN_KIND_CHOICE = { title: 'In kind, on the arrangement', why: 'It joins the bills the arrangement pays down. It is recorded here and sent to nobody.' }
 export const BILL_MONEY_CHOICE = { title: 'With money', why: 'It is sent and chased like any other bill.' }
 export const BILL_PICK_FIRST = 'Pick how this bill is paid first.'
+
+/** The In kind choice for a customer with more than one open deal: the window cannot know which one pays. */
+export const BILL_IN_KIND_CHOICE_MANY = { title: 'In kind, on an arrangement', why: 'This customer has more than one. The job goes on one of them first, on the customer’s page.' }
+/** Under that choice once it is picked: where to go, and that nothing is billed here until then. */
+export const billPickDealWords = (customerName: string): { lead: string; rest: string } => ({
+  lead: `${customerName.trim() || 'This customer'} has more than one arrangement.`,
+  rest: 'Put this job on one of them under Change the terms. Then bill it here. Nothing is billed until then.',
+})
+
+/**
+ * Where Bill Customer stands on a job off the deal. `asked` is the question itself (the job is off the deal and its
+ * customer has an open one). With one open deal an In kind answer records the bill on it. With more than one the
+ * window cannot know which deal pays, so In kind holds the window and sends the person to the customer's page, as
+ * the job's strip does. A hold means nothing is sent and nothing is recorded: before v2.6934 two open deals asked
+ * nothing, and the window billed for money a bill a deal was meant to pay.
+ */
+export function billQuestionState(
+  s: InKindStanding | null | undefined,
+  asked: boolean,
+  answer: InKindBillAnswer | null,
+): { asked: boolean; manyDeals: boolean; holds: boolean; recordsInKind: boolean; dealId: string | null } {
+  if (!asked || !s || s.arrangementIds.length === 0) return { asked: false, manyDeals: false, holds: false, recordsInKind: false, dealId: null }
+  const manyDeals = s.arrangementIds.length > 1
+  const inKind = answer === 'in_kind'
+  return {
+    asked: true,
+    manyDeals,
+    holds: answer == null || (inKind && manyDeals),
+    recordsInKind: inKind && !manyDeals,
+    dealId: inKind && !manyDeals ? s.arrangementIds[0]! : null,
+  }
+}
 export const BILL_IN_KIND_CHANNEL_NOTE = 'Paid in kind. Record the bill below. Nothing is sent to the customer.'
 export const BILL_IN_KIND_RECORD_PRESS = 'Record the bill in kind'
 

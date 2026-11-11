@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/SendRecordInvoiceModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-11-11
 ---
 
 > **Line numbers are as of `f423bd6e5`** (read from `npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`). They rot on the next commit — search the symbol; every region below names one.
@@ -100,6 +100,7 @@ Each section lists: render location (state gate + line range **as of `f423bd6e5`
 | Physical | — | `physicalInvoiceDocument` (9), `physicalInvoicePdf` (12), `physicalInvoiceLineItems` (20), `physicalInvoiceFooter` (9); `physicalInvoiceJobContext` **none** | submit size caps, attachment naming, send body untested |
 | HCP | render test (kind:'job' Save) | `paidJobBillGuard` (11) | kind:'invoice' branch and the client-side paid block untested |
 | Discount | [`BillCustomerDiscountStrip.render.test.tsx`](../src/components/jobs/BillCustomerDiscountStrip.render.test.tsx) (4) | `jobs/discountLine` (34) | `applyBillDiscount` arg mapping (basis positions, draft amounts only for a `ready_to_bill` invoice) untested — money write |
+| In kind question | [`SendRecordInvoiceModal.inKind.render.test.tsx`](../src/components/jobs/SendRecordInvoiceModal.inKind.render.test.tsx) (3): two open deals ask, *In kind* holds and links to the customer's page, *With money* frees the record press; one deal goes to the record-only channel | `inKind/inKindChip` (`billQuestionState`) | the record itself on the one-deal path (`addJobToInKindArrangement` then the HCP write) is not driven |
 | Presets / memo | — | `billCustomerMemoPresets` (19), `stripeInvoiceFooter` (16), `invoiceLineDescriptionLeadingLowercase` (9) | — |
 | Line-edit refs | — | `billCustomerPreviewLineRefs` — no own test file; only `physicalPreviewRowsAreDbBacked` is exercised (1 case in `stripeInvoiceItemsDiscountLines.test.ts`) | row-index → ref mapping (`billableFixtureRefsInOrder` / `billableMaterialRefsInOrder`) untested |
 | Module helpers | — | twin `isBillableFixtureRow` tested in `physicalInvoiceLineItems` | `jobHasBillableStripeSpecificWorkFixtures` and the 3 summary/date fns untested |
@@ -194,6 +195,7 @@ The modal's equivalent of Bids' `useBidPricingEngine` — **no shared selection 
 - **Missing-email banner** (L2396–2455, v2.936 + v2.3345 GC copy): `emailFix*` + `saveMissingCustomerEmail`; GC payer → "Saved on <GC>'s customer record", else the also-customer checkbox.
 - **Bill-to / GC-payer banner** (L2457–2493): `billToDisplayLabel(billToOverride)` when set, else the GC-payer banner (`bill-customer-gc-payer-banner`).
 - **Strips:** `JobContractStrip` (L2496), `BillCustomerLienReleaseStrip` (L2498–2506, with the parent-owned `waiverAfterSend` tick state). Since v2.4301 the contract strip reads `useJobContractPapers` (the signed papers on file for the customer's jobs), offers a sibling job's paper through `JobContractSiblingOffer` and files a signed paper through `AddJobContractSheet` (3 smokes; also opened from the Pipeline and from the Customer page's `CustomerAgreementsCard`).
+- **In kind question** (punch list #301; `billStanding` from `useInKindStandings`, `billQuestionState` in `src/lib/inKind/inKindChip.ts`): a job an open deal already pays (`jobOnDeal`) gets the `bill-on-deal-note` and opens on HouseCall Pro, the one channel that sends nothing. A job off the deal gets `InKindBillQuestion`, and `inKindUnanswered` keeps `outsideReady` false, so every send and record press is dead until it is answered. With one open deal *In kind* hides the tab bar, switches to HouseCall Pro and `confirmOutsideBill` puts the job on the deal before it records. With more than one (v2.6934) the window cannot know which deal pays: *In kind* holds the window and links to the customer's page, as `JobInKindStrip` does, and only *With money* frees the presses.
 - **Tab bar** (L2508–2544): Stripe bill · Physical invoice · ▾ / HouseCall Pro.
 - **Paid-job notice** (L2546–2574): `PAID_JOB_BILL_BLOCKED_MESSAGE` + "Bill this job again anyway" (`allowRebill`, disabled while `busy`).
 - **Send-to block** (`sendToBlock`, L2249–2332) and **`discountStrip`** — rendered by 2 tabs → parent-built. After the owner line the block ends with `BillCustomerReturnedChecksLine` (L2329, v2.4333; `payerCustomerId={contactsCustomerId}`), a 41-line child that calls RPC `list_ar_returned_check_payers` itself and is never a gate.
