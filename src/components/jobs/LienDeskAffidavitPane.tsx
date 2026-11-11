@@ -22,13 +22,14 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
-import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome, monthFromCreation } from '../../lib/jobs/lienDesk'
+import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
+import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
@@ -267,7 +268,7 @@ export default function LienDeskAffidavitPane({
       'Send for approval',
       async () => {
         const id = await ensureDraft()
-        await submitLienDeskItem(id, submitOutcome({ policy, earliestDeadline: entry.deadline }, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(entry.gcCustomerId && data.gcsWithPriorNotice.has(entry.gcCustomerId)), gcHeldBefore: Boolean(entry.gcCustomerId && data.gcsHeldBefore.has(entry.gcCustomerId)) }, todayYmd))
+        await submitLienDeskItem(id, lienAffidavitSubmitOutcome(entry, { policyFor: () => policy, promiseYmdFor: () => promise?.promisedYmd ?? null, gcHasPriorNotice: (gcId) => data.gcsWithPriorNotice.has(gcId), gcHeldBefore: (gcId) => data.gcsHeldBefore.has(gcId), todayYmd }))
       },
       policy === 'send' && !promise ? 'Approved by the standing rule — ready to file.' : 'Sent for approval.',
     )

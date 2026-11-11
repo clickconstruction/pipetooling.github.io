@@ -15,14 +15,14 @@ A bid can hold photos. A site walk's pictures sit on the bid and in the bid's Dr
 
 A grey camera means the bid has no photos yet. A blue camera means the bid has photos. The number beside it is how many.
 
-Every icon in the column keeps its own place. The camera comes first, then the folder, the plans, CountTooling and the bid submission. A link the bid does not have leaves a gap.
+Every icon in the column keeps its own place. The camera comes first, then the folder, the plans, CountTooling and the bid submission. A link the bid does not have shows grey. See [see what files a bid has](/help/see-what-files-a-bid-has).
 
 On a phone the camera sits on the bid's card, under the name.
 
 ## Add photos at a desk
 
-1. Press the camera. The **Photos** window opens.
-2. Drag photos onto the window. The whole window turns blue and reads **Drop photos here**. Or press {{button:blue|Pick files}} and choose them.
+1. Press the camera. The **Files** window opens with the bid's photos at the top.
+2. Drag photos onto the photos. They turn blue and read **Drop photos here**. Or press {{button:blue|Pick files}} and choose them.
 3. Each photo shows as a tile while it is made smaller and sent.
 4. Type a name in the box **What is it?** The name is optional.
 5. Read the line under the tiles. It says where the photos will go.
@@ -72,7 +72,7 @@ Do what the window says. Move the folder into the company's shared Drive, or sha
 
 ## See the bid's photos
 
-The window shows every photo on the bid, newest first. Under each one is its name, who added it and the day.
+The **Photos** row shows every photo on the bid, newest first. Under each one is its name, who added it and the day.
 
 A photo someone put in the Drive folder by hand shows too. It takes its file name.
 

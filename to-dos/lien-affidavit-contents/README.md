@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896)
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -150,7 +150,9 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    one press at the top of the Affidavits list redraws every ready one at once. Since v2.6895 the
    short form prints on one sheet: at the paper's own leading the seven paragraphs ran a few lines over.
    Since v2.6896 a line under the print press says when a paper takes a second sheet and that its
-   closing moved there whole.
+   closing moved there whole. Since v2.6918 two presses under the redraw bar finish a re-issue:
+   **Send N for approval…** for every drafted paper, **Print N for notarization** for every ready one
+   on the short form.
 2. **The § 53.254(f) notice on a homestead** (S). Shipped as v2.6884
    (`docs/recent-features/v2.6884.md`): on a property marked homestead the short form opens with the
    notice above the title, bold at 12 point. The paper side only; the desk still holds every

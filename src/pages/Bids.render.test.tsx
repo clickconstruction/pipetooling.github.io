@@ -339,6 +339,28 @@ describe('Bids page render smoke — a link to a bid', () => {
     await waitFor(() => expect(currentParam('openBidEdit')).toBeNull())
     await waitFor(() => expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0))
   })
+
+  it('a bid with no link draws a grey icon in each slot; one opens the Files window on its row, and its press opens Edit bid (punch list #306)', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'estimator', [{ ...BID, drive_link: 'https://drive.google.com/drive/folders/1Project' }])
+    await waitFor(() => expect(document.getElementById('bid-board-row-bid-1')).toBeTruthy())
+    const row = document.getElementById('bid-board-row-bid-1')!
+    await waitFor(() => expect(row.querySelector('[data-testid="bid-board-photos-press"]')).toBeTruthy())
+    // The folder is linked, so its slot is the blue link; the other three are grey and named for what is missing.
+    const grey = [...row.querySelectorAll<HTMLElement>('[data-testid="bid-board-missing-link"]')]
+    expect(grey.map((g) => g.getAttribute('data-link-kind'))).toEqual(['plans', 'count', 'submission'])
+    expect(grey.map((g) => g.title)).toEqual(['No plans yet', 'No CountTooling project yet', 'No bid submission yet'])
+    expect(row.querySelector('a[title="Project folder"]')).toBeTruthy()
+
+    fireEvent.click(grey[1]!)
+    await waitFor(() => expect(document.querySelector('[data-bid-files-window="bid-1"]')).toBeTruthy())
+    expect(document.querySelector('[data-bid-file-row="count"]')!.getAttribute('data-pressed')).toBe('yes')
+    expect(document.querySelector('[data-bid-file-row="folder"]')!.getAttribute('data-there')).toBe('yes')
+    expect(document.querySelector('[data-bid-photos-window]')).toBeNull()
+
+    fireEvent.click(document.querySelector('[data-bid-file-set="count"]')!)
+    await waitFor(() => expect(document.querySelector('[data-bid-files-window]')).toBeNull())
+    await waitFor(() => expect(document.getElementById('bid-form-count-tooling-link')).toBeTruthy())
+  })
 })
 
 describe('Bids page render smoke — Counts with an alternate (v2.4204)', () => {
