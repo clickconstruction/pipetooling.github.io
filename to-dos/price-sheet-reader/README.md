@@ -2,7 +2,7 @@
 name: "A price sheet read into the parts book, with no second copy of a part"
 number: 308
 group: gated
-status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · nothing built
+status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · nothing built
 mockup: to-dos/price-sheet-reader/mockup.html
 summary: >
   The estimator reads a supply house's quote fixture by fixture, finds or makes each part, builds an
@@ -12,14 +12,16 @@ summary: >
   the house's number and the model number, card #298 has designed the table that maps a house's
   number to a part, and Bids → Pricing can read a quote by fixture but never touches the parts book.
   Nothing knows a part on file, because the book has no place for a model number or a house's number.
-  The pick is one window behind four doors: it names the house with its reasons, opens on the rows
-  that need her, folds the ready rows by fixture, and one press files what is ready and places the
-  ready fixtures on the takeoff. A row is matched by the house's number, then the model number, then
-  the words, and a part is only ever made on her press. The first PR is the matcher alone, as a
-  warning on the Add Part form.
+  The pick is built from one card: a row as printed, the part it is, how it matched, and the presses
+  that answer it. One price is one card, pasted or typed, with no sheet. A sheet is many cards beside
+  the takeoff with the house and its reasons on top, the rows that need her first and the ready rows
+  folded by fixture. Every press saves itself, the panel folds to a chip and opens where she left
+  it, and a file dropped or pasted on Takeoffs is the door. A row is matched by the house's number,
+  then the model number, then the words, and a part is only ever made on her press. The first PR is
+  the matcher alone, as a warning on the Add Part form.
 next: The owner's go, with his word on call 1 (who builds the table of house numbers, this card or #298) and call 2 (whether a quote's price goes into the parts book). Then PR 1.
-size: L as a train of eight (S · M · M · M · M · S · M · M); PR 1 alone stops a second copy at the part form
-blocker: The owner's go. PR 2 waits on call 1, and PR 4 on three to five real sheets from the estimator for a measure.
+size: L as a train of nine (S · M · M · M · M · M · S · M · M); PR 1 alone stops a second copy at the part form, and PR 3 is one price in two presses
+blocker: The owner's go. PR 2 waits on call 1, and PR 5 on three to five real sheets from the estimator for a measure.
 opinion: build — PR 1 first, since it risks nothing and works the day it ships; the reader after the owner's word on calls 1 and 2
 ---
 
@@ -202,6 +204,8 @@ Marisol), at desk width, light and dark. This is desk work and no phone frame is
 - **Is this the best we can do?** Eight findings.
 - **C · The pick**, in seven frames: which house; what needs her; what is ready and the one press;
   a sheet read twice; the four doors; the first PR; the clean-up.
+- **Three questions from the owner**, then three more frames: **8 · Pull it up**, **9 · In and
+  out**, **10 · One price, with no sheet**.
 
 ## The two directions
 
@@ -236,9 +240,26 @@ the first sheet looked like and the model-number rows are confirmed together in 
 green dashes that mark what is new were on every card, so they now mark only what is new inside a
 screen the app has today.
 
-## The pick: C, one window that opens on what needs her
+## The owner's three questions (2026-11-10)
 
-**One reader, one matcher, one window, four doors.**
+The owner read frames 1 to 7 and asked: *Do we make it easy for a user to pull this up? Do we make
+it easy for a user to jump in and jump out while they are entering prices? Do we make it easy for a
+user to do one-off events? Is this the best we can do?* Checked against the code and the frames,
+the honest answers were no, half and no.
+
+| The question | Frames 1 to 7, honestly | Redrawn as |
+| --- | --- | --- |
+| Is it easy to pull up? | **No.** The Takeoffs door sat in the *Needs a price* panel, which only the Sheet view draws, below two other panels. Takeoffs opens on One at a time. The reply's door was three levels down in Edit Bid. Nothing on Takeoffs takes a drop or a paste. | **Price sheet** in the tab's title row, beside the view pills and Print, in both views. A file dropped anywhere on the tab, or pasted. A chip while a sheet on the bid has rows waiting. A press on the mail's own file. Frame 8. |
+| Is it easy to jump in and out? | **Half.** A read was kept and could be finished later. It was a window over the takeoff, her answers waited on one big press, and the way back was the Parts Book. | A panel **beside** the takeoff, which stays live. Every press saves itself and offers Undo. The panel folds to the chip and opens on the card she left. A ready fixture is offered on its own takeoff row. Frame 9. |
+| Is a one-off easy? | **No.** Nothing was drawn. One price by phone, one row out of a mail or one fixture revised went through the whole sheet, or back to typing by hand. | **One card, no sheet.** Paste a row, a fixture's block or a screenshot, or type it on the part. Two presses. Frame 10. |
+
+What changed underneath: **the card is the unit.** One price is one card. A sheet is many cards with
+a house on top and the ready ones folded. So the one-off is built first, as PR 3, and the sheet is
+built from it. She has a tool two PRs sooner, and the sheet reader has less left to build.
+
+## The pick: C, built from one card
+
+**One matcher, one card, one reader. A sheet is many cards beside the takeoff.**
 
 ### How a sheet is read
 
@@ -276,8 +297,12 @@ her to Supply houses and keeps the rows.
 
 ### What the press does
 
-**File ‹n› rows and place ‹m› fixtures.** It acts on what is ready, lists what it held with each
-reason, keeps going past a row that fails and names it afterwards, per the repo's rule.
+**Every press saves itself.** A card she answers is filed then, with Undo beside it. There is no
+Save, so leaving loses nothing.
+
+**File ‹n› rows and place ‹m› fixtures** is the one batch press, for the rows that were ready when
+the sheet opened. It acts on what is ready, lists what it held with each reason, keeps going past a
+row that fails and names it afterwards, per the repo's rule.
 
 - A row with its own price: `material_part_prices` for that part and house, dated by the sheet.
 - A fixture whose rows are all ready: an assembly with the same items is reused, or one is made; the
@@ -288,6 +313,34 @@ reason, keeps going past a row that fails and names it afterwards, per the repo'
   says so.
 - **Take this sheet back** returns each price to what it replaced and lifts its lines off the
   takeoff. A price changed since is left alone and named.
+- **The takeoff wins a tie.** A fixture she costed by hand is never overwritten. Its row says what
+  the sheet holds and offers **Use the sheet's**.
+
+### One price, with no sheet
+
+- **A pasted row.** She pastes a line from a mail. The card asks the house, with the houses this
+  bid asked first, finds the part by that house's number and offers **File $18.40**.
+- **A price by phone.** The part's Prices window, as today, with two fields more: *Their number*
+  and *From* (Phone, Counter, Mail, Website). A move past the limit asks before it saves.
+- **One fixture revised.** She pastes the fixture's block. The card says the new subtotal and the
+  old one, and **Use $54.10** updates the bundle price and the bid's line.
+- **A screenshot or a photo** of a few rows goes through the reader and comes back as cards.
+
+Typed or pasted text needs no model. Each one-off is kept as its own small paper with where it came
+from, so it can be undone, the Prices window can say *by phone, Nov 10*, and the house's number is
+learned from it too.
+
+### In and out
+
+- The sheet is a panel on the right of the takeoff. The takeoff stays live beside it.
+- **Fold** leaves a chip in the tab's title row, *‹house› sheet · 13 wait*. The chip opens the panel
+  on the card she left.
+- A ready fixture is offered on its own takeoff row with **Use**, so she can take one without
+  opening the panel.
+- The arrow keys move between cards, Enter takes the blue press and Esc folds.
+- A read belongs to the bid. Anyone who may file can open the chip and carry on, and each filed row
+  says who pressed.
+- On a window narrower than about 1,100 the panel opens over the takeoff, as frames 2 and 3 draw.
 
 ### The hard cases
 
@@ -306,13 +359,19 @@ reason, keeps going past a row that fails and names it afterwards, per the repo'
 
 ### Where it lives
 
-1. **Takeoffs**, the first door, because that is where she works and the bid is known: *Read a price
-   sheet* in the cost rail's *Needs a price* panel, and a line when a house has answered.
-2. **The price request's reply**: *Read this quote* on the request's row. The house is the one that
+1. **Takeoffs**, the first door, because that is where she works and the bid is known. **Price
+   sheet ▾** sits in the tab's title row beside the view pills and Print, in both views: read a
+   file, paste a row or a screenshot, type one price, or open a sheet that waits. A file dropped on
+   the tab, or pasted, opens the same thing. The chip beside it is the way back.
+2. **The windows she already has open.** *Fill from a price sheet…* in Add Assembly, and *Paste a
+   price…* in a part's Prices window.
+3. **The mail the quote came on**: *Read as a price sheet* on the mail's file. The house is known
+   from the contact and the bid from its price request.
+4. **The price request's reply**: *Read this quote* on the request's row. The house is the one that
    was asked.
-3. **The Parts Book**: a *Price sheets* list of every read with what still waits, and a read with no
+5. **The Parts Book**: a *Price sheets* list of every read with what still waits, and a read with no
    bid for a house's general list.
-4. **The AI seat**: the twin reads a sheet and leaves it in that same list as a draft with its
+6. **The AI seat**: the twin reads a sheet and leaves it in that same list as a draft with its
    matches. It never files a price, makes a part or changes an assembly. Her press does.
 
 ## The calls
@@ -330,7 +389,7 @@ reason, keeps going past a row that fails and names it afterwards, per the repo'
    a month, for rows matched by the house's own number whose price moved under the limit.
 5. **The cost of a read.** *Default:* the sheet reader shares the bill reader's switch and its 150
    reads a day. A six-page scan is up to six reads, and a PDF with a text layer may need none.
-6. **The clean-up.** *Default:* on this card as PR 8, a merge and nothing wider. About 40 groups.
+6. **The clean-up.** *Default:* on this card as PR 9, a merge and nothing wider. About 40 groups.
 
 **The estimator's**
 
@@ -340,16 +399,22 @@ reason, keeps going past a row that fails and names it afterwards, per the repo'
    house, with no bid in it since it is reused.
 9. **What a big move is.** *Default:* 25%.
 10. **MISC CHARGE rows.** *Default:* they stay in the bundle and are not named.
-11. **Three to five real sheets from her main houses**, for the measure before PR 4. They are read
+11. **Three to five real sheets from her main houses**, for the measure before PR 5. They are read
     privately and never committed.
+12. **Which one-off she meets most**: a price by phone, a row in a mail, or a fixture revised.
+    *Default:* the pasted row first, since it needs the least typing.
 
 ## Where it plugs in
 
 **Exists**
 
-- `src/components/bids/BidsTakeoffTab.tsx`, `TakeoffCostRailView.tsx` (the rail and *Needs a
-  price*), `TakeoffAssemblyAuthoringModals.tsx` (Add Assembly, bundle prices),
-  `TakeoffPartPricesModal.tsx` (Prices).
+- `src/components/bids/BidsTakeoffTab.tsx` (the title row with `TakeoffViewPills` and Print; the two
+  views, `TakeoffFocusView` for One at a time, the default, and `TakeoffCostRailView` for Sheet),
+  `TakeoffAssemblyAuthoringModals.tsx` (Add Assembly, bundle prices), `TakeoffPartPricesModal.tsx`
+  (Prices).
+- A file on a mail: `message_attachments`, which the bill reader already reads from a thread. No
+  press on a mail's file opens a reader today; the bill's doors are the Supply Houses tab and
+  Quickfill.
 - `src/components/PartFormModal.tsx`; `src/pages/Duplicates.tsx`;
   `src/lib/materials/duplicateParts.ts` (`normalizePartName`, `numericSignature`).
 - `material_parts`, `material_part_prices` (unique on part and house), `material_part_price_history`
@@ -376,8 +441,11 @@ reason, keeps going past a row that fails and names it afterwards, per the repo'
   `merge_material_parts`.
 - `src/lib/materials/priceSheet/sheetPlan.ts`, the pure plan: rows, book, codes and the bid's
   fixtures in; ready and held rows with their reasons out.
-- The window, the *Price sheets* list, `put_price_sheet` on the twin seat and
+- The card (one component for a row, used alone and in the panel), the panel, the title row's press,
+  chip, drop and paste, the *Price sheets* list, `put_price_sheet` on the twin seat and
   `plan_price_sheet` → `apply_price_sheet` on the dev seat.
+- `src/lib/materials/priceSheet/pastedRow.ts`, pure: a pasted line or block split into the house's
+  number, the model number, the words, the price and its unit, with no model call.
 
 ## The plan
 
@@ -388,16 +456,17 @@ guide.
 | --- | --- | --- | --- | --- |
 | 1 | **The matcher, and a warning on the Add Part form.** A name whose model number is on a part in the book says *Already in the book* with **Use that part** and **Mine is different**. | `partMatch.ts` and its tests (the hard cases above), `PartFormModal.tsx`, the guide `add-a-part-and-its-prices-fast`. No migration. | S | Type a ZZ part's model number with and without its dashes. The warning names the ZZ part both times. A name that differs only by a size raises nothing. |
 | 2 | **House numbers.** The table, *Their number* beside each house's price in the Prices window and the part form, and a one-time offer of the numbers already in names and Notes, each on a press. | A migration for `supply_part_codes` with the four fence calls, `TakeoffPartPricesModal.tsx`, `PartFormModal.tsx`, the matcher, `docs/migrations/`, #298's card amended to point here. | M | Give a ZZ part a ZZ house's number. The matcher finds the part by it. The offer list shows only rows where one house prices the part. |
-| 3 | **Read a sheet, and the window, with nothing filed.** The reader, the house by letterhead and price request, the cards and the folded fixtures. | `price-sheet-read`, `sheetPlan.ts`, the window, the rail's door, a migration for the sheet's columns, `docs/EDGE_FUNCTIONS.md`. | M | A made-up six-page ZZ quote reads to the row and fixture counts counted by hand. The book is unchanged. |
-| 4 | **File what is ready.** Part prices, house numbers learned, New part on a press, the holds, Take this sheet back, the Prices window's *From*. | `price_sheet_file`, `price_sheet_take_back`, the trigger widened to carry a note and an author (shared with #298's 2b, whichever lands first), a migration. | M | On the ZZ house and parts: ready rows file, a 46% move waits, a per-hundred row asks, a failed row is named. Take it back and every price reads as before. |
-| 5 | **Fixtures onto the takeoff.** The tag match, the assembly reused or made, the bundle price, the bundle line. | `sheetPlan.ts`, `price_sheet_file`, `BidsTakeoffTab.tsx`. | M | On BP398 the costed count rises by the ready fixtures. A fixture with the same items reuses its assembly. Take it back and the count returns. |
-| 6 | **The house's other reasons, and a sheet read twice.** The share of known numbers, the mail's contact, the file's hash, a later copy of one quote. | `sheetPlan.ts`, the window. | S | The same file opens its earlier read. A letterhead that disagrees with the request asks. |
-| 7 | **The other doors.** *Read this quote* on a price request, the Parts Book's *Price sheets* and a read with no bid, the twin's draft, the dev seat's pair. | `twin-mcp`, `dev-mcp`, the Parts Book, Edit Bid's price requests, `docs/twins/`. | M | A twin's draft appears in the list and files nothing. A read with no bid files part prices and makes no assembly. |
-| 8 | **The clean-up.** *Same model number* on the Duplicates page, **Merge into the first…**, *Not the same* remembered, the old name kept as another name. | `merge_material_parts`, `Duplicates.tsx`, a migration. | M | Merge two ZZ parts. The prices, assembly items, takeoff lines and house numbers sit on the part that stays, and a search by the old name finds it. |
+| 3 | **One price, with no sheet.** The card, alone. A pasted row or a fixture's block, *Paste a price…* in the Prices window with *Their number* and *From*, *Fill from a price sheet…* in Add Assembly. Each files on its press with Undo and its holds. | `pastedRow.ts`, the card, `price_sheet_file` and `price_sheet_take_back` for one row, the trigger widened to carry a note and an author (shared with #298's 2b, whichever lands first), a migration for the sheet's columns, `TakeoffPartPricesModal.tsx`, `TakeoffAssemblyAuthoringModals.tsx`. No model call. | M | Paste a ZZ row: the card names the ZZ part by the ZZ house's number and files in two presses. A 46% move asks. Undo returns the price. |
+| 4 | **Read a sheet, in the panel, with nothing filed from it.** The reader, the house by letterhead and price request, the cards and the folded fixtures beside the takeoff. **Price sheet ▾** in the title row, a drop and a paste on the tab, the chip. | `price-sheet-read`, `sheetPlan.ts`, the panel, `BidsTakeoffTab.tsx`, `docs/EDGE_FUNCTIONS.md`. | M | Drop a made-up six-page ZZ quote on BP398's Takeoffs in each view. It reads to the row and fixture counts counted by hand. Fold it, reload, and the chip opens on the same card. The book is unchanged. |
+| 5 | **File a sheet's rows.** The batch press for what is ready, a card's own press, New part on a press, the holds, Take this sheet back, the Prices window's *From*. | `price_sheet_file` for many rows, the panel, `batchWords`. | M | On the ZZ house and parts: ready rows file, a per-hundred row asks, a failed row is named. Close the tab mid-way and nothing answered is lost. Take it back and every price reads as before. |
+| 6 | **Fixtures onto the takeoff.** The tag match, the assembly reused or made, the bundle price, the bundle line, the offer on a fixture's own row, and *Costed by hand* never overwritten. | `sheetPlan.ts`, `price_sheet_file`, `BidsTakeoffTab.tsx` and its two views. | M | On BP398 the costed count rises by the ready fixtures. **Use** on one row places that fixture alone. A fixture costed by hand keeps its lines. Take it back and the count returns. |
+| 7 | **The house's other reasons, a sheet read twice, and the mail's door.** The share of known numbers, the mail's contact, the file's hash, a later copy of one quote, *Read as a price sheet* on a mail's file. | `sheetPlan.ts`, the panel, the Messages thread's file row. | S | The same file opens its earlier read. A letterhead that disagrees with the request asks. A ZZ contact's mail opens the reader with its house named. |
+| 8 | **The other doors.** *Read this quote* on a price request, the Parts Book's *Price sheets* and a read with no bid, the twin's draft, the dev seat's pair. | `twin-mcp`, `dev-mcp`, the Parts Book, Edit Bid's price requests, `docs/twins/`. | M | A twin's draft appears in the list and files nothing. A read with no bid files part prices and makes no assembly. |
+| 9 | **The clean-up.** *Same model number* on the Duplicates page, **Merge into the first…**, *Not the same* remembered, the old name kept as another name. | `merge_material_parts`, `Duplicates.tsx`, a migration. | M | Merge two ZZ parts. The prices, assembly items, takeoff lines and house numbers sit on the part that stays, and a search by the old name finds it. |
 
-**The measure, before PR 4.** PR 3 reads the estimator's three to five real sheets and files
+**The measure, before PR 5.** PR 4 reads the estimator's three to five real sheets and files
 nothing. The share of rows ready by number, by model number and by words, and every misread, decide
-PR 4's limits. The sheets and their rows stay out of the repo.
+PR 5's limits. The sheets and their rows stay out of the repo.
 
 ## How to verify
 
@@ -409,7 +478,9 @@ PR 4's limits. The sheets and their rows stay out of the repo.
 - **PR 1** changes no data. In a local preview as the dev, type the names and close the form.
 - **After each walk**, take the sheet back, then delete the ZZ sheet, parts, numbers and assemblies.
   BP398 is shared by other sessions, so the walk leaves its fixtures as it found them.
-- **The counts** above are the before. Run them again after PR 8: the same-model groups should fall
+- **In and out.** In each walk from PR 4 on, fold the panel, switch bids, reload and come back. The
+  chip must open on the card that was left, with nothing answered lost.
+- **The counts** above are the before. Run them again after PR 9: the same-model groups should fall
   and the parts made a month should not rise.
 
 ## Found in passing, not fixed

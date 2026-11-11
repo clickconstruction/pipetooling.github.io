@@ -113,6 +113,22 @@
   .field label { font-size: 11.5px; font-weight: 600; color: var(--text-700); }
   .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 9px; background: var(--surface); min-height: 31px; }
   .tile h4 { margin: 0 0 4px; font-size: 13px; color: var(--text-strong); }
+  .hdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .hdr .t { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+  .pills { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: 12px; font-weight: 600; }
+  .pills span { padding: 4px 11px; }
+  .pills span.on { background: var(--text-strong); color: var(--bg-page); }
+  .menu { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); padding: 6px; display: grid; gap: 2px; width: 330px; }
+  .menu div { padding: 6px 9px; border-radius: 5px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .menu div.sep { border-top: 1px solid var(--border); border-radius: 0; padding: 0; margin: 3px 0; }
+  .drop { border: 2px dashed #2563eb; border-radius: 10px; background: var(--bg-blue-tint); color: var(--text-blue-700); display: grid; place-items: center; text-align: center; padding: 26px 16px; font-weight: 600; }
+  .dock { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); display: grid; gap: 10px; padding: 12px; align-content: start; }
+  .bar2 { height: 6px; border-radius: 3px; background: var(--bg-200); overflow: hidden; }
+  .bar2 i { display: block; height: 100%; background: #059669; }
+  .pasted { font-family: var(--mono); font-size: 12px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 9px; background: var(--bg-subtle); color: var(--text-700); white-space: pre-wrap; }
+  table.q { border-collapse: collapse; margin-top: 10px; max-width: 1180px; }
+  table.q th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 5px 10px; border-bottom: 1px solid var(--border-strong); }
+  table.q td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-700); }
   ol.find { margin: 10px 0 0; padding-left: 22px; max-width: 108ch; display: grid; gap: 8px; color: var(--text-700); }
   ol.find li b { color: var(--text-strong); }
 </style>
@@ -141,6 +157,10 @@
     <a class="pick" href="#doors">5 · The doors</a>
     <a class="pick" href="#first">6 · The first PR</a>
     <a class="pick" href="#clean">7 · The clean-up</a>
+    <a href="#look2">Three questions</a>
+    <a class="pick" href="#pull">8 · Pull it up</a>
+    <a class="pick" href="#inout">9 · In and out</a>
+    <a class="pick" href="#one">10 · One price</a>
   </nav>
 </header>
 
@@ -449,7 +469,7 @@
     <div class="foot">
       <span class="btn pri big">File 40 rows and place 14 fixtures</span>
       <span class="muted">25 rows and 9 fixtures wait here. Nothing they hold stops the rest.</span>
-      <span style="margin-left:auto" class="btn link">Close · finish later</span>
+      <span style="margin-left:auto" class="btn link">Fold · it waits on the chip</span>
     </div>
   </div>
 
@@ -498,15 +518,14 @@
 </div>
 
 <h2 id="doors"><span class="num pick">5</span> Four doors onto the one window</h2>
-<p class="lede">The reader, the matcher and the window are one piece of work. Each door only says where the sheet came from and whether a bid is attached.</p>
+<p class="lede">The reader, the matcher and the window are one piece of work. Each door only says where the sheet came from and whether a bid is attached. Frame 8 adds the ways in that need no looking for.</p>
 <div class="frame"><div class="screen">
   <div class="grid4">
     <div class="panel tile new">
       <h4>1 · Takeoffs, where she works</h4>
-      <span class="k">Needs a price</span>
-      <div class="kv"><span>22 fixtures have no lines</span></div>
-      <span class="btn pri" style="justify-self:start">Read a price sheet</span>
-      <span class="muted small">A PDF, a photo or pasted text. The bid is known, so fixtures land on the takeoff.</span>
+      <span class="k">The tab's title row, in both views</span>
+      <div class="kv"><span class="btn pri">Price sheet ▾</span><span class="chip a">Hillcrest · 25 wait</span></div>
+      <span class="muted small">A press, a drop or a paste. The bid is known, so fixtures land on the takeoff. Frame 8 draws it.</span>
       <div class="strip done" style="padding:5px 8px"><span class="small">Hillcrest answered Nov 6 · <b>Read its quote</b></span></div>
     </div>
     <div class="panel tile new">
@@ -574,6 +593,174 @@
 <div class="say">
   <p class="gain">The Two parts on file card in the window opens this same Merge, so a duplicate met while reading a sheet is fixed in one press.</p>
   <p class="rule">Not the same is remembered. Two parts that share a model number and differ by a size are not offered again.</p>
+</div>
+
+<!-- ============================== THREE QUESTIONS ============================== -->
+<h2 id="look2"><span class="num">?</span> Three questions from the owner, and a second redraw</h2>
+<p class="lede">The owner read frames 1 to 7 and asked three things, then <i>is this the best we can do?</i> The honest answer to each was no, or only half. The frames above are a tool for a six-page sheet. The frames below make it a tool she can reach, leave and use for one price.</p>
+<table class="q">
+  <tr><th style="width:230px">The question</th><th style="width:400px">Frames 1 to 7, honestly</th><th>Redrawn as</th></tr>
+  <tr><td><b>Is it easy to pull up?</b></td><td><b>No.</b> The Takeoffs door sat in a panel of the Sheet view, below two other panels. Takeoffs opens on One at a time. The reply's door was three levels down in Edit Bid.</td><td>A <b>Price sheet</b> press in the tab's title row in both views. Drop a file or paste anywhere on the tab. A chip that says a sheet still waits. A press on the mail's own file. Frame 8.</td></tr>
+  <tr><td><b>Is it easy to jump in and out?</b></td><td><b>Half.</b> A read was kept and could be finished later. It was a window over the takeoff, her answers waited on one big press, and coming back meant the Parts Book.</td><td>A panel <b>beside</b> the takeoff, which stays live. Every press saves itself. It folds to the chip and opens on the card she left. A ready fixture can be taken from its own takeoff row. Frame 9.</td></tr>
+  <tr><td><b>Is a one-off easy?</b></td><td><b>No.</b> Nothing was drawn. One price by phone, one row from a mail or one fixture revised went through the whole sheet, or back to typing by hand.</td><td><b>One card, no sheet.</b> Paste a row, a block or a screenshot, or type it. The same card the sheet uses, filed in two presses. Frame 10.</td></tr>
+</table>
+<div class="say">
+  <p class="rule">What changed underneath: <b>the card is the unit.</b> One price is one card. A sheet is many cards with a house on top and the ready ones folded. So the one-off ships first and the sheet is built from it.</p>
+</div>
+
+<h2 id="pull"><span class="num pick">8</span> Pull it up</h2>
+<p class="lede">One press that is always in the same place, and two ways that need no press at all.</p>
+<div class="frame"><div class="screen" style="display:grid;gap:12px">
+  <div class="hdr">
+    <span class="t">Takeoffs · B-1042 Juniper Street Dental</span>
+    <span style="margin-left:auto" class="chip a new">Hillcrest sheet · 25 wait</span>
+    <span class="btn pri new">Price sheet ▾</span>
+    <span class="pills"><span class="on">One at a time</span><span>Sheet</span></span>
+    <span class="btn">Print</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 330px;gap:12px;align-items:start">
+    <div class="drop new">
+      <div>Drop it here to read it for B-1042<br><span style="font-weight:400">A PDF, a photo or a screenshot. Paste works anywhere on this tab too.</span></div>
+    </div>
+    <div class="menu new">
+      <div><b>Read a file…</b><span class="muted small">PDF or photo</span></div>
+      <div><b>Paste a row or a screenshot</b><span class="muted small">⌘V</span></div>
+      <div><b>Type one price</b><span class="muted small">frame 10</span></div>
+      <div class="sep"></div>
+      <div><span>Hillcrest · Q-88213</span><span class="chip a">25 wait</span></div>
+      <div><span>Canyon · Q-5521</span><span class="chip b">Read by the twin</span></div>
+      <div class="sep"></div>
+      <div><span style="color:var(--text-link)">All price sheets</span></div>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="panel tile">
+      <h4>From the mail it came on</h4>
+      <span class="k">Messages · Dana at Hillcrest Supply</span>
+      <span>Here is the quote for Juniper Street.</span>
+      <div class="kv"><span style="color:var(--text-link)">Q-88213.pdf</span><span class="btn new">Read as a price sheet</span></div>
+      <span class="muted small">The house is known from the contact, and the bid from its price request.</span>
+    </div>
+    <div class="panel tile">
+      <h4>From the window she has open</h4>
+      <span class="k">Add Assembly</span>
+      <div class="kv"><b>Items</b><span class="btn link new">Fill from a price sheet…</span></div>
+      <span class="muted small">Paste one fixture's block. Its rows become the items and its subtotal the bundle price.</span>
+    </div>
+    <div class="panel tile">
+      <h4>From a part</h4>
+      <span class="k">Prices · any part</span>
+      <div class="kv"><span>Hillcrest Supply</span><span class="btn link new">Paste a price…</span></div>
+      <span class="muted small">One row for this part. No sheet and no bid.</span>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">She never looks for the tool. The file she already has open is the door: she drops it, pastes it, or presses the mail's own file.</p>
+  <p class="rule">The chip is the way back. It shows only while a sheet on this bid has rows waiting, and it opens on the card she left.</p>
+</div>
+
+<h2 id="inout"><span class="num pick">9</span> In and out</h2>
+<p class="lede">The sheet sits beside the takeoff and the takeoff stays live. Nothing waits on a Save, so leaving costs nothing.</p>
+<div class="frame"><div class="screen">
+  <div style="display:grid;grid-template-columns:1fr 440px;gap:12px;align-items:start">
+    <div class="win">
+      <div class="bar"><span class="t">Takeoffs · B-1042</span><span style="margin-left:auto" class="pills"><span>One at a time</span><span class="on">Sheet</span></span></div>
+      <table class="t">
+        <tr><th style="width:150px">Fixture</th><th>Part or assembly</th><th class="num-r">Unit price</th><th class="num-r">Qty</th></tr>
+        <tr><td><b>(1) SK-1 OFCI</b></td><td class="muted">Search parts…</td><td class="num-r">0</td><td class="num-r">1</td></tr>
+        <tr><td></td><td colspan="3"><div class="strip new" style="justify-content:space-between;padding:5px 10px"><span><b>Hillcrest's sheet:</b> Bar sink trim kit · 3 rows on file</span><span><b>$52.72 each</b> &nbsp;<span class="btn pri">Use</span></span></div></td></tr>
+        <tr><td><b>(3) SK-2 OFCI</b></td><td>Bar sink trim kit <span class="chip">Assembly</span></td><td class="num-r">52.72</td><td class="num-r">3</td></tr>
+        <tr class="sub"><td></td><td colspan="3">From Hillcrest's sheet, Q-88213 page 4 · <span style="color:var(--text-link)">Undo</span></td></tr>
+        <tr><td><b>(1) SK-3 OFCI</b></td><td>Tanner pre-rinse · Arlo supply kit · Arlo P-trap</td><td class="num-r">371.15</td><td class="num-r">1</td></tr>
+        <tr><td></td><td colspan="3"><div class="strip new" style="justify-content:space-between;padding:5px 10px"><span><b>Costed by hand.</b> Hillcrest's sheet says $386.40 each.</span><span><span class="btn">Use the sheet's</span> <span class="btn link">Keep mine</span></span></div></td></tr>
+        <tr><td><b>(2) LAV-1</b></td><td class="muted">Search parts…</td><td class="num-r">0</td><td class="num-r">2</td></tr>
+        <tr class="sub"><td></td><td colspan="3">Not on Hillcrest's sheet.</td></tr>
+      </table>
+    </div>
+    <div class="dock new">
+      <div class="kv"><b>Hillcrest Supply · Q-88213</b><span class="btn link">Fold ›</span></div>
+      <div class="bar2"><i style="width:65%"></i></div>
+      <div class="kv small"><span class="muted">46 of 71 rows filed · 15 of 23 fixtures placed</span><span class="muted">Card 3 of 13</span></div>
+      <div class="card">
+        <div class="where"><span class="chip a">Price moved a lot</span><span>SK-3 · row 1 · page 4</span></div>
+        <div class="printed">B0133-ADF12 TANNER BRASS EZ-INSTALL PRE RINSE SPRAY WALL MNT 8"</div>
+        <div class="q">$214.00 on file from Hillcrest, Aug 12. This sheet says $312.50. Up 46%.</div>
+        <div class="presses"><span class="btn pri">File $312.50</span><span class="btn">Keep $214.00</span><span class="btn link">Later</span></div>
+      </div>
+      <div class="kv small"><span class="muted">← → move between cards · Enter takes the blue press · Esc folds</span></div>
+      <div class="strip done" style="padding:6px 10px"><span class="small">Filed: FD-1 closet bolt at $0.38 each · <b>Undo</b></span></div>
+      <span class="btn" style="justify-self:start">File 6 more ready rows</span>
+    </div>
+  </div>
+  <div class="cap opt">Folded: the same tab, a minute or a week later</div>
+  <div class="hdr">
+    <span class="t">Takeoffs · B-1042 Juniper Street Dental</span>
+    <span style="margin-left:auto" class="chip a new">Hillcrest sheet · 13 wait · opens on card 3</span>
+    <span class="btn pri">Price sheet ▾</span>
+    <span class="pills"><span>One at a time</span><span class="on">Sheet</span></span>
+    <span class="btn">Print</span>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">Every press saves itself and offers Undo. There is no Save, so a phone call, a closed laptop or another bid loses nothing.</p>
+  <p class="gain">A ready fixture is offered on its own takeoff row. She can take one without opening the panel, which is the best part of direction B.</p>
+  <p class="rule">The takeoff wins a tie. A fixture she costed by hand is never overwritten: the sheet says what it holds and waits for her press.</p>
+  <p class="rule">A read belongs to the bid, not to her browser. Anyone who may file can open the chip and carry on, and each filed row says who pressed.</p>
+  <p class="lose">On a window narrower than about 1,100 the panel has no room beside the takeoff, so it opens over it as in frames 2 and 3.</p>
+</div>
+
+<h2 id="one"><span class="num pick">10</span> One price, with no sheet</h2>
+<p class="lede">A price by phone, a row out of a mail, a fixture the house revised. Each is one card and two presses.</p>
+<div class="frame"><div class="screen">
+  <div class="grid3">
+    <div class="panel tile new">
+      <h4>A row pasted from a mail</h4>
+      <div class="pasted">512207  AX8802XL-LR-PC ARLO SUPPLY KIT  18.40</div>
+      <div class="q small" style="font-weight:600;color:var(--text-strong)">Which house?</div>
+      <div class="why"><span class="btn pri">Hillcrest Supply · asked on this bid</span><span class="btn">Borden</span><span class="btn">Another…</span></div>
+      <div class="card" style="border-left-color:#059669">
+        <div class="where"><span class="chip g">Same Hillcrest number</span></div>
+        <div class="q">AX8802XL-LR-PC ARLO SUPPLY KIT 1/2…</div>
+        <div class="muted small">$18.40 each, dated today. On file from Hillcrest: $17.90, Aug 12.</div>
+        <div class="presses"><span class="btn pri">File $18.40</span></div>
+      </div>
+      <span class="muted small">Kept as: pasted by Marisol, Nov 10.</span>
+    </div>
+    <div class="panel tile new">
+      <h4>A price by phone, typed on the part</h4>
+      <span class="k">Prices · B0133-ADF12 TANNER PRE-RINSE</span>
+      <div class="grid2">
+        <div class="field"><label>Supply house</label><div class="in">Hillcrest Supply</div></div>
+        <div class="field"><label>Their number</label><div class="in mono">277310</div></div>
+        <div class="field"><label>Price</label><div class="in">312.50</div></div>
+        <div class="field"><label>Dated</label><div class="in">Nov 10</div></div>
+      </div>
+      <div class="field"><label>From</label><div class="why"><span class="chip b">Phone</span><span class="chip">Counter</span><span class="chip">Mail</span><span class="chip">Website</span></div></div>
+      <div class="strip ask" style="padding:6px 10px"><span class="small">Up 46% from $214.00, Aug 12.</span><span style="margin-left:auto" class="btn pri">Save $312.50</span></div>
+      <span class="muted small">Today's form with two fields more. The same holds apply to one price as to a sheet.</span>
+    </div>
+    <div class="panel tile new">
+      <h4>One fixture the house revised</h4>
+      <div class="paper">
+        <div class="fx" style="margin-top:0">SK-2 DUMP SINK (BAR) (OFCI)</div>
+        <div class="ln"><span>1ea</span><span>512207</span><span>AX8802XL-LR-PC ARLO SUPPLY KIT …</span><span></span></div>
+        <div class="ln"><span>1ea</span><span>318002</span><span>AX87029-BPC ARLO 1-1/2 P-TRAP …</span><span></span></div>
+        <div class="st">Subtotal ------- SK-2 EACH &nbsp; 54.10</div>
+      </div>
+      <div class="card" style="border-left-color:#059669">
+        <div class="where"><span class="chip g">2 rows on file</span><span>Hillcrest Supply</span></div>
+        <div class="q">SK-2 is $54.10 each. It was $52.72 on Q-88213.</div>
+        <div class="muted small">Updates Hillcrest's bundle price and the line on B-1042, 3 at $54.10.</div>
+        <div class="presses"><span class="btn pri">Use $54.10</span><span class="btn link">Prices only</span></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">A one-off is the sheet's own card, so it knows a part on file, asks the house, holds a big move and can be undone, exactly as a sheet does.</p>
+  <p class="gain">Typed or pasted text needs no model. Only a screenshot or a photo goes through the reader.</p>
+  <p class="rule">Each one-off is kept as its own small paper with where it came from, so the Prices window can say <i>by phone, Nov 10</i> and the house's number is learned from it too.</p>
 </div>
 
 </div>
