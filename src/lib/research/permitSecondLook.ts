@@ -62,7 +62,7 @@ export function passedByWords(row: Pick<ResearchPermitRow, 'verdict_by_name' | '
  * permit off every second look.
  */
 export function secondLookVerdict(answer: SkimAnswer, reasonCode: PassReasonCode | null, firstBy: string | null): { verdict: PermitVerdict; reason: string; reasonCode: string | null } {
-  if (answer === 'keep') return { verdict: 'look', reason: `Kept on a second look, after ${firstBy ?? 'someone'} passed.`, reasonCode: null }
+  if (answer === 'keep') return { verdict: 'look', reason: `Marked to investigate on a second look, after ${firstBy ?? 'someone'} passed.`, reasonCode: null }
   const reason = PASS_REASONS.find((r) => r.code === reasonCode)
   return {
     verdict: 'not_for_us',
@@ -73,13 +73,13 @@ export function secondLookVerdict(answer: SkimAnswer, reasonCode: PassReasonCode
 
 /** What the bar under the next card says after an answer. */
 export function secondLookAnsweredWords(answer: SkimAnswer): string {
-  return answer === 'keep' ? 'Kept for a closer look.' : 'Passed again. Why?'
+  return answer === 'keep' ? 'Marked to investigate.' : 'Passed again. Why?'
 }
 
 /** The caught-up state's second line. */
 export function secondLookCaughtUpWords(kept: number, passed: number): string {
   const n = kept + passed
-  return n === 0 ? 'Every permit someone else passed has had a second look.' : `You answered ${n} just now: ${kept} kept, ${passed} passed again.`
+  return n === 0 ? 'Every permit someone else passed has had a second look.' : `You answered ${n} just now: ${kept} to investigate, ${passed} passed again.`
 }
 
 /**

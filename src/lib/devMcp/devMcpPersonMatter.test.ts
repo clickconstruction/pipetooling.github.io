@@ -112,7 +112,7 @@ describe('the person-matter verbs (open a matter on a person from the dev seat, 
     expect(SERVER.indexOf("case 'plan_matter_open_person':")).toBeGreaterThan(SERVER.indexOf("case 'apply_person_report': {"))
     expect(SERVER).toContain("await restPost(session, `rpc/${call.rpc}`, call.body)")
     expect(SERVER).toContain("account_user_id=eq.${p.person_id}") // a login's id resolves to the people row
-    expect(SERVER).toContain("const SERVER_VERSION = '0.59.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.61.0'")
     expect(SERVER).toContain('Writes are seventy-seven verbs and nothing else')
     expect(SERVER).toContain('plan_matter_open_person → apply_matter_open_person')
     expect(README).toContain('| `plan_matter_open_person(matter)` · `apply_matter_open_person(matter, plan_hash)` |')

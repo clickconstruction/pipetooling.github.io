@@ -347,6 +347,10 @@ a file eleven folders deep in a plan export find it on its bid.
    maker holds every bid that becomes a job until its folder is moved (job 523 on 2026-11-02). The fix is one Drive
    move of the whole folder into PipeTooling Jobs **after the estimators are made members of the Shared Drive**
    (else they lose edit access when ownership moves). Owner's call; not part of this card's code.
+   **Answered and done 2026-11-10: the three bid folders are in the shared Drive.** What moved, what did not
+   and what was checked are on card #306 (`to-dos/bid-photos-and-links/README.md`, call 4), where the bid
+   photos made it urgent. The estimators were members of the shared Drive already, and each folder's own
+   sharing came with it.
 
 ## Where it plugs in
 

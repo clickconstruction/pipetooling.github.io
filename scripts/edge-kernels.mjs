@@ -240,11 +240,14 @@ export const ENTRIES = {
   // The walk tester's doors (punch list #142 PR 5): quo-send, messages-email and send-estimate-to-customer let the
   // tester through only at the kit's own targets.
   'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
-  // The Bridge's Monday sheet (v2.5881): the reads with a client passed in, the sheet from them, and the mail's parts;
-  // the weekly send (bridge-weekly-sheet) builds the same sheet the page shows.
+  // The Bridge's Monday email (v2.5881): the reads with a client passed in, the mail from them, and the mail's parts.
+  // Since v2.6888 the weekly send (bridge-weekly-sheet) builds the page's first screen: the tiles, the strip and the
+  // week's call, with the accounts the owner left out of cash and the Done presses on the call's moves.
   'lib/bridge/sheetReads.ts': { values: ['loadMondaySheetReads'], types: ['MondaySheetReadOptions'] },
-  'lib/bridge/sheetBuild.ts': { values: ['buildSheetFromReads'], types: ['MondaySheetReads'] },
-  'lib/bridge/mondaySheet.ts': { values: ['mondaySheetHtml', 'mondaySheetSubject', 'mondaySheetText'], types: ['MondaySheet'] },
+  'lib/bridge/sheetBuild.ts': { values: ['buildWeekMailFromReads'], types: ['MondaySheetReads', 'WeekMailOptions'] },
+  'lib/bridge/weekMail.ts': { values: ['weekMailHtml', 'weekMailSubject', 'weekMailText'], types: ['WeekMail'] },
+  'lib/bridge/cashAccounts.ts': { values: ['BRIDGE_ACCOUNTS_OUT_SETTING_KEY', 'parseAccountsOut', 'parseBankNicknames'], types: [] },
+  'lib/bridge/callPeople.ts': { values: ['parseMoveMarks'], types: ['MoveMark'] },
   'lib/bridge/mercuryCash.ts': { values: ['parseMercuryCash'], types: ['MercuryCash'] },
   'lib/jobs/zzTestJobReads.ts': { values: ['readZzTestJobRows'], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.

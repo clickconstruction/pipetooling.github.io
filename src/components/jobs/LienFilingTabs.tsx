@@ -235,6 +235,7 @@ export default function LienFilingTabs({
       form: affidavitForm,
       // The short form names the months and the sends of the notices recorded on the job.
       filings: live,
+      homestead: property.homestead,
     })
   }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live])
 

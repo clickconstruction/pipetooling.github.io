@@ -10,8 +10,14 @@
  * tape**. Tape chosen on a computer that never printed it lists the three first-time steps; **Print 1 test strip**
  * prints the first ticked box alone; **None · Every box** sit beside the box chips; and a computer that printed tape
  * opens on tape, with **Change** and **Printer setup** as quiet presses. The words are `lib/materials/tapeLabel.ts`.
+ *
+ * Since v2.6865 tape prints **straight to the P-touch over USB** where the browser can (Chrome and Edge): Brother makes
+ * no Mac driver, so a Mac's print window never lists the printer. **Connect the P-touch** opens the browser's device
+ * list once; the printer says what tape is in it; each strip is drawn at the printer's own dots (`TapeStripBitmap`,
+ * the QR as tall as the tape prints) and sent one at a time, cut and fed out (`lib/materials/ptouchUsb.ts`). The print
+ * window stays one quiet press away, for a Windows computer with Brother's driver.
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -22,8 +28,12 @@ import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { linesOf, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { downloadFile } from '../../lib/materials/photoShare'
 import { printRootCss } from '../../lib/printRoot'
+import { PTOUCH_CONNECT_LABEL, PTOUCH_COPY_LINK_LABEL, PTOUCH_LINK_COPIED, PTOUCH_LINK_NOT_COPIED, PTOUCH_NEEDS_BROWSER, PTOUCH_NO_USB, PTOUCH_NO_USB_WHY, PTOUCH_NOT_ANSWERING, ptouchReadyLine, ptouchTapeDots, ptouchTapeFits } from '../../lib/materials/ptouchRaster'
+import { PtouchPickCancelled, connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import TapeStripBitmap from './TapeStripBitmap'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
-import { LABEL_OUTPUTS, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_WIDTHS_MM, TAPE_WORDS, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeReadyWords, tapeSetupSteps, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { LABEL_OUTPUTS, TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, TAPE_WORDS, isTapeWidth, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps, type LabelFormat, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -71,14 +81,97 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   }, [testOnly])
   const tape = format === 'tape'
   const layout = tapeLayout(width)
+  // Straight to the P-touch over USB (v2.6865): where the browser can, tape goes that way unless the print window is asked for.
+  const usbHere = useMemo(() => ptouchUsbAvailable(), [])
+  const [viaWindow, setViaWindow] = useState(false)
+  const direct = tape && usbHere && !viaWindow
+  /** The link copied for a browser that can print: null not pressed, else the words that say how it went. */
+  const [linkWords, setLinkWords] = useState<string | null>(null)
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkWords(PTOUCH_LINK_COPIED)
+    } catch {
+      setLinkWords(PTOUCH_LINK_NOT_COPIED)
+    }
+  }
+  const [link, setLink] = useState<PtouchLink | null>(null)
+  const [usbBusy, setUsbBusy] = useState<null | 'connecting' | 'printing'>(null)
+  const [usbSlip, setUsbSlip] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [sentWords, setSentWords] = useState<string | null>(null)
+  /** Each ticked box's strip as raster lines, as its canvas drew them. */
+  const stripsRef = useRef(new Map<string, Uint8Array[]>())
+  const onStripDrawn = useCallback((id: string, drawn: Uint8Array[] | null) => {
+    if (drawn) stripsRef.current.set(id, drawn)
+    else stripsRef.current.delete(id)
+  }, [])
+  const adopt = useCallback((l: PtouchLink) => {
+    setLink(l)
+    setUsbSlip(null)
+    // The printer says what tape is in it; the strips are drawn for that.
+    if (isTapeWidth(l.status.tapeMm)) { setWidthState(l.status.tapeMm); writeTapeWidth(l.status.tapeMm) }
+  }, [])
+  // A printer the browser already has leave to use connects by itself; the first time takes the press.
+  useEffect(() => {
+    if (!direct || link) return
+    let live = true
+    void connectPtouch({ ask: false }).then((l) => { if (!l) return; if (live) adopt(l); else void l.close() }).catch(() => { /* the press says why */ })
+    return () => { live = false }
+  }, [direct, link, adopt])
+  const linkRef = useRef<PtouchLink | null>(null)
+  linkRef.current = link
+  useEffect(() => () => { void linkRef.current?.close() }, [])
+  const connect = async () => {
+    setUsbBusy('connecting')
+    setUsbSlip(null)
+    try {
+      const l = await connectPtouch({ ask: true })
+      if (l) adopt(l)
+    } catch (e) {
+      if (!(e instanceof PtouchPickCancelled)) setUsbSlip(formatErrorMessage(e, PTOUCH_NOT_ANSWERING))
+    } finally {
+      setUsbBusy(null)
+    }
+  }
+  const tapeFits = link != null && ptouchTapeFits(link.status)
   const pressLabel = tape ? tapePressLabel(shown.length) : sheetPressLabel(shown.length)
-  const dead = shown.length === 0
+  const dead = shown.length === 0 || usbBusy != null || (direct && link != null && !tapeFits)
   /** A computer that printed tape opens on tape, the choice folded to one line. */
   const settled = tape && tapeDay != null && !choosing
   const showSetup = tape && (tapeDay == null || setupOpen)
   const printed = testOnly ? shown.slice(0, 1) : shown
+  /** The ticked boxes, or the first alone, sent to the printer one strip at a time. A strip that fails stops the run and says how many went. */
+  const printDirect = async (test: boolean) => {
+    if (!link || dead) return
+    const boxes = test ? shown.slice(0, 1) : shown
+    const labels = boxes.map((c) => stripsRef.current.get(c.id)).filter((l): l is Uint8Array[] => l != null)
+    if (labels.length !== boxes.length) { setUsbSlip('The strips are still being drawn. Press it again.'); return }
+    setUsbBusy('printing')
+    setUsbSlip(null)
+    setSentWords(null)
+    setProgress({ done: 0, total: labels.length })
+    let done = 0
+    try {
+      await link.print(labels, (n) => { done = n; setProgress({ done: n, total: labels.length }) })
+      const today = todayYmdInAppTz()
+      writeTapePrintedDay(today)
+      setTapeDay(today)
+      setChoosing(false)
+      setSentWords(tapeSentWords(done, labels.length))
+    } catch (e) {
+      setUsbSlip(tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING)))
+      // A printer that stopped answering needs connecting again.
+      void link.close()
+      setLink(null)
+    } finally {
+      setUsbBusy(null)
+      setProgress(null)
+    }
+  }
   const run = (test: boolean) => {
     if (dead) return
+    if (direct) { void printDirect(test); return }
     if (tape) {
       const today = todayYmdInAppTz()
       writeTapePrintedDay(today)
@@ -127,10 +220,11 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
                   <button key={f} type="button" role="radio" aria-checked={format === f} style={outputCard(format === f)} onClick={() => setFormat(f)} data-testid={`labels-output-${f}`}>
                     <span style={{ fontWeight: 700 }}>{LABEL_OUTPUTS[f].name}</span>
                     <span style={{ color: 'var(--text-700)', fontSize: '0.8rem' }}>{LABEL_OUTPUTS[f].words}</span>
+                    {f === 'tape' && !usbHere ? <span style={{ justifySelf: 'start', fontSize: '0.72rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }} data-testid="labels-needs-browser">{PTOUCH_NEEDS_BROWSER}</span> : null}
                   </button>
                 ))}
               </div>
-              {tape ? (
+              {tape && !(direct && link) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }} role="group" aria-label="Tape width">
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Tape width</span>
                   {TAPE_WIDTHS_MM.map((w) => <button key={w} type="button" aria-pressed={width === w} style={chip(width === w)} onClick={() => setWidth(w)}>{w} mm</button>)}
@@ -142,16 +236,51 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             <div style={{ borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 10, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }} data-testid="labels-tape-setup">
               <strong>{tapeDay == null ? 'First time on this computer' : 'Printer setup'}</strong>
               <ol style={{ margin: 0, paddingLeft: '1.25rem', display: 'grid', gap: '0.15rem' }}>
-                {tapeSetupSteps(width).map((step) => <li key={step}>{step}</li>)}
+                {tapeSetupSteps(width, direct).map((step) => <li key={step}>{step}</li>)}
               </ol>
               <span>Then press {TAPE_TEST_STRIP_LABEL} before a whole run.</span>
               <a href={helpGuideHref(TAPE_LABEL_GUIDE, TAPE_LABEL_GUIDE_HEADING)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-amber-800)', fontWeight: 600, justifySelf: 'start' }}>How do I set up the tape printer?</a>
             </div>
           ) : null}
+          {tape && !usbHere ? (
+            /* A browser with no USB reach (the owner, 2026-11-10: say it only works in Chrome): the way out, one press. */
+            <div role="note" style={{ borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 10, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', fontSize: '0.85rem' }} data-testid="labels-no-usb">
+              <strong>{PTOUCH_NO_USB}</strong>
+              <span>{PTOUCH_NO_USB_WHY}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button type="button" style={btn} onClick={() => void copyLink()} data-testid="labels-copy-link">{PTOUCH_COPY_LINK_LABEL}</button>
+                {linkWords ? <span role="status" style={{ fontWeight: 600 }}>{linkWords}</span> : null}
+              </span>
+            </div>
+          ) : null}
+          {tape ? (
+            /* The printer's line (v2.6865): what it is and what tape is in it once connected, and the way to the other route. */
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.85rem' }} data-testid="labels-printer-line">
+              {direct && link ? (
+                <>
+                  <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: tapeFits ? '#059669' : '#d97706', flex: '0 0 auto' }} />
+                  <span style={{ flex: '1 1 200px', minWidth: 0, fontWeight: 600 }}>{ptouchReadyLine(link.model, link.status)}</span>
+                </>
+              ) : direct ? (
+                <span style={{ flex: '1 1 200px', minWidth: 0, color: 'var(--text-muted)' }}>The app prints straight to the P-touch over USB. Nothing to install.</span>
+              ) : (
+                <span style={{ flex: '1 1 200px', minWidth: 0, color: 'var(--text-muted)' }}>Printing through the browser’s print window.</span>
+              )}
+              {usbHere ? <button type="button" style={quietLink} onClick={() => { setViaWindow((v) => !v); setUsbSlip(null); setSentWords(null) }}>{viaWindow ? TAPE_VIA_USB_LABEL : TAPE_VIA_WINDOW_LABEL}</button> : null}
+            </div>
+          ) : null}
+          {usbSlip ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }} data-testid="labels-usb-slip">{usbSlip}</div> : null}
+          {progress ? <div role="status" style={{ color: 'var(--text-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-progress">{tapeProgressWords(progress.done, progress.total)}</div> : null}
+          {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-sent">{sentWords}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" disabled={dead} aria-disabled={dead} style={{ ...btnPrimary, ...deadStyle }} onClick={() => run(false)} data-testid="labels-print">{pressLabel}</button>
+            {direct && !link ? (
+              /* Not connected yet: the press is the connection, since a print with no printer does nothing. */
+              <button type="button" disabled={usbBusy != null} style={btnPrimary} onClick={() => void connect()} data-testid="labels-connect">{usbBusy === 'connecting' ? 'Connecting…' : PTOUCH_CONNECT_LABEL}</button>
+            ) : (
+              <button type="button" disabled={dead} aria-disabled={dead} style={{ ...btnPrimary, ...deadStyle }} onClick={() => run(false)} data-testid="labels-print">{pressLabel}</button>
+            )}
             {/* One strip before a run (punch list #304): the first ticked box, so the test is a real label and a wrong paper size costs one strip. */}
-            {tape && !one ? <button type="button" disabled={dead} aria-disabled={dead} style={{ ...btn, ...deadStyle }} onClick={() => run(true)} data-testid="labels-test-strip">{TAPE_TEST_STRIP_LABEL}</button> : null}
+            {tape && !one && !(direct && !link) ? <button type="button" disabled={dead} aria-disabled={dead} style={{ ...btn, ...deadStyle }} onClick={() => run(true)} data-testid="labels-test-strip">{TAPE_TEST_STRIP_LABEL}</button> : null}
             {/* v2.6800 (punch list #294): one row per box for Brother's P-touch Editor, which merges a CSV into a tape label template. */}
             {one ? null : <button type="button" style={{ ...btn, fontWeight: 500, marginLeft: 'auto' }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={exportCsv}>Export the labels as a CSV</button>}
           </div>
@@ -173,6 +302,10 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
           {printed.map((c) => {
             const place = places.find((p) => p.id === c.locationId)?.name ?? ''
             const kind = c.kind === 'box' ? 'box' : c.kind === 'cage' ? 'cage' : 'pile'
+            if (direct) {
+              // The strip at the printer's own dots: what is on the screen is what prints.
+              return <TapeStripBitmap key={c.id} id={c.id} stencil={c.label} address={boxAddressWords(c.id).toUpperCase()} value={boxUrl(c.id)} words={TAPE_WORDS} dots={ptouchTapeDots(width) ?? 128} onDrawn={onStripDrawn} />
+            }
             if (tape) {
               return (
                 <div key={c.id} className="on-site-tape" data-testid="labels-tape" style={{ width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, display: 'grid', gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>

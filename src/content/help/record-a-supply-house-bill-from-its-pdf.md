@@ -70,6 +70,10 @@ A bill you save from its PDF keeps every line the reader saw. The **Lines** cell
 
 Only bills that add up count toward what the company buys. A bill with a gap waits for a person.
 
+A bill you typed gets its lines too, when it has a Drive link. The app reads the linked PDF by itself within a few minutes of Save. A file that holds several bills is read once. Each bill takes the lines under its own invoice number.
+
+A bill stays at *No lines yet* when the app cannot open its link. It also stays there when the bill's number is not in the file. Fix the link or the number on the bill, and the app reads it again.
+
 :::steps
 
 1. Press {{button:outline|Look}} on the bill's row. The paper opens on the left and the lines read on the right.

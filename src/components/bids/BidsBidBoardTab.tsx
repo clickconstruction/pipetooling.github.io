@@ -32,6 +32,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
 import { photosSlot } from '../../lib/bids/bidPhotoWindow'
+import { boardLinkSlotCount, boardLinkSlots, type BoardLinkKind } from '../../lib/bids/bidBoardLinkSlots'
 import { CameraGlyph } from '../materials/PhotoPress'
 import { BidPhotosWindow } from './BidPhotosWindow'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
@@ -891,32 +892,67 @@ export function BidsBidBoardTab({
   }
 
   /**
-   * The artifact links as an icon cluster. The photos icon comes first and is always there (punch list #306): grey
-   * until the bid has photos, blue with their count after; it opens the Photos window. The other links draw only
-   * when they exist, for now ('—' when the photos icon is not drawn and there is nothing else).
+   * The artifact links, each in its own place (punch list #306). The photos icon comes first and is always there:
+   * grey until the bid has photos, blue with their count after; it opens the Photos window. Then one fixed slot a
+   * link kind (`boardLinkSlots`: folder, plans, CountTooling, submission), so an icon sits in the same spot on every
+   * row; a link the bid does not have leaves its slot empty, and a second CountTooling project follows the slots.
+   * A won bid's chips sit on their own line above the icons. '—' when there is nothing at all to draw.
    */
   function renderBidBoardLinksCluster(bid: BidWithBuilder, touch = false) {
-    const links: Array<{ href: string; title: string; d: string; /** v2.6169: the plans icon with two or more sets opens the picker instead of a link; `count` rides on the icon. */ pick?: () => void; count?: string | null }> = []
-    if (bid.drive_link) links.push({ href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
+    const links: Array<{ kind: BoardLinkKind; href: string; title: string; d: string; /** v2.6169: the plans icon with two or more sets opens the picker instead of a link; `count` rides on the icon. */ pick?: () => void; count?: string | null }> = []
+    if (bid.drive_link) links.push({ kind: 'folder', href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
     // v2.6169: the bid's plan sets — one set is the link it always was (its title names the set); two or more open the picker.
     const planSets = planSetsForBid(planSetsByBid?.get(bid.id) ?? [], bid)
     const planPress = planSetsPress(planSets)
-    if (planPress === 'open') links.push({ href: planSets[0]!.link, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans })
-    else if (planPress === 'pick') links.push({ href: `plans:${bid.id}`, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans, pick: () => setPlanSetsModalBid(bid), count: planSetsIconCount(planSets) })
-    if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
+    if (planPress === 'open') links.push({ kind: 'plans', href: planSets[0]!.link, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans })
+    else if (planPress === 'pick') links.push({ kind: 'plans', href: `plans:${bid.id}`, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans, pick: () => setPlanSetsModalBid(bid), count: planSetsIconCount(planSets) })
+    if (bid.count_tooling_plans_link) links.push({ kind: 'count', href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
     // v2.5520: a second counter's project rides beside the bid's own link, named by its project.
     for (const src of countSourcesByBid?.get(bid.id) ?? []) {
       if (src.link === bid.count_tooling_plans_link || links.some((l) => l.href === src.link)) continue
-      links.push({ href: src.link, title: `CountTooling plans · ${src.project_name ?? 'another project'}`, d: BID_BOARD_ICON_PATHS.countTool })
+      links.push({ kind: 'count', href: src.link, title: `CountTooling plans · ${src.project_name ?? 'another project'}`, d: BID_BOARD_ICON_PATHS.countTool })
     }
-    if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
+    if (bid.bid_submission_link) links.push({ kind: 'submission', href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
     const job = jobsByBidId?.get(bid.id) ?? null
     const budgetChip = isWonOutcome(bid.outcome) ? (budgetChips?.get(bid.id) ?? null) : null
     if (links.length === 0 && !job && !budgetChip && !drawPhotosIcon) return <span style={{ color: 'var(--text-muted)' }}>—</span>
     const photos = drawPhotosIcon ? photosSlot(photoCountsByBid == null ? null : (photoCountsByBid.get(bid.id) ?? 0)) : null
     const chipBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.1rem 0.45rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.3, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
+    const { slots, extra } = boardLinkSlots(links)
+    const slotBox: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none', width: touch ? 44 : 28, minHeight: touch ? 40 : 24 }
+    const drawLink = (l: (typeof links)[number]) =>
+          l.pick ? (
+            <button
+              key={`${l.title}:${l.href}`}
+              type="button"
+              title={l.title}
+              aria-label={l.title}
+              data-testid="bid-board-plan-sets-press"
+              onClick={(e) => { e.stopPropagation(); l.pick?.() }}
+              style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+            >
+              <BidBoardIcon d={l.d} />
+              {l.count ? <span style={{ fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-blue-700)' }}>{l.count}</span> : null}
+            </button>
+          ) : (
+          <a
+            key={`${l.title}:${l.href}`}
+            href={l.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={l.title}
+            aria-label={l.title}
+            onClick={(e) => { e.preventDefault(); openInExternalBrowser(l.href) }}
+            style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <BidBoardIcon d={l.d} />
+          </a>
+          )
+    const hasChips = Boolean(budgetChip || job)
     return (
-      <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: touch ? 'flex-start' : 'center', gap: '0.25rem' }}>
+        {hasChips ? (
+          <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: touch ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
         {budgetChip && !job && budgetChip.valueMatch ? (
           <span style={{ ...chipBase, borderColor: '#f59e0b', color: 'var(--text-amber-700)' }} title={`Job ${bidBoardJobLinkLabel(budgetChip.valueMatch.hcpNumber)} carries this bid's value to the dollar but is not linked to it. Link stamps the job with the bid and snapshots the estimate as its budget.`} data-testid="bid-board-value-match">
             {bidBoardJobLinkLabel(budgetChip.valueMatch.hcpNumber)} matches by value
@@ -973,7 +1009,11 @@ export function BidsBidBoardTab({
             {bidBoardJobLinkLabel(job.hcpNumber)}
           </Link>
         ) : null}
-        {photos ? (
+          </span>
+        ) : null}
+        <span data-bid-board-link-slots="" style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', width: boardLinkSlotCount(Boolean(photos)) * (touch ? 44 : 28) }}>
+          {photos ? (
+            <span style={slotBox}>
           <button
             type="button"
             title={photos.title}
@@ -981,41 +1021,24 @@ export function BidsBidBoardTab({
             data-testid="bid-board-photos-press"
             data-photos-state={photos.state}
             onClick={(e) => { e.stopPropagation(); setPhotosWindowBid(bid) }}
-            style={{ color: photos.state === 'blue' ? 'var(--text-blue-500)' : 'var(--text-faint)', opacity: photos.state === 'blue' ? 1 : 0.6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', ...(touch ? { minWidth: 44, minHeight: 40 } : null) }}
+            style={{ color: photos.state === 'blue' ? 'var(--text-blue-500)' : 'var(--text-faint)', opacity: photos.state === 'blue' ? 1 : 0.6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', width: '100%', minHeight: touch ? 40 : 24 }}
           >
             <CameraGlyph size={touch ? 24 : 20} />
             {photos.count ? <span style={{ fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-blue-700)' }}>{photos.count}</span> : null}
           </button>
-        ) : null}
-        {links.map((l) =>
-          l.pick ? (
-            <button
-              key={`${l.title}:${l.href}`}
-              type="button"
-              title={l.title}
-              aria-label={l.title}
-              data-testid="bid-board-plan-sets-press"
-              onClick={(e) => { e.stopPropagation(); l.pick?.() }}
-              style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
-            >
-              <BidBoardIcon d={l.d} />
-              {l.count ? <span style={{ fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-blue-700)' }}>{l.count}</span> : null}
-            </button>
-          ) : (
-          <a
-            key={`${l.title}:${l.href}`}
-            href={l.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={l.title}
-            aria-label={l.title}
-            onClick={(e) => { e.preventDefault(); openInExternalBrowser(l.href) }}
-            style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <BidBoardIcon d={l.d} />
-          </a>
-          ),
-        )}
+            </span>
+          ) : null}
+          {slots.map((l, at) => (
+            <span key={at} style={slotBox}>
+              {l ? drawLink(l) : null}
+            </span>
+          ))}
+          {extra.map((l) => (
+            <span key={`${l.title}:${l.href}`} style={slotBox}>
+              {drawLink(l)}
+            </span>
+          ))}
+        </span>
       </span>
     )
   }

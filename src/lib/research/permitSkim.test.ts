@@ -128,11 +128,11 @@ describe('best first', () => {
 
 describe('the two answers', () => {
   it("writes Keep as the ledger's look and Pass as its not_for_us, with words a reader can read", () => {
-    expect(skimVerdict('keep', null)).toEqual({ verdict: 'look', reason: 'Kept on the skim.' })
+    expect(skimVerdict('keep', null)).toEqual({ verdict: 'look', reason: 'Marked to investigate on the skim.' })
     expect(skimVerdict('pass', null)).toEqual({ verdict: 'not_for_us', reason: 'Passed on the skim.' })
     expect(skimVerdict('pass', 'too_far')).toEqual({ verdict: 'not_for_us', reason: 'Passed on the skim: too far.' })
-    expect(skimVerdict('keep', 'too_far').reason).toBe('Kept on the skim.')
-    expect(answeredWords('keep')).toBe('Kept for a closer look.')
+    expect(skimVerdict('keep', 'too_far').reason).toBe('Marked to investigate on the skim.')
+    expect(answeredWords('keep')).toBe('Marked to investigate.')
     expect(answeredWords('pass')).toBe('Passed. Why?')
   })
 
@@ -147,9 +147,9 @@ describe('the two answers', () => {
   })
 
   it('says so when nothing is left', () => {
-    expect(caughtUpWords(9, 32)).toBe('You answered 41 just now: 9 kept, 32 passed. The next pull is tomorrow at 5:30 AM.')
+    expect(caughtUpWords(9, 32)).toBe('You answered 41 just now: 9 to investigate, 32 passed. The next pull is tomorrow at 5:30 AM.')
     expect(caughtUpWords(0, 0)).toBe('Every permit the feed brought has an answer. The next pull is tomorrow at 5:30 AM.')
-    expect(digInWords(14)).toBe('Dig in · 14 kept')
+    expect(digInWords(14)).toBe('Dig in · 14 to investigate')
     expect(digInWords(0)).toBeNull()
   })
 })

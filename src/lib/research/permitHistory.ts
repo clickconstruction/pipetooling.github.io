@@ -11,7 +11,7 @@ import { placeOf } from './permitBuilders'
 export type HistoryEvent = { id: string; verdict: string; reason: string; reason_code: string | null; decided_at: string; by_name: string | null; for_name: string | null }
 
 /** The words every answer is stored with when nothing was typed or tapped. A reader has them already from the verb. */
-const STOCK_LEAD = /^(passed on the skim|passed on a second look|not pursuing|kept on the skim|kept on a second look, after .+ passed|kept from passed, after .+|put back on the skim|pursued for this job and their next ones|pursued for their next jobs|pursued for this job|handed to nobody yet)\s*[:.]?\s*/i
+const STOCK_LEAD = /^(passed on the skim|passed on a second look|not pursuing|kept on the skim|kept on a second look, after .+ passed|kept from passed, after .+|marked to investigate on the skim|marked to investigate on a second look, after .+ passed|marked to investigate from passed, after .+|put back on the skim|pursued for this job and their next ones|pursued for their next jobs|pursued for this job|handed to nobody yet)\s*[:.]?\s*/i
 
 /** What the person did, in the past tense, from the verdict and its code. */
 export function historyVerb(ev: Pick<HistoryEvent, 'verdict' | 'reason' | 'reason_code' | 'for_name'>): string {
@@ -22,7 +22,8 @@ export function historyVerb(ev: Pick<HistoryEvent, 'verdict' | 'reason' | 'reaso
   if (ev.verdict === 'taken') return 'said a plumber has it'
   if (ev.verdict === 'look') {
     if (/^handed to /i.test(ev.reason)) return ev.for_name ? `handed it to ${ev.for_name}` : 'handed it to nobody yet'
-    const how = /^kept on a second look/i.test(ev.reason) ? 'kept it on a second look' : /^kept from passed/i.test(ev.reason) ? 'kept it from Passed' : 'kept it'
+    // An answer stored before v2.6879 says Kept; one stored since says Marked to investigate. Both read the same.
+    const how = /^(kept|marked to investigate) on a second look/i.test(ev.reason) ? 'chose to investigate on a second look' : /^(kept|marked to investigate) from passed/i.test(ev.reason) ? 'chose to investigate from Passed' : 'chose to investigate'
     return ev.for_name ? `${how} for ${ev.for_name}` : how
   }
   return ev.verdict
@@ -67,5 +68,5 @@ export function mayKeepFromClosed(row: ResearchPermitRow): boolean {
 /** The words a keep from the Closed list is stored with, so the history says whose answer it overturned. */
 export function keepFromPassedReason(row: ResearchPermitRow): string {
   const dropped = placeOf(row).why === 'not_pursuing'
-  return `Kept from Passed, after ${row.verdict_by_name ?? 'someone'} ${dropped ? 'stopped pursuing it' : 'passed'}.`
+  return `Marked to investigate from Passed, after ${row.verdict_by_name ?? 'someone'} ${dropped ? 'stopped pursuing it' : 'passed'}.`
 }

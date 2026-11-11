@@ -2,12 +2,12 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
 
-Every city publishes the permits it issues. A building permit says who is about to build what and where. The Permits tab under Prospects pulls those permits in. You skim each one and keep the few worth a closer look. Then you say what we do about them.
+Every city publishes the permits it issues. A building permit says who is about to build what and where. The Permits tab under Prospects pulls those permits in. You skim each one and pick the few worth investigating. Then you say what we do about them.
 
 ## Pick a city
 
@@ -39,23 +39,33 @@ Skim shows one permit at a time. The best ones come first. A green line on the c
 
 Two pictures sit at the top of the card. One is a street view of the address, with the month it was taken. The other is a map with the miles from the office. Press either one to open it in Google.
 
-Press {{button:green|Keep}} if the permit is worth a closer look. Press **Pass** if it is not. On a desk the right arrow keeps and the left arrow passes. On a phone you can drag the card. Right keeps and left passes.
+Press {{button:green|Investigate}} if the permit is worth a closer look. Press **Pass** if it is not. On a desk the right arrow investigates and the left arrow passes. On a phone you can drag the card. Right investigates and left passes.
 
 Nothing is typed. After a pass a dark bar offers four reasons. Tap one if you like. Press **Undo** in the bar to take your answer back. Your answer is saved a few seconds later.
 
-Press the name beside **Who** to see who pulled it. Press the line beside **Property** to see the building. Both have **Keep** and **Pass** at the foot.
+Press the name beside **Who** to see who pulled it. Press the line beside **Property** to see the building. Both have **Investigate** and **Pass** at the foot.
 
 The count says how many are left. A permit stays in the deck until someone answers it. The Dashboard's **Needs you** card says when permits wait. The Leader is asked first. The rest of the team is asked once a permit has waited two days. When none are left the card says so. Press **Dig in** to open the ones you kept.
 
-## Work the ones you kept
+## Work the ones you are investigating
 
-A strip under the filters counts where every permit is. **Skim** waits on an answer. **Kept** waits on a closer look. **Pursuing** has a lead. **Closed** is done. The number on **Skim** is how many cards are left. It drops as you answer.
+A strip under the filters counts where every permit is. **Skim** waits on an answer. **Investigating** waits on a closer look. **Pursuing** has a lead. **Closed** is done. The number on **Skim** is how many cards are left. It drops as you answer.
 
-After a keep the dark bar asks who it is for. Tap a name to hand it over. You can also pick a name beside **Hand to** on a kept row.
+After you press Investigate the dark bar asks who it is for. Tap a name to hand it over. You can also pick a name beside **Hand to** on a row under Investigating.
 
-Press **Kept** and press a permit's name. It opens with what was done on it. Press **Pursue…** to go after it. Say what it is for and who follows up. A lead is made on the GCs deck. Press **Not pursuing…** to drop it. Tap one reason.
+Press **Investigating** and press a permit's name. It opens with what was done on it. Press **Pursue…** to go after it. Say what it is for and who follows up. A lead is made on the GCs deck. Press **Not pursuing…** to drop it. Tap one reason.
 
-Press **Put back** on a kept row to send it to the skim again.
+Press **Put back** on a row under Investigating to send it to the skim again.
+
+## Find a permit on any list
+
+Press the magnifier at the start of the strip. Type what you remember. A street, a permit number, a project, a builder or a city all work. Two words narrow it, like *austin lamar*.
+
+The search looks on every list in every city. Each result says where the permit sits now and the last thing done to it. Press its name to open it.
+
+A passed permit has **Investigate** and **Put back** on its row. Press **San Antonio only** to look in one city. The box names the city on screen.
+
+The other cities are read one after another. The count says which city is still being read.
 
 ## Find a closed permit
 
@@ -63,7 +73,9 @@ Press **Closed**. Three chips sort the list. **Passed** holds every pass. **Has 
 
 Type a street, a builder or a permit number in the search. Press **Put back** to send a permit to the skim again.
 
-Anyone can press **Keep** on a passed row. Keep moves the permit to **Kept** under your name. Keep works on your own pass too.
+Press **On a map** to see the same permits as pins. Every permit on the chip is there, however old. Press a pin to read its permit beside the map. Press **List** to go back.
+
+Anyone can press **Investigate** on a passed row. The press moves the permit to **Investigating** under your name. The press works on your own pass too.
 
 ## See who moved a permit
 
@@ -77,7 +89,7 @@ A grey count sits beside **Skim** when someone else has passed permits. The coun
 
 The amber line on the card says who passed and when. The line gives their reason when they tapped one.
 
-Press **Keep** to move the permit to **Kept** under your name. Press **Pass** to agree with the first pass. Undo works the same as on the skim.
+Press **Investigate** to move the permit to **Investigating** under your name. Press **Pass** to agree with the first pass. Undo works the same as on the skim.
 
 Each permit gets one second look. After two people pass it, it leaves the deck for everyone. Your own passes never show here.
 
@@ -97,7 +109,7 @@ Pick **Files for others** under what kind of company for a name that pulls permi
 
 ## Read the count
 
-Six numbers sit under the lists. The first says how many permits arrived this month. The next three say how many were skimmed, kept and pursued. The last two say how many became a bid and a win. The lines under them say who skimmed and why permits were passed.
+Six numbers sit under the lists. The first says how many permits arrived this month. The next three say how many were skimmed, marked to investigate and pursued. The last two say how many became a bid and a win. The lines under them say who skimmed and why permits were passed.
 
 ## Open the ledger
 
@@ -109,7 +121,7 @@ The line under the filters says when the feed was last pulled and what is new si
 
 :::example The Pulled line
 
-Pulled 6:10 AM · 14 new since you looked · 9 to skim · 2 kept · 3 pursuing · 22 passed · 31 have a plumber
+Pulled 6:10 AM · 14 new since you looked · 9 to skim · 2 investigating · 3 pursuing · 22 passed · 31 have a plumber
 
 :::
 
@@ -227,9 +239,9 @@ Go after it. Call who pulled it. The press makes a GC lead on the GCs deck with 
 
 :::
 
-:::card Keep
+:::card Investigate
 
-Worth a closer look. The row waits under Kept and comes back on the day you pick.
+Worth a closer look. The row waits under Investigating and comes back on the day you pick.
 
 :::
 

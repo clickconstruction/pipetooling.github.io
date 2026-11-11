@@ -5,7 +5,7 @@
  * CSV press hands a file to the download.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LabelsPrintModal from './LabelsPrintModal'
 import type { Container, ContainerLine } from '../../lib/materials/onSite'
@@ -88,7 +88,7 @@ describe('LabelsPrintModal', () => {
   it('names the two outputs first, and Brother tape on a new computer lists the first-time steps (punch list #304)', () => {
     setup()
     const outputs = screen.getAllByRole('radio')
-    expect(outputs.map((o) => o.textContent)).toEqual(['Paper sheetOne Letter page a box, with lines to write on. Any printer.', 'Brother tapeOne strip a box for the P-touch, for boxes that sit in the sun.'])
+    expect(outputs.map((o) => o.textContent)).toEqual(['Paper sheetOne Letter page a box, with lines to write on. Any printer.', 'Brother tapeOne strip a box for the P-touch, for boxes that sit in the sun.Needs Chrome or Edge'])
     expect(outputs[0]!.getAttribute('aria-checked')).toBe('true')
     expect(screen.queryByTestId('labels-tape-setup')).toBeNull()
     expect(screen.queryByTestId('labels-test-strip')).toBeNull()
@@ -100,6 +100,22 @@ describe('LabelsPrintModal', () => {
     expect(steps.textContent).toContain('24 mm paper')
     expect(steps.querySelector('a')?.getAttribute('href')).toBe('/help?g=keep-track-of-the-material-in-the-cages-and-boxes-on-site#print-a-tape-label')
     expect(screen.getByTestId('labels-count-words').textContent).toBe('2 boxes, one strip each.')
+  })
+
+  it('a browser with no USB reach says so on the tape choice, and hands over the link for Chrome (v2.6865)', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    setup()
+    expect(screen.getByTestId('labels-needs-browser').textContent).toBe('Needs Chrome or Edge')
+    expect(screen.queryByTestId('labels-no-usb')).toBeNull()
+    fireEvent.click(screen.getByTestId('labels-output-tape'))
+    const note = screen.getByTestId('labels-no-usb')
+    expect(note.textContent).toContain('Open this page in Chrome or Edge on a computer.')
+    expect(note.textContent).toContain('Brother makes no Mac driver')
+    expect(screen.queryByTestId('labels-connect')).toBeNull()
+    fireEvent.click(screen.getByTestId('labels-copy-link'))
+    await waitFor(() => expect(note.textContent).toContain('Link copied. Paste it into Chrome or Edge.'))
+    expect(writeText).toHaveBeenCalledWith(window.location.href)
   })
 
   it('the test strip prints the first ticked box alone, then the list is whole again', () => {

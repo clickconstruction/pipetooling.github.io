@@ -76,13 +76,39 @@ export const LABEL_OUTPUTS: Record<LabelFormat, { name: string; words: string }>
   tape: { name: 'Brother tape', words: 'One strip a box for the P-touch, for boxes that sit in the sun.' },
 }
 
-/** The three things to do the first time a computer prints tape, in order. */
-export function tapeSetupSteps(widthMm: TapeWidthMm): string[] {
+/**
+ * The three things to do the first time a computer prints tape, in order. `direct` is the app sending the dots itself
+ * over USB (v2.6865), which needs no driver; the other way is the browser's print window, which needs Brother's
+ * driver, and Brother makes one for Windows and none for a Mac.
+ */
+export function tapeSetupSteps(widthMm: TapeWidthMm, direct = false): string[] {
+  if (direct) {
+    return [
+      'Plug the P-touch in with its USB cable and switch it on.',
+      'Quit Brother\u2019s P-touch Editor if it is open. Only one program can hold the printer.',
+      'Press Connect the P-touch and pick it in the browser\u2019s list. The browser remembers it.',
+    ]
+  }
   return [
     'Plug the P-touch in with its USB cable and switch it on.',
-    'Add it as a printer with Brother\u2019s driver.',
+    'On Windows, add it as a printer with Brother\u2019s driver. Brother makes no driver for a Mac.',
     `In the print window, pick the P-touch and the ${widthMm} mm paper. The browser remembers both.`,
   ]
+}
+
+/** The quiet press from one way of printing tape to the other. */
+export const TAPE_VIA_WINDOW_LABEL = 'Use the print window instead'
+export const TAPE_VIA_USB_LABEL = 'Print straight to the P-touch'
+
+/** While the strips go out one at a time: `Printing 2 of 6…`. */
+export function tapeProgressWords(done: number, total: number): string {
+  return `Printing ${Math.min(done + 1, total)} of ${total}\u2026`
+}
+
+/** After a run: every strip went, or how many did before the printer stopped, with its reason. */
+export function tapeSentWords(done: number, total: number, reason?: string): string {
+  if (!reason) return done === 1 ? '1 tape label printed.' : `${done} tape labels printed.`
+  return `${done} of ${total} printed, then the printer stopped: ${reason}`
 }
 
 /** The press that prints the first ticked box alone, so a wrong paper size costs one strip and not a run. */

@@ -2,7 +2,7 @@
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
 group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867)
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -15,7 +15,7 @@ summary: >
   asks five questions. A property where nobody answered the homestead question passes today as not
   a homestead. The owner chose to build before counsel answers, so the wording may change on
   counsel's word.
-next: The owner said on 2026-11-10 that the liens drafted that week go out on the short form; he redraws and approves them. Then the § 53.254(f) notice on a homestead, then the two holds. The homestead hold needs a column, and on the day it ships it would hold 11 of the 12 papers ready for 2026-11-16, so its timing is his.
+next: The owner said on 2026-11-10 that the liens drafted that week go out on the short form; he redraws and approves them. The § 53.254(f) notice on a homestead shipped the same day (v2.6884). Then the two holds. The homestead hold needs a column, and on the day it ships it would hold 11 of the 12 papers ready for 2026-11-16, so its timing is his.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
 blocker: The owner's word on when the homestead hold ships. Counsel's answers may still change the wording.
 opinion: your call — ship the homestead hold after the 16th, the address hold any time
@@ -148,8 +148,10 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    affidavits approved on 2026-11-09 and 2026-11-10 stay on the earlier form, and **Redraw on the
    short form…** on the Affidavits pane moves one, which then needs approval again. Since v2.6867
    one press at the top of the Affidavits list redraws every ready one at once.
-2. **The § 53.254(f) notice on a homestead** (S). The paper side only; the desk still holds every
-   homestead.
+2. **The § 53.254(f) notice on a homestead** (S). Shipped as v2.6884
+   (`docs/recent-features/v2.6884.md`): on a property marked homestead the short form opens with the
+   notice above the title, bold at 12 point. The paper side only; the desk still holds every
+   homestead, and no property on the desk was marked on 2026-11-10.
 3. **The homestead hold** (S, with a migration). A column that records the question was answered,
    since `homestead` cannot say so. `affidavitGates` holds a residential property with no answer,
    with a press that opens the property record. On the day it ships every property is unanswered:

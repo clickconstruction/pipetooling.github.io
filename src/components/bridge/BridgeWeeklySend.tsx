@@ -1,6 +1,6 @@
 /**
- * The weekly email's switch on the Monday sheet (v2.5883): the owner or a dev turns the Monday 6 AM send on or off here, after a
- * confirm when turning it on, and reads when the sheet last went and to how many people. The words and the keys are
+ * The weekly email's switch, behind The flow (v2.5883): the owner or a dev turns the Monday 6 AM send on or off here, after a
+ * confirm when turning it on, and reads when the email last went and to how many people. The words and the keys are
  * `weeklySend.ts`'s; the read and the write are `weeklySendIo.ts`'s. It ships off, so nothing mails until one of them turns
  * it on.
  */
@@ -18,11 +18,7 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }
 
-/** The words for what goes out and for the switch's state; the page passes its own since the sheet stopped being a view (v2.6840). */
-export type WeeklySendWords = { what: string; state: (on: boolean) => string }
-const SHEET_WORDS: WeeklySendWords = { what: WEEKLY_SEND_WHAT, state: weeklySendStateWords }
-
-export function BridgeWeeklySend({ io = DEFAULT_IO, words = SHEET_WORDS }: { io?: WeeklySendIo; words?: WeeklySendWords }) {
+export function BridgeWeeklySend({ io = DEFAULT_IO }: { io?: WeeklySendIo }) {
   const confirm = useConfirmDialog()
   const { showToast } = useToastContext()
   const [on, setOn] = useState<boolean | null>(null)
@@ -95,10 +91,10 @@ export function BridgeWeeklySend({ io = DEFAULT_IO, words = SHEET_WORDS }: { io?
           </button>
         )}
       </div>
-      <p style={{ margin: 0, fontSize: '0.85rem' }}>{words.what}</p>
+      <p style={{ margin: 0, fontSize: '0.85rem' }}>{WEEKLY_SEND_WHAT}</p>
       {on !== null ? (
         <p data-testid="bridge-weekly-send-state" style={det}>
-          {words.state(on)} {lastRunWords(lastRun, md)}
+          {weeklySendStateWords(on)} {lastRunWords(lastRun, md)}
         </p>
       ) : (
         !problem && <p style={det}>Loading the switch…</p>

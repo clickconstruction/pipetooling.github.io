@@ -352,6 +352,8 @@ export type LienAffidavitJobFacts = {
   form?: 'short' | 'long'
   /** The job's recorded filings (`job_lien_filings`): the short form reads the § 53.056 notices among them for the months it names (those inside the job's own work span) and the day and method each went to the owner. */
   filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
+  /** The property record says homestead (`customer_addresses.homestead`): the short form opens with the § 53.254(f) notice. The flag alone, never the property kind: a house that is not a homestead must not say its affidavit is not a lien. */
+  homestead?: boolean
 }
 
 /**
@@ -397,6 +399,7 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
       : {
           form: 'short' as const,
           isSub: f.isSub,
+          ...(f.homestead === true ? { homestead: true } : {}),
           // A job contracted with the owner names no months and no notices: neither is asked of an original contractor.
           // The months are the noticed ones inside this job's own span: a notice mailed for several jobs stores the whole paper's months on each.
           ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),

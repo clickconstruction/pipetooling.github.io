@@ -12,6 +12,7 @@ import {
   filingLetterheadFromIssuer,
   filingPdfFilename,
   type LienAffidavitFields,
+  HOMESTEAD_AFFIDAVIT_NOTICE,
   HOMESTEAD_NOTICE_STATEMENT,
   type LienNoticeFields,
   buildLienRetainageNoticeBlocks,
@@ -206,6 +207,38 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     expect(numbered(asFiledBefore)).toHaveLength(10)
     expect(text(asFiledBefore)).toContain('COUNTY OF BEXAR')
     expect(text(asFiledBefore)).toContain("together with all interest, costs, and attorney's fees allowed by law")
+  })
+
+  describe('on a homestead (§ 53.254(f))', () => {
+    it('opens with the statute’s notice, above the title, and changes nothing else', () => {
+      const blocks = buildLienAffidavitBlocks({ ...short, homestead: true })
+      expect(blocks[0]).toEqual({ kind: 'topNotice', text: 'NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.' })
+      expect(blocks[1]).toEqual({ kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] })
+      expect(blocks.slice(1)).toEqual(buildLienAffidavitBlocks(short))
+      expect(text({ ...short, homestead: true }).startsWith(`${HOMESTEAD_AFFIDAVIT_NOTICE}\n\nMECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT`)).toBe(true)
+    })
+
+    it('prints it bold, centred and at 12 point, whatever size the paper around it is drawn at', () => {
+      const html = filingDocHtml(buildLienAffidavitBlocks({ ...short, homestead: true }))
+      const notice = /<p data-top-notice style="([^"]*)">([^<]*)<\/p>/.exec(html)!
+      expect(notice[2]).toBe(HOMESTEAD_AFFIDAVIT_NOTICE)
+      expect(notice[1]).toContain('font-weight:700')
+      expect(notice[1]).toContain('font-size:12pt')
+      expect(notice[1]).toContain('text-align:center')
+      // Nothing is drawn before it.
+      expect(html.startsWith('<p data-top-notice')).toBe(true)
+    })
+
+    it('a property that is not a homestead carries no notice', () => {
+      expect(text(short)).not.toContain('THIS IS NOT A LIEN')
+      expect(text({ ...short, homestead: false })).not.toContain('THIS IS NOT A LIEN')
+      expect(filingDocHtml(buildLienAffidavitBlocks(short))).not.toContain('data-top-notice')
+    })
+
+    it('a paper on the earlier form stays as it was drafted', () => {
+      const { form: _form, ...earlier } = short
+      expect(text({ ...earlier, homestead: true })).not.toContain('THIS IS NOT A LIEN')
+    })
   })
 })
 

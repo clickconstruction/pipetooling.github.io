@@ -49,7 +49,7 @@ const row = (over: Partial<BidPhotoRow> = {}): BidPhotoRow => ({
 })
 
 function makeIo(start: Partial<BidPhotosRead> | Error): BidPhotosWindowIo & { added: unknown[]; sent: string[]; loads: number } {
-  let answer: BidPhotosRead | Error = start instanceof Error ? start : { folder: folder('project'), driveWhy: null, photos: [], previews: {}, ...start }
+  let answer: BidPhotosRead | Error = start instanceof Error ? start : { folder: folder('project'), driveWhy: null, photos: [], previews: {}, adopted: 0, ...start }
   const io: BidPhotosWindowIo & { added: unknown[]; sent: string[]; loads: number } = {
     added: [],
     sent: [],
@@ -140,6 +140,18 @@ describe('BidPhotosWindow', () => {
     fireEvent.click(document.querySelector('[data-bid-photo-tile="p1"]')!)
     await waitFor(() => expect(document.querySelector('[data-bid-photo-open="p1"]')).toBeTruthy())
     expect(screen.getByRole('button', { name: 'Back to the photos' })).toBeTruthy()
+  })
+
+  it('reads a picture the app filed by its caption, tells the board when the read took pictures on, and says so in plain words when Drive is silent', async () => {
+    const changed = vi.fn()
+    const io = makeIo({ folder: null, driveWhy: 'Failed to send a request to the Edge Function', adopted: 2, photos: [row({ id: 'a1', name: '2026-11-01 Priya Raman · Gas meter', by_name: '' }), row({ id: 'a2', name: '2026-11-01 Priya Raman · Floor sink', by_name: '' })] })
+    renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} onChanged={changed} io={io} />)
+    await settle()
+    expect(screen.getByText('Gas meter')).toBeTruthy()
+    expect(screen.getByText('Floor sink')).toBeTruthy()
+    expect(screen.getAllByText('Priya Raman · Nov 6')).toHaveLength(2)
+    expect(changed).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-bid-photos-drive-silent]')?.textContent).toBe('Drive could not be reached just now. The bid’s photos still show. Its folder does not.')
   })
 
   it('says the photos are safe and why, when the folder holds them up', async () => {

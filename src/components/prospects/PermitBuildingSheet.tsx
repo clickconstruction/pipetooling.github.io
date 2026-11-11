@@ -281,7 +281,7 @@ export function PermitBuildingSheet({
         <section>
           <div style={sectionTitle}>What we did</div>
           {events == null && <div style={muted}>Reading what was done…</div>}
-          {events != null && events.length === 0 && closeOut && <div style={muted}>Kept, with nothing written since.</div>}
+          {events != null && events.length === 0 && closeOut && <div style={muted}>Marked to investigate, with nothing written since.</div>}
           {/* The next step is the answers at the foot of this sheet, so the words stand alone. */}
           {events != null && events.length === 0 && !closeOut && <EmptyState main="Nobody has answered this permit yet." compact />}
           {events != null && events.length > 0 && (
@@ -346,7 +346,7 @@ export function PermitBuildingSheet({
                 Pass
               </button>
               <button type="button" onClick={answers.onKeep} style={{ background: '#16a34a', color: '#ffffff', border: 0, borderRadius: 8, padding: '11px 16px', fontSize: '0.9375rem', fontWeight: 600, minHeight: 44, cursor: 'pointer' }}>
-                Keep
+                Investigate
               </button>
             </>
           ) : (
