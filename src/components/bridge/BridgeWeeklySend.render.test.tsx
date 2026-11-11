@@ -10,7 +10,6 @@ vi.mock('../../lib/supabase', async () => {
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeWeeklySend } from './BridgeWeeklySend'
 import { WEEKLY_SEND_CONFIRM } from '../../lib/bridge/weeklySend'
-import { WEEKLY_EMAIL_WORDS } from '../../lib/bridge/doors'
 import type { WeeklySendIo } from '../../lib/bridge/weeklySendIo'
 
 const fakeIo = (on: boolean, lastRun: Awaited<ReturnType<WeeklySendIo['load']>>['lastRun'] = null): WeeklySendIo & { setOn: ReturnType<typeof vi.fn> } => ({
@@ -22,22 +21,16 @@ describe('BridgeWeeklySend', () => {
   it('reads the switch and the last run', async () => {
     renderWithProviders(<BridgeWeeklySend io={fakeIo(true, { at: '', day: '2026-10-19', dry: false, sent: ['a@x.com', 'b@x.com'], failed: [], gaps: [], subject: '' })} />)
     expect((await screen.findByRole('switch', { name: 'Weekly email' })).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('On: the sheet goes to the owner and every dev on Monday at 6 AM Central. Last sent Oct 19 to 2 people.')
+    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('On: the first screen goes to the owner and every dev on Monday at 6 AM Central. Last sent Oct 19 to 2 people.')
   })
 
-  it('off: says so, and that the button still works', async () => {
+  it('off: says so, and that what goes out is the first screen, never a sheet', async () => {
     renderWithProviders(<BridgeWeeklySend io={fakeIo(false)} />)
     expect((await screen.findByRole('switch', { name: 'Weekly email' })).getAttribute('aria-checked')).toBe('false')
-    expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('Off: nothing goes out on Monday. Email me this sheet still works. Not sent yet.')
-  })
-
-  it('behind The flow the words no longer speak of a sheet on the page', async () => {
-    renderWithProviders(<BridgeWeeklySend io={fakeIo(false)} words={WEEKLY_EMAIL_WORDS} />)
-    await screen.findByRole('switch', { name: 'Weekly email' })
     const text = screen.getByTestId('bridge-weekly-send').textContent ?? ''
-    expect(text).toContain('Every Monday at 6 AM Central the app builds a one page sheet of the Bridge.')
+    expect(text).toContain('Every Monday at 6 AM Central the app mails the Bridge’s first screen.')
     expect(screen.getByTestId('bridge-weekly-send-state').textContent).toContain('Off: nothing goes out on Monday. Not sent yet.')
-    expect(text).not.toContain('Email me this sheet')
+    expect(text).not.toMatch(/sheet/i)
   })
 
   it('turning it on asks first; cancel changes nothing, confirm writes true', async () => {

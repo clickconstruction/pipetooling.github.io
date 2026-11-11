@@ -543,13 +543,13 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'bridge_weekly_sheet',
-    name: 'The Bridge, the Monday sheet (the weekly send, to the owner and every dev)',
+    name: 'The Bridge, the week’s call (the weekly email, to the owner and every dev)',
     group: 'digests',
     audience: 'internal',
     builtWhere: 'server',
     sender: 'bridge-weekly-sheet',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'The Bridge, the week of Oct 25–31: contribution ≈ +$38k, net down $37.4k since Aug 15, cash lowest point $15.4k on Nov 2',
+    subjectExample: 'The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash low point $22.0k. Made last week $31.0k.',
   },
   {
     id: 'people_week',

@@ -110,7 +110,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Set what the app does with each reminder it can text, Off, Offers or Sends, where the other Messages switches are → `/settings?tab=settings-phone-texts` (Reminders the app offers, the last card: the owner or a dev; the same control is on each step in Flows; guide `offer-the-apps-reminders`)
 - Change the steps a customer, trade partner, architect, residential customer, sub or candidate goes through (the Candidate tab since v2.5812) → `/settings?tab=settings-flows` (Flows: the office edits; the owner or a dev turns the app's reminders and the Pipeline's ask on a move; guide `set-up-the-steps-a-person-goes-through`)
 - Turn a training course on, say which roles must take it or open it to everyone, how long a pass is good for, see where everyone stands, preview the course and clear a retake day → `/settings?tab=settings-training` (Training: the owner or a dev since v2.6762; guide `take-a-training-course`)
-- Where the company stands this week, the weakest link, the Monday sheet and its Weekly email switch → `/bridge` (the owner or a dev since v2.6763; a dev opens the app here, v2.5879)
+- Where the company stands this week, the weakest link, the week's call and the Weekly email switch → `/bridge` (the owner or a dev since v2.6763; a dev opens the app here, v2.5879)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)
 
