@@ -7,6 +7,7 @@ const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
 const MIGRATION = readFileSync('supabase/migrations/20261107070000_case_search.sql', 'utf8')
 const FILES_MIGRATION = readFileSync('supabase/migrations/20261108220000_case_search_files.sql', 'utf8')
+const PHRASES_MIGRATION = readFileSync('supabase/migrations/20261111180000_case_search_phrases.sql', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
 const people: Row[] = [{ id: PERSON, name: 'Pat Doe', kind: 'helper', start_date: '2025-02-01', end_date: null, archived_at: null, account_user_id: null }]
@@ -144,5 +145,32 @@ describe('search_case (one full-text search across a person\'s case, v2.6620)', 
     expect(FILES_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_case_search(uuid, text, text, int) FROM PUBLIC, anon;')
     expect(FILES_MIGRATION).not.toContain('CREATE TABLE')
     expect(SERVER).toContain('matter | files; every source when left out')
+  })
+
+  it('the phrases migration (v2.6938) asks each index the words and never the phrase, and matches every text through fts_hit', () => {
+    expect(PHRASES_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    for (const fn of ['fts_query_tokens(p_q tsquery)', 'fts_prefilter(p_q tsquery)', 'fts_windows(p_text text, p_words int, p_step int)', 'fts_hit(p_text text, p_q tsquery, p_headline_options text)']) {
+      expect(PHRASES_MIGRATION).toContain(`CREATE OR REPLACE FUNCTION public.${fn}`)
+    }
+    const search = PHRASES_MIGRATION.slice(PHRASES_MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.dev_case_search('))
+    expect(search).toContain('v_pre := public.fts_prefilter(v_q);')
+    // No branch tests the parsed query on a tsvector itself: a tsvector's positions stop at 16,383, so a phrase past it never matches.
+    expect(search).not.toMatch(/@@ v_q\b/)
+    // Nine branches, each matched, ranked and snipped by fts_hit; the seven with a GIN index ask it v_pre first.
+    expect((search.match(/CROSS JOIN LATERAL public\.fts_hit\(/g) ?? []).length).toBe(9)
+    expect((search.match(/\) @@ v_pre\n/g) ?? []).length).toBe(7)
+    for (const indexed of ["to_tsvector('english', e.content) @@ v_pre", "to_tsvector('english', r.title || ' ' || r.memo) @@ v_pre", "to_tsvector('english', d.content) @@ v_pre", "to_tsvector('english', f.content) @@ v_pre", "to_tsvector('english', COALESCE(e.body, '')) @@ v_pre", "to_tsvector('english', t.content) @@ v_pre", "to_tsvector('english', coalesce(f.text, '')) @@ v_pre"]) {
+      expect(search).toContain(indexed)
+    }
+    // What 20261108230000 left is carried: the gate, the seven sources of `in`, the file source, the record columns.
+    expect(search).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(search).toContain("p_in NOT IN ('entries', 'evidence', 'documents', 'summary', 'narrative', 'matter', 'files')")
+    for (const src of ["'entry'::text AS source", "'evidence'", "'document'", 'f.kind, f.id::text', "'matter_narrative'", "'matter_entry'", "'matter_document'", "SELECT 'file', f.drive_file_id, f.name"]) expect(search).toContain(src)
+    expect((search.match(/\n           NULL, NULL, NULL\n/g) ?? []).length).toBe(7)
+    expect(search).toContain("AND (f.source <> 'matter_document' OR d.text_document_id IS NULL)")
+    expect(search).toContain("'record_kind', r.record_kind, 'record_id', r.record_id, 'record_title', r.record_title")
+    expect(search).toContain('REVOKE EXECUTE ON FUNCTION public.dev_case_search(uuid, text, text, int) FROM PUBLIC, anon;')
+    expect(PHRASES_MIGRATION).not.toContain('CREATE TABLE')
+    expect(PHRASES_MIGRATION).not.toContain('CREATE INDEX')
   })
 })

@@ -5146,6 +5146,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### payment-forecast-email-dispatch
 
+> **v2.6931 — a bill paid in kind is in no week (punch list #301)**: the payload RPC lists every open billed row and does not say which job an in-kind deal pays, so `fetchPayload` stamps `jobs_ledger.in_kind_arrangement_id` on the rows through [`_shared/inKindPayloadRows.ts`](../supabase/functions/_shared/inKindPayloadRows.ts) (`stampInKindDeals`: one service-role read per 100 jobs, a failed read throws and the send retries). [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) then keeps such a row out of every bucket and out of `openTotal` and counts it in `inKind`, as the app's `buildBilledPaymentForecast` does, and the email's last line reads *$9,375 on 8 bills is scheduled in kind, not money coming*. `money-waiting-email-dispatch` reads the same stamp. Redeploy both.
+
 > **v2.6034 — the email keeps own → company**: the app's `billedExpectedPayModel` reads the Collect desk's pace order since this version (`src/lib/jobs/payPace.ts`: the payer's own median, the GC pace here for a GC, the segment's, the company's); `_shared/paymentForecastCore.ts` is a hand-written port whose payload carries no GC facts, so the digest still reads own → company and can expect a first-job GC's pay application a few weeks earlier than the app does. Nothing to redeploy for it.
 
 > **v2.4460 — a bill's day reads in the company zone**: `billedReferenceYmd` in [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not its UTC date, as the app's `billedExpectedPay.ts` now does. A bill marked billed after 7 pm Central lands in the right week. Redeploy after merge.
@@ -5165,6 +5167,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy payment-forecast-email-dispatch --no-verify-jwt`. Requires migration `20260824133529` (table + payload RPC + pg_cron).
 
 ### money-waiting-email-dispatch
+
+> **v2.6931 — a bill paid in kind is under no customer (punch list #301)**: `fetchPayload` stamps each row's in-kind deal (`stampInKindDeals`, see `payment-forecast-email-dispatch` above), and [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) leaves such a bill off every customer, off pace or on, and counts it in `inKind`, as the app's `buildMoneyWaiting` does since the same version. The email ends *$9,375 on 8 bills is scheduled in kind, not money waiting*.
 
 > **v2.6519 (punch list #260)**: `loadUser` answers null for a row with no address, so a person with no login is never a recipient.
 

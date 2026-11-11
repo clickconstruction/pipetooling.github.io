@@ -17,6 +17,8 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { listPayer } from './billToParty'
+import { jobIsScheduledInKind } from '../inKind/inKindLedger'
+import { formatUsdNoCents } from './jobFormatting'
 import {
   PAY_SPEED_MIN_SAMPLES,
   billedReferenceYmd,
@@ -61,6 +63,8 @@ export type MoneyWaiting = {
   onPaceCount: number
   onPaceOpen: number
   companyMedianDays: number
+  /** Bills an in-kind deal pays (punch list #301): open, never late, so under no customer here. */
+  inKind: { count: number; dollars: number }
 }
 
 /** ok at/under baseline · warn over it · late at twice it or more · undated when the bill has no date. */
@@ -78,10 +82,17 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
   type RawBill = Omit<OpenBill, 'tone'>
   type Acc = { name: string; open: number; bills: RawBill[] }
   const byCustomer = new Map<string, Acc>()
+  const inKind = { count: 0, dollars: 0 }
   for (const r of rows) {
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
+    // Scheduled in kind is not waiting money: no pace judges it and nobody chases it.
+    if (jobIsScheduledInKind(r.job)) {
+      inKind.count += 1
+      inKind.dollars += open
+      continue
+    }
     // v2.4367: filed under whoever the bill went to (the builder on a GC-billed bill).
     const payer = listPayer(r.job, r.inv)
     const customerId = payer.id
@@ -141,7 +152,13 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
   }
 
   offPace.sort((a, b) => b.oldestWaitDays - a.oldestWaitDays || b.open - a.open)
-  return { rows: offPace, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays }
+  return { rows: offPace, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays, inKind }
+}
+
+/** The list's word on the bills it left out, so its money does not shrink with no word. Null when no bill is paid in kind. */
+export function moneyWaitingInKindLine(inKind: { count: number; dollars: number }): string | null {
+  if (inKind.count <= 0) return null
+  return `${formatUsdNoCents(inKind.dollars)} on ${inKind.count} ${inKind.count === 1 ? 'bill' : 'bills'} is scheduled in kind, not money waiting`
 }
 
 /**

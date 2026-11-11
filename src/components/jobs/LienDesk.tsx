@@ -113,7 +113,7 @@ import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, type LienAffidavitPrintPaper } from '../../lib/jobs/lienAffidavitBatch'
+import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper } from '../../lib/jobs/lienAffidavitBatch'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -127,6 +127,7 @@ import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import LienPaneHead from './LienPaneHead'
 import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
+import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
@@ -1624,14 +1625,19 @@ export default function LienDesk({
   // Print every ready affidavit on the short form for the notary (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
   const affPrintPlan = lienAffidavitPrintPlan(affEntries)
   const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
-  const printReadyAffidavits = () => {
-    if (!data || affPrintWords.dead) return
-    const papers: LienAffidavitPrintPaper[] = affPrintPlan.ready.flatMap((e) => {
+  const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
+    if (!data) return []
+    return lienAffidavitPrintPlan(data.affidavits.entries).ready.flatMap((e) => {
       const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer, signerNameFor, todayYmd })
       const job = data.jobsById[e.jobId]
       return fields ? [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields }] : []
     })
-    const run = lienAffidavitPrintRun(papers)
+  }, [data, issuer, signerNameFor, todayYmd])
+  // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
+  const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
+  const printReadyAffidavits = () => {
+    if (!data || affPrintWords.dead) return
+    const run = lienAffidavitPrintRun(affPrintPapers)
     if (!openHtmlPrintWindow(run.html)) {
       showToast('Popup blocked — allow popups to print.', 'error')
       return
@@ -2805,6 +2811,7 @@ export default function LienDesk({
           <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
             {affPrintWords.button}
           </button>
+          <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
           {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
         </div>
       ) : null}

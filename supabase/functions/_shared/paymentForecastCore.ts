@@ -18,6 +18,10 @@
  *   - Weeks start Sunday; buckets: past / thisWeek / nextWeek /
  *     following (2 weeks) / later / unknown (no reference date or no speeds).
  *   - Rows with no open money are skipped and counted (skippedNoMoney).
+ *   - A bill an in-kind deal pays is in no bucket and not in openTotal; it is
+ *     counted apart (inKind), as the modal's last line does (v2.6834). The
+ *     payload RPC does not carry the deal, so the dispatch stamps it on the
+ *     rows first (_shared/inKindPayloadRows.ts).
  */
 
 import { todayYmdInAppTz } from './appTimeZone.ts'
@@ -49,6 +53,23 @@ export type PayloadRow = {
   billed_at: string | null
   est_bill_ymd: string | null
   remaining: number
+  /**
+   * The in-kind deal that pays this job's bills (`jobs_ledger.in_kind_arrangement_id`), stamped by the
+   * dispatch after the payload RPC. Absent or null = a bill paid with money.
+   */
+  in_kind_arrangement_id?: string | null
+}
+
+/** The app's `jobIsScheduledInKind` over a payload row: a deal pays this bill, so it is never money coming. */
+export function rowIsScheduledInKind(row: { in_kind_arrangement_id?: string | null } | null | undefined): boolean {
+  return Boolean(row?.in_kind_arrangement_id)
+}
+
+/** What a list says about the bills it left out. Null when no bill is paid in kind. */
+export function inKindApartLine(inKind: { count: number; dollars: number }, notWhat: string): string | null {
+  if (inKind.count <= 0) return null
+  const v = Number.isFinite(inKind.dollars) ? Math.round(inKind.dollars) : 0
+  return `$${v.toLocaleString('en-US')} on ${inKind.count} ${inKind.count === 1 ? 'bill' : 'bills'} is scheduled in kind, not ${notWhat}`
 }
 
 /** The pay-speed key for a row (v2.4365): the payer once the payload carries it, else the job's customer. */
@@ -207,6 +228,8 @@ export type PaymentForecast = {
   openTotal: number
   rowCount: number
   skippedNoMoney: number
+  /** Bills an in-kind deal pays (punch list #301): open, and never money coming, so in no bucket. */
+  inKind: { count: number; dollars: number }
 }
 
 export function buildForecastFromPayload(p: ForecastEmailPayload): PaymentForecast {
@@ -219,10 +242,17 @@ export function buildForecastFromPayload(p: ForecastEmailPayload): PaymentForeca
     unknown: [],
   }
   let skippedNoMoney = 0
+  const inKind = { count: 0, dollars: 0 }
   for (const r of p.rows) {
     const open = Number(r.remaining ?? 0)
     if (open <= 0) {
       skippedNoMoney++
+      continue
+    }
+    // A credit is not cash: a bill an in-kind deal pays is counted apart and forecast in no week.
+    if (rowIsScheduledInKind(r)) {
+      inKind.count += 1
+      inKind.dollars += open
       continue
     }
     const number = (r.display_number ?? '').trim() || '—'
@@ -267,5 +297,6 @@ export function buildForecastFromPayload(p: ForecastEmailPayload): PaymentForeca
     openTotal: buckets.reduce((s, b) => s + b.sum, 0),
     rowCount: buckets.reduce((s, b) => s + b.rows.length, 0),
     skippedNoMoney,
+    inKind,
   }
 }

@@ -8,6 +8,11 @@ export type PhysicalInvoiceIssuer = {
   companyName: string
   /** Multiline mailing / service office address */
   addressText: string
+  /**
+   * Where the company is, when that is not where its mail goes (punch list #305). Optional, multiline. The lien
+   * affidavit prints it after the mailing address (§ 53.054(a)(7), the app's reading); nothing else reads it.
+   */
+  physicalAddressText?: string
   phone: string
   email: string
   tagline: string
@@ -23,6 +28,7 @@ const LS_KEY = 'physical_invoice_issuer_v1'
 const EMPTY: PhysicalInvoiceIssuer = {
   companyName: '',
   addressText: '',
+  physicalAddressText: '',
   phone: '',
   email: '',
   tagline: '',
@@ -37,6 +43,7 @@ function cloneIssuer(i: PhysicalInvoiceIssuer): PhysicalInvoiceIssuer {
   return {
     companyName: i.companyName,
     addressText: i.addressText,
+    physicalAddressText: i.physicalAddressText ?? '',
     phone: i.phone,
     email: i.email,
     tagline: i.tagline,
@@ -55,6 +62,7 @@ export function parsePhysicalInvoiceIssuerStoredJson(parsed: unknown): PhysicalI
   return {
     companyName: typeof o.companyName === 'string' ? o.companyName : '',
     addressText: typeof o.addressText === 'string' ? o.addressText : '',
+    physicalAddressText: typeof o.physicalAddressText === 'string' ? o.physicalAddressText : '',
     phone: typeof o.phone === 'string' ? o.phone : '',
     email: typeof o.email === 'string' ? o.email : '',
     tagline: typeof o.tagline === 'string' ? o.tagline : '',
