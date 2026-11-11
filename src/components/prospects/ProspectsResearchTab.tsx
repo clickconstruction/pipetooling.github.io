@@ -18,6 +18,9 @@ import {
   hintFor,
   lastLookedKey,
   leadDoor,
+  leadMadeWords,
+  pursuedLeadIds,
+  type PermitLeadDeck,
   lensCounts,
   mapsDoor,
   newSinceLooked,
@@ -42,7 +45,7 @@ import {
   type ValueFloor,
   valueFloorWords,
 } from '../../lib/research/permitResearch'
-import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, loadResearchers, pullPermitsNow, putBackPermit, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
+import { approachFromPermit, loadContactHistory, loadLeadDecks, loadLatestPull, loadResearchPermits, loadResearchers, pullPermitsNow, putBackPermit, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
 import { PermitFindPanel } from './PermitFindPanel'
@@ -127,6 +130,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [closeError, setCloseError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [countKey, setCountKey] = useState(0)
+  // The deck each pursued permit's lead sits on, for its door: Customers for a general contractor, Jobs to GC for the rest.
+  const [leadDecks, setLeadDecks] = useState<Record<string, PermitLeadDeck>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
@@ -205,6 +210,21 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   useEffect(() => {
     void loadAll()
   }, [loadAll])
+  // The lead each pursued permit made, asked once per lead for the deck its door opens on. A read that fails leaves the door on Jobs to GC.
+  const leadIds = useMemo(() => pursuedLeadIds([...allRows, ...rows]), [allRows, rows])
+  useEffect(() => {
+    const unread = leadIds.filter((id) => !(id in leadDecks))
+    if (unread.length === 0) return
+    let live = true
+    loadLeadDecks(unread)
+      .then((decks) => {
+        if (live) setLeadDecks((prev) => ({ ...prev, ...decks }))
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [leadIds, leadDecks])
   /** After a write: the every-permit read, then the ledger's where it is on screen. One at a time. */
   const reloadLists = async () => {
     await loadAll()
@@ -265,8 +285,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     try {
       if (out.kind === 'pursue') {
         const lead = await approachFromPermit(row, out.role, authUserId, {})
+        setLeadDecks((prev) => ({ ...prev, [lead.prospectId]: lead.deck }))
         await recordVerdict({ permitId: row.id, verdict: 'approach', reason: pursueReason(out.pursueFor), lookAgainOn: null, prospectId: lead.prospectId, userId: authUserId, pursueFor: out.pursueFor, forUserId: out.forUserId })
-        showToast(lead.reused ? `Put the permit on ${lead.companyName}’s lead on the GCs deck.` : `GC lead made: ${lead.companyName}, on the GCs deck.`, 'success')
+        showToast(leadMadeWords(lead), 'success')
       } else {
         const v = notPursuingVerdict(out.code)
         await recordVerdict({ permitId: row.id, verdict: 'not_for_us', reason: v.reason, lookAgainOn: null, prospectId: null, userId: authUserId, reasonCode: v.reasonCode })
@@ -305,7 +326,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       if (d.verdict === 'approach') {
         const lead = await approachFromPermit(row, d.role, authUserId, leadFacts)
         prospectId = lead.prospectId
-        showToast(lead.reused ? `Put the permit on ${lead.companyName}’s lead on the GCs deck.` : `GC lead made: ${lead.companyName}, on the GCs deck.`, 'success')
+        setLeadDecks((prev) => ({ ...prev, [lead.prospectId]: lead.deck }))
+        showToast(leadMadeWords(lead), 'success')
       }
       await recordVerdict({ permitId: row.id, verdict: d.verdict, reason: d.reason, lookAgainOn: d.lookAgainOn, prospectId, userId: authUserId })
       setDeciding(null)
@@ -507,7 +529,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ) : allLoading ? (
           <div style={mutedStyle}>Reading the permits…</div>
         ) : (
-          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} isMobile={isMobile} />
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} isMobile={isMobile} leadDecks={leadDecks} />
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
@@ -660,8 +682,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                               {row.verdict === 'approach' && row.verdict_prospect_id ? (
                                 <>
                                   {' · '}
-                                  <Link to={leadDoor(row.verdict_prospect_id)} style={{ color: 'var(--text-link)' }}>
-                                    the GC lead
+                                  <Link to={leadDoor(row.verdict_prospect_id, leadDecks[row.verdict_prospect_id])} style={{ color: 'var(--text-link)' }}>
+                                    the lead
                                   </Link>
                                 </>
                               ) : null}
@@ -696,7 +718,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-<strong>Skim</strong> shows one permit at a time, best first, with two answers: Investigate or Pass. The magnifier finds a permit on any list, in any city. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Investigate or Pass. The magnifier finds a permit on any list, in any city. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Investigate, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a lead with <em>A permit</em> as its source: a general contractor on the Customers deck, an owner or an architect on Jobs to GC. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {digRow && !closing && !whoRow && (

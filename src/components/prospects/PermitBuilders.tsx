@@ -355,7 +355,7 @@ function BuilderSheet({ row, city, authUserId, todayYmd, reach, onClose, onSaved
             Our bids: {ourBidsWords(row)}
             {row.last_bid_on ? `, the last on ${shortDay(row.last_bid_on)}` : ''}. Plumber they use: {plumberUsedWords(row)}.
           </div>
-          <div style={{ ...muted, marginTop: 4 }}>People and calls are kept on the lead a pursued permit makes, on the GCs deck.</div>
+          <div style={{ ...muted, marginTop: 4 }}>People and calls are kept on the lead a pursued permit makes, on its calling deck.</div>
         </section>
 
         <section>

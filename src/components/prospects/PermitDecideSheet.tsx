@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
+  LEAD_DECK_WORDS,
+  leadDeck,
+  leadLandsWords,
   PERMIT_LEAD_ROLE_WORDS,
   PERMIT_VERDICTS,
   VERDICT_WORDS,
@@ -150,7 +153,7 @@ export function PermitDecideSheet({
             <div style={{ fontWeight: 600 }}>The lead</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ background: 'var(--bg-200)', color: 'var(--text)', borderRadius: 999, padding: '3px 10px', fontSize: '0.8125rem', fontWeight: 600 }}>
-                {facts.companyName ?? row.contact ?? 'Who pulled the permit'} · GC lead · source: A permit
+                {facts.companyName ?? row.contact ?? 'Who pulled the permit'} · {LEAD_DECK_WORDS[leadDeck(role)]} deck · source: A permit
               </span>
               <label htmlFor="permit-decide-role" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                 They are
@@ -164,7 +167,7 @@ export function PermitDecideSheet({
               </select>
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-              Opens on the GCs deck with the permit as a job on it. A lead of the same name is reused.
+              {leadLandsWords(role)}
               {carried.length > 0 ? ` The lead carries ${carried.join(', ')} from Who pulled it.` : ''}
             </div>
           </div>

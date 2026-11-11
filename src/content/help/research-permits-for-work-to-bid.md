@@ -53,7 +53,7 @@ A strip under the filters counts where every permit is. **Skim** waits on an ans
 
 After you press Investigate the dark bar asks who it is for. Tap a name to hand it over. You can also pick a name beside **Hand to** on a row under Investigating.
 
-Press **Investigating** and press a permit's name. It opens with what was done on it. Press **Pursue…** to go after it. Say what it is for and who follows up. A lead is made on the GCs deck. Press **Not pursuing…** to drop it. Tap one reason.
+Press **Investigating** and press a permit's name. It opens with what was done on it. Press **Pursue…** to go after it. Say what it is for and who follows up. A general contractor's lead goes on the Customers deck. An owner's or an architect's lead goes on Jobs to GC. Press **Not pursuing…** to drop it. Tap one reason.
 
 Press **Put back** on a row under Investigating to send it to the skim again.
 
@@ -233,7 +233,7 @@ Press {{button:blue|Decide…}} on a row. One sheet opens with four verdicts.
 
 :::card Pursue
 
-Go after it. Call who pulled it. The press makes a GC lead on the GCs deck with the permit on it. A lead of the same name is reused.
+Go after it. Call who pulled it. The press makes a lead with the permit on it. Say who they are in **They are**. A general contractor goes on the Customers deck. An owner or an architect goes on Jobs to GC. A lead of the same name is reused.
 
 :::
 
@@ -261,7 +261,7 @@ Every verdict needs a reason. The sheet refuses an empty one. Your name and the 
 
 ## Find the lead you made
 
-After **Pursue**, the row reads **Pursuing** with a link to **the GC lead**. The lead sits on the GCs deck with **A permit** as its source. Work it there the way you work any lead. See [find jobs to build as the GC](/help/find-jobs-to-build-as-the-gc).
+After **Pursue**, the row reads **Pursuing** with a link to **the lead**. The link opens the deck the lead sits on. A general contractor sits on the Customers deck, with the permit in its notes. An owner or an architect sits on Jobs to GC, with the permit as a job. Each lead has **A permit** as its source. Work a lead there the way you work any lead. See [find jobs to build as the GC](/help/find-jobs-to-build-as-the-gc).
 
 ## Pull the feed yourself
 
