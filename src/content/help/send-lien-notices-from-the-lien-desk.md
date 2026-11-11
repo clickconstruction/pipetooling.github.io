@@ -185,6 +185,8 @@ On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**.
 
 The pane draws the affidavit under that card. A new draft is on the short form. The short form names the months and the notices from the record. An affidavit drafted before the short form keeps the earlier form, so an approved paper never changes by itself. A line above that paper says so. Press **Redraw on the short form…** there to move it. The affidavit goes back to **To draft** and needs approval again.
 
+To move every ready affidavit at once, look at the top of the list. A press there reads like **Redraw 12 on the short form…**. The number counts the ready affidavits on the earlier form. The press asks once before anything moves. Each affidavit then goes back to **To draft** and needs approval again. An affidavit waiting on the leader or held by him is left alone. If one cannot be redrawn, the rest still are. The one left behind stays listed under the press with its reason.
+
 :::example One call, one rule
 Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. Each one is marked as sent by Loberg Contracting's rule. A live promise always comes back to him.
 :::

@@ -53,6 +53,7 @@ import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
 import { keepFromPassedReason } from '../../lib/research/permitHistory'
+import { readLastCity, writeLastCity } from '../../lib/research/permitCityDoors'
 import { secondLookCount, secondLookSegmentWords, showsSecondLookSegment } from '../../lib/research/permitSecondLook'
 import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLive } from '../../lib/research/permitBuilders'
 import { GoogleSearchPress } from './GoogleSearchPress'
@@ -128,7 +129,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
-  const [city, setCity] = useState<string>(DEFAULT_RESEARCH_CITY)
+  // The city on screen, remembered by this browser: an office that works Austin opens on Austin.
+  const [city, setCityState] = useState<string>(() => readLastCity(DEFAULT_RESEARCH_CITY))
+  const setCity = (next: string) => {
+    writeLastCity(next)
+    setCityState(next)
+  }
   const [windowDays, setWindowDays] = useState<ResearchWindow>(30)
   const [residential, setResidential] = useState(false)
   const [showing, setShowing] = useState<ResearchShowing>('waiting')
@@ -297,7 +303,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const pullNow = async () => {
     setPulling(true)
     try {
-      const out = await pullPermitsNow()
+      const out = await pullPermitsNow(city)
       const kept = out.feeds.reduce((n, f) => n + f.kept, 0)
       const stopped = out.feeds.find((f) => f.error)
       showToast(stopped ? `The pull kept ${kept} rows and stopped on ${stopped.source}: ${stopped.error}` : `Pulled ${kept} rows from the feed.`, stopped ? 'warning' : 'success')

@@ -84,7 +84,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
@@ -112,6 +112,8 @@ import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
+import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
@@ -513,6 +515,10 @@ export default function LienDesk({
   const hideZzTestJobs = useZzTestJobsHidden(authRole)
   const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
+  // Redraw on the short form, for every ready paper at once (punch list #305): the press in flight, and the papers that did not take with their reasons.
+  const [redrawBusy, setRedrawBusy] = useState(false)
+  const [redrawFailed, setRedrawFailed] = useState<Array<{ jobId: string; reason: string }>>([])
+  const confirmDialog = useConfirmDialog()
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
   const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
@@ -1566,6 +1572,24 @@ export default function LienDesk({
   const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
+  // Redraw every ready affidavit on the short form (punch list #305): the ready earlier-form papers, the ones left in other piles, and the words.
+  const redrawPlan = lienAffidavitRedrawPlan(affEntries)
+  const redrawWords = lienAffidavitRedrawWords(redrawPlan)
+  const redrawReady = async () => {
+    if (redrawBusy || redrawPlan.ready.length === 0) return
+    if (!(await confirmDialog({ title: redrawWords.title, message: redrawWords.message, confirmLabel: redrawWords.confirmLabel }))) return
+    setRedrawBusy(true)
+    try {
+      // Each paper is its own write and the batch keeps going past one that fails; what failed stays listed with its reason.
+      const result = await redrawLienAffidavitsShort(redrawPlan.ready.flatMap((e) => (e.item ? [{ jobId: e.jobId, item: e.item }] : [])), authUserId)
+      const outcome = lienAffidavitRedrawOutcome(result.done.length, result.failed.length)
+      setRedrawFailed(result.failed)
+      showToast(outcome.line, outcome.tone)
+      if (result.done.length > 0) onChanged()
+    } finally {
+      setRedrawBusy(false)
+    }
+  }
   const retEntries = data?.retainage.entries ?? []
   const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
@@ -2671,6 +2695,33 @@ export default function LienDesk({
             <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : affPile ? lienPileEmptyWords(() => setAffPile(null)) : lienAffidavitsEmptyWords(() => setKind('calendar')))} />
           </div>
         )
+      ) : null}
+      {office && (redrawPlan.ready.length > 0 || redrawFailed.length > 0) ? (
+        <div data-lien-affidavit-redraw style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {redrawPlan.ready.length > 0 ? (
+            <>
+              <span>{redrawPlan.ready.length === 1 ? '1 ready affidavit is on the earlier form.' : `${redrawPlan.ready.length} ready affidavits are on the earlier form.`}</span>
+              <button type="button" onClick={() => void redrawReady()} disabled={redrawBusy} style={{ ...btn('plain', redrawBusy), justifySelf: 'start' }}>
+                {redrawBusy ? 'Redrawing…' : redrawWords.button}
+              </button>
+              {redrawWords.foot ? <span data-lien-affidavit-redraw-foot>{redrawWords.foot}</span> : null}
+            </>
+          ) : null}
+          {redrawFailed.length > 0 ? (
+            <div data-lien-affidavit-redraw-failed style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-red-600)' }}>
+              <strong>{lienAffidavitRedrawOutcome(0, redrawFailed.length).head}</strong>
+              {redrawFailed.map((f) => (
+                <span key={f.jobId}>
+                  <button type="button" onClick={() => { setAffSelectedJobId(f.jobId); setMobileListShown(false) }} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                    {jobLabel(data?.jobsById[f.jobId], f.jobId)}
+                  </button>
+                  {' · '}
+                  {f.reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {LIEN_AFFIDAVIT_PILES.map((p) => {
         const rows = affVisible.filter((e) => e.pile === p.key)
