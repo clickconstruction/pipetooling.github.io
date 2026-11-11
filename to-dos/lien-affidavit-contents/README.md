@@ -1,7 +1,7 @@
 ---
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
-group: gated
+group: waiting
 status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), that print press names each paper that takes a second sheet (v2.6930), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), the homestead hold is built on PR #7667 and waits on the owner's word
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
@@ -15,10 +15,10 @@ summary: >
   asks five questions. A property where nobody answered the homestead question passes today as not
   a homestead. The owner chose to build before counsel answers, so the wording may change on
   counsel's word.
-next: The owner's word on item 3, the homestead hold: ship PR #7667 now or on 2026-11-17. It is built, open and not armed. On his yes, a session arms it, and once it is on main pushes its migration with `supabase db push`. Items 4 and 5 are shipped (v2.6932, v2.6936). Item 6 waits on counsel.
+next: On 2026-11-17, ship item 3, the homestead hold: arm PR #7667, and once it is on main push its migration with `supabase db push` right away, with whoever pushes at hand. Decided 2026-11-11: it waits for the 17th, after this month's affidavits are filed on the 16th. It is built, open and not armed. Items 4 and 5 are shipped (v2.6932, v2.6936). Item 6 waits on counsel.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
-blocker: Item 3 is built on PR #7667 and waits on the owner: it ships after this month's affidavits are filed on 2026-11-16 unless he says sooner. Item 6 waits on counsel's answer to question 5. Counsel's answers may still change the wording.
-opinion: your call — item 3 is built on PR #7667: ship it now, or on 2026-11-17 after this month's affidavits are filed
+blocker: Item 3 is built on PR #7667 and waits for 2026-11-17, decided 2026-11-11: this month's affidavits are filed on the 16th first. Item 6 waits on counsel's answer to question 5. Counsel's answers may still change the wording.
+opinion: build — item 3 is built on PR #7667 and ships on 2026-11-17, as decided 2026-11-11; nothing to do before then
 ---
 
 # The lien affidavit, cut to what § 53.054 lists (#305)
@@ -212,8 +212,9 @@ live, checked read only on clicktooling.com.
 ## Decisions that are the owner's
 
 - **Send the page to counsel?** The pick: yes, as it stands.
-- **Build the homestead hold before counsel answers?** The pick: yes, after 2026-11-16. It only
-  makes the desk stricter, and before the 16th it would take ready papers out of Ready.
+- **Build the homestead hold before counsel answers?** Decided 2026-11-11, asked in the session
+  that built it (PR #7667): it ships on 2026-11-17, not sooner. It only makes the desk stricter,
+  and before the 16th it would take ready papers out of Ready.
 - **The 13 affidavits approved on the earlier form: leave them, or redraw them?** Decided
   2026-11-10: redraw them, they go out on the short form.
 - **Should the leader's phone buzz when an affidavit is sent for his approval?** Open, found
