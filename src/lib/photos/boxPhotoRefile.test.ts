@@ -13,9 +13,11 @@ import {
   REFILE_RETRY_MS,
   REFILE_SWEEP_BATCH,
   REFILE_SWEEP_FINISHES_WORDS,
+  REFILE_ASK_ROLES,
   REFILE_GONE_WORDS,
   REFILE_TRASHED_WORDS,
   dueRowsByJob,
+  mayAskRefile,
   movePhotoWordsWithRefile,
   moveReplyWithRefileWords,
   movedPhotosInDrive,
@@ -272,7 +274,14 @@ describe('the engine: marked by the database, moved by the sweep (v2.6915)', () 
 describe('the function, the server and the docs', () => {
   it('photo-save takes the ask from the cron or a dev, and the sweep stays the cron’s alone', () => {
     expect(FUNCTION).toContain('const ask = refileAskOf(await req.json().catch(() => null))')
-    expect(FUNCTION).toContain("const { data: isDev } = await asUser.rpc('is_dev')")
+    // v2.6927: the roles that may combine may ask, read from the caller's own users row.
+    expect(FUNCTION).toContain("const { data: asker } = await admin.from('users').select('role').eq('id', me.user.id).maybeSingle()")
+    expect(FUNCTION).toContain('if (!mayAskRefile((asker as { role: string | null } | null)?.role)) return json({ error: REFILE_ASK_REFUSAL }, 403)')
+    expect(REFILE_ASK_ROLES).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
+    for (const role of REFILE_ASK_ROLES) expect(mayAskRefile(role)).toBe(true)
+    for (const role of ['estimator', 'helpers', 'subcontractor', 'primary', '', null, undefined]) expect(mayAskRefile(role)).toBe(false)
+    // The combine's own gate names the same four roles: the ask is for whoever may combine.
+    expect(MOVE_SQL).toContain("role IN ('dev', 'master_technician', 'assistant', 'controller')")
     expect(FUNCTION).toContain('const archivedRefusal = await refuseArchivedCaller(admin, me?.user?.id, corsHeaders)')
     expect(FUNCTION).toContain("if (!isCron) return json({ error: 'Unauthorized' }, 401)")
     // The ask's branch returns before the sweep: a dev's session never runs it.

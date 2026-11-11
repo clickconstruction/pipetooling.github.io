@@ -12,6 +12,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { combineJobsSuccessToast, type MigrateDeleteOkPayload } from '../../lib/jobs/migrateDeleteReply'
+import { afterCombineBoxPhotos } from '../../lib/materials/boxPhotoRefileIo'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { useAuth } from '../../hooks/useAuth'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
@@ -667,7 +668,9 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         showToast(msg, 'error')
         return
       }
-      showToast(combineJobsSuccessToast(payload as MigrateDeleteOkPayload), 'success')
+      // #297 (v2.6927): the kept job's box photos follow in Drive by themselves; the finish says so and starts the ask.
+      const photosLine = await afterCombineBoxPhotos(cTargetId, role)
+      showToast([combineJobsSuccessToast(payload as MigrateDeleteOkPayload), photosLine].filter(Boolean).join(' '), 'success')
       onAfterSuccess()
       onClose()
     } catch (err: unknown) {

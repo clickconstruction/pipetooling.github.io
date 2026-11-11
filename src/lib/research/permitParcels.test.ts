@@ -3,9 +3,11 @@ import {
   addressQuery,
   askablePoint,
   askedBexarLayer,
+  askedOtherQuestion,
   COMAL_PARCELS,
   GUADALUPE_PARCELS,
   HAYS_PARCELS,
+  interstateOf,
   nameSpellings,
   ordinalOf,
   parcelFactsByAddress,
@@ -34,6 +36,16 @@ describe('a street address in the parts a county keeps apart', () => {
     expect(streetParts('100 COURT')).toEqual({ num: '100', prefix: null, name: 'COURT' })
     expect(streetParts('100 WEST AVE')).toEqual({ num: '100', prefix: null, name: 'WEST' })
     expect(streetParts('1500 HWY 46 W')).toEqual({ num: '1500', prefix: null, name: 'HWY 46' })
+  })
+  it('drops a LOOP suffix and writes an interstate one way', () => {
+    expect(streetParts('7201 SAMPLE LOOP BLDG D')).toEqual({ num: '7201', prefix: null, name: 'SAMPLE' })
+    expect(streetParts('2210 IH 10 W')).toEqual({ num: '2210', prefix: null, name: 'IH 10' })
+    expect(streetParts('500 N I-35')).toEqual({ num: '500', prefix: 'N', name: 'IH 35' })
+    expect(streetParts('500 Interstate Highway 35 S')).toEqual({ num: '500', prefix: null, name: 'IH 35' })
+    expect(interstateOf('I H 10')).toBe(10)
+    expect(interstateOf('IH 10')).toBe(10)
+    expect(interstateOf('LOOP 410')).toBeNull()
+    expect(nameSpellings('IH 10')).toEqual(['IH 10', 'I H 10', 'I-10', 'INTERSTATE HIGHWAY 10', 'INTERSTATE 10'])
   })
   it('holds an address with no house number or no street', () => {
     expect(streetParts('MAIN ST')).toBeNull()
@@ -113,6 +125,22 @@ describe('the row that is picked', () => {
     expect(pickParcel(TRAVIS_PARCELS, travis, { num: '2700', prefix: 'E', name: '5TH' })?.PROP_ID).toBe(9)
     const comal = rows({ prop_id: 10, situs_num: '200', situs_street_prefx: 'W', situs_street: 'FIRST', file_as_name: 'SAMPLE LLC' }, { prop_id: 11, situs_num: '200', situs_street_prefx: 'W', situs_street: '10TH', file_as_name: 'OTHER LLC' })
     expect(pickParcel(COMAL_PARCELS, comal, { num: '200', prefix: 'W', name: '1ST' })?.prop_id).toBe(10)
+  })
+  it('matches an interstate the county writes with a space and a trailing side', () => {
+    const body = rows({ prop_id: 12, situs_num: '22110', situs_street_prefx: null, situs_street: 'I H 10 W', file_as_name: 'SAMPLE LLC' })
+    expect(pickParcel(GUADALUPE_PARCELS, body, { num: '22110', prefix: null, name: 'IH 10' })?.prop_id).toBe(12)
+    expect(GUADALUPE_PARCELS.where({ num: '22110', prefix: null, name: 'IH 10' })).toContain("UPPER(situs_street) LIKE 'I H 10%'")
+    expect(TRAVIS_PARCELS.where({ num: '500', prefix: null, name: 'IH 35' })).toBe(
+      "situs_num = '500' AND (UPPER(situs_street) LIKE 'IH 35%' OR UPPER(situs_street) LIKE 'I H 35%' OR UPPER(situs_street) LIKE 'I-35%' OR UPPER(situs_street) LIKE 'INTERSTATE HIGHWAY 35%' OR UPPER(situs_street) LIKE 'INTERSTATE 35%')",
+    )
+  })
+  it('asks a kept "no parcel" again when today\'s question is a different one', () => {
+    const oldLoop = "situs_num = '7201' AND UPPER(situs_street) LIKE 'SAMPLE LOOP%'"
+    expect(askedOtherQuestion(TRAVIS_PARCELS, oldLoop, '7201 SAMPLE LOOP BLDG D')).toBe(true)
+    const today = TRAVIS_PARCELS.where({ num: '7201', prefix: null, name: 'SAMPLE' })
+    expect(askedOtherQuestion(TRAVIS_PARCELS, today, '7201 SAMPLE LOOP BLDG D')).toBe(false)
+    expect(askedOtherQuestion(TRAVIS_PARCELS, `${today} | point -97.7,30.2`, '7201 SAMPLE LOOP')).toBe(false)
+    expect(askedOtherQuestion(TRAVIS_PARCELS, oldLoop, 'NO NUMBER ST')).toBe(false)
   })
   it('takes a row with an owner over a blank one', () => {
     const body = rows({ prop_id: 1, situs_num: '550', situs_street_prefx: null, situs_street: 'LANDA', file_as_name: null }, { prop_id: 2, situs_num: '550', situs_street_prefx: null, situs_street: 'LANDA', file_as_name: 'SAMPLE LLC' })

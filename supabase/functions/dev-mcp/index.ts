@@ -3002,7 +3002,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (name === 'apply_materials_move' && reply && typeof reply === 'object' && !Array.isArray(reply)) {
         // #297 (0.61.0): the rows are on the new job; the files the sweep already filed follow them. photo-save moves each
         // into the new job's photo folder as the dev, and its answer rides in the reply as photos.refiled. A failed ask
-        // never undoes the move: the reply says the move stands and names the ask to make again.
+        // never undoes the move, and since v2.6915 the sweep moves what the database marked due (boxPhotoRefile.ts).
         const toJob = String((built.body.p as { to_job?: unknown }).to_job ?? '')
         const withWords = moveReplyWithRefileWords(reply) as Record<string, unknown>
         const refiled = movedPhotosInDrive(reply) > 0 ? refiledForSeat(toJob, await invokeAsDev(session, 'photo-save', { refile_box_photos: toJob })) : NO_REFILE_NEEDED
