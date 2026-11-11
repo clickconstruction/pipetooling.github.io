@@ -39,6 +39,7 @@ import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
+import { QuickPriceWindow } from '../materials/QuickPriceWindow'
 import { TakeoffViewChooser } from './TakeoffViewChooser'
 import { RfqComposeModal } from './RfqComposeModal'
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
@@ -370,6 +371,8 @@ export function BidsTakeoffTab({
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
   const prevPartPricesModalRef = useRef<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
+  // One price from a quote or a call, filed onto the part it is (punch list #308, PR 3).
+  const [quickPriceOpen, setQuickPriceOpen] = useState(false)
   const [bundleBreakdownModal, setBundleBreakdownModal] = useState<{ templateId: string; lineId: string; assemblyName: string } | null>(null)
 
   // Bundle breakdown modal: parts-vs-bundle comparison for a rough Assembly bundle line.
@@ -1675,6 +1678,14 @@ export function BidsTakeoffTab({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {/* v2.4416 (owner): the view pills ride the right end of the title row, beside Print. */}
+                  <button
+                    type="button"
+                    onClick={() => setQuickPriceOpen(true)}
+                    title="Paste a row from a quote or a mail, or type a price from a call. It is filed onto the part it is, under the supply house it came from."
+                    style={{ padding: '0.5rem 0.9rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Paste a price
+                  </button>
                   <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                   <button
                     type="button"
@@ -2001,6 +2012,19 @@ export function BidsTakeoffTab({
         serviceTypes={serviceTypes}
         knownParts={takeoffAddTemplateParts}
       />
+      {quickPriceOpen && selectedBidForTakeoff ? (
+        <QuickPriceWindow
+          onClose={() => {
+            setQuickPriceOpen(false)
+            // The book's prices may have moved: read the lowest again for the parts on this takeoff.
+            if (takeoffRoughCatalogLowestPartIdsKey) void refreshTakeoffRoughCatalogLowest(takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean))
+          }}
+          serviceTypeId={selectedServiceTypeId}
+          bid={{ id: selectedBidForTakeoff.id, label: `BP${selectedBidForTakeoff.bid_number?.trim() || '?'} ${selectedBidForTakeoff.project_name?.trim() || ''}`.trim() }}
+          supplyHouses={supplyHouses}
+          knownParts={takeoffAddTemplateParts}
+        />
+      ) : null}
 
       {/* Assembly authoring modal cluster (T7): Add Assembly / Add Parts to
           Template / Edit Template. Open pointers, the PartFormModal-routed

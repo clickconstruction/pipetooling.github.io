@@ -313,6 +313,8 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 - **`supply_part_codes`** — **read, insert, update, delete** `may_edit_parts_book()`: `dev`, `master_technician`, `assistant`, `controller`, `estimator`, `primary`, `superintendent`, the roles the `material_part_prices` policies name. Nothing for `anon`. The four fences apply.
 - **`may_edit_parts_book()`** — SECURITY DEFINER, stable; `EXECUTE` to `authenticated` and the service role, revoked from `anon`.
 - **The doors**: *Their numbers* under a part's prices (Parts Book and Takeoffs) and **House numbers** on the Parts Book, each open to whoever opens that screen; the table refuses a write from anyone else.
+- **`price_row_file(p jsonb)`** and **`price_row_take_back(line_id)`** (v2.6903, `20261111040000_price_rows.sql`) — SECURITY DEFINER, `EXECUTE` to `authenticated`, revoked from `anon`; each body says the gates a definer passes: signed in, `may_edit_parts_book()`, not `is_read_only()`, not `is_digital_twin()`, not `caller_is_archived()`. They are the only way a paper row writes `material_part_prices`, `supply_papers` and `supply_paper_lines` for the parts book roles.
+- **Quote papers** — `supply_papers_price_sheet_read` and `supply_paper_lines_price_sheet_read` let `may_edit_parts_book()` read papers of kind `quote` or `bid` and their lines; a bill's paper stays with `is_office_staff()`.
 
 ### Supply house bill lines — the paper beside the row (punch list #298, v2.6817 · v2.6819 · v2.6882, `20261109170000_supply_paper_lines.sql`, `20261109210000_supply_paper_save.sql`, `20261110230000_bill_lines_sweep.sql`)
 
