@@ -19,6 +19,12 @@ export type PhysicalInvoiceIssuer = {
    * lines blank for the notary's hand.
    */
   signingCounty?: string
+  /**
+   * Where each county clerk takes a filing (punch list #314), one clerk per line as the office types it:
+   * `County | where to file | fee | hours`. The lien help sheets print a clerk's line beside its papers
+   * (`src/lib/jobs/lienCountyClerks.ts`). The app never guesses one: a county with no line prints none.
+   */
+  countyClerksText?: string
   phone: string
   email: string
   tagline: string
@@ -36,6 +42,7 @@ const EMPTY: PhysicalInvoiceIssuer = {
   addressText: '',
   physicalAddressText: '',
   signingCounty: '',
+  countyClerksText: '',
   phone: '',
   email: '',
   tagline: '',
@@ -52,6 +59,7 @@ function cloneIssuer(i: PhysicalInvoiceIssuer): PhysicalInvoiceIssuer {
     addressText: i.addressText,
     physicalAddressText: i.physicalAddressText ?? '',
     signingCounty: i.signingCounty ?? '',
+    countyClerksText: i.countyClerksText ?? '',
     phone: i.phone,
     email: i.email,
     tagline: i.tagline,
@@ -72,6 +80,7 @@ export function parsePhysicalInvoiceIssuerStoredJson(parsed: unknown): PhysicalI
     addressText: typeof o.addressText === 'string' ? o.addressText : '',
     physicalAddressText: typeof o.physicalAddressText === 'string' ? o.physicalAddressText : '',
     signingCounty: typeof o.signingCounty === 'string' ? o.signingCounty : '',
+    countyClerksText: typeof o.countyClerksText === 'string' ? o.countyClerksText : '',
     phone: typeof o.phone === 'string' ? o.phone : '',
     email: typeof o.email === 'string' ? o.email : '',
     tagline: typeof o.tagline === 'string' ? o.tagline : '',

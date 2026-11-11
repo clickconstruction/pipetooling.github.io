@@ -59,6 +59,8 @@ export type NeedsYouSource =
   | 'priceMatrix'
   // The Permits skim (punch list #302): permits waiting on a keep or a pass, the researchers'.
   | 'permitSkim'
+  // Looks like a customer (punch list #307): names on permits that may be one of our customers, the researchers'.
+  | 'lookAlikes'
   | 'gcFollowUp'
   | 'contractClauses'
   | 'robotBacklog'
@@ -117,6 +119,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'vehicleRecordGaps',
   'priceMatrix',
   'permitSkim',
+  'lookAlikes',
   'gcFollowUp',
   'contractClauses',
   'robotBacklog',
@@ -169,6 +172,7 @@ export const QUICKFILL_HELD_BACK: Readonly<Partial<Record<NeedsYouSource, string
   d22: 'the ledger-teaching roles pin Division 22 codes from the Pricing tab',
   submittals: 'the estimator builds Rev 1 from the picks; the office is told on the Dashboard',
   permitSkim: 'a judgement on what work to chase, made on the Permits tab with its pictures; the Dashboard carries the line',
+  lookAlikes: 'a judgement on whose name is whose, made on Builders with each row’s reasons, and a read too heavy for a second host; the Dashboard carries the line',
 }
 
 /** Whether a role on a host reads a source. The role gates are the Dashboard host’s of v2.5759, moved here. */
@@ -246,6 +250,8 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'priceMatrix':
     case 'submittals':
     case 'permitSkim':
+    case 'lookAlikes':
+      // The people who may research permits and answer on a name (`user_can_research_permits`).
       return office || role === 'estimator'
     case 'gcFollowUp':
     case 'customerMessages':

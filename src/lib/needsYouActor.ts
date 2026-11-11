@@ -58,6 +58,7 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'test-reports-ready': 'assistant',
   'gc-follow-up': 'anyone',
   'permits-to-skim': 'anyone',
+  'permit-look-alikes': 'anyone',
   'customer-waiting': 'anyone',
   'legal-firm-activity': 'assistant',
   // The owner's calls: approvals, signatures, reviews, the alerts.

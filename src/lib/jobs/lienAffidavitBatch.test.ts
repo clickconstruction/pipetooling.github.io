@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitGatedReason, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
+import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
@@ -110,6 +110,12 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     })
     // Every ready paper gated: nothing to print, and the press is dead.
     expect(lienAffidavitPrintWords({ ready: [], held: [], gated: plan.gated }).dead).toBe(true)
+  })
+
+  it('prints in clerk order: each county’s papers together, in the order the desk listed them (punch list #314)', () => {
+    const p = (id: string, county: string) => ({ id, fields: { county } })
+    expect(lienAffidavitClerkOrder([p('a', 'Cedar'), p('b', 'Alder'), p('c', 'cedar '), p('d', 'Alder'), p('e', 'Birch')]).map((x) => x.id)).toEqual(['b', 'd', 'e', 'a', 'c'])
+    expect(lienAffidavitClerkOrder([])).toEqual([])
   })
 
   const fields = (propertyAddress: string): LienAffidavitFields => ({ county: 'Bexar', claimantPersonName: 'Rey Master, Master Plumber', claimantCompany: 'Sample Plumbing LLC', claimantAddress: '1 Shop Rd, San Antonio, TX 78201', legalDescription: 'CB 1 BLK B LOT 7', propertyAddress, contractedWithName: 'Harborline Builders', workDescription: 'Plumbing labor and materials', workStart: '', workEnd: '', ownerName: 'Pat Owner', ownerAddress: '4 Owner Ct, San Antonio, TX 78209', originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016', contractAmount: '5000.00', paidAmount: '0.00', unpaidAmount: '2000.00', includeNoticesSworn: true, form: 'short', isSub: true, workMonthsWords: 'July and August 2026', noticesSentWords: 'certified mail on September 14, 2026' })

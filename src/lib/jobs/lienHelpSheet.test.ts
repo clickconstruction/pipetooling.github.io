@@ -12,7 +12,12 @@ import {
   LIEN_HELP_STOPS,
   LIEN_HELP_STYLES,
   LIEN_HELP_YOUR_CHECK,
+  GUIDE_WATERMARK,
   lienHelpAfterSteps,
+  lienHelpAskWords,
+  lienHelpClerkGroupWords,
+  lienHelpClerkLine,
+  lienHelpPictureHtml,
   lienHelpBatchAsks,
   lienHelpBatchSummary,
   lienHelpChecks,
@@ -49,7 +54,7 @@ describe('the help sheet reads the paper’s own facts (punch list #314)', () =>
   it('a job contracted with the owner has no original contractor to mail', () => {
     const direct = lienHelpPaperFromFields({ jobLabel: '430', fileBy: '', claimWords: '$360.00', fields: fields({ isSub: false, originalContractorName: 'Sample Plumbing LLC' }) })
     expect([direct.contractorName, direct.contractorAddress]).toEqual(['', ''])
-    expect(lienHelpAfterSteps('Alder', false)[3]).toBe('Mail a copy by certified mail to the owner. The app shows the last day to mail.')
+    expect(textOf(lienHelpAfterSteps('Alder', false)[3] as string)).toBe('Mail a copy by certified mail to the owner. The app shows the last day to mail. Mail by')
   })
 })
 
@@ -101,13 +106,15 @@ describe('B · one sheet for a batch', () => {
     expect(html.startsWith('<section class="lien-help" data-lien-help="batch">')).toBe(true)
     expect(text).toContain('Lien affidavits: this batch of 3')
     expect(text).toContain('All due November 16, 2026')
-    expect(text).toContain('412 · Ridgeway Builders 18 Sample Ln, Marlow, TX 75001 $2,650.00 Alder County Jordan and Casey Sample · Ridgeway Builders')
-    expect(text).toContain('Cedar County')
+    // Each clerk has a row of its own above its papers, with a count (change 7).
+    expect(text).toContain('ALDER COUNTY CLERK · 2 papers 1 412 · Ridgeway Builders 18 Sample Ln, Marlow, TX 75001 $2,650.00 Jordan and Casey Sample · Ridgeway Builders')
+    expect(text).toContain('CEDAR COUNTY CLERK · 1 paper')
+    expect(text).toContain('Recording no. · day filed')
     expect(html.match(/<span class="lien-help-tick"><\/span>/g)).toHaveLength(15)
     expect(text).toContain('430 · Civic Drains Not printed. It is on the earlier form. Redraw it, or print it from its own Lien window.')
     expect(text).toContain('3 papers follow this page')
     // The steps sit above the rows, so a long batch keeps every instruction on its first page.
-    expect(html.indexOf('After the notary, for each paper')).toBeLessThan(html.indexOf('<table class="lien-help-rows">'))
+    expect(html.indexOf('After the notary, one trip for each clerk')).toBeLessThan(html.indexOf('<table class="lien-help-rows">'))
   })
   it('says ask first on a paper whose property an earlier paper of the batch is on, however the address is typed', () => {
     expect([...lienHelpSameProperty(papers)]).toEqual([[2, 0]])
@@ -270,5 +277,94 @@ describe('what the app checked on a paper', () => {
     expect(text).not.toContain('Call the office first')
     // One paper nobody checked, and the sheet keeps the list a reader checks by eye.
     expect(textOf(lienHelpBatchSheetHtml({ papers: [checkedPaper(), paper({ propertyAddress: '77 Mock Ave, Fenwick, TX 75002' })], printedOn: 'November 11, 2026' }))).toContain('Call the office first')
+  })
+})
+
+// Changes 6 to 11 of the best-we-can-do pass (punch list #314): the owner, *I like them all, please make those changes*.
+describe('changes 6 to 11 · the picture, the clerks, who to ask, lines to write on, the stripe and the code', () => {
+  const clear = { propertyKind: 'residential', homestead: false, noticeLines: [] as string[] }
+  const clerk = { where: '100 Court St, Marlow', fee: '$26 first page, $4 each more', hours: '8 to 5' }
+  const ASK = 'Not sure? Ask Pat Sample, 555-0100, or Robin Sample, 555-0199.'
+  const full = (over: Partial<LienAffidavitFields> = {}, extra: { clerk?: typeof clerk; ask?: string } = { clerk, ask: ASK }) =>
+    lienHelpPaperFromFields({ jobLabel: '412 · Ridgeway Builders', fileBy: 'November 16, 2026', claimWords: '$2,650.00', fields: fields(over), checked: clear, ...extra })
+  const CODE = '<img alt="" src="data:image/png;base64,AAAA"/>'
+
+  it('6 · a small picture of the paper numbers its spots as the list does: six with blank counties, four with them printed', () => {
+    const nums = (html: string) => html.match(/<span class="lien-help-num">\d+<\/span>/g)?.map((m) => m.replace(/\D/g, ''))
+    expect(nums(lienHelpPictureHtml(''))).toEqual(['1', '2', '3', '4', '5', '6'])
+    expect(nums(lienHelpPictureHtml('Alder County'))).toEqual(['1', '2', '3', '4'])
+    expect(lienHelpPictureHtml('Alder County').match(/COUNTY OF ALDER/g)).toHaveLength(2)
+    expect(lienHelpPictureHtml('')).not.toContain('COUNTY OF ALDER')
+    // It sits beside the list on the cover sheet and on the batch sheet.
+    expect(lienHelpCoverSheetHtml(full({ signingCounty: 'Alder' }), 'November 11, 2026')).toContain('data-lien-help-picture')
+    expect(lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026' })).toContain('data-lien-help-picture')
+  })
+
+  it('7 · the batch sheet gives each clerk a row above its papers, with a count and the clerk’s typed facts', () => {
+    expect(lienHelpClerkGroupWords('Alder', 2)).toBe('ALDER COUNTY CLERK · 2 papers')
+    expect(lienHelpClerkGroupWords('Cedar', 1, '4 Square Plaza, Fenwick')).toBe('CEDAR COUNTY CLERK · 1 paper · 4 Square Plaza, Fenwick')
+    expect(lienHelpClerkGroupWords('', 1)).toBe('THE CLERK OF THE PROPERTY’S COUNTY · 1 paper')
+    // In clerk order, as the desk prints them: one row for each clerk.
+    const papers = [full(), full({ propertyAddress: '22 Sample Ln, Marlow, TX 75001' }), full({ county: 'Cedar', propertyAddress: '77 Mock Ave, Fenwick, TX 75002' }, { ask: ASK })]
+    const html = lienHelpBatchSheetHtml({ papers, printedOn: 'November 11, 2026' })
+    expect(html.match(/data-lien-help-clerk="[^"]*"/g)).toEqual(['data-lien-help-clerk="Alder"', 'data-lien-help-clerk="Cedar"'])
+    const text = textOf(html)
+    expect(text).toContain('ALDER COUNTY CLERK · 2 papers · 100 Court St, Marlow · $26 first page, $4 each more · open 8 to 5')
+    expect(text).toContain('CEDAR COUNTY CLERK · 1 paper 3 412')
+    expect(text).toContain('After the notary, one trip for each clerk')
+  })
+
+  it('9 · names the lien leader or the dev, one of them alone when the other is unknown or the same person', () => {
+    expect(lienHelpAskWords({ name: 'Pat Sample', phone: '555-0100' }, { name: 'Robin Sample', phone: '555-0199' })).toBe(ASK)
+    expect(lienHelpAskWords({ name: 'Pat Sample' }, { name: 'Robin Sample', phone: ' ' })).toBe('Not sure? Ask Pat Sample, or Robin Sample.')
+    expect(lienHelpAskWords(null, { name: 'Robin Sample', phone: '555-0199' })).toBe('Not sure? Ask Robin Sample, 555-0199.')
+    expect(lienHelpAskWords({ name: 'Robin Sample', phone: '555-0199' }, { name: 'robin sample' })).toBe('Not sure? Ask Robin Sample, 555-0199.')
+    expect(lienHelpAskWords(null, null)).toBe('')
+    expect(lienHelpAskWords({ name: '  ' }, undefined)).toBe('')
+    // On the cover sheet it ends the reader's check; on a batch whose papers all name the same people, once.
+    expect(textOf(lienHelpCoverSheetHtml(full(), 'November 11, 2026'))).toContain(`A signed paper is never fixed by hand. ${ASK}`)
+    const batch = lienHelpBatchSheetHtml({ papers: [full(), full({ propertyAddress: '22 Sample Ln, Marlow, TX 75001' })], printedOn: 'November 11, 2026' })
+    expect(batch.match(/Not sure\? Ask/g)).toHaveLength(1)
+    // Two leaders in one batch: each row carries its own.
+    const two = lienHelpBatchSheetHtml({ papers: [full(), full({ propertyAddress: '22 Sample Ln, Marlow, TX 75001' }, { ask: 'Not sure? Ask Lee Sample.' })], printedOn: 'November 11, 2026' })
+    expect(textOf(two)).toContain('Not sure? Ask Lee Sample.')
+    expect(two.match(/Not sure\? Ask/g)).toHaveLength(2)
+    // A paper the app knows nobody for prints no name.
+    expect(lienHelpCoverSheetHtml(full({}, {}), 'November 11, 2026')).not.toContain('Not sure?')
+  })
+
+  it('10 · the steps have lines to write on, and the clerk’s facts print only when the office typed them', () => {
+    expect(lienHelpClerkLine(clerk)).toBe('100 Court St, Marlow · $26 first page, $4 each more · open 8 to 5')
+    expect(lienHelpClerkLine({ where: '', fee: '$26', hours: '' })).toBe('$26')
+    expect(lienHelpClerkLine(undefined)).toBe('')
+    const typed = lienHelpAfterSteps('Alder', true, lienHelpClerkLine(clerk))
+    expect(typed[0]).toContain('100 Court St, Marlow · $26 first page, $4 each more · open 8 to 5')
+    expect(typed[0]).not.toContain('The clerk charges a fee for each paper.')
+    expect(lienHelpAfterSteps('Alder', true)[0]).toContain('The clerk charges a fee for each paper.')
+    expect(typed.join(' ').match(/<span class="lien-help-write"><\/span>/g)).toHaveLength(3)
+    expect(textOf(typed[1] as string)).toBe('Write on the stamped copy, and here. Recording number Filed on')
+    // Record service takes a day. The sheet no longer says to type a tracking number the form has no place for.
+    expect(typed.join(' ')).not.toContain('tracking')
+    expect(textOf(typed[4] as string)).toBe('Press Record service… and set the day the copies were mailed.')
+    expect(lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026' })).toContain('<th>Recording no. · day filed</th>')
+    for (const step of [...lienHelpAfterSteps('Alder', true), ...lienHelpAfterSteps('', false)]) expect(plainWordsFailures(textOf(step)), step).toEqual([])
+  })
+
+  it('11 · every help sheet has a striped edge, the guide copy says GUIDE COPY across its paper, and the code prints when the caller draws one', () => {
+    const cover = lienHelpCoverSheetHtml(full(), 'November 11, 2026', { guideCode: CODE })
+    const batch = lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026', extras: { guideCode: CODE } })
+    const guide = lienHelpGuideCopyHtml(filingDocHtml(buildLienAffidavitBlocks(fields())), full(), { guideCode: CODE })
+    for (const html of [cover, batch, guide]) {
+      expect(html).toContain('<div class="lien-help-stripe"></div>')
+      expect(html).toContain(`<span data-lien-help-code>${CODE}</span>`)
+      expect(html).toContain(CODE)
+      expect(textOf(html)).toContain('Scan for the full guide')
+    }
+    expect(guide).toContain(`data-lien-help-watermark aria-hidden="true">${GUIDE_WATERMARK}</div>`)
+    expect(cover).not.toContain('data-lien-help-watermark')
+    // No code handed in, no code and no words about one.
+    expect(lienHelpCoverSheetHtml(full(), 'November 11, 2026')).not.toContain('Scan for the full guide')
+    // The fills print whatever the print window's own box says.
+    expect(LIEN_HELP_STYLES).toContain('print-color-adjust: exact')
   })
 })

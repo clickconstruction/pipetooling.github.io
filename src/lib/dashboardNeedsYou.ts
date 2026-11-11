@@ -54,6 +54,7 @@ import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
 import { MY_MOVES_WORDS, type MyMovesNeed } from './bridge/callPeople'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
+import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -166,6 +167,7 @@ export type NeedsYouItem = {
     | 'price-requests-late'
     | 'gc-follow-up'
     | 'permits-to-skim'
+    | 'permit-look-alikes'
     | 'contract-clauses'
     | 'robot-backlog'
     | 'test-reports-ready'
@@ -300,6 +302,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'gc-follow-up': 40,
   // Revenue chasing tier: permits nobody has answered are work nobody has looked at (punch list #302).
   'permits-to-skim': 40,
+  // Hygiene tier: a name answered once teaches the app whose permits are whose (punch list #307).
+  'permit-look-alikes': 60,
   // A clause change the office made waits on a controller or a dev (Messages, cut 4c); the next paper sent carries it.
   'contract-clauses': 40,
   'robot-backlog': 60,
@@ -725,6 +729,12 @@ export type NeedsYouInputs = {
    */
   permitSkimEnabled?: boolean
   permitSkim?: { waiting: number; oldestDays: number | null; byCity?: ReadonlyArray<{ city: string; waiting: number }> } | null
+  /**
+   * Looks like a customer (punch list #307): how many names on permits may be one of our customers and wait on an answer,
+   * the numbers on Builders' **Looks like a customer** chips added up, from `useLookAlikeNudge` over `cityLookAlikes`.
+   */
+  lookAlikesEnabled?: boolean
+  lookAlikes?: { count: number; byCity?: ReadonlyArray<{ city: string; count: number }> } | null
   /**
    * The Customers line (residential build, R8 · 14): customers who need a reply, what we owe them, and senders to sort,
    * from `useCustomerMessagesCounts` over Follow up's queue (`followUp/customerCounts.ts`). The GC office team, as the GC
@@ -2022,6 +2032,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         detail: words.detail,
         figure: String(inputs.permitSkim.waiting),
         actionLabel: 'Skim them',
+      })
+    }
+  }
+
+  if (inputs.lookAlikesEnabled && inputs.lookAlikes && inputs.lookAlikes.count > 0) {
+    const words = lookAlikeNudgeWords(inputs.lookAlikes.count, inputs.lookAlikes.byCity ?? [])
+    if (words) {
+      items.push({
+        key: 'permit-look-alikes',
+        severity: 'gray',
+        kicker: 'Permits',
+        title: words.title,
+        detail: words.detail,
+        figure: String(inputs.lookAlikes.count),
+        actionLabel: 'Answer them',
       })
     }
   }
