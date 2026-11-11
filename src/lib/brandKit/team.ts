@@ -12,7 +12,7 @@ import type { KitPerson } from './draw'
 import { cardHold, kitPersonFromUser, type KitCrop, type KitUserFacts } from './person'
 
 /** One teammate as the team window reads them. */
-export type TeamCardRow = { id: string; role: string; facts: KitUserFacts; photoPath: string | null; crop: KitCrop }
+export type TeamCardRow = { id: string; role: string; facts: KitUserFacts; photoPath: string | null; crop: KitCrop; /** The look the person picked, or null for the default. */ look?: string | null }
 
 export type TeamCard = {
   id: string
@@ -22,6 +22,8 @@ export type TeamCard = {
   person: KitPerson
   photoPath: string | null
   crop: KitCrop
+  /** The look the person picked, or null for the company's default. */
+  look: string | null
   /** Why no card can be made, in the chip's words, or null when one can. */
   hold: 'No photo' | 'No email' | 'No name' | null
   /** Lines that will be left off the card, said on the row so nobody is surprised. */
@@ -37,7 +39,7 @@ export function teamCards(rows: TeamCardRow[], officePhone: string): TeamCard[] 
       const held = cardHold({ ...person, photo: row.photoPath ? { href: row.photoPath, w: 1, h: 1, fx: 0.5, fy: 0.5, zoom: 1 } : null })
       const hold = held === 'has no photo' ? 'No photo' : held === 'has no email' ? 'No email' : held === 'has no name' ? 'No name' : null
       const leftOff = [...(person.title ? [] : ['No title, line left off']), ...(person.mobile ? [] : ['No mobile, line left off'])]
-      return { id: row.id, name: person.name || row.facts.name || '', person, photoPath: row.photoPath, crop: row.crop, hold, leftOff }
+      return { id: row.id, name: person.name || row.facts.name || '', person, photoPath: row.photoPath, crop: row.crop, look: row.look ?? null, hold, leftOff }
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 }

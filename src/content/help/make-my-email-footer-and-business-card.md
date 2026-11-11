@@ -35,6 +35,14 @@ Press {{button:blue|Save the card}} after a change.
 
 Your email and your mobile come from My Profile. Change them there. The office line is the same for everyone.
 
+## Pick a look
+
+A look is your footer and your card in other colours. The layout stays the same.
+
+The row **Look** shows each look the owner offers, drawn with your own name and photo. Press one. Your footer and your card both change, and the pick is saved.
+
+The row is hidden when the owner offers one look. The owner switches looks on and off under Settings, on **People & teams**, on the card **Card and footer looks**.
+
 ## Put the footer in your mail
 
 Press {{button:blue|Download the picture}}. The picture is the footer as designed.
