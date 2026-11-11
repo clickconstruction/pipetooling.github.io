@@ -2,7 +2,7 @@
 title: make my email footer and business card
 category: Getting Started
 roles: all
-keywords: email footer, signature picture, business card, photo, headshot, name on the card, title, print file, crop marks, sheet of ten, gmail signature, logo
+keywords: email footer, signature picture, business card, photo, headshot, name on the card, title, print file, crop marks, sheet of ten, gmail signature, logo, look, card size, larger text, larger photo, small print
 order: 3
 ---
 Your email footer and your business card are drawn from your own facts and photo. Change your photo or your title, and both redraw.
@@ -42,6 +42,40 @@ A look is your footer and your card in other colours. The layout stays the same.
 The row **Look** shows each look the owner offers, drawn with your own name and photo. Press one. Your footer and your card both change, and the pick is saved.
 
 The row is hidden when the owner offers one look. The owner switches looks on and off under Settings, on **People & teams**, on the card **Card and footer looks**.
+
+## Pick a card size
+
+A card size changes the back of your business card. The front and your email footer stay as they are.
+
+The row **Card size** sits under **Business card**. The row shows each size the owner offers, drawn with your own name and photo.
+
+:::cards
+
+:::card Standard
+
+The card as the designer set it.
+
+:::
+
+:::card Larger photo
+
+Your photo grows by a third. The words grow a little.
+
+:::
+
+:::card Larger text
+
+The words grow by a quarter. Your photo grows a little.
+
+:::
+
+:::
+
+Press one. The back of your card changes, and the pick is saved. Any size works in any look.
+
+Pick **Larger text** when the print on your card is hard to read. Pick **Larger photo** when customers should know your face.
+
+The row is hidden when the owner offers one size. The owner switches sizes on and off on the same card as the looks.
 
 ## Put the footer in your mail
 

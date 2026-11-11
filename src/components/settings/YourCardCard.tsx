@@ -6,7 +6,8 @@
  * the right, with the presses under each: the footer as a picture to upload as a mail signature,
  * the card as a print file for a print shop and as a sheet of ten for the office printer.
  *
- * The drawing is `drawKit` over the look the owner chose (`src/lib/brandKit/`). The previews on
+ * The drawing is `drawKit` over the look and the card size the person picked among those the
+ * owner offers (`src/lib/brandKit/`). A size changes the card's back alone. The previews on
  * the page and the files a press makes are the same drawing. With `userId` and `teammate` the
  * office opens the same card for someone else (People → Users).
  */
@@ -22,6 +23,7 @@ import { drawKit, printPage, sheetOfTen, type KitDrawOptions } from '../../lib/b
 import { DEFAULT_CARD_LOOKS, THEMES, lookLayouts, resolveLook, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
 import { cardHold, kitFileSlug, kitPersonFromUser, type KitCrop } from '../../lib/brandKit/person'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
+import { DEFAULT_CARD_SIZES, SIZES, cardBackFor, resolveSize, type CardSizesSetting, type KitSizeId } from '../../lib/brandKit/sizes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { saveBlobAs } from '../../lib/storageSave'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -81,6 +83,9 @@ export function YourCardCard({
   // which looks the owner offers, and this person's pick among them
   const [setting, setSetting] = useState<CardLooksSetting>(DEFAULT_CARD_LOOKS)
   const [pick, setPick] = useState<string | null>(null)
+  // which card sizes the owner offers, and this person's pick among them
+  const [sizes, setSizes] = useState<CardSizesSetting>(DEFAULT_CARD_SIZES)
+  const [sizePick, setSizePick] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [making, setMaking] = useState<Making>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -101,12 +106,14 @@ export function YourCardCard({
     setProblem(null)
     void (async () => {
       try {
-        const [row, ready, looks] = await Promise.all([io.load(userId), renderer.ready(), io.looks()])
+        const [row, ready, looks, offeredSizes] = await Promise.all([io.load(userId), renderer.ready(), io.looks(), io.sizes()])
         if (!on) return
         setKit(ready)
         setLoaded(row)
         setSetting(looks)
         setPick(row.look)
+        setSizes(offeredSizes)
+        setSizePick(row.size)
         setCrop(row.crop)
         setDraft({ cardName: row.facts.card_name ?? '', title: row.facts.title ?? '' })
         if (row.photoPath) {
@@ -134,6 +141,8 @@ export function YourCardCard({
 
   const lookId = resolveLook(pick, setting)
   const look = lookLayouts(lookId)
+  const sizeId = resolveSize(sizePick, sizes)
+  const back = cardBackFor(lookId, sizeId)
 
   const drawings = useMemo(() => {
     if (!person || !kit) return null
@@ -141,15 +150,21 @@ export function YourCardCard({
     return {
       footer: drawKit(look.footer, person, { ...opts, width: '100%', id: `${clipId}f` }),
       front: drawKit(look.front, null, { ...opts, width: '100%' }),
-      back: drawKit(look.back, person, { ...opts, width: '100%', id: `${clipId}b` }),
+      back: drawKit(back, person, { ...opts, width: '100%', id: `${clipId}b` }),
     }
-  }, [person, kit, clipId, look])
+  }, [person, kit, clipId, look, back])
 
   /** The footer in each look the owner offers, drawn with this person's own facts, for the picker. */
   const offered = useMemo(() => {
     if (!person || !kit || !loaded?.lookOn || setting.approved.length < 2) return null
     return setting.approved.map((id) => ({ id, name: THEMES[id].name, svg: drawKit(lookLayouts(id).footer, person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}k${id.replace(/[^a-z]/g, '')}` }) }))
   }, [person, kit, loaded?.lookOn, setting, clipId])
+
+  /** The card's back in each size the owner offers, in this person's look and with their own facts, for the picker. */
+  const offeredSizes = useMemo(() => {
+    if (!person || !kit || !loaded?.sizeOn || sizes.approved.length < 2) return null
+    return sizes.approved.map((id) => ({ id, name: SIZES[id].name, svg: drawKit(cardBackFor(lookId, id), person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}z${id}` }) }))
+  }, [person, kit, loaded?.sizeOn, sizes, lookId, clipId])
 
   if (hidden) return null
 
@@ -191,6 +206,21 @@ export function YourCardCard({
     }
   }
 
+  const chooseSize = async (id: KitSizeId) => {
+    if (!userId || id === sizeId) return
+    const before = sizePick
+    setSizePick(id)
+    setProblem(null)
+    try {
+      await io.saveSize(userId, id)
+      if (live.current) showToast(W.sizeSaved, 'success')
+    } catch (e) {
+      if (!live.current) return
+      setSizePick(before)
+      setProblem(formatErrorMessage(e, W.sizeNotSaved))
+    }
+  }
+
   const savePhoto = async (blob: Blob | null, next: KitCrop) => {
     if (!userId || !loaded) return
     if (blob) {
@@ -215,7 +245,7 @@ export function YourCardCard({
     return {
       footer: drawKit(look.footer, person, { ...opts, id: `${clipId}ff` }),
       front: drawKit(look.front, null, opts),
-      back: drawKit(look.back, person, { ...opts, id: `${clipId}fb` }),
+      back: drawKit(back, person, { ...opts, id: `${clipId}fb` }),
       slug: kitFileSlug(person.name ?? ''),
     }
   }
@@ -365,6 +395,27 @@ export function YourCardCard({
                 </details>
 
                 <h3 style={{ ...head, marginTop: '1.1rem' }}>{W.cardHead}</h3>
+                {offeredSizes ? (
+                  <div data-your-card-sizes style={{ marginBottom: '0.8rem' }}>
+                    <div role="radiogroup" aria-label={W.sizeLabel} style={{ display: 'grid', gridTemplateColumns: wide ? `repeat(${Math.min(3, offeredSizes.length)}, minmax(0, 1fr))` : 'minmax(0, 1fr)', gap: '0.6rem' }}>
+                      {offeredSizes.map((o) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={o.id === sizeId}
+                          onClick={() => void chooseSize(o.id)}
+                          style={{ padding: '0.35rem', borderRadius: 8, border: o.id === sizeId ? '2px solid #2563eb' : '2px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+                        >
+                          {/* eslint-disable-next-line react/no-danger */}
+                          <span style={{ ...art, display: 'block' }} dangerouslySetInnerHTML={{ __html: o.svg }} />
+                          <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.8125rem', fontWeight: 600 }}>{o.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ ...muted, marginTop: '0.4rem' }}>{W.sizeHint}</p>
+                  </div>
+                ) : null}
                 <div style={{ display: 'grid', gridTemplateColumns: wide ? '1fr 1fr' : '1fr', gap: '0.6rem' }}>
                   {/* eslint-disable-next-line react/no-danger */}
                   <div data-your-card-front style={art} dangerouslySetInnerHTML={{ __html: drawings.front }} />
