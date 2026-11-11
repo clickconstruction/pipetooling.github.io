@@ -283,6 +283,16 @@ export function parcelFactsByPoint(source: ParcelSource, body: unknown): ParcelF
   return a ? { ...source.facts(a), matched_by: 'point' } : null
 }
 
+/**
+ * Whether a kept lookup's question was put to Bexar's layer (`situsWhere` in `permitLookup.ts`).
+ * Between the client that asks about the other counties and the function that can answer, the
+ * earlier function asked Bexar about an Austin address and kept "no parcel" for a month; such a
+ * row is asked again.
+ */
+export function askedBexarLayer(query: string | null | undefined): boolean {
+  return (query ?? '').startsWith('UPPER(Situs)')
+}
+
 /** A point the layer can be asked about: both numbers, inside Texas. */
 export function askablePoint(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
   const la = typeof lat === 'number' ? lat : Number.NaN

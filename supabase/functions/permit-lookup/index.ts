@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { permitCity } from '../_shared/permitCities.ts'
-import { addressQuery, askablePoint, parcelFactsByAddress, parcelFactsByPoint, parcelSourceFor, pointQuery, streetParts } from '../_shared/permitParcels.ts'
+import { addressQuery, askablePoint, askedBexarLayer, parcelFactsByAddress, parcelFactsByPoint, parcelSourceFor, pointQuery, streetParts } from '../_shared/permitParcels.ts'
 import {
   BEXAR_PARCEL_FIELDS,
   BEXAR_PARCELS_QUERY,
@@ -83,8 +83,10 @@ serve(async (req) => {
   const key = kind === 'company' ? companyLookupKey(typeof body.contact === 'string' ? body.contact : null) : parcelLookupKey(city, typeof body.address === 'string' ? body.address : null)
   if (!key) return jsonResponse({ ok: true, kind, key: null, found: false, facts: {}, error: 'nothing to look up', cached: false })
 
-  const { data: cached } = await admin.from('permit_lookups').select('found, facts, error, looked_up_at').eq('kind', kind).eq('lookup_key', key).maybeSingle()
-  if (cached && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
+  const { data: cached } = await admin.from('permit_lookups').select('query, found, facts, error, looked_up_at').eq('kind', kind).eq('lookup_key', key).maybeSingle()
+  // A row the earlier function kept for a city outside Bexar asked Bexar's layer, so its "no parcel" is not this county's answer.
+  const askedWrongCounty = kind === 'parcel' && askedBexarLayer(cached?.query as string | null | undefined) && parcelSourceFor(permitCity(city)?.county) !== null
+  if (cached && !askedWrongCounty && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
     return jsonResponse({ ok: true, kind, key, found: cached.found, facts: cached.facts, error: cached.error, cached: true, looked_up_at: cached.looked_up_at })
   }
 

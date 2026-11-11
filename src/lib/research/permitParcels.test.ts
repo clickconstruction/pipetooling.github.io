@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addressQuery,
   askablePoint,
+  askedBexarLayer,
   COMAL_PARCELS,
   GUADALUPE_PARCELS,
   HAYS_PARCELS,
@@ -81,6 +82,12 @@ describe('what each county is asked', () => {
     expect(askablePoint(null, -97.75)).toBeNull()
     expect(askablePoint(0, 0)).toBeNull()
     expect(askablePoint('30.25', '-97.75')).toBeNull()
+  })
+  it("knows a kept answer that came from Bexar's layer, to ask the right county again", () => {
+    expect(askedBexarLayer("UPPER(Situs) LIKE '100 SAMPLE LN%'")).toBe(true)
+    expect(askedBexarLayer(TRAVIS_PARCELS.where({ num: '100', prefix: null, name: 'SAMPLE' }))).toBe(false)
+    expect(askedBexarLayer(HAYS_PARCELS.where({ num: '100', prefix: null, name: 'SAMPLE' }))).toBe(false)
+    expect(askedBexarLayer(null)).toBe(false)
   })
 })
 
