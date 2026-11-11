@@ -108,7 +108,7 @@ The months and the notices come from the record. The paper names each month a re
 
 Nothing prints above the title. The county under **STATE OF TEXAS** is blank. The notary writes in the county where you sign. The property's county is in the second statement.
 
-An affidavit drafted before the short form keeps the earlier form. A grey line under the claim says so. The earlier form has ten statements, and it states the dates of the work. Those dates run from the first approved clock day through the last. To move that paper to the short form, open the job on the Lien desk. On the **Affidavits** tab, press **Redraw on the short form…** above the paper. The affidavit goes back to **To draft**. The affidavit needs approval again before you file it.
+An affidavit drafted before the short form keeps the earlier form. A grey line under the claim says so. The earlier form has ten statements, and it states the dates of the work. Those dates run from the first approved clock day through the last. To move that paper to the short form, open the job on the Lien desk. On the **Affidavits** tab, press **Redraw on the short form…** above the paper. The top of that list has one press for every ready affidavit at once. The affidavit goes back to **To draft**. The affidavit needs approval again before you file it.
 
 When the gate clears, click {{button:outline-blue|Print for notarization}}. Sign before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}.
 

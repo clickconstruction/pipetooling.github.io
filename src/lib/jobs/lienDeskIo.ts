@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
 import type { LienWordChannel } from './lienWord'
@@ -8,7 +8,7 @@ import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
 import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { lienAffidavitFormForItems, type LienAffidavitForm, type LienAffidavitFormItem } from './lienAffidavitForm'
+import { LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItems, type LienAffidavitForm, type LienAffidavitFormItem } from './lienAffidavitForm'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -113,6 +113,62 @@ export async function readLienAffidavitForm(jobId: string): Promise<LienAffidavi
     'lien window: the affidavit’s form',
   )
   return lienAffidavitFormForItems((rows ?? []) as unknown as LienAffidavitFormItem[])
+}
+
+/**
+ * Redraw an affidavit on the short form (punch list #305): one write that takes the item back to a draft, clears its
+ * approval and any signature as a pull-back does, and marks its fields for the short form. One write, so a paper is
+ * never left pulled back and unmarked. Only a paper still on the desk moves: one filed or voided since the list was
+ * read is refused with the reason.
+ */
+export async function redrawLienAffidavitShort(item: Pick<LienDeskItemRow, 'id' | 'fields'>, userId: string | null): Promise<void> {
+  const fields = { ...(item.fields && typeof item.fields === 'object' && !Array.isArray(item.fields) ? (item.fields as Json) : {}), ...LIEN_AFFIDAVIT_SHORT_FORM_MARK }
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .update({
+          status: 'drafted',
+          fields,
+          ...LIEN_DESK_SIGNATURE_CLEAR,
+          approval_mode: null,
+          approved_by: null,
+          approved_at: null,
+          word_note: '',
+          word_channel: '',
+          hold_reason: '',
+          hold_until: null,
+          pulled_back_by: userId,
+          pulled_back_at: new Date().toISOString(),
+        } as never)
+        .eq('id', item.id)
+        .eq('kind', 'affidavit')
+        .in('status', ['drafted', 'awaiting_approval', 'approved', 'held'])
+        .select('id'),
+    'lien desk: redraw on the short form',
+  )
+  if (((rows ?? []) as unknown as Array<{ id: string }>).length === 0) throw new Error('This affidavit is no longer a draft on the desk. It was filed or taken back since the list was read.')
+}
+
+/**
+ * The same for many (the Affidavits list's one press): each paper is its own write, the batch keeps going past one
+ * that fails, and the failures come back with their reasons for the list to show.
+ */
+export async function redrawLienAffidavitsShort(
+  papers: ReadonlyArray<{ jobId: string; item: Pick<LienDeskItemRow, 'id' | 'fields'> }>,
+  userId: string | null,
+): Promise<{ done: string[]; failed: Array<{ jobId: string; reason: string }> }> {
+  const done: string[] = []
+  const failed: Array<{ jobId: string; reason: string }> = []
+  for (const p of papers) {
+    try {
+      await redrawLienAffidavitShort(p.item, userId)
+      done.push(p.jobId)
+    } catch (e) {
+      failed.push({ jobId: p.jobId, reason: formatErrorMessage(e, 'The affidavit could not be redrawn.') })
+    }
+  }
+  return { done, failed }
 }
 
 /** The leader's click. The trigger refuses it from anyone else. */

@@ -50,7 +50,7 @@ describe('materialsGroupsFor', () => {
 describe('materialsPressesFor', () => {
   it('offers both presses to every role that opens On site', () => {
     for (const role of ['dev', 'controller', 'estimator', 'primary', 'superintendent']) {
-      expect(materialsPressesFor(role)).toEqual(['print-labels', 'scan-label'])
+      expect(materialsPressesFor(role)).toEqual(['scan-label', 'print-labels'])
     }
     expect(materialsPressesFor('helpers')).toEqual([])
   })

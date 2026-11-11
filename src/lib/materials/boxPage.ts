@@ -28,6 +28,7 @@ export {
 } from '../../../supabase/functions/_shared/boxPage'
 import { parseBoxPageFindResponse, parseBoxPageResponse, type BoxPageFindPayload, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
 import { portalFailureCause, type PortalFailureCause } from '../portal/portalFailure'
+import { STALE_COUNT_DAYS } from './onSite'
 
 /** The page's state from the function's answer. */
 export type BoxPageView =
@@ -57,6 +58,38 @@ export function boxPageDayWords(ymd: string): string {
   if (!m) return ymd
   return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
+
+/** Whole days from one YYYY-MM-DD to a later one; null when either is not a day. */
+function daysBetweenYmd(fromYmd: string, toYmd: string): number | null {
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fromYmd)
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(toYmd)
+  if (!a || !b) return null
+  return Math.round((Date.UTC(Number(b[1]), Number(b[2]) - 1, Number(b[3])) - Date.UTC(Number(a[1]), Number(a[2]) - 1, Number(a[3]))) / 86_400_000)
+}
+
+/**
+ * Whether the counts can be trusted, in words (v2.6868): the day of the last count read against the app's own rule,
+ * `STALE_COUNT_DAYS`, the one the office's *due a count* badge uses. `fresh` is green, `due` amber, `never` grey.
+ */
+export type BoxPageCountVerdict = { kind: 'fresh' | 'due' | 'never'; words: string; detail: string }
+
+export function boxPageCountVerdict(lastCountedOn: string | null, todayYmd: string): BoxPageCountVerdict {
+  if (!lastCountedOn) return { kind: 'never', words: 'Never counted', detail: '' }
+  const days = daysBetweenYmd(lastCountedOn, todayYmd)
+  // A day that cannot be read against today still says when: the day alone, with no verdict on its age.
+  if (days == null) return { kind: 'fresh', words: `Counted ${boxPageDayWords(lastCountedOn)}`, detail: '' }
+  const ago = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
+  if (days >= STALE_COUNT_DAYS) return { kind: 'due', words: 'Due a count', detail: `last counted ${ago}` }
+  return { kind: 'fresh', words: `Counted ${ago}`, detail: boxPageDayWords(lastCountedOn) }
+}
+
+/** *1 part* / *6 parts*: how many lines the box holds, beside the list's heading. Nothing for none. */
+export function boxPagePartsWords(count: number): string {
+  return count <= 0 ? '' : count === 1 ? '1 part' : `${count} parts`
+}
+
+/** The Scan a label page, where a typed code opens a box. */
+export const BOX_SCAN_PATH = '/b'
 
 /** Where the sign-in comes back to: the same box. */
 export function boxPagePath(code: string): string {

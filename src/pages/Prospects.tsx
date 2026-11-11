@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type CSSProperties } from 'react'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { prospectsPagePadding } from '../lib/prospects/pagePadding'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
@@ -417,6 +419,8 @@ export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
+  // A phone has no room for the desk's margins: the page keeps a thin edge and gives the rest to its cards.
+  const isMobile = useIsMobile()
   // The ZZ rule for prospects (v2.5583): a ZZ-named company is a dev's test row, hidden from every role but dev.
   const hideZz = useZzTestJobsHidden(authRole)
   // v2.3805: a column share opens the Hiring pill too — the board then renders trimmed (`shared`).
@@ -3214,9 +3218,9 @@ export default function Prospects() {
   }
 
   return (
-    <div style={{ padding: '1rem 1.5rem' }}>
+    <div style={{ padding: prospectsPagePadding(isMobile) }}>
       {/* Tabs left, page title right — same top-row pattern as Jobs / People */}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1rem', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: isMobile ? '0.5rem' : '1rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
             {canAccessFollowUp && PROSPECT_KINDS.map((k) => (

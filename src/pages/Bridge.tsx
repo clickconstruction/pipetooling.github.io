@@ -44,11 +44,13 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, deskMovesFoot, firstName, topPerson, type WeekCallInput } from '../lib/bridge/weekCall'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, deskMovesFoot, firstName, topPerson, topPersonId, type WeekCallInput } from '../lib/bridge/weekCall'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 import { buildFixSizes } from '../lib/bridge/fixSizes'
 import { buildFlowStrip } from '../lib/bridge/flowStrip'
+import type { CallPerson, MoveMark } from '../lib/bridge/callPeople'
+import { loadCallPeople, loadMoveMarks } from '../lib/bridge/callPeopleIo'
 import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
@@ -186,6 +188,10 @@ export default function Bridge() {
   // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
   const [calls, setCalls] = useState<BridgeCall[] | null>(null)
   const [callsError, setCallsError] = useState<string | null>(null)
+  // The Done presses people made on the calls' moves (PR 4); the card shows them beside what the numbers say.
+  const [moveMarks, setMoveMarks] = useState<MoveMark[]>([])
+  // The accounts a move can go to (PR 4): teammates with a Needs you card of their own.
+  const [pickable, setPickable] = useState<CallPerson[]>([])
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
   const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
@@ -202,6 +208,12 @@ export default function Bridge() {
       try {
         const rows = await loadBridgeCalls(supabase)
         if (!cancelled) setCalls(rows)
+        // A mark is one extra word on the card: a read that fails leaves the card as the numbers have it.
+        const [marks, people] = await Promise.all([loadMoveMarks(supabase).catch(() => [] as MoveMark[]), loadCallPeople(supabase).catch(() => [] as CallPerson[])])
+        if (!cancelled) {
+          setMoveMarks(marks)
+          setPickable(people)
+        }
       } catch (e) {
         if (!cancelled) {
           setCalls([])
@@ -930,13 +942,20 @@ export default function Bridge() {
         biller: topPerson(vectorInputs?.invoiceSends ?? [], vectorInputs?.people ?? [], data.windowStart),
         collector: topPerson(vectorInputs?.payments ?? [], vectorInputs?.people ?? [], data.windowStart),
       },
+      // The accounts behind those names (PR 4), so a move as proposed reaches its person's Needs you.
+      peopleIds: {
+        caller: user?.id ?? null,
+        biller: topPersonId(vectorInputs?.invoiceSends ?? [], data.windowStart),
+        collector: topPersonId(vectorInputs?.payments ?? [], data.windowStart),
+      },
+      marks: moveMarks,
       // The hazards are the supply invoices due, by day: the one bill a call can ask more days on.
       supplyDue: forecast ? (data.hazards.find((h) => h.ymd > data.todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
       calls,
       now: nowReading,
       dayLabel: md,
     }
-  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading, user?.id, moveMarks])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
 
   // One account's switch: the page follows at once, the row is saved behind it, and a save that is refused says why.
@@ -1322,6 +1341,7 @@ export default function Bridge() {
               onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
               strip={flowStrip ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : null}
+              people={pickable}
             />
           ) : (
             <p style={{ ...det, color: callsError ? 'var(--text-amber-800)' : undefined }} data-testid="bridge-week-wait">

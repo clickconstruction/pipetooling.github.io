@@ -39,7 +39,8 @@ const CHIP_TONE: Record<RailSignal['tone'] | 'green' | 'ghost', { background: st
   ghost: { background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)' },
 }
 
-function Chip({ tone, title, children }: { tone: keyof typeof CHIP_TONE; title?: string; children: ReactNode }) {
+/** The roster's small pill: login, no login, supervision; the Away rows say the role with it (v2.6863). */
+export function UsersTabChip({ tone, title, children }: { tone: keyof typeof CHIP_TONE; title?: string; children: ReactNode }) {
   return (
     <span title={title} style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1.6, whiteSpace: 'nowrap', ...CHIP_TONE[tone] }}>
       {children}
@@ -173,13 +174,13 @@ export function UsersTabRow({
         ) : null}
         <span aria-hidden title={rail.reasons.join(' · ') || 'Nothing needs you'} style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         <PersonNameDoor name={item.name} userId={isAccount ? item.id : null} personId={isAccount ? rail.personId : item.id} style={{ fontWeight: 600, color: 'var(--text-link)' }} />
-        {hasLogin ? <Chip tone="gray">login</Chip> : <Chip tone="ghost" title="A person with no sign-in — their hours, pay, portal and paperwork work without one; a login can be attached later">no login</Chip>}
+        {hasLogin ? <UsersTabChip tone="gray">login</UsersTabChip> : <UsersTabChip tone="ghost" title="A person with no sign-in — their hours, pay, portal and paperwork work without one; a login can be attached later">no login</UsersTabChip>}
         {/* A lens with columns (Account, Pay) says supervision in its own column or not at all. */}
         {isAccount && !cells && hasSupervisionSwitch(item.role) ? (
           item.needs_supervision === false ? (
-            <Chip tone="green" title="Can run a job on their own — counts as coverage for a job-day (v2.3611). Flip it from the ⋯ menu.">can run a job</Chip>
+            <UsersTabChip tone="green" title="Can run a job on their own — counts as coverage for a job-day (v2.3611). Flip it from the ⋯ menu.">can run a job</UsersTabChip>
           ) : (
-            <Chip tone="amber" title="Needs supervision — not left to run a job alone; a job-day is covered only when someone on it does not need supervision (v2.3611). Flip it from the ⋯ menu.">needs supervision</Chip>
+            <UsersTabChip tone="amber" title="Needs supervision — not left to run a job alone; a job-day is covered only when someone on it does not need supervision (v2.3611). Flip it from the ⋯ menu.">needs supervision</UsersTabChip>
           )
         ) : null}
         {cells ? cells : null}
@@ -208,9 +209,9 @@ export function UsersTabRow({
         ) : (
           <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', marginLeft: narrowViewport ? 0 : 'auto', flexShrink: 0 }}>
             {rail.signals.map((s) => (
-              <Chip key={s.key} tone={s.tone}>
+              <UsersTabChip key={s.key} tone={s.tone}>
                 {s.label}
-              </Chip>
+              </UsersTabChip>
             ))}
           </span>
         )}

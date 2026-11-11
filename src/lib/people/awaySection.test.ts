@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { awayBackWords, awayLeftWords, awaySectionTitle, daysBetweenYmd, splitAwayFromArchived } from './awaySection'
+import { awayBackWords, awayDistanceWords, awayDoorPlace, awayGroupCount, awayLeftWords, awayNoteFirstLine, awayRestoreConfirm, awaySectionTitle, awayShortDate, awayWhenTitle, awayWhenWords, daysBetweenYmd, splitAwayFromArchived } from './awaySection'
 
 const TODAY = '2026-11-08'
 
@@ -116,5 +116,111 @@ describe('splitAwayFromArchived', () => {
 describe('awaySectionTitle', () => {
   it('counts', () => {
     expect(awaySectionTitle(1)).toBe('Away (1)')
+  })
+})
+
+// v2.6863: the Away rows drawn as roster rows, their days in plain words.
+describe('awayShortDate', () => {
+  it('leaves the year off in the year we are in and shows it in any other', () => {
+    expect(awayShortDate('2026-11-03', TODAY)).toBe('Nov 3')
+    expect(awayShortDate('2029-11-08', TODAY)).toBe('Nov 8, 2029')
+    expect(awayShortDate('2025-12-31', TODAY)).toBe('Dec 31, 2025')
+    expect(awayShortDate('soon', TODAY)).toBe('soon')
+  })
+})
+
+describe('awayDistanceWords', () => {
+  it('counts in days, then weeks, then months, then years, ahead of today', () => {
+    expect(awayDistanceWords(1)).toBe('tomorrow')
+    expect(awayDistanceWords(2)).toBe('in 2 days')
+    expect(awayDistanceWords(13)).toBe('in 13 days')
+    expect(awayDistanceWords(14)).toBe('in 2 weeks')
+    expect(awayDistanceWords(35)).toBe('in 5 weeks')
+    expect(awayDistanceWords(62)).toBe('in 9 weeks')
+    expect(awayDistanceWords(63)).toBe('in 2 months')
+    expect(awayDistanceWords(203)).toBe('in 7 months')
+    expect(awayDistanceWords(700)).toBe('in 23 months')
+    expect(awayDistanceWords(731)).toBe('in 2 years')
+    expect(awayDistanceWords(1094)).toBe('in 3 years')
+  })
+
+  it('counts the same steps behind today, and says nothing on the day', () => {
+    expect(awayDistanceWords(-1)).toBe('yesterday')
+    expect(awayDistanceWords(-3)).toBe('3 days ago')
+    expect(awayDistanceWords(-21)).toBe('3 weeks ago')
+    expect(awayDistanceWords(-400)).toBe('13 months ago')
+    expect(awayDistanceWords(0)).toBeNull()
+  })
+})
+
+describe('awayWhenWords', () => {
+  const base = { endYmd: '2026-11-03', archivedYmd: '2026-11-08', todayYmd: TODAY }
+
+  it('reads the day they left and the day back with how far off it is', () => {
+    expect(awayWhenWords({ ...base, backYmd: '2029-11-08' })).toEqual({ left: 'Left Nov 3', back: 'back Nov 8, 2029', distance: 'in 3 years', text: 'Left Nov 3 · back Nov 8, 2029, in 3 years' })
+    expect(awayWhenWords({ ...base, backYmd: '2026-11-20' }).text).toBe('Left Nov 3 · back Nov 20, in 12 days')
+    expect(awayWhenWords({ ...base, backYmd: '2026-11-09' }).text).toBe('Left Nov 3 · back Nov 9, tomorrow')
+  })
+
+  it('reads due back after the day, back today on it, and no day back set without one', () => {
+    expect(awayWhenWords({ ...base, backYmd: '2026-11-05' })).toEqual({ left: 'Left Nov 3', back: 'due back Nov 5', distance: '3 days ago', text: 'Left Nov 3 · due back Nov 5, 3 days ago' })
+    expect(awayWhenWords({ ...base, backYmd: TODAY })).toEqual({ left: 'Left Nov 3', back: 'back today', distance: null, text: 'Left Nov 3 · back today' })
+    expect(awayWhenWords({ ...base, backYmd: null }).text).toBe('Left Nov 3 · no day back set')
+    expect(awayWhenWords({ ...base, backYmd: 'soon' }).text).toBe('Left Nov 3 · no day back set')
+  })
+
+  it('reads Archived when the roster row never ended', () => {
+    expect(awayWhenWords({ endYmd: null, archivedYmd: '2026-06-01', backYmd: null, todayYmd: TODAY }).text).toBe('Archived Jun 1 · no day back set')
+  })
+})
+
+describe('awayNoteFirstLine', () => {
+  it('takes the first line with words on it and closes up its spaces', () => {
+    expect(awayNoteFirstLine('\n  Rest up,   Nadia.  \nYour desk is as you left it.')).toBe('Rest up, Nadia.')
+    expect(awayNoteFirstLine('One line')).toBe('One line')
+  })
+
+  it('is null for a note with no words', () => {
+    expect(awayNoteFirstLine('')).toBeNull()
+    expect(awayNoteFirstLine('  \n ')).toBeNull()
+    expect(awayNoteFirstLine(null)).toBeNull()
+    expect(awayNoteFirstLine(undefined)).toBeNull()
+  })
+})
+
+describe('the Away group as roster rows', () => {
+  it('counts the group and the rows due back', () => {
+    expect(awayGroupCount([{ due: false }])).toBe('1')
+    expect(awayGroupCount([{ due: true }, { due: false }, { due: false }, { due: true }])).toBe('4 · 2 due back')
+  })
+
+  it('keeps the door in the menu until the day back is here, then puts it on the row', () => {
+    expect(awayDoorPlace({ due: false })).toBe('menu')
+    expect(awayDoorPlace({ due: true })).toBe('row')
+  })
+
+  it('keeps the long day and the count of days for the hover title', () => {
+    expect(awayWhenTitle({ leftWords: 'Left Nov 3, 2026', backWords: 'Back on Thursday, Nov 8, 2029 · 1,096 days' })).toBe('Left Nov 3, 2026 · Back on Thursday, Nov 8, 2029 · 1,096 days')
+  })
+
+  it('asks before Restore with a button that names the act', () => {
+    expect(awayRestoreConfirm(' Nadia Test ')).toEqual({ title: 'Restore Nadia Test?', message: 'They can sign in again with the same email and history. It takes the note down.', confirmLabel: 'Restore' })
+    expect(awayRestoreConfirm('').title).toBe('Restore this teammate?')
+  })
+
+  it('fills the row with its line of days and the note it carries', () => {
+    const split = splitAwayFromArchived({
+      logins: [nadia, gone],
+      rosterRows: [nadiaRow, goneRow],
+      notes: [
+        { user_id: 'u-nadia', countdown_ymd: '2026-11-05', alert_on_day: true, words: 'Rest up, Nadia.\nSee you soon.' },
+        { user_id: 'u-gone', countdown_ymd: null, words: '' },
+      ],
+      todayYmd: TODAY,
+    })
+    expect(split.away.map((r) => [r.displayName, r.when.text, r.noteLine, awayDoorPlace(r)])).toEqual([
+      ['Nadia', 'Left Nov 3 · due back Nov 5, 3 days ago', 'Rest up, Nadia.', 'row'],
+      ['Gone Person', 'Archived Jun 1 · no day back set', null, 'menu'],
+    ])
   })
 })

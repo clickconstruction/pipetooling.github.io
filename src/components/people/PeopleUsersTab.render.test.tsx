@@ -238,17 +238,22 @@ describe('PeopleUsersTab', () => {
     // The viewer row the other reads share gets an id here, since the Archived list keys its rows by one.
     TABLE_ROWS.users = [{ ...(users[0] as object), id: 'u-viewer', archived_at: '2026-01-01T00:00:00Z' }, { id: 'u9', name: 'Nadia Test', email: 'nadia@example.com', role: 'helpers', archived_at: '2026-11-08T17:01:23Z', login_attached_at: '2026-02-16T23:25:04Z' }]
     TABLE_ROWS.people = [{ account_user_id: 'u9', end_date: '2026-11-03' }]
-    TABLE_ROWS.away_notes = [{ user_id: 'u9', countdown_ymd: '2029-11-08', alert_on_day: true }]
+    TABLE_ROWS.away_notes = [{ user_id: 'u9', countdown_ymd: '2029-11-08', alert_on_day: true, words: 'Rest up, Nadia.\nSee you soon.' }]
     try {
       renderTab({ isDev: true })
-      const away = await screen.findByRole('table', { name: 'Away' })
-      expect(screen.getByText('Away (1)')).toBeTruthy()
+      // v2.6863: the group is roster rows under a heading in the roster's style, the note on the second line.
+      const away = await screen.findByRole('region', { name: 'Away' })
+      expect(within(away).getByRole('heading', { level: 2 }).textContent).toBe('Away 1')
       expect(within(away).getByText('Nadia Test')).toBeTruthy()
-      expect(within(away).getByText('Left Nov 3, 2026')).toBeTruthy()
-      expect(within(away).getByText(/^Back on Thursday, Nov 8, 2029 · /)).toBeTruthy()
-      expect(within(away).getByText('· alert on')).toBeTruthy()
-      expect(within(away).getByRole('button', { name: 'Edit the note…' })).toBeTruthy()
-      expect(within(away).getByRole('button', { name: 'Bring back…' })).toBeTruthy()
+      expect(within(away).getByTestId('away-when').textContent).toMatch(/^Left Nov 3(, 2026)? · back Nov 8, 2029, in /)
+      expect(within(away).getByTestId('away-when').getAttribute('title')).toMatch(/^Left Nov 3, 2026 · Back on Thursday, Nov 8, 2029 · /)
+      expect(within(away).getByRole('img', { name: 'You get a Needs you item on the day the countdown ends.' })).toBeTruthy()
+      expect(within(away).getByText('“Rest up, Nadia.”')).toBeTruthy()
+      // The rare presses wait in the ⋯ menu while the day back is ahead.
+      expect(within(away).queryByRole('button', { name: 'Bring back…' })).toBeNull()
+      fireEvent.click(within(away).getByRole('button', { name: 'Actions for Nadia Test' }))
+      expect(within(away).getByRole('menuitem', { name: 'Edit the note…' })).toBeTruthy()
+      expect(within(away).getByRole('menuitem', { name: 'Bring back…' })).toBeTruthy()
       // v2.6846: See what they see opens their sign-in screen as a preview, named for whose it is, and closes again.
       fireEvent.click(within(away).getByRole('button', { name: 'See what they see' }))
       const preview = await screen.findByRole('dialog', { name: "Preview of Nadia Test's sign-in screen" })

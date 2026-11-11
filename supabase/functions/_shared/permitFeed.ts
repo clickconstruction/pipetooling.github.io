@@ -94,13 +94,13 @@ export function dayOf(value: unknown): string | null {
   return m?.[1] ?? null
 }
 
-function numberOf(value: unknown): number | null {
+export function numberOf(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null
   const n = typeof value === 'number' ? value : Number(String(value).replace(/[$,]/g, ''))
   return Number.isFinite(n) ? n : null
 }
 
-function textOf(value: unknown): string | null {
+export function textOf(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const t = value.replace(/\s+/g, ' ').trim()
   return t === '' ? null : t
