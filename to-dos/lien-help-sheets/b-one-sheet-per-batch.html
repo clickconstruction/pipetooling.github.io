@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Punch list #314. Mock-up B: one cover sheet in front of a batch of lien affidavits, a row for each paper. Every name, address, county, date and amount is made up; no job, owner or contractor here is real. -->
+<title>Help Sheet B: Per Batch</title>
+<style>
+  /* Layout: a note for the reader on screen, then one letter sheet drawn as paper. Only the sheet prints. */
+  :root { --bg: #e9edf2; --ink: #17202b; --soft: #4a5868; --rule: #c9d1db; --card: #ffffff; --accent: #1f4e8c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12161c; --ink: #e6ebf2; --soft: #a3aebc; --rule: #313a47; --card: #1a2029; --accent: #8db8f0; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #12161c; --ink: #e6ebf2; --soft: #a3aebc; --rule: #313a47; --card: #1a2029; --accent: #8db8f0; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.5; }
+  .note { max-width: 8.5in; margin: 0 auto; padding: 1.5rem 16px 0.5rem; }
+  .note h1 { font-size: 1.4rem; line-height: 1.2; margin: 0 0 0.4rem; }
+  .note p { margin: 0 0 0.6rem; max-width: 70ch; color: var(--soft); }
+  .note .eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+  .note table { border-collapse: collapse; font-size: 0.875rem; margin: 0.4rem 0 0.8rem; }
+  .note th, .note td { border: 1px solid var(--rule); padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+  .scroll { overflow-x: auto; padding: 0 16px 2.5rem; }
+  /* The sheet is paper: always light, sized as a letter page with half-inch margins. */
+  .sheet { width: 8.5in; min-height: 11in; margin: 0.75rem auto; padding: 0.5in; background: #fff; color: #111418; box-shadow: 0 1px 6px rgba(0,0,0,0.25); font-size: 10.5pt; line-height: 1.35; }
+  .sheet h2 { font-size: 15pt; margin: 0; line-height: 1.15; }
+  .sheet h3 { font-size: 10.5pt; margin: 0 0 3pt; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sheet p { margin: 0 0 4pt; }
+  .sheet ol, .sheet ul { margin: 0; padding-left: 15pt; }
+  .sheet li { margin: 0 0 2.5pt; }
+  .band { display: flex; justify-content: space-between; gap: 10pt; align-items: flex-start; border: 2pt solid #111418; padding: 6pt 8pt; margin-bottom: 7pt; }
+  .band .tag { font-weight: 800; font-size: 9pt; letter-spacing: 0.08em; text-transform: uppercase; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1pt solid #111418; margin-bottom: 7pt; }
+  .facts > div { padding: 4pt 6pt; border-right: 1pt solid #111418; }
+  .facts > div:last-child { border-right: none; }
+  .facts .k { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #444; }
+  .facts .v { font-weight: 700; }
+  .box { border: 1pt solid #111418; padding: 6pt 8pt; margin-bottom: 7pt; break-inside: avoid; }
+  .stop { border: 2.5pt solid #111418; background: #f1f1f1; }
+  .stop h3::before { content: 'STOP \00a0'; background: #111418; color: #fff; padding: 0 4pt; margin-right: 4pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 7pt; }
+  .tick { display: inline-block; width: 9pt; height: 9pt; border: 1pt solid #111418; margin-right: 4pt; vertical-align: -1pt; }
+  .hand { font-family: 'Bradley Hand', 'Segoe Script', 'Comic Sans MS', cursive; font-size: 12pt; }
+  .num { display: inline-flex; align-items: center; justify-content: center; width: 13pt; height: 13pt; border-radius: 50%; background: #111418; color: #fff; font-size: 8pt; font-weight: 700; font-family: system-ui, sans-serif; vertical-align: 1pt; margin-right: 3pt; }
+  .small { font-size: 8.5pt; color: #333; }
+  .foot { border-top: 1pt solid #111418; margin-top: 6pt; padding-top: 3pt; font-size: 8pt; display: flex; justify-content: space-between; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 7pt; }
+  table.rows th, table.rows td { border: 1pt solid #111418; padding: 3pt 4pt; text-align: left; vertical-align: top; }
+  table.rows th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; background: #ececec; }
+  .flag { font-weight: 800; }
+  /* The paper itself, as the app prints it. */
+  .paper { font-family: Georgia, 'Times New Roman', serif; font-size: 9.5pt; line-height: 1.35; }
+  .paper .title { text-align: center; font-weight: 700; margin-bottom: 6pt; }
+  .paper p { margin: 0 0 5pt; }
+  .blank { display: inline-block; min-width: 70pt; border-bottom: 1pt solid #111418; text-align: center; }
+  @page { size: letter; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .note { display: none; }
+    .scroll { overflow: visible; padding: 0; }
+    .sheet { margin: 0; box-shadow: none; break-after: page; }
+    .sheet:last-child { break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="note">
+
+<p class="eyebrow">Punch list #314 · mock-up B of three</p>
+<h1>One sheet for the whole batch</h1>
+<p>One page prints in front of a batch of affidavits. The top half is the same for every batch: the blanks and the notary's checklist. The bottom half is a row for each paper, with where it is filed, who gets a copy, and boxes to tick as each step is done.</p>
+<p>Good when one person signs a stack in one sitting, as the office did on its first run. A paper the app would stop is listed with the reason and is not printed behind the sheet.</p>
+
+<p class="eyebrow">The same sheet for the other two papers</p>
+<table>
+  <tr><th>Paper</th><th>What changes on the sheet</th></tr>
+  <tr><td>§ 53.056 notice</td><td>No notary and no blanks to write in. The steps are: sign, put the invoice behind it, mail one copy to the owner and one to the original contractor by certified mail, then type both tracking numbers in the app. The date on the sheet is the mail-by day. The stop block keeps the public owner and adds a missing owner address.</td></tr>
+  <tr><td>§ 53.057 retainage notice</td><td>The same as the § 53.056 notice, with the day our contract ended in the facts strip and counsel's cover letter named as page 1 of the owner's copy.</td></tr>
+</table>
+
+
+</div>
+<div class="scroll">
+
+<div class="sheet" data-theme="light">
+  <div class="band">
+    <div><div class="tag">Help sheet · do not file this page</div><h2>Lien affidavits: this batch of 5</h2></div>
+    <div class="small" style="text-align:right">Printed Nov 11, 2026<br>All due Mon, Nov 16, 2026</div>
+  </div>
+  <div class="two">
+    <div class="box">
+      <h3>Each paper has six blanks</h3>
+      <ol>
+        <li><strong>COUNTY OF, at the top:</strong> where you sign. Today: <span class="hand">Birch</span>. Not the property's county.</li>
+        <li><strong>Signature:</strong> Pat Sample, in front of the notary.</li>
+        <li><strong>COUNTY OF, notary's block:</strong> the same county.</li>
+        <li><strong>Day, month, year:</strong> the day it is signed.</li>
+        <li><strong>Notary:</strong> signature and printed name.</li>
+        <li><strong>Seal:</strong> in ink that shows on a copy.</li>
+      </ol>
+    </div>
+    <div class="box stop">
+      <h3>Call the office first</h3>
+      <ul>
+        <li>The owner lives in the house.</li>
+        <li>The owner is a city, county, school or the State.</li>
+        <li>A month has no notice mailed on time.</li>
+        <li>Anything printed on a paper is wrong.</li>
+      </ul>
+      <p class="small" style="margin-top:3pt">A signed paper is never fixed by hand. Print it again.</p>
+    </div>
+  </div>
+  <table class="rows">
+    <tr><th>#</th><th>Job · property</th><th>Claim</th><th>File with the clerk of</th><th>Mail a copy to</th><th>Signed</th><th>Sealed</th><th>Filed</th><th>In the app</th><th>Copies mailed</th></tr>
+    <tr><td>1</td><td>412 · 18 Sample Ln, Marlow</td><td>$2,650.00</td><td>Alder County</td><td>Jordan and Casey Sample · Ridgeway Builders</td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td></tr>
+    <tr><td>2</td><td>418 · 77 Mock Ave, Fenwick</td><td>$1,600.00</td><td>Cedar County</td><td>Placeholder Holdings LLC · Ridgeway Builders</td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td></tr>
+    <tr><td>3</td><td>421 · 5 Example Way, Fenwick</td><td>$595.00</td><td>Cedar County</td><td>Morgan Sample · Ridgeway Builders</td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td><td><span class="tick"></span></td></tr>
+    <tr><td>4</td><td>425 · 5 Example Way, Fenwick</td><td>$1,049.00</td><td>Cedar County</td><td>Morgan Sample · Ridgeway Builders</td><td colspan="5" class="flag">ASK FIRST. Papers 3 and 4 are on one property.</td></tr>
+    <tr><td>5</td><td>430 · 200 Civic Dr, Marlow</td><td>$2,918.22</td><td>Alder County</td><td>Northfield Contracting</td><td colspan="5" class="flag">NOT PRINTED. The owner is the City of Marlow.</td></tr>
+  </table>
+  <div class="box">
+    <h3>After the notary, for each paper</h3>
+    <ol>
+      <li>File the original with the county clerk named on its row. Write the recording number on the stamped copy.</li>
+      <li>The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>.</li>
+      <li>Mail a copy by certified mail to the owner and to the original contractor. The app shows the last day to mail.</li>
+      <li>Press <strong>Record service ›</strong> and type the tracking numbers. Tick the row.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>Sample Plumbing LLC · help sheet for the batch printed Nov 11, 2026</span><span>4 papers follow this page</span></div>
+</div>
+
+</div>
+</body>
+</html>

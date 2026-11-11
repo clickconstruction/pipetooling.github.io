@@ -35,7 +35,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
-import { contractorAddressGate } from '../../lib/jobs/lienDeskAffidavits'
+import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
+import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
 import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
@@ -321,7 +322,10 @@ export default function LienFilingTabs({
 
   // ---------- gates ----------
 
+  // Punch list #314: a mechanic's lien does not attach to public property. Every name the record gives is asked, not the one the paper prints.
+  const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany])
   const affidavitGates: { ok: boolean; label: string }[] = [
+    ...(ownerPublic ? [{ ok: false, label: PUBLIC_OWNER_DESK_SENTENCE }] : []),
     { ok: Boolean(ownerName && property.owner.mailingAddress), label: ownerName ? `Owner of record — ${ownerName}${property.owner.mailingAddress ? '' : ' (mailing address missing)'}` : 'Owner of record with mailing address' },
     {
       ok: Boolean(property.county && property.legalDescription),

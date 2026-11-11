@@ -282,6 +282,14 @@ describe('LienFilingTabs · the affidavit prints on the short form (punch list #
   const paper = () => document.body.textContent ?? ''
   const gcProps = { job: sub, activeTab: 'affidavit' as const, isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' }
 
+  it('a public owner holds the paper: the gate says no lien attaches and nothing is drawn (punch list #314)', () => {
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, linkedAddress: { ...address, owner_name: 'SAMPLE CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', owner_mode: 'building_owner' } as never })} />)
+    expect(paper()).toContain("✗ Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney.")
+    // The owner line names the city, never the attention line.
+    expect(paper()).toContain('Owner of record — SAMPLE CITY OF')
+    expect(paper()).not.toContain('The claim it swears:')
+  })
+
   it('a GC whose row was read with no address holds the paper: the gate says so and nothing is drawn (punch list #305)', () => {
     renderWithProviders(<LienFilingTabs {...props({ ...gcProps, originalContractorAddress: '', originalContractorAddressRead: true })} />)
     expect(paper()).toContain('✗ The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)')
