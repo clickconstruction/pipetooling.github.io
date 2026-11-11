@@ -12,7 +12,7 @@ summary: >
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
 next: The owner's look at Prospects → Permits and the Who pulled it card; his calls under What the owner settles; revision 4 asked 2026-11-10 for Austin, New Braunfels, San Marcos and Seguin: Austin is v2.6859 (the city list, the readers, the per-city doors) and New Braunfels, San Marcos and Seguin are v2.6861 (one reader over a city's map layer, three field maps), so the weekly file is not needed; the digest when he wants it. What the office does with a permit once it arrives (the skim, the dig in, the builders) is #302, to-dos/permit-skim/. The types regen #7479 is armed.
-size: L as a train of four (M · S · M · S); shipped: revisions 1 to 3 (M · S · S); left: revision 4 (S)
+size: L as a train of four (M · S · M · S); shipped: revisions 1 to 4 (M · S · S · S, revision 4 as v2.6859 and v2.6861); left: the digest when the owner wants it
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
 mockup: to-dos/permit-research/ledger.html (the sheet decide.html, the map map.html)
@@ -171,8 +171,8 @@ Prospects, open to every estimator; the guide `research-permits-for-work-to-bid`
      desk that issued the permit, so it names no one.
    The three map layers are one more door (a reader over an ArcGIS feature layer) and three field
    maps. The dropped-file import below is no longer needed for these cities.
-   What is not built: the county parcel record outside Bexar (cards open the appraisal district),
-   the Needs you line counting cities other than San Antonio, and the city box on a phone's Skim.
+   Built since: the county parcel record outside Bexar (v2.6912),
+   the Needs you line counting every city, and the city box on a phone's Skim (both v2.6905).
    **The earlier plan for this revision:** more cities, the file, and the digest. Austin's Socrata feed (issued
    permits with contractor and applicant columns, a point on every row) as a second city; the
    suburbs' portals as a weekly export dropped on an **Add a permit file** press that reads the

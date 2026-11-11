@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-07
+last_updated: 2026-11-11
 ---
 
 ## Overview
@@ -300,7 +300,7 @@ Standalone shows a "Billing" header with the billing-slice status; embedded show
 ### 13–14. Costs region — extracted; labor loader inline
 
 - `JobFormLaborCostPanel`: charts only (`JobCostsTabCharts`, team labor gated by `showJobCostBreakdownTeamLabor`). The charts' loader reads the job as it was loaded and re-reads only on another job id; since v2.4010 the panel hands it the form's own price and other job charges (`lib/jobs/jobCostsLiveInputs`), so the tab follows the Bill tab without a reopen. Payments on the Cost Timeline still come from the loaded job. Since v2.5749 the panel also hands down the lines behind the money table (`JobCostsPacketLines`), and the verdict's **Print** builds the four-page packet (`lib/jobsDocuments/jobCostsPacket.ts`) from them and the tab's own load, through `openHtmlPrintWindow`.
-- `JobFormPartsCostSection` (4585–4608): "Where the money went" — parts accordions from **`useJobCostSnapshot`** (1455–1468: supply invoices / Mercury allocations / tally parts, accordion state, card + tally totals) plus the team / sub labor lines and "Open on Jobs →" links (`showTeamLaborOpenOnJobsLink` 1526–1533, `showSubLaborOpenOnJobsLink` 1535–1550; role gates 1519–1524) and the editable "Other job charges" (`materials`).
+- `JobFormPartsCostSection` (4585–4608): "Where the money went" — parts accordions from **`useJobCostSnapshot`** (1455–1468: supply invoices / Mercury allocations / tally parts, accordion state, card + tally totals) plus the team / sub labor lines and "Open on Jobs →" links (`showTeamLaborOpenOnJobsLink` 1526–1533, `showSubLaborOpenOnJobsLink` 1535–1550; role gates 1519–1524) and the editable "Other job charges" (`materials`); since v2.6836 the money table's **Given in kind** row (`useJobInKindCost`, the in kind lines put on this job; office-read only, punch list #301).
 - **Labor loader — a hook since v2.3871 (`useJobFormLabor(jobId)`):** team labor = `loadTeamLaborData(supabase)` then the job's row, as before; sub labor = `useJobDetailSubLaborCost` (sheets by `job_ledger_id`, items, the drive-rate settings through the shared `jobSubLaborInputsFromRows`) summed by `subLaborSummary` → `laborJobSubCost`, so the form and the Job window's profit band read one kernel. The hook returns the six names the form used, so the delete gate (`hasMigrateableCosts`, `costCheckErrored`, `costSnapshotStillLoading`, `reassignRequired`) and the cost block are untouched.
 
 ### 15. Footer + close-flush banner — a component since v2.3908 (`JobFormFooter`)

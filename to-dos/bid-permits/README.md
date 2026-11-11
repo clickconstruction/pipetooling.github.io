@@ -21,7 +21,7 @@ summary: >
   what it can see: the city, the first day of the records, and what a count is out of.
 next: Two weeks of use, and a look at what the answers on names have taught. Left unbuilt and named under each PR: the Ours chip, Mark lost on a news line, the likely name grade, Builders' column reading the answers. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
 size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 10; left: the four small pieces named in next (S)
-blocker: The owner's go. Call 1 picks the direction; calls 2 to 7 each gate one later PR, none gates PR 1.
+blocker: none; the owner said build it all on 2026-11-10, and PR 1 to 10 are built. What is left waits on two weeks of use.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
 
@@ -517,5 +517,5 @@ redrawn to say what we can see, the GC's half re-aimed at the jobs priced for th
 grown from seven PRs to eight. On his yes, the live tab's count lines were fixed as v2.6857, the
 words half of PR 4, walked on real data at desk and phone width with nothing pressed. On his
 word to start, PR 1 was built as v2.6858: the kernel that reads a bid's address the city's way,
-run over the open bids for the count above. Nothing is on a screen yet and nothing was written
-to prod. Calls 2 to 7 wait on the owner; his start on PR 1 took call 1's pick.
+run over the open bids for the count above, with nothing on a screen yet and nothing written
+to prod. His start on PR 1 took call 1's pick, and his word after it, build it all, took the rest: PR 2 to 10 were built the same day (v2.6866 to v2.6886), the read back was held and lifted (v2.6893) and run on 2026-11-11 back to January 2025, and the lists read past 1,000 rows (v2.6924). Calls 2 to 7 stand on the picks drawn until he overturns one.

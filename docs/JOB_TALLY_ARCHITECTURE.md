@@ -8,7 +8,7 @@ covers:
   - src/pages/JobTally.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 ---
 
 ## What this surface is
@@ -25,7 +25,7 @@ The page is tab-switched on a single `activeTab` state; the type union is `JobTa
 'materials-estimate' | 'transactions'
 ```
 
-URL slugs differ from state keys: `?tab=on-site` ↔ `'on-site'` (the default since v2.6229; any other/missing value is rewritten to it with `replace: true`), `?tab=transactions` ↔ `'transactions'`, `?tab=materials` ↔ `'materials-estimate'`. The row reads On site · Transactions · Materials Estimate. **Transactions** is the card-purchase tab (the Dashboard's Tally badge and the payroll doors name it in the address): sort/allocate linked Mercury debit-card purchases to jobs. **Materials Estimate** is the original tally flow: pick a job, tally fixture parts, "Send to Office" (insert + auto-PO). The On site tab's Places row carries `minWidth: 0` (`TallyOnSiteTab.tsx`, v2.6286): without it the grid item takes the chips' full width, the page grows wider than a phone, and one pinch leaves iOS Safari showing the whole app zoomed out, further with every cage added.
+URL slugs differ from state keys: `?tab=on-site` ↔ `'on-site'` (the default since v2.6229; any other/missing value is rewritten to it with `replace: true`), `?tab=transactions` ↔ `'transactions'`, `?tab=materials` ↔ `'materials-estimate'`. The row reads On site · Transactions · Materials Estimate. On On site, `?job=` and `?container=` (a label's scan, a box's door in Go anywhere, the Job Mode card) stay on the address while that box's screen is open and come off when it is left, written with `replace: true` so the Tally adds no history entry, so a reload (the update's first-paint reload, a chunk recovery) or Back comes back to the box (v2.6904, punch list #209: `useOnSiteAddress` over the kernel `lib/materials/onSiteAddress.ts`, and both job pickers go through its `pickJob`; before it, `JobTally` read both once and stripped them). **Transactions** is the card-purchase tab (the Dashboard's Tally badge and the payroll doors name it in the address): sort/allocate linked Mercury debit-card purchases to jobs. **Materials Estimate** is the original tally flow: pick a job, tally fixture parts, "Send to Office" (insert + auto-PO). The On site tab's Places row carries `minWidth: 0` (`TallyOnSiteTab.tsx`, v2.6286): without it the grid item takes the chips' full width, the page grows wider than a phone, and one pinch leaves iOS Safari showing the whole app zoomed out, further with every cage added.
 
 **Team view (v2.4654, punch list #72 PR 2a):** office roles (`dev`, `master_technician`, assistant-like) get a **Team | My card** switch at the top of Transactions (`?view=mine` for My card). Team renders [`TallyTeamQueue`](../src/components/tally/TallyTeamQueue.tsx), which owns its data and windows (staff queue RPC, `list_card_charges_window`, clock sessions, schedule blocks; kernels `lib/tally/tallyTeamQueue.ts`, `tallySortSuggestion.ts`, `tallyTeamSelections.ts`, `tallyUndoLine.ts` for Undo since v2.5107, `tallyPaySends.ts` for the pay bar (`TallyPayBar`, shown when JobTally passes `canMarkPayroll`) since v2.5118, words `tallySuggestionWords.ts`) and touches none of the state below; everything below renders only for My card and the field roles. The page column widens to 760 for Team.
 

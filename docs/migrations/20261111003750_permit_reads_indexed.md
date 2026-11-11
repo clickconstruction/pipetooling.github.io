@@ -37,3 +37,5 @@ These reads were slow for two reasons, and this file fixes one. The functions ar
 ## Release order
 
 Merge, `supabase db push`, time the reads signed in, then `supabase functions deploy permit-pull` (the read back, no longer refused). `check:calls-ahead` labels the PR *push right after the merge*, because it replaces functions the client calls; the client reads the same names with the same arguments.
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); no change to `database.ts`, since the three functions were replaced in place with the same signatures.

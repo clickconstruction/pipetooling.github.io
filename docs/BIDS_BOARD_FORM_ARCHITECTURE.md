@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-29
+last_updated: 2026-11-11
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
@@ -169,7 +169,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 
 ### B9 Row cell renderers
 - **Bid-number cluster 650–763:** unread badge, five jump icons (`BID_BOARD_JUMP_TABS`, filtered by `canSeePricingTabs` 731) over a `BidFlowStrip variant="hairline"`, robot icon, the lowercase-"b" number (preview button when `bidPreview`), Edit gear.
-- **Links cluster 766–850:** value-match chip + Link button (`onLinkJobToBid`, money), estimate chip (`<Link to=/bids?bidId=&tab=labor>`), job chip (`/jobs?edit=<jobId>`), then the four artifact links via `openInExternalBrowser`.
+- **Links cluster 766–850:** value-match chip + Link button (`onLinkJobToBid`, money), estimate chip (`<Link to=/bids?bidId=&tab=labor>`), job chip (`/jobs?edit=<jobId>`), then the four artifact links via `openInExternalBrowser`. Since v2.6860–v2.6922 (punch list #306, after `mapped_at`) the cluster opens on the photos camera (`photosSlot` over `photoCountsByBid`), lays the four links into fixed slots (`boardLinkSlots`, `lib/bids/bidBoardLinkSlots.ts`; a second CountTooling project after them) and draws a missing one as a grey icon (`BOARD_LINK_MISSING_TITLE`). The camera or a grey icon sets the tab's `filesWindow` state, which mounts `BidFilesModal` over `bidFileRows`, drawn from the page's own row for the bid, with `onBidFilesChanged` after a saved link.
 - **Others:** `renderGcSentBadge` (`perGcSentSummary`), `renderBidBoardDueChip` (`bidBoardDueCellParts` / `bidBoardNoDueDateParts` / `bidBoardSentLabel`), `renderBidBoardLastContact`, `renderBidBoardBidValue` (red `$` → `onEditBid(bid, { focus: 'bidValue' })`).
 - **Approach:** Stage B into `BidBoardRowCells.tsx` as props-only leaves, cluster by cluster; the bid-number cluster last (widest props).
 
@@ -241,12 +241,12 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Approach:** Stage A the attestation line and the lock rule first; then `BidFormStatusDates` owning `dueTimeOpen` + `bidHasVersions` (effect 216–231 moves with it) and receiving `setLoggingContact`.
 
 ### F7 Location / F8 Files & links
-- F7: address `onBlur` auto-fills distance only when empty; "↻ Auto" forces; status line names the source (routed vs straight-line) and anchor. Under it, for `canResearchPermits` roles, `BidSitePermits` draws **This site**: what the city has on the address (`lib/research/bidSite.ts`, `bidSitePanel.ts`; reads `bid_site_permits`).
+- F7: address `onBlur` auto-fills distance only when empty; "↻ Auto" forces; status line names the source (routed vs straight-line) and anchor. Under it, for `canResearchPermits` roles, `BidSitePermits` draws **This site**: what the city has on the address (`lib/research/bidSite.ts`, `bidSitePanel.ts`; reads `bid_site_permits`); since v2.6872 the lead permit's row carries `BidNameQuestion`, asking once who the city lists on it (Works for the GC · Someone else… · Not sure, writing `builder_customer_answers` and a kind to `builders`).
 - F8: three hardcoded Drive folder links (plumbing / electrical / HVAC, 972–981), Project Folder, Job Plans (`bid-form-plans-link`), CountTooling Plans (`bid-form-count-tooling-link`), `BidPriceRequestsTable` (saved bids; label hand-built `B<number> · <project>` 1010), `RobotReadinessLine` (reads `distanceAutoStatus`), Bid Submission, Design Drawing Plan Date.
 - **Approach:** move F7 + F8 together (they share `distanceAutoStatus`), or lift the status into a tiny `useBidDistanceAutoFill` hook the form keeps.
 
 ### F9 People
-- Primary GC as a `GcCard` (1044–1083; legacy `bids_gc_builders` name fallback) with "change ▸" and a per-GC `BidGcDetailsEditor` (writes `bid_gcs`; `onBidDueMaybeChanged` → `refreshDerivedDue`, because a per-GC due can move the bid's derived due). Under the card, for `canResearchPermits` roles, `BidGcPermits` draws **What we can see about** the GC: the jobs priced for them and what the city has on each address (self-loading; reads `bids`, `bid_gcs`, `bid_site_permits`).
+- Primary GC as a `GcCard` (1044–1083; legacy `bids_gc_builders` name fallback) with "change ▸" and a per-GC `BidGcDetailsEditor` (writes `bid_gcs`; `onBidDueMaybeChanged` → `refreshDerivedDue`, because a per-GC due can move the bid's derived due). Under the card, for `canResearchPermits` roles, `BidGcPermits` draws **What we can see about** the GC: the jobs priced for them and what the city has on each address (self-loading; reads `bids`, `bid_gcs`, `bid_site_permits`), then `BidGcTiedNames` (v2.6872): the GC's own name and each name tied to it, with **Take back**, and since v2.6886 **Find their names on permits ›**, which opens `FindNamesSheet` (suggestions over `nameLikeness.ts`, Compare, **Same company** / **Not them**).
 - GC search 1084–1211: input clears `gcCustomerId` when the text stops matching (1109–1114), 200 ms blur close, "+ Add new customer" (role-gated; `onMouseDown` preventDefault beats the blur), the customer filter computed twice (1170–1176 and 1202–1205).
 - Terms bar + modal (payment terms / promise record of the payer), `BidGcRecipientsRow` (other GCs; self-loading, writes `bid_gc_recipients`), project contact (collapsible) + Submitted to.
 - **Role checks:** the same `dev || master_technician || isAssistantLike || estimator` expression 5× (1075, 1138, 1227, 1229, 1245).
@@ -347,7 +347,7 @@ Definition of done, gates (`npm run typecheck && npm run lint && npm test` after
 
 **URL deep links and DOM ids (load-bearing)**
 - `bid-board-row-<id>` (table row 1120 and card 1360) — scrolled by the parent (Bids.tsx 946) and B4 (315). `bid-board-section-<key>`, `bid-board-health-section`, `bid-board-map-card` (in `BidBoardMapCard` 511) — jump targets. `bid-board-notes-<id>` — `aria-controls` + scroll.
-- Form ids consumed by `bidFormFocus.ts` (`bid-form-project-name`, `bid-form-gc-builder`, `bid-form-bid-value`, `bid-form-plans-link`, `bid-form-service-type`, `bid-form-bid-due-date`) and by `bidFlow.ts` step targets (`bid-form-plans-link`, `bid-form-count-tooling-link`). Renaming any of them silently breaks focus and landing.
+- Form ids consumed by `bidFormFocus.ts` (`bid-form-project-name`, `bid-form-gc-builder`, `bid-form-bid-value`, `bid-form-plans-link`, `bid-form-service-type`, `bid-form-bid-due-date`, and since v2.6914 the Files window's landings `bid-form-drive-link`, `bid-form-count-tooling-link`, `bid-form-bid-submission-link`) and by `bidFlow.ts` step targets (`bid-form-plans-link`, `bid-form-count-tooling-link`). Renaming any of them silently breaks focus and landing.
 - Board links: `/bids?bidId=<id>&tab=labor` (estimate chip), `/jobs?edit=<jobId>` (job chip); form link: `/bids?tab=pricing&bidId=<id>` (price requests). e2e: `viewport-smoke.spec.ts` (board at 375 and 320 px) and `deep-links.spec.ts` (`?newBid=true&project=` opens the New Bid heading).
 
 **Effects whose deps make moves risky**
