@@ -14,14 +14,21 @@ Nothing else in the three bodies changes: the window, the residential filter, th
 
 ## Proven on prod, read only
 
-Each rewritten body was run beside the live function with the same arguments and compared with `EXCEPT` both ways: no row differs in San Antonio (the whole window, with houses, and a 30-day window), Austin, New Braunfels, San Marcos or Seguin, on the skim's two reads and on Builders. Timed with every column read:
+Each rewritten body was run beside the live function with the same arguments and compared with `EXCEPT` both ways: no row differs in San Antonio (the whole window, with houses, and a 30-day window), Austin, New Braunfels, San Marcos or Seguin, on the skim's two reads and on Builders.
 
-| Read | Before | After |
-| --- | --- | --- |
-| `research_permits`, San Antonio | 1.1 s | 42 ms |
-| `research_permits_v2`, San Antonio | 1.1 to 1.3 s | 67 ms |
-| `research_permits_v2`, Austin | 1.0 to 1.1 s | 52 ms |
-| `research_builders`, San Antonio | 2.3 to 2.8 s | 36 to 43 ms |
+Timed with every column read, twice over: as the database owner, where no row security runs, and as a signed-in dev, the way the app's reads meet it.
+
+| Read | Owner, before | Owner, after | Signed in, before | Signed in, after |
+| --- | --- | --- | --- | --- |
+| `research_permits`, San Antonio | 1.1 s | 42 ms | 2.0 s | 1.1 s |
+| `research_permits_v2`, San Antonio | 1.1 to 1.3 s | 67 ms | 2.9 s | 1.4 s |
+| `research_builders`, San Antonio | 2.3 to 2.8 s | 36 to 43 ms | 3.0 s | 0.7 s |
+| `research_permits_v2`, Austin | 1.0 to 1.1 s | 52 ms | 2.1 s | 0.75 s |
+| `research_builders`, Austin | — | — | 2.7 s | 0.28 s |
+
+## What this does not fix
+
+The gap between the two *after* columns is the access rule. The functions are `SECURITY INVOKER`, and the tables' policies call `user_can_research_permits()` bare, so Postgres asks it for every row a read touches. The Permits session's migration `*_permit_policies_once.sql` writes it as `(SELECT …)`, asked once a read. Until that is pushed a signed-in read is about half as slow as it was, not fast, and the read back as history stays held.
 
 ## Tested
 
@@ -29,4 +36,4 @@ Each rewritten body was run beside the live function with the same arguments and
 
 ## Release order
 
-Merge, `supabase db push`, then `supabase functions deploy permit-pull` (the read back, no longer refused). The client reads the same names with the same arguments, so nothing waits on the push.
+Merge, then `supabase db push`. The client reads the same names with the same arguments. `check:calls-ahead` still labels the PR *push right after the merge*, because it replaces functions the client calls.
