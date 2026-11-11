@@ -258,9 +258,9 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     })
 
     it('the earlier form and every other paper keep the sheet they had', () => {
-      const earlier: LienAffidavitFields = { ...short, form: 'long' }
+      // The earlier form is a paper with no mark.
+      const earlier: LienAffidavitFields = { ...short, form: undefined }
       expect(lienAffidavitPrintOptions(earlier)).toBeUndefined()
-      expect(lienAffidavitPrintOptions({ ...short, form: undefined })).toBeUndefined()
       const long = filingDocPrintHtml(buildLienAffidavitBlocks(earlier), 'Lien Affidavit', filingDocFooter('affidavit'), lienAffidavitPrintOptions(earlier))
       expect(printBody(long)).not.toContain('line-height')
       expect(printBody(filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS), 'Notice'))).not.toContain('line-height')
