@@ -194,7 +194,7 @@ export function QuickPriceWindow({
     if (!res.ok) setProblems((p) => ({ ...p, [r.key]: res.error }))
     else if (!res.filed) setServerAsk((a) => ({ ...a, [r.key]: { why: res.why, onFile: res.onFile } }))
     else {
-      setFiled((f) => [{ key: r.key, lineId: res.lineId, partName: part.name, houseName: house.name, price: res.price, was: res.was, note: opts.made ?? null }, ...f])
+      setFiled((f) => [{ key: r.key, lineId: res.lineId, partName: part.name, houseName: house.name, price: res.price ?? 0, was: res.was, note: opts.made ?? null }, ...f])
       setGone((g) => new Set(g).add(r.key))
       if (presetPart) {
         setTypedPrice('')

@@ -166,4 +166,12 @@ export const holdSheetLine = (supabase: Db, lineId: string, why: 'left_out' | ''
 /** Keep a person's pick of the part for a row, or undo it with null. */
 export const pickSheetLinePart = (supabase: Db, lineId: string, partId: string | null) => done(supabase.rpc('price_sheet_line_part', { p_line_id: lineId, p_part_id: partId }), 'The pick could not be kept')
 
+/** Take back every filed row of a sheet. `left` counts the rows whose price was changed since, which stay. */
+export async function takeBackSheet(supabase: Db, paperId: string): Promise<{ ok: true; restored: number; left: number } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc('price_sheet_take_back', { p_paper_id: paperId })
+  if (error) return { ok: false, error: formatErrorMessage(error, 'The sheet could not be taken back') }
+  const j = (data ?? {}) as { restored?: number; left?: number }
+  return { ok: true, restored: Number(j.restored ?? 0), left: Number(j.left ?? 0) }
+}
+
 export const discardSheet = (supabase: Db, paperId: string) => done(supabase.rpc('price_sheet_discard', { p_paper_id: paperId }), 'The sheet could not be removed')

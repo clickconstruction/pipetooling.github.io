@@ -15,7 +15,8 @@ export type CameBy = 'sheet' | 'pasted' | 'phone' | 'counter' | 'mail' | 'websit
 export type FilePriceInput = {
   supplyHouseId: string
   partId: string
-  unitPrice: number
+  /** The price as printed. Null only for a row of a sheet with no price of its own: it says which part it is. */
+  unitPrice: number | null
   pricingUnit?: PricingUnit
   /** How many book units the printed price covers, when a person answered the unit question. */
   unitFactor?: number
@@ -36,7 +37,7 @@ export type FilePriceInput = {
 }
 
 export type FilePriceResult =
-  | { ok: true; filed: true; lineId: string; paperId: string; price: number; datedOn: string; was: OnFilePrice | null }
+  | { ok: true; filed: true; lineId: string; paperId: string; /** Null when the row carried no price. */ price: number | null; datedOn: string; was: OnFilePrice | null }
   | { ok: true; filed: false; why: 'moved' | 'newer_on_file'; price: number; onFile: OnFilePrice }
   | { ok: false; error: string; notLive: boolean }
 
@@ -76,7 +77,7 @@ export async function filePriceRow(supabase: Db, input: FilePriceInput): Promise
   }
   const j = (data ?? {}) as Record<string, unknown>
   if (j.filed === true) {
-    return { ok: true, filed: true, lineId: String(j.line_id), paperId: String(j.paper_id), price: Number(j.price), datedOn: String(j.dated_on), was: onFileOf(j.was) }
+    return { ok: true, filed: true, lineId: String(j.line_id), paperId: String(j.paper_id), price: j.price == null ? null : Number(j.price), datedOn: String(j.dated_on), was: onFileOf(j.was) }
   }
   return { ok: true, filed: false, why: j.why === 'newer_on_file' ? 'newer_on_file' : 'moved', price: Number(j.price), onFile: onFileOf(j.on_file) ?? { price: 0, effectiveDate: null } }
 }

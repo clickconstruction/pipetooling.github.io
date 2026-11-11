@@ -36,6 +36,16 @@ The chips beside it say where the rows stand.
 - {{chip:yellow|14 need you}} rows ask a question.
 - {{chip:gray|6 charges stay in their bundles}} rows are not parts.
 
+## File what is ready
+
+At the top of the panel is one blue button. It says what it will do, such as {{button:blue|File 40 rows · 25 wait ▸}}.
+
+Press it. The ready rows are filed under the supply house. The rows that wait stay where they are.
+
+A line then says what was filed. If a row could not be filed, the line names it and gives the reason.
+
+Rows matched by a model number sit under **One look, then file**. Look down them once. Then press **Confirm 11 as the same parts**.
+
 ## Answer the cards
 
 The panel opens on the rows that need you. Each row is a card with one question.
@@ -50,6 +60,8 @@ Below the cards is **By fixture**. Each fixture is one line with its price each.
 
 Press a line to see its rows. A row that says **in the bundle** has no price of its own. Its fixture's subtotal covers it.
 
+That row is still worth filing. It keeps the house's number on the part, so the next sheet finds it.
+
 A fixture that does not add up says so in amber. Its rows do not sum to the subtotal the paper prints. Check the paper before you use it.
 
 ## Leave and come back
@@ -59,6 +71,14 @@ Every press saves at once. There is no Save button.
 Press **Fold ›** to put the sheet away. A chip in the title row shows it is waiting, such as {{chip:yellow|Hillcrest Supply sheet · 14 wait}}. Press the chip to open the sheet where you left it.
 
 Anyone who edits the parts book can open the chip and carry on.
+
+## Take a sheet back
+
+Filed a sheet under the wrong house? Press **Take this sheet back…** at the foot of the panel.
+
+Every price the sheet filed returns to what it was. A price someone changed since is left alone, and the panel says how many.
+
+The sheet itself stays. You can settle it and file it again.
 
 ## A sheet you already read
 

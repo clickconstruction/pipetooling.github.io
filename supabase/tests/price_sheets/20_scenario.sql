@@ -391,6 +391,60 @@ SELECT bedt.ok('anon cannot call the sheet functions',
   NOT has_function_privilege('anon', 'public.price_sheet_save(jsonb, jsonb, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_discard(uuid)', 'EXECUTE')
   AND NOT has_function_privilege('anon', 'public.price_sheet_set(uuid, jsonb)', 'EXECUTE') AND NOT has_function_privilege('anon', 'public.price_sheet_line_hold(uuid, text)', 'EXECUTE'));
 
+-- 22 · a kit row has no price: filed, it says which part it is and keeps the house's number, and writes no price.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+SET LOCAL ROLE authenticated;
+INSERT INTO public.material_parts (id, name, service_type_id) VALUES ('00000000-0000-0000-0000-00000000e003', 'B0133-ADF12 TANNER PRE-RINSE', '00000000-0000-0000-0000-00000000a001');
+INSERT INTO bed_out VALUES ('sheet2', to_jsonb(public.price_sheet_save(
+  jsonb_build_object('supply_house_id', '00000000-0000-0000-0000-00000000d002', 'number', 'Q-90001', 'dated_on', '2026-11-12'),
+  jsonb_build_array(jsonb_build_object('group_no', 1, 'tag', 'SK-3', 'label', '3 COMPARTMENT SINK', 'each_price', 386.40)),
+  jsonb_build_array(
+    jsonb_build_object('group_no', 1, 'group_tag', 'SK-3', 'line_kind', 'component', 'house_code', 'B-512207', 'description', 'AX8802XL-LR-PC ARLO SUPPLY KIT', 'qty', 1),
+    jsonb_build_object('group_no', 1, 'group_tag', 'SK-3', 'house_code', 'B-277310', 'description', 'B0133-ADF12 TANNER PRE RINSE', 'qty', 1, 'unit_price', 312.50),
+    jsonb_build_object('group_no', 1, 'group_tag', 'SK-3', 'house_code', 'B-318002', 'description', 'AX87029-BPC ARLO P-TRAP', 'qty', 1, 'unit_price', 21.40)))));
+INSERT INTO bed_out VALUES ('kit_row', public.price_row_file(jsonb_build_object(
+  'line_id', (SELECT id FROM public.supply_paper_lines WHERE house_code = 'B-512207'), 'part_id', '00000000-0000-0000-0000-00000000e001', 'came_by', 'sheet', 'matched_how', 'mfr_number')));
+SELECT bedt.ok('a kit row files with no price', (SELECT (v->>'filed')::boolean AND v->'price' = 'null'::jsonb FROM bed_out WHERE k = 'kit_row'));
+SELECT bedt.ok('the row is filed and says which part it is, with no price',
+  (SELECT filed_at IS NOT NULL AND part_id = '00000000-0000-0000-0000-00000000e001' AND matched_how = 'mfr_number' AND filed_price IS NULL FROM public.supply_paper_lines WHERE house_code = 'B-512207'));
+SELECT bedt.ok('the house''s number is kept on the part, taught by the sheet',
+  (SELECT part_id = '00000000-0000-0000-0000-00000000e001' AND taught_from = 'sheet' FROM public.supply_part_codes WHERE supply_house_id = '00000000-0000-0000-0000-00000000d002' AND code_key = 'B512207'));
+SELECT bedt.ok('no price was written for the kit row', (SELECT count(*) = 0 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e001' AND supply_house_id = '00000000-0000-0000-0000-00000000d002'));
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.price_row_file(jsonb_build_object('supply_house_id', '00000000-0000-0000-0000-00000000d002', 'part_id', '00000000-0000-0000-0000-00000000e001', 'came_by', 'pasted'));
+    RAISE EXCEPTION 'FAILED: a one-off with no price was filed';
+  EXCEPTION WHEN invalid_parameter_value THEN RAISE NOTICE 'ok: a one-off still needs its price';
+  END;
+END $$;
+
+-- 23 · a whole sheet is taken back, newest first; a price somebody changed since is left and counted.
+SELECT public.price_row_file(jsonb_build_object('line_id', (SELECT id FROM public.supply_paper_lines WHERE house_code = 'B-277310'), 'part_id', '00000000-0000-0000-0000-00000000e003', 'came_by', 'sheet'));
+SELECT public.price_row_file(jsonb_build_object('line_id', (SELECT id FROM public.supply_paper_lines WHERE house_code = 'B-318002'), 'part_id', '00000000-0000-0000-0000-00000000e002', 'came_by', 'sheet'));
+SELECT bedt.ok('three rows of the sheet are filed', (SELECT count(*) = 3 FROM public.supply_paper_lines WHERE paper_id = (SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet2') AND filed_at IS NOT NULL));
+UPDATE public.material_part_prices SET price = 22.00 WHERE part_id = '00000000-0000-0000-0000-00000000e002' AND supply_house_id = '00000000-0000-0000-0000-00000000d002';
+INSERT INTO bed_out VALUES ('back', public.price_sheet_take_back((SELECT (v #>> '{}')::uuid FROM bed_out WHERE k = 'sheet2')));
+SELECT bedt.ok('two rows come back and the changed one is left', (SELECT v = jsonb_build_object('restored', 2, 'left', 1) FROM bed_out WHERE k = 'back'));
+SELECT bedt.ok('the price the sheet filed is gone', (SELECT count(*) = 0 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e003'));
+SELECT bedt.ok('the price changed by hand stands', (SELECT price = 22.00 FROM public.material_part_prices WHERE part_id = '00000000-0000-0000-0000-00000000e002' AND supply_house_id = '00000000-0000-0000-0000-00000000d002'));
+SELECT bedt.ok('the kit row is unfiled and the number it taught is gone',
+  (SELECT filed_at IS NULL FROM public.supply_paper_lines WHERE house_code = 'B-512207')
+  AND NOT EXISTS (SELECT 1 FROM public.supply_part_codes WHERE code_key = 'B512207'));
+RESET ROLE;
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a2');
+SET LOCAL ROLE authenticated;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.price_sheet_take_back('00000000-0000-0000-0000-00000000f0ff');
+    RAISE EXCEPTION 'FAILED: a helper took a sheet back';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a helper takes no sheet back';
+  END;
+END $$;
+RESET ROLE;
+SELECT bedt.ok('anon cannot take a sheet back', NOT has_function_privilege('anon', 'public.price_sheet_take_back(uuid)', 'EXECUTE'));
+
 -- 7 · a number goes with its part.
 SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
 DELETE FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e002';

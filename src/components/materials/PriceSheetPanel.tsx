@@ -10,12 +10,13 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { batchOutcomeWords, batchWords, countedLabel } from '../../lib/batchWords'
 import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
 import { loadHouseCodes, toHouseCodes, type HouseCodeRow } from '../../lib/materials/houseCodes'
 import { indexBook, indexHouseCodes } from '../../lib/materials/partMatch'
 import { cardInput, cardLink, cardPress, CHIP_TONE } from '../../lib/materials/priceSheet/cardStyles'
 import { filePriceRow, loadBidAskedHouseIds, loadOnFilePrices, takeBackPriceRow } from '../../lib/materials/priceSheet/priceRowIo'
-import { discardSheet, holdSheetLine, loadSheet, pickSheetLinePart, setSheet, type LoadedSheet } from '../../lib/materials/priceSheet/priceSheetIo'
+import { discardSheet, holdSheetLine, loadSheet, pickSheetLinePart, setSheet, takeBackSheet, type LoadedSheet } from '../../lib/materials/priceSheet/priceSheetIo'
 import { dollars, shortDay, type OnFilePrice } from '../../lib/materials/priceSheet/rowCard'
 import { houseVerdict, type HouseVerdict } from '../../lib/materials/priceSheet/sheetHouse'
 import { planSheet, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
@@ -29,6 +30,7 @@ const HOW: Record<string, 'crosswalk' | 'mfr_number' | 'description' | 'person'>
 export const PRICE_SHEET_DOCK_WIDTH = 452
 export const PRICE_SHEET_DOCK_MIN_WINDOW = 1100
 
+const ROWS = ['row', 'rows'] as const
 const sectionHead: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
 export function PriceSheetPanel({
@@ -73,6 +75,9 @@ export function PriceSheetPanel({
   const [working, setWorking] = useState<string | null>(null)
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [otherHouse, setOtherHouse] = useState(false)
+  // One press for many rows: how far it is, and what it did.
+  const [batch, setBatch] = useState<{ done: number; total: number } | null>(null)
+  const [outcome, setOutcome] = useState<{ line: string; tone: 'success' | 'warning' | 'error'; failed: { where: string; why: string }[] } | null>(null)
   const bidId = bid?.id ?? null
 
   useEffect(() => setParts(knownParts), [knownParts])
@@ -87,7 +92,11 @@ export function PriceSheetPanel({
   }, [paperId, onGone])
 
   useEffect(() => {
-    if (initialSheet) return
+    if (initialSheet) {
+      // The sheet came in hand: only the house numbers are still to be read.
+      void loadHouseCodes(supabase).then((r) => setCodes(r.rows))
+      return
+    }
     setLoading(true)
     void reload()
   }, [reload, initialSheet])
@@ -185,7 +194,7 @@ export function PriceSheetPanel({
       lineId: r.line.id,
       supplyHouseId: houseId ?? '',
       partId: part.id,
-      unitPrice: r.line.unitPrice ?? 0,
+      unitPrice: r.line.unitPrice,
       pricingUnit: r.line.pricingUnit,
       unitFactor: opts.unitFactor,
       cameBy: 'sheet',
@@ -232,6 +241,70 @@ export function PriceSheetPanel({
     setWorking(null)
   }
 
+  /**
+   * File many rows on one press: what is ready goes, a row that fails is named with its reason and the rest go on,
+   * and a row the database holds (a big move, a newer price on file) becomes a question on its own card.
+   */
+  async function fileMany(list: PlannedRow<KnownPart>[], verb: string, past: string) {
+    const rows = list.filter((r) => r.match.part)
+    if (rows.length === 0) return
+    setWorking('batch')
+    setOutcome(null)
+    setBatch({ done: 0, total: rows.length })
+    let done = 0
+    let waits = 0
+    const failed: { where: string; why: string }[] = []
+    for (const [i, r] of rows.entries()) {
+      const res = await filePriceRow(supabase, {
+        lineId: r.line.id,
+        supplyHouseId: houseId ?? '',
+        partId: r.match.part!.id,
+        unitPrice: r.line.unitPrice,
+        pricingUnit: r.line.pricingUnit,
+        cameBy: 'sheet',
+        bidId,
+        matchedHow: r.picked ? 'person' : (HOW[r.match.how] ?? 'person'),
+      })
+      if (!res.ok) failed.push({ where: `${where(r)} · ${r.match.part!.name}`, why: res.error })
+      else if (!res.filed) {
+        waits += 1
+        setServerAsk((a) => ({ ...a, [r.line.id]: { why: res.why, onFile: res.onFile } }))
+      } else done += 1
+      setBatch({ done: i + 1, total: rows.length })
+    }
+    await reload()
+    onChanged?.()
+    const words = batchOutcomeWords({ verb, past, done, failed: failed.length, noun: ROWS })
+    setOutcome({ line: `${words.line}${waits ? ` ${waits === 1 ? '1 waits' : `${waits} wait`} on you: the price moved a lot, or a newer one is on file.` : ''}`, tone: waits && words.tone === 'success' ? 'warning' : words.tone, failed })
+    setBatch(null)
+    setWorking(null)
+  }
+
+  async function takeSheetBack() {
+    const filedCount = sheet?.lines.filter((l) => l.filedAt).length ?? 0
+    const ok = await confirmDialog({
+      title: 'Take this sheet back?',
+      message: `${filedCount === 1 ? 'The 1 row' : `The ${filedCount} rows`} this sheet filed ${filedCount === 1 ? 'comes' : 'come'} back. Each price returns to what it was before the sheet. A price somebody changed since is left as it is. The sheet stays, so you can file it again.`,
+      confirmLabel: countedLabel('Take back', filedCount, ROWS),
+      danger: true,
+    })
+    if (!ok) return
+    setWorking('sheet')
+    setOutcome(null)
+    const res = await takeBackSheet(supabase, paperId)
+    if (!res.ok) setProblem(res.error)
+    else {
+      await reload()
+      onChanged?.()
+      setOutcome({
+        line: `${res.restored === 1 ? '1 row was' : `${res.restored} rows were`} taken back.${res.left ? ` ${res.left === 1 ? '1 price was' : `${res.left} prices were`} changed since and stay as they are.` : ''}`,
+        tone: res.left ? 'warning' : 'success',
+        failed: [],
+      })
+    }
+    setWorking(null)
+  }
+
   async function removeSheet() {
     const ok = await confirmDialog({
       title: 'Remove this price sheet?',
@@ -247,7 +320,7 @@ export function PriceSheetPanel({
     setWorking(null)
   }
 
-  const where = (r: PlannedRow<KnownPart>) => {
+  function where(r: PlannedRow<KnownPart>) {
     const g = plan?.groups.find((x) => x.group.groupNo === r.line.groupNo)
     return [g?.group.tag, `row ${r.line.lineNo}`, r.line.page ? `page ${r.line.page}` : null].filter(Boolean).join(' · ')
   }
@@ -268,6 +341,7 @@ export function PriceSheetPanel({
       parts={parts}
       where={where(r)}
       noPriceNote="This row has no price of its own. It is priced in its fixture's bundle."
+      noPricePress
       onFileRow={(part, opts) => void fileRow(r, part, opts)}
       onMakeAndFile={(name) => void makeAndFile(r, name)}
       onPick={(part) => void act(r.line.id, () => pickSheetLinePart(supabase, r.line.id, part.id))}
@@ -357,6 +431,8 @@ export function PriceSheetPanel({
   const v = plan ? sheetVerdict(plan, sheet?.paper.pages ?? null) : null
   const needs = plan?.rows.filter((r) => r.bucket === 'needs_you') ?? []
   const confirm = plan?.rows.filter((r) => r.bucket === 'confirm') ?? []
+  const ready = plan?.rows.filter((r) => r.bucket === 'ready') ?? []
+  const press = batchWords({ verb: 'File', ready: ready.length, held: needs.length + confirm.length, heldWhy: { one: 'waits', many: 'wait' }, noun: ROWS })
   const houseOffers = verdict.offers.map((id) => supplyHouses.find((h) => h.id === id)).filter((h): h is House => !!h)
 
   return (
@@ -440,9 +516,37 @@ export function PriceSheetPanel({
               {v.foot ? <span style={{ color: 'var(--text-amber-800)' }}>{v.foot}</span> : null}
             </div>
 
+            {house && (ready.length > 0 || batch) ? (
+              <div data-testid="price-sheet-batch" style={{ display: 'grid', gap: '0.3rem', position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-subtle)', padding: '0.3rem 0' }}>
+                <button type="button" disabled={working != null || press.dead} onClick={() => void fileMany(ready, 'File', 'filed')} style={{ ...cardPress(working != null || press.dead, true), padding: '0.55rem 0.9rem', fontSize: '0.875rem', justifySelf: 'start' }}>
+                  {batch ? `Filing ${batch.done} of ${batch.total}…` : press.button}
+                </button>
+                {press.foot ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{press.foot}</span> : null}
+              </div>
+            ) : null}
+            {outcome ? (
+              <div role="status" data-testid="price-sheet-outcome" style={{ padding: '0.5rem 0.7rem', borderRadius: 6, fontSize: '0.8125rem', display: 'grid', gap: '0.25rem', background: outcome.tone === 'success' ? 'var(--bg-green-100)' : outcome.tone === 'warning' ? 'var(--bg-amber-100)' : 'var(--bg-red-100)' }}>
+                <span>{outcome.line}</span>
+                {outcome.failed.map((f) => (
+                  <span key={f.where} style={{ color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+                    {f.where}: {f.why}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
             {needs.length > 0 ? <span style={sectionHead}>Needs you · {needs.length}</span> : null}
             {needs.map((r) => card(r))}
-            {confirm.length > 0 ? <span style={sectionHead}>One look, then file · {confirm.length}</span> : null}
+            {confirm.length > 0 ? (
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <span style={sectionHead}>One look, then file · {confirm.length}</span>
+                {house ? (
+                  <button type="button" disabled={working != null} onClick={() => void fileMany(confirm, 'Confirm', 'confirmed')} style={cardPress(working != null, false)}>
+                    {confirm.length === 1 ? 'Confirm 1 as the same part' : `Confirm ${confirm.length} as the same parts`}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {confirm.map((r) => card(r))}
 
             {plan.groups.length > 0 ? (
@@ -458,11 +562,15 @@ export function PriceSheetPanel({
               </div>
             ) : null}
 
-            {!anyFiled ? (
+            {anyFiled ? (
+              <button type="button" disabled={working != null} onClick={() => void takeSheetBack()} style={{ ...cardLink, justifySelf: 'start' }}>
+                Take this sheet back…
+              </button>
+            ) : (
               <button type="button" disabled={working != null} onClick={() => void removeSheet()} style={{ ...cardLink, justifySelf: 'start', color: 'var(--text-red-700)' }}>
                 Remove this sheet…
               </button>
-            ) : null}
+            )}
           </>
         ) : null}
       </div>

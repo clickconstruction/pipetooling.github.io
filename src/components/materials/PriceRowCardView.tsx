@@ -32,6 +32,7 @@ export function PriceRowCardView({
   where,
   leaveLabel = 'Leave it out',
   noPriceNote = 'Type its price in the row above.',
+  noPricePress = false,
   onFileRow,
   onMakeAndFile,
   onPick,
@@ -57,6 +58,8 @@ export function PriceRowCardView({
   leaveLabel?: string
   /** What a row with no price of its own says under its part. */
   noPriceNote?: string
+  /** A sheet's kit row: with no price, its press says which part it is and keeps the house's number. */
+  noPricePress?: boolean
   onFileRow: (part: KnownPart, opts?: CardFileOpts) => void
   onMakeAndFile: (name: string) => void
   onPick: (part: KnownPart) => void
@@ -150,6 +153,18 @@ export function PriceRowCardView({
                 Keep {dollars(priceOnFile.price)}
               </button>
             ) : null}
+          </>
+        ) : part && noPricePress && c.status === 'no_price' && house ? (
+          <button type="button" disabled={dead} onClick={() => onFileRow(part)} style={cardPress(dead, true)}>
+            {busy ? 'Keeping…' : picked ? 'It is this part' : 'Same part'}
+          </button>
+        ) : null}
+        {c.status === 'new' && row.unitPrice == null && noPricePress && house ? (
+          <>
+            <input type="text" value={name} onChange={(e) => setNewName(e.target.value)} aria-label="Name in the book" style={{ ...cardInput, flex: '1 1 16rem', minWidth: 0 }} />
+            <button type="button" disabled={dead || !name.trim()} onClick={() => onMakeAndFile(name.trim())} style={cardPress(dead || !name.trim(), true)}>
+              {busy ? 'Making…' : 'New part in the book'}
+            </button>
           </>
         ) : null}
         {c.status === 'new' && row.unitPrice != null && house ? (
