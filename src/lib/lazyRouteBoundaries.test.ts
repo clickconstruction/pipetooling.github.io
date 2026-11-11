@@ -6,6 +6,7 @@ import {
   lazyRoutesWithoutSuspense,
   lazyRouteWithoutSuspenseWords,
   routesOutsideLayout,
+  routesSitInChunkBoundary,
 } from './lazyRouteBoundaries'
 
 /** A small App.tsx: the imports, the routes under test above the Layout route, and one lazy page inside the Layout. */
@@ -163,5 +164,35 @@ describe('src/App.tsx', () => {
   it('wraps every lazy route outside the Layout in a Suspense', () => {
     const atFault = lazyRoutesWithoutSuspense(source)
     expect(atFault, atFault.map(lazyRouteWithoutSuspenseWords).join('\n')).toEqual([])
+  })
+
+  it('keeps every route inside a chunk boundary, so a lost chunk never leaves an empty page', () => {
+    expect(
+      routesSitInChunkBoundary(source),
+      'src/App.tsx draws <Routes> with no <RouteChunkBoundary> around it. A page outside the Layout whose chunk the ' +
+        'newest deploy no longer serves then unmounts the whole app. Wrap <Routes> in <RouteChunkBoundary resetKey={pathname}>.',
+    ).toBe(true)
+  })
+})
+
+describe('routesSitInChunkBoundary', () => {
+  const routes = '<Routes><Route path="/b/:code" element={<Suspense fallback={null}><BoxCode /></Suspense>} /></Routes>'
+
+  it('passes when the boundary opens before the routes and closes after them', () => {
+    expect(routesSitInChunkBoundary(`<><RouteChunkBoundary resetKey={pathname}>${routes}</RouteChunkBoundary></>`)).toBe(true)
+  })
+
+  it('fails with no boundary, with one that closed before the routes, and with one only in a comment', () => {
+    expect(routesSitInChunkBoundary(`<>${routes}</>`)).toBe(false)
+    expect(routesSitInChunkBoundary(`<><RouteChunkBoundary><Toast /></RouteChunkBoundary>${routes}</>`)).toBe(false)
+    expect(routesSitInChunkBoundary(`<>{/* <RouteChunkBoundary> */}${routes}{/* </RouteChunkBoundary> */}</>`)).toBe(false)
+  })
+
+  it('does not take the Layout\'s own boundary, which sits inside a route, for one around the routes', () => {
+    expect(routesSitInChunkBoundary('<Routes><Route path="/" element={<RouteChunkBoundary><Outlet /></RouteChunkBoundary>} /></Routes>')).toBe(false)
+  })
+
+  it('fails when there are no routes to read', () => {
+    expect(routesSitInChunkBoundary('<RouteChunkBoundary><Page /></RouteChunkBoundary>')).toBe(false)
   })
 })

@@ -110,3 +110,19 @@ export function lazyRouteWithoutSuspenseWords(path: string): string {
     `Wrap the page in <Suspense fallback={null}> inside the route's element, as ${example} is.`
   )
 }
+
+/**
+ * True when `<Routes>` in `src/App.tsx` sits inside an open `<RouteChunkBoundary>`. A `<Suspense>` only answers a page
+ * that is still loading. A page whose chunk the newest deploy no longer serves throws, and with no error boundary above
+ * it React unmounts the whole app and leaves an empty page (v2.6900: a box label's scan, `/b/:code`). The Layout's own
+ * boundary sits around its outlet, below every route outside it and below the providers above it.
+ */
+export function routesSitInChunkBoundary(appSource: string): boolean {
+  const source = stripComments(appSource)
+  const routes = source.search(/<Routes[\s>]/)
+  if (routes === -1) return false
+  const before = source.slice(0, routes)
+  const after = source.slice(source.indexOf('</Routes>', routes))
+  const opened = count(before, /<RouteChunkBoundary(?=[\s>])/g) > count(before, /<\/RouteChunkBoundary\s*>/g)
+  return opened && /<\/RouteChunkBoundary\s*>/.test(after)
+}
