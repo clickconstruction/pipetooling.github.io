@@ -415,6 +415,8 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
           isSub: f.isSub,
           ...(f.homestead === true ? { homestead: true } : {}),
           ...(physicalAddress ? { claimantPhysicalAddress: physicalAddress } : {}),
+          // The county the company signs in (punch list #314), when Settings or the print press names one: both county lines print it.
+          ...((f.issuer?.signingCounty ?? '').trim() ? { signingCounty: (f.issuer?.signingCounty ?? '').trim() } : {}),
           // A job contracted with the owner names no months and no notices: neither is asked of an original contractor.
           // The months are the noticed ones inside this job's own span: a notice mailed for several jobs stores the whole paper's months on each.
           ...(f.isSub ? { workMonthsWords: describeNoticeMonths(lienAffidavitSwornMonths(f)), noticesSentWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(f.filings)) } : {}),

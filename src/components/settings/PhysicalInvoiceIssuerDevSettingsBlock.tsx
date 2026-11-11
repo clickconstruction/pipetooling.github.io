@@ -95,6 +95,19 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             A lien affidavit gives the address above as the mailing address. Type where the company is here, only when that is another place. The affidavit then prints both. Nothing else prints it.
           </p>
+          <label htmlFor="issuer-signing-county" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>County where lien papers are signed</label>
+          <input
+            id="issuer-signing-county"
+            style={{ ...inputStyle, marginBottom: '0.25rem', ...ringStyle('signingCounty') }}
+            ref={ring === 'signingCounty' ? (ringRef as React.RefObject<HTMLInputElement>) : undefined}
+            data-settings-focus="issuer.signingCounty"
+            placeholder="Travis"
+            value={draft.signingCounty ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, signingCounty: e.target.value }))}
+          />
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            The county you are in when you sign in front of the notary. A lien affidavit prints it on both county lines. It is not the property’s county. Leave it empty to write the county by hand.
+          </p>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Phone</label>
           <input
             style={{ ...inputStyle, marginBottom: '0.75rem' }}

@@ -1238,6 +1238,42 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     window.localStorage.removeItem('pt.lienHelpSheet.v1')
   })
 
+  it('a ready paper a gate has closed is not printed, the sheet says what the app checked, and the typed county prints on both county lines (punch list #314)', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    const d = three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])
+    // j652's owner turned out to be a public body after the paper was approved: it stays in Ready to file with a gate closed.
+    d.affidavitRows = d.affidavitRows.map((r) => (r.job_id === 'j652' ? { ...r, owner_public: true } : r))
+    d.affidavits = buildLienAffidavitQueue(d.affidavitRows, [ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')], TODAY)
+    expect(d.affidavits.entries.find((e) => e.jobId === 'j652')).toMatchObject({ pile: 'ready', ready: false })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    expect(bar.textContent).toContain('2 affidavits on the short form are ready to file.')
+    expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')?.textContent).toBe('1 ready affidavit is held by a gate and is left out. Its row says why.')
+    // The county box opens blank with no county in Settings, and says the notary writes it.
+    const county = bar.querySelector('[data-lien-signing-county] input') as HTMLInputElement
+    expect(county.value).toBe('')
+    expect(bar.querySelector('[data-lien-signing-county-hint]')?.textContent).toBe('Left blank, the notary writes both county lines by hand. Type the county where it is signed to print it.')
+    fireEvent.change(county, { target: { value: 'Travis' } })
+    expect(bar.querySelector('[data-lien-signing-county-hint]')?.textContent).toBe('Both county lines print Travis County. Signing somewhere else? Type that county for this print.')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    const html = openPrintMock.mock.calls[0]![0]
+    expect(html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(2)
+    expect(html.match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
+    expect(html).not.toContain('where signed')
+    expect(html).toContain('Each paper has four things to write')
+    expect(html).toContain('data-lien-help-batch-checks')
+    expect(html).toMatch(/\d clear to sign\./)
+    expect(html).toContain('1 not printed.')
+    expect(html).toMatch(/Not printed\. [^<]*public/)
+    // Only the two printed papers are filed, each with the county it printed.
+    expect(fileCopyMock.mock.calls.map(([f]) => f.jobIds)).toEqual([['j650'], ['j651']])
+    expect(fileCopyMock.mock.calls.every(([, body]) => body.html.match(/COUNTY OF TRAVIS/g)?.length === 2)).toBe(true)
+  })
+
   it('under the print press the list names a paper that takes a second sheet, by its job, and the press still prints every paper (v2.6930)', async () => {
     openPrintMock.mockClear()
     const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
