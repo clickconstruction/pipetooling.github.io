@@ -97,8 +97,8 @@ describe('the words on a second-look card', () => {
 
 describe('the two answers of a second look', () => {
   it('Keep sends it to Kept with who passed first; Pass closes it for good with an sl_ code', () => {
-    expect(secondLookVerdict('keep', null, 'Sam')).toEqual({ verdict: 'look', reason: 'Kept on a second look, after Sam passed.', reasonCode: null })
-    expect(secondLookVerdict('keep', 'too_far', null)).toEqual({ verdict: 'look', reason: 'Kept on a second look, after someone passed.', reasonCode: null })
+    expect(secondLookVerdict('keep', null, 'Sam')).toEqual({ verdict: 'look', reason: 'Marked to investigate on a second look, after Sam passed.', reasonCode: null })
+    expect(secondLookVerdict('keep', 'too_far', null)).toEqual({ verdict: 'look', reason: 'Marked to investigate on a second look, after someone passed.', reasonCode: null })
     expect(secondLookVerdict('pass', null, 'Sam')).toEqual({ verdict: 'not_for_us', reason: 'Passed on a second look.', reasonCode: 'sl_none' })
     expect(secondLookVerdict('pass', 'too_far', 'Sam')).toEqual({ verdict: 'not_for_us', reason: 'Passed on a second look: too far.', reasonCode: 'sl_too_far' })
   })
@@ -111,10 +111,10 @@ describe('the two answers of a second look', () => {
   })
 
   it('reads the bar and the caught-up state', () => {
-    expect(secondLookAnsweredWords('keep')).toBe('Kept for a closer look.')
+    expect(secondLookAnsweredWords('keep')).toBe('Marked to investigate.')
     expect(secondLookAnsweredWords('pass')).toBe('Passed again. Why?')
     expect(secondLookCaughtUpWords(0, 0)).toBe('Every permit someone else passed has had a second look.')
-    expect(secondLookCaughtUpWords(2, 5)).toBe('You answered 7 just now: 2 kept, 5 passed again.')
+    expect(secondLookCaughtUpWords(2, 5)).toBe('You answered 7 just now: 2 to investigate, 5 passed again.')
   })
 
   it('the strip draws its segment beside Skim only when something waits, or while the deck is open', () => {

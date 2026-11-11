@@ -20,12 +20,13 @@ import type { VectorReading } from '../lib/bridge/vectorReading'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
 import type { MercuryCash } from '../lib/bridge/mercuryCash'
-import { buildCashAccounts, flipAccountOut, loadBankRead, saveAccountsOut } from '../lib/bridge/cashAccounts'
+import { buildCashAccounts, flipAccountOut } from '../lib/bridge/cashAccounts'
+import { loadBankRead, saveAccountsOut } from '../lib/bridge/cashAccountsIo'
 import { carryingDay, carryingSentence, receiptsConfidence } from '../lib/bridge/cashConfidence'
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
 import { buildSoftNumbers } from '../lib/bridge/softNumbers'
 import { BridgeSoftNumbers } from '../components/bridge/BridgeSoftNumbers'
-import { WEEKLY_EMAIL_WORDS, doorFromSearch, searchAfterDoor, type DoorId } from '../lib/bridge/doors'
+import { doorFromSearch, searchAfterDoor, type DoorId } from '../lib/bridge/doors'
 import { BRIDGE_DOOR_PANEL_ID, BridgeDoors } from '../components/bridge/BridgeDoors'
 import { MONEY_LIST_DAYS, laterPress, listWindow } from '../lib/bridge/moneyLists'
 import { peopleSummary } from '../lib/bridge/peopleStrip'
@@ -1422,7 +1423,7 @@ export default function Bridge() {
 
           {/* The weekly email's switch (v2.5883): Monday 6 AM Central, off as it ships. It sat on the Monday sheet until that view retired. */}
           <div style={{ marginTop: '0.6rem' }}>
-            <BridgeWeeklySend words={WEEKLY_EMAIL_WORDS} />
+            <BridgeWeeklySend />
           </div>
                 </>
               )}

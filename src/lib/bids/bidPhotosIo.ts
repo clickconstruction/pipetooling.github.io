@@ -83,6 +83,8 @@ export interface BidPhotosRead {
   photos: BidPhotoRow[]
   /** A signed URL for each photo still in the bucket, by its id. */
   previews: Record<string, string>
+  /** How many pictures in the Drive folder this read took on as rows; the board's count is stale by that many. */
+  adopted: number
 }
 
 async function previewsFor(rows: readonly BidPhotoRow[]): Promise<Record<string, string>> {
@@ -115,20 +117,22 @@ export async function loadBidPhotos(bidId: string): Promise<BidPhotosRead> {
   let folder: BidPhotoFolderState | null = null
   let driveWhy: string | null = null
   let photos: BidPhotoRow[] | null = null
+  let adopted = 0
   try {
     const r = (await supabase.functions.invoke(FN, { body: { action: 'list', bid_id: bidId } })) as FnResult
     const problem = await fnProblem(r, 'Drive did not answer.')
     if (problem) driveWhy = problem
     else {
-      const d = (r.data ?? {}) as { folder?: BidPhotoFolderState; photos?: BidPhotoRow[] }
+      const d = (r.data ?? {}) as { folder?: BidPhotoFolderState; photos?: BidPhotoRow[]; adopted?: number }
       folder = d.folder ?? null
       photos = Array.isArray(d.photos) ? d.photos : []
+      adopted = Number(d.adopted ?? 0) || 0
     }
   } catch (e) {
     driveWhy = formatErrorMessage(e, 'Drive did not answer.')
   }
   if (photos == null) photos = await rowsFromTable(bidId)
-  return { folder, driveWhy, photos, previews: await previewsFor(photos) }
+  return { folder, driveWhy, photos, previews: await previewsFor(photos), adopted }
 }
 
 let thumbQueue: BytesQueue = makeBytesQueue({ concurrency: 6, retries: 4, cacheSize: 300 })

@@ -33,6 +33,7 @@ import {
   addPress,
   addWrites,
   addedWords,
+  driveSilentWords,
   gridHeadWords,
   gridTileWords,
   heldFilesWords,
@@ -78,6 +79,7 @@ const nameBox: CSSProperties = { width: '100%', minHeight: 40, padding: '0.4rem 
 const quiet: CSSProperties = { padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, minHeight: 32, textAlign: 'left' }
 const dropZone: CSSProperties = { border: '2px dashed var(--border-strong)', borderRadius: 10, padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-700)', background: 'var(--bg-subtle)', display: 'grid', gap: 8, justifyItems: 'center', fontSize: '0.875rem' }
 const dropOver: CSSProperties = { ...dropZone, borderColor: '#2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+const dropVeil: CSSProperties = { position: 'absolute', inset: 0, zIndex: 2, borderRadius: 10, border: '2px dashed #2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', opacity: 0.94, display: 'grid', placeItems: 'center', alignContent: 'center', gap: 8, fontSize: '1rem', pointerEvents: 'none' }
 const TONE: Record<'quiet' | 'busy' | 'good' | 'warn', CSSProperties> = {
   quiet: { color: 'var(--text-muted)' },
   busy: { color: 'var(--text-blue-700)', fontWeight: 600 },
@@ -161,6 +163,8 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
   const [over, setOver] = useState(false)
   const [open, setOpen] = useState<number | null>(null)
   const pickRef = useRef<HTMLInputElement>(null)
+  const changedRef = useRef(onChanged)
+  changedRef.current = onChanged
 
   const host = useShotTileEngine<BidPhotoTile>({
     open: true,
@@ -184,7 +188,12 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
     let live = true
     setFailure(null)
     io.load(bid.id).then(
-      (r) => live && setRead(r),
+      (r) => {
+        if (!live) return
+        setRead(r)
+        // The read took pictures on from the Drive folder: the board's count is behind until it reads again.
+        if (r.adopted > 0) changedRef.current?.()
+      },
       (e: unknown) => live && setFailure(recoveryFailureFromError(e, 'The bid’s photos did not read.')),
     )
     return () => {
@@ -324,7 +333,7 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
     <ResponsiveModalShell title={openRow ? openRow.name || BID_PHOTO_WORDS.plainName : BID_PHOTO_WORDS.title} onRequestClose={close} footer={footer} maxWidthDesktop={760} fullScreenKey="bid-photos">
       <div
         data-bid-photos-window={bid.id}
-        style={{ display: 'grid', gap: '0.75rem' }}
+        style={{ display: 'grid', gap: '0.75rem', position: 'relative' }}
         onDragOver={(e) => {
           if (!canAdd || phone) return
           e.preventDefault()
@@ -334,6 +343,12 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
         onDrop={onDrop}
       >
         <input {...host.inputProps} />
+        {over && canAdd && !openRow && photos.length > 0 ? (
+          <div style={dropVeil} data-bid-photos-drop="over" aria-hidden>
+            <CameraGlyph size={28} />
+            <b>{BID_PHOTO_WORDS.drop}</b>
+          </div>
+        ) : null}
         <input ref={pickRef} type="file" accept="image/*" multiple onChange={onPick} tabIndex={-1} aria-hidden style={{ display: 'none' }} data-testid="bid-photos-pick" />
 
         {openRow ? (
@@ -353,8 +368,8 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
               </div>
             ) : null}
             {read?.driveWhy ? (
-              <p style={{ ...S.warn, margin: 0 }} role="status">
-                Drive did not answer, so the folder is not shown: {read.driveWhy}
+              <p style={{ ...S.warn, margin: 0 }} role="status" data-bid-photos-drive-silent="">
+                {driveSilentWords(read.driveWhy)}
               </p>
             ) : null}
 
@@ -454,12 +469,6 @@ export function BidPhotosWindow({ bid, onClose, onChanged, io: ioProp }: { bid: 
                     )
                   })}
                 </div>
-                {over && canAdd ? (
-                  <div style={dropOver}>
-                    <CameraGlyph size={22} />
-                    <b>{BID_PHOTO_WORDS.drop}</b>
-                  </div>
-                ) : null}
               </>
             )}
           </>

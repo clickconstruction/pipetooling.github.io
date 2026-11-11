@@ -12,6 +12,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
+import { MaterialsPressGlyph } from '../materials/MaterialsPress'
+import { materialsPressDead, materialsPressStyle } from '../../lib/materials/materialsPressStyle'
 
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
 import { supabase } from '../../lib/supabase'
@@ -448,10 +450,11 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
               <button key={k} type="button" style={{ ...btn, minHeight: 32, fontSize: '0.8rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteFilter === k ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}), ...(k === 'due' && sum.stale.length === 0 ? { opacity: 0.5 } : {}), ...(k === 'cannot' && cannotBoxes.length === 0 ? { opacity: 0.5 } : {}) }} onClick={() => setOnSiteFilter(k)}>{label}</button>
             ))}
             </div>
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', flex: '0 0 auto' }}>
-              <button type="button" style={btn} onClick={() => setAdding((v) => !v)}>Add a container</button>
-              <button type="button" style={{ ...btn, fontWeight: 500 }} disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })}>Print labels</button>
-              <button type="button" style={{ ...btn, fontWeight: 500 }} disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })}>Print the manifest</button>
+            {/* What the desk does to this site's boxes (v2.6890): pills at the filter chips' height, each with a glyph, as the Materials strip draws Scan a label and Print labels. A chip filters; a glyph acts. */}
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }} role="group" aria-label="This site's boxes">
+              <button type="button" aria-expanded={adding} style={materialsPressStyle(32)} onClick={() => setAdding((v) => !v)} data-testid="materials-add-container"><MaterialsPressGlyph kind="add" />Add a container</button>
+              <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })} data-testid="materials-print-labels"><MaterialsPressGlyph kind="print-labels" dead={boxCount === 0} />Print labels</button>
+              <button type="button" style={{ ...materialsPressStyle(32), ...(boxCount === 0 ? materialsPressDead : {}) }} disabled={boxCount === 0} aria-disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })} data-testid="materials-print-manifest"><MaterialsPressGlyph kind="manifest" dead={boxCount === 0} />Print the manifest</button>
             </span>
           </div>
       {adding ? (

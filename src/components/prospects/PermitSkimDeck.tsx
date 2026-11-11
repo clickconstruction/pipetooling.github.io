@@ -39,7 +39,7 @@ import { reachWords, recordsReach } from '../../lib/research/permitReach'
 
 /**
  * Permits, the skim (punch list #302): step one. One permit on one card, best first, with two
- * answers, Keep or Pass, by button, and by arrow key on a desk. Nothing is typed: a pass offers
+ * answers, Investigate or Pass, by button, and by arrow key on a desk. Nothing is typed: a pass offers
  * four one-tap reasons in the bar under the next card, and the bar is the undo. An answer is held
  * a few seconds before it is written, so Undo has something to take back. The deck has no window:
  * a permit stays until it is answered. The Who line and the Property line open the two sheets.
@@ -47,7 +47,7 @@ import { reachWords, recordsReach } from '../../lib/research/permitReach'
  * left passes, with the word showing as the card passes a third of its width.
  *
  * In `second` mode the same deck deals what someone else passed (permitSecondLook): the card says
- * who passed and why, Keep sends it to Kept under this person's name, and Pass closes it for good.
+ * who passed and why, Investigate sends it to Investigating under this person's name, and Pass closes it for good.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const cardStyle: CSSProperties = { position: 'relative', touchAction: 'pan-y', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
@@ -363,7 +363,7 @@ export function PermitSkimDeck({
 
   const bar = pending && (
     <div role="status" style={{ margin: isMobile ? '0 0 10px' : '14px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-      <span>{pending.answer === 'keep' && researchers.length > 0 ? 'Kept. For?' : mode === 'second' ? secondLookAnsweredWords(pending.answer) : answeredWords(pending.answer)}</span>
+      <span>{pending.answer === 'keep' && researchers.length > 0 ? 'Investigating. Who?' : mode === 'second' ? secondLookAnsweredWords(pending.answer) : answeredWords(pending.answer)}</span>
       {pending.answer === 'keep' &&
         researchers.length > 0 &&
         [{ id: null as string | null, name: 'Anyone' }, ...researchers.slice(0, 8)].map((r) => {
@@ -449,8 +449,8 @@ export function PermitSkimDeck({
     >
       {dx !== 0 && (
         <>
-          <span aria-hidden="true" style={{ ...stamp, left: 14, color: 'var(--text-green-700)', opacity: Math.max(0, pull), transform: 'rotate(-12deg)' }}>
-            KEEP
+          <span aria-hidden="true" style={{ ...stamp, left: 14, fontSize: '1rem', color: 'var(--text-green-700)', opacity: Math.max(0, pull), transform: 'rotate(-12deg)' }}>
+            INVESTIGATE
           </span>
           <span aria-hidden="true" style={{ ...stamp, right: 14, color: 'var(--text-muted)', opacity: Math.max(0, -pull), transform: 'rotate(12deg)' }}>
             PASS
@@ -546,7 +546,7 @@ export function PermitSkimDeck({
           Pass
         </button>
         <button type="button" onClick={() => answer(top, 'keep')} style={{ background: '#16a34a', color: '#ffffff', border: 0, borderRadius: 10, minHeight: 52, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          Keep
+          Investigate
           {!isMobile && (
             <kbd aria-hidden="true" style={keyCap}>
               →
@@ -583,7 +583,7 @@ export function PermitSkimDeck({
             </div>
             {answered > 0 && (
               <div style={{ ...muted, fontSize: '0.75rem', paddingTop: 6 }}>
-                This sitting: {tally.kept} kept, {tally.passed} passed
+                This sitting: {tally.kept} to investigate, {tally.passed} passed
               </div>
             )}
           </div>
@@ -594,7 +594,7 @@ export function PermitSkimDeck({
           {!isMobile && (
             <div style={{ ...muted, fontSize: '0.75rem', display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', paddingTop: 10 }}>
               <span>← Pass</span>
-              <span>→ Keep</span>
+              <span>→ Investigate</span>
               <span>Z Undo</span>
               <span>Enter opens the building</span>
               <span>1 to 4 a pass reason</span>

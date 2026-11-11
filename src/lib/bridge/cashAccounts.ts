@@ -1,9 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '../../types/database'
-import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatMercuryAccountKind } from '../banking/accountFacts'
 import { shortK } from './headline'
-import { parseMercuryCash, type MercuryAccount, type MercuryCash } from './mercuryCash'
+import type { MercuryAccount, MercuryCash } from './mercuryCash'
 
 /**
  * Every account in the bank, and which of them count as cash on hand (v2.6838, punch list #303).
@@ -16,8 +13,8 @@ import { parseMercuryCash, type MercuryAccount, type MercuryCash } from './mercu
  * page says so wherever the figure shows. The choice is one `app_settings` row beside the
  * floor, so it stands until it is flipped back.
  *
- * This kernel is not copied to the edge functions (`mercuryCash.ts` is, so it stays as it was):
- * the weekly email still counts the whole bank until the train's last PR redraws it.
+ * Pure, and copied to the edge functions since v2.6888: the weekly email leaves out the same
+ * accounts the page does. The bank read and the save are `cashAccountsIo.ts`.
  */
 
 export const BRIDGE_ACCOUNTS_OUT_SETTING_KEY = 'bridge_cash_accounts_out_v1'
@@ -113,29 +110,10 @@ export function buildCashAccounts(input: { bank: MercuryCash; names: ReadonlyMap
   return { rows, wholeUsd, countedUsd, leftOutUsd, leftOutCount: left.length, note, lines }
 }
 
-/** The bank with the left-out accounts taken off: what the forecast and the page's Monday sheet start from. */
+/** The bank with the left-out accounts taken off, for a reader that wants the accounts and not the note. */
 export function countedCash(bank: MercuryCash, out: ReadonlyArray<string>): MercuryCash {
   const off = new Set(out)
   const left = bank.accounts.filter((a) => off.has(a.id))
   if (left.length === 0) return bank
   return { usd: bank.usd - left.reduce((s, a) => s + a.currentBalance, 0), accounts: bank.accounts.filter((a) => !off.has(a.id)), readAtIso: bank.readAtIso }
-}
-
-export type BankRead = { cash: MercuryCash; names: Map<string, string>; out: string[] }
-
-/** The bank's accounts with their names, and the saved choice of which count: one call to the bank, one row read. */
-export async function loadBankRead(db: SupabaseClient<Database>): Promise<BankRead> {
-  const [fn, row] = await Promise.all([
-    db.functions.invoke('get-mercury-account-balances', { body: {} }),
-    withSupabaseRetry(async () => db.from('app_settings').select('value_text').eq('key', BRIDGE_ACCOUNTS_OUT_SETTING_KEY).maybeSingle(), 'bridge accounts left out') as Promise<{ value_text: string | null } | null>,
-  ])
-  if (fn.error) throw new Error(fn.error.message)
-  return { cash: parseMercuryCash(fn.data, new Date().toISOString()), names: parseBankNicknames(fn.data), out: parseAccountsOut(row?.value_text) }
-}
-
-export async function saveAccountsOut(db: SupabaseClient<Database>, ids: ReadonlyArray<string>): Promise<void> {
-  await withSupabaseRetry(
-    async () => db.from('app_settings').upsert({ key: BRIDGE_ACCOUNTS_OUT_SETTING_KEY, value_text: accountsOutText(ids) }, { onConflict: 'key' }),
-    'save bridge accounts left out',
-  )
 }

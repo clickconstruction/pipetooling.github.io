@@ -127,6 +127,16 @@ export async function moveFolder(token: string, id: string, fromParent: string |
   await drivePatch(token, id, `&addParents=${encodeURIComponent(toParent)}${fromParent ? `&removeParents=${encodeURIComponent(fromParent)}` : ''}`, {})
 }
 
+/** A file out of the folders it sits in and into another, under a new name when one is given; its id and every link to it stay (punch list #297). */
+export async function moveFile(token: string, id: string, fromParents: readonly string[], toParent: string, name?: string): Promise<void> {
+  const remove = fromParents.length > 0 ? `&removeParents=${encodeURIComponent(fromParents.join(','))}` : ''
+  try {
+    await drivePatch(token, id, `&addParents=${encodeURIComponent(toParent)}${remove}`, name ? { name } : {})
+  } catch (e) {
+    throw new Error((e instanceof Error ? e.message : String(e)).replace('when the app placed a folder', 'when the app moved a file'))
+  }
+}
+
 /** A folder under a new name; its id and every link to it stay. */
 export async function renameFolder(token: string, id: string, name: string): Promise<void> {
   await drivePatch(token, id, '', { name })

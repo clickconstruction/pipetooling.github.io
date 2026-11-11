@@ -59,6 +59,7 @@ export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYm
     // A paper keeps the form it was drafted on (punch list #305); the short form reads the job's recorded notices.
     form: lienAffidavitFormForItem(entry.item),
     filings: data.filingsByJob[jobId] ?? [],
+    homestead: property.homestead,
   })
   const html = filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] }))
   return [{ key: 'affidavit', label: 'Page 1 of 1 · the affidavit', html }]

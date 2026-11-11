@@ -284,6 +284,28 @@ describe('the short form is one paper on the desk and in the window (punch list 
     ])
   })
 
+  it('a homestead: the flag reaches the paper from the desk and from the window alike, and never a paper on the earlier form', () => {
+    const desk = buildLienDeskAffidavitFields({
+      job: { ...worked, job_name: shared.jobName, job_address: shared.jobAddress, customer_name: shared.customerName, revenue: 595, payments_made: 0, service_type: { name: 'Plumbing' } },
+      entry: { isSub: true, openBalance: 595, lastMonth: '2026-08', gates },
+      gc: { name: shared.originalContractorName, address: shared.originalContractorAddress },
+      ...property,
+      correction: null,
+      contactPerson: shared.contactPerson,
+      issuer,
+      todayYmd: shared.todayYmd,
+      filings,
+      homestead: true,
+    })
+    const win = buildLienWindowAffidavitFields({ ...shared, form: undefined, isSub: true, openBalance: 595, issuer, job: worked, workMonths: null, filings, homestead: true })
+    expect(win).toEqual(desk)
+    expect(desk.homestead).toBe(true)
+    expect(filingDocText(buildLienAffidavitBlocks(desk)).startsWith('NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.')).toBe(true)
+    // Not a homestead: the field is left off, so the paper and a stored copy read as before.
+    expect('homestead' in shortDesk()).toBe(false)
+    expect('homestead' in buildLienWindowAffidavitFields({ ...shared, form: 'long', isSub: true, openBalance: 595, issuer, job: worked, workMonths: null, filings, homestead: true })).toBe(false)
+  })
+
   it('a job contracted with the owner: four paragraphs, no months and no notices', () => {
     // The window hands over its own company as the original contractor; the recipe names it the same way on both.
     expect(buildLienWindowAffidavitFields({ ...shared, form: undefined, isSub: false, originalContractorName: 'Sample Plumbing LLC', originalContractorAddress: '', openBalance: 595, issuer, job: worked, workMonths: null, filings })).toEqual(shortDesk({ isSub: false }))

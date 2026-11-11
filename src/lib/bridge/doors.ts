@@ -48,12 +48,3 @@ export function searchAfterDoor(search: string, pressed: DoorId, open: DoorId | 
 export function doorsToDraw(softCount: number): Door[] {
   return BRIDGE_DOORS.flatMap((d) => (d.id !== 'soft' ? [d] : softCount > 0 ? [{ ...d, name: `${softCount} soft ${softCount === 1 ? 'number' : 'numbers'}` }] : []))
 }
-
-/**
- * The weekly email's words on the page, now that the Monday sheet is no longer a view of it. The
- * mail still carries that sheet until the train's last PR redraws it as the first screen.
- */
-export const WEEKLY_EMAIL_WORDS = {
-  what: 'Every Monday at 6 AM Central the app builds a one page sheet of the Bridge. The owner and every dev get it at their own address.',
-  state: (on: boolean): string => (on ? 'On: the sheet goes to the owner and every dev on Monday at 6 AM Central.' : 'Off: nothing goes out on Monday.'),
-} as const

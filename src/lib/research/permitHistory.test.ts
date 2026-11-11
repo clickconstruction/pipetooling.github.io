@@ -11,10 +11,10 @@ describe('one line of a permit history (punch list #302)', () => {
   it('says who moved it, where to, when, and why', () => {
     expect(historyWords(ev())).toBe('Sam passed, Nov 9')
     expect(historyWords(ev({ reason: 'Passed on the skim: too far.', reason_code: 'too_far' }))).toBe('Sam passed, Nov 9: too far')
-    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on the skim.' }))).toBe('Sam kept it, Nov 9')
-    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on the skim.', for_name: 'Kim' }))).toBe('Sam kept it for Kim, Nov 9')
-    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on a second look, after Sam passed.', by_name: 'Eve' }))).toBe('Eve kept it on a second look, Nov 9')
-    expect(historyWords(ev({ verdict: 'look', reason: 'Kept from Passed, after Sam passed.', by_name: 'Eve' }))).toBe('Eve kept it from Passed, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Marked to investigate on the skim.' }))).toBe('Sam chose to investigate, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on the skim.', for_name: 'Kim' }))).toBe('Sam chose to investigate for Kim, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Marked to investigate on a second look, after Sam passed.', by_name: 'Eve' }))).toBe('Eve chose to investigate on a second look, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Marked to investigate from Passed, after Sam passed.', by_name: 'Eve' }))).toBe('Eve chose to investigate from Passed, Nov 9')
     expect(historyWords(ev({ verdict: 'look', reason: 'Handed to Kim.', for_name: 'Kim' }))).toBe('Sam handed it to Kim, Nov 9')
     expect(historyWords(ev({ verdict: 'look', reason: 'Handed to nobody yet.' }))).toBe('Sam handed it to nobody yet, Nov 9')
     expect(historyWords(ev({ reason: 'Passed on a second look: not our work.', reason_code: 'sl_not_our_work', by_name: 'Eve' }))).toBe('Eve passed again, Nov 9: not our work')
@@ -25,6 +25,12 @@ describe('one line of a permit history (punch list #302)', () => {
     expect(historyWords(ev({ by_name: null, reason: 'A parking lot, no building.' }))).toBe('Someone passed, Nov 9: A parking lot, no building')
   })
 
+  it('an answer stored before the rename (Kept) reads the same as one stored since', () => {
+    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on the skim.' }))).toBe('Sam chose to investigate, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Kept on a second look, after Sam passed.', by_name: 'Eve' }))).toBe('Eve chose to investigate on a second look, Nov 9')
+    expect(historyWords(ev({ verdict: 'look', reason: 'Kept from Passed, after Sam passed.', by_name: 'Eve' }))).toBe('Eve chose to investigate from Passed, Nov 9')
+  })
+
   it('reads the day on the company calendar, not the UTC one', () => {
     // 03:00 UTC on the 10th is still the 9th in San Antonio.
     expect(historyWords(ev({ decided_at: '2026-11-10T03:00:00Z' }))).toBe('Sam passed, Nov 9')
@@ -32,14 +38,14 @@ describe('one line of a permit history (punch list #302)', () => {
 
   it('keeps a typed reason whole and drops the stock words', () => {
     expect(historyReason(ev({ reason: '  Owner builds   their own.  ' }))).toBe('Owner builds their own')
-    expect(historyReason(ev({ reason: 'Kept on the skim.' }))).toBeNull()
+    expect(historyReason(ev({ reason: 'Marked to investigate on the skim.' }))).toBeNull()
     expect(historyReason(ev({ reason: '' }))).toBeNull()
     expect(historyVerb(ev({ verdict: 'something_new' }))).toBe('something_new')
   })
 })
 
 describe('what a card shows of it', () => {
-  const three = [ev({ id: 'a', decided_at: '2026-11-07T15:00:00Z', verdict: 'look', reason: 'Kept on the skim.' }), ev({ id: 'c', decided_at: '2026-11-09T15:00:00Z', by_name: 'Eve' }), ev({ id: 'b', decided_at: '2026-11-08T15:00:00Z', verdict: 'back', reason: 'Put back on the skim.' })]
+  const three = [ev({ id: 'a', decided_at: '2026-11-07T15:00:00Z', verdict: 'look', reason: 'Marked to investigate on the skim.' }), ev({ id: 'c', decided_at: '2026-11-09T15:00:00Z', by_name: 'Eve' }), ev({ id: 'b', decided_at: '2026-11-08T15:00:00Z', verdict: 'back', reason: 'Put back on the skim.' })]
 
   it('the newest two lines, and how many older ones the sheet holds', () => {
     expect(cardHistory(three)).toEqual({ lines: [{ id: 'c', words: 'Eve passed, Nov 9' }, { id: 'b', words: 'Sam put it back on the skim, Nov 8' }], earlier: 1 })
@@ -49,7 +55,7 @@ describe('what a card shows of it', () => {
   })
 
   it('a second-look card skips the pass its amber line already says', () => {
-    expect(cardHistory(three, 2, 1)).toEqual({ lines: [{ id: 'b', words: 'Sam put it back on the skim, Nov 8' }, { id: 'a', words: 'Sam kept it, Nov 7' }], earlier: 0 })
+    expect(cardHistory(three, 2, 1)).toEqual({ lines: [{ id: 'b', words: 'Sam put it back on the skim, Nov 8' }, { id: 'a', words: 'Sam chose to investigate, Nov 7' }], earlier: 0 })
     expect(cardHistory([ev()], 2, 1)).toEqual({ lines: [], earlier: 0 })
   })
 })
@@ -68,8 +74,8 @@ describe('a keep from the Passed list', () => {
   })
 
   it('is stored with whose pass it overturned', () => {
-    expect(keepFromPassedReason(row({}))).toBe('Kept from Passed, after Sam passed.')
-    expect(keepFromPassedReason(row({ verdict_by_name: null }))).toBe('Kept from Passed, after someone passed.')
-    expect(keepFromPassedReason(row({ verdict_reason_code: 'np_no_answer' }))).toBe('Kept from Passed, after Sam stopped pursuing it.')
+    expect(keepFromPassedReason(row({}))).toBe('Marked to investigate from Passed, after Sam passed.')
+    expect(keepFromPassedReason(row({ verdict_by_name: null }))).toBe('Marked to investigate from Passed, after someone passed.')
+    expect(keepFromPassedReason(row({ verdict_reason_code: 'np_no_answer' }))).toBe('Marked to investigate from Passed, after Sam stopped pursuing it.')
   })
 })

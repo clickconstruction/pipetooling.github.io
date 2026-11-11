@@ -169,14 +169,14 @@ export type PassReasonCode = (typeof PASS_REASONS)[number]['code']
 
 /** The verdict an answer writes: Keep is the ledger's `look`, Pass its `not_for_us`, each with words the next reader can read. */
 export function skimVerdict(answer: SkimAnswer, reasonCode: PassReasonCode | null): { verdict: PermitVerdict; reason: string } {
-  if (answer === 'keep') return { verdict: 'look', reason: 'Kept on the skim.' }
+  if (answer === 'keep') return { verdict: 'look', reason: 'Marked to investigate on the skim.' }
   const reason = PASS_REASONS.find((r) => r.code === reasonCode)
   return { verdict: 'not_for_us', reason: reason ? `Passed on the skim: ${reason.words.toLowerCase()}.` : 'Passed on the skim.' }
 }
 
 /** What the bar under the next card says after an answer. */
 export function answeredWords(answer: SkimAnswer): string {
-  return answer === 'keep' ? 'Kept for a closer look.' : 'Passed. Why?'
+  return answer === 'keep' ? 'Marked to investigate.' : 'Passed. Why?'
 }
 
 /** What a key does on a desk. Null for a key the skim does not use. */
@@ -199,11 +199,11 @@ export const SKIM_HOLD_MS = 15_000
 /** The caught-up state's second line: what this sitting answered, and when more arrives. */
 export function caughtUpWords(kept: number, passed: number): string {
   const n = kept + passed
-  const sitting = n === 0 ? 'Every permit the feed brought has an answer.' : `You answered ${n} just now: ${kept} kept, ${passed} passed.`
+  const sitting = n === 0 ? 'Every permit the feed brought has an answer.' : `You answered ${n} just now: ${kept} to investigate, ${passed} passed.`
   return `${sitting} The next pull is tomorrow at 5:30 AM.`
 }
 
 /** The press under the caught-up words: where the kept ones wait. Null when nothing is kept. */
 export function digInWords(keptCount: number): string | null {
-  return keptCount > 0 ? `Dig in · ${keptCount} kept` : null
+  return keptCount > 0 ? `Dig in · ${keptCount} to investigate` : null
 }

@@ -91,8 +91,8 @@ describe('the four places (punch list #302)', () => {
     expect(keptRows(rows, 25_000, 'mine', 'eve', '2026-11-10').map((r) => r.id)).toEqual(['due'])
     expect(keptRows(rows, 25_000, 'nobody', 'eve', '2026-11-10').map((r) => r.id)).toEqual(['old'])
     expect(keptChipCounts(rows, 25_000, 'eve', '2026-11-10')).toEqual({ everyone: 3, mine: 1, nobody: 1, again: 1 })
-    expect(keptByWords(row({ verdict_by_name: 'Casey', verdict_for_name: 'Sam', verdict_at: '2026-11-10T08:00:00Z' }), '2026-11-10')).toBe('Kept by Casey for Sam, today')
-    expect(keptByWords(row({ verdict_by_name: 'Casey', verdict_at: '2026-11-07T08:00:00Z' }), '2026-11-10')).toBe('Kept by Casey, for nobody yet, 3 days ago')
+    expect(keptByWords(row({ verdict_by_name: 'Casey', verdict_for_name: 'Sam', verdict_at: '2026-11-10T08:00:00Z' }), '2026-11-10')).toBe('Marked to investigate by Casey for Sam, today')
+    expect(keptByWords(row({ verdict_by_name: 'Casey', verdict_at: '2026-11-07T08:00:00Z' }), '2026-11-10')).toBe('Marked to investigate by Casey, for nobody yet, 3 days ago')
   })
 
   it('Closed sorts by why and finds a street, a builder or a number', () => {
@@ -190,7 +190,7 @@ describe('the nudge and the count', () => {
       pass_reasons: [{ code: 'not_our_work', n: 88 }, { code: 'too_small', n: 41 }, { code: 'none', n: 16 }, { code: 'np_no_answer', n: 2 }],
       pursue_for: [{ code: 'this_job', n: 4 }, { code: 'next_jobs', n: 3 }],
     }
-    expect(funnelTiles(f).map((t) => `${t.n} ${t.words}`)).toEqual(['212 arrived', '198 skimmed', '31 kept', '7 pursuing', '3 bid', '1 won'])
+    expect(funnelTiles(f).map((t) => `${t.n} ${t.words}`)).toEqual(['212 arrived', '198 skimmed', '31 investigating', '7 pursuing', '3 bid', '1 won'])
     expect(funnelLines(f)).toEqual([
       { label: 'Skimmed by', words: 'Sam 120 · Jordan 69 · Casey 9' },
       { label: 'Passed, why', words: 'not our work 88 · too small 41 · no reason given 16 · could not reach anyone 2' },

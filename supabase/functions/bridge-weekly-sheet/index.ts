@@ -1,11 +1,12 @@
 /**
- * bridge-weekly-sheet (v2.5883): the weekly send of the Bridge's Monday sheet. On Monday at 6 AM Central the run
- * builds the sheet the page shows (`buildSheetFromReads` over `loadMondaySheetReads`, the copy of the kernels, the
- * same reads the page makes, as the service role) and mails it to the owner and every dev with a real account (the
- * Bridge's own audience since v2.6763, `BRIDGE_ROLES`), each to their own
- * address, and never to anyone else (`weeklySendRecipients`). The bank is read from Mercury with the API key
- * (`_shared/mercuryAccounts.ts`), as `get-mercury-account-balances` reads it; ZZ test jobs stay out, as they do for
- * a dev who has not chosen to show them.
+ * bridge-weekly-sheet (v2.5883): the Bridge's weekly email. On Monday at 6 AM Central the run builds the page's first
+ * screen (since v2.6888: the three tiles, the strip of pipe and the week's call, `buildWeekMailFromReads` over
+ * `loadMondaySheetReads`, the copy of the kernels, the same reads the page makes, as the service role) and mails it
+ * to the owner and every dev with a real account (the Bridge's own audience since v2.6763, `BRIDGE_ROLES`), each to
+ * their own address, and never to anyone else (`weeklySendRecipients`). The bank is read from Mercury with the API
+ * key (`_shared/mercuryAccounts.ts`), as `get-mercury-account-balances` reads it, and the accounts the owner left out
+ * of cash on hand on the page (`bridge_cash_accounts_out_v1`) are left out here; ZZ test jobs stay out, as they do
+ * for a dev who has not chosen to show them. The mail records nothing: its press opens the Bridge.
  *
  * Modes on the POST:
  * - the cron (no body, or `{}`): X-Cron-Secret. The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while
@@ -13,12 +14,12 @@
  *   the tick that is 6 AM Central (`weeklySendTickNow`), and sends nothing twice on one day (`alreadySentToday`, from
  *   the last run it keeps in `bridge_weekly_sheet_last_run_v1`).
  * - `{ "dry": true }`: the cron secret, or the owner or a dev signed in on a real account. Any hour, switch on or off. Builds the
- *   sheet and answers the recipients, the subject, the text and the html, what could not be read, and each read's
+ *   mail and answers the recipients, the subject, the text and the html, what could not be read, and each read's
  *   error; sends nothing and writes nothing.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY (a dev's dry run), RESEND_API_KEY, CRON_SECRET,
- * MERCURY_API_KEY (the bank; without it the typed figure stands in and the sheet says the bank was not read),
- * APP_ORIGIN (the sheet's link to the full Bridge). config.toml keeps verify_jwt = false: the cron sends no JWT.
+ * MERCURY_API_KEY (the bank; without it the typed figure stands in and the mail says the bank was not read),
+ * APP_ORIGIN (the mail's link to the Bridge). config.toml keeps verify_jwt = false: the cron sends no JWT.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -28,8 +29,10 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import type { Database } from '../../../src/types/database.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { loadMondaySheetReads } from '../_shared/gcKernels/lib/bridge/sheetReads.ts'
-import { buildSheetFromReads } from '../_shared/gcKernels/lib/bridge/sheetBuild.ts'
-import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../_shared/gcKernels/lib/bridge/mondaySheet.ts'
+import { buildWeekMailFromReads } from '../_shared/gcKernels/lib/bridge/sheetBuild.ts'
+import { weekMailHtml, weekMailSubject, weekMailText } from '../_shared/gcKernels/lib/bridge/weekMail.ts'
+import { BRIDGE_ACCOUNTS_OUT_SETTING_KEY, parseAccountsOut, parseBankNicknames } from '../_shared/gcKernels/lib/bridge/cashAccounts.ts'
+import { parseMoveMarks, type MoveMark } from '../_shared/gcKernels/lib/bridge/callPeople.ts'
 import { parseMercuryCash, type MercuryCash } from '../_shared/gcKernels/lib/bridge/mercuryCash.ts'
 import { readZzTestJobRows } from '../_shared/gcKernels/lib/jobs/zzTestJobReads.ts'
 import { BRIDGE_ROLES, WEEKLY_SHEET_LAST_RUN_KEY, WEEKLY_SHEET_ON_KEY, alreadySentToday, isBridgeRole, parseWeeklySendRun, weeklySendRecipients, weeklySendTickNow, weeklySheetIsOn, type WeeklySendRun } from '../_shared/gcKernels/lib/bridge/weeklySend.ts'
@@ -62,17 +65,25 @@ async function mayDryRun(req: Request, admin: Admin, supabaseUrl: string, cronOk
   return isBridgeRole(who?.role) && !who?.archived_at
 }
 
-/** The bank through Mercury's API, or null with the reason when it cannot be read. */
-async function readBank(now: Date): Promise<{ bank: MercuryCash | null; problem: string | null }> {
+/** The bank through Mercury's API with each account's name there, or null with the reason when it cannot be read. */
+async function readBank(now: Date): Promise<{ bank: MercuryCash | null; names: Map<string, string>; problem: string | null }> {
+  const none = new Map<string, string>()
   const key = Deno.env.get('MERCURY_API_KEY')?.trim()
-  if (!key) return { bank: null, problem: 'MERCURY_API_KEY not configured' }
+  if (!key) return { bank: null, names: none, problem: 'MERCURY_API_KEY not configured' }
   try {
     const r = await fetchMercuryAccounts(key)
-    if (!r.ok) return { bank: null, problem: `${r.error}: ${r.detail}` }
-    return { bank: parseMercuryCash({ ok: true, accounts: r.accounts, totalCurrentBalance: r.totalCurrentBalance }, now.toISOString()), problem: null }
+    if (!r.ok) return { bank: null, names: none, problem: `${r.error}: ${r.detail}` }
+    return { bank: parseMercuryCash({ ok: true, accounts: r.accounts, totalCurrentBalance: r.totalCurrentBalance }, now.toISOString()), names: parseBankNicknames({ accounts: r.accounts }), problem: null }
   } catch (e) {
-    return { bank: null, problem: e instanceof Error ? e.message : String(e) }
+    return { bank: null, names: none, problem: e instanceof Error ? e.message : String(e) }
   }
+}
+
+/** The Done presses people made on the newest calls' moves, as the page's card reads them. */
+async function readMoveMarks(admin: Admin): Promise<MoveMark[]> {
+  const { data, error } = await admin.from('bridge_calls').select('id, moves').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(6)
+  if (error) throw new Error(error.message)
+  return parseMoveMarks(data ?? [])
 }
 
 serve(async (req) => {
@@ -93,7 +104,7 @@ serve(async (req) => {
 
     const now = new Date()
     const today = todayYmdInAppTz(now)
-    const { data: settingRows, error: settingError } = await admin.from('app_settings').select('key, value_text').in('key', [WEEKLY_SHEET_ON_KEY, WEEKLY_SHEET_LAST_RUN_KEY])
+    const { data: settingRows, error: settingError } = await admin.from('app_settings').select('key, value_text').in('key', [WEEKLY_SHEET_ON_KEY, WEEKLY_SHEET_LAST_RUN_KEY, BRIDGE_ACCOUNTS_OUT_SETTING_KEY])
     if (settingError) throw new Error(`app_settings: ${settingError.message}`)
     const setting = (key: string) => settingRows?.find((r) => r.key === key)?.value_text ?? null
     const on = weeklySheetIsOn(setting(WEEKLY_SHEET_ON_KEY))
@@ -101,7 +112,7 @@ serve(async (req) => {
     if (!dry) {
       if (!on) return json({ ok: true, ran: false, why: 'The weekly email is off.' })
       if (!weeklySendTickNow(now)) return json({ ok: true, ran: false, why: 'Not Monday 6 AM Central. The other tick runs.' })
-      if (alreadySentToday(lastRun, today)) return json({ ok: true, ran: false, why: `The sheet went today already, to ${lastRun?.sent.length ?? 0}.` })
+      if (alreadySentToday(lastRun, today)) return json({ ok: true, ran: false, why: `The email went today already, to ${lastRun?.sent.length ?? 0}.` })
     }
 
     // Who hears it: the owner and every dev with a real account and an address, nobody else.
@@ -109,9 +120,9 @@ serve(async (req) => {
     if (usersError) throw new Error(`users: ${usersError.message}`)
     const to = weeklySendRecipients(userRows ?? [])
 
-    // The sheet, from the page's reads as the service role.
+    // The first screen, from the page's reads as the service role.
     const problems: Array<{ what: string; error: string }> = []
-    const { bank, problem: bankProblem } = await readBank(now)
+    const { bank, names: bankNames, problem: bankProblem } = await readBank(now)
     if (bankProblem) problems.push({ what: 'the bank', error: bankProblem })
     const zzTestJobIds = new Set((await readZzTestJobRows(admin)).map((r) => r.id))
     const reads = await loadMondaySheetReads(admin, {
@@ -121,12 +132,20 @@ serve(async (req) => {
       onProblem: (what, error) => problems.push({ what, error: error instanceof Error ? error.message : String(error) }),
     })
     if (bankProblem) reads.gaps.unshift('the bank')
-    const sheet = buildSheetFromReads(reads)
+    let marks: MoveMark[] = []
+    try {
+      marks = await readMoveMarks(admin)
+    } catch (e) {
+      reads.gaps.push('the Done presses')
+      problems.push({ what: 'the Done presses', error: e instanceof Error ? e.message : String(e) })
+    }
+    // Cash on hand leaves out the accounts the owner switched off on the page.
+    const mail = buildWeekMailFromReads(reads, { accountsOut: parseAccountsOut(setting(BRIDGE_ACCOUNTS_OUT_SETTING_KEY)), bankNames, marks })
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
     const url = `${origin}/bridge`
-    const subject = mondaySheetSubject(sheet)
-    const html = mondaySheetHtml(sheet, url)
-    const text = mondaySheetText(sheet, url)
+    const subject = weekMailSubject(mail)
+    const html = weekMailHtml(mail, url)
+    const text = weekMailText(mail, url)
     for (const p of problems) console.warn(`[bridge-weekly-sheet] not read: ${p.what}: ${p.error}`)
 
     if (dry) return json({ ok: true, dry: true, on, to, subject, text, html, gaps: reads.gaps, problems, lastRun })

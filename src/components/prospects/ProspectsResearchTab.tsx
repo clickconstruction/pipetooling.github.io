@@ -45,6 +45,7 @@ import {
 import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, loadResearchers, pullPermitsNow, putBackPermit, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
+import { PermitFindPanel } from './PermitFindPanel'
 import { WhoPulledItSheet } from './WhoPulledItSheet'
 import { PermitBuildingSheet } from './PermitBuildingSheet'
 import { PermitSkimDeck, type AnsweredPatch, type Researcher } from './PermitSkimDeck'
@@ -111,7 +112,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const isMobile = useIsMobile()
   // Skim is step one and where the tab opens; Kept, Pursuing and Closed are where an answered permit sits;
   // the ledger and the map are the wide view of a window of the same rows.
-  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'builders' | 'ledger' | 'map'>('skim')
+  const [view, setView] = useState<'skim' | 'kept' | 'pursuing' | 'closed' | 'second' | 'find' | 'builders' | 'ledger' | 'map'>('skim')
   const wide = view === 'ledger' || view === 'map'
   // A deck is open: the skim, or the second look at what someone else passed.
   const onDeck = view === 'skim' || view === 'second'
@@ -174,9 +175,22 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     }
   }, [city, windowDays, residential, todayYmd, authUserId])
 
+  // The ledger's rows are a heavy read, and so is the every-permit read below. Run together they
+  // crowd each other past the database's time limit, so the ledger reads only where it is drawn
+  // (Ledger and Map), and the line that says when the feed was pulled reads on its own, lightly.
+  const loadPull = useCallback(async () => {
+    try {
+      setPull(await loadLatestPull(city))
+    } catch {
+      // The Pulled line stands empty; the lists do not wait on it.
+    }
+  }, [city])
   useEffect(() => {
-    void load()
-  }, [load])
+    void loadPull()
+  }, [loadPull])
+  useEffect(() => {
+    if (wide) void load()
+  }, [load, wide])
 
   const loadAll = useCallback(async () => {
     setAllError(null)
@@ -191,6 +205,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   useEffect(() => {
     void loadAll()
   }, [loadAll])
+  /** After a write: the every-permit read, then the ledger's where it is on screen. One at a time. */
+  const reloadLists = async () => {
+    await loadAll()
+    if (wide) await load()
+  }
   useEffect(() => {
     let live = true
     void loadResearchers().then((list) => live && setResearchers(list))
@@ -238,7 +257,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   }
   /** A closed permit goes to Kept, by anyone. The words say whose answer it overturned, for the history. */
   const keepFromPassed = (row: ResearchPermitRow) => {
-    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: keepFromPassedReason(row), lookAgainOn: null, prospectId: null, userId: authUserId }), `${row.address ?? row.permit_number} is kept.`)
+    void runOn(row, () => recordVerdict({ permitId: row.id, verdict: 'look', reason: keepFromPassedReason(row), lookAgainOn: null, prospectId: null, userId: authUserId }), `${row.address ?? row.permit_number} is marked to investigate.`)
   }
   const closeOut = async (row: ResearchPermitRow, out: PermitCloseOut) => {
     setSaving(true)
@@ -290,8 +309,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       }
       await recordVerdict({ permitId: row.id, verdict: d.verdict, reason: d.reason, lookAgainOn: d.lookAgainOn, prospectId, userId: authUserId })
       setDeciding(null)
-      await load()
-      void loadAll()
+      await reloadLists()
       setCountKey((k) => k + 1)
     } catch (e) {
       setDecideError(formatErrorMessage(e))
@@ -307,8 +325,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       const kept = out.feeds.reduce((n, f) => n + f.kept, 0)
       const stopped = out.feeds.find((f) => f.error)
       showToast(stopped ? `The pull kept ${kept} rows and stopped on ${stopped.source}: ${stopped.error}` : `Pulled ${kept} rows from the feed.`, stopped ? 'warning' : 'success')
-      await load()
-      void loadAll()
+      void loadPull()
+      await reloadLists()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     } finally {
@@ -383,10 +401,24 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       </div>
 
       <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, WebkitOverflowScrolling: 'touch', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
+        {/* Find a permit: first on the strip, so a phone shows it without a scroll. */}
+        <button
+          type="button"
+          aria-label="Find a permit"
+          aria-pressed={view === 'find'}
+          title="Find a permit on any list, in any city"
+          onClick={() => setView('find')}
+          style={{ background: view === 'find' ? 'var(--text-strong)' : 'var(--bg-200)', color: view === 'find' ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, width: 36, height: 36, minHeight: 36, padding: 0, cursor: 'pointer', flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M16.5 16.5 21 21" />
+          </svg>
+        </button>
         {(
           [
             { v: 'skim', words: 'Skim', n: strip.skim },
-            { v: 'kept', words: 'Kept', n: strip.kept },
+            { v: 'kept', words: 'Investigating', n: strip.kept },
             { v: 'pursuing', words: 'Pursuing', n: strip.pursuing },
             { v: 'closed', words: 'Closed', n: strip.closed },
             { v: 'builders', words: 'Builders', n: null },
@@ -403,8 +435,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
               type="button"
               aria-pressed={on}
               onClick={() => {
-                // An answer changes the rows the ledger and the map show, so they read again when they open.
-                if (!wide && (step.v === 'ledger' || step.v === 'map')) void load()
+                // The ledger and the map read their rows when they open (the effect on `wide`), so an answer given since shows.
                 setView(step.v)
               }}
               style={{ background: on ? 'var(--text-strong)' : 'var(--bg-200)', color: on ? 'var(--surface)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: step.v === 'ledger' && !isMobile ? 'auto' : undefined, ...(joined ? { borderRadius: '999px 0 0 999px', paddingRight: 10 } : null) }}
@@ -434,9 +465,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         })}
       </div>
 
-      {!phoneSkim && <div style={mutedStyle}>{loading ? 'Reading the permits…' : wide ? line : pulledAtWords(pull)}</div>}
+      {!phoneSkim && <div style={mutedStyle}>{wide ? (loading ? 'Reading the permits…' : line) : pulledAtWords(pull)}</div>}
 
-      {error && (
+      {wide && error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700, var(--text-red-700))', fontSize: '0.875rem' }}>
           <span>{error}</span>
           <button type="button" onClick={() => void load()} style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', cursor: 'pointer' }}>
@@ -463,6 +494,8 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         <PermitSkimDeck key="second" mode="second" authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} />
       )}
 
+      {view === 'find' && <PermitFindPanel city={city} cityRows={allRows} cityLoading={allLoading} refreshKey={countKey} busyId={busyId} onOpen={setDigRow} onKeep={keepFromPassed} onPutBack={putBack} />}
+
       {(view === 'kept' || view === 'pursuing' || view === 'closed') &&
         (allError ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
@@ -474,12 +507,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ) : allLoading ? (
           <div style={mutedStyle}>Reading the permits…</div>
         ) : (
-          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} />
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} isMobile={isMobile} />
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
 
-      {!wide && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
+      {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
+      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
 
       {wide && !loading && !error && visible.length === 0 && emptyState()}
 
@@ -662,7 +696,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-<strong>Skim</strong> shows one permit at a time, best first, with two answers: Keep or Pass. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
+<strong>Skim</strong> shows one permit at a time, best first, with two answers: Investigate or Pass. The magnifier finds a permit on any list, in any city. The grey <strong>passed</strong> count beside it opens a second look at what someone else passed, once each. An address opens <strong>The building</strong> and a name opens <strong>Who pulled it</strong>. The round <strong>G</strong> searches Google in a new tab. On the ledger, <strong>Decide…</strong> opens one sheet with the same words: Keep, Pass, Pursue, Has a plumber. <strong>Pursue</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {digRow && !closing && !whoRow && (

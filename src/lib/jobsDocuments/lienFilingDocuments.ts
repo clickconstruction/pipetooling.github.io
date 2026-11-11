@@ -75,6 +75,8 @@ export type FilingDocBlock =
   | { kind: 'deliveryRecord'; lines: string[] }
   /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
   | { kind: 'callout'; text: string }
+  /** A statute's own notice at the top of a paper (punch list #305): centred, bold, 12 point in print and PDF, so it clears a rule that asks for 10-point boldface whatever size the paper around it is drawn at. */
+  | { kind: 'topNotice'; text: string }
   /** The recipient block where a #10 double-window envelope's lower window shows (the Docsmit train, PR 4): drawn at the zone in `src/lib/mail/windowEnvelope.ts`, not at the cursor. */
   | { kind: 'windowAddress'; lines: string[] }
   /** A small code and the link it carries, in words beside it (the Docsmit train, PR 4): the owner's pay page with the piece's code. `png` for the PDF, `svg` for HTML; both null draws a dashed square. */
@@ -225,6 +227,9 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
             `</div></div>`,
         )
         break
+      case 'topNotice':
+        parts.push(`<p data-top-notice style="text-align:center;font-weight:700;font-size:12pt;line-height:1.35;margin:0 0 1em">${esc(b.text)}</p>`)
+        break
       case 'callout':
         parts.push(`<div style="${HTML_LABEL_FONT};font-size:0.9em;line-height:1.5;border:1px solid #c9a227;background:#fff8e1;padding:0.55em 0.8em;margin:0.2em 0 1em">${esc(b.text)}</div>`)
         break
@@ -333,6 +338,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
       case 'qrLink':
         out.push([b.caption, b.display].filter((l) => l).join('\n'))
         break
+      case 'topNotice':
       case 'callout':
         out.push(b.text)
         break
@@ -592,6 +598,10 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         y += qr + 5
         break
       }
+      case 'topNotice':
+        write(b.text, 6, { center: true, bold: true, size: 12 })
+        y += 3
+        break
       case 'callout': {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(9.5)
@@ -985,7 +995,15 @@ export type LienAffidavitFields = {
   workMonthsWords?: string
   /** Short form ¶6: the method and day of each notice sent to the owner ("certified mail on August 14, 2026"), § 53.054(a)(8). */
   noticesSentWords?: string
+  /** Short form: the property is a homestead, so the paper opens with the § 53.254(f) notice (`HOMESTEAD_AFFIDAVIT_NOTICE`). */
+  homestead?: boolean
 }
+
+/**
+ * Tex. Prop. Code § 53.254(f), as the app reads it: an affidavit claiming a lien on a homestead must carry this
+ * notice at the top of the page, conspicuous, in at least 10-point boldface. The statute's own words.
+ */
+export const HOMESTEAD_AFFIDAVIT_NOTICE = 'NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.'
 
 /** The blank a fact not yet on the record prints as, so the office sees what the paper still needs. */
 const AFFIDAVIT_BLANK = '_______________'
@@ -1039,6 +1057,8 @@ function buildShortLienAffidavitBlocks(f: LienAffidavitFields, extras?: FilingDo
   }
   texts.push(`The amount of the claim is ${claim}. Claimant claims a lien on the property for that amount.`)
   const blocks: FilingDocBlock[] = [
+    // On a homestead the statute's notice is the first thing on the page, above the title.
+    ...(f.homestead ? [{ kind: 'topNotice', text: HOMESTEAD_AFFIDAVIT_NOTICE } as FilingDocBlock] : []),
     { kind: 'title', lines: ["Mechanic's and Materialman's Lien Affidavit"] },
     { kind: 'jurisdiction', county: '' },
     { kind: 'paragraph', text: `BEFORE ME, the undersigned authority, on this day personally appeared ${signer || AFFIDAVIT_BLANK}, who being by me duly sworn, upon oath states the following:` },

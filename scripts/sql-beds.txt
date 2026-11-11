@@ -99,6 +99,7 @@ bill-pay-codes
 counter-tickets
 in-kind
 permit-skim
+permit-policies
 theme-review
 bridge-moves
 bid-photos

@@ -129,6 +129,32 @@ export async function freeName(token: string, folderId: string, nameFor: (taken:
   throw new Error('Too many photos of that name in the folder.')
 }
 
+/** Every file in a folder that is not in the trash, by id with its name; read a page at a time (punch list #297). */
+export async function folderFiles(token: string, folderId: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>()
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`)
+  let page = ''
+  for (let i = 0; i < 50; i += 1) {
+    const body = await driveGet<{ files?: { id: string; name: string }[]; nextPageToken?: string }>(
+      token,
+      `${DRIVE}/files?q=${q}&fields=nextPageToken,files(id,name)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${page}`,
+    )
+    for (const f of body.files ?? []) files.set(f.id, f.name)
+    if (!body.nextPageToken) break
+    page = `&pageToken=${encodeURIComponent(body.nextPageToken)}`
+  }
+  return files
+}
+
+/** One file's name, the folders it sits in and whether it is in the trash; null when Drive no longer holds it (#297). */
+export async function driveFileState(token: string, fileId: string): Promise<{ name: string; parents: string[]; trashed: boolean } | null> {
+  const res = await fetch(`${DRIVE}/files/${encodeURIComponent(fileId)}?fields=name,parents,trashed&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`Drive answered ${res.status} when the app read a file.`)
+  const meta = (await res.json()) as { name?: string; parents?: string[]; trashed?: boolean }
+  return { name: meta.name ?? '', parents: meta.parents ?? [], trashed: meta.trashed === true }
+}
+
 /** Whether a Drive file sits inside the job's folder, by its parents, a few levels up; and which half it is in. */
 export async function halfInside(token: string, folder: JobFolder, fileId: string): Promise<Half | null> {
   let id = fileId
