@@ -5311,6 +5311,64 @@ export type Database = {
           },
         ]
       }
+      builder_customer_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          answered_by: string
+          builder_key: string
+          customer_id: string
+          id: string
+          name: string
+          permit_id: string | null
+          scope: string | null
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          answered_by: string
+          builder_key: string
+          customer_id: string
+          id?: string
+          name?: string
+          permit_id?: string | null
+          scope?: string | null
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          answered_by?: string
+          builder_key?: string
+          customer_id?: string
+          id?: string
+          name?: string
+          permit_id?: string | null
+          scope?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_customer_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_customer_answers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_customer_answers_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_marks: {
         Row: {
           builder_key: string
@@ -29608,6 +29666,7 @@ export type Database = {
           address: string | null
           address_key: string | null
           area_sf: number | null
+          backfilled: boolean
           builder_key: string | null
           city: string
           contact: string | null
@@ -29634,6 +29693,7 @@ export type Database = {
           address?: string | null
           address_key?: string | null
           area_sf?: number | null
+          backfilled?: boolean
           builder_key?: string | null
           city: string
           contact?: string | null
@@ -29660,6 +29720,7 @@ export type Database = {
           address?: string | null
           address_key?: string | null
           area_sf?: number | null
+          backfilled?: boolean
           builder_key?: string | null
           city?: string
           contact?: string | null
@@ -39962,6 +40023,25 @@ export type Database = {
           loss_reason: string
           outcome: string
           project_name: string
+        }[]
+      }
+      bid_site_permits: {
+        Args: { p_city: string; p_numbers: string[] }
+        Returns: {
+          address: string
+          area_sf: number
+          builder_key: string
+          contact: string
+          declared_value: number
+          id: string
+          issued_on: string
+          kind: string
+          permit_number: string
+          permit_type: string
+          project_name: string
+          stage: string
+          submitted_on: string
+          work_type: string
         }[]
       }
       bid_version_lock_may_override: { Args: never; Returns: boolean }
