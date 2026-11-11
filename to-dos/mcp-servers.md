@@ -2,7 +2,7 @@
 name: MCP servers — one address, a server for twins and a server for devs
 number: 27
 group: gated
-status: PRs 1, 2, 3, 4a, 4b, 5, 6 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) · live-checked 2026-09-20 (a card-issued twin key starts `ptt_`; every `check_*` verb answered on prod with a dev key, which found and fixed `check_edge_boot`'s rate-limit bug, v2.3654) · picked **Do** on the board 2026-09-21, both owner calls taken (HR through a dry-run wrapper); the PR 7 spike is done and Path 0 confirmed, the dev half of it shipped v2.3686 · the twin card's *Add to Claude* steps shipped v2.3721 (2026-09-22; the same day's v2.3716 fixed a v2.3634 regression that had crashed Robots → Console) · PR 6 (the write verbs; one migration) shipped v2.3722, deployed and live-checked 2026-09-22 (ledger 643/643; the run found a double-apply hole, closed the same day in v2.3730 — one apply per plan; `dev-mcp` 0.4.1 live) · the owed kickoff sentence shipped v2.3803 (2026-09-24: both Desktop kickoffs open with the no-Terminal way and say the Terminal command is for accounts without *Request headers*; `twin-setup` redeployed — `npm run check:edge-drift` 2026-09-29 reads every function deployed and current) · nothing on the Worker, either server or the two key cards has changed since 2026-09-25 (re-checked 2026-09-29) · the twin-key checks ran 2026-11-08 (the owner issued and redeemed; an agent read only the key's prefix) · left: PR 7 only when sign-in is needed, composites the log asks for
+status: PRs 1, 2, 3, 4a, 4b, 5, 6 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) · live-checked 2026-09-20 (a card-issued twin key starts `ptt_`; every `check_*` verb answered on prod with a dev key, which found and fixed `check_edge_boot`'s rate-limit bug, v2.3654) · picked **Do** on the board 2026-09-21, both owner calls taken (HR through a dry-run wrapper); the PR 7 spike is done and Path 0 confirmed, the dev half of it shipped v2.3686 · the twin card's *Add to Claude* steps shipped v2.3721 (2026-09-22; the same day's v2.3716 fixed a v2.3634 regression that had crashed Robots → Console) · PR 6 (the write verbs; one migration) shipped v2.3722, deployed and live-checked 2026-09-22 (ledger 643/643; the run found a double-apply hole, closed the same day in v2.3730 — one apply per plan; `dev-mcp` 0.4.1 live) · the owed kickoff sentence shipped v2.3803 (2026-09-24: both Desktop kickoffs open with the no-Terminal way and say the Terminal command is for accounts without *Request headers*; `twin-setup` redeployed — `npm run check:edge-drift` 2026-09-29 reads every function deployed and current) · nothing on the Worker, either server or the two key cards has changed since 2026-09-25 (re-checked 2026-09-29) · the twin-key checks ran 2026-11-08 (the owner issued and redeemed; an agent read only the key's prefix) · the bid train (the seat changes a bid and fills in its counts, takeoff, labor and prices) mapped 2026-11-11, six pairs in order, section below · left: the bid train, PR 7 only when sign-in is needed, composites the log asks for
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
@@ -232,6 +232,110 @@ second opinion.
 Worth doing first, outside this train: decompose `twin-mcp/index.ts` (one 3,362-line file, mapped in docs/TWIN_MCP_SERVER_ARCHITECTURE.md —
 a 48-tool array and one switch) so the JSON-RPC shell, key resolution and the call ledger
 are shared code dev-mcp imports rather than copies.
+
+## The bid train: the seat changes a bid and fills in its working contents (mapped 2026-11-11)
+
+The owner, 2026-11-11, preparing to enter bids for proposals that went out months ago: "I would
+like to add verbs to not only do those things you mentioned it cannot do, but fill out all of the
+line items for counts, takeoffs, labor, pricing." Today the seat makes a bid (`plan_bid`), reads
+one (`get_bid`), files its plans, loads submittal rows and leaves a note. It cannot change a bid
+after it is made, and it cannot write what the Counts, Takeoffs, Labor and Pricing tabs hold.
+
+**The rule for every pair** is the job train's (#293): the screen's own door as the dev under RLS,
+never a write the screen could not make; a plan in words with before and after and a hash over
+the rows it touches; an apply that plans again and writes only on a match; never through
+`view_as`; and the README says what the screen does that the verb does not.
+
+### What the reading found (three things the brief had the other way)
+
+1. **The priced total is a pure kernel already.** `useBidPricingEngine` loads rows and runs the
+   labor sync; it computes no total. The total the Pricing tab shows is `computeBidPricingRows`
+   (`src/lib/bidPricingRowCalculations.ts`) through `scenarioPricingRows`, and the cost beside it
+   is `computeBidCostBreakdown` plus tax on materials. All of it is pure and none of it is on the
+   edge yet. So the Pricing plan can state the screen's own number once those files join the
+   kernel copy (`scripts/edge-kernels.mjs`, where `dev-mcp` is an importer already); `get_bid`
+   can then restate it too.
+2. **twin-mcp has no door to share, only rules.** Every twin write (`paste_counts`, `put_fixtures`,
+   `put_quote`, `put_price_sheet`) is a table write as the service role, with its checks inline in
+   `twin-mcp/index.ts`, fenced to the twin's own bids in code. The dev seat must write as the dev
+   under RLS, so it cannot call those. What the two seats can share is the shaping of a row (a
+   count row's parse, units and alternate tags), lifted into `_shared/` and imported by both, in
+   the PR that first needs it. `ct_finish_takeoff` and `tt_finish_costing` write CountTooling and
+   TakeoffTooling, not this bid's rows. No twin verb writes labor rows.
+3. **The Labor tab is the one the brief calls Cost Estimate**, its rows are keyed by the fixture's
+   NAME (`UNIQUE(cost_estimate_id, fixture)`), and no screen adds one by hand: the load sync mints
+   them from the count rows (`planLaborSync`), and the database mints them when a bid is first
+   marked sent (`bids_mint_labor_on_send` → `mint_labor_rows_from_book`). So counts come before
+   labor, and a sent date set before the labor is entered fills the labor from the book.
+
+### The map
+
+| Screen | What it writes | What guards it | The kernels behind what it shows | twin-mcp there | The verb pair |
+|---|---|---|---|---|---|
+| **Edit Bid** (autosave, `useBidEditController` → `buildBidSavePayload`, pruned to the changed fields) | One PATCH on `bids`: name, address, the GC (`customer_id`, with `gc_builder_id` nulled), project, development, service type, estimator, account manager, due date and time, start date, drawing date, sent date, submitted to, the outcome with `loss_reason` / `loss_category` and the alternates taken, bid value, agreed value, profit, distance, the robot opt-out, notes, the links. Then a `bids_submission_entries` line when the outcome moved (*Win/Loss changed from X to Y. Changed by …*). No RPC. | `bids` UPDATE for dev, master, assistant, controller, estimator, primary; a primary only their own; the twin, training and archived fences. Triggers: `outcome_at` stamped (an explicit write wins, "a back-dated decision"), the board archive cleared, labor minted and shadows scored on a first sent date, `bid_changes` (History) for the tracked columns. A new sent date asks the person's three-line checklist first. | `buildBidSavePayload`, `pruneUnchangedBidUpdateFields`, `buildOutcomeChangeBidNoteBody`, `bidLossCategories` | Nothing: sending and outcomes are human acts (`twin_no_send_guard`) | **`plan_bid_update` / `apply_bid_update`** (PR 1) |
+| **Bid Board presses** | The Lost strip's reason chips: `bids` `{ loss_reason, loss_category }`. A GC pill on a bid with versions: `setGcPacketOutcome` (`bid_versions` outcome, the sibling packets on a win, the bid's roll-up, a note with the GC). Link on a won row: `snapshot_job_budget_from_bid`. Value and sent date have no press of their own: the row opens Edit Bid. | As above; `bid_versions` by `can_access_bid_for_pricing` | `gcPacketOutcome.ts`, `wonCascade.ts`, `submissionSections.ts` | Nothing | PR 1 for a bid with no versions. Per-GC sends and outcomes are a later pair (below). |
+| **Counts** (`BidsCountsTab`) | `bids_count_rows` insert, update and delete by id (`fixture`, `count`, `unit`, `page`, `group_tag`, `sequence_order`, the active `bid_version_id`); `update_bids_count_rows_order`; `bids.alternate_group_tags`; `bid_count_sources` on a CountTooling import. A deleted row takes its takeoff lines and prices with it (FK cascade). | Role list with dev; the version lock (a dev passes it); History by trigger, tagged by the `x-bid-action` header | `countSheet.ts` (`findDuplicateFixture`: one row per fixture and group in a version, the stable key), `countRowUnit.ts`, `parseCountsImportText.ts`, `countsImportReview.ts` | `paste_counts`: replace-all as the service role, with robot-book prices and a total check | **`plan_bid_counts` / `apply_bid_counts`** (PR 2; `plan_count` is Materials on site's) |
+| **Takeoffs** (`BidsTakeoffTab`, `useTakeoffRoughLines`) | `bids_takeoff_rough_part_lines` by id, each on a count row (`part_id` or a bundle's `source_template_id`, `quantity`, `unit_price`, `sequence_order`, order increments); `bid_count_row_custom_costs` (one per count row: a quoted materials cost each); `bids.tax_rate_pct`, `sov_material_factor`, the takeoff book pick | Role list with dev and superintendent; custom costs dev, master, assistant, controller, estimator; the version lock | `combinedMaterials` (`bidMaterials.ts`), `takeoffOrderRounding.ts`, `bidTakeoffHelpers.ts` (on the edge already), `takeoffBookFill.ts` | `paste_counts` writes `bid_count_row_custom_costs` (source quoted); `tt_finish_costing` writes TakeoffTooling | **`plan_bid_takeoff` / `apply_bid_takeoff`** (PR 3) |
+| **Labor** (the brief's Cost Estimate: `BidsLaborTab`, `BidsLaborNewView`) | `cost_estimates` (one a bid, minted `{ bid_id }` on first load; rate, driving, trips, estimator cost, travel); `cost_estimate_labor_rows` (hours per unit for rough in, top out, trim set; `count`, `is_fixed`, `kind`, `unit`, `source`) minted and renamed by the load sync; `cost_estimate_labor_rows_unmatched`; the five direct cost tables (equipment, permit, subcontractor, waste, other: `note`, `rough_in`, `top_out`, `trim_set`) | `can_access_bid_for_pricing` through the estimate; History by trigger | `planLaborSync`, `laborRowHours`, `computeBidCostBreakdown`, `bidCostCalc.ts`, `sumDirectCosts`, `effectiveLaborRate` | None | **`plan_bid_labor` / `apply_bid_labor`** (PR 4) |
+| **Pricing** (`BidsPricingTab`) | Per count row and scenario (`price_book_version_id`): `bid_pricing_assignments` (the book entry, `unit_price_override`, `is_fixed_price`) or, with no entry, `bid_count_row_custom_prices`; a write on a shared book first clones it to the bid (`clone_price_book_version_to_bid`); `price_book_entries`; the starred scenario; `stamp_bid_priced_margin` (`bids.priced_*`, unsent bids only). The total is never stored: only `bid_value` at send. | `can_access_bid_for_pricing`; the version lock; the sent-bid lock is the client's alone | `computeBidPricingRows`, `scenarioPricingRows`, `resolvePricingWriteTarget`, `deriveActivePricingId`, `pricedMargin.ts` | `paste_counts` assigns against the robot book; `put_quote` and `put_price_sheet` are supply-house papers | **`plan_bid_pricing` / `apply_bid_pricing`** (PR 5) |
+| **Cover Letter and the send** | Mark sent: `bids` `{ bid_date_sent, bid_value }` on a plain bid (no checklist stamps), or `bid_version_sends` per GC with the bid's date derived by trigger; the letter's boxes, the schedule of values and payment rows; the bid room link (`send-bid-room-link`) | `can_access_bid_for_pricing`; `twin_no_send_guard` | `coverLetterDocument.ts`, `coverLetterVersionBundle.ts`, `bidSentDate.ts` | Nothing | The sent date of a plain bid is PR 1's. Per-GC sends and the letter are after PR 5. |
+
+### The order, one PR each
+
+1. **`plan_bid_update` / `apply_bid_update`** — Edit Bid's columns and the Board's reason chips on a
+   bid with no versions: one PATCH under RLS, then the outcome line the form writes. The decided
+   day is `outcome_at`, which the trigger takes from an explicit write. The sent date lands the way
+   the Cover Letter's Mark sent writes it, with no checklist stamps: the three lines are a person's
+   own word and the seat does not give it. On a bid with versions the plan refuses Won, Lost and
+   the sent date and names the per-GC panel. The plan says what the database will do after: the
+   decided day, the labor mint and the shadow score on a first sent date, the History lines, and
+   that a win opens no job. No migration.
+2. **`plan_bid_counts` / `apply_bid_counts`** — rows `{ fixture, count, unit?, page?, group?,
+   alternate? }` added or changed by the tab's own key (fixture and group in the active version),
+   `remove` by the same key with what the cascade takes named in the plan. Held with a reason and
+   the rest goes on: a key given twice, a unit the tab does not have, a count that is not a
+   number. Nothing ready is refused. Lift the row's shaping out of `paste_counts` into `_shared/`
+   so both seats parse a count row one way; add `countSheet.ts` and `countRowUnit.ts` to the
+   kernel copy. Send the tab's `x-bid-action` so History reads as it does from the screen. Not
+   done: the CountTooling import and its sources, the drag order.
+3. **`plan_bid_takeoff` / `apply_bid_takeoff`** — lines on a count row named by its key: a part
+   (`material_parts`) with quantity and unit price, or the quoted materials cost each
+   (`bid_count_row_custom_costs`, one a row). Add or change by part within the row; `replace` a
+   row's lines whole. Copy `combinedMaterials` and the order rounding to the edge so the plan
+   states the materials total the tab shows. Not done: assemblies expanded from the book, the
+   takeoff book's own rows.
+4. **`plan_bid_labor` / `apply_bid_labor`** — the estimate's rate and travel boxes; hours per unit by
+   fixture name; the five direct cost tables' lines. A fixture with a count row and no labor row is
+   minted as the sync mints it (`planLaborSync` on the edge copy), with the ask's hours in place
+   of the book's; a fixture with no count row is held, since the sync would park it. The plan
+   states hours and cost through `laborRowHours` and `computeBidCostBreakdown`. Not done: the
+   labor book's own entries.
+5. **`plan_bid_pricing` / `apply_bid_pricing`** — a price per count row through the tab's one write
+   rule (`writeUnitPriceOverrideRow`: the assignment's override, else a new assignment on the
+   matching book entry, else a custom price), on the bid's active scenario; a shared book is
+   cloned to the bid first, as the tab does. Before it, as its own PR, the pricing kernels join
+   the edge copy (a generated copy, no rewrite), so the plan states the total the screen would
+   show and `get_bid.totals` becomes a figure. The margin stamp only where the screen would stamp.
+6. **After the five**, when asked for: per-GC sends and outcomes on a bid with versions
+   (`bid_version_sends`, `setGcPacketOutcome`'s writes), the letter's boxes and schedule of values.
+
+For a proposal on paper the order of entry is the order of the PRs: the bid, its counts, takeoff,
+labor and prices, then the value, the sent date and the outcome last, so the sent date's labor
+mint finds the labor already there.
+
+### Things to know before building 2 to 5
+
+- A count row has no unique key in the database: the key is the tab's rule, checked in the kernel.
+  Count rows and takeoff lines are per bid version (`bid_version_id` null on a bid never split);
+  the estimate and its labor rows are per bid; prices are per scenario.
+- The Labor tab's New view prices labor at the bid's rate, else the company crew rate
+  (`effectiveLaborRate`); Pricing uses the estimate's `labor_rate` alone. A plan names which.
+- The margin stamp's revenue ignores `is_fixed_price`; `computeBidPricingRows` does not. State the
+  screen's total, not the stamp's.
+- Every seat PR bumps `SERVER_VERSION` and the verb count, pinned across `src/lib/devMcp/*.test.ts`
+  (`devMcpPlanSets.test.ts` also counts `restRows(`): take the next free version at the rebase.
+- ZZ fixtures: b398 "ZZ Test" (already decided) reads well for a dry run; an apply wants a
+  fresh bid made with `plan_bid` under a ZZ name, never a robot's ZZ Shadow or ZZ Twin bid.
 
 ## How to verify
 
