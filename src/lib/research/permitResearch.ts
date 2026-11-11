@@ -26,7 +26,7 @@ export type BuilderMarkValue = 'good' | 'avoid'
 export const PERMIT_VERDICTS: readonly PermitVerdict[] = ['approach', 'look', 'not_for_us', 'taken']
 
 export const VERDICT_WORDS: Record<PermitVerdict, { press: string; chip: string; hint: string }> = {
-  approach: { press: 'Pursue', chip: 'Pursuing', hint: 'Go after it. A GC lead is made on the GCs deck.' },
+  approach: { press: 'Pursue', chip: 'Pursuing', hint: 'Go after it. A lead is made on the Customers deck or on Jobs to GC.' },
   look: { press: 'Investigate', chip: 'Investigating', hint: 'Worth a closer look. It waits under Investigating with a day to look again.' },
   not_for_us: { press: 'Pass', chip: 'Passed', hint: 'Wrong trade, wrong size or wrong part of town.' },
   taken: { press: 'Has a plumber', chip: 'Has a plumber', hint: 'A plumber has it. The row leaves the list.' },
@@ -211,25 +211,56 @@ export function pulledWords(input: { ranAt: string | null; error: string | null;
 export type PermitLeadRole = 'gc' | 'owner' | 'architect'
 export const PERMIT_LEAD_ROLE_WORDS: Record<PermitLeadRole, string> = { gc: 'A GC', owner: 'The owner', architect: 'An architect or engineer' }
 
+/**
+ * The deck a pursued permit's lead lands on, by who the company is (punch list #302, call 4): a
+ * general contractor could send us plans for our trades, so it is a customer to win; an owner or
+ * an architect has a job we could build as the GC.
+ */
+export type PermitLeadDeck = 'customer' | 'gc_lead'
+export function leadDeck(role: PermitLeadRole): PermitLeadDeck {
+  return role === 'gc' ? 'customer' : 'gc_lead'
+}
+export const LEAD_DECK_WORDS: Record<PermitLeadDeck, string> = { customer: 'Customers', gc_lead: 'Jobs to GC' }
+
+/** The line under the role box: where the lead goes and how the permit rides on it. */
+export function leadLandsWords(role: PermitLeadRole): string {
+  return leadDeck(role) === 'customer'
+    ? 'A lead goes on the Customers deck with the permit in its notes. A lead of the same name is reused.'
+    : 'A lead goes on the Jobs to GC deck with the permit as a job on it. A lead of the same name is reused.'
+}
+
+/** The toast after a pursue: "Lead made: Ridgeway Builders, on the Customers deck." */
+export function leadMadeWords(lead: { companyName: string; reused: boolean; deck: PermitLeadDeck }): string {
+  const deck = LEAD_DECK_WORDS[lead.deck]
+  return lead.reused ? `Put the permit on ${lead.companyName}’s lead on the ${deck} deck.` : `Lead made: ${lead.companyName}, on the ${deck} deck.`
+}
+
 /** What the Who pulled it card found, carried onto the lead the Approach press makes. */
 export type LeadFacts = { companyName?: string | null; contactName?: string | null; phone?: string | null; website?: string | null; companyAddress?: string | null; ownerOfRecord?: string | null }
 
-/** The GC lead and the job the Approach press makes from a permit. */
+/**
+ * The lead the Pursue press makes from a permit, and the job on it. A lead on the Customers deck
+ * carries no job, since that deck draws none: the permit rides in the notes, and `note` goes on
+ * as a comment when a lead of the same name is reused.
+ */
 export function leadFromPermit(
   row: Pick<ResearchPermitRow, 'contact' | 'address' | 'city' | 'zip' | 'permit_number' | 'permit_type' | 'work_type' | 'area_sf' | 'declared_value' | 'project_name' | 'filed_on' | 'stage'>,
   role: PermitLeadRole,
   by: { userId: string; masterUserId: string },
   facts: LeadFacts = {},
-): { prospect: Record<string, unknown>; job: Record<string, unknown>; companyName: string } {
+): { prospect: Record<string, unknown>; job: Record<string, unknown> | null; note: string; deck: PermitLeadDeck; companyName: string } {
   const companyName = (facts.companyName ?? '').trim() || (row.contact ?? '').trim() || 'Who pulled the permit'
   const siteAddress = [row.address, row.city, row.zip].filter(Boolean).join(', ')
   const work = workWords(row)
   const owner = facts.ownerOfRecord ? ` The county's owner of record: ${facts.ownerOfRecord}.` : ''
   const note = `From the permit ledger: ${row.permit_type} ${row.permit_number}, ${row.stage} ${row.filed_on ?? ''}. ${work.main}. ${work.detail}.${owner}`
+  const deck = leadDeck(role)
   return {
     companyName,
+    deck,
+    note,
     prospect: {
-      kind: 'gc_lead',
+      kind: deck,
       master_user_id: by.masterUserId,
       created_by: by.userId,
       warmth_count: 0,
@@ -240,11 +271,12 @@ export function leadFromPermit(
       address: facts.companyAddress ?? siteAddress,
       notes: note,
       source: 'A permit',
-      company_role: role,
+      // The role is a Jobs to GC fact; the column is null for the other kinds.
+      company_role: deck === 'gc_lead' ? role : null,
       trades: [],
       max_miles: null,
     },
-    job: {
+    job: deck === 'customer' ? null : {
       name: [work.main, row.address].filter(Boolean).join(' at '),
       address: siteAddress,
       sq_ft: row.area_sf != null && row.area_sf >= 50 ? Math.round(row.area_sf) : null,
@@ -271,9 +303,16 @@ export function defaultLookAgainYmd(todayYmd: string): string {
   return ymdPlusDays(todayYmd, 14)
 }
 
-/** The door into the GC lead a verdict made. */
-export function leadDoor(prospectId: string): string {
-  return `/prospects?tab=follow-up&kind=gc-leads&prospect_id=${encodeURIComponent(prospectId)}`
+/** The leads the pursued permits on a list made, each once, in a steady order. */
+export function pursuedLeadIds(rows: readonly Pick<ResearchPermitRow, 'verdict' | 'verdict_prospect_id'>[]): string[] {
+  const ids = new Set<string>()
+  for (const r of rows) if (r.verdict === 'approach' && r.verdict_prospect_id) ids.add(r.verdict_prospect_id)
+  return [...ids].sort()
+}
+
+/** The door into the lead a verdict made, on the deck it sits on. A lead whose deck is not read yet opens on Jobs to GC, where every one landed until v2.6907. */
+export function leadDoor(prospectId: string, deck: PermitLeadDeck = 'gc_lead'): string {
+  return `/prospects?tab=follow-up&kind=${deck === 'customer' ? 'customers' : 'gc-leads'}&prospect_id=${encodeURIComponent(prospectId)}`
 }
 
 /** The last-looked mark, one per reader per city, in the browser. */

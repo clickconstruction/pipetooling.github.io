@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
 import { useOrgDefault } from '../hooks/useOrgDefault'
+import { useOnSiteAddress } from '../hooks/useOnSiteAddress'
 import { orgDefaultBool } from '../lib/orgDefaults'
 import { readDeviceString } from '../lib/deviceString'
 import { canMarkTallyPayroll } from '../lib/people/payWeekLinks'
@@ -724,23 +725,10 @@ export default function JobTally() {
   }, [role])
 
   // Materials on site (punch list #209): a link from the Job Mode card or a label's QR names the job
-  // (`?job=`) and maybe its container (`?container=`); both are read once and taken off the URL.
-  const [onSiteContainerId, setOnSiteContainerId] = useState<string | null>(() => searchParams.get('container'))
-  useEffect(() => {
-    const wanted = searchParams.get('job')
-    if (!wanted || jobs.length === 0) return
-    if (jobs.some((j) => j.id === wanted)) setSelectedJobId(wanted)
-    setOnSiteContainerId(searchParams.get('container'))
-    setSearchParams(
-      (p) => {
-        const next = new URLSearchParams(p)
-        next.delete('job')
-        next.delete('container')
-        return next
-      },
-      { replace: true }
-    )
-  }, [jobs, searchParams, setSearchParams])
+  // (`?job=`) and maybe its container (`?container=`). Both stay on the address while that box is open
+  // and leave it when the person leaves the box (v2.6904), so a reload or Back comes back to the box.
+  const jobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
+  const onSiteAddress = useOnSiteAddress({ jobIds, onTab: activeTab === 'on-site', selectedJobId, selectJob: setSelectedJobId })
 
   const searchPartsForOnSite = useCallback(
     async (term: string): Promise<OnSitePart[]> => {
@@ -1995,7 +1983,7 @@ export default function JobTally() {
                 selectedJobId={selectedJobId}
                 viewerUserId={authUser?.id ?? null}
                 onPick={(id) => {
-                  setSelectedJobId(id)
+                  onSiteAddress.pickJob(id)
                   setJobPickerOpen(false)
                 }}
                 onClose={() => setJobPickerOpen(false)}
@@ -2347,11 +2335,13 @@ export default function JobTally() {
           jobs={jobs}
           jobsLoading={jobsLoading}
           selectedJobId={selectedJobId}
-          onPickJob={(id) => setSelectedJobId(id)}
+          onPickJob={onSiteAddress.pickJob}
           byUserId={authUser?.id ?? null}
           byName={profileName ?? authUser?.email?.split('@')[0] ?? 'someone'}
           searchParts={searchPartsForOnSite}
-          initialContainerId={onSiteContainerId}
+          initialContainerId={onSiteAddress.asked.containerId}
+          askSeq={onSiteAddress.asked.seq}
+          onOpenContainer={onSiteAddress.reportOpen}
         />
       )}
 

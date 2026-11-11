@@ -84,9 +84,8 @@ export interface RecipientRow {
 
 /**
  * Who the Bridge is for: the owner and a dev, the page's own gate (`isOwnerOrDev`, punch list #188 row 69, v2.6763).
- * One list for who hears the weekly send, who may ask `bridge-weekly-sheet` for a dry run and who `bridge-sheet-email`
- * mails the sheet they pressed for, so whoever opens the page is served by the functions under it;
- * `weeklySend.test.ts` holds it to `isOwnerOrDev`.
+ * One list for who hears the weekly send and who may ask `bridge-weekly-sheet` for a dry run, so whoever opens the
+ * page is served by the function under it; `weeklySend.test.ts` holds it to `isOwnerOrDev`.
  */
 export const BRIDGE_ROLES: readonly string[] = ['dev', 'master_technician']
 

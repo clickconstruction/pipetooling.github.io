@@ -37,13 +37,8 @@ export function recordsStartOf(runs: ReadonlyArray<{ source: string; since: stri
 
 /** How far back the records are worth reading: the first day of the city's current datastore. */
 export const HISTORY_GOAL_YMD = '2025-01-01'
-/**
- * Empty while the read back is held (2026-11-10): the skim's and Builders' reads pair every
- * building permit with every plumbing permit in a city, and older rows would slow them past the
- * statement timeout. `permit-pull` refuses a read back as well. San Antonio returns here once
- * those reads are index-driven.
- */
-export const HISTORY_CITIES: readonly string[] = []
+/** The cities whose feed can be read up to a day: the ones `permit-pull` reads back as history. */
+export const HISTORY_CITIES: readonly string[] = ['San Antonio']
 /** How much one read back takes: about three months, a run the pull finishes inside its time budget. */
 export const HISTORY_STEP_DAYS = 92
 

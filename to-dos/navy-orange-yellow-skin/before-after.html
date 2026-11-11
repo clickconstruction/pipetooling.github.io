@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A navy, orange and yellow skin: before and after</title>
+<style>
+  /* Punch list #309. Everything here is made up: Ridgeway Builders, the Marlow residence, Tall Pines HOA, Sam, cage B3
+     and cage A2, job 1042, the invoice number, every street, amount and count. The page's own chrome uses src/index.css's
+     tokens and has a Light and Dark switch. App frames follow the switch, as the app does. Signed-out frames stay on the
+     portal's paper in both (src/lib/portal/portalTheme.ts), as those pages are pinned light. Phones are 375, the desktop
+     frame is 1180. Each screen is written once in a <template> and stamped into its three frames by the script at the foot. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); max-width: 110ch; }
+  .controls { display: flex; gap: 6px; align-items: center; margin: 14px 0 0; flex-wrap: wrap; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .key { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-700); margin-left: 14px; }
+  .key i { width: 22px; height: 12px; border-radius: 4px; display: inline-block; border: 2px dashed #c026d3; }
+  h2 { font-size: 20px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h3 { font-size: 15px; margin: 30px 0 2px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); } .say p.lose { border-color: var(--text-amber-800); } .say p.rule { border-color: var(--text-blue-700); } .say p.no { border-color: var(--text-red-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; flex: 0 0 377px; }
+  .col.wide { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .under { font-size: 12.5px; color: var(--text-700); line-height: 1.45; max-width: 375px; }
+  .col.wide .under { max-width: 104ch; }
+  .col.wide .frame { width: fit-content; }
+  .frame { border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  table.v { border-collapse: collapse; width: 100%; max-width: 1180px; margin-top: 12px; background: var(--surface); }
+  table.v th, table.v td { border: 1px solid var(--border); padding: 8px 10px; font-size: 13px; text-align: left; vertical-align: top; color: var(--text-700); }
+  table.v th { background: var(--bg-subtle); font-size: 12px; color: var(--text-strong); }
+  table.v td.pick, table.v th.pick { background: var(--bg-green-100); }
+  table.v .st { color: var(--text-green-700); font-weight: 700; } table.v .sf { color: var(--text-amber-800); font-weight: 700; } table.v .sx { color: var(--text-red-700); font-weight: 700; }
+  table.v code, .lede code, .say code, ol code { font: 12px ui-monospace, Menlo, monospace; color: var(--text-strong); }
+  .scrollx { overflow-x: auto; max-width: 100%; }
+  ol.calls { margin: 10px 0 0; padding-left: 22px; max-width: 104ch; display: grid; gap: 8px; color: var(--text-700); }
+  ol.calls .mine { color: var(--text-green-700); font-weight: 700; }
+  /* the pairs strip */
+  .pairs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pair { width: 148px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .pair .sw { height: 54px; display: grid; place-items: center; font: 800 17px var(--font); }
+  .pair .tx { padding: 6px 8px; font-size: 11.5px; line-height: 1.35; color: var(--text-700); }
+  .pair .tx b { display: block; font-size: 12.5px; }
+  .pair .ok { color: var(--text-green-700); font-weight: 700; } .pair .bad { color: var(--text-red-700); font-weight: 700; }
+
+  /* ── the app frame: its own copy of the tokens, light and dark ── */
+  .app { --pg: #f0f2f5; --sf: #fff; --sub: #f9fafb; --bd: #cfd4db; --bds: #aab2bd; --tx: #111827; --t7: #374151; --mu: #6b7280; --lk: #2563eb; --tint: #eff6ff;
+    --amb-bg: #fef3c7; --amb-tx: #92400e; --grn-bg: #dcfce7; --grn-tx: #15803d; --red-bg: #fef2f2; --amb-row: #fffbeb; --owe: #9a3412;
+    --hdr: #fafafa; --hdr-fg: #1a1a1a; --hdr-lk: #2563eb; --hdr-line: #d8dce2; --act: currentColor; --act-h: 1.5px;
+    --tab: #fafafa; --tab-fg: #4b5563; --tab-on: #111827; --tab-line: #d8dce2;
+    --press: #2563eb; --press-fg: #fff; --sel: #2563eb; --sel-fg: #fff;
+    position: relative; background: var(--pg); color: var(--tx); font: 15px/1.4 var(--font); display: flex; flex-direction: column; }
+  :root[data-theme="dark"] .app { --pg: #111827; --sf: #1f2937; --sub: #18212f; --bd: #374151; --bds: #4b5563; --tx: #f9fafb; --t7: #d1d5db; --mu: #9ca3af; --lk: #60a5fa; --tint: #1e293b;
+    --amb-bg: #45390f; --amb-tx: #fcd34d; --grn-bg: #14532d; --grn-tx: #4ade80; --red-bg: #2a1a1f; --amb-row: #2a2413; --owe: #fdba74;
+    --hdr: #111827; --hdr-fg: #f3f4f6; --hdr-lk: #60a5fa; --hdr-line: #374151; --tab: #111827; --tab-fg: #9ca3af; --tab-on: #f3f4f6; --tab-line: #374151; }
+  /* the two skins: the bar and the tab bar on the portal's ink, the logo's orange as the marker */
+  .app.sk-a, .app.sk-b { --hdr: #16283c; --hdr-fg: #fff; --hdr-lk: rgba(255, 255, 255, .84); --hdr-line: #16283c; --act: #e17235; --act-h: 3px; --tab: #16283c; --tab-fg: rgba(255, 255, 255, .72); --tab-on: #fff; --tab-line: #16283c; }
+  :root[data-theme="dark"] .app.sk-a, :root[data-theme="dark"] .app.sk-b { --hdr: #0d1826; --hdr-fg: #fff; --hdr-lk: rgba(255, 255, 255, .84); --hdr-line: #263a52; --tab: #0d1826; --tab-fg: rgba(255, 255, 255, .72); --tab-on: #fff; --tab-line: #263a52; }
+  .app.sk-b { --press: #e17235; --press-fg: #16283c; --sel: #16283c; --sel-fg: #fff; }
+  :root[data-theme="dark"] .app.sk-b { --sel: #e5e7eb; --sel-fg: #111827; }
+  .sk-now .only-skin, .sk-now .only-b, .sk-a .only-b, .sk-a .not-skin, .sk-b .not-skin, .sk-b .not-b { display: none !important; }
+  .sk-a .bend-a, .sk-b .bend-b, .sk-a .bend-s, .sk-b .bend-s { outline: 2px dashed #c026d3; outline-offset: 3px; }
+  .app.ph { width: 375px; min-height: 690px; }
+  .app.dk { width: 1180px; }
+  .app.strip { width: 375px; min-height: 0; }
+  .app svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+  .app svg.tile { width: 28px; height: 28px; stroke: none; border-radius: 7px; }
+  .app svg.sm { width: 16px; height: 16px; }
+  .hdr { display: flex; align-items: center; gap: 2px; padding: 9px 10px; background: var(--hdr); color: var(--hdr-fg); border-bottom: 1px solid var(--hdr-line); }
+  .dk .hdr { padding: 11px 22px; gap: 12px; }
+  .hdr .sp { flex: 1; }
+  .ib { position: relative; width: 38px; height: 38px; display: grid; place-items: center; }
+  .dk .ib { width: 30px; }
+  .at-home .ib.home::after, .at-cust .ib.cust::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 0; height: var(--act-h); background: var(--act); border-radius: 2px; }
+  .hdr .w { color: var(--hdr-lk); font-size: 16px; position: relative; white-space: nowrap; }
+  .mt { width: 34px; height: 34px; border-radius: 6px; display: grid; place-items: center; color: #fff; margin: 0 3px; }
+  .mt.d { background: #0369a1; } .mt.j { background: #7c3aed; } .mt.c { background: #2563eb; }
+  .sk-a .mt, .sk-b .mt { box-shadow: 0 0 0 1px rgba(255, 255, 255, .4); }
+  .bdg { position: absolute; top: -7px; right: -14px; background: #dc2626; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 0 5px; line-height: 17px; }
+  .handchip { display: none; width: 30px; height: 30px; border-radius: 8px; background: #fff url(data:image/png;base64,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) center / 86% no-repeat; }
+  .mk-hand .handchip { display: block; } .mk-hand svg.tile { display: none !important; }
+  .band { background: #fef3c7; color: #92400e; border-bottom: 1px solid #f59e0b; font-size: 12.5px; text-align: center; padding: 6px 12px; }
+  .app.imit { --hdr: #fef3c7; --hdr-fg: #1a1a1a; --hdr-line: #f59e0b; }
+  .body { flex: 1; padding: 12px 8px 16px; display: grid; gap: 10px; align-content: start; }
+  .dk .body { padding: 22px 24px 24px; gap: 16px; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--tab); border-top: 1px solid var(--tab-line); color: var(--tab-fg); font-size: 12px; font-weight: 600; text-align: center; padding: 8px 0 10px; }
+  .tabs span { position: relative; display: grid; justify-items: center; gap: 1px; }
+  .tabs .bdg { top: -5px; right: calc(50% - 22px); }
+  .at-home .tabs .t1, .at-cust .tabs .t4 { color: var(--tab-on); }
+  .sk-a.at-home .tabs .t1::before, .sk-b.at-home .tabs .t1::before, .sk-a.at-cust .tabs .t4::before, .sk-b.at-cust .tabs .t4::before { content: ""; position: absolute; top: -8px; left: 34%; right: 34%; height: 3px; background: #e17235; border-radius: 0 0 3px 3px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 700; min-height: 46px; padding: 0 12px; text-align: center; line-height: 1.15; position: relative; }
+  .btn.p { background: var(--press); color: var(--press-fg); }
+  .btn.side { background: #2563eb; color: #fff; font-size: 13px; }
+  .btn.clock { background: #c75000; color: #fff; flex: 1; font-size: 17px; }
+  .btn.red { background: #dc2626; color: #fff; min-height: 32px; font-size: 13.5px; display: inline-flex; }
+  .btn.warn { background: #b45309; color: #fff; min-height: 32px; font-size: 13.5px; display: inline-flex; }
+  .sk-b .btn.clock { background: #e17235; color: #16283c; }
+  .sk-b .btn.side { background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55); }
+  .headwrap { display: flex; align-items: center; gap: 6px; }
+  .headwrap.tt { justify-content: space-between; padding: 6px 8px 0; }
+  .sk-b .headwrap { background: #16283c; color: #fff; border-radius: 14px; padding: 12px; }
+  .sk-b .headwrap.tt, .sk-b .headwrap.pg { padding: 14px 16px; }
+  :root[data-theme="dark"] .sk-b .headwrap { box-shadow: inset 0 0 0 1px #2c4360; }
+  .sk-b .headwrap .lk { color: rgba(255, 255, 255, .84); }
+  .headwrap .soft { color: rgba(255, 255, 255, .74); font-size: 13.5px; font-weight: 400; }
+  .cd { background: var(--sf); border: 1px solid var(--bd); border-radius: 10px; padding: 14px 16px; }
+  .cd h4 { margin: 0; font-size: 18px; }
+  .lk { color: var(--lk); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bds); border-radius: 999px; padding: 5px 12px; background: var(--sf); font-weight: 600; white-space: nowrap; }
+  .pill.o { border-color: var(--lk); color: var(--lk); }
+  .sched { border-top: 1px solid var(--bd); padding: 9px 0; font-size: 14px; color: var(--t7); } .sched b { color: var(--tx); }
+  .ny { border: 1px solid var(--bd); border-left: 4px solid #dc2626; border-radius: 8px; padding: 10px 12px; background: var(--sub); display: grid; gap: 6px; margin-top: 10px; }
+  .ny.w { border-left-color: #f59e0b; } .ny p { margin: 0; font-size: 13.5px; color: var(--mu); } .ny b { font-size: 15px; }
+  .cnt { display: inline-grid; place-items: center; min-width: 24px; height: 22px; border-radius: 999px; background: var(--amb-bg); color: var(--amb-tx); font-size: 12.5px; font-weight: 700; padding: 0 7px; }
+  .chip { display: inline-block; border-radius: 999px; font-size: 12.5px; font-weight: 700; padding: 2px 10px; white-space: nowrap; }
+  .chip.due { background: var(--amb-bg); color: var(--amb-tx); } .chip.ok { background: var(--grn-bg); color: var(--grn-tx); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; text-align: center; font-size: 13.5px; color: var(--t7); border-bottom: 1px solid var(--bd); padding: 0 8px; }
+  .seg .on { background: var(--sel); color: var(--sel-fg); font-weight: 700; border-radius: 6px; padding: 7px 0; margin-bottom: 6px; }
+  .jobchip { background: var(--tint); border-radius: 10px; padding: 9px 14px; color: var(--lk); font-weight: 700; display: flex; justify-content: space-between; }
+  .jobchip small { letter-spacing: .08em; font-size: 11px; margin-right: 8px; }
+  .box { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .box span { display: block; color: var(--mu); font-size: 13px; }
+  /* the desktop list page */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--sf); border: 1px solid var(--bd); border-radius: 10px; }
+  .tiles div { padding: 14px 16px; border-left: 1px solid var(--bd); font-size: 13px; color: var(--mu); } .tiles div:first-child { border-left: 0; }
+  .tiles .k { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; } .tiles b { display: block; font-size: 20px; }
+  .tiles b.owe { color: var(--owe); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; } .filters span { border: 1px solid var(--bds); border-radius: 6px; padding: 5px 12px; background: var(--sf); }
+  .filters .on { background: var(--sel); color: var(--sel-fg); border-color: var(--sel); font-weight: 700; }
+  .inp { border: 1px solid var(--bds); border-radius: 6px; background: var(--sf); padding: 9px 12px; color: var(--mu); }
+  .cust { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--bds); padding: 10px 0 14px; }
+  .cust b { font-size: 17px; font-weight: 500; } .cust .tag { border: 1px solid var(--bds); border-radius: 5px; font-size: 12px; font-weight: 600; padding: 1px 7px; margin-left: 8px; color: var(--t7); }
+  .cust p { margin: 2px 0 0; color: var(--mu); }
+  .money { display: grid; grid-template-columns: repeat(3, 96px); text-align: right; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--mu); align-content: start; }
+  .money i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+  .money b { font-size: 15px; letter-spacing: 0; } .money .g { color: var(--grn-tx); }
+  /* ── signed out: the sign-in page, its own dark photo; and the portal's paper, pinned light ── */
+  .si { width: 375px; min-height: 690px; padding: 20px 20px 24px; display: grid; gap: 14px; align-content: start; color: #fff; font: 15px/1.4 var(--font);
+    background: linear-gradient(160deg, rgba(20, 20, 22, .55), rgba(20, 20, 22, .25)), repeating-linear-gradient(118deg, #5c5f63 0 26px, #74777a 26px 30px, #4a4c50 30px 64px); }
+  .si .wm { border: 1px solid rgba(255, 255, 255, .28); border-radius: 16px; background: rgba(18, 18, 20, .72); padding: 18px 12px 14px; text-align: center; }
+  .si.sk-a .wm, .si.sk-b .wm { background: #16283c; border-color: #16283c; }
+  .si .wm b { display: block; color: #fff; font: 800 27px/1.1 ui-monospace, Menlo, monospace; letter-spacing: -.02em; }
+  .si .wm i { display: block; width: 44px; height: 3px; background: #dc2626; margin: 12px auto 8px; border-radius: 2px; }
+  .si .wm small { display: block; letter-spacing: .14em; font-size: 11px; } .si .wm em { font: 700 17px Georgia, serif; }
+  .si .tr { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .si .tr span { width: 104px; height: 88px; border-radius: 16px; background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .2); display: grid; place-items: center; align-content: center; gap: 6px; font-size: 16px; }
+  .si .tr svg { width: 30px; height: 30px; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .si .cardw { background: #fff; border-radius: 12px; padding: 22px; display: grid; gap: 14px; color: #6b7280; }
+  .si .cardw .f { border: 1px solid #cfd4db; border-radius: 8px; padding: 10px 12px; }
+  .si .cardw .go { background: #2563eb; color: #fff; border-radius: 8px; text-align: center; font-weight: 700; padding: 11px; }
+  .si.sk-b .cardw .go { background: #e17235; color: #16283c; }
+  .si .cardw small { text-align: center; font-size: 13px; }
+  .si .fam { text-align: center; font-size: 11.5px; letter-spacing: .1em; }
+  .si .famrow { display: flex; gap: 10px; align-items: center; background: rgba(255, 255, 255, .16); border-radius: 12px; padding: 8px 12px; font-size: 13.5px; }
+  .si .famrow svg { width: 28px; height: 28px; border-radius: 7px; } .si .famrow small { display: block; opacity: .85; font-size: 11.5px; }
+  .paper { width: 375px; min-height: 560px; background: #f6f3ec; color: #16283c; font: 16px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 44px 16px 30px; }
+  .paper .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 14px; overflow: hidden; text-align: center; box-shadow: 0 10px 30px rgba(22, 40, 60, .08); }
+  .paper .in { padding: 22px 20px 20px; display: grid; gap: 10px; justify-items: center; }
+  .paper .hand { width: 60px; height: 60px; background: url(data:image/png;base64,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) center / contain no-repeat; }
+  .paper .co { font-weight: 700; } .paper .inv { color: #5a6b7e; font-size: 14.5px; } .paper .amt { font-size: 31px; font-weight: 800; }
+  .paper .lab { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #5a6b7e; }
+  .paper .pay { width: 100%; background: #fde047; color: #16283c; border-radius: 10px; font-weight: 700; padding: 11px; }
+  .paper small { color: #5e6d7c; font-size: 12.5px; }
+  .paper .plate { background: #16283c; color: #fff; display: flex; gap: 12px; align-items: center; padding: 14px 16px; text-align: left; }
+  .paper .plate .hand { width: 46px; height: 46px; border-radius: 10px; background-color: #fff; background-size: 86%; flex: 0 0 auto; }
+  .paper .plate span { display: block; color: rgba(255, 255, 255, .74); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" fill="currentColor"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M4 17h16M6 17a6 6 0 0 1 12 0M12 8v3M10 8h4"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M5 19l3-1 10-10-2-2L6 16zM14 4l1 2M19 9l1 1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 7 0"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5" stroke-dasharray="3.4 2.5" stroke-width="3.4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M3.5 17a8.5 8.5 0 0 1 17 0zM12 17l4-6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10.5h16M8 3.5v4M16 3.5v4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3.5 13l3-8h11l3 8v6h-17zM3.5 13h5l1 3h5l1-3h5"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><circle cx="12" cy="10" r="2"/><path d="M8.5 16a3.5 3.5 0 0 1 7 0"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M12 11.5V21"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="12" rx="2"/><circle cx="12" cy="13" r="3"/><path d="M9 7l1.5-2.5h3L15 7"/></symbol>
+  <symbol id="i-rcpt" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M5 19l8.5-8.5M14 4a4.5 4.5 0 0 0 5.8 5.8L17 12.6 11.4 7z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 3L6 13.5h5L10 21l8-11h-5z"/></symbol>
+  <symbol id="i-therm" viewBox="0 0 24 24"><path d="M12 4a2 2 0 0 0-2 2v8.2a4 4 0 1 0 4 0V6a2 2 0 0 0-2-2z"/></symbol>
+  <symbol id="i-tile" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#e8c547"/><g transform="translate(25.60 25.60) scale(0.7200)"><path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5z" fill="#161617"/><circle cx="320" cy="320" r="96" fill="#161617"/><g transform="translate(320 320) rotate(45) scale(0.75) translate(-416 -224)"><path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" fill="#e8c547"/></g></g></symbol>
+</svg>
+
+<!-- ───────────── the screens, each written once ───────────── -->
+<template id="t-hdr"><div class="hdr">
+  <span class="ib"><svg><use href="#i-menu"/></svg></span>
+  <span class="ib home"><svg class="not-skin"><use href="#i-home"/></svg><svg class="only-skin tile"><use href="#i-tile"/></svg><i class="handchip"></i></span>
+  <span class="ib"><svg><use href="#i-search"/></svg></span><span class="sp"></span>
+  <span class="mt d"><svg><use href="#i-bell"/></svg></span><span class="mt j"><svg><use href="#i-pen"/></svg></span><span class="mt c"><svg><use href="#i-check"/></svg></span>
+  <span class="ib"><svg><use href="#i-people"/></svg></span><span class="ib"><svg><use href="#i-gear"/></svg></span>
+</div></template>
+<template id="t-tabs"><div class="tabs">
+  <span class="t1"><svg><use href="#i-gauge"/></svg>Dashboard</span><span><svg><use href="#i-cal"/></svg>Schedule</span>
+  <span><svg><use href="#i-inbox"/></svg><i class="bdg" style="font-style:normal">1</i>Inbox</span><span class="t4"><svg><use href="#i-person"/></svg>Customers</span>
+</div></template>
+
+<template id="t-dash">
+  <div data-t="hdr"></div>
+  <div class="body">
+    <div class="headwrap">
+      <span class="btn side" style="width:48px"><svg><use href="#i-rcpt"/></svg></span>
+      <span class="btn clock">Clock In</span>
+      <span class="btn side" style="width:48px"><svg><use href="#i-clock"/></svg></span>
+      <span class="btn side" style="width:64px">Job Report</span>
+    </div>
+    <div class="cd">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><h4>My Schedule</h4><span style="display:flex;gap:10px;align-items:center"><span class="pill o">+ Add job</span><span class="lk">Calendar →</span></span></div>
+      <div class="sched"><b>8:00</b> · Ridgeway Builders, Level 2 rough-in</div>
+      <div class="sched"><b>1:30</b> · Marlow residence, water heater</div>
+    </div>
+    <div class="cd">
+      <h4>Needs you <span class="cnt">2</span> <span style="font-size:13.5px;font-weight:400;color:var(--mu)">5 for others</span></h4>
+      <div class="ny"><b>Bulk deletion detected</b><p>Sam deleted 5 records at once 2d ago.</p><span><span class="btn red">Review deletions</span></span></div>
+      <div class="ny w"><b>12 purchases need a job</b><p>Purchases over 2 days old aren't on a job yet.</p><span><span class="btn warn bend-b">Open tally</span></span></div>
+    </div>
+  </div>
+  <div data-t="tabs"></div>
+</template>
+
+<template id="t-tally">
+  <div data-t="hdr"></div>
+  <div class="body">
+    <div class="headwrap tt"><span class="lk">← Dashboard</span><span style="text-align:right"><b style="font-size:20px;color:inherit">Job Parts Tally</b><span class="soft only-b" style="display:block">Job 1042 · Ridgeway Builders</span></span></div>
+    <div class="seg"><span class="on">On site</span><span>Transactions</span><span>Materials Estimate</span></div>
+    <div style="padding:0 8px;display:grid;gap:10px">
+      <span class="btn p"><svg class="sm"><use href="#i-cam"/></svg>Photo of a ticket</span>
+      <span class="lk" style="text-align:center;font-size:13px;margin-top:-4px">or choose a photo or a PDF you already have</span>
+      <div class="jobchip"><span><small>JOB</small>1042 · Ridgeway Builders, Level 2</span><span>▾</span></div>
+      <div style="display:flex;gap:8px"><span class="pill" style="flex:1;color:var(--mu);font-weight:400;padding:10px 14px">⌕ Find a part on any job</span><span class="pill" style="padding:10px 14px">◎ Map</span></div>
+      <div style="text-align:right"><span class="pill" style="padding:8px 14px">Scan a label</span></div>
+      <div class="cd" style="padding:12px">
+        <b>2 containers on this job</b>
+        <div class="box"><div><b>Cage B3</b><span>Level 2 · by the north stair · 6 parts</span></div><span class="chip due bend-b">Due a count</span></div>
+        <div class="box"><div><b>Cage A2</b><span>Level 1 · by the hoist · 4 parts</span></div><span class="chip ok">Counted 2 days ago</span></div>
+      </div>
+    </div>
+  </div>
+  <div data-t="tabs"></div>
+</template>
+
+<template id="t-cust">
+  <div class="hdr">
+    <span class="ib home"><svg class="not-skin"><use href="#i-home"/></svg><svg class="only-skin tile"><use href="#i-tile"/></svg></span>
+    <span class="w">Estimates</span><span class="w">Jobs</span><span class="w">Schedule</span><span class="w">Projects</span><span class="w">Bids</span><span class="w">Prospects</span><span class="w">Messages<i class="bdg" style="font-style:normal">24</i></span>
+    <span class="sp"></span><span class="ib"><svg><use href="#i-search"/></svg></span>
+    <span class="mt d"><svg><use href="#i-bell"/></svg></span><span class="mt j"><svg><use href="#i-pen"/></svg></span><span class="mt c"><svg><use href="#i-check"/></svg></span>
+    <span class="ib"><svg><use href="#i-pin"/></svg></span><span class="ib cust"><svg><use href="#i-book"/></svg></span><span class="ib"><svg><use href="#i-people"/></svg></span><span class="ib"><svg><use href="#i-gear"/></svg></span>
+  </div>
+  <div class="body">
+    <div class="headwrap pg" style="justify-content:space-between"><span><b style="font-size:30px;line-height:1.1;color:inherit">Customers</b><span class="soft only-b" style="display:block">212 customers · 9 owe money</span></span><span class="btn p" style="min-height:38px">Add customer</span></div>
+    <div class="tiles">
+      <div><span class="k">Customers</span><b>212</b>131 residential · 81 commercial</div>
+      <div><span class="k">Active last 90 days</span><b>64</b>had a job, payment, bid or estimate</div>
+      <div><span class="k">Total open balance</span><b class="owe"><span class="bend-b">$48,310</span></b>across 9 customers</div>
+      <div><span class="k">Jobs missing a customer</span><b>7</b><span class="lk">Link →</span></div>
+    </div>
+    <div class="filters"><span class="on">All</span><span>Commercial</span><span>Residential</span><span>Owes money (9)</span><span>Active 90d (64)</span></div>
+    <div class="inp">Search name, address, master, phone, or email…</div>
+    <div>
+      <div class="cust"><div><b>Marlow residence</b><span class="tag">Residential</span><p>18 Quarry Bend, Cedar Hollow</p></div><div class="money"><span><i style="background:#059669"></i>PAID</span><span class="bend-b"><i style="background:#ea580c"></i>BILLED</span><span><i style="background:#93a5f5"></i>UNBILLED</span><b class="g">$6,240</b><b>$6,240</b><b>—</b></div></div>
+      <div class="cust"><div><b>Ridgeway Builders</b><span class="tag">Commercial</span><p>410 Alder Creek Rd, Suite 3, Cedar Hollow</p></div><div class="money"><span><i style="background:#059669"></i>PAID</span><span><i style="background:#ea580c"></i>BILLED</span><span><i style="background:#93a5f5"></i>UNBILLED</span><b class="g">$31,900</b><b>$44,150</b><b>$2,800</b></div></div>
+    </div>
+  </div>
+  <div data-t="tabs"></div>
+</template>
+
+<template id="t-signin">
+  <div class="wm"><b>ClickPlumbing.com</b><i></i><small>CHANGES ARE CONSTANT.</small><em>ClickTooling keeps you moving.</em></div>
+  <div class="tr"><span><svg stroke="#e17235"><use href="#i-wrench"/></svg>Plumbing</span><span><svg stroke="#fde047"><use href="#i-bolt"/></svg>Electrical</span><span><svg stroke="#22b8cf"><use href="#i-therm"/></svg>HVAC</span></div>
+  <div class="cardw"><div class="f">Email</div><div class="f">Password</div><div class="go">Sign in</div><small>Issue logging in? Contact the office</small></div>
+  <div class="fam">THE TOOLING FAMILY</div>
+  <div class="famrow"><svg><use href="#i-tile"/></svg><span>CountTooling<small>Plans count and measure</small></span></div>
+</template>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #309 · mock-up · nothing here is built · the owner's answer, 2026-11-10: not for now, the app's look stays as it is</p>
+  <h1>A navy, orange and yellow skin: before and after</h1>
+  <p>The owner, 2026-11-10, after picking the navy plate for the box page: <b>"I think navy and the safety orange and yellow we use is a good combo. Perhaps we should skin more of the app?"</b> This page draws two ways to do it on five screens, holds both to six rules, and says what each costs.</p>
+  <div class="stamp">Drawn 2026-11-10 from screenshots of main at 375 and 1280, light and dark: the sign-in page, the Dashboard, Jobs, Customers, the Tally's On site tab and the bill link's sample. Redrawn here with made-up names, jobs, amounts and counts. App frames follow the Theme switch. Signed-out frames stay light in both, as those pages do. Contrast numbers are computed, not judged by eye.</div>
+  <div class="controls"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button>
+    <span class="key"><i></i>this spot bends one of the six rules, named under the frame</span></div>
+</header>
+
+<!-- ───────────── WHAT THE COLOURS ALREADY DO ───────────── -->
+<h2><span class="num">→</span>What the three colours already do</h2>
+<p class="lede">None of the three is a token in <code>src/index.css</code>, and the app's chrome wears none of them. But orange and yellow are far from unused. Each already has four jobs.</p>
+<div class="scrollx"><table class="v">
+  <thead><tr><th>Colour</th><th>Where it is today</th><th>What a person reads from it</th></tr></thead>
+  <tbody>
+    <tr><th>Navy <code>#16283c</code></th><td>The words on every signed-out page, as the portal's ink. The box page's plate. In dark mode the whole app already sits on a blue-black, <code>#111827</code>.</td><td>The company's paper. No state uses it. It is free.</td></tr>
+    <tr><th>Orange <code>#e17235</code></th><td>The hand in the logo. Plumbing's trade pill, which had to go a step darker to <code>#af4f1a</code> because white words on the logo's orange failed. The Dashboard's Clock In press, <code>#c75000</code>. Needs you's warning rows and their press. The Billed dot on a customer. An open balance.</td><td>A brand, a trade, the day's one big press, and a warning.</td></tr>
+    <tr><th>Yellow <code>#e8c547</code></th><td>The app's icon and the Tooling family tiles. Electrical's bulb in the logo. The bill link's Pay now press, <code>#fde047</code> under navy words. Training mode's band, the bar while imitating someone, Due a count, every amber row and badge.</td><td>A brand, a trade, a press on paper, and "look here".</td></tr>
+  </tbody>
+</table></div>
+<p class="lede" style="margin-top:10px">About 334 orange, amber and yellow literals sit in 219 files under <code>src/</code>, beside the amber tokens. So the skin's first job is to stay out of their way.</p>
+<div class="pairs">
+  <div class="pair"><div class="sw" style="background:#16283c;color:#fff">Aa</div><div class="tx"><b>White on navy</b><span class="ok">15.0 : 1 reads</span></div></div>
+  <div class="pair"><div class="sw" style="background:#16283c;color:#e8c547">Aa</div><div class="tx"><b>Yellow on navy</b><span class="ok">8.9 : 1 reads</span></div></div>
+  <div class="pair"><div class="sw" style="background:#16283c;color:#e17235">Aa</div><div class="tx"><b>Orange on navy</b><span class="ok">4.75 : 1 just reads</span></div></div>
+  <div class="pair"><div class="sw" style="background:#e17235;color:#16283c">Aa</div><div class="tx"><b>Navy on orange</b><span class="ok">4.75 : 1 just reads</span></div></div>
+  <div class="pair"><div class="sw" style="background:#e8c547;color:#16283c">Aa</div><div class="tx"><b>Navy on yellow</b><span class="ok">8.9 : 1 reads</span></div></div>
+  <div class="pair"><div class="sw" style="background:#e17235;color:#fff">Aa</div><div class="tx"><b>White on orange</b><span class="bad">3.15 : 1 fails</span></div></div>
+  <div class="pair"><div class="sw" style="background:#e8c547;color:#fff">Aa</div><div class="tx"><b>White on yellow</b><span class="bad">1.7 : 1 fails</span></div></div>
+  <div class="pair"><div class="sw" style="background:#fff;color:#e17235">Aa</div><div class="tx"><b>Orange on white</b><span class="bad">3.15 : 1 fails</span></div></div>
+  <div class="pair"><div class="sw" style="background:#fff;color:#e8c547">Aa</div><div class="tx"><b>Yellow on white</b><span class="bad">1.7 : 1 fails</span></div></div>
+  <div class="pair"><div class="sw" style="background:#16283c;color:#2563eb">Aa</div><div class="tx"><b>Link blue on navy</b><span class="bad">2.9 : 1 fails</span></div></div>
+  <div class="pair"><div class="sw" style="background:#16283c;color:#fbbf24">Aa</div><div class="tx"><b>Amber on navy</b><span class="bad">reads, as a warning</span></div></div>
+  <div class="pair"><div class="sw" style="background:#111827;color:#16283c;box-shadow:inset 0 0 0 14px #111827"><span style="background:#16283c;color:#fff;border-radius:6px;padding:2px 14px">Aa</span></div><div class="tx"><b>Navy on the dark page</b><span class="bad">1.19 : 1, it vanishes</span></div></div>
+</div>
+
+<!-- ───────────── SCREEN BY SCREEN ───────────── -->
+<h2><span class="num">1</span>Before and after, screen by screen</h2>
+<p class="lede">Left is today. <b>A</b> skins the chrome only: the bar and the tab bar go navy, an orange bar marks where you are, the app's yellow tile is the Home press, and every card stays as it is. <b>B</b> goes further: a navy plate on each page head, as the box page has, and orange for the one main press. Flip the Theme switch on each.</p>
+
+<h3>The Dashboard on a phone</h3>
+<div class="row">
+  <div class="col"><div class="cap">Today</div><div class="frame now"><div class="app ph sk-now at-home" data-t="dash"></div></div>
+    <div class="under">A plain bar with a hairline under Home, pale in Light and blue-black in Dark. The one colour that leads is Clock In, and it is already orange with white words, 4.6 : 1.</div></div>
+  <div class="col"><div class="cap opt">A · chrome only · the pick</div><div class="frame"><div class="app ph sk-a at-home" data-t="dash"></div></div>
+    <div class="under"><b>What changes:</b> the bar, the tab bar, the marker and the Home press. Nothing below the bar moves. The three mode tiles take a light edge, because each is under 3 : 1 against navy. The red count on Inbox still reads.</div></div>
+  <div class="col"><div class="cap">B · plates and an orange press</div><div class="frame"><div class="app ph sk-b at-home" data-t="dash"></div></div>
+    <div class="under"><b>Where it bends:</b> Clock In takes the logo's orange with navy words. Two cards down, Open tally is a warning's press in nearly the same orange. One says "start your day", the other says "something is late", and they now look alike. Rule 3.</div></div>
+</div>
+
+<h3>The Tally's On site tab, the screen a crew holds</h3>
+<div class="row">
+  <div class="col"><div class="cap">Today</div><div class="frame now"><div class="app ph sk-now" data-t="tally"></div></div>
+    <div class="under">Blue leads: the tab, the press, the job. Amber means one thing here, a cage that is due a count.</div></div>
+  <div class="col"><div class="cap opt">A · chrome only</div><div class="frame"><div class="app ph sk-a" data-t="tally"></div></div>
+    <div class="under">The page is untouched. No tab is lit, because the Tally is not one of the four, so this screen has no orange at all. Amber keeps its one meaning.</div></div>
+  <div class="col"><div class="cap">B · plates and an orange press</div><div class="frame"><div class="app ph sk-b" data-t="tally"></div></div>
+    <div class="under"><b>Where it bends:</b> an orange press sits a thumb above Due a count. In sun, on a cracked screen, the amber chip stops being the thing that stands out. Rule 3. The plate itself adds a job line and costs a row of height.</div></div>
+</div>
+
+<h3>A list page at desktop width: Customers</h3>
+<div class="row">
+  <div class="col wide"><div class="cap">Today</div><div class="frame now"><div class="app dk sk-now at-cust" data-t="cust"></div></div>
+    <div class="under">Blue words in the bar, blue on the press and the chosen filter. The open balance is the one warm figure on the page.</div></div>
+  <div class="col wide"><div class="cap opt">A · chrome only</div><div class="frame"><div class="app dk sk-a at-cust" data-t="cust"></div></div>
+    <div class="under"><b>What changes:</b> the bar's words go white, since link blue on navy is 2.9 : 1. An orange bar sits under the page you are on, here the customer book at the right, and on its tab below. The page keeps its blue press and its blue filter.</div></div>
+  <div class="col wide"><div class="cap">B · plates and an orange press</div><div class="frame"><div class="app dk sk-b at-cust" data-t="cust"></div></div>
+    <div class="under"><b>Where it bends:</b> Add customer is orange, an inch above an open balance in a warm brown and a column of orange Billed dots. Rule 3, three times on one screen. The chosen filter cannot stay blue beside an orange press, so it goes navy, and in Dark it must flip pale, because navy on the dark card vanishes. On a list the plate is only a tall title.</div></div>
+</div>
+
+<h3>Signed out: the sign-in page</h3>
+<div class="row">
+  <div class="col"><div class="cap">Today</div><div class="frame now"><div class="si sk-now" data-t="signin"></div></div>
+    <div class="under">A site photo under glass. It already carries the orange wrench, the yellow bolt and the yellow tiles. The panel behind the name is black glass.</div></div>
+  <div class="col"><div class="cap opt">A · the name on navy</div><div class="frame"><div class="si sk-a" data-t="signin"></div></div>
+    <div class="under">One change: the panel behind the name becomes the portal's ink. The page then opens on the same navy the bar will wear a second later.</div></div>
+  <div class="col"><div class="cap">B · and an orange Sign in</div><div class="frame"><div class="si sk-b" data-t="signin"></div></div>
+    <div class="under">Sign in takes orange with navy words. It reads, at 4.75 : 1. It also sits under an orange wrench that means Plumbing, so the press now looks like a trade.</div></div>
+</div>
+
+<h3>Signed out: the bill link</h3>
+<div class="row">
+  <div class="col"><div class="cap">Today</div><div class="frame now"><div class="paper">
+    <div class="card"><div class="in"><div class="hand"></div><div class="co">Click Plumbing and Electrical</div><div class="inv">Invoice #1042-0001 · Alder Creek Rd</div><div class="amt">$2,480.00</div><div class="pay">Pay now</div><small>Payments are taken by Stripe. Card or bank transfer.</small></div></div>
+  </div></div>
+    <div class="under">This page is already the combo: navy words, the orange hand, a yellow press under navy words at 11.4 : 1. Nobody chose it as a skin. It grew that way.</div></div>
+  <div class="col"><div class="cap opt">A and B · the letterhead as a plate</div><div class="frame"><div class="paper">
+    <div class="card"><div class="plate"><div class="hand"></div><div><b style="color:#fff">Click Plumbing and Electrical</b><span>Invoice #1042-0001 · Alder Creek Rd</span></div></div>
+      <div class="in"><div class="lab">Amount due</div><div class="amt">$2,480.00</div><div class="pay">Pay now</div><small>Payments are taken by Stripe. Card or bank transfer.</small></div></div>
+  </div></div>
+    <div class="under">The box page's plate, as a letterhead. The hand sits on a white chip, because its wrench is black and would vanish on navy. The paper, the amount and the yellow press stay. Both directions draw this page the same.</div></div>
+  <div class="col" style="flex: 1 1 320px; max-width: 460px;">
+    <div class="cap">What the signed-out pages teach</div>
+    <div class="say" style="margin-top: 0;">
+      <p class="gain"><b>The combo works on paper.</b> Navy carries the words, orange is only the mark, yellow is only the one press, and its words are navy.</p>
+      <p class="rule"><b>Copper stays for words.</b> The portal's accent is <code>#9a5b2b</code>, 4.85 : 1 on paper. The logo's orange on the same paper is 2.85 : 1. Orange cannot be a word here either.</p>
+      <p class="rule"><b>Print is untouched.</b> A navy plate on a printed bill is a block of toner. Nothing in either direction changes a print.</p>
+    </div>
+  </div>
+</div>
+
+<h3>The bar's own states, under A</h3>
+<p class="lede">The bar already carries two amber states. Both must still win over the skin, and under A they do.</p>
+<div class="row">
+  <div class="col"><div class="cap">A · the bar on a normal day</div><div class="frame"><div class="app strip sk-a at-home" data-t="hdr"></div></div></div>
+  <div class="col"><div class="cap">A · training mode</div><div class="frame"><div class="app strip sk-a at-home"><div class="band"><b style="color:inherit">Training mode, read-only.</b> No change will save.</div><div data-t="hdr"></div></div></div>
+    <div class="under">The amber band reads harder above navy than it does above today's pale bar.</div></div>
+  <div class="col"><div class="cap">A · imitating someone</div><div class="frame"><div class="app strip sk-a imit" data-t="hdr"></div></div>
+    <div class="under">The whole bar turns amber, as it does today. The state replaces the skin. This is why the bar must never wear a yellow line of its own.</div></div>
+  <div class="col"><div class="cap">A · the other mark</div><div class="frame"><div class="app strip sk-a at-home mk-hand" data-t="hdr"></div></div>
+    <div class="under">The logo's hand as Home, on the white chip it needs. See the second of the owner's calls.</div></div>
+</div>
+
+<!-- ───────────── THE RULES ───────────── -->
+<h2><span class="num">2</span>The six rules, and where each direction bends them</h2>
+<div class="scrollx"><table class="v">
+  <thead><tr><th style="width:26%">The rule</th><th class="pick" style="width:34%">A · chrome only</th><th>B · plates and an orange press</th></tr></thead>
+  <tbody>
+    <tr><th>1. Orange and yellow are never words on white. They read 3.15 and 1.7 to 1.</th><td class="pick"><span class="st">Holds.</span> Orange is a bar. Yellow is a tile with a dark mark inside it.</td><td><span class="st">Holds.</span> A plate's words are white. Nothing orange is a word.</td></tr>
+    <tr><th>2. White words never sit on orange or yellow.</th><td class="pick"><span class="st">Holds.</span> Nothing is filled orange.</td><td><span class="sf">Bends.</span> The press must take navy words, 4.75 : 1, a pass by a quarter point. Every other filled press in the app has white words, and <code>check:text-fill-words</code> is written around that. Clock In keeps white today only by being a darker orange than the logo.</td></tr>
+    <tr><th>3. A brand colour in a warning's hue never sits where a state is read.</th><td class="pick"><span class="st">Holds.</span> Orange lives in the bar and the tab bar, where no state is orange. Training mode's band and the imitate bar keep their amber and replace the skin.</td><td><span class="sx">Breaks.</span> On the Dashboard beside Needs you's warning press. On the Tally beside Due a count. On Customers above the open balance and the Billed dots. A plate that carries a verdict, as the box page's does, already uses amber for Due, so yellow can never sit on a plate.</td></tr>
+    <tr><th>4. The blue press is held by CI.</th><td class="pick"><span class="st">Holds.</span> Every press stays blue. No check changes.</td><td><span class="sx">Breaks, by design.</span> The office picked the press blue on 2026-10-31. It is written 1,798 times in 830 files. <code>check:press-blue</code> only refuses the old pale blue, so an orange press would not fail it. The rule behind it would simply stop being true, and the check would need new words and a twin.</td></tr>
+    <tr><th>5. Dark mode works.</th><td class="pick"><span class="st">Holds.</span> The bar goes a shade deeper than the page with a hairline. The marker reads 5.7 : 1 and the tile 10.6 : 1. In Dark the app is already blue-black, so A changes little there, and that is fine.</td><td><span class="sf">Bends.</span> A navy plate on the dark page is 1.19 : 1. It needs an edge to be seen and then reads as one more card. The navy filter chip must flip pale. Dark mode gets the cost of B and little of the look.</td></tr>
+    <tr><th>6. Signed-out pages and prints stay light.</th><td class="pick"><span class="st">Holds.</span> The plate sits on the paper. Prints are untouched.</td><td><span class="st">Holds.</span> The same.</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ───────────── THE COST ───────────── -->
+<h2><span class="num">3</span>What each costs</h2>
+<div class="scrollx"><table class="v">
+  <thead><tr><th style="width:16%"></th><th class="pick" style="width:40%">A · chrome only</th><th>B · plates and an orange press</th></tr></thead>
+  <tbody>
+    <tr><th>What is touched</th><td class="pick">Four chrome tokens that already exist (<code>--chrome-bg</code>, <code>--chrome-text</code>, <code>--chrome-border</code>, <code>--menu-bg</code>), used 44 times in 9 files. One new token for the marker. The bar's words leave link blue for white. A light edge on the three mode tiles. The tab bar. The Home press.</td><td>All of A. Then a plate on each page head: the app has 81 routes and no shared page head, so either each is redrawn by hand or one is built first and pages move onto it. Then the press: someone picks the one main press on every screen by hand. No script can know which press leads.</td></tr>
+    <tr><th>Checks and rules</th><td class="pick">None change. The orange and the yellow are saturated, so they stay literals, as the rule for action colours already says.</td><td><code>check:press-blue</code> and <code>check:text-fill-words</code> are rewritten. A new check holds the orange press to navy words. Clock In, the warning press and Plumbing's pill each need a new answer to "why is this orange".</td></tr>
+    <tr><th>Size</th><td class="pick">Three or four small PRs. A week with the walks.</td><td>A, then dozens of PRs over many weeks, on the busiest files in the repo while other sessions work in them.</td></tr>
+    <tr><th>If it is wrong</th><td class="pick">Four token values go back. One PR.</td><td>No way back short of a second sweep.</td></tr>
+    <tr><th>What it buys</th><td class="pick">The app looks like Click's from the first second, on every page, in both themes. Amber and blue keep meaning what they mean.</td><td>A stronger look on the pages that are about one thing. A weaker warning colour on every page.</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ───────────── BEST WE CAN DO ───────────── -->
+<h2><span class="num pick">?</span>Is this the best we can do?</h2>
+<div class="say">
+  <p class="gain"><b>A is the pick.</b> The brand goes in the frame, where nothing is read as a state. The page inside the frame keeps the colour language the crew already knows: blue is a press, amber is late, red is wrong, green is done.</p>
+  <p class="gain"><b>Keep one thing from B: the plate, for a page about one thing.</b> The box page proved it. A cage, a bill, an estimate, a job and a customer each have a name worth a plate. A list, a board and the Dashboard do not. There the plate is a tall title that pushes the work down.</p>
+  <p class="no"><b>B's orange press loses.</b> Orange already asks for attention as a warning. White words fail on it and navy words pass by a hair. It touches 830 files by hand. And the app already has its one orange press: Clock In, the first press of the day. That is the right amount of orange.</p>
+  <p class="lose"><b>Yellow is the weakest of the three as paint.</b> It cannot be a word, cannot hold white words, and is amber's neighbour everywhere a state is read. It is safe in exactly two places, and it is already in both: inside the app's own tile, and on the bill link's Pay now under navy words.</p>
+  <p class="lose"><b>Thought about and not drawn: the portal's paper inside the app.</b> Cream ground, copper accents, navy words. It lost before a drawing. The app's pages are dense tables tuned on grey under white cards, and every one of about 250 tokens would need a new pair on cream.</p>
+  <p class="rule"><b>What a drawing cannot settle.</b> Whether a navy bar reads in full sun on a phone. Whether the yellow tile or the hand feels like Home. Whether Dark needs any change at all. Each is cheap to try live, and A is cheap to take back.</p>
+</div>
+
+<h2><span class="num">↓</span>The order, in small PRs</h2>
+<ol class="calls">
+  <li><b>Signed-out pages take the plate, one page a PR.</b> The bill link, then the estimate link, then the sign-in page's name panel. The box page already has it. These are light, few, and the owner has already picked the look.</li>
+  <li><b>The bar and the tab bar go navy.</b> The four chrome tokens, light and dark, and the bar's words to white. One PR, one walk on a phone and at a desk, in both themes.</li>
+  <li><b>The marker and the mark.</b> The orange bar under the page you are on, the Home press, the light edge on the mode tiles.</li>
+  <li><b>What the walk finds.</b> The menus, the search overlay, the health strip, training mode and the imitate bar, each checked on a phone.</li>
+  <li><b>Page heads, only for a page about one thing, and only after a week of living with 1 to 4.</b> The cage's screen on the Tally first, since its public twin already wears the plate. Each page its own PR.</li>
+  <li><b>Not planned: an orange press.</b></li>
+</ol>
+
+<h2><span class="num">!</span>The owner's calls</h2>
+<ol class="calls">
+  <li><b>A, B, or A with the plate kept for pages about one thing?</b> <span class="mine">My pick: A, with the plate later on those pages.</span></li>
+  <li><b>Which mark is the Home press in the bar: the yellow ClickTooling tile, or the logo's orange hand on a white chip?</b> <span class="mine">My pick: the tile inside the app, the hand on what a customer sees. The tile reads on navy as it is. The hand needs the chip, or new art with a white wrench.</span></li>
+  <li><b>Which navy: the portal's ink <code>#16283c</code>, or a new one?</b> <span class="mine">My pick: the ink. One navy, already on every signed-out page and the box plate.</span></li>
+  <li><b>Is the marker the logo's own orange, <code>#e17235</code>?</b> <span class="mine">My pick: yes, as a bar and never as a word.</span></li>
+  <li><b>Does the main press turn orange?</b> <span class="mine">My pick: no. Blue stays the press. Clock In stays the one orange press.</span></li>
+  <li><b>Dark mode: leave the bar as it is, or a shade deeper with the marker and the tile?</b> <span class="mine">My pick: a shade deeper with both, so the two themes share one mark.</span></li>
+  <li><b>Pay now stays yellow under navy words?</b> <span class="mine">My pick: yes. It is the best use of yellow in the app.</span></li>
+  <li><b>Does copper stay as the signed-out pages' word accent?</b> <span class="mine">My pick: yes. Orange fails as a word on paper, 2.85 : 1.</span></li>
+  <li><b>Prints stay as they are?</b> <span class="mine">My pick: yes.</span></li>
+</ol>
+
+</div>
+<script>
+(function () {
+  function fill(scope) {
+    scope.querySelectorAll('[data-t]').forEach(function (h) {
+      if (h.getAttribute('data-done')) return;
+      h.setAttribute('data-done', '1');
+      var t = document.getElementById('t-' + h.getAttribute('data-t'));
+      if (!t) return;
+      h.appendChild(t.content.cloneNode(true));
+      fill(h);
+    });
+  }
+  fill(document);
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

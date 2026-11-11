@@ -13,6 +13,7 @@ const io = vi.hoisted(() => ({
   pullPermitsBack: vi.fn(),
   recordVerdict: vi.fn(),
   approachFromPermit: vi.fn(),
+  loadLeadDecks: vi.fn(),
   pullPermitsNow: vi.fn(),
   loadContactHistory: vi.fn(),
   lookupCompany: vi.fn(),
@@ -118,7 +119,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     siteIo.loadPermitsByHouseNumber.mockReset().mockResolvedValue([])
     siteIo.recordNameAnswer.mockReset().mockResolvedValue(undefined)
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
-    io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
+    io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false, deck: 'customer' })
+    io.loadLeadDecks.mockReset().mockResolvedValue({})
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
     io.lookupCompany.mockReset().mockResolvedValue({ found: true, facts: { name: 'Ridgeway Builders', phone: '(210) 555-0199', website: 'https://example.com', address: '1 Office Park, San Antonio, TX 78201', kind: 'General contractor', maps_url: null, place_id: 'p', match: 'exact' }, error: null, cached: true, lookedUpAt: '2026-11-09T00:00:00Z' })
     io.lookupParcel.mockReset().mockResolvedValue({ found: true, facts: { prop_id: '1', situs: '100 SAMPLE ST', owner: 'SAMPLE HOLDINGS LLC', owner_address: 'PO BOX 1, SAN ANTONIO TX 78201', dba: null, land_value: 1, improvement_value: 2, total_value: 1_400_000, use_code: '205', year_built: '2001', building_sf: 6200, acres: 0.9, detail_url: 'https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=1' }, error: null, cached: false, lookedUpAt: null })
@@ -577,9 +579,23 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pursue…' }))
       fireEvent.click(screen.getByRole('button', { name: 'Their next jobs' }))
       fireEvent.click(screen.getByRole('button', { name: 'Sam' }))
+      expect(screen.getByText('A lead goes on the Customers deck with the permit in its notes. A lead of the same name is reused.')).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('They are'), { target: { value: 'owner' } })
+      expect(screen.getByText('A lead goes on the Jobs to GC deck with the permit as a job on it. A lead of the same name is reused.')).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('They are'), { target: { value: 'gc' } })
       fireEvent.click(screen.getByRole('button', { name: 'Pursue · hand to Sam' }))
       await waitFor(() => expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'k1' }), 'gc', 'u1', {}))
+      expect(await screen.findByText('Lead made: Ridgeway Builders, on the Customers deck.')).toBeTruthy()
       await waitFor(() => expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'k1', verdict: 'approach', reason: 'Pursued for their next jobs.', prospectId: 'lead-1', pursueFor: 'next_jobs', forUserId: 'u2' })))
+    })
+
+    it('a pursued permit opens its lead on the deck the lead sits on', async () => {
+      io.loadResearchPermits.mockResolvedValue([{ ...kept(), id: 'q1', verdict: 'approach', verdict_prospect_id: 'lead-c' }, { ...kept(), id: 'q2', address: '9 KILN ST', permit_number: 'COM-9', verdict: 'approach', verdict_prospect_id: 'lead-g' }])
+      io.loadLeadDecks.mockResolvedValue({ 'lead-c': 'customer', 'lead-g': 'gc_lead' })
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Pursuing 2' }))
+      await waitFor(() => expect(io.loadLeadDecks).toHaveBeenCalledWith(['lead-c', 'lead-g']))
+      await waitFor(() => expect(screen.getAllByRole('link', { name: 'the lead' }).map((a) => a.getAttribute('href'))).toEqual(['/prospects?tab=follow-up&kind=customers&prospect_id=lead-c', '/prospects?tab=follow-up&kind=gc-leads&prospect_id=lead-g']))
     })
 
     it('Closed finds a passed permit by its street and puts it back', async () => {
@@ -710,13 +726,17 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.queryByRole('button', { name: /^Looks like a customer/ })).toBeNull()
     })
 
-    it('draws no Read back press while the read back is held, and still says where the records start', async () => {
+    it('reads one step further back on the press, and reads where the records start again', async () => {
       io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
-      await waitFor(() => expect(screen.getByText(/records here start/)).toBeTruthy())
-      expect(screen.queryByRole('button', { name: /^Read back to / })).toBeNull()
-      expect(io.pullPermitsBack).not.toHaveBeenCalled()
+      const since = ymdPlusDays(RECORDS_START, -92)
+      const press = await screen.findByRole('button', { name: `Read back to ${reachDay(since, todayYmdInAppTz())}` })
+      const reads = io.loadRecordsStart.mock.calls.length
+      fireEvent.click(press)
+      await waitFor(() => expect(io.pullPermitsBack).toHaveBeenCalledWith('San Antonio', since, RECORDS_START))
+      await waitFor(() => expect(io.loadRecordsStart.mock.calls.length).toBeGreaterThan(reads))
+      expect(io.loadBuilders.mock.calls.length).toBeGreaterThan(1)
     })
 
     it('claims no span when no pull is on record, and a year once the records reach one', async () => {

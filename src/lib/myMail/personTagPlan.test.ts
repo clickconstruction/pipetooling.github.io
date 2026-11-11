@@ -52,6 +52,17 @@ describe('planPersonTag: one dated entry per mail', () => {
     expect(first.threadId).toBe(THREAD)
   })
 
+  it('a PDF placed in the body counts as a file and is named on the entry; a signature’s logo is not (v2.6909)', () => {
+    // Apple Mail places a PDF in the body, and marks a logo the same way: the first is a file, the second is not.
+    const placed = email('g-9', { files: [file({ name: 'PO 371.pdf', inline: true }), file({ partId: '2', name: 'logo.png', mime: 'image/png', size: 4_100, attachmentId: 'att-logo', inline: true })] })
+    const plan = planPersonTag({ threadId: THREAD, messages: [placed] }, { byGmailId: {} }, '2026-11-08')
+    const step = plan.steps[0]
+    if (step?.kind !== 'entry') throw new Error('an entry was expected')
+    expect(step.files).toBe(1)
+    expect(step.content).toContain('Files: PO 371.pdf (')
+    expect(step.content).not.toContain('logo.png')
+  })
+
   it('leaves a mail the file already holds, skips a draft, spam, a chat, a hidden label and a mail twice', () => {
     const plan = planPersonTag(
       { threadId: THREAD, messages: [dale1, marisol1, email('g-d', { labels: ['DRAFT'] }), email('g-s', { labels: ['SPAM'] }), email('g-c', { labels: ['CHAT'] }), email('g-h', { labels: ['INBOX', 'Label_7'] }), dale1] },

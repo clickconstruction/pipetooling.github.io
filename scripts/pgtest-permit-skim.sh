@@ -20,6 +20,7 @@ PORT="${PGTEST_PORT:-55577}"
 NAME="pgtest-permit-skim"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_permit_skim.sql)"
+LATER="$(ls supabase/migrations/*_permit_history.sql supabase/migrations/*_permit_reads_indexed.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -38,6 +39,11 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 pgtest_migrate
 # A second run must change nothing: the columns and tables stand, the policies and checks are remade the same.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# That second run put the skim's first bodies of the reads back, so the migrations that rewrote them since run again
+# in their order: the probe then reads the functions prod runs.
+for later in $LATER; do
+  psql_as postgres -f - < "$later" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $later"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/permit_skim/20_scenario.sql 2>&1 || true)"
 if ! grep -q "permit_skim PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
-import { leadDoor, shortDay, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
+import { leadDoor, shortDay, type PermitLeadDeck, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
 import { mayKeepFromClosed } from '../../lib/research/permitHistory'
 import { ResearchMapCard } from './ResearchMapCard'
 import {
@@ -88,6 +88,7 @@ export function PermitPlaceList({
   onKeep,
   onSkim,
   isMobile = false,
+  leadDecks,
 }: {
   place: 'kept' | 'pursuing' | 'closed'
   rows: readonly ResearchPermitRow[]
@@ -105,6 +106,8 @@ export function PermitPlaceList({
   /** Back to the skim, for the press an empty list offers. */
   onSkim: () => void
   isMobile?: boolean
+  /** The deck each pursued permit's lead sits on, by the lead's id, for its door. */
+  leadDecks?: Record<string, PermitLeadDeck>
 }) {
   const [keptShowing, setKeptShowing] = useState<KeptShowing>('everyone')
   const [closedWhy, setClosedWhy] = useState<ClosedWhy>('passed')
@@ -248,7 +251,7 @@ export function PermitPlaceList({
                 </span>
                 {row.verdict_pursue_for && <span style={pill('grey')}>{PURSUE_FOR_WORDS[row.verdict_pursue_for]}</span>}
                 {row.verdict_prospect_id && (
-                  <Link to={leadDoor(row.verdict_prospect_id)} style={{ color: 'var(--text-link)' }}>
+                  <Link to={leadDoor(row.verdict_prospect_id, leadDecks?.[row.verdict_prospect_id])} style={{ color: 'var(--text-link)' }}>
                     the lead
                   </Link>
                 )}

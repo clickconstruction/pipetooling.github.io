@@ -19,6 +19,8 @@ import {
   permitRowFromNewBraunfels,
   permitRowFromSanMarcos,
   permitRowFromSeguin,
+  preferNewBraunfels,
+  newBraunfelsNameRank,
   shortDescription,
   texasPoint,
 } from '../../../supabase/functions/_shared/permitCities'
@@ -302,5 +304,29 @@ describe('a read back as history (punch list #307)', () => {
     // The usual page has no end.
     expect(decodeURIComponent(issued!.pageUrl('2026-05-26', 2000, 0))).not.toContain(' < ')
     for (const city of ['Austin', 'New Braunfels', 'San Marcos', 'Seguin']) expect(feedsToPull(city).every((f) => f.pageUrlBefore == null)).toBe(true)
+  })
+})
+
+describe('New Braunfels, one permit written once per person on it', () => {
+  const nb = (over: Record<string, unknown> = {}) => ({ Permit_Group: 'Building', Permit_TYPE_DESC: 'Commercial  EPR', Permit_SUBTYPE_DESC: 'New Build', Permit_Type_Name: 'Commercial - New Build (epr)', Permit_Label: 'Sample Clinic', Permit_Status: 'IN REVIEW', Permit_Address: '100 SAMPLE ST', CoNB_Permit_Number: 'BP2026-001', Applicant_Name: 'Jordan Vale', Contractor_Name: null, Permit_Submit_Date: Date.UTC(2026, 8, 2, 15), Permit_Issue_Date: null, _lat: 29.7, _lng: -98.12, ...over })
+
+  it('a permit written once per person keeps the row that names who is building it', () => {
+    const applicant = permitRowFromNewBraunfels(nb({ OBJECTID: 10, Contractor_Type: null, Contractor_Name: null, Applicant_Name: 'Jordan Vale' }))!
+    const second = permitRowFromNewBraunfels(nb({ OBJECTID: 11, Contractor_Type: null, Contractor_Name: null, Applicant_Name: 'Sample Architects' }))!
+    const gc = permitRowFromNewBraunfels(nb({ OBJECTID: 12, Contractor_Type: 'General Contractor - Commercial', Contractor_Name: 'Tall Pine Builders, LLC' }))!
+    const spark = permitRowFromNewBraunfels(nb({ OBJECTID: 13, Contractor_Type: 'Electrical Contractor', Contractor_Name: 'Sample Electric Co' }))!
+    expect([gc, applicant, spark].map(newBraunfelsNameRank)).toEqual([0, 1, 2])
+    // The general contractor wins whichever order the rows arrive in.
+    expect(preferNewBraunfels(applicant, gc).contact).toBe('Tall Pine Builders, LLC')
+    expect(preferNewBraunfels(gc, spark).contact).toBe('Tall Pine Builders, LLC')
+    expect(preferNewBraunfels(spark, gc).contact).toBe('Tall Pine Builders, LLC')
+    // No contractor yet: the applicant, not a trade; of two applicants, the one the city wrote first.
+    expect(preferNewBraunfels(spark, applicant).contact).toBe('Jordan Vale')
+    expect(preferNewBraunfels(second, applicant).contact).toBe('Jordan Vale')
+    expect(preferNewBraunfels(applicant, second).contact).toBe('Jordan Vale')
+    expect(NEW_BRAUNFELS_READER.prefer).toBe(preferNewBraunfels)
+    // The other doors hand a permit over once: the pull keeps the later row, as before.
+    expect(SEGUIN_READER.prefer).toBeUndefined()
+    expect(AUSTIN_READER.prefer).toBeUndefined()
   })
 })
