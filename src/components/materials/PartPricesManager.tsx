@@ -6,6 +6,8 @@ import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { PRICE_HISTORY_TONE_COLOR, priceHistoryChange } from '../../lib/materials/priceHistoryChange'
 import { PartHouseNumbers } from './PartHouseNumbers'
+import { usePriceSources } from '../../hooks/usePriceSources'
+import { priceSourceWords } from '../../lib/materials/priceSheet/rowCard'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -42,6 +44,8 @@ export function PartPricesManager({
   useEffect(() => {
     loadPrices()
   }, [part.id])
+  // Where each price came from (punch list #308): read again whenever the prices are.
+  const priceSources = usePriceSources(part.id, prices)
 
   async function loadPrices() {
     setLoading(true)
@@ -260,7 +264,12 @@ export function PartPricesManager({
                     const isBest = prices.length > 0 && prices[0] && prices[0].id === p.id
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.75rem' }}>{p.supply_house?.name || 'Unknown'}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {p.supply_house?.name || 'Unknown'}
+                          {priceSources.get(p.id) ? (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{priceSourceWords(priceSources.get(p.id)!)}</div>
+                          ) : null}
+                        </td>
                         <td style={{ padding: '0.75rem', fontWeight: isBest ? 600 : 400, color: isBest ? 'var(--text-green-600)' : 'inherit' }}>
                           ${p.price.toFixed(2)} {isBest && '(Best)'}
                         </td>
@@ -289,7 +298,7 @@ export function PartPricesManager({
             </table>
           </div>
 
-          <PartHouseNumbers partId={part.id} supplyHouses={supplyHouses} pricedHouseIds={prices.map((p) => p.supply_house_id)} />
+          <PartHouseNumbers partId={part.id} partName={part.name} supplyHouses={supplyHouses} pricedHouseIds={prices.map((p) => p.supply_house_id)} onPricesChanged={() => void loadPrices()} />
 
           {/* Price History View */}
           {viewingPriceHistory && (
