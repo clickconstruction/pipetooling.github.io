@@ -707,13 +707,17 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.queryByRole('button', { name: /^Looks like a customer/ })).toBeNull()
     })
 
-    it('draws no Read back press while the read back is held, and still says where the records start', async () => {
+    it('reads one step further back on the press, and reads where the records start again', async () => {
       io.loadBuilders.mockResolvedValue([{ key: 'tallpinedevelopment', name: null, sample_contact: 'Tall Pine Development', kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 5, open: 1, last_permit_on: '2026-11-08', plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null }])
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'Builders' }))
-      await waitFor(() => expect(screen.getByText(/records here start/)).toBeTruthy())
-      expect(screen.queryByRole('button', { name: /^Read back to / })).toBeNull()
-      expect(io.pullPermitsBack).not.toHaveBeenCalled()
+      const since = ymdPlusDays(RECORDS_START, -92)
+      const press = await screen.findByRole('button', { name: `Read back to ${reachDay(since, todayYmdInAppTz())}` })
+      const reads = io.loadRecordsStart.mock.calls.length
+      fireEvent.click(press)
+      await waitFor(() => expect(io.pullPermitsBack).toHaveBeenCalledWith('San Antonio', since, RECORDS_START))
+      await waitFor(() => expect(io.loadRecordsStart.mock.calls.length).toBeGreaterThan(reads))
+      expect(io.loadBuilders.mock.calls.length).toBeGreaterThan(1)
     })
 
     it('claims no span when no pull is on record, and a year once the records reach one', async () => {
