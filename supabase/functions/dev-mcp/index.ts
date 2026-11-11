@@ -140,10 +140,15 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // the reason each. A failed ask never undoes the move. The plan's and the apply's photo words say so
 // (boxPhotoRefile.ts → movePhotoWordsWithRefile); the hash is still of the database's own reply.
 //
+// A file placed in the body is a file (v2.6909 / 0.62.0): Apple Mail places a PDF in the body of a mail
+// (Content-Disposition: inline). read_mail listed it, and read_mail_file, read_mail_file_text and plan_mail_file could
+// not pick it: "That mail carries no file". The seat now lists and picks by one rule, the mail reader's own (fileKeep,
+// through devMcpMailSearch.ts → isMailFile): everything but a small picture placed in the body, a signature's logo.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.61.0'
+const SERVER_VERSION = '0.62.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -296,7 +301,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'read_mail',
-    description: "One mail whole from a search_mail hit (v2.6565): its headers, the reader's words as plain text (up to 30,000 characters), its labels and its files by name, kind and size. The bytes stay in Gmail. Read-only, under the same delegation and scope.",
+    description: "One mail whole from a search_mail hit (v2.6565): its headers, the reader's words as plain text (up to 30,000 characters), its labels and its files by name, kind and size (a file placed in the body of the mail included, as Apple Mail places a PDF; a signature's small logo left out). The bytes stay in Gmail. Read-only, under the same delegation and scope.",
     inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" } }, required: ['account', 'id'] },
   },
   {

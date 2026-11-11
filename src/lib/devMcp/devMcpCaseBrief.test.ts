@@ -129,7 +129,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.61.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.62.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')
