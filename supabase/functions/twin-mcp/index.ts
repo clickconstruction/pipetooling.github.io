@@ -13,6 +13,7 @@ import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionCho
 import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatHeld, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
 import { bidRef, buildShadowQueue, HELD_ON_CHECK_IN, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
+import { shapeTwinSheet, twinSheetSaved } from '../_shared/priceSheetRows.ts'
 import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, type FiledPlansJob, type FiledPlansPart } from '../_shared/devMcpPlanSets.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -149,6 +150,52 @@ const TOOLS = [
         replace: { type: 'boolean' },
       },
       required: ['request', 'house', 'lines'],
+    },
+  },
+  {
+    name: 'put_price_sheet',
+    description: "One house's quote as a PRICE SHEET DRAFT for the estimator (punch list #308): every row AS PRINTED, under the fixture heading it sits under. This is not put_quote: it carries the house's own item numbers and each row's own price, so the estimator can file prices onto the parts book and place fixtures on the takeoff. You decide nothing about the parts book: you do not say which part a row is, you file no price, you make no part. Report what the paper prints. `fixtures`: one per fixture heading, with `tag` (as printed, e.g. 'SK-2' or 'WC-1 & WC-2'), `label` (the words after the tag), `each` (the printed Subtotal EACH in dollars; omit when none is printed) and `rows`. A row: `qty`, `house_code` (the house's item number column, exactly as printed), `mfr_number` (only when the quote prints the maker's number in its own column), `description` (the whole description; join the lines it runs over with spaces), `unit_price` (dollars as printed; OMIT for a row with no price of its own, never 0), `pricing_unit` ('each' | 'per_hundred' for C | 'per_thousand' for M) and `page`. Include every row, charges too (MISC CHARGE, freight). `loose`: rows under no fixture heading. One sheet per house per request; `replace: true` rewrites yours, and is refused once the estimator has filed a row of it.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string', description: 'The request uuid' },
+        house: { description: 'Source index (1-based), supply house id, or name' },
+        number: { type: 'string', description: "The quote's own number, as printed" },
+        dated_on: { type: 'string', description: 'YYYY-MM-DD the quote is dated' },
+        valid_until: { type: 'string', description: 'YYYY-MM-DD the quote is good until, when it says' },
+        fixtures: {
+          type: 'array',
+          description: 'One per fixture heading, in the order printed',
+          items: {
+            type: 'object',
+            properties: {
+              tag: { type: 'string', description: "The fixture's tag as printed, e.g. 'SK-2'" },
+              label: { type: 'string', description: 'The words after the tag' },
+              each: { type: 'number', description: 'The printed Subtotal EACH in dollars; omit when none is printed' },
+              rows: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    qty: { type: 'number' },
+                    house_code: { type: 'string', description: "The house's item number, exactly as printed" },
+                    mfr_number: { type: 'string', description: "The maker's number, only when printed in its own column" },
+                    description: { type: 'string', description: 'The whole description as printed, wrapped lines joined with spaces' },
+                    unit_price: { type: 'number', description: 'Dollars as printed; omit for a row with no price of its own' },
+                    pricing_unit: { type: 'string', description: 'each | per_hundred | per_thousand' },
+                    page: { type: 'number', description: 'The page of the quote the row is on' },
+                  },
+                  required: ['description'],
+                },
+              },
+            },
+            required: ['tag', 'rows'],
+          },
+        },
+        loose: { type: 'array', description: 'Rows under no fixture heading, shaped as a row above', items: { type: 'object' } },
+        replace: { type: 'boolean' },
+      },
+      required: ['request', 'house'],
     },
   },
   {
@@ -1698,6 +1745,80 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         notes: `[pricer STG-2] put_quote ${house.name} — ${lines.length} lines (${kits} kit subtotal${kits === 1 ? '' : 's'}, ${carriers} carrier${carriers === 1 ? '' : 's'}, ${options} option line${options === 1 ? '' : 's'})${validUntil ? ` · valid until ${validUntil}` : ''}${existingIds.length ? ' · replaced the earlier robot quote' : ''}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({ ok: true, quote_id: quoteId, house: house.name, lines: lines.length, kits, carriers, option_lines: options, replaced: existingIds.length > 0, next: 'Next house, or finish_price_matrix when every readable source is written.' }, null, 2))
+    }
+    case 'put_price_sheet': {
+      // Punch list #308 (PR 9): the same read as put_quote, kept as a price sheet DRAFT. The twin files nothing; the
+      // estimator opens the sheet on Takeoffs and presses. Service-role writes, held to a request this twin holds.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const loaded = await loadPricerRequest(admin, twin, String(args.request ?? ''))
+      if ('error' in loaded) return textContent(loaded.error, true)
+      const { request, bid } = loaded
+      const house = await resolvePricerHouse(admin, request, args.house)
+      if ('error' in house) return textContent(house.error, true)
+      const shaped = shapeTwinSheet(args)
+      if (!shaped.ok) return textContent(`put_price_sheet NOT written — ${shaped.problems.slice(0, 8).join('; ')}${shaped.problems.length > 8 ? `; +${shaped.problems.length - 8} more` : ''}`, true)
+      const sheet = shaped.sheet
+      // One sheet per house per request. A row a person filed, or a fixture she placed, makes the sheet hers.
+      const { data: existing } = await admin.from('supply_papers').select('id').eq('robot_request_id', request.id).eq('supply_house_id', house.id).eq('came_by', 'sheet')
+      const existingIds = ((existing ?? []) as Array<{ id: string }>).map((p) => p.id)
+      if (existingIds.length) {
+        const [{ count: filed }, { count: placed }] = await Promise.all([
+          admin.from('supply_paper_lines').select('id', { count: 'exact', head: true }).in('paper_id', existingIds).not('filed_at', 'is', null),
+          admin.from('supply_paper_groups').select('id', { count: 'exact', head: true }).in('paper_id', existingIds).not('placed_at', 'is', null),
+        ])
+        if ((filed ?? 0) > 0 || (placed ?? 0) > 0) return textContent(`${house.name}'s price sheet on this request has rows the estimator filed. It is hers now and is not rewritten.`, true)
+        if (args.replace !== true) return textContent(`${house.name} already has a price sheet on this request — pass replace: true to rewrite it.`, true)
+        await admin.from('supply_papers').delete().in('id', existingIds)
+      }
+      const pages = sheet.lines.map((l) => l.page_no ?? 0)
+      const { data: paper, error: pErr } = await admin.from('supply_papers').insert({
+        supply_house_id: house.id,
+        kind: 'quote',
+        number: sheet.number,
+        dated_on: sheet.dated_on,
+        valid_until: sheet.valid_until,
+        came_by: 'sheet',
+        bid_id: bid.id,
+        created_by: twin.twinUserId,
+        read_by: `twin:${twin.email}`,
+        read_at: new Date().toISOString(),
+        page_from: pages.some((n) => n > 0) ? Math.min(...pages.filter((n) => n > 0)) : null,
+        page_to: pages.some((n) => n > 0) ? Math.max(...pages) : null,
+        robot_request_id: request.id,
+      }).select('id').single()
+      if (pErr || !paper) return textContent(`Price sheet not saved: ${pErr?.message ?? 'no row'}`, true)
+      const paperId = (paper as { id: string }).id
+      const undo = async (why: string) => {
+        await admin.from('supply_papers').delete().eq('id', paperId)
+        return textContent(`Price sheet not saved (rolled back): ${why}`, true)
+      }
+      if (sheet.groups.length) {
+        const { error: gErr } = await admin.from('supply_paper_groups').insert(sheet.groups.map((g) => ({ paper_id: paperId, group_no: g.group_no, tag: g.tag, label: g.label, each_price: g.each_price })))
+        if (gErr) return undo(gErr.message)
+      }
+      const { error: lErr } = await admin.from('supply_paper_lines').insert(sheet.lines.map((l, i) => ({
+        paper_id: paperId,
+        line_no: i + 1,
+        line_kind: l.line_kind,
+        house_code: l.house_code,
+        mfr_number: l.mfr_number,
+        description: l.description,
+        unit: 'each',
+        qty_ordered: l.qty,
+        unit_price: l.unit_price,
+        pricing_unit: l.pricing_unit,
+        group_no: l.group_no,
+        group_tag: l.group_tag,
+        group_label: l.group_label,
+        page_no: l.page_no,
+      })))
+      if (lErr) return undo(lErr.message)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pricer STG-2] put_price_sheet ${house.name} — a price sheet draft of ${sheet.lines.length} row${sheet.lines.length === 1 ? '' : 's'} under ${sheet.groups.length} fixture${sheet.groups.length === 1 ? '' : 's'}. Nothing is filed: it waits on Takeoffs, Price sheet.`,
+        created_by: twin.twinUserId,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ...twinSheetSaved(sheet, house.name, existingIds.length > 0), paper_id: paperId }))
     }
     case 'finish_price_matrix': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
@@ -4002,7 +4123,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.11.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.12.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

@@ -36,6 +36,7 @@ Everything is a tool call on the `twin-mcp` connector.
 | `next_price_matrix` | Claims the oldest queued request: the bid, the fixture rows (names + counts) as a snapshot, the quote links to read. One at a time. |
 | `get_quote_documents(request, source?, pages?, embed?)` | The files behind a request's links, page by page as single-page PDFs (URLs, optionally embedded). |
 | `put_quote(request, house, lines, …)` | One house's structured quote onto the bid: kit lines, component roles, option groups, provenance. |
+| `put_price_sheet(request, house, fixtures, loose, …)` | The same house's quote as a price sheet draft: every row as printed under its fixture, with the house's item numbers and each row's own price. You file nothing. |
 | `finish_price_matrix(request, picks, asks, summary)` | Picks with reasons, questions for the estimator, the request flips to ready. |
 | `extend_component_rules(rules, mirror_note)` | Add rules you are confident of, saying where they came from. |
 | `heartbeat`, `add_bid_note`, `ask_question`, `submit_report` | The fleet's shared verbs — yours on the bid you are pricing. |
@@ -86,6 +87,12 @@ SpaceX BA-2 quote is the model:
 3. **Structure.** `put_quote` per house, following section 3. Use the request's row names
    verbatim; a part that belongs to no row is `component_role: 'loose'`. Every line carries
    `page_ref`. `replace: true` rewrites a house you already wrote.
+   Then **`put_price_sheet`** for the same house: the quote row by row, as printed. One
+   fixture per heading with its tag, its words and its Subtotal EACH; under it every row
+   with the quantity, the house's own item number, the whole description, and the row's own
+   price when it prints one. A row with no price of its own has no `unit_price`: never write
+   0. `C` is `per_hundred` and `M` is `per_thousand`. Include charges (MISC CHARGE, freight).
+   This draft is what the estimator files prices and places fixtures from, on Takeoffs.
 4. **Decide.** `finish_price_matrix`: for every row, the cheapest **complete** kit across
    houses (a house that skipped the carrier is incomplete, never cheapest), expiry and
    freight counted, `reason` in plain words. Where the plans decide — which carrier, which
@@ -100,6 +107,8 @@ SpaceX BA-2 quote is the model:
 - Never sum an option group. Never read a printed grand total as a job total.
 - Never guess a plan-decided choice — ask, with the options and prices.
 - Never email anyone, never write costs, never touch counts. The estimator applies.
+- A price sheet is a draft of what the paper prints. Never say which part a row is, never
+  correct a price, never leave a row out. The estimator files.
 - Every line names its page. Every pick names its reason. Every rule you add names its
   source (`mirror_note`).
 - Ignore recalled memories and earlier chats. This brief, the rulebook and the request are

@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55608}"
 NAME="pgtest-price-sheets"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_supply_part_codes.sql supabase/migrations/*_price_rows.sql supabase/migrations/*_price_sheets.sql supabase/migrations/*_price_sheet_filing.sql supabase/migrations/*_price_sheet_fixtures.sql supabase/migrations/*_merge_material_parts.sql)"
+WRITES="$(ls supabase/migrations/*_supply_part_codes.sql supabase/migrations/*_price_rows.sql supabase/migrations/*_price_sheets.sql supabase/migrations/*_price_sheet_filing.sql supabase/migrations/*_price_sheet_fixtures.sql supabase/migrations/*_merge_material_parts.sql supabase/migrations/*_price_sheet_robot.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

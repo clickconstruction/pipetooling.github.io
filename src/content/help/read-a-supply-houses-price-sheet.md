@@ -120,6 +120,14 @@ Drop the same file again and the app opens the read you already have. It does no
 
 A house may send a later copy of the same quote. The app reads it as a new sheet and says what moved. The line counts the prices that changed and the rows that are new or gone.
 
+## A sheet the pricing twin read
+
+The pricing twin reads a bid's quotes when you queue a price request. It now leaves each quote as a price sheet too.
+
+The sheet shows as a chip on Takeoffs that ends with the word twin. Press the chip to open it.
+
+The twin files nothing. Every row waits for your press, the same as a sheet you dropped.
+
 ## What it cannot read yet
 
 A PDF that is a picture of a page has no text to read. A photo is the same. Paste the rows as text for now.

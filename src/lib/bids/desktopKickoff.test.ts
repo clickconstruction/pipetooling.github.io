@@ -225,7 +225,7 @@ describe('docs/twins/kickoffs/pricing-operator.md (the pricing robot’s templat
     expect(out).toContain('twin-pricer-1')
   })
   it('names the loop verbs and the owner’s hard rules', () => {
-    for (const verb of ['get_pricing_guide', 'get_component_rules', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix']) {
+    for (const verb of ['get_pricing_guide', 'get_component_rules', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'put_price_sheet', 'finish_price_matrix']) {
       expect(pricingKickoffDoc).toContain(verb)
     }
     expect(pricingKickoffDoc).toMatch(/Never sum an option group/)

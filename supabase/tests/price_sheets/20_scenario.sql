@@ -589,6 +589,32 @@ SELECT bedt.ok('anon cannot merge, and the pairs table carries the fences',
   NOT has_function_privilege('anon', 'public.merge_material_parts(uuid, uuid)', 'EXECUTE')
   AND (SELECT count(*) >= 3 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'material_part_distinct_pairs' AND permissive = 'RESTRICTIVE'));
 
+-- 32 · a sheet the pricing twin read is a draft the estimator files from; the twin's read is tied to its request.
+RESET ROLE;
+INSERT INTO public.bid_price_matrix_requests (id, bid_id, status) VALUES ('00000000-0000-0000-0000-00000000ab01', '00000000-0000-0000-0000-00000000b001', 'working');
+INSERT INTO public.supply_papers (id, supply_house_id, kind, number, came_by, bid_id, read_by, robot_request_id)
+VALUES ('00000000-0000-0000-0000-00000000f901', '00000000-0000-0000-0000-00000000d002', 'quote', 'Q-TWIN-1', 'sheet', '00000000-0000-0000-0000-00000000b001', 'twin:twin-pricer-1@bed.test', '00000000-0000-0000-0000-00000000ab01');
+INSERT INTO public.supply_paper_lines (id, paper_id, line_no, house_code, description, unit, qty_ordered, unit_price)
+VALUES ('00000000-0000-0000-0000-00000000f911', '00000000-0000-0000-0000-00000000f901', 1, 'TW-9001', 'BED TWIN ROW STOP VALVE', 'each', 2, 12.50);
+SELECT bedt.ok('the twin''s draft files no price by itself',
+  (SELECT filed_at IS NULL AND part_id IS NULL FROM public.supply_paper_lines WHERE id = '00000000-0000-0000-0000-00000000f911'));
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+SET LOCAL ROLE authenticated;
+SELECT bedt.ok('the estimator reads the sheet the twin left',
+  (SELECT count(*) = 1 FROM public.supply_papers WHERE id = '00000000-0000-0000-0000-00000000f901' AND read_by LIKE 'twin:%'));
+INSERT INTO public.material_parts (id, name, service_type_id) VALUES ('00000000-0000-0000-0000-00000000e201', 'BED TWIN ROW STOP VALVE', '00000000-0000-0000-0000-00000000a001');
+INSERT INTO bed_out VALUES ('twin_row', public.price_row_file(jsonb_build_object(
+  'line_id', '00000000-0000-0000-0000-00000000f911', 'part_id', '00000000-0000-0000-0000-00000000e201', 'came_by', 'sheet', 'matched_how', 'description')));
+SELECT bedt.ok('her press files the twin''s row', (SELECT (v->>'filed')::boolean FROM bed_out WHERE k = 'twin_row'));
+SELECT bedt.ok('the price is on the part, from that house, filed by her',
+  (SELECT p.price = 12.50 AND l.filed_by = '00000000-0000-0000-0000-0000000000a1'
+   FROM public.material_part_prices p JOIN public.supply_paper_lines l ON l.id = p.source_line_id
+   WHERE p.part_id = '00000000-0000-0000-0000-00000000e201' AND p.supply_house_id = '00000000-0000-0000-0000-00000000d002'));
+RESET ROLE;
+DELETE FROM public.bid_price_matrix_requests WHERE id = '00000000-0000-0000-0000-00000000ab01';
+SELECT bedt.ok('a request that goes leaves the sheet, with no request on it',
+  (SELECT robot_request_id IS NULL FROM public.supply_papers WHERE id = '00000000-0000-0000-0000-00000000f901'));
+
 -- 7 · a number goes with its part.
 SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
 DELETE FROM public.material_parts WHERE id = '00000000-0000-0000-0000-00000000e002';

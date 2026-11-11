@@ -206,6 +206,14 @@ export function sheetRevision(
 }
 
 /** A later copy, in one sentence: what moved since the read on file. */
+/**
+ * Who read a sheet, when it was not the person looking at it (punch list #308, PR 9). The pricing twin leaves a
+ * sheet as a draft with `read_by` of `twin:<its login>`; every other reader is the estimator's own drop, said nowhere.
+ */
+export function readerWords(readBy: string | null | undefined): string | null {
+  return (readBy ?? '').startsWith('twin:') ? 'read by the pricing twin' : null
+}
+
 export function revisionWords(rev: SheetRevision, number: string, readOn: string): string {
   const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
   const parts = [

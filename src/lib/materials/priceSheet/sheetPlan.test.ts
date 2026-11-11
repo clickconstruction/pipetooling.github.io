@@ -146,4 +146,12 @@ describe('a later copy of a quote', () => {
     const { sheetRevision, revisionWords } = await import('./sheetPlan')
     expect(revisionWords(sheetRevision(earlier, earlier), '', 'Nov 6')).toBe('This quote was read on Nov 6. This copy is later: every row is the same.')
   })
+
+  it('says when the pricing twin read a sheet, and nothing for a person\'s own drop', async () => {
+    const { readerWords } = await import('./sheetPlan')
+    expect(readerWords('twin:twin-pricer-1@example.test')).toBe('read by the pricing twin')
+    expect(readerWords('text')).toBeNull()
+    expect(readerWords('')).toBeNull()
+    expect(readerWords(null)).toBeNull()
+  })
 })

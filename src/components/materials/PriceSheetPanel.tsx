@@ -21,7 +21,7 @@ import { dollars, shortDay, type OnFilePrice } from '../../lib/materials/priceSh
 import { assemblyName, findSameItemsAssembly, fixtureStatus, type CountRow, type FixtureStatus, type KnownAssembly } from '../../lib/materials/priceSheet/sheetFixtures'
 import { loadAssemblies, makeAssembly, recordPlaced, recordUnplaced, restoreBundlePrice, setBundlePrice } from '../../lib/materials/priceSheet/sheetFixturesIo'
 import { houseVerdict, type HouseVerdict } from '../../lib/materials/priceSheet/sheetHouse'
-import { planSheet, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
+import { planSheet, readerWords, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { PriceRowCardView, type CardFileOpts, type KnownPart, type ServerAsk } from './PriceRowCardView'
 
@@ -674,7 +674,7 @@ export function PriceSheetPanel({
         </div>
         {sheet ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {[bid?.label, sheet.paper.datedOn ? `dated ${shortDay(sheet.paper.datedOn)}` : 'no day printed', sheet.paper.validUntil ? `good until ${shortDay(sheet.paper.validUntil)}` : null, firstRead?.fileName ?? null].filter(Boolean).join(' · ')}
+            {[bid?.label, sheet.paper.datedOn ? `dated ${shortDay(sheet.paper.datedOn)}` : 'no day printed', sheet.paper.validUntil ? `good until ${shortDay(sheet.paper.validUntil)}` : null, firstRead?.fileName ?? null, readerWords(sheet.paper.readBy)].filter(Boolean).join(' · ')}
           </span>
         ) : null}
         {problem ? (

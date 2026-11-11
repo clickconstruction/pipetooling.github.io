@@ -15,7 +15,7 @@ import { findSheetByHash, findSheetByNumber, listSheets, loadSheet, saveSheet, t
 import { allRows, parsePasted } from '../../lib/materials/priceSheet/pastedRow'
 import { shortDay } from '../../lib/materials/priceSheet/rowCard'
 import { houseVerdict, letterheadHouse, sheetHeader } from '../../lib/materials/priceSheet/sheetHouse'
-import { revisionWords, sheetRevision } from '../../lib/materials/priceSheet/sheetPlan'
+import { readerWords, revisionWords, sheetRevision } from '../../lib/materials/priceSheet/sheetPlan'
 import { readSheetFile, sha256Hex } from '../../lib/materials/priceSheet/sheetText'
 import type { KnownPart } from './PriceRowCardView'
 import { PRICE_SHEET_DOCK_MIN_WINDOW, PRICE_SHEET_DOCK_WIDTH, PriceSheetPanel, type PriceSheetRowOffer, type PriceSheetTakeoff } from './PriceSheetPanel'
@@ -231,10 +231,11 @@ export function PriceSheetDoor({
           type="button"
           data-testid="price-sheet-chip"
           onClick={() => setOpenSheet({ paperId: s.paper.id, firstRead: null })}
-          title="A price sheet on this bid has rows waiting. It opens where it was left."
+          title={readerWords(s.paper.readBy) ? 'The pricing twin read this price sheet. Nothing is filed until you press.' : 'A price sheet on this bid has rows waiting. It opens where it was left.'}
           style={{ padding: '0.3rem 0.7rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', borderRadius: 999, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}
         >
           {houseName(s.paper.supplyHouseId)} sheet · {s.waiting === 1 ? '1 waits' : `${s.waiting} wait`}
+          {readerWords(s.paper.readBy) ? ' · twin' : ''}
         </button>
       ))}
       <span style={{ position: 'relative' }}>
@@ -303,7 +304,10 @@ export function PriceSheetDoor({
                   {sheets.map((s) => (
                     <tr key={s.paper.id} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.4rem 0.5rem' }}>{s.paper.supplyHouseId ? houseName(s.paper.supplyHouseId) : 'Not settled yet'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{s.paper.number || '—'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
+                        {s.paper.number || '—'}
+                        {readerWords(s.paper.readBy) ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}> · {readerWords(s.paper.readBy)}</span> : null}
+                      </td>
                       <td style={{ padding: '0.4rem 0.5rem', overflowWrap: 'anywhere' }}>{s.bidLabel ?? 'No bid'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{shortDay(s.paper.createdAt.slice(0, 10))}</td>
                       <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
