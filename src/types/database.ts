@@ -38171,6 +38171,7 @@ export type Database = {
           archived_at: string | null
           bid_board_self_highlight: Json | null
           calibration_standard: boolean
+          card_name: string | null
           charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
@@ -38192,6 +38193,8 @@ export type Database = {
           needs_supervision: boolean
           notes: string | null
           phone: string | null
+          photo_crop: Json | null
+          photo_path: string | null
           primary_service_type_ids: string[] | null
           read_only: boolean
           role: Database["public"]["Enums"]["user_role"]
@@ -38209,6 +38212,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          card_name?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
@@ -38230,6 +38234,8 @@ export type Database = {
           needs_supervision?: boolean
           notes?: string | null
           phone?: string | null
+          photo_crop?: Json | null
+          photo_path?: string | null
           primary_service_type_ids?: string[] | null
           read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -38247,6 +38253,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          card_name?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
@@ -38268,6 +38275,8 @@ export type Database = {
           needs_supervision?: boolean
           notes?: string | null
           phone?: string | null
+          photo_crop?: Json | null
+          photo_path?: string | null
           primary_service_type_ids?: string[] | null
           read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -41536,6 +41545,22 @@ export type Database = {
       follow_up_press: { Args: { p_doing: string }; Returns: string }
       follow_up_user_known: { Args: { p_user_id: string }; Returns: boolean }
       follow_up_user_name: { Args: { p_user_id: string }; Returns: string }
+      fts_hit: {
+        Args: { p_headline_options: string; p_q: unknown; p_text: string }
+        Returns: {
+          rank: number
+          snippet: string
+        }[]
+      }
+      fts_prefilter: { Args: { p_q: unknown }; Returns: unknown }
+      fts_query_tokens: { Args: { p_q: unknown }; Returns: string[] }
+      fts_windows: {
+        Args: { p_step: number; p_text: string; p_words: number }
+        Returns: {
+          body: string
+          n: number
+        }[]
+      }
       gc_accept_work: { Args: { p_package_id: string }; Returns: string }
       gc_add_company: { Args: { company: Json }; Returns: string }
       gc_add_punch_item: { Args: { p: Json }; Returns: string }

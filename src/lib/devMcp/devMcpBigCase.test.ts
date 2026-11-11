@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { BRIEF_DOC_SECTION_STEPS, getCaseBrief } from '../../../supabase/functions/_shared/devMcpCaseBrief'
+import { ALL_ROWS_MAX, newestFirst, readRowsByIds } from '../../../supabase/functions/_shared/devMcpComposites'
 import { REPLY_MAX_CHARS, replyText } from '../../../supabase/functions/_shared/devMcpDoor'
 import { PERSON_FILE_LINE_CHARS, briefPersonFileLine, getPersonFile, personFileFilter, type PersonFileBriefLine, type PersonFileReply } from '../../../supabase/functions/_shared/devMcpPersonFile'
 import { REPLY_FIT_CHARS, cutText, fitReply, outlineHeadings, replyChars, type FitStep, type Shortened } from '../../../supabase/functions/_shared/devMcpReplyFit'
 import type { PersonTimelineLine } from '../people/personTimeline'
-import { BIG_DOCUMENTS, BIG_ENTRIES, BIG_EVIDENCE, BIG_LONG_DOC_HEADINGS, BIG_PERSON, BIG_RPC, BIG_TODAY, bigCase, pagingReader } from './bigCaseFixture'
+import { BIG_DOCUMENTS, BIG_ENTRIES, BIG_EVIDENCE, BIG_LONG_DOC_HEADINGS, BIG_MATTER, BIG_PERSON, BIG_RPC, BIG_TODAY, DEEP, bigCase, deepCase, pagingReader } from './bigCaseFixture'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -267,7 +268,97 @@ describe('get_person_file on a large file (v2.6935): 250 entries, 80 evidence re
   })
 })
 
-describe('the server and the docs carry the fit (v2.6935 / 0.63.0)', () => {
+describe('every list past 200 rows (v2.6939): each source of both verbs is read a page at a time', () => {
+  const deep = () => pagingReader({ rows: deepCase(), rpc: BIG_RPC })
+  const times = (r: { asked: string[] }, what: string) => r.asked.filter((a) => a === what).length
+
+  it('newestFirst puts paged rows back newest first, a row with no day first, and ties in the order they came', () => {
+    const rows = [{ id: 'a', on: '2026-01-02' }, { id: 'b', on: null }, { id: 'c', on: '2026-03-01' }, { id: 'd', on: '2026-01-02' }]
+    expect(newestFirst(rows, 'on').map((r) => r.id)).toEqual(['b', 'c', 'a', 'd'])
+    expect(rows.map((r) => r.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('readRowsByIds reads a long list of ids a hundred at a time and answers every row', async () => {
+    const r = deep()
+    const ids = Array.from({ length: DEEP.jobs }, (_, i) => `j-${String(i).padStart(3, '0')}`)
+    const rows = await readRowsByIds(r, 'jobs_ledger', 'id,job_name', ids)
+    expect(rows).toHaveLength(DEEP.jobs)
+    expect(new Set(rows.map((x) => x.id)).size).toBe(DEEP.jobs)
+    expect(times(r, 'rows:jobs_ledger')).toBe(3)
+    expect(await readRowsByIds(r, 'jobs_ledger', 'id,job_name', [])).toEqual([])
+  })
+
+  it('the brief counts every record, document, theme mark, step and job, and still fits the door', async () => {
+    const r = deep()
+    const out = await getCaseBrief(r, { person: BIG_PERSON }, DEV)
+    if ('refused' in out) throw new Error(out.refused)
+    expectWholeThroughTheDoor(out)
+    expect(out.held).toEqual([])
+    expect(out.counts).toEqual({ entries: BIG_ENTRIES, evidence: DEEP.evidence, documents: DEEP.documents - 1 })
+    // 430 marks on five themes: one read answered 200 of them, and each theme read 40.
+    expect(out.themes.map((t) => t.marked)).toEqual([86, 86, 86, 86, 86])
+    // The lists that were shortened say their whole size, and keep their newest rows.
+    const kept = Object.fromEntries(out.shortened!.blocks.map((b) => [b.block, b.kept]))
+    expect(kept.evidence).toContain(`of ${DEEP.evidence} records`)
+    expect(kept.documents).toContain(`of ${DEEP.documents - 1} documents`)
+    expect(kept['matter.steps and matter.documents']).toContain(`of ${DEEP.steps} steps`)
+    expect(kept['matter.steps and matter.documents']).toContain(`of ${DEEP.matterDocuments} documents`)
+    expect(out.evidence[0]!.id).toBe(`r-${DEEP.evidence - 1}`)
+    expect(out.matter!.steps[out.matter!.steps.length - 1]!.id).toBe(`m-${DEEP.steps - 1}`)
+    expect(out.matter!.documents[0]!.id).toBe(`md-${DEEP.matterDocuments - 1}`)
+    // 240 jobs off the schedule, read by id a hundred at a time: the development lists them all.
+    expect(out.developments.map((d) => [d.name, d.jobs.length])).toEqual([['Quail Ridge', DEEP.jobs]])
+    expect(times(r, 'rows:person_file_evidence')).toBe(2)
+    expect(times(r, 'rows:legal_theme_marks')).toBe(3)
+    expect(times(r, 'rows:jobs_ledger')).toBe(3)
+  })
+
+  it('the file counts every record, report and license, and the oldest record still has both its files', async () => {
+    const r = deep()
+    const out = await file({ brief: true }, r)
+    expectWholeThroughTheDoor(out)
+    expect(out.at_cap).toBeNull()
+    expect(out.facts).toMatchObject({ entries: BIG_ENTRIES, evidence: DEEP.evidence, reportsPending: DEEP.reports, licensesLive: DEEP.licenses })
+    expect(out.counts.bySource).toMatchObject({ evidence: DEEP.evidence, report: DEEP.reports })
+    expect(out.shortened!.blocks.find((b) => b.block === 'evidence')!.kept).toContain(`of ${DEEP.evidence} records`)
+    expect(out.shortened!.blocks.find((b) => b.block === 'documents')!.kept).toContain(`of ${DEEP.documents} documents`)
+    expect(out.evidence[0]).toMatchObject({ id: `r-${DEEP.evidence - 1}`, files: 2 })
+    expect(times(r, 'rows:person_file_attachments')).toBe(3)
+    // 460 files, two on every record. One read of the newest 200 left the older records with none.
+    const oldest = await file({ source: 'evidence', until: '2025-10-31', brief: true, docs: false }, deep())
+    const lines = linesOf(oldest).filter(isBrief)
+    expect(lines).toHaveLength(31)
+    expect(lines.every((l) => l.files === 2)).toBe(true)
+    expect(lines[lines.length - 1]!.row).toBe('person_file_evidence:r-000')
+  })
+
+  it('a list of exactly 200 rows is whole, not called short: the second page comes back empty', async () => {
+    const base = bigCase()
+    const r = pagingReader({ rows: { ...base, person_licenses: Array.from({ length: 200 }, (_, i) => ({ ...base.person_licenses[0]!, id: `l-${String(i).padStart(3, '0')}` })) }, rpc: BIG_RPC })
+    const out = await file({ brief: true }, r)
+    expect(out.at_cap).toBeNull()
+    expect(out.facts.licensesLive).toBe(200)
+    expect(times(r, 'rows:person_licenses')).toBe(2)
+  })
+
+  it('a list past the paged read\'s own stop is named: at_cap on the file, held on the brief', async () => {
+    const base = bigCase()
+    const many = ALL_ROWS_MAX + 1
+    const licenses = Array.from({ length: many }, (_, i) => ({ ...base.person_licenses[0]!, id: `l-${String(i).padStart(5, '0')}` }))
+    const out = await file({ brief: true }, pagingReader({ rows: { ...base, person_licenses: licenses }, rpc: BIG_RPC }))
+    expect(out.at_cap?.tables).toEqual(['person_licenses'])
+    expect(out.at_cap?.note).toContain(`a read stops at ${ALL_ROWS_MAX} rows`)
+    expect(out.facts.licensesLive).toBe(ALL_ROWS_MAX)
+    const marks = Array.from({ length: many }, (_, i) => ({ id: `mk-${String(i).padStart(5, '0')}`, person_id: BIG_PERSON, theme_id: 't-0', proposed: false, removed_at: null }))
+    const brief = await getCaseBrief(pagingReader({ rows: { ...base, legal_theme_marks: marks }, rpc: BIG_RPC }), { person: BIG_PERSON }, DEV)
+    if ('refused' in brief) throw new Error(brief.refused)
+    expect(brief.held).toEqual([{ source: 'themes', reason: `more than ${ALL_ROWS_MAX} rows of legal_theme_marks: the read stopped there` }])
+    expect(brief.themes[0]).toMatchObject({ id: 't-0', marked: ALL_ROWS_MAX })
+    expect(BIG_MATTER).toBe(brief.matter!.id)
+  })
+})
+
+describe('the server and the docs carry the fit (v2.6935) and the paged sources (v2.6939 / 0.66.0)', () => {
   it('get_person_file takes until, brief and line_chars; both verbs say shortened; the README rows say how to read on', () => {
     expect(SERVER).toContain("const SERVER_VERSION = '0.67.0'")
     expect(SERVER).toContain('until: args.until, docs: args.docs, brief: args.brief, line_chars: args.line_chars')
@@ -278,5 +369,9 @@ describe('the server and the docs carry the fit (v2.6935 / 0.63.0)', () => {
     expect(row('get_case_brief')).toContain('`shortened`')
     expect(row('get_person_file')).toContain('`next_until`')
     expect(row('get_person_file')).toContain('`shortened`')
+    // v2.6939: both rows say every source is paged, and what at_cap and held name now.
+    expect(row('get_person_file')).toContain('`at_cap` names a source only past 5,000 rows')
+    expect(row('get_case_brief')).toContain('a list past 5,000 rows named in `held`')
+    expect(SERVER).toContain('readRowsByIds')
   })
 })

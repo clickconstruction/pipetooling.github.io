@@ -14,7 +14,7 @@
 // order, down to the newest months that fit, with `shortened` naming each block and `next_until` the day to read on from.
 // Tests: src/lib/devMcp/devMcpBigCase.test.ts.
 
-import { ALL_ROWS_MAX, readAllRows, type Reader, type Row } from './devMcpComposites.ts'
+import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
 import type { RowFilter } from './devMcpDoor.ts'
 import { cutText, fitReply, replyChars, type FitStep, type Shortened, type ShortenedBlock } from './devMcpReplyFit.ts'
 import {
@@ -49,8 +49,6 @@ import { evidenceDriveWords, sortEvidenceNewestFirst, type PersonEvidenceFile } 
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
-/** The door's own cap on one read; a source that answers exactly this many rows may hold more. */
-export const PERSON_FILE_READ_CAP = 200
 const FIND_LIMIT = 20
 /** A brief line's words (v2.6935): this many characters of `what` unless `line_chars` says otherwise. */
 export const PERSON_FILE_LINE_CHARS = 160
@@ -203,51 +201,49 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const held: PersonFileHeld[] = []
   const atCap: string[] = []
 
-  /** `paged` (v2.6935): the run read every row itself, a page at a time, and names its own cap. */
-  async function read<T>(source: PersonTimelineSource, allowed: boolean, why: string, table: string, run: () => Promise<Row[]>, paged = false): Promise<T[]> {
+  async function read<T>(source: PersonTimelineSource, allowed: boolean, why: string, run: () => Promise<Row[]>): Promise<T[]> {
     if (!allowed) {
       held.push({ source, reason: why })
       return []
     }
     try {
-      const rows = await run()
-      if (!paged && rows.length >= PERSON_FILE_READ_CAP) atCap.push(table)
-      return rows as unknown as T[]
+      return (await run()) as unknown as T[]
     } catch (e) {
       held.push({ source, reason: e instanceof Error ? e.message : String(e) })
       return []
     }
   }
 
+  /**
+   * Every row of a source, a page at a time in id order (readAllRows). v2.6935 paged the HR entries; since v2.6939 every
+   * source is read this way, so a file with more than 200 attachments, records or papers is whole. `at_cap` names a
+   * table only past readAllRows' own stop. `newestBy` puts the rows back newest first on that column, as one read
+   * ordered them.
+   */
+  const every = (table: string, select: string, filters: RowFilter[], newestBy?: string) => async (): Promise<Row[]> => {
+    const r = await readAllRows(reader, table, { select, filters })
+    if (r.capped && !atCap.includes(table)) atCap.push(table)
+    return newestBy ? newestFirst(r.rows, newestBy) : r.rows
+  }
+
   const devOnly = 'dev only'
   const noLogin = 'needs a login'
   const CONTRACT_SELECT = 'id,document_name,status,created_at,sent_at,signed_at,office_completed_at,signer_printed_name,expires_at,doc_type,signer_consented_at,signer_signature_storage_path,form_scan_storage_path,form_source'
   const [entryRows, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, statementRowsRaw, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
-    // v2.6935: every entry, a page at a time in id order (readAllRows) — one read of 200 left the 201st out and the chip said 200.
-    read<PersonTimelineEntry>(
-      'file',
-      isDev,
-      devOnly,
-      'person_file_entries',
-      async () => {
-        const all = await readAllRows(reader, 'person_file_entries', { select: 'id,entry_date,content,source,created_by,created_at,author_label', filters: eq('person_id', personId) })
-        if (all.capped) atCap.push('person_file_entries')
-        return all.rows
-      },
-      true,
-    ),
-    read<AttachmentRow>('file', isDev, devOnly, 'person_file_attachments', () => reader.rows('person_file_attachments', { select: 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', filters: eq('person_id', personId), order: [{ column: 'created_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
-    read<DocRow>('file', isDev, devOnly, 'person_files', () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
-    read<EvidenceRow>('evidence', isDev, devOnly, 'person_file_evidence', () => reader.rows('person_file_evidence', { select: 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why', filters: eq('person_id', personId), order: [{ column: 'dated_on', ascending: false }], limit: PERSON_FILE_READ_CAP })),
-    read<PersonTimelineReport>('report', isDev, devOnly, 'person_reports', () => reader.rows('person_reports', { select: 'id,status,occurred_date,created_at,author_name,content,resolution_note,resolved_at,filed_entry_id', filters: eq('subject_person_id', personId), order: [{ column: 'occurred_date', ascending: false }], limit: PERSON_FILE_READ_CAP })),
-    read<PersonTimelineContract>('contract', true, '', 'person_contract_documents', () => reader.rows('person_contract_documents', { select: CONTRACT_SELECT, filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP })),
-    read<PersonTimelineContract>('contract', name !== '', 'needs a name on the roster', 'person_contract_documents', () => reader.rows('person_contract_documents', { select: CONTRACT_SELECT, filters: eq('person_name', name), limit: PERSON_FILE_READ_CAP })),
+    // v2.6935: every entry, a page at a time — one read of 200 left the 201st out and the chip said 200.
+    read<PersonTimelineEntry>('file', isDev, devOnly, every('person_file_entries', 'id,entry_date,content,source,created_by,created_at,author_label', eq('person_id', personId))),
+    read<AttachmentRow>('file', isDev, devOnly, every('person_file_attachments', 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', eq('person_id', personId), 'created_at')),
+    read<DocRow>('file', isDev, devOnly, () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
+    read<EvidenceRow>('evidence', isDev, devOnly, every('person_file_evidence', 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why', eq('person_id', personId), 'dated_on')),
+    read<PersonTimelineReport>('report', isDev, devOnly, every('person_reports', 'id,status,occurred_date,created_at,author_name,content,resolution_note,resolved_at,filed_entry_id', eq('subject_person_id', personId), 'occurred_date')),
+    read<PersonTimelineContract>('contract', true, '', every('person_contract_documents', CONTRACT_SELECT, eq('person_id', personId))),
+    read<PersonTimelineContract>('contract', name !== '', 'needs a name on the roster', every('person_contract_documents', CONTRACT_SELECT, eq('person_name', name))),
     // v2.6820: hours statements — payroll data, a dev's or the controller's by RLS; read as the dev alone, held for a view_as.
-    read<StatementRow>('statement', isDev, 'dev or controller', 'hours_statements', () => reader.rows('hours_statements', { select: 'id,record_id,job_ledger_id,state,basis,period_start,period_end,prepared_at,updated_at,contract_document_id,drive_file_id,matter_document_id', filters: eq('person_id', personId), order: [{ column: 'prepared_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
-    read<PersonTimelineLicense>('license', name !== '', 'needs a name on the roster', 'person_licenses', () => reader.rows('person_licenses', { select: 'id,license_type,date_of_expiry,created_at,note', filters: eq('person_name', name), limit: PERSON_FILE_READ_CAP })),
-    read<WriteupRow>('writeup', Boolean(userId), noLogin, 'writeups', () => reader.rows('writeups', { select: 'id,template_id,status,disclosure,submitted_at,created_at,filled_by_user_id', filters: eq('subject_user_id', userId as string), limit: PERSON_FILE_READ_CAP })),
-    read<PersonTimelineNcns>('attendance', Boolean(userId), noLogin, 'attendance_incidents', () => reader.rows('attendance_incidents', { select: 'id,work_date,created_at,created_by_user_id,details', filters: [...eq('subject_user_id', userId as string), ...eq('incident_type', 'no_call_no_show')], limit: PERSON_FILE_READ_CAP })),
-    read<ExcuseRow>('attendance', Boolean(userId), noLogin, 'attendance_annotations', () => reader.rows('attendance_annotations', { select: 'id,work_date,note,created_at,author:users!attendance_annotations_author_id_fkey(name)', filters: eq('subject_user_id', userId as string), limit: PERSON_FILE_READ_CAP })),
+    read<StatementRow>('statement', isDev, 'dev or controller', every('hours_statements', 'id,record_id,job_ledger_id,state,basis,period_start,period_end,prepared_at,updated_at,contract_document_id,drive_file_id,matter_document_id', eq('person_id', personId), 'prepared_at')),
+    read<PersonTimelineLicense>('license', name !== '', 'needs a name on the roster', every('person_licenses', 'id,license_type,date_of_expiry,created_at,note', eq('person_name', name))),
+    read<WriteupRow>('writeup', Boolean(userId), noLogin, every('writeups', 'id,template_id,status,disclosure,submitted_at,created_at,filled_by_user_id', eq('subject_user_id', userId as string))),
+    read<PersonTimelineNcns>('attendance', Boolean(userId), noLogin, every('attendance_incidents', 'id,work_date,created_at,created_by_user_id,details', [...eq('subject_user_id', userId as string), ...eq('incident_type', 'no_call_no_show')])),
+    read<ExcuseRow>('attendance', Boolean(userId), noLogin, every('attendance_annotations', 'id,work_date,note,created_at,author:users!attendance_annotations_author_id_fkey(name)', eq('subject_user_id', userId as string))),
   ])
 
   // The pages come in id order; the entries go on newest day first, as the one read ordered them.
@@ -274,9 +270,9 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   }
   const statementJobIds = [...new Set(statementRowsRaw.map((s) => s.job_ledger_id))]
   const [templates, users, statementJobs] = await Promise.all([
-    templateIds.length > 0 ? quiet(() => reader.rows('writeup_templates', { select: 'id,name', filters: [{ column: 'id', op: 'in', value: templateIds }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
-    userIds.size > 0 ? quiet(() => reader.rows('users', { select: 'id,name', filters: [{ column: 'id', op: 'in', value: [...userIds] }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
-    statementJobIds.length > 0 ? quiet(() => reader.rows('jobs_ledger', { select: 'id,click_number,job_name', filters: [{ column: 'id', op: 'in', value: statementJobIds }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
+    templateIds.length > 0 ? quiet(() => readRowsByIds(reader, 'writeup_templates', 'id,name', templateIds)) : Promise.resolve([] as Row[]),
+    userIds.size > 0 ? quiet(() => readRowsByIds(reader, 'users', 'id,name', [...userIds])) : Promise.resolve([] as Row[]),
+    statementJobIds.length > 0 ? quiet(() => readRowsByIds(reader, 'jobs_ledger', 'id,click_number,job_name', statementJobIds)) : Promise.resolve([] as Row[]),
   ])
   // The job in words, as the tab's io writes it (statementJobLabel): the number, then the name.
   const jobLabel = new Map((statementJobs as unknown as JobNameRow[]).map((j) => [j.id, [(j.click_number ?? '').trim() ? `Job ${(j.click_number ?? '').trim()}` : '', (j.job_name ?? '').trim()].filter(Boolean).join(' · ')]))
@@ -372,7 +368,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   for (const d of docRows) if (d.kind === 'summary' || d.kind === 'narrative') docs[d.kind] = d
   // v2.6613 (punch list #277): the named documents, from the index view — the list without the text; read one whole with
   // get_person_document by id, or read_rows on documents (v2.6716's table). Quiet until the catalog knows the view (regenerated after the migration's push).
-  const documentRows = isDev ? ((await quiet(() => reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,created_at,updated_at,archived_at,chars,sections', filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP }))) as unknown as DocIndexRow[]) : []
+  const documentRows = isDev ? ((await quiet(every('person_document_index', 'id,title,counsel_only,author_label,created_at,updated_at,archived_at,chars,sections', eq('person_id', personId)))) as unknown as DocIndexRow[]) : []
   const documents = documentRows
     .filter((d) => !d.archived_at)
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
@@ -454,7 +450,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     lanes: PERSON_TIMELINE_LANES,
     sources: PERSON_TIMELINE_SOURCES,
     held: heldOnce,
-    at_cap: atCap.length ? { tables: atCap, note: `A source answered ${PERSON_FILE_READ_CAP} rows, the door's cap on one read: it may hold more. Narrow with since, or read_rows the table with filters. The HR entries are read a page at a time and are named here only past ${ALL_ROWS_MAX}.` } : null,
+    at_cap: atCap.length ? { tables: atCap, note: `Every source is read a page at a time, and a read stops at ${ALL_ROWS_MAX} rows: these tables hold more, so the file here is short of them. read_rows the table with filters for the rest.` } : null,
     filter: filtered ? { lane: filter.lane, source: filter.source, since: filter.since, until: filter.until } : null,
     ahead: aheadBlock(),
     months: monthsBlock(),

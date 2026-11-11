@@ -97,6 +97,8 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/components/prospects/TeamProspectsTab.tsx',
       'src/components/settings/WhoCountsAsWhatList.tsx',
       'src/hooks/usePeopleRoster.ts',
+      // Cards and footers for the team (punch list #313): the list makes a card for nobody who is a sample, a twin or the walk tester.
+      'src/lib/brandKit/cardIo.ts',
       'src/lib/bridge/weeklySend.ts',
       'src/lib/emailIn/countCardIo.ts',
       'src/lib/followUp/followUpThreadIo.ts',

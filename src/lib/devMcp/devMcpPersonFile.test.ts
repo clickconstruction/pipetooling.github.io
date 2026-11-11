@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { PERSON_FILE_READ_CAP, getPersonFile, personFileFilter, type PersonFileWholeReply } from '../../../supabase/functions/_shared/devMcpPersonFile'
+import { getPersonFile, personFileFilter, type PersonFileWholeReply } from '../../../supabase/functions/_shared/devMcpPersonFile'
 import { buildPersonTimeline, personFileFactChips, personFileFacts, signedPapers, statementRows, type PersonTimelineInput } from '../people/personTimeline'
 import { catalogReader } from './catalogReader'
 
@@ -130,9 +130,9 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(((await getPersonFile(catalogReader({}), { person: '' }, dev)) as { refused: string }).refused).toContain('needs person')
   })
 
-  it('a source that fails is held in place with its reason and takes only itself out; a source read at the cap is named', async () => {
-    const data = rows()
-    const reader = catalogReader({ rows: { ...data, person_licenses: Array.from({ length: PERSON_FILE_READ_CAP }, (_, i) => ({ ...data.person_licenses[0]!, id: `l${i}` })) } })
+  it('a source that fails is held in place with its reason and takes only itself out', async () => {
+    // What at_cap names since v2.6939 (a list past the paged read's own stop) is in devMcpBigCase.test.ts.
+    const reader = catalogReader({ rows: rows() })
     const base = reader.rows
     reader.rows = async (table, q) => {
       if (table === 'person_contract_documents') throw new Error('timeout')
@@ -142,8 +142,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(out.held).toEqual([{ source: 'contract', reason: 'timeout' }])
     expect(out.counts.bySource.contract).toBe(0)
     expect(out.counts.bySource.file).toBe(1)
-    expect(out.at_cap?.tables).toEqual(['person_licenses'])
-    expect(out.facts.licensesLive).toBe(PERSON_FILE_READ_CAP)
+    expect(out.at_cap).toBeNull()
   })
 
   it('a person with no login has the write-ups and attendance held as needing a login, never read', async () => {

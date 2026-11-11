@@ -81,6 +81,30 @@ export async function readAllRows(
   }
 }
 
+/**
+ * The rows a list of ids names (v2.6939), in `in` reads of `IDS_PER_READ` — the door holds a URL to 6,000 characters,
+ * so two hundred ids in one read are refused — each read paged. `column` is the one the ids match; the select holds `id`.
+ */
+export async function readRowsByIds(reader: Reader, table: string, select: string, ids: readonly string[], column = 'id'): Promise<Row[]> {
+  const rows: Row[] = []
+  for (let i = 0; i < ids.length; i += IDS_PER_READ) rows.push(...(await readAllRows(reader, table, { select, filters: [{ column, op: 'in', value: ids.slice(i, i + IDS_PER_READ) }] })).rows)
+  return rows
+}
+
+/**
+ * Rows newest first on one column (v2.6939): what `order: [{ column, ascending: false }]` gave a single read, put back
+ * after `readAllRows` brought the pages in key order. A row with no value comes first, as Postgres sorts it; rows that
+ * tie keep the key order they came in.
+ */
+export function newestFirst<T extends Row>(rows: T[], column: string): T[] {
+  return [...rows].sort((a, b) => {
+    const x = a[column]
+    const y = b[column]
+    if (x == null || y == null) return x == null && y == null ? 0 : x == null ? -1 : 1
+    return x < y ? 1 : x > y ? -1 : 0
+  })
+}
+
 type PrefixMap = Record<string, { job: string | null; bid: string | null }>
 async function prefixMap(reader: Reader): Promise<PrefixMap> {
   const rows = await reader.rows('service_types', { select: 'id,ledger_job_prefix,ledger_bid_prefix', limit: 200 })
