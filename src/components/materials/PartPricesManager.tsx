@@ -5,6 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { PRICE_HISTORY_TONE_COLOR, priceHistoryChange } from '../../lib/materials/priceHistoryChange'
+import { PartHouseNumbers } from './PartHouseNumbers'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -287,6 +288,8 @@ export function PartPricesManager({
               </tbody>
             </table>
           </div>
+
+          <PartHouseNumbers partId={part.id} supplyHouses={supplyHouses} pricedHouseIds={prices.map((p) => p.supply_house_id)} />
 
           {/* Price History View */}
           {viewingPriceHistory && (

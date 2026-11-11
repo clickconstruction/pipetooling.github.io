@@ -163,6 +163,25 @@ describe('what two records share', () => {
     expect(rows[1]?.theirs.value).toBe('None seen')
     expect(rows[2]?.ours.value).toBe('No zip on their bids')
   })
+
+  it('does not say a name is with itself, and says a line that repeats once with its count', () => {
+    const rows = compareRows({
+      customerName: 'Hartwell & Assoc.',
+      bidAddresses: ['12 Canal Row, San Antonio, TX 78215'],
+      siteStreets: ['12 Canal Row'],
+      name: 'Dana Whitlow',
+      permits: [
+        { address: '12 CANAL ROW', zip: '78215', contact: 'Dana Whitlow' },
+        { address: '12 CANAL ROW', zip: '78215', contact: 'DANA WHITLOW' },
+      ],
+      onOurSites: [
+        { ...hits[0]!, address: '12 CANAL ROW', day: '2026-09-08', stage: 'issued' },
+        { ...hits[0]!, address: '12 CANAL ROW', day: '2026-09-08', stage: 'issued' },
+      ],
+    })
+    expect(rows[0]?.theirs.value).toBe('Dana Whitlow')
+    expect(rows[1]?.theirs.value).toBe('12 CANAL ROW, issued Sep 8 (2)')
+  })
 })
 
 describe('lookAlikePairs', () => {

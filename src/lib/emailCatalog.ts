@@ -532,16 +532,6 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Your week, Nov 1 to Nov 7: 29 of your last 30 jobs',
   },
   {
-    id: 'bridge_monday_sheet',
-    name: 'The Bridge, the Monday sheet (to yourself)',
-    group: 'digests',
-    audience: 'internal',
-    builtWhere: 'client',
-    sender: 'bridge-sheet-email',
-    editable: { kind: 'hardcoded' },
-    subjectExample: 'The Bridge, the week of Oct 4–10: contribution ≈ +$38k, net down $37.4k since Aug 15, cash lowest point $15.4k on Oct 12',
-  },
-  {
     id: 'bridge_weekly_sheet',
     name: 'The Bridge, the week’s call (the weekly email, to the owner and every dev)',
     group: 'digests',

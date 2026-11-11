@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_FIND_MAX, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_FIND_MAX, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
 import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
 
 const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
@@ -244,5 +244,15 @@ describe('lines at zero, the Can\'t find mark and the office (v2.6874)', () => {
     expect(boxPageTextHref('(512) 555-0142', 'Cage B3, 4F2A-9C18: ')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
     expect(boxPageTextHref('', 'x')).toBeNull()
     expect(boxPageCallHref('(512) 555-0142')).toBe('tel:+15125550142')
+  })
+})
+
+describe('the office number (v2.6910)', () => {
+  it('is the team box\'s line when Settings has one, then the fallback, then the letterhead', () => {
+    expect(boxPageOfficePhone(['(512) 555-0144', '(512) 555-0100', '(512) 555-0199'])).toBe('(512) 555-0144')
+    expect(boxPageOfficePhone(['', ' (512) 555-0100 ', '(512) 555-0199'])).toBe('(512) 555-0100')
+    expect(boxPageOfficePhone([null, undefined, '(512) 555-0199'])).toBe('(512) 555-0199')
+    expect(boxPageOfficePhone(['  ', null])).toBe('')
+    expect(boxPageOfficePhone([])).toBe('')
   })
 })

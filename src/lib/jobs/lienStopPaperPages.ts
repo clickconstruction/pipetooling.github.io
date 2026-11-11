@@ -34,8 +34,11 @@ export interface LienStopPagesInput {
   todayYmd: string
 }
 
-/** The affidavit as the Affidavits pane prints it; null when the job has no affidavit entry. */
-export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYmd }: LienStopPagesInput): LienStopPaperPage[] | null {
+/**
+ * The affidavit's fields as the desk fills them for a job, from the desk's own data; null when the job has no
+ * affidavit entry. A stop's window and the list's **Print N for notarization** (v2.6918) both read this.
+ */
+export function lienDeskAffidavitFieldsFor({ data, jobId, issuer, signerNameFor, todayYmd }: LienStopPagesInput): LienAffidavitFields | null {
   const entry = data.affidavits.entries.find((e) => e.jobId === jobId)
   if (!entry) return null
   const job = data.jobsById[jobId]
@@ -44,7 +47,7 @@ export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYm
   const property = resolveLienProperty(address, data.ownerByJob[jobId] ?? null)
   const correction = data.claimCorrectionsByJob[jobId] ?? null
   // The desk's one recipe: this page passed its own list and left out what the sent bills owe, so it swore the job's whole balance beside the pane.
-  const fields = buildLienDeskAffidavitFields({
+  return buildLienDeskAffidavitFields({
     job,
     entry,
     gc,
@@ -61,6 +64,15 @@ export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYm
     filings: data.filingsByJob[jobId] ?? [],
     homestead: property.homestead,
   })
+}
+
+/** The affidavit as the Affidavits pane prints it; null when the job has no affidavit entry. */
+export function affidavitStopPages(input: LienStopPagesInput): LienStopPaperPage[] | null {
+  const { data, jobId, issuer, todayYmd } = input
+  const entry = data.affidavits.entries.find((e) => e.jobId === jobId)
+  const fields = lienDeskAffidavitFieldsFor(input)
+  if (!entry || !fields) return null
+  const job = data.jobsById[jobId]
   const html = filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] }))
   return [{ key: 'affidavit', label: 'Page 1 of 1 · the affidavit', html }]
 }

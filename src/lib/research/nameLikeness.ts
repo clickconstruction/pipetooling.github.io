@@ -205,6 +205,17 @@ function countWords(counts: ReadonlyMap<string, number>, max = 4): string {
   return sorted.length > max ? `${shown.join(' · ')} and ${sorted.length - max} more` : shown.join(' · ')
 }
 
+/** Lines in their first order, a line that repeats said once with its count: "8006 City Base Landing, issued Sep 8 (2)". */
+function countedLines(lines: readonly string[], max: number): string {
+  const counts = new Map<string, number>()
+  for (const l of lines) counts.set(l, (counts.get(l) ?? 0) + 1)
+  const said = [...counts].map(([l, n]) => (n > 1 ? `${l} (${n})` : l))
+  return said.length > max ? `${said.slice(0, max).join(' · ')} and ${said.length - max} more` : said.join(' · ')
+}
+
+/** Two names that read the same once case, spaces and marks are set aside. */
+const sameWords = (a: string, b: string): boolean => a.toLowerCase().replace(/[^a-z0-9]/g, '') === b.toLowerCase().replace(/[^a-z0-9]/g, '')
+
 const zipOfLine = (line: string | null | undefined): string | null => (line ?? '').match(/\b(\d{5})(?:-\d{4})?\s*$/)?.[1] ?? null
 
 /**
@@ -225,6 +236,8 @@ export function compareRows(input: {
   const people = new Map<string, number>()
   for (const p of input.permits) {
     const person = contactParts(p.contact).person
+    // The name's own person is not somebody it is "with".
+    if (person && sameWords(person, input.name)) continue
     if (person) people.set(person, (people.get(person) ?? 0) + 1)
   }
   const ourZips = new Map<string, number>()
@@ -246,7 +259,7 @@ export function compareRows(input: {
       ours: { label: 'Addresses you bid to them', value: streets.length === 0 ? 'None in a city whose permits are read' : streets.length > 4 ? `${streets.slice(0, 4).join(' · ')} and ${streets.length - 4} more` : streets.join(' · ') },
       theirs: {
         label: 'This name’s permits on those addresses',
-        value: input.onOurSites.length === 0 ? 'None seen' : input.onOurSites.slice(0, 4).map((h) => `${h.address ?? 'an address'}${h.day ? `, ${h.stage === 'applied' ? 'applied' : 'issued'} ${shortDay(h.day)}` : ''}`).join(' · '),
+        value: input.onOurSites.length === 0 ? 'None seen' : countedLines(input.onOurSites.map((h) => `${h.address ?? 'an address'}${h.day ? `, ${h.stage === 'applied' ? 'applied' : 'issued'} ${shortDay(h.day)}` : ''}`), 4),
       },
       hit: input.onOurSites.length > 0,
     },

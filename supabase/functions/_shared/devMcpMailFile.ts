@@ -20,7 +20,7 @@
 import { REPLY_MAX_CHARS, replyText } from './devMcpDoor.ts'
 import { type FileTextRead, INDEX_TEXT_MAX_CHARS, TEXT_PDF_MAX_BYTES, TEXT_PLAIN_MAX_BYTES } from './fileIndexKernel.ts'
 import type { EmailFile } from './gcKernels/lib/emailIn/gmailMessage.ts'
-import type { MailAccount } from './devMcpMailSearch.ts'
+import { isMailFile, type MailAccount } from './devMcpMailSearch.ts'
 
 /** The most bytes a file off a mail may hold: the evidence and document doors' own cap, and drive-link's `put`. */
 export const MAIL_FILE_MAX_BYTES = 10 * 1024 * 1024
@@ -148,14 +148,15 @@ function jobRefOf(to: Record<string, unknown>): MailFileJobRef | null {
 /** The file on the mail whose name is `name` (case-blind, exact first, then the one that starts with it), or the names to pick from. */
 export function pickMailFile(files: readonly EmailFile[], name: string): { ok: true; file: EmailFile } | { ok: false; error: string } {
   const want = name.trim().toLowerCase()
-  const real = files.filter((f) => !f.inline)
+  // What read_mail lists: everything but a small picture placed in the body. A PDF Apple Mail places there is a file (0.62.0).
+  const real = files.filter(isMailFile)
   const exact = real.filter((f) => f.name.toLowerCase() === want)
   if (exact.length === 1) return { ok: true, file: exact[0]! }
   if (exact.length > 1) return { ok: false, error: `${exact.length} files on that mail are named "${name}"; a name has to pick one.` }
   const starts = real.filter((f) => f.name.toLowerCase().startsWith(want))
   if (starts.length === 1) return { ok: true, file: starts[0]! }
   const names = real.map((f) => f.name)
-  if (names.length === 0) return { ok: false, error: 'That mail carries no file (pictures placed in the body are left out).' }
+  if (names.length === 0) return { ok: false, error: 'That mail carries no file (a small picture placed in the body, such as a signature’s logo, is left out).' }
   return { ok: false, error: `No file named "${name}" on that mail. Its files: ${names.map((n) => `"${n}"`).join(', ')}.` }
 }
 

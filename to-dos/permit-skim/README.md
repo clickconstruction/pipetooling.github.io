@@ -17,7 +17,7 @@ summary: >
   mark that keeps who set it and why. A nudge asks the Leader first and the team after two days,
   and one count says whether any of it turns into bids. The first build is eight small PRs, one
   built, then two weeks of use before more.
-next: Two weeks of use, then a look at the count on Permits and the pass reasons before anything held is built. The owner's six calls stand on the picks drawn until he overturns one; call 4's pick (a general contractor's lead on the Customers deck) is the one not built.
+next: Two weeks of use, then a look at the count on Permits and the pass reasons before anything held is built. The owner's six calls stand on the picks drawn until he overturns one; call 4's pick (a general contractor's lead on the Customers deck) was built last, as v2.6907.
 size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 8; left: two weeks of use, then the look at the count
 blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork
@@ -268,7 +268,7 @@ merge.
    matcher as a pure kernel shared by the pull and a one-time backfill; the Builders list; the
    builder's page with its kind, its mark and its permits; the card's Who line read from it; the
    mark in the best-first score.
-7. **The four places and the hand-off (M, a migration). Built 2026-11-10 with PR 6 as v2.6835.** Not built: the lead landing by the builder's kind (call 4), since a row's lead door cannot say which deck it is on. The reason code, the person a keep is
+7. **The four places and the hand-off (M, a migration). Built 2026-11-10 with PR 6 as v2.6835.** The lead landing by the builder's kind (call 4) came after, as v2.6907: the lists read each lead's deck once, so its door opens the right one. The reason code, the person a keep is
    for, what a pursue is for, the put-back, the read with no window; Kept with Mine and Nobody's
    yet; Closed with its search and Put back; the dig in as the two sheets with What we did and
    the close-out; the lead landing on the deck the builder's kind points to.
@@ -294,7 +294,7 @@ Left, each with the pick drawn:
 3. **What reaches the deck.** Commercial only, $25k and up or not declared, no houses, nothing
    that already has a plumber.
 4. **Where a pursued permit lands.** By the builder's kind: a general contractor on the Customers
-   deck, an owner or developer on Jobs to GC. Today every one goes to Jobs to GC.
+   deck, an owner or developer on Jobs to GC. Built as v2.6907; until then every one went to Jobs to GC.
 5. **What Avoid does.** A red word and a place at the end of the deck. It never passes a permit
    by itself.
 6. **Who may mark a builder, and when the nudge widens.** The office and every estimator may mark;

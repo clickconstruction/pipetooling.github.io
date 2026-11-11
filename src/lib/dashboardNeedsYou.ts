@@ -724,7 +724,7 @@ export type NeedsYouInputs = {
    * `usePermitSkimNudge` over `permit_skim_wait`. The hook asks the Leader first and the team after two days.
    */
   permitSkimEnabled?: boolean
-  permitSkim?: { waiting: number; oldestDays: number | null } | null
+  permitSkim?: { waiting: number; oldestDays: number | null; byCity?: ReadonlyArray<{ city: string; waiting: number }> } | null
   /**
    * The Customers line (residential build, R8 · 14): customers who need a reply, what we owe them, and senders to sort,
    * from `useCustomerMessagesCounts` over Follow up's queue (`followUp/customerCounts.ts`). The GC office team, as the GC
@@ -2012,7 +2012,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   }
 
   if (inputs.permitSkimEnabled && inputs.permitSkim && inputs.permitSkim.waiting > 0) {
-    const words = nudgeWords(inputs.permitSkim.waiting, inputs.permitSkim.oldestDays)
+    const words = nudgeWords(inputs.permitSkim.waiting, inputs.permitSkim.oldestDays, inputs.permitSkim.byCity ?? [])
     if (words) {
       items.push({
         key: 'permits-to-skim',
