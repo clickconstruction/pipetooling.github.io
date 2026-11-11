@@ -202,13 +202,13 @@ describe('the migration, the server and the docs', () => {
   })
 
   it('the server reads the file as the dev before the grammar, names the source on the plan and the apply, says what changed, and is 0.48.0', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.66.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.69.0'")
     expect(SERVER).toContain("import { driveDocArgs, driveDocChangedWords, driveDocPlanExtra, driveDocSource, readDriveDoc, serviceAccountEmail, type DriveDocFacts } from '../_shared/devMcpDriveDoc.ts'")
     expect(SERVER).toContain("if (name === 'plan_person_doc' || name === 'apply_person_doc') {\n        const doc = args.doc")
     expect(SERVER).toContain("token = await googleAccessToken(saJson, Deno.env.get('DRIVE_IMPERSONATE_USER') || undefined)")
     expect(SERVER).toContain('const read = await readDriveDoc(token, source.fileId, serviceAccountEmail(saJson), fetch)')
-    expect(SERVER).toContain('driveDoc ? driveDoc.args : args)')
-    expect(SERVER).toContain('return ok(driveDoc ? { ...planned, ...driveDocPlanExtra(driveDoc.facts) } : planned, { target: built.target })')
+    expect(SERVER).toContain('driveDoc ? driveDoc.args : docEdit ? docEdit.args : args)') // v2.6949: a small edit's rewritten doc comes after the Drive file's
+    expect(SERVER).toContain('return ok(driveDoc ? { ...planned, ...driveDocPlanExtra(driveDoc.facts) } : docEdit ? docEditPlanReply(planned, docEdit) : planned, { target: built.target })')
     expect(SERVER).toContain('return refused(driveDoc ? driveDocChangedWords(driveDoc.facts, mismatch) : mismatch, { target: built.target })')
     expect(SERVER).toContain("reply = { ...(reply as Record<string, unknown>), source: driveDoc.facts }")
     expect(SERVER).toContain('send drive_file_id (or drive_url) in place of the text')

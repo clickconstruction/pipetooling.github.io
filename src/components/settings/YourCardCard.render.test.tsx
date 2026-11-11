@@ -10,6 +10,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CardIo, CardLoad } from '../../lib/brandKit/cardIo'
 import { guessTextWidth } from '../../lib/brandKit/draw'
+import type { CardLooksSetting } from '../../lib/brandKit/looks'
 import type { KitRenderer } from '../../lib/brandKit/render'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { YourCardCard } from './YourCardCard'
@@ -29,15 +30,22 @@ const MARISOL: CardLoad = {
   photoPath: 'u-marisol/photo-1.jpg',
   crop: { fx: 0.5, fy: 0.4, zoom: 1 },
   columnsOn: true,
+  look: null,
+  lookOn: true,
 }
 
-function fakeIo(load: CardLoad) {
+const ONE_LOOK: CardLooksSetting = { approved: ['classic'], default: 'classic' }
+const THREE_LOOKS: CardLooksSetting = { approved: ['classic', 'navy-orange', 'navy-yellow'], default: 'classic' }
+
+function fakeIo(load: CardLoad, looks: CardLooksSetting = ONE_LOOK) {
   return {
     load: vi.fn(async () => load),
     photo: vi.fn(async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 })),
     savePhoto: vi.fn(async () => 'u-marisol/photo-2.jpg'),
     saveCrop: vi.fn(async () => undefined),
     saveFacts: vi.fn(async () => undefined),
+    looks: vi.fn(async () => looks),
+    saveLook: vi.fn(async () => undefined),
   } satisfies CardIo
 }
 
@@ -110,6 +118,43 @@ describe('YourCardCard', () => {
     renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo({ ...MARISOL, columnsOn: false })} renderer={fakeRenderer()} />)
     expect(await screen.findByText('Your card and footer arrive with the next update.')).toBeTruthy()
     expect(screen.queryByLabelText('Name on the card')).toBeNull()
+  })
+
+  it('offers no pick while the owner offers one look', async () => {
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo(MARISOL)} renderer={fakeRenderer()} />)
+    await waitFor(() => expect(footer()).toContain('Marisol Vega'))
+    expect(document.querySelector('[data-your-card-looks]')).toBeNull()
+    expect(footer()).toContain('fill="#000000"')
+  })
+
+  it('offers the looks the owner switched on, draws the card in the pick, and saves it', async () => {
+    const io = fakeIo(MARISOL, THREE_LOOKS)
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={io} renderer={fakeRenderer()} />)
+    const navy = await screen.findByRole('radio', { name: /Navy and yellow/ })
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.getByRole('radio', { name: /Classic/ })).toHaveProperty('ariaChecked', 'true')
+    fireEvent.click(navy)
+    await waitFor(() => expect(io.saveLook).toHaveBeenCalledWith('u-marisol', 'navy-yellow'))
+    await waitFor(() => expect(back()).toContain('fill="#f6c700"'))
+    expect(footer()).toContain('fill="#16283c"')
+    expect(navy).toHaveProperty('ariaChecked', 'true')
+  })
+
+  it('draws a pick the owner has since switched off in the default', async () => {
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo({ ...MARISOL, look: 'navy-yellow' }, { approved: ['classic', 'navy-orange'], default: 'classic' })} renderer={fakeRenderer()} />)
+    await screen.findByRole('radio', { name: /Navy and orange/ })
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
+    expect(footer()).toContain('fill="#000000"')
+  })
+
+  it('puts the pick back and says why when the save is refused', async () => {
+    const io = fakeIo(MARISOL, THREE_LOOKS)
+    io.saveLook.mockRejectedValueOnce(new Error('The look was not saved. You may not have leave to change this account.'))
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={io} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('radio', { name: /Navy and orange/ }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /Classic/ })).toHaveProperty('ariaChecked', 'true')
+    expect(footer()).toContain('fill="#000000"')
   })
 
   it('shows a subcontractor no card', () => {
