@@ -47,6 +47,7 @@ import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, deskMovesFoot, firstName, topPerson, topPersonId, type WeekCallInput } from '../lib/bridge/weekCall'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
+import { buildRecordedReading, buildWaitingDays } from '../lib/bridge/waitingDays'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 import { buildFixSizes } from '../lib/bridge/fixSizes'
 import { buildFlowStrip } from '../lib/bridge/flowStrip'
@@ -1184,26 +1185,39 @@ export default function Bridge() {
     })
   }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
 
+  // What the hours still waiting on approval earn and cost, by day (v2.6965): from the recorded sessions the headline already loads.
+  const waitingDays = useMemo(() => {
+    if (!data || !weeksInputs || !vectorInputs) return null
+    return buildWaitingDays({ start: data.windowStart, end: data.todayYmd, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob })
+  }, [data, weeksInputs, vectorInputs])
+
   // What is left after overhead (v2.6840): the Daily profit rate panel's reading, opened from the eight week chart.
+  // On recorded time since v2.6965, as the headline; on approved time, with its warning, only when the recorded hours cannot be read.
   const profitPanel = useMemo(() => {
     if (!data || !profit) return null
+    // Still reading the recorded hours: the press waits with the chart above it, so the figures never switch under a reader.
+    if (!waitingDays && weeksError == null && vectorError == null) return null
+    const recorded = waitingDays
+      ? buildRecordedReading({ todayYmd: data.todayYmd, daysBack: BRIDGE_DAYS_BACK, earnedByDay: data.earnedByDay, directByDay: data.directByDay, overheadByDay: data.overheadByDay, overheadPerDayBaseline: data.overheadPerDayBaseline, totals: data.totals, waiting: waitingDays })
+      : null
     return buildProfitPanel({
       windowStart: data.windowStart,
       todayYmd: data.todayYmd,
-      earnedByDay: data.earnedByDay,
-      directByDay: data.directByDay,
+      earnedByDay: recorded?.earnedByDay ?? data.earnedByDay,
+      directByDay: recorded?.directByDay ?? data.directByDay,
       overheadByDay: data.overheadByDay,
-      speed: profit.speed,
-      contributionMargin: profit.contributionMargin,
-      totals: data.totals,
+      speed: recorded?.speed ?? profit.speed,
+      contributionMargin: recorded ? recorded.contributionMargin : profit.contributionMargin,
+      totals: recorded?.totals ?? data.totals,
       waitingWeeks: new Set((headline?.weeks ?? []).filter((w) => w.waiting).map((w) => w.start)),
       pendingClosedHours: data.crew.pendingClosedHours,
       unlinkedCard: data.hygiene.unlinkedCard,
       unattributedNoncard: data.hygiene.unattributedNoncard,
-      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      fieldMadePerHour: data.crew.fieldHoursWindow > 0 ? (data.totals.earnedUsd - data.totals.fieldLaborUsd) / data.crew.fieldHoursWindow : null,
+      waiting: waitingDays ? { hours: waitingDays.hours, approvedLeftUsd: profit.speed.climbPerDay } : null,
       weekLabel: md,
     })
-  }, [data, profit, headline])
+  }, [data, profit, headline, waitingDays, weeksError, vectorError])
 
   // What a fix is worth (v2.6840): This week's sizes, on the usual fixes' own rows, and the bids due under them.
   const fixSizes = useMemo(() => {

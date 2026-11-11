@@ -209,8 +209,9 @@ Two lights sit under the bars. **Net position rises over 8 weeks** is green when
 
 The eight week chart ends at wages. Under its two lights, press {{button:outline|What is left after overhead}}. A breakdown opens.
 
-- When hours still wait on approval, a warning says so first. It also says about what the day reads once they are approved.
 - The big number is what a day keeps after every cost, on the last 14 days.
+- It reads recorded time, the way the eight week chart does. Hours still waiting on approval are counted, with their wages.
+- A ≈ after the number means waiting hours are in it. The amber line under it says how many. It also says what approved hours alone read.
 - A chart shows where a day's money goes, from earned through job costs and overhead.
 - One line gives break-even. It says what the field must earn a day to cover the office.
 - A second chart shows earned against costs by pay week. A hatched week still has hours waiting.
