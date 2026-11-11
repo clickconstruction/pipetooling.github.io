@@ -53,18 +53,18 @@ export function guessTextWidth(text: string, weight: number, size: number): numb
   return text.length * size * (weight >= 600 ? 0.62 : 0.56)
 }
 
-/** The size a line is set at: its own, or smaller when it would run past `maxWidth`. Never under 55% of its own. */
-export function fitSize(text: string, weight: number, size: number, maxWidth: number, measure = guessTextWidth): number {
+/** The size a line is set at: its own, or smaller when it would run past `maxWidth`. Never under `min`, 55% of its own unless the row says. */
+export function fitSize(text: string, weight: number, size: number, maxWidth: number, measure = guessTextWidth, min = size * 0.55): number {
   const w = measure(text, weight, size)
-  return w <= maxWidth ? size : Math.max(size * 0.55, (size * maxWidth) / w)
+  return w <= maxWidth ? size : Math.max(Math.min(min, size), (size * maxWidth) / w)
 }
 
-type LineStyle = Pick<KitRow, 'weight' | 'size' | 'tracking' | 'colour' | 'opacity' | 'fit'>
+type LineStyle = Pick<KitRow, 'weight' | 'size' | 'tracking' | 'colour' | 'opacity' | 'fit' | 'min'>
 
 function textLine(text: string, x: number, y: number, row: LineStyle, layout: KitLayout | undefined, opts: KitDrawOptions): string {
   const weight = BRAND.weights[row.weight]
   const tracking = row.tracking ?? 0
-  const size = row.fit ? fitSize(text, weight, row.size, row.fit - tracking * text.length, opts.measure).toFixed(1) : String(row.size)
+  const size = row.fit ? fitSize(text, weight, row.size, row.fit - tracking * text.length, opts.measure, row.min).toFixed(1) : String(row.size)
   return (
     `<text x="${num(x)}" y="${num(y)}" font-family="${BRAND.font}" font-weight="${weight}" font-size="${size}"` +
     (tracking ? ` letter-spacing="${tracking}"` : '') +

@@ -3,6 +3,7 @@
  * Card and footer looks (punch list #313) over fake ios: a dev sees every look with whether it is offered, how many
  * people use it and which is the default; switching a look on or picking another default saves the setting; the
  * default cannot be switched off; a refused save puts the switch back and says why; anyone but a dev sees no card.
+ * Under the looks the card sizes are offered the same way, and saving one setting never sends the other.
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -10,6 +11,7 @@ import type { LooksAdminIo } from '../../lib/brandKit/cardIo'
 import { guessTextWidth } from '../../lib/brandKit/draw'
 import type { CardLooksSetting } from '../../lib/brandKit/looks'
 import type { KitRenderer } from '../../lib/brandKit/render'
+import type { CardSizesSetting } from '../../lib/brandKit/sizes'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { CardLooksCard } from './CardLooksCard'
 
@@ -24,15 +26,24 @@ vi.mock('../../hooks/useAuth', async () => {
 
 const TWO: CardLooksSetting = { approved: ['classic', 'navy-orange'], default: 'classic' }
 
-function fakeIo(setting: CardLooksSetting = TWO) {
+const TWO_SIZES: CardSizesSetting = { approved: ['standard', 'photo'], default: 'standard' }
+
+function fakeIo(setting: CardLooksSetting = TWO, sizes: CardSizesSetting = TWO_SIZES) {
   return {
     looks: vi.fn(async () => setting),
     saveLooks: vi.fn(async () => undefined),
-    picks: vi.fn(async () => [null, null, 'navy-orange', 'navy-yellow']),
+    sizes: vi.fn(async () => sizes),
+    saveSizes: vi.fn(async () => undefined),
+    picks: vi.fn(async () => [
+      { look: null, size: null },
+      { look: null, size: 'photo' },
+      { look: 'navy-orange', size: 'text' },
+      { look: 'navy-yellow', size: null },
+    ]),
   } satisfies LooksAdminIo
 }
 const cardIo = {
-  load: vi.fn(async () => ({ facts: { name: 'Robert', card_name: null, title: null, email: 'robert@example.com', phone: null }, photoPath: null, crop: { fx: 0.5, fy: 0.4, zoom: 1 }, columnsOn: true, look: null, lookOn: true })),
+  load: vi.fn(async () => ({ facts: { name: 'Robert', card_name: null, title: null, email: 'robert@example.com', phone: null }, photoPath: null, crop: { fx: 0.5, fy: 0.4, zoom: 1 }, columnsOn: true, look: null, lookOn: true, size: null, sizeOn: true })),
   photo: vi.fn(async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 })),
 }
 function fakeRenderer() {
@@ -43,6 +54,7 @@ function fakeRenderer() {
   } satisfies KitRenderer
 }
 const row = (id: string) => document.querySelector(`[data-card-look="${id}"]`) as HTMLElement
+const sizeRow = (id: string) => document.querySelector(`[data-card-size="${id}"]`) as HTMLElement
 
 afterEach(cleanup)
 
@@ -85,6 +97,40 @@ describe('CardLooksCard', () => {
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toContain('Only a dev may change them')
     expect(sw).toHaveProperty('checked', false)
+  })
+
+  it('lists every card size with whether it is offered, who uses it and the default', async () => {
+    renderWithProviders(<CardLooksCard role="dev" io={fakeIo()} cardIo={cardIo} renderer={fakeRenderer()} />)
+    await screen.findByText('Card sizes')
+    // two with no pick and the one on a size that is off count on the default
+    expect(sizeRow('standard').textContent).toContain('3 people use it.')
+    expect(sizeRow('photo').textContent).toContain('1 person uses it.')
+    expect(sizeRow('text').textContent).toContain('Not offered')
+    expect(screen.getByRole('switch', { name: 'Offered: Standard' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('switch', { name: 'Offered: Larger text' })).toHaveProperty('checked', false)
+    // each size is drawn as the card's back, with the dev's own name
+    await waitFor(() => expect(sizeRow('text').innerHTML).toContain('font-size="66.0"'))
+  })
+
+  it('switches a size on and saves the sizes alone', async () => {
+    const io = fakeIo()
+    renderWithProviders(<CardLooksCard role="dev" io={io} cardIo={cardIo} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('switch', { name: 'Offered: Larger text' }))
+    await waitFor(() => expect(io.saveSizes).toHaveBeenCalledWith({ approved: ['standard', 'photo', 'text'], default: 'standard' }))
+    expect(io.saveLooks).not.toHaveBeenCalled()
+    expect(sizeRow('text').textContent).toContain('1 person uses it.')
+  })
+
+  it('makes another size the default, and puts it back when the save is refused', async () => {
+    const io = fakeIo()
+    io.saveSizes.mockRejectedValueOnce(new Error('The card sizes were not saved. Only a dev may change them.'))
+    renderWithProviders(<CardLooksCard role="dev" io={io} cardIo={cardIo} renderer={fakeRenderer()} />)
+    await screen.findByText('Card sizes')
+    const radios = sizeRow('text').querySelectorAll('input[type="radio"]')
+    fireEvent.click(radios[0]!)
+    await waitFor(() => expect(io.saveSizes).toHaveBeenCalledWith({ approved: ['standard', 'photo', 'text'], default: 'text' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('Only a dev may change them')
+    expect(screen.getByRole('switch', { name: 'Offered: Larger text' })).toHaveProperty('checked', false)
   })
 
   it('shows nobody but a dev the card', () => {

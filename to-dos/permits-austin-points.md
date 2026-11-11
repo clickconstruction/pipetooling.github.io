@@ -2,7 +2,7 @@
 name: "Permits: a map point for Austin permits the city sends without one"
 number: 310
 group: ready
-status: found 2026-11-11 on the live check after v2.6926 · measured and the route tested the same day, nothing built
+status: PR 1 built 2026-11-11 as v2.6958 (branch claude/exciting-saha-ad2b12), the point from the parcel in the pull · the rows already held wait on PR 2's re-read
 summary: >
   About half of Austin's commercial permits arrive from the city's feed with no point. Their skim
   card shows a blank picture, the drive in miles is missing, the Closed map leaves them off, and the
@@ -10,10 +10,10 @@ summary: >
   district's property id, and that id finds the parcel on Travis County's layer, whose shape gives
   a point inside Austin. So the pull can fill the point from the parcel instead of geocoding the
   street address, and the same id can name the owner exactly.
-next: PR 1, the point from the parcel in the pull, then re-read Austin's window so the rows already held get it.
+next: PR 2, after v2.6958 is merged and permit-pull is deployed, re-read Austin's window once so the rows already held get their point, then count again and retire this card.
 size: S as a train of two (S · XS); a third (S) only if the owner by id is wanted
 blocker: None.
-ver: v2.6912 (every city's county read for the owner) · v2.6926 (the Loop and interstate spellings)
+ver: v2.6912 (every city's county read for the owner) · v2.6926 (the Loop and interstate spellings) · v2.6958 (the point from the parcel)
 mockup: not required — the card's picture, the miles and the map already exist; this fills the point they read
 ---
 
@@ -68,6 +68,26 @@ Fill the point from the parcel the permit already names, not by geocoding the st
   per row, and the server's `GOOGLE_MAPS_API_KEY` is set up for Places, not proven for Geocoding.
 - Geocoding stays as the fallback for the 2% with no id, and only if the owner wants it: it is a
   separate PR and a separate cost decision.
+
+## What PR 1 found (v2.6958)
+
+- **POST, not GET.** A hundred ids in a URL (about 2,100 characters) is turned away by the county's
+  firewall with a page that is not JSON; fifty pass, and the same hundred posted as a form pass.
+  The pull posts.
+- **The middle must be measured from the shape's own corner.** Summed in whole degrees the area
+  terms cancel and the middle lands metres off a small lot. And a bent lot's middle can sit
+  outside it, so the point then moves onto the lot. 67 points asked back of the layer all fell
+  inside the parcel they were made from.
+- **About three in four take a point, not 98%.** Through the new code, without writing: 1,742 rows
+  with no point in the window (every kind the pull keeps), 1,325 take one, 417 do not: 5 with no
+  id, 341 with a ten-digit id the county's monthly layer does not hold, 71 with an id that is not
+  Travis's (70 an R and six digits, in the zips of Austin over the Williamson County line).
+  Of commercial building permits, 363 of 414 take one.
+- **A layer that does not answer must not wipe a point.** The upsert writes `lat` on every read, so
+  a failed night would blank ten days of points. Rows the layer was not answered for are written
+  without the two point columns.
+- The other cities, measured and left alone: San Antonio 685 of 5,341 issued and 53 of 960 applied
+  with no point, New Braunfels 14 of 554, San Marcos 1 of 265, Seguin 0 of 268.
 
 ## Where it plugs in
 
