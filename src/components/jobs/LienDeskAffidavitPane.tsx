@@ -27,7 +27,8 @@ import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
-import { buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { HOMESTEAD_QUESTION_DOOR } from '../../lib/customers/homesteadAnswer'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
@@ -196,6 +197,12 @@ export default function LienDeskAffidavitPane({
       }),
     [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob],
   )
+  // The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold.
+  const noticeCheck = useMemo(() => {
+    const filings = data.filingsByJob[entry.jobId] ?? []
+    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, filings }), filings })
+  }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
+  const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
     [fields, issuer, job, entry.lastMonth, todayYmd],
@@ -433,6 +440,14 @@ export default function LienDeskAffidavitPane({
             </div>
           ))}
         </div>
+        {noticeCheckLines.length > 0 ? (
+          <div data-lien-affidavit-notice-check style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem', display: 'grid', gap: '0.15rem' }}>
+            <strong>{LIEN_NOTICE_CHECK_LEAD}</strong>
+            {noticeCheckLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </div>
+        ) : null}
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={{ color: 'var(--text-amber-800)' }}> set by hand{claimDeltaWords(claimed.delta, entry.openBalance) ? `, ${claimDeltaWords(claimed.delta, entry.openBalance)}` : ''}</span> : <> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))}</>} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
         </div>

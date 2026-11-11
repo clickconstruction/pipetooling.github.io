@@ -38171,6 +38171,7 @@ export type Database = {
           archived_at: string | null
           bid_board_self_highlight: Json | null
           calibration_standard: boolean
+          card_look: string | null
           card_name: string | null
           charge_standing: string | null
           counttooling_user_id: string | null
@@ -38212,6 +38213,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          card_look?: string | null
           card_name?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null
@@ -38253,6 +38255,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          card_look?: string | null
           card_name?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null

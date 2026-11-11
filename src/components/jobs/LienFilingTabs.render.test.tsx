@@ -306,6 +306,20 @@ describe('LienFilingTabs · the affidavit prints on the short form (punch list #
     expect(paper()).not.toContain('The claim it swears:')
   })
 
+  it('a sworn month with no copy to the contractor on record is flagged for the attorney, and the paper is still drawn (punch list #314)', () => {
+    const ownerOnly = { ...notice, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-14' }] }
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, filings: [ownerOnly as never] })} />)
+    const flag = document.querySelector('[data-lien-window-notice-check]') as HTMLElement
+    expect(flag.textContent).toContain('Ask the attorney before this is filed.')
+    expect(flag.textContent).toContain('No copy to the original contractor is on record for August 2026.')
+    expect(paper()).toContain('The claim it swears:')
+  })
+
+  it('a notice mailed on time to both raises no flag in the window', () => {
+    renderWithProviders(<LienFilingTabs {...props(gcProps)} />)
+    expect(document.querySelector('[data-lien-window-notice-check]')).toBeNull()
+  })
+
   it('a GC whose row was read with no address holds the paper: the gate says so and nothing is drawn (punch list #305)', () => {
     renderWithProviders(<LienFilingTabs {...props({ ...gcProps, originalContractorAddress: '', originalContractorAddressRead: true })} />)
     expect(paper()).toContain('✗ The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)')
