@@ -34576,6 +34576,44 @@ export type Database = {
           },
         ]
       }
+      supply_bill_holds: {
+        Row: {
+          drive_file_id: string | null
+          invoice_id: string
+          note: string
+          seen_key: string
+          tried_at: string
+          tries: number
+          why: string
+        }
+        Insert: {
+          drive_file_id?: string | null
+          invoice_id: string
+          note?: string
+          seen_key?: string
+          tried_at?: string
+          tries?: number
+          why: string
+        }
+        Update: {
+          drive_file_id?: string | null
+          invoice_id?: string
+          note?: string
+          seen_key?: string
+          tried_at?: string
+          tries?: number
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_bill_holds_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_bill_reads: {
         Row: {
           answer: Json | null
@@ -34591,6 +34629,7 @@ export type Database = {
           output_tokens: number | null
           read_at: string
           read_by: string | null
+          source: string
           supply_house_id: string | null
           why: string | null
         }
@@ -34608,6 +34647,7 @@ export type Database = {
           output_tokens?: number | null
           read_at?: string
           read_by?: string | null
+          source?: string
           supply_house_id?: string | null
           why?: string | null
         }
@@ -34625,6 +34665,7 @@ export type Database = {
           output_tokens?: number | null
           read_at?: string
           read_by?: string | null
+          source?: string
           supply_house_id?: string | null
           why?: string | null
         }
@@ -35231,6 +35272,7 @@ export type Database = {
           subtotal_cents: number | null
           supply_house_id: string | null
           tax_cents: number | null
+          text_layer: boolean | null
           total_cents: number | null
         }
         Insert: {
@@ -35257,6 +35299,7 @@ export type Database = {
           subtotal_cents?: number | null
           supply_house_id?: string | null
           tax_cents?: number | null
+          text_layer?: boolean | null
           total_cents?: number | null
         }
         Update: {
@@ -35283,6 +35326,7 @@ export type Database = {
           subtotal_cents?: number | null
           supply_house_id?: string | null
           tax_cents?: number | null
+          text_layer?: boolean | null
           total_cents?: number | null
         }
         Relationships: [

@@ -9,6 +9,10 @@
  * The recovery is a guarded full reload (fresh index.html → current chunk URLs). The
  * guard prevents reload loops when a reload does NOT fix the problem (e.g. the network
  * itself is down, so the fresh chunk fetch fails the same way).
+ *
+ * Two boundaries draw what this decides (`RouteChunkBoundary`): one around every route in
+ * `App.tsx` and one around the Layout's outlet. A page outside the Layout, or a provider
+ * above it, that loses its chunk is caught by the first, so no route ends on an empty page.
  */
 
 /** sessionStorage key recording the last automatic chunk-recovery reload. */
@@ -71,4 +75,48 @@ export function tryClaimChunkRecoveryReload(
     // Storage unavailable (private mode/quota) — allow the reload rather than white-screen.
     return true
   }
+}
+
+/** True once a recovery reload has been started in this document. The page is leaving. */
+let recoveryReloadStarted = false
+
+/**
+ * Start the one guarded recovery reload: claim it, remember that it is on its way and call
+ * `reload`. False when the guard refuses (one already ran inside the interval); nothing is
+ * started then, and the caller shows the fallback with its Reload press.
+ */
+export function startChunkRecoveryReload(
+  now: number,
+  storage: StorageLike | null | undefined,
+  reload: () => void,
+): boolean {
+  if (!tryClaimChunkRecoveryReload(now, storage)) return false
+  recoveryReloadStarted = true
+  reload()
+  return true
+}
+
+/** True while a recovery reload started here is on its way. */
+export function chunkRecoveryReloadStarted(): boolean {
+  return recoveryReloadStarted
+}
+
+/** Tests only: forget a started reload, since a test's document never leaves. */
+export function forgetChunkRecoveryReload(): void {
+  recoveryReloadStarted = false
+}
+
+/** What a chunk boundary draws: the page, "Updating app…", or one of its two fallbacks. */
+export type ChunkBoundaryView = 'page' | 'updating' | 'lost-chunk' | 'broken'
+
+/**
+ * What a boundary draws for the error it holds. While a recovery reload is on its way the
+ * answer is `updating` whatever the error says: the preload handler in `main.tsx` cancels
+ * Vite's own throw when it starts the reload, the `lazy()` page then resolves to nothing, and
+ * React reports a TypeError that names no chunk.
+ */
+export function chunkBoundaryView(error: unknown, reloadOnItsWay: boolean): ChunkBoundaryView {
+  if (error == null) return 'page'
+  if (reloadOnItsWay) return 'updating'
+  return isChunkLoadError(error) ? 'lost-chunk' : 'broken'
 }
