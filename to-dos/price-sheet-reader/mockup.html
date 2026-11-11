@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Price sheet reader</title>
+<style>
+  /* Punch list #308. Every house, bid, builder, person, maker, model number, item number, price and count here is
+     made up: Hillcrest Supply, Borden Pipe & Supply, Canyon Wholesale; bid B-1042 Juniper Street Dental for Ridgeway
+     Builders; the estimator Marisol; the makers Arlo, Kessler, Tanner and Nordic. Tokens are src/index.css's (light
+     values and the [data-theme="dark"] block); the saturated action colours stay literal as the app keeps them.
+     Frames are fixed at 1,248 (the desk); this is desk work and no phone frame is drawn. Green dashes mark what is new. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-700: #b45309; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --text-blue-500: #3b82f6; --ghost: #c3c9d2; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace; --scrim: rgba(15, 23, 42, .38); --paper: #fffef9; --paper-ink: #1f2430; --hi: #fde68a; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --text-blue-500: #60a5fa; --ghost: #56607080; --shadow: 0 8px 24px rgba(0, 0, 0, .45); --scrim: rgba(0, 0, 0, .55); --hi: #a16207; }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 40ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 110ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; position: sticky; top: 0; z-index: 20; background: var(--bg-page); padding: 8px 0; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 60px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 2px 8px; }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; box-shadow: none; }
+  .screen { width: 1248px; font-size: 13.5px; line-height: 1.4; font-family: var(--font); color: var(--text-base); padding: 14px; }
+  .new { outline: 2px dashed var(--text-green-700); outline-offset: 3px; border-radius: 6px; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 12px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .num-r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* app pieces */
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .win > .bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .win > .bar .t { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+  .win > .bar .x { margin-left: auto; color: var(--text-muted); font-size: 16px; }
+  .win > .body { padding: 12px 14px; }
+  .win > .foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 5px 11px; font: 600 12.5px var(--font); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.big { padding: 8px 16px; font-size: 13.5px; }
+  .btn.link { border: none; background: none; color: var(--text-link); padding: 5px 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg-muted); color: var(--text-700); white-space: nowrap; }
+  .chip.g { background: var(--bg-green-100); color: var(--text-green-700); border-color: transparent; }
+  .chip.a { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: transparent; }
+  .chip.r { background: var(--bg-red-100); color: var(--text-red-700); border-color: transparent; }
+  .chip.b { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: transparent; }
+  table.t { width: 100%; border-collapse: collapse; }
+  table.t th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t tr:last-child td { border-bottom: none; }
+  table.t tr.grp td { background: var(--bg-subtle); font-weight: 700; color: var(--text-strong); }
+  table.t tr.sub td { color: var(--text-muted); font-size: 12px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+  .panel .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .kv { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  /* the paper */
+  .paper { background: var(--paper); color: var(--paper-ink); border: 1px solid #d8d3c4; border-radius: 4px; padding: 12px 12px 14px; font-family: var(--mono); font-size: 10.5px; line-height: 1.45; }
+  .paper .lh { display: flex; justify-content: space-between; border-bottom: 2px solid var(--paper-ink); padding-bottom: 6px; margin-bottom: 6px; font-family: var(--font); }
+  .paper .lh b { color: var(--paper-ink); font-size: 13px; letter-spacing: .04em; }
+  .paper .hd, .paper .ln { display: grid; grid-template-columns: 34px 54px 1fr 58px; gap: 6px; }
+  .paper .hd { font-weight: 700; border-bottom: 1px solid var(--paper-ink); margin-bottom: 4px; font-size: 9.5px; }
+  .paper .fx { margin-top: 7px; font-weight: 700; }
+  .paper .st { text-align: right; margin: 2px 0 0; }
+  .paper .rule { color: #8a8676; overflow: hidden; white-space: nowrap; }
+  .paper mark { background: var(--hi); color: inherit; padding: 0 1px; }
+  .paper .r { text-align: right; }
+
+  /* needs-you cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #d97706; border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
+  .card.info { border-left-color: var(--border-strong); }
+  .card.blue { border-left-color: #2563eb; }
+  .card .where { font-size: 11.5px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .card .printed { font-family: var(--mono); font-size: 11.5px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; color: var(--text-700); }
+  .card .q { font-weight: 600; color: var(--text-strong); }
+  .card .opt { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .card .presses { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+  .strip { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--surface); }
+  .strip.ask { border-color: #d97706; background: var(--bg-amber-100); }
+  .strip.done { border-color: var(--text-green-700); background: var(--bg-green-100); }
+  .why { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fold { display: grid; grid-template-columns: 18px 200px 1fr 130px 300px; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .fold:last-child { border-bottom: none; }
+  .fold .tw { color: var(--text-muted); }
+  .field { display: grid; gap: 3px; }
+  .field label { font-size: 11.5px; font-weight: 600; color: var(--text-700); }
+  .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 9px; background: var(--surface); min-height: 31px; }
+  .tile h4 { margin: 0 0 4px; font-size: 13px; color: var(--text-strong); }
+  ol.find { margin: 10px 0 0; padding-left: 22px; max-width: 108ch; display: grid; gap: 8px; color: var(--text-700); }
+  ol.find li b { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #308 · mock-up · made-up data</p>
+  <h1>A supply house's price sheet, read into the parts book</h1>
+  <p>The estimator reads a quote fixture by fixture, finds or makes each part, builds an assembly and types the house's price. She asked for a tool that reads the sheet, knows a part that is already on file, and files every price under the right supply house. This page draws what she does today, two directions, a second look, and the pick.</p>
+  <p class="stamp">Drawn 2026-11-10 from main at v2.6880. Green dashes mark what is new inside a screen the app has today; everything in the window of sections 1 to 4 is new. The app's Takeoffs tab, Add Assembly window, part form and Duplicates page are redrawn in shape only. The sheet here is the third one read from Hillcrest Supply, so most of its item numbers are already known.</p>
+  <div class="controls">
+    <span><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button> <button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+  </div>
+  <nav class="jump">
+    <a href="#today">Today</a>
+    <a href="#a">A · Row by row</a>
+    <a href="#b">B · Fixture by fixture</a>
+    <a href="#look">Second look</a>
+    <a class="pick" href="#pick">The pick · C</a>
+    <a class="pick" href="#house">1 · Which house</a>
+    <a class="pick" href="#needs">2 · Needs you</a>
+    <a class="pick" href="#ready">3 · Ready, and the press</a>
+    <a class="pick" href="#twice">4 · Read twice</a>
+    <a class="pick" href="#doors">5 · The doors</a>
+    <a class="pick" href="#first">6 · The first PR</a>
+    <a class="pick" href="#clean">7 · The clean-up</a>
+  </nav>
+</header>
+
+<!-- ============================== TODAY ============================== -->
+<h2 id="today"><span class="num today">0</span> Today: every fixture by hand</h2>
+<p class="lede">The quote is open beside the app. For each fixture she searches the parts book for each row, makes the part when the search finds nothing, names an assembly for the fixture, picks the house and types its subtotal as the bundle price.</p>
+<div class="frame now"><div class="screen">
+  <div style="display:grid;grid-template-columns:330px 1fr 380px;gap:12px;align-items:start">
+    <div class="panel">
+      <span class="k">Bids · Takeoffs · B-1042</span>
+      <table class="t">
+        <tr><th>Fixture</th><th>Part or assembly</th><th class="num-r">Unit</th></tr>
+        <tr><td>(2) LAV-1</td><td class="muted">Search parts…</td><td class="num-r">0</td></tr>
+        <tr><td>(1) SK-1 OFCI</td><td class="muted">Search parts…</td><td class="num-r">0</td></tr>
+        <tr><td>(3) SK-2 OFCI</td><td class="muted">Search parts…</td><td class="num-r">0</td></tr>
+        <tr><td>(1) SK-3 OFCI</td><td class="muted">Search parts…</td><td class="num-r">0</td></tr>
+      </table>
+      <div class="kv"><span class="muted">Costed fixtures</span><b style="color:var(--text-amber-700)">9 of 31</b></div>
+      <div class="chip r" style="justify-self:start;white-space:normal;border-radius:6px;padding:4px 8px">22 fixtures carry no material cost</div>
+    </div>
+    <div class="win">
+      <div class="bar"><span class="t">Add Assembly</span><span class="x">×</span></div>
+      <div class="body" style="display:grid;gap:10px">
+        <div class="grid2">
+          <div class="field"><label>Name *</label><div class="in">SK-2 OFCI · Juniper Dental</div></div>
+          <div class="field"><label>Description</label><div class="in muted">optional</div></div>
+        </div>
+        <div class="panel">
+          <div class="kv"><b>Items</b><span class="muted small">Picking a result adds it. Search again for the next.</span></div>
+          <div class="in muted" style="border:1px solid var(--border-strong);border-radius:6px;padding:6px 9px">Search parts and assemblies…</div>
+          <div class="kv"><span>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2…</span><span class="muted">1 · Prices ×</span></div>
+          <div class="kv"><span>AX87029-BPC ARLO 1-1/2 17GA P-TRAP…</span><span class="muted">1 · Prices ×</span></div>
+        </div>
+        <div class="panel">
+          <div class="kv"><b>Bundle prices (optional)</b><span class="muted small">One whole-assembly quote per supply house</span></div>
+          <div class="kv"><span>◉ Use for takeoff &nbsp; Hillcrest Supply</span><b>$52.72</b></div>
+        </div>
+      </div>
+      <div class="foot"><span style="margin-left:auto" class="btn">Cancel</span><span class="btn pri">Save assembly</span></div>
+    </div>
+    <div class="paper">
+      <div class="lh"><b>HILLCREST SUPPLY CO.</b><span>Quotation Q-88213 · page 4 of 6</span></div>
+      <div class="hd"><span>QTY</span><span>ITEM NO</span><span>DESCRIPTION</span><span class="r">UNIT</span></div>
+      <div class="fx">SK-2 DUMP SINK (BAR) (OFCI)</div>
+      <div class="ln"><span>1ea</span><span>440118</span><span>MISC CHARGE</span><span></span></div>
+      <div class="ln"><span>1ea</span><span>512207</span><span>AX8802XL-LR-PC ARLO SUPPLY KIT<br>1/2IPS X 3/8OD W/ STANDARD<br>COMPRESSION STOP AND SUPPLY KIT</span><span></span></div>
+      <div class="ln"><span>1ea</span><span>318002</span><span>AX87029-BPC ARLO 1-1/2 17GA P-TRAP<br>W/C.O. &amp; BRASS NUTS</span><span></span></div>
+      <div class="st">Subtotal ------- SK-2 EACH &nbsp; 52.72</div>
+      <div class="rule">****************************************</div>
+      <div class="fx">SK-3 3 COMPARTMENT SINK (OFCI)</div>
+      <div class="ln"><span>1ea</span><span>277310</span><span>B0133-ADF12 TANNER BRASS EZ-INSTALL<br>PRE RINSE SPRAY WALL MNT 8"</span><span></span></div>
+      <div class="ln"><span>1ea</span><span>512207</span><span>AX8802XL-LR-PC ARLO SUPPLY KIT …</span><span></span></div>
+      <div class="st">Subtotal ------- SK-3 EACH &nbsp; 386.40</div>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="lose">About nine moves a fixture: two searches, two picks, a name typed, a house picked, a price typed, two presses. A part the search misses becomes a second copy of a part on file.</p>
+  <p class="lose">The parts book has no place for a model number or a house's item number. The only key is the name, and each house writes the name its own way.</p>
+  <p class="rule">Many rows on a sheet like this carry no price of their own. The fixture's subtotal is the only price, which is why she keeps it as the assembly's bundle price.</p>
+</div>
+
+<!-- ============================== A ============================== -->
+<h2 id="a"><span class="num">A</span> Row by row, with the paper beside it</h2>
+<p class="lede">One window. The page on the left, every row read from it on the right, each with the part the reader thinks it is and three presses.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="bar"><span class="t">Read a price sheet</span><span class="chip">Hillcrest Supply ▾</span><span class="muted">Q-88213 · 71 rows</span><span class="x">×</span></div>
+    <div class="body" style="display:grid;grid-template-columns:360px 1fr;gap:12px;align-items:start">
+      <div class="paper">
+        <div class="lh"><b>HILLCREST SUPPLY CO.</b><span>page 4 of 6</span></div>
+        <div class="hd"><span>QTY</span><span>ITEM NO</span><span>DESCRIPTION</span><span class="r">UNIT</span></div>
+        <div class="fx">SK-2 DUMP SINK (BAR) (OFCI)</div>
+        <div class="ln"><span>1ea</span><span>440118</span><span>MISC CHARGE</span><span></span></div>
+        <div class="ln"><span>1ea</span><span><mark>512207</mark></span><span><mark>AX8802XL-LR-PC ARLO SUPPLY KIT<br>1/2IPS X 3/8OD W/ STANDARD<br>COMPRESSION STOP AND SUPPLY KIT</mark></span><span></span></div>
+        <div class="ln"><span>1ea</span><span>318002</span><span>AX87029-BPC ARLO 1-1/2 17GA P-TRAP<br>W/C.O. &amp; BRASS NUTS</span><span></span></div>
+        <div class="st">Subtotal ------- SK-2 EACH &nbsp; 52.72</div>
+      </div>
+      <table class="t">
+        <tr><th>#</th><th>Qty</th><th>Item no.</th><th>As printed</th><th class="num-r">Price</th><th>Part on file</th><th>Match</th><th></th></tr>
+        <tr><td>31</td><td>1</td><td class="mono">440118</td><td>MISC CHARGE</td><td class="num-r muted">in subtotal</td><td class="muted">none</td><td><span class="chip">0%</span></td><td style="white-space:nowrap"><span class="btn">Pick…</span> <span class="btn">New</span> <span class="btn">Skip</span></td></tr>
+        <tr style="background:var(--bg-blue-tint)"><td>32</td><td>1</td><td class="mono">512207</td><td>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD…</td><td class="num-r muted">in subtotal</td><td>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2…</td><td><span class="chip g">98%</span></td><td style="white-space:nowrap"><span class="btn pri">Same</span> <span class="btn">Pick…</span> <span class="btn">New</span></td></tr>
+        <tr><td>33</td><td>1</td><td class="mono">318002</td><td>AX87029-BPC ARLO 1-1/2 17GA P-TRAP W/C.O.…</td><td class="num-r muted">in subtotal</td><td>AX87029-BPC ARLO 1-1/2 17GA P-TRAP…</td><td><span class="chip g">96%</span></td><td style="white-space:nowrap"><span class="btn pri">Same</span> <span class="btn">Pick…</span> <span class="btn">New</span></td></tr>
+        <tr><td>34</td><td>1</td><td class="mono">277310</td><td>B0133-ADF12 TANNER BRASS EZ-INSTALL PRE RINSE…</td><td class="num-r">312.50</td><td>B0133-ADF12 TANNER PRE-RINSE WALL MNT 8IN</td><td><span class="chip a">81%</span></td><td style="white-space:nowrap"><span class="btn pri">Same</span> <span class="btn">Pick…</span> <span class="btn">New</span></td></tr>
+        <tr><td>35</td><td>1</td><td class="mono">655012</td><td>3/4 FROST PROOF WALL HYDRANT 8IN</td><td class="num-r">64.10</td><td>1/2 FROST PROOF WALL HYDRANT 8IN</td><td><span class="chip a">74%</span></td><td style="white-space:nowrap"><span class="btn pri">Same</span> <span class="btn">Pick…</span> <span class="btn">New</span></td></tr>
+        <tr class="sub"><td colspan="8">36 more rows on pages 4 to 6 …</td></tr>
+      </table>
+    </div>
+    <div class="foot"><span class="muted">71 rows · 12 answered</span><span style="margin-left:auto" class="btn pri big">Save the sheet</span></div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">Nothing is hidden. Every row shows the paper it came from, which is the right way to catch a misread.</p>
+  <p class="lose">She reads 71 rows to find the 14 that need her. A percent does not say why a row matched, and row 35 shows the danger: a 1/2 inch hydrant offered for a 3/4 inch one at 74%.</p>
+  <p class="lose">The fixture is lost. Nothing becomes an assembly or lands on the takeoff, so the nine moves a fixture stay. One Save for the whole sheet is all or nothing.</p>
+</div>
+
+<!-- ============================== B ============================== -->
+<h2 id="b"><span class="num">B</span> Fixture by fixture, on the takeoff</h2>
+<p class="lede">No window. The sheet's fixtures land under the takeoff's own fixture rows as offers, each with one Use press.</p>
+<div class="frame"><div class="screen">
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start">
+    <div class="win">
+      <div class="bar"><span class="t">Takeoffs · B-1042 Juniper Street Dental</span></div>
+      <table class="t">
+        <tr><th style="width:150px">Fixture</th><th>Part or assembly</th><th class="num-r">Unit price</th><th class="num-r">Qty</th></tr>
+        <tr><td><b>(1) SK-1 OFCI</b></td><td class="muted">Search parts…</td><td class="num-r">0</td><td class="num-r">1</td></tr>
+        <tr><td></td><td colspan="3"><div class="strip new" style="justify-content:space-between"><span><b>From Hillcrest's sheet:</b> MISC CHARGE · Arlo supply kit · Arlo P-trap &nbsp;<span class="muted">3 rows, all on file</span></span><span><b>$52.72 each</b> &nbsp;<span class="btn pri">Use</span> <span class="btn">Not this</span></span></div></td></tr>
+        <tr><td><b>(3) SK-2 OFCI</b></td><td class="muted">Search parts…</td><td class="num-r">0</td><td class="num-r">3</td></tr>
+        <tr><td></td><td colspan="3"><div class="strip new" style="justify-content:space-between"><span><b>From Hillcrest's sheet:</b> MISC CHARGE · Arlo supply kit · Arlo P-trap &nbsp;<span class="muted">3 rows, all on file</span></span><span><b>$52.72 each</b> &nbsp;<span class="btn pri">Use</span> <span class="btn">Not this</span></span></div></td></tr>
+        <tr><td><b>(1) SK-3 OFCI</b></td><td class="muted">Search parts…</td><td class="num-r">0</td><td class="num-r">1</td></tr>
+        <tr><td></td><td colspan="3"><div class="strip ask new" style="justify-content:space-between"><span><b>From Hillcrest's sheet:</b> Tanner pre-rinse · Arlo supply kit · Arlo P-trap &nbsp;<span class="chip a">1 row needs you</span></span><span><b>$386.40 each</b> &nbsp;<span class="btn">Open</span></span></div></td></tr>
+        <tr class="sub"><td colspan="4">20 more fixtures down the page …</td></tr>
+      </table>
+    </div>
+    <div class="panel new">
+      <span class="k">Hillcrest's sheet · Q-88213</span>
+      <div class="kv"><span>Fixtures on the sheet</span><b>23</b></div>
+      <div class="kv"><span>Used</span><b>0</b></div>
+      <div class="kv"><span>Need you</span><b style="color:var(--text-amber-700)">9</b></div>
+      <span class="btn pri" style="justify-self:start">Use 14 ready fixtures</span>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">It is her screen and her unit, the fixture. The costed count moves as she presses, and one press takes the 14 ready fixtures.</p>
+  <p class="lose">The rows that need her are scattered down a long page, behind Open. The paper is never beside the row, and the house is a small heading nobody checked.</p>
+  <p class="lose">A sheet with no bid has no door. A house's general price list could not be read at all.</p>
+</div>
+
+<!-- ============================== SECOND LOOK ============================== -->
+<h2 id="look"><span class="num">?</span> Is this the best we can do?</h2>
+<p class="lede">The first draft of the pick was A's window with B's fixture groups and a Save. The second look found eight things wrong with it. Each is redrawn in the pick below.</p>
+<ol class="find">
+  <li><b>She read every row.</b> A row matched by the house's own number needs no eye. The window now opens on the rows that need her, and the ready rows fold to one line a fixture.</li>
+  <li><b>A percent explained nothing.</b> The match now says how in words: <i>same Hillcrest number</i>, <i>same model number</i>, or <i>words only</i>. Only the first is ready without her. Words are offered only when every size in the two names agrees.</li>
+  <li><b>The house was a dropdown that was already filled in.</b> A wrong house puts 40 prices in the wrong place. The window now opens on a sentence that names the house and its reasons, and it asks when the reasons disagree.</li>
+  <li><b>Every fixture made a new assembly.</b> The book would gain one for each fixture on each bid. An assembly with the same items is reused, and a new one is made only when none exists.</li>
+  <li><b>A row with no price taught nothing.</b> A kit row has no price of its own, yet it still says which part Hillcrest's number means. Every confirmed row now keeps that number, so the next sheet matches more by itself.</li>
+  <li><b>There was no way back.</b> A sheet can now be taken back: each price returns to what it was, unless someone changed it since.</li>
+  <li><b>An old sheet could overwrite a newer price.</b> The sheet's date now decides. A price on file that is newer than the sheet stays, and the row says so.</li>
+  <li><b>A price said nothing about where it came from.</b> Each filed price now names its sheet, its page and how long the quote is good for.</li>
+</ol>
+
+<!-- ============================== THE PICK ============================== -->
+<h2 id="pick"><span class="num pick">C</span> The pick: one window that opens on what needs her <span class="tag">Recommended</span></h2>
+<p class="lede">One reader and one matcher behind four doors. The window has three parts in the order she needs them: which house, what needs her, and what is ready. One press files what is ready and places the ready fixtures on the takeoff. The rest waits and stops nothing.</p>
+
+<h2 id="house"><span class="num pick">1</span> Which house the sheet is from</h2>
+<p class="lede">Her third ask. The window names the house and shows why. It asks only when the reasons disagree, and nothing is filed until the house is settled.</p>
+<div class="frame"><div class="screen" style="display:grid;gap:10px">
+  <div class="cap opt" style="margin:0">Sure: every reason agrees</div>
+  <div class="strip">
+    <span>This sheet is from <b>Hillcrest Supply</b>.</span>
+    <span class="why"><span class="chip g">Letterhead reads HILLCREST SUPPLY CO.</span><span class="chip g">B-1042 asked Hillcrest for prices on Nov 3</span><span class="chip g">43 of its 71 item numbers are Hillcrest's on file</span><span class="chip g">Came by mail from a Hillcrest contact</span></span>
+    <span class="btn" style="margin-left:auto">Another house…</span>
+  </div>
+  <div class="cap" style="margin:6px 0 0">Not sure: the reasons disagree, so it asks</div>
+  <div class="strip ask">
+    <span><b>Which house is this sheet from?</b> The letterhead reads CANYON WHOLESALE. This bid's price request went to Hillcrest Supply. None of its item numbers are known yet.</span>
+    <span style="margin-left:auto;display:flex;gap:8px"><span class="btn pri">Canyon Wholesale</span><span class="btn">Hillcrest Supply</span><span class="btn">Another house…</span></span>
+  </div>
+  <div class="cap" style="margin:6px 0 0">A house that is not on file</div>
+  <div class="strip ask">
+    <span><b>No supply house on file is named like PINEBROOK PLUMBING SUPPLY.</b> Add it to Supply houses, then read the sheet again. The rows are kept.</span>
+    <span style="margin-left:auto" class="btn">Open Supply houses</span>
+  </div>
+</div></div>
+<div class="say">
+  <p class="rule">Four reasons, in the order they are trusted: the price request this sheet answers, the letterhead, the share of item numbers already known under a house, and the contact the mail came from. A photo or pasted text may have only one of them.</p>
+  <p class="gain">The house is written on the sheet once it is settled, and every price it files says so.</p>
+</div>
+
+<h2 id="needs"><span class="num pick">2</span> What needs her, first</h2>
+<p class="lede">The window opens here. Each card asks one question in words, shows the row as printed, and offers the presses that answer it. A card she skips waits and holds only its own fixture.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="bar"><span class="t">Read a price sheet</span><span class="muted">B-1042 Juniper Street Dental · Hillcrest Supply · Q-88213, Nov 6 · good until Dec 6</span><span class="x">×</span></div>
+    <div class="body" style="display:grid;gap:12px">
+      <div class="strip">
+        <span><b>6 pages · 23 fixtures · 71 rows.</b></span>
+        <span class="chip g">40 ready</span><span class="chip b">11 same model number</span><span class="chip a">14 need you</span><span class="chip">6 charges stay in their bundles</span>
+        <span class="muted" style="margin-left:auto">22 fixtures add up to their subtotal. LAV-2 does not.</span>
+      </div>
+      <div class="muted small" style="margin-top:-6px">Hillcrest's first sheet read: 0 ready · 43 same model number · 22 need you. This is its third. Enter takes the blue press and the next card comes up.</div>
+
+      <div class="grid2">
+        <!-- batch: model number -->
+        <div class="card blue" style="grid-column:1 / span 2">
+          <div class="where"><span class="chip b">Same model number</span><span>11 rows · Hillcrest's number is new for each</span></div>
+          <div class="q">These 11 rows carry a model number that is on one part in the book. Look once, then confirm them together.</div>
+          <table class="t">
+            <tr><th>Fixture</th><th>Hillcrest no.</th><th>As printed</th><th>Part on file</th><th>Known as</th><th></th></tr>
+            <tr><td>WC-1</td><td class="mono">318845</td><td>KESSLER <b>K-4410</b> CLOSET CARRIER HORIZ ADJ</td><td>K-4410 KESSLER HORIZONTAL CLOSET CARRIER</td><td class="muted">Borden 77120-B</td><td><span class="btn link">Not this one</span></td></tr>
+            <tr><td>UR-1</td><td class="mono">318850</td><td>KESSLER <b>K-4620</b> URINAL CARRIER W/ BRG PLATE</td><td>K-4620 URINAL CARRIER WITH BEARING PLATE</td><td class="muted">Borden 77133-B</td><td><span class="btn link">Not this one</span></td></tr>
+            <tr><td>LAV-1</td><td class="mono">512260</td><td>ARLO <b>AX7702-PC</b> GRID DRAIN 1-1/4 17GA</td><td>AX7702-PC ARLO 1-1/4 GRID DRAIN CP</td><td class="muted">Canyon CW-20418</td><td><span class="btn link">Not this one</span></td></tr>
+            <tr class="sub"><td colspan="6">8 more rows · Show them</td></tr>
+          </table>
+          <div class="presses"><span class="btn pri">Confirm 11 as the same parts</span><span class="muted small">Each part keeps its own name. Hillcrest's number is added to it.</span></div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Two parts on file</span><span>SK-3 · row 2 · Hillcrest 512207 · page 4</span></div>
+          <div class="printed">AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD W/ STANDARD COMPRESSION STOP AND SUPPLY KIT <span class="chip" style="margin-left:4px">3 lines read as one row</span></div>
+          <div class="q">Two parts in the book carry this model number. Which one is it?</div>
+          <div class="opt"><span><b>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2…</b><br><span class="muted small">Hillcrest $18.40 · Borden $19.05 · in 14 assemblies</span></span><span class="btn pri">Use this one</span></div>
+          <div class="opt"><span><b>ARLO AX8802XL LAV SUPPLY KIT</b><br><span class="muted small">Hillcrest $17.90 · in 2 assemblies</span></span><span class="btn">Use this one</span></div>
+          <div class="presses"><span class="btn link">They are one part. Merge them…</span></div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Price moved a lot</span><span>SK-3 · row 1 · Hillcrest 277310 · page 4</span></div>
+          <div class="printed">B0133-ADF12 TANNER BRASS EZ-INSTALL PRE RINSE SPRAY WALL MNT 8"</div>
+          <div class="q">$214.00 on file from Hillcrest, Aug 12. This sheet says $312.50. That is up 46%.</div>
+          <div class="presses"><span class="btn pri">File $312.50</span><span class="btn">Keep $214.00</span><span class="btn link">Look at page 4</span></div>
+          <div class="muted small">A move past 25% always waits for a person. A tenfold move is usually a unit.</div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Unit differs</span><span>FD-1 · row 4 · Hillcrest 190442 · page 2</span></div>
+          <div class="printed">3/8 X 1-1/2 CLOSET BOLT BRASS &nbsp;&nbsp; 38.40 C</div>
+          <div class="q">Hillcrest prices this by the hundred. The book prices it each.</div>
+          <div class="presses"><span class="btn pri">File $0.38 each</span><span class="btn">It is $38.40 each</span></div>
+          <div class="muted small">The answer is kept with Hillcrest's number, so the next sheet does not ask.</div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Words only</span><span>HB-1 · row 2 · Hillcrest 655012 · page 5</span></div>
+          <div class="printed">3/4 FROST PROOF WALL HYDRANT 8IN</div>
+          <div class="q">No number matches. One part reads almost the same, and its sizes agree.</div>
+          <div class="opt"><span><b>3/4 FROSTPROOF WALL HYDRANT 8 IN W/ KEY</b><br><span class="muted small">Borden $61.75 · no model number in its name</span></span><span class="btn pri">Same part</span></div>
+          <div class="presses"><span class="btn">Not it · new part</span><span class="btn link">Later</span></div>
+          <div class="muted small">Not offered: 1/2 FROST PROOF WALL HYDRANT 8IN. A size differs.</div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Nothing on file</span><span>EWC-1 · row 1 · Hillcrest 702291 · page 6</span></div>
+          <div class="printed">NORDIC NW-2BL BI-LEVEL COOLER W/ BOTTLE FILLER SS &nbsp;&nbsp; 1,284.00</div>
+          <div class="q">No part has this number, this model number or these words.</div>
+          <div class="presses"><span class="btn pri">New part in the book…</span><span class="btn">It is… <span class="muted">search</span></span><span class="btn link">Later</span></div>
+          <div class="muted small">The part form opens filled: the name, the maker Nordic, the model NW-2BL, Hillcrest's number and its price. A part is only ever made on this press.</div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Does not add up</span><span>LAV-2 · page 3</span></div>
+          <div class="q">The rows read for LAV-2 add to $148.20. The paper's subtotal is $184.20.</div>
+          <div class="presses"><span class="btn pri">Look at page 3</span><span class="btn">Use the paper's $184.20</span><span class="btn link">Leave LAV-2 out</span></div>
+          <div class="muted small">A row was likely missed or misread. LAV-2 is held. The other 22 fixtures are not.</div>
+        </div>
+
+        <div class="card">
+          <div class="where"><span class="chip a">Not on this bid</span><span>SK-4A · page 5</span></div>
+          <div class="q">The sheet prices SK-4A. B-1042 has SK-4 and no SK-4A.</div>
+          <div class="presses"><span class="btn pri">It is SK-4</span><span class="btn">File its prices only</span></div>
+        </div>
+
+        <div class="card info">
+          <div class="where"><span class="chip">Charges</span><span>6 rows · Hillcrest 440118</span></div>
+          <div class="q">Six rows read MISC CHARGE. Each stays inside its fixture's bundle price.</div>
+          <div class="muted small">Hillcrest uses 440118 for anything it does not stock, so that number is marked <i>not a part</i> and is never matched. No press is needed.</div>
+          <div class="presses"><span class="btn link">Name one of them…</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="rule">How a row finds its part, in order: Hillcrest's own number, then the model number, then the words. Only the first is ready with no press. The words are never offered when a size differs.</p>
+  <p class="gain">Every answer teaches. A confirmed row keeps Hillcrest's number on the part, so the same row on the next sheet is ready by itself.</p>
+  <p class="gain">The same part under two houses' numbers is the blue card: one part, two numbers, each house's price on its own line.</p>
+  <p class="rule">A house's first sheet has no known numbers, so it is mostly the blue card and the cards under it. Each sheet after it asks less.</p>
+  <p class="rule">A description that runs over several lines is read as one row and says so. Join and Split are on the open fixture for a row the reader got wrong.</p>
+</div>
+
+<h2 id="ready"><span class="num pick">3</span> What is ready, and the one press</h2>
+<p class="lede">Below the cards, the ready fixtures fold to a line each. A line opens to its rows and the paper. The press at the foot says what it will do with its counts and files only what is ready.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="body" style="padding:0">
+      <div class="fold" style="background:var(--bg-subtle);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)"><span></span><span>Fixture</span><span>Rows</span><span class="num-r">Hillcrest, each</span><span>On the takeoff</span></div>
+      <div class="fold"><span class="tw">▸</span><b>SK-1 · 3 comp sink</b><span>3 rows · 2 parts on file · 1 charge</span><span class="num-r"><b>$52.72</b></span><span><span class="chip g">Reuses</span> Bar sink trim kit <span class="muted small">used on 4 bids</span></span></div>
+      <div class="fold" style="display:block;padding:0">
+        <div class="fold" style="border-bottom:none"><span class="tw">▾</span><b>SK-2 · Dump sink</b><span>3 rows · 2 parts on file · 1 charge</span><span class="num-r"><b>$52.72</b></span><span><span class="chip g">Reuses</span> Bar sink trim kit <span class="muted small">same items</span></span></div>
+        <div style="display:grid;grid-template-columns:1fr 330px;gap:12px;padding:0 10px 10px 38px;align-items:start">
+          <table class="t">
+            <tr><th>Qty</th><th>Hillcrest no.</th><th>Part on file</th><th>How</th><th class="num-r">Price</th></tr>
+            <tr><td>1</td><td class="mono">440118</td><td class="muted">MISC CHARGE</td><td><span class="chip">Not a part</span></td><td class="num-r muted">in the bundle</td></tr>
+            <tr><td>1</td><td class="mono">512207</td><td>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2…</td><td><span class="chip g">Same Hillcrest number</span></td><td class="num-r muted">in the bundle</td></tr>
+            <tr><td>1</td><td class="mono">318002</td><td>AX87029-BPC ARLO 1-1/2 17GA P-TRAP…</td><td><span class="chip g">Same Hillcrest number</span></td><td class="num-r muted">in the bundle</td></tr>
+            <tr class="sub"><td colspan="5">Subtotal SK-2 EACH $52.72 becomes Hillcrest's bundle price on the assembly, and one line at $52.72 × 3 on the takeoff.</td></tr>
+            <tr class="sub"><td colspan="5"><span style="color:var(--text-link)">Join two rows</span> · <span style="color:var(--text-link)">Split a row</span> · <span style="color:var(--text-link)">This is another part…</span></td></tr>
+          </table>
+          <div class="paper">
+            <div class="fx" style="margin-top:0">SK-2 DUMP SINK (BAR) (OFCI) <span style="font-weight:400">· page 4</span></div>
+            <div class="ln"><span>1ea</span><span>440118</span><span>MISC CHARGE</span><span></span></div>
+            <div class="ln"><span>1ea</span><span>512207</span><span>AX8802XL-LR-PC ARLO SUPPLY KIT …</span><span></span></div>
+            <div class="ln"><span>1ea</span><span>318002</span><span>AX87029-BPC ARLO 1-1/2 17GA P-TRAP …</span><span></span></div>
+            <div class="st"><mark>Subtotal ------- SK-2 EACH &nbsp; 52.72</mark></div>
+          </div>
+        </div>
+      </div>
+      <div class="fold"><span class="tw">▸</span><b>MS-1 · Mop sink</b><span>4 rows · 4 parts on file, each with its own price</span><span class="num-r"><b>$418.65</b></span><span><span class="chip b">New assembly</span> MS-1 Mop sink · Hillcrest</span></div>
+      <div class="fold"><span class="tw">▸</span><b>GI-1 · Grease interceptor</b><span>2 rows · 2 parts on file · a price on file is newer</span><span class="num-r"><b>$2,140.00</b></span><span><span class="chip">1 price kept</span> <span class="muted small">Nov 8 on file, sheet is Nov 6</span></span></div>
+      <div class="fold"><span class="tw">▸</span><span class="muted">10 more ready fixtures</span><span class="muted">31 rows</span><span></span><span></span></div>
+    </div>
+    <div class="foot">
+      <span class="btn pri big">File 40 rows and place 14 fixtures</span>
+      <span class="muted">25 rows and 9 fixtures wait here. Nothing they hold stops the rest.</span>
+      <span style="margin-left:auto" class="btn link">Close · finish later</span>
+    </div>
+  </div>
+
+  <div class="cap opt">After the press</div>
+  <div class="strip done" style="align-items:flex-start">
+    <span style="display:grid;gap:3px">
+      <span><b>Filed under Hillcrest Supply from quote Q-88213.</b> 18 part prices, 14 bundle prices and 40 Hillcrest numbers.</span>
+      <span>On B-1042, 14 fixtures are placed. Costed fixtures <b>23 of 31</b>.</span>
+      <span>1 row was not filed: its part was deleted while this window was open. It is back under Needs you.</span>
+      <span class="muted">Waiting: 11 to confirm, 14 that need you, 1 that failed. They are on the Parts Book under Price sheets.</span>
+    </span>
+    <span style="margin-left:auto" class="btn">Take this sheet back…</span>
+  </div>
+
+  <div class="cap opt">What a price says afterwards · a part's Prices window</div>
+  <div class="win" style="max-width:1000px">
+    <div class="bar"><span class="t">Prices · B0133-ADF12 TANNER PRE-RINSE WALL MNT 8IN</span><span class="x">×</span></div>
+    <table class="t">
+      <tr><th>Supply house</th><th>Their number</th><th class="num-r">Price</th><th>Dated</th><th>From</th></tr>
+      <tr><td><b>Hillcrest Supply</b></td><td class="mono">277310</td><td class="num-r"><b>$312.50</b></td><td>Nov 6</td><td>Quote Q-88213, page 4 · good until Dec 6 · was $214.00 · <span style="color:var(--text-link)">Open the sheet</span></td></tr>
+      <tr><td>Borden Pipe &amp; Supply</td><td class="mono">44-9081</td><td class="num-r">$298.00</td><td>Sep 2</td><td>Typed by Marisol</td></tr>
+      <tr><td>Canyon Wholesale</td><td class="muted" style="white-space:nowrap">not known yet</td><td class="num-r">$305.10</td><td>Jul 19</td><td>Typed by Marisol</td></tr>
+    </table>
+  </div>
+</div></div>
+<div class="say">
+  <p class="rule">A fixture whose rows match an assembly on file reuses it. A new assembly is made only when no assembly has the same items. Either way the subtotal is filed as that house's bundle price, as she does today.</p>
+  <p class="rule">The newest dated paper wins. A price on file that is newer than the sheet is kept, and the line says so.</p>
+  <p class="gain">Take this sheet back returns every price to what it was and lifts its lines off the takeoff. A price somebody changed since is left alone and named.</p>
+</div>
+
+<h2 id="twice"><span class="num pick">4</span> A sheet read twice</h2>
+<p class="lede">The reader knows a file it has read, and a quote number it has seen under a house.</p>
+<div class="frame"><div class="screen" style="display:grid;gap:10px">
+  <div class="strip ask">
+    <span><b>This file was read on Nov 6 by Marisol.</b> Hillcrest Supply, Q-88213, 6 pages. 40 rows were filed then and 25 still wait.</span>
+    <span style="margin-left:auto;display:flex;gap:8px"><span class="btn pri">Open that read</span><span class="btn">Read it again…</span></span>
+  </div>
+  <div class="strip ask">
+    <span><b>Hillcrest's Q-88213 was read on Nov 6. This file is a later copy, dated Nov 9.</b> 3 prices changed and 68 rows are the same. Only the 3 are shown.</span>
+    <span style="margin-left:auto" class="btn pri">Show the 3 changes</span>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">Nothing is filed twice and no row is asked twice. A revised quote shows only what moved.</p>
+</div>
+
+<h2 id="doors"><span class="num pick">5</span> Four doors onto the one window</h2>
+<p class="lede">The reader, the matcher and the window are one piece of work. Each door only says where the sheet came from and whether a bid is attached.</p>
+<div class="frame"><div class="screen">
+  <div class="grid4">
+    <div class="panel tile new">
+      <h4>1 · Takeoffs, where she works</h4>
+      <span class="k">Needs a price</span>
+      <div class="kv"><span>22 fixtures have no lines</span></div>
+      <span class="btn pri" style="justify-self:start">Read a price sheet</span>
+      <span class="muted small">A PDF, a photo or pasted text. The bid is known, so fixtures land on the takeoff.</span>
+      <div class="strip done" style="padding:5px 8px"><span class="small">Hillcrest answered Nov 6 · <b>Read its quote</b></span></div>
+    </div>
+    <div class="panel tile new">
+      <h4>2 · The price request's reply</h4>
+      <span class="k">Edit Bid · Price requests</span>
+      <table class="t"><tr><td>Hillcrest Supply</td><td><span class="chip g">Quoted</span></td></tr><tr><td colspan="2"><span style="color:var(--text-link)">Q-88213.pdf</span> &nbsp;<span class="btn">Read this quote</span></td></tr></table>
+      <span class="muted small">The house is the one that was asked. This is the surest reason of the four.</span>
+    </div>
+    <div class="panel tile new">
+      <h4>3 · The Parts Book</h4>
+      <span class="k">Price sheets</span>
+      <div class="kv"><span>Hillcrest · Q-88213</span><span class="chip a">25 wait</span></div>
+      <div class="kv"><span>Borden · list, Oct</span><span class="chip g">All filed</span></div>
+      <span class="btn" style="justify-self:start">Read a price sheet</span>
+      <span class="muted small">No bid: a house's general list. Part prices only, no fixtures and no assemblies.</span>
+    </div>
+    <div class="panel tile new">
+      <h4>4 · The AI seat</h4>
+      <span class="k">Price sheets</span>
+      <span>Canyon · Q-5521 for B-1042</span><span class="chip b" style="justify-self:start">Read by the estimator twin</span>
+      <span class="muted small">The twin reads a sheet and leaves it here as a draft with its matches. It never files a price, makes a part or changes an assembly. Her press does.</span>
+    </div>
+  </div>
+</div></div>
+
+<h2 id="first"><span class="num pick">6</span> The first PR: stop a second copy at the part form</h2>
+<p class="lede">Most parts are made by hand, one at a time. The smallest useful piece is the matcher alone, on the form where a duplicate is born. No reader, no table and no migration.</p>
+<div class="frame"><div class="screen">
+  <div class="win" style="max-width:720px">
+    <div class="bar"><span class="t">Add Part</span><span class="x">×</span></div>
+    <div class="body" style="display:grid;gap:10px">
+      <div class="field"><label>Name *</label><div class="in">ARLO AX8802XL LR PC SUPPLY KIT</div></div>
+      <div class="strip ask new" style="align-items:flex-start">
+        <span style="display:grid;gap:2px"><b>Already in the book, by its model number.</b><span>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD</span><span class="muted small">Priced by Hillcrest and Borden · in 14 assemblies</span></span>
+        <span style="margin-left:auto;display:flex;gap:8px"><span class="btn pri">Use that part</span><span class="btn">Mine is different</span></span>
+      </div>
+      <div class="grid2"><div class="field"><label>Manufacturer</label><div class="in">Arlo</div></div><div class="field"><label>Notes (SKU, etc.)</label><div class="in muted"></div></div></div>
+    </div>
+    <div class="foot"><span style="margin-left:auto" class="btn">Cancel</span><span class="btn pri">Save part</span></div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">It works the day it ships, for every part typed by hand, in Takeoffs and in the Parts Book.</p>
+  <p class="rule">The same matcher, unchanged, is what the reader calls later. Its tests are the hard cases on this page.</p>
+</div>
+
+<h2 id="clean"><span class="num pick">7</span> The clean-up: merge, where today there is only delete</h2>
+<p class="lede">The Duplicates page finds same-name parts and can only delete one, which drops its prices. It gains a group by model number and a Merge that moves everything to the part that stays.</p>
+<div class="frame"><div class="screen">
+  <div class="win">
+    <div class="bar"><span class="t">Duplicates</span><span class="chip">Same name · 4</span><span class="chip b new">Same model number · 12</span><span class="x">×</span></div>
+    <table class="t">
+      <tr><th>Model</th><th>Part</th><th>Prices</th><th>Used in</th><th></th></tr>
+      <tr class="grp"><td colspan="5">AX8802XL · 2 parts</td></tr>
+      <tr><td></td><td>AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD</td><td>Hillcrest $18.40 · Borden $19.05</td><td>14 assemblies · 31 takeoff lines</td><td><span class="chip g">Stays</span></td></tr>
+      <tr><td></td><td>ARLO AX8802XL LAV SUPPLY KIT</td><td>Hillcrest $17.90</td><td>2 assemblies · 7 takeoff lines</td><td><span class="btn pri new">Merge into the first…</span> <span class="btn link">Not the same</span></td></tr>
+    </table>
+    <div class="foot new" style="display:block">
+      <b>Merge ARLO AX8802XL LAV SUPPLY KIT into AX8802XL-LR-PC ARLO SUPPLY KIT 1/2IPS X 3/8OD?</b>
+      <div class="muted" style="margin:4px 0 8px">2 assemblies and 7 takeoff lines will point at the part that stays. Hillcrest's newer price stays, $18.40 from Nov 6, and $17.90 goes to its history. The second name is kept as another name for the part, so a search still finds it.</div>
+      <span class="btn pri">Merge the two parts</span> <span class="btn">Cancel</span>
+    </div>
+  </div>
+</div></div>
+<div class="say">
+  <p class="gain">The Two parts on file card in the window opens this same Merge, so a duplicate met while reading a sheet is fixed in one press.</p>
+  <p class="rule">Not the same is remembered. Two parts that share a model number and differ by a size are not offered again.</p>
+</div>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-theme-pick') === t)); });
+    });
+  });
+})();
+</script>
+</body>
+</html>
