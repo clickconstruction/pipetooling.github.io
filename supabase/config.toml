@@ -1077,6 +1077,9 @@ verify_jwt = false
 [functions.bill-read]
 verify_jwt = false
 
+[functions.bill-lines-sweep]
+verify_jwt = false
+
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
 verify_jwt = false

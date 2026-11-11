@@ -131,7 +131,7 @@ export function textKindOf(f: Pick<DriveFileMeta, 'name' | 'mimeType'>): TextKin
 }
 
 /** The read of one file's text, or why there is none. `pages` is a PDF's count, and `pagesRead` how many of them the time allowed. */
-export type FileTextRead = { text: string; source: TextSource; pages: number | null; pagesRead?: number | null } | { why: Exclude<TextWhy, 'reading'> }
+export type FileTextRead = { text: string; source: TextSource; pages: number | null; pagesRead?: number | null } | { why: Exclude<TextWhy, 'reading'>; pages?: number | null }
 
 /** What a read needs of pdf.js's document. */
 export interface PdfDoc {

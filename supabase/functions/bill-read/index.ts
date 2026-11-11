@@ -38,7 +38,7 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *
  * The caller: the office (dev, master_technician, assistant, controller), a real account, not read-only, since a fill
  * costs money. The switch `app_settings.bill_read_on_v1` must read 'true', except for a dev, who may try it off. The
- * function stops at BILL_READ_DAILY_CAP fills in a rolling day. The key: Vault first (`model_secret_get`, the Model
+ * function stops at BILL_READ_DAILY_CAP fills of its own in a rolling day (`source = 'form'`; the sweep's reads are not counted). The key: Vault first (`model_secret_get`, the Model
  * keys card), then ANTHROPIC_API_KEY; with neither the answer is 409 `noKey` and the form stays as it is.
  *
  *   POST { attachment_id, supply_house_id? }                   a file on the house's thread
@@ -142,7 +142,8 @@ serve(async (req) => {
     const model = role === 'dev' ? request.model : BILL_MODEL
 
     const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString()
-    const { count } = await admin.from('supply_bill_reads').select('id', { count: 'exact', head: true }).gte('read_at', since)
+    // The form's own fills (v2.6882): the sweep that reads the bills on file keeps its rows under source 'sweep' and its own cap.
+    const { count } = await admin.from('supply_bill_reads').select('id', { count: 'exact', head: true }).eq('source', 'form').gte('read_at', since)
     if ((count ?? 0) >= BILL_READ_DAILY_CAP) return json({ ok: false, error: 'capped', words: BILL_READ_WORDS.capped }, 429)
 
     const { key } = await loadModelKey(admin as unknown as ModelKeyDb, (k) => Deno.env.get(k), 'anthropic')
