@@ -2,7 +2,7 @@
 name: "Cards and footers: a business card and an email footer made from a person's facts and photo"
 number: 313
 group: close
-status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · built the same day as way A on the picks: the facts and the photo's home (v2.6941, pushed to prod), the designs as kernels (v2.6942), and the screens, Your card and footer on Your account with the People doors (v2.6943) · the owner then asked for other looks, navy and safety yellow among them, and a plan to offer approved alternatives: three candidates drawn beside the look in use, with how the owner approves a look and how a person picks one, none approved or built · the owner took two of the three the same day, navy and orange and navy and yellow with the orange hand kept, passed on the yellow hand, and said to build the plan: built as v2.6951, the looks in the kernels, the owner's card and the Look row, with its migration · nothing changed in anyone's mail
+status: asked 2026-11-11, the assistant for a new photo on her email and the owner for a tool that makes cards and footers · the designer's media read the same day (four footers, two card fronts and backs, the letterhead, the banners) · what the app holds on a person read on main and counted in prod through the dev seat, reads only · the footer and the card back rebuilt as templates in code and laid over the designer's files · three ways of the tool drawn, each at a desk and a phone width · the assistant's footer made by the template with her new headshot and saved beside the designer's files on the owner's Mac · a make command added the same day on the owner's ask, which draws footers and print files from a list, run on the six made-up people with photos and on the assistant · the templates reworked the same day on the owner's go-ahead into a brand, layouts as data and parts, with the logo's words as type and the card front in layers, laid over the designer's files again · the design rework drawn the same day as five before and after pairs, each with a pick · the owner took all five the same day, so that look is what the pages and the make command now draw · the owner said to build it all the same day · built the same day as way A on the picks: the facts and the photo's home (v2.6941, pushed to prod), the designs as kernels (v2.6942), and the screens, Your card and footer on Your account with the People doors (v2.6943) · the owner then asked for other looks, navy and safety yellow among them, and a plan to offer approved alternatives: three candidates drawn beside the look in use, with how the owner approves a look and how a person picks one, none approved or built · the owner took two of the three the same day, navy and orange and navy and yellow with the orange hand kept, passed on the yellow hand, and said to build the plan: built as v2.6951, the looks in the kernels, the owner's card and the Look row, with its migration · the owner then asked for a card with larger text and a larger headshot to choose from: two sizes drawn beside the card in use, neither approved or built · nothing changed in anyone's mail
 mockup: to-dos/cards-and-footers/a-in-place.html
 summary: >
   Every footer and card today is a flat picture a designer made for one person, so a new photo
@@ -45,7 +45,7 @@ The media is a designer's hand-off: flat pictures, one made per person. No vecto
 
 **Built, 2026-11-11.** Way A, on the picks, in three PRs: v2.6941 (the migration, pushed to prod the same day), v2.6942 (the kernels) and v2.6943 (the screens). Five mock-up pages sit beside this card as the record of what was drawn. Nothing was sent to anyone and nothing was changed in anyone's mail.
 
-**What is in the app.** Settings → Your account → *Your card and footer*: the photo sheet, the name on the card and the title, the footer as a picture, the card as a print file and as a sheet of ten. People → Users: *Card and footer…* in a person's row menu, and *Cards and footers* for the team. The help guide is `make-my-email-footer-and-business-card`.
+**What is in the app.** Settings → Your account → *Your card and footer*: the photo sheet, the name on the card and the title, the footer as a picture, the card as a print file and as a sheet of ten. People → Users: *Card and footer…* in a person's row menu, and *Cards and footers* for the team. A *Card size* row since v2.6956, with three sizes of the card's back, each switched on by the owner on Settings → People & teams → *Card and footer looks*. The help guide is `make-my-email-footer-and-business-card`.
 
 **What was not walked.** A real photo save, since it writes to prod: the session walked the screens on the dev server with every write refused, and the migration on a local database. The owner's first photo is the first real one.
 
@@ -61,7 +61,8 @@ He did not answer calls 1 to 10 one by one. The build goes with each call's pick
 
 - [`templates.html`](templates.html): the two designs rebuilt as code, with made-up people. Type in a field or drag the ring and every picture redraws.
 - [`rework.html`](rework.html): five changes to the designs themselves, each before and after. The owner took all five.
-- [`looks.html`](looks.html): three other looks beside the one in use, how well each reads, and how an approved look is offered. None is approved.
+- [`looks.html`](looks.html): three other looks beside the one in use, how well each reads, and how an approved look is offered. Two of the three were taken and built.
+- [`sizes.html`](sizes.html): two larger sizes of the card back beside the one in use, how each prints, and the hard cases. Both were taken and built, offered beside the standard card.
 - [`a-in-place.html`](a-in-place.html): way A, the pick. One card on Your account, one line in a row menu.
 - [`b-desk.html`](b-desk.html): way B. A tab of its own on People.
 - [`c-walk.html`](c-walk.html): way C. A three-step walk, phone first.
@@ -329,6 +330,37 @@ The owner's answer the same day, with two of the candidates in a screenshot:
 3. **The owner's card (S).** *Card and footer looks* on Settings → Company.
 4. **The Look row (S).** On *Your card and footer*, on a teammate's card, and the team's batch in each person's look.
 
+## A larger card
+
+The owner, 2026-11-11:
+
+> Should we make another version with larger text and a larger headshot on the business card? could you help me come up with how this could look? this way a user can choose what they want
+
+[`sizes.html`](sizes.html) draws it. Asked which sizes to offer, he said the same day:
+
+> All three
+
+**Built as v2.6956**: Standard, Larger photo and Larger text, each offered by the owner and picked by a person.
+
+**Yes, and here is why.** The card in use prints a phone number at 8.4 points and a title at 6.7. Its orange panel is a third of the card and holds half a photo. There is room to spend.
+
+**A size is a trade.** A card is 3.5 by 2 inches. Between the safe margins the photo and the words share about 3.15 inches of width. So the page draws two, each larger than today on both counts:
+
+| Size | The name | A line | The photo | What it is for |
+|---|---|---|---|---|
+| Standard | 12.5 pt | 8.4 pt | 0.86 in | The card in use. |
+| Larger photo | 14.9 pt | 10.1 pt | 1.15 in | Recognising a face. The ring grows by a third. |
+| Larger text | 15.8 pt | 10.6 pt | 1.00 in | Reading at arm's length. The seam moves left to widen the words' column. |
+
+**A size is not a look.** A look only recolours, so one test covers every look. A size moves things, so each size carries its own numbers and its own check that a long name, a long email and four lines fit. The two are separate picks: any size works in any look. Only the card's back changes. The front and the footer stay.
+
+**How it is offered.** A row on *Your card and footer*, *Card size*, under *Business card*, with each offered size drawn in the person's own look and facts. The owner switches sizes on and off on the same card as the looks. The sizes on offer are a setting row of their own, not the looks' row as first drawn here, so saving one never rewrites the other. A person's pick is one more column on their row (`20261111230000_card_sizes.sql`).
+
+**The train** was drawn as two small PRs and built as one, v2.6956:
+
+1. **Sizes in the kernels (S).** Each size as a layout of the card back beside the standard, with a test that a long name, a long email, a title and three lines stay inside the safe margin in every size.
+2. **The pick and the row (S).** A migration for the person's pick, the setting's second list, the *Card size* row, the owner's switches, and the team's batch in each person's size.
+
 ## The calls, each with a pick
 
 1. **Which design is the company's one?** Four footers, two cards. **Pick: footer 01 and card 1,** the two rebuilt here, for everyone. A second design is a later option, not a choice each person makes.
@@ -352,6 +384,9 @@ The owner's answer the same day, with two of the candidates in a screenshot:
 19. **A look by taste or by trade?** Yellow is already Electrical's colour in the app, and the logo's second word is type. So navy and yellow with *Electrical* under CLICK could be the electrical side's card, and orange the plumbing side's. **Pick: by trade first.** It gives the second look a reason, and a customer can tell the two crews apart. A free pick per person can follow. **Not answered; built as a free pick per person, as the plan drew it.** By trade is still open, and needs the logo's second word to follow the trade.
 20. **What happens to people on a look that is switched off?** **Pick: they move to the default,** and their card says so once.
 21. **The exact navy and yellow.** The page uses `#16283c`, the navy of the signed-out pages, and `#f6c700` as a stand-in for safety yellow. **Pick: the app's navy, and the yellow from the designer** or from the yellow the crews already wear.
+22. **Which sizes to offer?** Three looks by three sizes is nine cards. **Pick: Standard and Larger text.** Larger text is the one that fixes the thing people will feel, small print. Larger photo is drawn and ready if a bigger face matters more. **Answered 2026-11-11: "All three".** Built as v2.6956, with Standard the default.
+23. **Should the larger one simply become the card?** If nobody would choose 8.4 point print, a choice is a cost. **Pick: offer both for now,** and make Larger text the default once a few people have printed it.
+24. **Does a size reach the footer?** The footer is read on a screen, where it scales. **Pick: no.** A size changes the back of the card only.
 
 ## Where it plugs in
 
@@ -389,6 +424,8 @@ Waiting on a call each: the footer with live words (S, call 2), Gmail set by the
 - **Changing `kit.js`, `mock.css` or `mock.js`.** Run `node to-dos/cards-and-footers/inline.mjs`. The board serves only a to-do's `.html` files, so each page carries its styles, its scripts and its art inside itself.
 
 ## Found in passing, not fixed
+
+- **An email past about forty letters runs off the card.** A line that will not fit shrinks, but no further than a little over half its size, so a longer one overruns the edge. It is true of the card in use and of both larger sizes (`sizes.html`, the first hard case); since v2.6956 a larger size shrinks a long line as far as the standard card does, so it holds no less. The company's own addresses are short, so nobody has one today. The fix is to break the email at the @ onto a second line.
 
 - **The window *Edit name, title & phone* does not edit the title.** Its box saves to a free note. A title typed there never reaches a signature. Call 8 covers it.
 - **Two office numbers.** The designer's art and the app disagree. Call 10.
