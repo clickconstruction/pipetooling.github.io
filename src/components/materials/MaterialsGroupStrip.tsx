@@ -16,6 +16,8 @@ import { pageTabStyle } from '../../lib/pageTabStyle'
 import { MATERIALS_PRESS_LABELS, MATERIALS_TAB_LABELS, materialsGroupOf, type MaterialsBadge, type MaterialsGroup, type MaterialsGroupKey, type MaterialsPress } from '../../lib/materials/materialsGroups'
 import { foldedGroupLabel, stripFit } from '../../lib/materials/materialsStripFit'
 import type { MaterialsTab } from '../../lib/materials/materialsTabs'
+import { materialsPressStyle } from '../../lib/materials/materialsPressStyle'
+import { MaterialsPressGlyph } from './MaterialsPress'
 
 type Widths = Partial<Record<MaterialsGroupKey, number>>
 export type StripMeasured = { available: number; openWidths: Widths; foldWidths: Widths }
@@ -40,29 +42,9 @@ const caption = (on: boolean): CSSProperties => ({ display: 'flex', alignItems: 
 const badge = (tone: MaterialsBadge['tone']): CSSProperties => ({ fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', padding: '0 0.4rem', borderRadius: 999, whiteSpace: 'nowrap', ...(tone === 'red' ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' } : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }) })
 // No `font` shorthand here: pageTabStyle changes fontWeight on a press, and React warns when a shorthand and its longhand mix.
 const tabStyle = (on: boolean): CSSProperties => ({ ...pageTabStyle(on), padding: '6px 0.75rem', fontFamily: 'inherit', fontSize: 'inherit', whiteSpace: 'nowrap' })
-const pressStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minHeight: 30, padding: '0 0.7rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto', whiteSpace: 'nowrap' }
 /** A folded group: its name as one press, at the tabs' height, blue when it holds the open tab. */
 const foldStyle = (here: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: 32, margin: '0 0 6px', padding: '0 0.6rem 0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: here ? '#2563eb' : 'var(--border-strong)', background: here ? 'var(--bg-blue-tint)' : 'var(--surface)', color: here ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', cursor: 'pointer', flex: '0 0 auto', whiteSpace: 'nowrap' })
 const plainWords: CSSProperties = { letterSpacing: 0, textTransform: 'none', fontWeight: 600 }
-
-function PressGlyph({ press }: { press: MaterialsPress }) {
-  const common = { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, style: { display: 'block', color: 'var(--text-muted)' } }
-  if (press === 'print-labels') {
-    return (
-      <svg {...common}>
-        <path d="M4.5 6V2.5h7V6" />
-        <rect x="2" y="6" width="12" height="5.5" rx="1.2" />
-        <path d="M4.5 9.5h7v4h-7z" />
-      </svg>
-    )
-  }
-  return (
-    <svg {...common}>
-      <path d="M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3" />
-      <path d="M5.5 8h5" />
-    </svg>
-  )
-}
 
 export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses, onPress, badges = {}, measured }: Props) {
   const hereKey = materialsGroupOf(activeTab)
@@ -130,8 +112,8 @@ export default function MaterialsGroupStrip({ groups, activeTab, onTab, presses,
       // Pushed to the row's right end: the tab is the place, the presses are what you do there.
       <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: 'auto', paddingLeft: '0.5rem' }}>
         {presses.map((p) => (
-          <button key={p} type="button" tabIndex={live ? undefined : -1} onClick={live ? () => onPress(p) : undefined} style={pressStyle} data-testid={live ? `materials-press-${p}` : undefined}>
-            <PressGlyph press={p} />
+          <button key={p} type="button" tabIndex={live ? undefined : -1} onClick={live ? () => onPress(p) : undefined} style={materialsPressStyle()} data-testid={live ? `materials-press-${p}` : undefined}>
+            <MaterialsPressGlyph kind={p} />
             {MATERIALS_PRESS_LABELS[p]}
           </button>
         ))}
