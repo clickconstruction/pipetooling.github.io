@@ -40,6 +40,7 @@ import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
+import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -217,6 +218,16 @@ export const WRITE_VERBS = {
   // apply needs confirm_no_undo: true beside the hash.
   plan_job_combine: { rpc: null, step: 'plan' },
   apply_job_combine: { rpc: null, step: 'apply' },
+  // v2.6944 / 0.66.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
+  // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
+  // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
+  plan_sub_labor: { rpc: null, step: 'plan' },
+  apply_sub_labor: { rpc: null, step: 'apply' },
+  // v2.6944 / 0.66.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
+  // or removed through the payment's own remove_labor_job_payment, which keeps a trace; rpc is null, the dry run the
+  // server's read of the sheet, its payments and the bank row with every job it is already allocated to.
+  plan_sub_labor_payment: { rpc: null, step: 'plan' },
+  apply_sub_labor_payment: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -371,6 +382,19 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobCombineVerb(verb)) {
     // v2.6940: the shape check is devMcpJobCombine's, confirm_no_undo with it; the dry run is the server's read of both jobs.
     const built = jobCombineInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubLaborVerb(verb)) {
+    // v2.6944: the shape check is devMcpSubLabor's, with the day (a sheet is never dated ahead of today); the dry run is
+    // the server's read of the job, the person and the job's sheets.
+    const built = subLaborInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubLaborPaymentVerb(verb)) {
+    // v2.6944: the same for a payment on a sheet; the dry run is the server's read of the sheet, its payments and the bank row.
+    const built = subLaborPaymentInput(verb, input, todayYmd())
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1212,6 +1236,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_sub_labor') return `Nothing written: this plan was already applied${when}. The sheet already reads that way; plan_sub_labor lists the job's sheets. A plan commits to the job's sheets as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_sub_labor_payment') return `Nothing written: this plan was already applied${when}. The payment is on the sheet (or off it) already; plan_sub_labor_payment lists the sheet's payments. A second payment of the same amount on the same day needs duplicate_ok and a new plan.`
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
