@@ -6,16 +6,17 @@
  * inside the fields the paper builders print, as a token this file paints red afterwards.
  */
 import type { LienAffidavitFields, LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 
 export type LienPaperKind = 'notice' | 'affidavit'
 
 /** Which act fills the blank: the row's own button when it is that rung, else words alone. */
-export type LienPaperFix = 'find_owner' | 'fix_property' | 'edit_job' | 'settings' | 'notices' | 'counsel'
+export type LienPaperFix = 'find_owner' | 'fix_property' | 'edit_job' | 'customer' | 'settings' | 'notices' | 'counsel'
 
 export type LienPaperGap = {
   /** 1-based, in page order. */
   n: number
-  key: 'owner' | 'owner_address' | 'county' | 'legal' | 'gc' | 'signer' | 'company_address' | 'notices' | 'homestead'
+  key: 'owner' | 'owner_address' | 'county' | 'legal' | 'gc' | 'gc_address' | 'signer' | 'company_address' | 'notices' | 'homestead'
   label: string
   why: string
   /** On the envelope line above a notice (the form itself does not name the owner), on the form, or on the record alone (a gate the paper does not print). */
@@ -37,13 +38,14 @@ export type LienPaperFacts = {
   /** The company's address on the letterhead. */
   claimantAddress: string
   /** The affidavit's gates as the desk computes them; the ones the paper does not print (notices recorded, homestead) become record gaps. */
-  affidavitGates?: ReadonlyArray<{ key: 'owner' | 'legal' | 'notice' | 'homestead'; ok: boolean }>
+  affidavitGates?: ReadonlyArray<{ key: LienAffidavitGateKey; ok: boolean }>
 }
 
 const FIX_WORDS: Record<LienPaperFix, string> = {
   find_owner: 'Find the owner',
   fix_property: 'Fix the property',
   edit_job: 'Set it in Edit Job',
+  customer: 'Add it on the customer record',
   settings: 'Set it in Settings',
   notices: 'Send the notices first',
   counsel: 'Talk to counsel',
@@ -66,6 +68,8 @@ export function lienPaperGaps(kind: LienPaperKind, f: LienPaperFacts): LienPaper
     if (blank(f.gcName)) out.push({ key: 'gc', label: 'Original contractor', why: 'The affidavit names the original contractor.', where: 'form', fix: 'edit_job', fixWords: FIX_WORDS.edit_job, field: 'originalContractorName' })
     for (const g of f.affidavitGates ?? []) {
       if (g.ok) continue
+      // Punch list #305: the GC is named but its customer row has no address, and the paper gives the hiring party's and the original contractor's.
+      if (g.key === 'contractor' && !blank(f.gcName)) out.push({ key: 'gc_address', label: "General contractor's address", why: 'The affidavit gives the general contractor’s last known address. Its customer record has none.', where: 'form', fix: 'customer', fixWords: FIX_WORDS.customer, field: 'originalContractorAddress' })
       if (g.key === 'notice') out.push({ key: 'notices', label: 'Notices on record', why: 'A sub\u2019s affidavit needs its § 53.056 notices sent and recorded on the job first.', where: 'record', fix: 'notices', fixWords: FIX_WORDS.notices })
       if (g.key === 'homestead') out.push({ key: 'homestead', label: 'Homestead', why: 'Lien rights on a homestead need a pre-work contract signed by both spouses and recorded (§ 53.254).', where: 'record', fix: 'counsel', fixWords: FIX_WORDS.counsel })
     }
@@ -104,6 +108,7 @@ const GAP_FIELDS: Record<LienPaperGap['key'], ReadonlyArray<string>> = {
   owner: ['ownerName', 'ownerAddress'],
   owner_address: ['ownerAddress'],
   gc: ['originalContractorName'],
+  gc_address: ['originalContractorAddress'],
   signer: ['contactPerson'],
   company_address: ['claimantAddress'],
   notices: [],

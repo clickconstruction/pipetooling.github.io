@@ -46,4 +46,4 @@ The rest are listed under **held**, each with its reason. Open a held part's pri
 
 ## What comes next
 
-These numbers are the first thing the price sheet reader will look for. A row whose number is on file needs no press from you.
+These numbers are the first thing the price sheet reader looks for. A row whose number is on file is ready to file with the rest, with no question of its own.

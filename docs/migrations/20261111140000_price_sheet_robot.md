@@ -23,3 +23,5 @@ Push after the PR merges and before `twin-mcp` is deployed. The old function nev
 ## Tested
 
 `scripts/pgtest-price-sheets.sh` (section 32 of `supabase/tests/price_sheets/20_scenario.sql`).
+
+**Applied** to prod by 2026-11-11: `npm run check:migration-drift` read 1239 local files and 1239 remote versions, fully applied (read in the docs pass after #7525); types regenerated in #7651.

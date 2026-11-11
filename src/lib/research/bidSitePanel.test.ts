@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gcJobsView, numbersToAsk, siteCountWords, sitePermitLine, sitePermitLines, siteTiles, stageChip, type GcBid, type SitePermitRow } from './bidSitePanel'
+import { gcJobsView, numbersToAsk, siteCountWords, sitePermitLine, sitePermitLines, sitePermitOrder, siteTiles, stageChip, type GcBid, type SitePermitRow } from './bidSitePanel'
 
 // Every name, address and number here is made up.
 const READ = ['San Antonio']
@@ -129,5 +129,24 @@ describe('the jobs we priced for a GC', () => {
     expect(view.verdict).toBeNull()
     expect(view.coverage).toBe('0 of your 2 bids with them')
     expect(view.elsewhere).toBe('1 more bid with them is in Kyle. No permit records are read there.')
+  })
+})
+
+describe('the order a read of permits comes back in', () => {
+  it('is newest first by the day issued, else applied for, with no day last', () => {
+    const undated = permit({ id: 'p9', submitted_on: null, issued_on: null })
+    expect([undated, remodel, permit(), general, irrigation].sort(sitePermitOrder).map((p) => p.id)).toEqual(['p4', 'p3', 'p1', 'p2', 'p9'])
+  })
+
+  it('settles one day by the number, then the type, then the id, so two reads agree', () => {
+    // One permit in both feeds on one day: the same number and type, two rows.
+    const applied = permit({ id: 'pb', permit_number: 'COM-7' })
+    const issued = permit({ id: 'pa', permit_number: 'COM-7', stage: 'issued', issued_on: '2026-09-11' })
+    const other = permit({ id: 'pc', permit_number: 'COM-7', permit_type: 'Comm New Building Permit' })
+    const earlier = permit({ id: 'pz', permit_number: 'COM-2' })
+    const want = ['pz', 'pc', 'pa', 'pb']
+    expect([applied, issued, other, earlier].sort(sitePermitOrder).map((p) => p.id)).toEqual(want)
+    expect([earlier, other, issued, applied].sort(sitePermitOrder).map((p) => p.id)).toEqual(want)
+    expect(sitePermitOrder(applied, applied)).toBe(0)
   })
 })

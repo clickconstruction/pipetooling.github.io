@@ -5,8 +5,8 @@
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
-import { fetchAllRows } from '../supabasePaging'
-import type { GcBid, SitePermitRow } from './bidSitePanel'
+import { fetchAllRows, warnIfRowCapHit } from '../supabasePaging'
+import { sitePermitOrder, type GcBid, type SitePermitRow } from './bidSitePanel'
 import type { AnswerScope, NameAnswer, NameAnswerRow } from './nameAnswers'
 
 /** PostgREST's "function not found": the window after the client deploys and before the migration is pushed. */
@@ -17,18 +17,36 @@ function missingFunction(error: unknown): boolean {
 
 const SITE_PERMIT_COLUMNS = 'id, permit_number, permit_type, kind, stage, work_type, project_name, address, submitted_on, issued_on, declared_value, area_sf, contact, builder_key'
 
+type Page<T> = PromiseLike<SupabaseClientResult<T[]>>
+
+const SITE_PERMITS_DOING = 'read the permits on the address'
+
+/** `bid_site_permits` stops here by its own SQL LIMIT. A read that reaches it is cut, and the console says so. */
+export const SITE_PERMITS_RPC_LIMIT = 5000
+
 /**
- * Every permit in a city whose street starts with one of these house numbers. Null while the
- * read is not on the database yet and the numbers are too many to ask one at a time.
+ * Every permit in a city whose street starts with one of these house numbers, newest first. Null
+ * while the read is not on the database yet and the numbers are too many to ask one at a time.
+ *
+ * Read a page at a time: the API returns at most 1,000 rows with no error, and the board's one
+ * read for San Antonio holds over 700. The pages are cut by `id`, since the read's own order (day,
+ * number, type) ties when one permit sits in both feeds on one day, and a tie can shuffle between
+ * pages. `sitePermitOrder` puts the whole answer back newest first.
  */
 export async function loadPermitsByHouseNumber(city: string, numbers: readonly string[]): Promise<SitePermitRow[] | null> {
   if (numbers.length === 0) return []
-  // Asked bare first: a missing function is the push not made yet, and retrying it only waits.
-  const first = await supabase.rpc('bid_site_permits' as never, { p_city: city, p_numbers: numbers } as never)
-  if (!first.error) return ((first.data ?? []) as unknown) as SitePermitRow[]
-  if (!missingFunction(first.error)) {
-    const rows = await withSupabaseRetry(async () => await supabase.rpc('bid_site_permits' as never, { p_city: city, p_numbers: numbers } as never), 'read the permits on the address')
-    return ((rows ?? []) as unknown) as SitePermitRow[]
+  const ask = (from: number, to: number) => supabase.rpc('bid_site_permits' as never, { p_city: city, p_numbers: numbers } as never).order('id').range(from, to) as unknown as Page<SitePermitRow>
+  try {
+    const rows = await fetchAllRows<SitePermitRow>(async (from, to) => {
+      // Asked bare first: a missing function is the push not made yet, and retrying it only waits.
+      const first = await ask(from, to)
+      if (!first.error || missingFunction(first.error)) return first
+      return { data: await withSupabaseRetry(() => ask(from, to), SITE_PERMITS_DOING), error: null }
+    }, SITE_PERMITS_DOING)
+    warnIfRowCapHit('bid_site_permits', rows.length, SITE_PERMITS_RPC_LIMIT)
+    return rows.sort(sitePermitOrder)
+  } catch (e) {
+    if (!missingFunction(e)) throw e
   }
   // Before the push: the table itself, one house number at a time, for a single bid's worth.
   if (numbers.length > 3) return null
@@ -78,17 +96,32 @@ function missingTable(error: unknown): boolean {
 
 const ANSWER_COLUMNS = 'id, builder_key, customer_id, answer, scope, permit_id, name, answered_by, answered_at'
 
+/**
+ * Every answer on a name, oldest first, for these customer rows or for all of them (`null`). A
+ * page at a time, the answer's own id settling two saved in one instant, so none past the API's
+ * 1,000 is lost: the newest decisive answer is the one that stands, and it is read last. Null
+ * before the table is on the database.
+ */
+async function readEveryAnswer(customerIds: readonly string[] | null): Promise<NameAnswerRow[] | null> {
+  try {
+    return await fetchAllRows<NameAnswerRow>((from, to) => {
+      const all = supabase.from('builder_customer_answers' as never).select(ANSWER_COLUMNS)
+      const asked = customerIds ? all.in('customer_id', [...customerIds]) : all
+      return asked.order('answered_at', { ascending: true }).order('id').range(from, to) as unknown as Page<NameAnswerRow>
+    }, 'read the answers on names')
+  } catch (e) {
+    if (missingTable(e)) return null
+    throw e
+  }
+}
+
 /** The answers on names for one GC's customer rows, and who is asking. Null before the table is on the database. */
 export async function loadNameAnswers(customerIds: readonly string[]): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {
   const { data: session } = await supabase.auth.getSession()
   const me = session.session?.user.id ?? null
   if (customerIds.length === 0) return { rows: [], me }
-  const res = await supabase.from('builder_customer_answers' as never).select(ANSWER_COLUMNS).in('customer_id', [...customerIds]).order('answered_at', { ascending: true }).limit(2000)
-  if (res.error) {
-    if (missingTable(res.error)) return null
-    throw res.error
-  }
-  return { rows: ((res.data ?? []) as unknown) as NameAnswerRow[], me }
+  const rows = await readEveryAnswer(customerIds)
+  return rows ? { rows, me } : null
 }
 
 /** One answer, appended. The newest decisive row per name and customer stands. */
@@ -157,18 +190,17 @@ export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[
 export async function loadAllNameAnswers(): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {
   const { data: session } = await supabase.auth.getSession()
   const me = session.session?.user.id ?? null
-  const res = await supabase.from('builder_customer_answers' as never).select(ANSWER_COLUMNS).order('answered_at', { ascending: true }).limit(5000)
-  if (res.error) {
-    if (missingTable(res.error)) return null
-    throw res.error
-  }
-  return { rows: ((res.data ?? []) as unknown) as NameAnswerRow[], me }
+  const rows = await readEveryAnswer(null)
+  return rows ? { rows, me } : null
 }
 
-/** Our customers by name, for the worklist. Archived ones are left out. */
+/** Our customers by name, for the worklist, a page at a time. Archived ones are left out. */
 export async function loadCustomerNames(): Promise<Array<{ id: string; name: string }>> {
-  const rows = await withSupabaseRetry(async () => await supabase.from('customers').select('id, name').is('archived_at', null).order('name').limit(5000), 'read the customers')
-  return ((rows ?? []) as Array<{ id: string; name: string | null }>).filter((c) => (c.name ?? '').trim() !== '').map((c) => ({ id: c.id, name: c.name as string }))
+  const rows = await fetchAllRows<{ id: string; name: string | null }>(
+    async (from, to) => ({ data: await withSupabaseRetry(async () => await supabase.from('customers').select('id, name').is('archived_at', null).order('name').order('id').range(from, to), 'read the customers'), error: null }),
+    'read the customers',
+  )
+  return rows.filter((c) => (c.name ?? '').trim() !== '').map((c) => ({ id: c.id, name: c.name as string }))
 }
 
 /** The newest bids with a customer on them, for the worklist's site evidence. */

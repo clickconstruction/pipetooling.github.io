@@ -19,6 +19,20 @@ export type SitePermitRow = BidSitePermit & {
   builder_key: string | null
 }
 
+/**
+ * The order `bid_site_permits` answers in: newest first by the day issued, else applied for, a
+ * permit with no day last, then the number, the type and the id. The id makes it one order, so a
+ * read cut into pages by id comes back the same way every time.
+ */
+export function sitePermitOrder(a: SitePermitRow, b: SitePermitRow): number {
+  const [dayA, dayB] = [a.issued_on ?? a.submitted_on ?? '', b.issued_on ?? b.submitted_on ?? '']
+  if (dayA !== dayB) return dayA < dayB ? 1 : -1
+  for (const [x, y] of [[a.permit_number, b.permit_number], [a.permit_type, b.permit_type], [a.id, b.id]] as const) {
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return 0
+}
+
 export type ChipTone = 'green' | 'amber' | 'red' | 'grey' | 'blue'
 export type Chip = { words: string; tone: ChipTone }
 

@@ -98,7 +98,7 @@ Off on day one. When it is on, every night the app looks up every open GC job wi
 
 ## Step 2 — the affidavit, behind its gate
 
-The **Mechanic's lien** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over.
+The **Mechanic's lien** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. On a job with a GC, it needs the GC's address ✓. That address is on the GC's customer record. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over.
 
 The affidavit swears what the job's sent bills still owe. That is the amount the Lien desk shows for the job. Work not billed yet is not claimed until it is billed. A line under **The claim it swears** says how much that is. A claim set by hand on the Lien desk carries to this paper and to the notice. The line names who set it, when and why. To change it, open the job on the Lien desk. See [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk). On a job you contracted with the owner, the paper says your company is the original contractor.
 

@@ -5,7 +5,7 @@ file: docs/PRICE_MATRIX_PLAN.md
 type: Plan
 purpose: Build plan for Wendi's robot price matrix — a pricing twin that reads supply-house fixture quotes (PDFs in the bid's Price-requests folders), structures them as kits + option groups on the existing quote store, and hands back a best-price compare with robot picks, reasons, and questions where the plans decide
 audience: Developers, AI Agents, the twins operator
-last_updated: 2026-09-10
+last_updated: 2026-11-11
 key_sections:
   - name: "What we're building"
   - name: "Owner decisions (locked 2026-09-10)"
@@ -71,7 +71,7 @@ Kit math lives in `src/lib/rfq/quoteKits.ts` (pure, tested); `buildQuoteComparis
 
 ## Guardrails
 
-- **Fence.** The pricer writes only `bid_quotes` / `bid_quote_lines` / `bid_price_matrix_requests` / `fixture_component_rules`, only while a request on that bid is `working`, and every write is stamped `source = 'robot'` / `pick_source = 'robot'`. Bid verbs (`next_shadow`, `open_backtest`, `paste_counts`, …) refuse a pricer token in plain words.
+- **Fence.** The pricer writes only `bid_quotes` / `bid_quote_lines` / `bid_price_matrix_requests` / `fixture_component_rules` and, since v2.6923, a price sheet draft (`supply_papers` with its `supply_paper_groups` and `supply_paper_lines`, through `put_price_sheet`, filing nothing), only while a request on that bid is `working`, and every write is stamped `source = 'robot'` / `pick_source = 'robot'`. Bid verbs (`next_shadow`, `open_backtest`, `paste_counts`, …) refuse a pricer token in plain words.
 - **Blindness.** The pricer reads the request snapshot, never the human bid's pricing or value. It has no bid to protect, so its own reads cannot contaminate a shadow.
 - **Honesty rules carried from the RFQ plan:** unit prices never totals; cost-side only; expired quotes visible and marked; freight not stated ≠ free; apples-to-apples totals; and the kit rules above (incomplete never cheapest; options never summed; printed grand totals never job totals).
 - **Docs per PR:** claimed version, release note + recent-features fragment, migration fragment, help guide, this doc's status line.

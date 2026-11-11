@@ -17,7 +17,7 @@ import {
   type LienDeskQueueJob,
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
-import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
+import { buildLienAffidavitQueue, withContractorAddress, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
@@ -223,16 +223,15 @@ export function useLienDeskData(
         const kept = (jobId: string) => !zzJobIds?.has(jobId)
         const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
         const allItems = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
-        const affidavitRows = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
+        const affidavitRowsKept = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
         const retainageRows = zzJobIds ? retainageRowsRead.filter((r) => kept(r.job_id)) : retainageRowsRead
         const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
         const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
         const items = allItems.filter((i) => i.kind === 'notice_53_056')
-        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
         const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
-        for (const r of affidavitRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
+        for (const r of affidavitRowsKept) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         const gcRows = gcIds.size
           ? await withSupabaseRetry(
@@ -256,6 +255,9 @@ export function useLienDeskData(
             policyNote: (c.lien_notice_policy_note ?? '').trim(),
           }
         }
+        // The affidavit queue is built once the GCs are read (punch list #305): a job under a GC holds while that GC's row has no address.
+        const affidavitRows: LienAffidavitRow[] = withContractorAddress(affidavitRowsKept, gcsById)
+        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
         // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row —
