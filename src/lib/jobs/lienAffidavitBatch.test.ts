@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
+import { lienAffidavitGatedReason, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
@@ -86,6 +86,30 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
       dead: false,
     })
     expect(lienAffidavitPrintWords({ ready: [], held: plan.held }).dead).toBe(true)
+  })
+
+  it('leaves out a ready paper a gate has closed since it was approved, with the gate’s own reason (punch list #314)', () => {
+    const open = [{ key: 'owner' as const, ok: true, label: 'Owner of record with a mailing address' }]
+    const publicOwner = [{ key: 'public_owner' as const, ok: false, label: 'The owner is a public body' }, { key: 'legal' as const, ok: true, label: 'County + legal description on the property record' }]
+    const plan = lienAffidavitPrintPlan([
+      { ...entry('clear', 'ready', item('approved')), ready: true, gates: open },
+      { ...entry('city', 'ready', item('approved')), ready: false, gates: publicOwner },
+      // An entry that carries no gates is not judged: the papers the desk held before the gates were read still print.
+      entry('unjudged', 'ready', item('approved')),
+    ])
+    expect(plan.ready.map((e) => e.jobId)).toEqual(['clear', 'unjudged'])
+    expect(plan.gated.map((g) => g.entry.jobId)).toEqual(['city'])
+    expect(plan.gated[0]!.reason).toBe(lienAffidavitGatedReason({ gates: publicOwner }))
+    expect(plan.gated[0]!.reason).not.toMatch(/^Don't file yet/)
+    expect(plan.gated[0]!.reason.length).toBeGreaterThan(10)
+    expect(lienAffidavitPrintWords(plan)).toEqual({
+      lead: '2 affidavits on the short form are ready to file.',
+      button: 'Print 2 for notarization',
+      foot: '1 ready affidavit is held by a gate and is left out. Its row says why.',
+      dead: false,
+    })
+    // Every ready paper gated: nothing to print, and the press is dead.
+    expect(lienAffidavitPrintWords({ ready: [], held: [], gated: plan.gated }).dead).toBe(true)
   })
 
   const fields = (propertyAddress: string): LienAffidavitFields => ({ county: 'Bexar', claimantPersonName: 'Rey Master, Master Plumber', claimantCompany: 'Sample Plumbing LLC', claimantAddress: '1 Shop Rd, San Antonio, TX 78201', legalDescription: 'CB 1 BLK B LOT 7', propertyAddress, contractedWithName: 'Harborline Builders', workDescription: 'Plumbing labor and materials', workStart: '', workEnd: '', ownerName: 'Pat Owner', ownerAddress: '4 Owner Ct, San Antonio, TX 78209', originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016', contractAmount: '5000.00', paidAmount: '0.00', unpaidAmount: '2000.00', includeNoticesSworn: true, form: 'short', isSub: true, workMonthsWords: 'July and August 2026', noticesSentWords: 'certified mail on September 14, 2026' })

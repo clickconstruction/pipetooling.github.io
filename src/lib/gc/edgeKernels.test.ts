@@ -92,6 +92,10 @@ describe('what the index does not carry', () => {
       'lib/submittals/procurementLog.ts',
       'lib/submittals/procurementBoard.ts',
       'lib/submittals/productStatus.ts',
+      // The dev seat's plan_bid_update (v2.6945): the outcome line, the loss categories and the Board's sections.
+      'lib/outcomeChangeBidNote.ts',
+      'lib/bidLossCategories.ts',
+      'lib/bids/submissionSections.ts',
     ])
     const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
     expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])

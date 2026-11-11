@@ -391,7 +391,7 @@ describe('the server and the docs', () => {
     expect(SERVER).toContain('driveDoc ? driveDoc.args : docEdit ? docEdit.args : args)')
     expect(SERVER).toContain('docEdit ? docEditPlanReply(planned, docEdit) : planned')
     expect(SERVER).toContain("if (docEdit && built.step === 'apply') reply = docEditApplyReply(reply, docEdit)")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.69.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.70.0'")
     expect(WRITES).toContain('if (ops && hasSmallEdits(ops)) return { ok: false, error: shape }')
     expect(WRITES).toContain('if (ops) p.ops = sectionOpsForRpc(ops)')
   })

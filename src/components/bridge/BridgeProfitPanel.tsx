@@ -5,10 +5,15 @@ import { Link } from 'react-router-dom'
 /**
  * Profit after overhead (v2.6840, punch list #303): the breakdown under the
  * eight week chart behind Money, opened by *What is left after overhead*. It
- * is the Daily profit rate panel (link PR 9) without its card: the warning
- * first while hours wait, what a day keeps, where a day's money goes,
- * break-even, the pay weeks, and where each number comes from behind one
- * more press.
+ * is the Daily profit rate panel (link PR 9) without its card: what a day
+ * keeps, where a day's money goes, break-even, the pay weeks, and where each
+ * number comes from behind one more press.
+ *
+ * Since v2.6965 it reads recorded time, as the headline does: the day's
+ * figure carries ≈ while waiting hours move it, and the line under it says
+ * how many hours are counted and what approved hours alone read. When the
+ * recorded hours cannot be read it is the approved reading, with its warning
+ * first.
  */
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -109,17 +114,21 @@ function Waterfall({ bars }: { bars: ProfitPanel['waterfall'] }) {
 export function BridgeProfitPanel({ panel }: { panel: ProfitPanel }) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const made = panel.left.usd >= 0
+  const warn = panel.warn && (
+    <div style={{ fontSize: '0.84rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }} data-testid="bridge-profit-warn">
+      {panel.warn}
+    </div>
+  )
   return (
     <section style={{ border: '1px solid var(--border-strong)', borderRadius: 10, padding: '0.7rem 0.9rem', marginTop: '0.5rem', display: 'grid', gap: '0.55rem', minWidth: 0 }} data-testid="bridge-profit-panel">
       <div style={label}>Profit after overhead · last {panel.left.days} days</div>
-      {panel.warn && (
-        <div style={{ fontSize: '0.84rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }} data-testid="bridge-profit-warn">
-          {panel.warn}
-        </div>
-      )}
+      {/* A reading that is low stands behind its warning; a reading that counts the waiting hours leads with its figure. */}
+      {panel.reading === 'approved' && warn}
       <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.15, color: made ? 'var(--text-green-700)' : 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }} data-testid="bridge-profit-left">
-        {money(panel.left.usd)} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>a day {made ? 'left after every cost' : 'short after every cost'}</span>
+        {money(panel.left.usd)}
+        {panel.left.approx ? ' ≈' : ''} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>a day {made ? 'left after every cost' : 'short after every cost'}</span>
       </div>
+      {panel.reading === 'recorded' && warn}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem 1.4rem', alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div style={label}>Where a day's money goes</div>

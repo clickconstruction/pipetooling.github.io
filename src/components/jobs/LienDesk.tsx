@@ -109,11 +109,15 @@ import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
-import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
+import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper } from '../../lib/jobs/lienAffidavitBatch'
+import { lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet } from '../../lib/jobs/lienAffidavitBatch'
+import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { LienSigningCountyBox } from './LienSigningCountyBox'
+import { useLienSigningCounty } from './lienSigningCountyChoice'
+import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -166,7 +170,7 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
-import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -1624,20 +1628,42 @@ export default function LienDesk({
   }
   // Print every ready affidavit on the short form for the notary (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
   const affPrintPlan = lienAffidavitPrintPlan(affEntries)
+  const [affHelpSheet, setAffHelpSheet] = useLienHelpSheetChoice()
   const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
+  // The county these are signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
+  const affSigning = useLienSigningCounty(issuer)
+  const affPrintIssuer = affSigning.issuer
   const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
     if (!data) return []
     return lienAffidavitPrintPlan(data.affidavits.entries).ready.flatMap((e) => {
-      const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer, signerNameFor, todayYmd })
+      const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer: affPrintIssuer, signerNameFor, todayYmd })
       const job = data.jobsById[e.jobId]
-      return fields ? [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields }] : []
+      if (!fields) return []
+      // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
+      const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
+      const filings = data.filingsByJob[e.jobId] ?? []
+      const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings }), filings }))
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
+      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked }]
     })
-  }, [data, issuer, signerNameFor, todayYmd])
+  }, [data, affPrintIssuer, signerNameFor, todayYmd])
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const printReadyAffidavits = () => {
     if (!data || affPrintWords.dead) return
-    const run = lienAffidavitPrintRun(affPrintPapers)
+    // The help sheet prints first (punch list #314): the blanks, when to stop, and a row for each paper. It is in no job's filed copy.
+    const helpSheet = affHelpSheet
+      ? lienAffidavitBatchHelpSheet(
+          affPrintPapers,
+          [
+            ...affPrintPlan.held.map((e) => ({ jobLabel: jobLabel(data.jobsById[e.jobId], e.jobId), reason: LIEN_HELP_EARLIER_FORM_REASON })),
+            // A ready paper a gate has closed since it was approved is not printed; the sheet names it with the gate's own reason.
+            ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
+          ],
+          demandDate(todayYmd),
+        )
+      : null
+    const run = lienAffidavitPrintRun(affPrintPapers, helpSheet)
     if (!openHtmlPrintWindow(run.html)) {
       showToast('Popup blocked — allow popups to print.', 'error')
       return
@@ -1980,6 +2006,8 @@ export default function LienDesk({
 
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
+    // Every name the record gives is asked (punch list #314): a city filed beside an attention line is still a city.
+    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany]),
     ownerMailingAddress: property.owner.mailingAddress,
     gcName: gc?.name ?? '',
     gcAddress: gc?.address ?? '',
@@ -2811,6 +2839,12 @@ export default function LienDesk({
           <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
             {affPrintWords.button}
           </button>
+          {/* The help sheet (punch list #314): on unless the office turns it off, and the choice is kept on this computer. */}
+          <label data-lien-affidavit-help-sheet style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
+            <input type="checkbox" checked={affHelpSheet} onChange={(e) => setAffHelpSheet(e.target.checked)} />
+            {LIEN_HELP_SHEET_BOX}
+          </label>
+          <LienSigningCountyBox id="lien-affidavit-signing-county" county={affSigning.county} onChange={affSigning.setCounty} />
           <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
           {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
         </div>

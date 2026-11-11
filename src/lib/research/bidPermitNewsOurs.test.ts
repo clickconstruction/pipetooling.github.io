@@ -27,7 +27,7 @@ describe('bidPermitNews: a plumbing permit that is ours', () => {
   it('reads ours, with its own chip and its own news line, and never as another name', () => {
     const { chips, news } = run([bid({ bid_date_sent: '2026-10-01' })], [permit(), plumbing()])
     expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · ours', tone: 'green' })
-    expect(news).toEqual([{ bidId: 'b1', kind: 'ours', title: '512 · Mill Street Lofts, Building C', day: '2026-11-05', words: 'A general plumbing permit that lists us was issued on this address Nov 5, as BLUE HERON PLUMBING. The bid is not yet won or lost.' }])
+    expect(news).toEqual([{ bidId: 'b1', kind: 'ours', title: '512 · Mill Street Lofts, Building C', day: '2026-11-05', markLost: false, words: 'A general plumbing permit that lists us was issued on this address Nov 5, as BLUE HERON PLUMBING. The bid is not yet won or lost.' }])
     expect(news.some((n) => n.kind === 'plumbing')).toBe(false)
   })
 

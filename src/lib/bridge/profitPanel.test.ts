@@ -30,7 +30,7 @@ const base: ProfitPanelInput = {
   pendingClosedHours: 585,
   unlinkedCard: 35,
   unattributedNoncard: 1151,
-  fieldEarnedPerHour: 120,
+  fieldMadePerHour: 120,
   weekLabel: (s) => s,
 }
 
@@ -73,12 +73,64 @@ describe('buildProfitPanel', () => {
   })
   it('puts the warning first while hours wait, with about what the day reads once they are in (v2.6840)', () => {
     const p = buildProfitPanel(base)
-    expect(p.left).toEqual({ usd: -2033, days: 14 })
+    expect(p.left).toEqual({ usd: -2033, days: 14, approx: false })
+    expect(p.reading).toBe('approved')
     expect(p.warn).toBe('Reads low for now. 585 hours still wait on approval. With them it reads about $2,981 a day.')
     expect(plainWordsFailures(p.warn ?? '')).toEqual([])
     // One hour, and no rate to price it with.
-    expect(buildProfitPanel({ ...base, pendingClosedHours: 1, fieldEarnedPerHour: null }).warn).toBe('Reads low for now. 1 hour still waits on approval.')
+    expect(buildProfitPanel({ ...base, pendingClosedHours: 1, fieldMadePerHour: null }).warn).toBe('Reads low for now. 1 hour still waits on approval.')
     // Nothing waiting: no warning at all.
     expect(buildProfitPanel({ ...base, pendingClosedHours: 0 }).warn).toBeNull()
+  })
+
+  // v2.6965: the page passes maps that already count the waiting hours, and says how many and what approved hours alone read.
+  describe('on recorded time', () => {
+    const recorded: ProfitPanelInput = { ...base, speed: { ...base.speed, earnedPerDay: 4700, directPerDay: 3600, climbPerDay: 752 }, waiting: { hours: 93.4, approvedLeftUsd: -2033 } }
+
+    it('leads with the day’s figure marked ≈, then says what is counted and what approved hours alone read', () => {
+      const p = buildProfitPanel(recorded)
+      expect(p.reading).toBe('recorded')
+      expect(p.left).toEqual({ usd: 752, days: 14, approx: true })
+      expect(p.warn).toBe('Counts 93 hours that still wait on approval. On approved hours alone it reads −$2,033 a day.')
+      expect(plainWordsFailures(p.warn ?? '')).toEqual([])
+      // The hours the words name are the waiting field hours the figures count, not every hour that waits.
+      expect(p.sources[0]!.from).toBe('recorded field hours × the job’s contract ÷ its expected hours')
+      expect(p.sources[0]!.risk).toBe('93h not yet approved: counted, and can change')
+      expect(p.sources[1]!.from).toContain('and each person’s wage on the hours waiting')
+      expect(p.sources[1]!.risk).toBe('the same hours: counted, and can change')
+      expect(p.sources.slice(0, 2).map((s) => s.tone)).toEqual(['amber', 'amber'])
+      expect(p.note).toBe('The day makes money at $752 on the 14-day average, counting 93h still waiting on approval.')
+      expect(p.noteTone).toBe('green')
+    })
+
+    it('says one hour as one hour', () => {
+      expect(buildProfitPanel({ ...recorded, waiting: { hours: 1, approvedLeftUsd: 700 } }).warn).toBe('Counts 1 hour that still waits on approval. On approved hours alone it reads $700 a day.')
+    })
+
+    it('drops the second sentence and the ≈ when the waiting hours fall outside the average’s days', () => {
+      const p = buildProfitPanel({ ...recorded, waiting: { hours: 12, approvedLeftUsd: 752.4 } })
+      expect(p.left.approx).toBe(false)
+      expect(p.warn).toBe('Counts 12 hours that still wait on approval.')
+    })
+
+    it('reads as settled when nothing waits: no line, no ≈, the sources read in full', () => {
+      const p = buildProfitPanel({ ...recorded, pendingClosedHours: 40, waiting: { hours: 0, approvedLeftUsd: 752 } })
+      expect(p.reading).toBe('recorded')
+      expect(p.warn).toBeNull()
+      expect(p.left.approx).toBe(false)
+      // Hours that wait but are not field hours in the window (office, bid, older) are not this panel's to name.
+      expect(p.sources.slice(0, 2).map((s) => [s.risk, s.tone])).toEqual([
+        ['read in full', 'green'],
+        ['read in full', 'green'],
+      ])
+      expect(p.note).toBe('The day makes money at $752 on the 14-day average.')
+    })
+
+    it('calls a loss a loss: every recorded hour is in, so it is not blamed on approvals', () => {
+      const p = buildProfitPanel({ ...recorded, speed: { ...base.speed, climbPerDay: -410 }, waiting: { hours: 93, approvedLeftUsd: -2033 } })
+      expect(p.note).toBe('The day loses $410 on the 14-day average with every recorded hour counted, 93h of them still waiting on approval. Part can be materials bought ahead of the work — 38% of the window’s job costs is materials.')
+      expect(p.noteTone).toBe('amber')
+      expect(p.warn).toBe('Counts 93 hours that still wait on approval. On approved hours alone it reads −$2,033 a day.')
+    })
   })
 })

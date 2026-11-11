@@ -1,6 +1,6 @@
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import type { JobWorkMonths } from './forecastWorkMonths'
-import { buildLienAffidavitFieldsForJob, type LienAffidavitJobFacts } from './lienNoticeDraft'
+import { buildLienAffidavitFieldsForJob, type LienAffidavitJobFacts, lienAffidavitSwornMonths } from './lienNoticeDraft'
 import { lienWindowLastMonth } from './lienTimelineDesk'
 import type { LienWorkSpanJob } from './lienWorkSpan'
 import { lienBilledOpen, type LienClaimInvoice } from './lienBilledOpen'
@@ -23,6 +23,12 @@ export type LienWindowAffidavitFacts = Omit<LienAffidavitJobFacts, 'lastMonth' |
   job: LienWorkSpanJob & { created_at?: string | null }
   /** The forecast's months for the job (sessions by month); null for a job with no sessions, or before they are read. */
   workMonths: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null | undefined
+}
+
+/** The months the window's affidavit swears, as keys: the same reading its fields are filled from (punch list #314, the notice check). */
+export function lienWindowSwornMonths(f: Pick<LienWindowAffidavitFacts, 'job' | 'workMonths' | 'isSub' | 'todayYmd' | 'filings'>): string[] {
+  const { lastMonth } = lienWindowLastMonth({ workMonths: f.workMonths, job: f.job })
+  return lienAffidavitSwornMonths({ isSub: f.isSub, workDays: f.job, firstMonth: f.workMonths?.months[0]?.key ?? null, lastMonth, todayYmd: f.todayYmd, filings: f.filings })
 }
 
 export function buildLienWindowAffidavitFields(f: LienWindowAffidavitFacts): LienAffidavitFields {
