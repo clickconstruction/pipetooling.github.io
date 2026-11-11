@@ -1,4 +1,5 @@
 import type { Database } from '../../types/database'
+import { homesteadAnsweredOnRow } from '../customers/homesteadAnswer'
 
 /**
  * Property resolution for lien documents (v2.2614, Lien Instruments phase 1).
@@ -36,6 +37,8 @@ export type ResolvedLienProperty = {
   /** '' | 'residential' | 'non_residential' */
   propertyKind: string
   homestead: boolean
+  /** Whether a person answered the homestead question on the record (punch list #305): null with no linked record, or a row that does not carry the column. */
+  homesteadAnswered?: boolean | null
   owner: LienPropertyOwner
 }
 
@@ -98,6 +101,7 @@ export function resolveLienProperty(
     legalDescription: (addressRow?.legal_description ?? '').trim(),
     propertyKind: (addressRow?.property_kind ?? '').trim(),
     homestead: addressRow?.homestead ?? false,
+    homesteadAnswered: homesteadAnsweredOnRow(addressRow),
     owner,
   }
 }

@@ -29,6 +29,8 @@ export type PropertyDraftPayload = {
   /** Present only when the draft carries the owner's contact (v2.6497): a row read after migration 20261104163131, or a typed value. An older row writes neither, so a save never fails on a column that is not there yet. */
   owner_email?: string
   owner_phone?: string
+  /** Present only when the draft carries the homestead answer (punch list #305): a row read after migration 20261111160000, or a yes or no pressed on the record. NULL while nobody has answered. */
+  homestead_answered_at?: string | null
 }
 
 /**
@@ -55,7 +57,14 @@ export function payloadFromDraft(d: PropertyDraft, now: Date = new Date()): Prop
     updated_at: now.toISOString(),
     ...precinctPayload(d),
     ...ownerContactPayload(d),
+    ...homesteadAnswerPayload(d),
   }
+}
+
+/** When the homestead question was answered, when the draft carries it (punch list #305): an empty one writes NULL, nobody answered. Nothing on an older draft. */
+function homesteadAnswerPayload(d: PropertyDraft): Pick<PropertyDraftPayload, 'homestead_answered_at'> | Record<string, never> {
+  if (d.homestead_answered_at === undefined) return {}
+  return { homestead_answered_at: d.homestead_answered_at.trim() || null }
 }
 
 /** The owner's email and phone when the draft carries either (v2.6497): both trimmed, so a cleared one clears. Neither on an older draft. */
@@ -117,7 +126,14 @@ export function draftFromRow(a: CustomerAddressRow): PropertyDraft {
     jp_precinct: ((a as { jp_precinct?: string | null }).jp_precinct ?? '').trim(),
     jp_precinct_source: ((a as { jp_precinct_source?: string | null }).jp_precinct_source ?? '').trim(),
     ...ownerContactFromRow(a),
+    ...homesteadAnswerFromRow(a),
   }
+}
+
+/** When the homestead question was answered, off a row that carries the column (migration 20261111160000): '' while nobody has. Nothing off an older row, so the draft writes nothing back. */
+function homesteadAnswerFromRow(a: CustomerAddressRow): Pick<PropertyDraft, 'homestead_answered_at'> | Record<string, never> {
+  if (!('homestead_answered_at' in a)) return {}
+  return { homestead_answered_at: ((a as { homestead_answered_at?: string | null }).homestead_answered_at ?? '').trim() }
 }
 
 /** The owner's email and phone off a row that carries the columns (migration 20261104163131); nothing off an older row, so the draft writes neither back. */

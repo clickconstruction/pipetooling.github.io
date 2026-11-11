@@ -111,6 +111,16 @@ describe('resolveLienProperty', () => {
   })
 })
 
+describe('resolveLienProperty · the homestead answer (punch list #305)', () => {
+  const legalRow = { county: 'Bexar', legal_description: 'LOT 1', property_kind: 'residential', homestead: false, owner_mode: 'homeowner', owner_name: 'Pat Owner', owner_company: '', owner_mailing_address: '4 Owner Ct' } as never
+  it('says whether a person answered, and nothing off a row without the column or with no record at all', () => {
+    expect(resolveLienProperty({ ...(legalRow as object), homestead_answered_at: null } as never, null).homesteadAnswered).toBe(false)
+    expect(resolveLienProperty({ ...(legalRow as object), homestead_answered_at: '2026-11-17T15:00:00Z' } as never, null).homesteadAnswered).toBe(true)
+    expect(resolveLienProperty(legalRow, null).homesteadAnswered).toBeNull()
+    expect(resolveLienProperty(null, null).homesteadAnswered).toBeNull()
+  })
+})
+
 describe('lien-ready + gaps', () => {
   it('ready needs county + legal description + named owner + mailing address', () => {
     expect(

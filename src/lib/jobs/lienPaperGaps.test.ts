@@ -42,6 +42,13 @@ describe('lienPaperGaps (v2.4632)', () => {
     expect(lienPaperGaps('affidavit', { ...whole, gcName: '', affidavitGates: [{ key: 'contractor', ok: false }] }).map((g) => g.key)).toEqual(['gc'])
     expect(lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'contractor', ok: true }] })).toEqual([])
   })
+  it('an unanswered homestead question is a blank on the record, fixed in the property window (punch list #305)', () => {
+    const gaps = lienPaperGaps('affidavit', { ...whole, affidavitGates: [{ key: 'homestead_answer', ok: false }] })
+    expect(gaps.map((g) => [g.n, g.key, g.where, g.fix, g.fixWords, g.field ?? null])).toEqual([[1, 'homestead_answer', 'record', 'fix_property', 'Fix the property', null]])
+    expect(lienPaperFixWindow(gaps[0]!)).toBe('property')
+    // It paints nothing on the paper: a hold changes the pile, never the words.
+    expect(withGapTokens({ county: 'Bexar' }, gaps)).toEqual({ county: 'Bexar' })
+  })
   it('the tokens ride inside the fields and paint as numbered marks in the HTML; the envelope token paints the same way', () => {
     const gaps = lienPaperGaps('affidavit', { ...whole, county: '', legalDescription: '' })
     const fields = withGapTokens({ county: 'x', legalDescription: 'y', ownerName: 'kept' }, gaps)

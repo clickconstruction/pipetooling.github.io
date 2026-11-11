@@ -17,7 +17,7 @@ import {
   type LienDeskQueueJob,
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
-import { buildLienAffidavitQueue, withContractorAddress, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
+import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
@@ -255,11 +255,24 @@ export function useLienDeskData(
             policyNote: (c.lien_notice_policy_note ?? '').trim(),
           }
         }
-        // The affidavit queue is built once the GCs are read (punch list #305): a job under a GC holds while that GC's row has no address.
-        const affidavitRows: LienAffidavitRow[] = withContractorAddress(affidavitRowsKept, gcsById)
-        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
+        // The homestead question (punch list #305): the property rows under the residential affidavits, read whole and in light mode too, so the
+        // Dashboard's count and the desk agree. `select('*')` names no column, so the read works before migration 20261111160000 is pushed, and
+        // the rows then carry no answer either way. A failed read judges nothing, never the desk dark.
+        const affidavitAddressIdByJob: Record<string, string | null> = {}
+        for (const r of affidavitRowsKept) if (r.property_kind === 'residential') affidavitAddressIdByJob[r.job_id] = jobsById[r.job_id]?.customer_address_id ?? null
+        const answerAddressIds = [...new Set(Object.values(affidavitAddressIdByJob).filter((v): v is string => Boolean(v)))]
+        const answerRows = answerAddressIds.length
+          ? await withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', answerAddressIds), 'lien desk: homestead answers').catch(() => null)
+          : []
+        if (cancelled) return
+        const answerRowsById: Record<string, unknown> = {}
+        for (const a of (answerRows ?? []) as Array<{ id: string }>) answerRowsById[a.id] = a
+        // The affidavit queue is built once the GCs and those rows are read: a job under a GC holds while that GC's row has no address, and a
+        // residential property holds while nobody has answered the homestead question.
+        const affidavitRows: LienAffidavitRow[] = withHomesteadAnswer(withContractorAddress(affidavitRowsKept, gcsById), affidavitAddressIdByJob, answerRowsById)
+        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
         // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row —
         // and (v2.6380), on the open desk, its money: what the job's sent bills still owe, by the RPC's own rule, from the
         // bills and payments of just those jobs. A failed read leaves the figure to the RPC's, never the desk dark.
