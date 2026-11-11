@@ -262,6 +262,18 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   })
 
   describe('the skim (punch list #302)', () => {
+    it('opens on one heavy read, not two: the ledger reads its rows only when it is opened', async () => {
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
+      // The every-permit read, once. The ledger's windowed read has not run, and the Pulled line read on its own.
+      expect(io.loadResearchPermits).toHaveBeenCalledTimes(1)
+      expect(io.loadResearchPermits).toHaveBeenCalledWith('San Antonio', '2000-01-01', false)
+      expect(io.loadLatestPull).toHaveBeenCalledWith('San Antonio')
+      fireEvent.click(screen.getByRole('button', { name: 'Ledger' }))
+      await waitFor(() => expect(io.loadResearchPermits).toHaveBeenCalledTimes(2))
+      expect(io.loadResearchPermits).toHaveBeenLastCalledWith('San Antonio', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), false)
+    })
+
     it('opens on one card, best first, and holds an answer until the next one so Undo can take it back', async () => {
       renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
       await waitFor(() => expect(screen.getByRole('button', { name: 'Skim 1' })).toBeTruthy())
