@@ -1,13 +1,13 @@
 /**
- * The weekly send of the Monday sheet (v2.5883): the switch, the tick, the record of the last run, who hears it and
- * the words the Bridge's card and the function share. Pure. The function `bridge-weekly-sheet` reads the switch,
- * the tick and the recipients from the copy of the kernels; `weeklySendIo.ts` reads and writes the switch for the
- * page.
+ * The Bridge's weekly email (v2.5883): the switch, the tick, the record of the last run, who hears it and the words
+ * the Bridge's card and the function share. Since v2.6888 the mail is the page's first screen (`weekMail.ts`). Pure.
+ * The function `bridge-weekly-sheet` reads the switch, the tick and the recipients from the copy of the kernels;
+ * `weeklySendIo.ts` reads and writes the switch for the page.
  *
  * The switch is `app_settings` `bridge_weekly_sheet_on_v1`, 'false' as it ships (migration `bridge_weekly_sheet`);
  * the owner or a dev may change it (v2.6763). The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while the switch is on;
  * one tick is 6 AM Central in summer, the other in winter, and the function runs only the tick that is 6 AM. The
- * last run is `bridge_weekly_sheet_last_run_v1`, written by the function, so the card says when the sheet last went
+ * last run is `bridge_weekly_sheet_last_run_v1`, written by the function, so the card says when the email last went
  * and to how many people, and a second tick the same day sends nothing twice.
  */
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -37,13 +37,13 @@ export interface WeeklySendRun {
   at: string
   /** The company-calendar day it ran on. */
   day: string
-  /** A dry run built the sheet and sent nothing. */
+  /** A dry run built the email and sent nothing. */
   dry: boolean
-  /** The addresses the sheet went to. */
+  /** The addresses the email went to. */
   sent: string[]
   /** The addresses it did not reach, each with the sender's words. */
   failed: Array<{ to: string; error: string }>
-  /** What could not be read when the sheet was built. */
+  /** What could not be read when the email was built. */
   gaps: string[]
   subject: string
 }
@@ -68,7 +68,7 @@ export function parseWeeklySendRun(valueText: string | null | undefined): Weekly
   }
 }
 
-/** A second tick the same day sends nothing twice: the sheet went today already. */
+/** A second tick the same day sends nothing twice: the email went today already. */
 export function alreadySentToday(run: WeeklySendRun | null, todayYmd: string): boolean {
   return !!run && !run.dry && run.day === todayYmd && run.sent.length > 0
 }
@@ -107,19 +107,19 @@ export function weeklySendRecipients(rows: ReadonlyArray<RecipientRow>): string[
 }
 
 export const WEEKLY_SEND_TITLE = 'Weekly email'
-export const WEEKLY_SEND_WHAT = 'Every Monday at 6 AM Central the app builds this sheet. The owner and every dev get it at their own address.'
+export const WEEKLY_SEND_WHAT = 'Every Monday at 6 AM Central the app mails the Bridge’s first screen. The owner and every dev get it at their own address.'
 export const WEEKLY_SEND_CONFIRM = {
   title: 'Turn on the weekly email?',
-  message: 'Every Monday morning the sheet goes to the owner and every dev with an account. You can turn it off here any time.',
+  message: 'Every Monday morning the Bridge’s first screen goes to the owner and every dev with an account. You can turn it off here any time.',
   confirmLabel: 'Turn it on',
 } as const
-export const WEEKLY_SEND_ON_TOAST = 'The weekly email is on. The sheet goes out Monday at 6 AM Central.'
+export const WEEKLY_SEND_ON_TOAST = 'The weekly email is on. It goes out Monday at 6 AM Central.'
 export const WEEKLY_SEND_OFF_TOAST = 'The weekly email is off. Nothing goes out on Monday.'
 export const WEEKLY_SEND_NOT_SAVED = 'The switch did not change. Only the owner or a dev can turn the weekly email on or off.'
 
 /** The line under the switch: what happens while it is on, or that nothing does while it is off. */
 export function weeklySendStateWords(on: boolean): string {
-  return on ? 'On: the sheet goes to the owner and every dev on Monday at 6 AM Central.' : 'Off: nothing goes out on Monday. Email me this sheet still works.'
+  return on ? 'On: the first screen goes to the owner and every dev on Monday at 6 AM Central.' : 'Off: nothing goes out on Monday.'
 }
 
 /** "Last sent Oct 27 to 2 people", with what failed and what was not read. */

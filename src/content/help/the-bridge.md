@@ -167,9 +167,11 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 ## The weekly email
 
-Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on and the app builds a one page sheet of the Bridge every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday.
+Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on and the app mails the Bridge's first screen every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday.
 
-The Monday sheet is no longer a view on the page. The first screen took its place.
+The email shows the three tiles, the strip of pipe and the week's call with its moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
+
+The email records nothing. The email's button opens the Bridge, where one press makes the call. A move the page would give to you goes out with no name on it. On a Friday the button opens the Bridge so you can answer.
 
 ## Cash on hand comes from the bank
 

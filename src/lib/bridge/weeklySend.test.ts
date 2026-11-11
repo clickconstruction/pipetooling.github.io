@@ -81,8 +81,8 @@ describe('weeklySendRecipients — the owner and every dev with a real account a
 
 describe('the words', () => {
   it('say what the switch does', () => {
-    expect(weeklySendStateWords(true)).toBe('On: the sheet goes to the owner and every dev on Monday at 6 AM Central.')
-    expect(weeklySendStateWords(false)).toBe('Off: nothing goes out on Monday. Email me this sheet still works.')
+    expect(weeklySendStateWords(true)).toBe('On: the first screen goes to the owner and every dev on Monday at 6 AM Central.')
+    expect(weeklySendStateWords(false)).toBe('Off: nothing goes out on Monday.')
   })
   it('read the last run', () => {
     expect(lastRunWords(null, md)).toBe('Not sent yet.')

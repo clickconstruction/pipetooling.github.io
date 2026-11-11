@@ -35,6 +35,8 @@ import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienS
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { buildMondaySheet, mondaySheetHtml, mondaySheetSubject, mondaySheetText } from './bridge/mondaySheet'
+import { weekMailHtml, weekMailSubject, weekMailText } from './bridge/weekMail'
+import { sampleWeekMail } from './bridge/weekMailSample'
 import { cashLight, netPositionLight } from './bridge/headline'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -602,9 +604,14 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
         null,
       )
     }
-    case 'bridge_monday_sheet':
     case 'bridge_weekly_sheet': {
-      // The Bridge's Monday sheet (v2.5224) on made-up numbers, the weekly send's (v2.5883) being the same sheet; the real one was built on /bridge?view=monday, until v2.6840 retired that view, from the live reading.
+      // The Bridge's weekly email (v2.5883) on made-up numbers: since v2.6888 it is the page's first screen, built by the mail's own builders.
+      const mail = sampleWeekMail(ctx.todayYmd)
+      const url = `${origin}/bridge`
+      return { subject: weekMailSubject(mail), html: weekMailHtml(mail, url), text: weekMailText(mail, url) }
+    }
+    case 'bridge_monday_sheet': {
+      // The Bridge's Monday sheet (v2.5224) on made-up numbers; the real one was built on /bridge?view=monday from the live reading, until v2.6840 retired that view.
       const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
       const weekStartLabel = md(ymdAddDays(ctx.todayYmd, -6))
       const weekEndLabel = md(ctx.todayYmd)
