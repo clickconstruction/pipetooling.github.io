@@ -25356,6 +25356,49 @@ export type Database = {
           },
         ]
       }
+      material_part_distinct_pairs: {
+        Row: {
+          high_part_id: string
+          low_part_id: string
+          said_at: string
+          said_by: string | null
+        }
+        Insert: {
+          high_part_id: string
+          low_part_id: string
+          said_at?: string
+          said_by?: string | null
+        }
+        Update: {
+          high_part_id?: string
+          low_part_id?: string
+          said_at?: string
+          said_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_part_distinct_pairs_high_part_id_fkey"
+            columns: ["high_part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_part_distinct_pairs_low_part_id_fkey"
+            columns: ["low_part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_part_distinct_pairs_said_by_fkey"
+            columns: ["said_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_part_price_history: {
         Row: {
           changed_at: string | null
@@ -35195,6 +35238,101 @@ export type Database = {
         }
         Relationships: []
       }
+      supply_paper_groups: {
+        Row: {
+          bundle_price: number | null
+          count_row_id: string | null
+          count_row_ids: string[]
+          created_at: string
+          each_price: number | null
+          group_no: number
+          held_why: string
+          id: string
+          label: string
+          made_template: boolean
+          paper_id: string
+          placed_at: string | null
+          placed_by: string | null
+          placed_line_id: string | null
+          placed_line_ids: string[]
+          replaced_bundle_effective_date: string | null
+          replaced_bundle_price: number | null
+          tag: string
+          template_id: string | null
+        }
+        Insert: {
+          bundle_price?: number | null
+          count_row_id?: string | null
+          count_row_ids?: string[]
+          created_at?: string
+          each_price?: number | null
+          group_no: number
+          held_why?: string
+          id?: string
+          label?: string
+          made_template?: boolean
+          paper_id: string
+          placed_at?: string | null
+          placed_by?: string | null
+          placed_line_id?: string | null
+          placed_line_ids?: string[]
+          replaced_bundle_effective_date?: string | null
+          replaced_bundle_price?: number | null
+          tag?: string
+          template_id?: string | null
+        }
+        Update: {
+          bundle_price?: number | null
+          count_row_id?: string | null
+          count_row_ids?: string[]
+          created_at?: string
+          each_price?: number | null
+          group_no?: number
+          held_why?: string
+          id?: string
+          label?: string
+          made_template?: boolean
+          paper_id?: string
+          placed_at?: string | null
+          placed_by?: string | null
+          placed_line_id?: string | null
+          placed_line_ids?: string[]
+          replaced_bundle_effective_date?: string | null
+          replaced_bundle_price?: number | null
+          tag?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_paper_groups_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "supply_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_groups_placed_by_fkey"
+            columns: ["placed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_groups_placed_line_id_fkey"
+            columns: ["placed_line_id"]
+            isOneToOne: false
+            referencedRelation: "bids_takeoff_rough_part_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_groups_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "material_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_paper_lines: {
         Row: {
           description: string
@@ -35203,6 +35341,7 @@ export type Database = {
           filed_by: string | null
           filed_price: number | null
           group_label: string
+          group_no: number | null
           group_tag: string
           held_why: string
           house_code: string
@@ -35211,6 +35350,7 @@ export type Database = {
           line_no: number
           matched_how: string
           mfr_number: string
+          page_no: number | null
           paper_id: string
           part_id: string | null
           pricing_unit: string
@@ -35231,6 +35371,7 @@ export type Database = {
           filed_by?: string | null
           filed_price?: number | null
           group_label?: string
+          group_no?: number | null
           group_tag?: string
           held_why?: string
           house_code?: string
@@ -35239,6 +35380,7 @@ export type Database = {
           line_no: number
           matched_how?: string
           mfr_number?: string
+          page_no?: number | null
           paper_id: string
           part_id?: string | null
           pricing_unit?: string
@@ -35259,6 +35401,7 @@ export type Database = {
           filed_by?: string | null
           filed_price?: number | null
           group_label?: string
+          group_no?: number | null
           group_tag?: string
           held_why?: string
           house_code?: string
@@ -35267,6 +35410,7 @@ export type Database = {
           line_no?: number
           matched_how?: string
           mfr_number?: string
+          page_no?: number | null
           paper_id?: string
           part_id?: string | null
           pricing_unit?: string
@@ -35330,6 +35474,7 @@ export type Database = {
           read_at: string | null
           read_by: string
           read_id: string | null
+          robot_request_id: string | null
           subtotal_cents: number | null
           supply_house_id: string | null
           tax_cents: number | null
@@ -35362,6 +35507,7 @@ export type Database = {
           read_at?: string | null
           read_by?: string
           read_id?: string | null
+          robot_request_id?: string | null
           subtotal_cents?: number | null
           supply_house_id?: string | null
           tax_cents?: number | null
@@ -35394,6 +35540,7 @@ export type Database = {
           read_at?: string | null
           read_by?: string
           read_id?: string | null
+          robot_request_id?: string | null
           subtotal_cents?: number | null
           supply_house_id?: string | null
           tax_cents?: number | null
@@ -35435,6 +35582,13 @@ export type Database = {
             columns: ["read_id"]
             isOneToOne: false
             referencedRelation: "supply_bill_reads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_robot_request_id_fkey"
+            columns: ["robot_request_id"]
+            isOneToOne: false
+            referencedRelation: "bid_price_matrix_requests"
             referencedColumns: ["id"]
           },
           {
@@ -44574,6 +44728,10 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      merge_material_parts: {
+        Args: { p_drop: string; p_keep: string }
+        Returns: Json
+      }
       merge_user_accounts: {
         Args: {
           p_absorbed_user_id: string
@@ -44989,6 +45147,33 @@ export type Database = {
       }
       price_row_file: { Args: { p: Json }; Returns: Json }
       price_row_take_back: { Args: { p_line_id: string }; Returns: Json }
+      price_sheet_discard: { Args: { p_paper_id: string }; Returns: undefined }
+      price_sheet_gate: { Args: { p_act: string }; Returns: undefined }
+      price_sheet_group_place: {
+        Args: { p: Json; p_group_id: string }
+        Returns: undefined
+      }
+      price_sheet_group_unplace: {
+        Args: { p_group_id: string }
+        Returns: undefined
+      }
+      price_sheet_line_hold: {
+        Args: { p_line_id: string; p_why: string }
+        Returns: undefined
+      }
+      price_sheet_line_part: {
+        Args: { p_line_id: string; p_part_id: string }
+        Returns: undefined
+      }
+      price_sheet_save: {
+        Args: { p_groups: Json; p_lines: Json; p_paper: Json }
+        Returns: string
+      }
+      price_sheet_set: {
+        Args: { p: Json; p_paper_id: string }
+        Returns: undefined
+      }
+      price_sheet_take_back: { Args: { p_paper_id: string }; Returns: Json }
       price_source_words: { Args: { p_line_id: string }; Returns: string }
       primary_can_access_bid: { Args: { p_bid_id: string }; Returns: boolean }
       primary_can_access_estimate: {
