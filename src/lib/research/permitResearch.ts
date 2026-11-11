@@ -7,6 +7,7 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { isOfficeRole } from '../doorRoles'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { PERMIT_CITY_NAMES } from '../../../supabase/functions/_shared/permitCities'
 
 /** Who researches: the office and every estimator, the same set `user_can_research_permits()` names. */
@@ -172,11 +173,15 @@ export function workWords(row: Pick<ResearchPermitRow, 'work_type' | 'area_sf' |
   return { main, detail }
 }
 
-/** "Nov 8" from a YYYY-MM-DD. */
-export function shortDay(ymd: string | null): string {
+/**
+ * "Nov 8" from a YYYY-MM-DD, with the year when it is not this year's: "Dec 17, 2025". The records
+ * reach back past January (punch list #307), and a day with no year reads as this year's.
+ */
+export function shortDay(ymd: string | null, todayYmd: string = todayYmdInAppTz()): string {
   if (!ymd) return '—'
   const d = new Date(`${ymd}T12:00:00Z`)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const day = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return ymd.slice(0, 4) === todayYmd.slice(0, 4) ? day : `${day}, ${ymd.slice(0, 4)}`
 }
 
 /** When the feed was last read, and what stopped it if anything did: the skim's whole Pulled line. */
