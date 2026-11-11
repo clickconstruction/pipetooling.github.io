@@ -4,6 +4,7 @@ import {
   EMPTY_SWEEP_RUN,
   HOLD_WHYS,
   HOLD_WORDS,
+  MATCH_RULES,
   PAPERS_SCHEMA,
   READING_STALE_MS,
   billSweepIsOn,
@@ -12,6 +13,7 @@ import {
   holdDue,
   joinPapers,
   matchRows,
+  numberWithSuffix,
   pageRanges,
   paperRowOf,
   papersFromContent,
@@ -96,8 +98,8 @@ describe('the link and the number', () => {
   })
 
   it('keys a hold on the file and the number', () => {
-    expect(seenKey(inv({ id: 'a' }))).toBe(`${FILE_A}|S100200`)
-    expect(seenKey(inv({ id: 'a', link: 'https://example.com/x' }))).toBe('|S100200')
+    expect(seenKey(inv({ id: 'a' }))).toBe(`${FILE_A}|S100200|r${MATCH_RULES}`)
+    expect(seenKey(inv({ id: 'a', link: 'https://example.com/x' }))).toBe(`|S100200|r${MATCH_RULES}`)
   })
 })
 
@@ -110,6 +112,11 @@ describe('holdDue', () => {
     for (const why of ['link', 'not_readable', 'too_big', 'number_not_in_file', 'not_a_bill', 'statement'] as const) {
       expect(holdDue(hold(why, 90 * 24 * HOUR), inv({ id: 'a' }), now)).toBe(false)
     }
+  })
+
+  it('is due one more read when the hold was made under older rules of the match', () => {
+    expect(holdDue(hold('number_not_in_file', HOUR, 1, { seenKey: `${FILE_A}|S100200` }), inv({ id: 'a' }), now)).toBe(true)
+    expect(holdDue(hold('number_not_in_file', HOUR), inv({ id: 'a' }), now)).toBe(false)
   })
 
   it('is due again once a person changes the link or the number', () => {
@@ -318,6 +325,36 @@ describe('matchRows', () => {
     expect(m.unowned).toEqual([0])
     expect(matchRows([], [inv({ id: 'a' })]).outcomes[0]).toMatchObject({ hold: 'number_not_in_file', note: 'No paper was read in the file.' })
     expect(matchRows(papersOf([rawPaper({ number: 'Q1', document_kind: 'quote' })]), [inv({ id: 'a' })]).outcomes[0]).toMatchObject({ hold: 'number_not_in_file', note: 'The file holds a quote and no invoice.' })
+  })
+
+  it('gives a row the paper that prints its number with a short suffix, when the total is the row’s amount', () => {
+    const papers = papersOf([rawPaper({ number: 'S100200.001' }), rawPaper({ number: '387374 01', total: '48.10' })])
+    const rows = [inv({ id: 'a' }), inv({ id: 'b', number: '387374', amountCents: 4810 })]
+    expect(matchRows(papers, rows)).toEqual({ outcomes: [{ invoice: rows[0], paperIndex: 0 }, { invoice: rows[1], paperIndex: 1 }], unowned: [] })
+  })
+
+  it('leaves the suffixed paper alone when its total is not the row’s amount', () => {
+    const m = matchRows(papersOf([rawPaper({ number: 'S100200.001', total: '90.00' })]), [inv({ id: 'a' })])
+    expect(m.outcomes[0]).toMatchObject({ hold: 'number_not_in_file', note: 'The file holds S100200.001.' })
+    expect(m.unowned).toEqual([0])
+  })
+
+  it('lets the row that names a paper outright take it before a shorter number does', () => {
+    const papers = papersOf([rawPaper({ number: 'S100200.001' })])
+    const rows = [inv({ id: 'short', number: 'S100200' }), inv({ id: 'exact', number: 'S100200.001' })]
+    expect(matchRows(papers, rows).outcomes.map((o) => ('hold' in o ? o.hold : 'paper'))).toEqual(['number_not_in_file', 'paper'])
+  })
+
+  it('takes a suffix of one to three digits and nothing else', () => {
+    expect(numberWithSuffix('387374', '387374 01')).toBe(true)
+    expect(numberWithSuffix('s100200', 'S100200.001')).toBe(true)
+    expect(numberWithSuffix('S100200', 'S100200-7')).toBe(true)
+    expect(numberWithSuffix('S100200', 'S100200.0001')).toBe(false)
+    expect(numberWithSuffix('S100200', 'S100200A')).toBe(false)
+    expect(numberWithSuffix('S100200', 'S100200')).toBe(false)
+    expect(numberWithSuffix('S100200.001', 'S100200.002')).toBe(false)
+    expect(numberWithSuffix('100200', 'S100200.001')).toBe(false)
+    expect(numberWithSuffix('', '001')).toBe(false)
   })
 
   it('never matches a row with no number', () => {
