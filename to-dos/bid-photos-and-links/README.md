@@ -17,7 +17,7 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 8, a photo taken with no signal, needs no further word and can start.
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 8, a photo taken with no signal, needs no further word and can start; its brief under The plan is written for a session that starts cold.
 size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; left: PRs 4, 6, 8 and 9 (S · M · S · S)
 blocker: None for PRs 8 and 9. Call 6 gates PR 4 and call 11 gates PR 6.
 opinion: build — the owner's two calls next, since they gate the removal and the job's pair; PR 8 can go meanwhile
@@ -427,10 +427,34 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
   Call 9, whether the window replaces Files & links in the form, stays open: both write the same columns.
 - *Walked*: a link saved and Make the project folder pressed, each on a ZZ Test bid and each put back.
 
-**PR 8 · a photo taken with no signal (S).**
-- *Client*: `photoBlobs` holds the photo on the phone and sends it when the signal is back, as a
-  box photo does.
-- *Docs*: the guide.
+**PR 8 · a photo taken with no signal (S).** Needs no word from the owner. Brief for a session that starts
+here cold, read on main at v2.6929 (2026-11-11):
+- *What happens today*: on a phone with no signal, a bid photo's tile fails with **Retry**. The photo is not
+  kept. `sendBidPhoto` (`src/lib/bids/bidPhotosIo.ts`) already throws `PhotoSendError` with kind `network`.
+  But `useBidPhotosPanel` (`src/components/bids/useBidPhotosPanel.tsx`) hands the shot engine
+  `sendErrorName: 'BidPhotoKeptLater'`, so `sendLostSignal` never matches. Changing that to `'PhotoSendError'`
+  makes the engine (`src/hooks/useShotTiles.ts`) keep the tile on the phone (`status: 'kept'`, bytes in
+  `keptPhotos`).
+- *The pattern to copy*: the Job photos window (punch list #244, PR 5). In `JobPhotosWindow.tsx` → `add()`,
+  when `host.kept > 0` the press goes through `pressThroughOutbox` with `forceQueue: true`, then
+  `host.markQueued()` and `host.clear(...)`. A new outbox kind, `bid-photos`, follows `job-photos` in each
+  place it is named: `src/lib/offline/outbox.ts` (the kind, its label, its payload `{ bidId, photos }`),
+  `src/lib/offline/keptPhotos.ts` (the photos a press carries, and the send: `sendBidPhoto`),
+  `src/lib/offline/landFieldPress.ts` (the landing) and `src/lib/offline/afterLanding.ts` (drop the kept bytes).
+- *The landing*: the same writes as `addBidPhotos` (`added_at` and `name` on each `bid_photos` row). Make it
+  safe to run twice: a row that already has `added_at` is left alone. A bid photo writes no thread line.
+- *After landing*: the board's photo count is behind until it reads again. A mounted board can listen the
+  way the Job photos strip does; one that is not mounted reads on its next open.
+- *Not in it*: a desk's pick or drop with no signal. Only a phone's camera is kept, as for a job.
+- *Migration*: none. *Edge functions*: none.
+- *Tests*: the kernel and outbox tests beside each file named above; a render test of the panel where a send
+  throws `PhotoSendError('…', 'network')` and the tile reads *Kept on this phone.* (`tileStatusWords`).
+- *Docs*: the guide `add-photos-to-a-bid` (a section for no signal); the release note and the
+  `docs/recent-features/` fragment; the outbox's comment block atop `src/lib/offline/outbox.ts`, which lists each kind;
+  `docs/GLOSSARY.md` where it names the waiting bar's kinds.
+- *Verify*: in the dev preview at phone width, turn the network off in the pane's devtools, take a photo on
+  the ZZ Test bid (BP398), press add, turn it back on, and see the photo filed. Take the test photo back after
+  (its row `removed_at`, its Drive file to the trash) and name it in the report.
 
 **PR 9 · the bid's photos after the win, and on Documents → Photos (S).**
 - *Migration*: `CREATE OR REPLACE VIEW uploaded_photos` with a `bid_photos` branch (the live
