@@ -2,8 +2,10 @@
  * The bid's Files window (punch list #306, PR 5): the pure rules. The Bid Board's Links column holds five slots in one
  * order, Photos · Project folder · Plans · CountTooling · Bid submission. A blue link goes straight out, as it always
  * did. A grey icon opens this window on its row, and the photos icon always opens it, because photos live in the app.
- * Each row reads its state and offers its press: **Open ↗** for what is there, and for what is not, the door into
- * Edit bid landed on the field that sets it. The photos row's own rules are `bidPhotoWindow.ts`.
+ * Each row reads its state and offers its presses: **Open ↗** for what is there, and a press that sets or changes
+ * the link in the window itself (PR 7). The project folder, the CountTooling project and the bid submission take a
+ * pasted link, written to the column the bid's form writes. The project folder can also be made by the app. The
+ * plans row holds the form's own plan sets field. The photos row's own rules are `bidPhotoWindow.ts`.
  */
 import { pluralNoun } from '../batchWords'
 import { BOARD_LINK_ORDER, type BoardLinkKind } from './bidBoardLinkSlots'
@@ -23,8 +25,23 @@ const PROJECT_NOUN = ['project', 'projects'] as const
 export const BID_FILES_WORDS = {
   title: 'Files',
   open: 'Open ↗',
-  /** The press on a row with nothing: it opens Edit bid on the field. The gear on the board is named Edit bid. */
-  setOnBid: 'Set it in Edit bid',
+  /** The press on a row with nothing: the box for the link opens under it. */
+  setLink: 'Set the link',
+  /** The press on a row that has its link: the same box, holding the link the bid has now. */
+  change: 'Change',
+  /** The plans row's press, with sets or without: the form's plan sets field opens under it. */
+  addSet: 'Add a set',
+  saveLink: 'Save the link',
+  saving: 'Saving…',
+  makeFolder: 'Make the project folder',
+  making: 'Making the folder…',
+  makeFolderWhy: 'Or let the app make one in the company’s shared Drive, with the photo folder inside.',
+  cancel: 'Cancel',
+  done: 'Done',
+  paste: 'Paste',
+  /** The quiet door to the whole form, for what the window does not do: clearing a link, a second CountTooling project. */
+  openEditBid: 'Open Edit bid',
+  trainingWhy: 'A training account can look at a bid’s files and cannot change one.',
   addPhotos: 'Add photos',
   showPhotos: 'Show the photos',
   close: 'Close',
@@ -71,7 +88,7 @@ export interface BidFileRow {
   line: string
   /** What the row opens, in order. Empty for the photos row and for a row with nothing. */
   opens: BidFileOpen[]
-  /** Where Edit bid lands to set it. Null for the photos row and for a row that has its link. */
+  /** Where Edit bid lands on this row's field. Null for the photos row. */
   focus: BidFormFocus | null
 }
 
@@ -125,7 +142,7 @@ export function bidFileRows(input: BidFilesInput): BidFileRow[] {
 
   const drive = clean(input.driveLink)
   const folder: BidFileRow = drive
-    ? { kind: 'folder', title: BID_FILE_TITLE.folder, there: true, line: linkedLine(drive), opens: [{ name: null, href: drive }], focus: null }
+    ? { kind: 'folder', title: BID_FILE_TITLE.folder, there: true, line: linkedLine(drive), opens: [{ name: null, href: drive }], focus: BID_FILE_FORM_FOCUS.folder }
     : { kind: 'folder', title: BID_FILE_TITLE.folder, there: false, line: 'Not set yet', opens: [], focus: BID_FILE_FORM_FOCUS.folder }
 
   const sets = input.planSets.filter((s) => clean(s.link))
@@ -133,8 +150,8 @@ export function bidFileRows(input: BidFilesInput): BidFileRow[] {
     sets.length === 0
       ? { kind: 'plans', title: BID_FILE_TITLE.plans, there: false, line: 'None yet', opens: [], focus: BID_FILE_FORM_FOCUS.plans }
       : sets.length === 1
-        ? { kind: 'plans', title: BID_FILE_TITLE.plans, there: true, line: sets[0]!.onBid ? linkedLine(sets[0]!.link) : sets[0]!.name, opens: [{ name: null, href: clean(sets[0]!.link) }], focus: null }
-        : { kind: 'plans', title: BID_FILE_TITLE.plans, there: true, line: `${sets.length} ${pluralNoun(SET_NOUN, sets.length)}`, opens: sets.map((s) => ({ name: s.name, href: clean(s.link) })), focus: null }
+        ? { kind: 'plans', title: BID_FILE_TITLE.plans, there: true, line: sets[0]!.onBid ? linkedLine(sets[0]!.link) : sets[0]!.name, opens: [{ name: null, href: clean(sets[0]!.link) }], focus: BID_FILE_FORM_FOCUS.plans }
+        : { kind: 'plans', title: BID_FILE_TITLE.plans, there: true, line: `${sets.length} ${pluralNoun(SET_NOUN, sets.length)}`, opens: sets.map((s) => ({ name: s.name, href: clean(s.link) })), focus: BID_FILE_FORM_FOCUS.plans }
 
   const countOpens: BidFileOpen[] = []
   const own = clean(input.countLink)
@@ -149,28 +166,81 @@ export function bidFileRows(input: BidFilesInput): BidFileRow[] {
   const count: BidFileRow =
     countOpens.length === 0
       ? { kind: 'count', title: BID_FILE_TITLE.count, there: false, line: 'Not linked yet', opens: [], focus: BID_FILE_FORM_FOCUS.count }
-      : { kind: 'count', title: BID_FILE_TITLE.count, there: true, line: countOpens.length === 1 ? (countOpens[0]!.name ?? 'Linked') : `${countOpens.length} ${pluralNoun(PROJECT_NOUN, countOpens.length)}`, opens: countOpens.length === 1 ? [{ name: null, href: countOpens[0]!.href }] : countOpens, focus: null }
+      : { kind: 'count', title: BID_FILE_TITLE.count, there: true, line: countOpens.length === 1 ? (countOpens[0]!.name ?? 'Linked') : `${countOpens.length} ${pluralNoun(PROJECT_NOUN, countOpens.length)}`, opens: countOpens.length === 1 ? [{ name: null, href: countOpens[0]!.href }] : countOpens, focus: BID_FILE_FORM_FOCUS.count }
 
   const sent = clean(input.submissionLink)
   const submission: BidFileRow = sent
-    ? { kind: 'submission', title: BID_FILE_TITLE.submission, there: true, line: linkedLine(sent), opens: [{ name: null, href: sent }], focus: null }
+    ? { kind: 'submission', title: BID_FILE_TITLE.submission, there: true, line: linkedLine(sent), opens: [{ name: null, href: sent }], focus: BID_FILE_FORM_FOCUS.submission }
     : { kind: 'submission', title: BID_FILE_TITLE.submission, there: false, line: 'Nothing filed as sent yet', opens: [], focus: BID_FILE_FORM_FOCUS.submission }
 
   return [photos, folder, plans, count, submission]
 }
 
-/** The sentence under a row with nothing: what sets it, by the form's own names. */
-export function missingRowWords(kind: BoardLinkKind): string {
-  switch (kind) {
-    case 'folder':
-      return 'Paste the folder’s link on the bid, under Files & links.'
-    case 'plans':
-      return 'Add a set of plans on the bid, under Plans.'
-    case 'count':
-      return 'Paste the CountTooling project’s link on the bid, under Files & links.'
-    case 'submission':
-      return 'Paste the link to what was sent on the bid, under Files & links.'
-  }
+/** A link kind set by pasting one address. Plans are sets, with a field of their own. */
+export type PastedLinkKind = Exclude<BoardLinkKind, 'plans'>
+
+/** The column of `bids` each pasted link is written to, the one the bid's form writes. */
+export const BID_FILE_LINK_COLUMN: Record<PastedLinkKind, 'drive_link' | 'count_tooling_plans_link' | 'bid_submission_link'> = {
+  folder: 'drive_link',
+  count: 'count_tooling_plans_link',
+  submission: 'bid_submission_link',
+}
+
+/** The words over the box a link is pasted into. */
+export const BID_FILE_LINK_LABEL: Record<PastedLinkKind, string> = {
+  folder: 'Link to the project folder',
+  count: 'Link to the CountTooling project',
+  submission: 'Link to what was sent',
+}
+
+/** What the box shows before anything is typed. */
+export const BID_FILE_LINK_PLACEHOLDER: Record<PastedLinkKind, string> = {
+  folder: 'https://drive.google.com/drive/folders/…',
+  count: 'https://counttooling.com/?t=…',
+  submission: 'https://drive.google.com/…',
+}
+
+/** The toast after a link saves. */
+export const BID_FILE_LINK_SAVED: Record<PastedLinkKind, string> = {
+  folder: 'The project folder is set.',
+  count: 'The CountTooling project is set.',
+  submission: 'The bid submission is set.',
+}
+
+/** Whether a link is a Google Drive folder, the only kind of project folder the app can file photos into. */
+export function isDriveFolderLink(href: string | null | undefined): boolean {
+  return /^https?:\/\/drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?folders\/|open\?id=|folderview\?id=)[A-Za-z0-9_-]{10,}/i.test(clean(href))
+}
+
+/** A pasted link as the press reads it. */
+export interface LinkDraft {
+  /** The link as it will be written, or null while it cannot be. */
+  value: string | null
+  /** The press is dead: nothing typed, not a link, or the link the bid has now. */
+  dead: boolean
+  /** Why the press is dead, when something is typed. */
+  why: string | null
+  /** A caution that does not stop the save. */
+  note: string | null
+}
+
+/**
+ * What the box holds, judged for the press. A link starts with http:// or https://. The link the bid has now is not
+ * saved again. A project folder that is not a Google Drive folder saves, with a line that photos cannot file there.
+ */
+export function linkDraft(kind: PastedLinkKind, raw: string, current: string | null | undefined): LinkDraft {
+  const value = raw.trim()
+  if (!value) return { value: null, dead: true, why: null, note: null }
+  if (!/^https?:\/\/\S+$/i.test(value)) return { value: null, dead: true, why: 'A link starts with https:// and has no spaces.', note: null }
+  if (value === clean(current)) return { value: null, dead: true, why: 'That is the link the bid has now.', note: null }
+  const note = kind === 'folder' && !isDriveFolderLink(value) ? 'This is not a Google Drive folder. The bid’s photos cannot be filed there.' : null
+  return { value, dead: false, why: null, note }
+}
+
+/** The toast after the app makes the bid's project folder. */
+export function madeFolderWords(projectName: string | null | undefined): string {
+  const name = clean(projectName)
+  return name ? `Made the project folder: ${name}.` : 'Made the project folder.'
 }
 
 /** The window's name for a screen reader and its heading line: *Files · b598 Quarry Road Storage Bunker*. */

@@ -129,6 +129,8 @@ type BidsBidBoardTabProps = {
   photoCountsByBid?: ReadonlyMap<string, number> | null
   /** The photos window added a photo: the page reads the counts again. */
   onBidPhotosChanged?: () => void
+  /** The Files window set a link, added a set of plans or made the folder: the page reads the bids and their plan sets again. */
+  onBidFilesChanged?: () => void
   /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
   onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
   /** PR 1b: the page's one `list_bid_job_account_strip` read, when the page owns it — the board then skips its own. */
@@ -270,6 +272,7 @@ export function BidsBidBoardTab({
   planSetsByBid,
   photoCountsByBid,
   onBidPhotosChanged,
+  onBidFilesChanged,
   onLinkJobToBid,
   jobAccountStrips: pageJobAccountStrips,
   onOpenJobAccountsLens,
@@ -2318,23 +2321,31 @@ export function BidsBidBoardTab({
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
-      {filesWindow ? (
-        <BidFilesModal
-          bid={{ id: filesWindow.bid.id, label: [(filesWindow.bid as { bid_number?: string | null }).bid_number?.trim() ? `b${(filesWindow.bid as { bid_number?: string | null }).bid_number?.trim()}` : '', bidDisplayName(filesWindow.bid)].filter(Boolean).join(' ') || 'This bid' }}
-          rows={bidFileRows({
-            photoCount: photoCountsByBid == null ? null : (photoCountsByBid.get(filesWindow.bid.id) ?? 0),
-            driveLink: filesWindow.bid.drive_link,
-            planSets: planSetsForBid(planSetsByBid?.get(filesWindow.bid.id) ?? [], filesWindow.bid),
-            countLink: filesWindow.bid.count_tooling_plans_link,
-            countSources: countSourcesByBid?.get(filesWindow.bid.id) ?? [],
-            submissionLink: filesWindow.bid.bid_submission_link,
-          })}
-          startOn={filesWindow.startOn}
-          onClose={() => setFilesWindow(null)}
-          onChanged={onBidPhotosChanged}
-          onEditBid={(focus) => onEditBid(filesWindow.bid, { focus })}
-        />
-      ) : null}
+      {filesWindow
+        ? (() => {
+            // The page's own row for the bid, so a link saved in the window shows on its row at once.
+            const fb = bids.find((b) => b.id === filesWindow.bid.id) ?? filesWindow.bid
+            return (
+              <BidFilesModal
+                bid={{ id: fb.id, label: [(fb as { bid_number?: string | null }).bid_number?.trim() ? `b${(fb as { bid_number?: string | null }).bid_number?.trim()}` : '', bidDisplayName(fb)].filter(Boolean).join(' ') || 'This bid' }}
+                rows={bidFileRows({
+                  photoCount: photoCountsByBid == null ? null : (photoCountsByBid.get(fb.id) ?? 0),
+                  driveLink: fb.drive_link,
+                  planSets: planSetsForBid(planSetsByBid?.get(fb.id) ?? [], fb),
+                  countLink: fb.count_tooling_plans_link,
+                  countSources: countSourcesByBid?.get(fb.id) ?? [],
+                  submissionLink: fb.bid_submission_link,
+                })}
+                links={{ driveLink: fb.drive_link ?? null, countLink: fb.count_tooling_plans_link ?? null, submissionLink: fb.bid_submission_link ?? null, plansLink: fb.plans_link ?? null, pricedOnSetId: (fb as { priced_on_set_id?: string | null }).priced_on_set_id ?? null }}
+                startOn={filesWindow.startOn}
+                onClose={() => setFilesWindow(null)}
+                onChanged={onBidPhotosChanged}
+                onFilesChanged={onBidFilesChanged}
+                onEditBid={(focus) => onEditBid(fb, { focus })}
+              />
+            )
+          })()
+        : null}
       {planSetsModalBid ? (
         <BidPlanSetsModal
           bid={planSetsModalBid}
