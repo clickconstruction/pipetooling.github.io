@@ -109,7 +109,8 @@ describe('Builders, Our bids', () => {
   it('names the reason when the answers cannot be read, and still lists the builders', async () => {
     answersIo.loadBuilderAnswersGround.mockRejectedValue(new Error('The network dropped.'))
     draw()
-    expect(await screen.findByText(/The network dropped\. Our bids counts the same name only until this reads\./)).toBeTruthy()
+    expect(await screen.findByText('The network dropped.')).toBeTruthy()
+    expect(screen.getByText('Until the answers on names read, Our bids counts the same name only.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copperline Mechanical' })).toBeTruthy()
   })
 })

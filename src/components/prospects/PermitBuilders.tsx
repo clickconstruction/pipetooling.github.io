@@ -163,7 +163,12 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
         </div>
       )}
 
-      {answers.error && <div style={{ ...muted, color: 'var(--text-red-700)' }}>{answers.error} Our bids counts the same name only until this reads.</div>}
+      {answers.error && (
+        <div style={{ ...muted, color: 'var(--text-red-700)' }}>
+          <div>{answers.error}</div>
+          <div style={muted}>Until the answers on names read, Our bids counts the same name only.</div>
+        </div>
+      )}
 
       {looking && pairs != null ? (
         <PermitLookAlikes
