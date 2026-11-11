@@ -187,6 +187,7 @@ export default function LienDeskAffidavitPane({
         todayYmd,
         form,
         filings: data.filingsByJob[entry.jobId] ?? [],
+        homestead: property.homestead,
       }),
     [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob],
   )

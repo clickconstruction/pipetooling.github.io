@@ -183,3 +183,16 @@ describe('the short lien affidavit in PDF (punch list #305)', () => {
     expect(pdf.pages).toBe(1)
   })
 })
+
+describe('the short lien affidavit on a homestead in PDF (punch list #305)', () => {
+  it('draws the § 53.254(f) notice first, bold at 12 point, then the title, still on one page', async () => {
+    const { buildLienAffidavitBlocks, HOMESTEAD_AFFIDAVIT_NOTICE } = await import('./lienFilingDocuments')
+    const blocks = buildLienAffidavitBlocks({ ...{ county: 'Bexar', claimantPersonName: 'Rey Master', claimantCompany: 'Sample Plumbing LLC', claimantAddress: '1 Shop Rd, San Antonio, TX 78201', legalDescription: 'CB 1 BLK B LOT 7', propertyAddress: '12 Sample Rd, San Antonio, TX 78209', contractedWithName: 'Harborline Builders', workDescription: 'Plumbing labor and materials', workStart: '', workEnd: '', ownerName: 'Pat Owner', ownerAddress: '4 Owner Ct, San Antonio, TX 78209', originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016', contractAmount: '5000.00', paidAmount: '0.00', unpaidAmount: '2000.00', includeNoticesSworn: true, form: 'short', isSub: true, workMonthsWords: 'July and August 2026', noticesSentWords: 'certified mail on September 14, 2026' }, homestead: true })
+    FakeJsPDF.made = 0
+    await filingDocPdfBlob(blocks)
+    const pdf = FakeJsPDF.last!
+    expect(pdf.texts[0]).toBe(HOMESTEAD_AFFIDAVIT_NOTICE)
+    expect(pdf.texts[1]).toBe("MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT")
+    expect(pdf.pages).toBe(1)
+  })
+})
