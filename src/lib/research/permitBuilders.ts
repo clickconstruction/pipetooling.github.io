@@ -250,12 +250,35 @@ export function skimBuilderContext(rows: readonly ResearchPermitRow[]): Pick<Ski
 
 // ---------- the nudge and the count ----------
 
-/** The nudge's words: how many wait and how long the oldest has. Null when nothing waits. */
-export function nudgeWords(waiting: number, oldestDays: number | null): { title: string; detail: string } | null {
+/** One city's share of the permits that wait on a skim. */
+export type CityWait = { city: string; waiting: number }
+
+/** A handful of cards is about a minute of skimming; past this the nudge does not promise one. */
+export const NUDGE_QUICK_MAX = 12
+
+/**
+ * The nudge's words: how many wait, where when more than one city has some, and how long the
+ * oldest has. Null when nothing waits.
+ */
+export function nudgeWords(waiting: number, oldestDays: number | null, byCity: readonly CityWait[] = []): { title: string; detail: string } | null {
   if (waiting <= 0) return null
   const title = `${waiting} permit${waiting === 1 ? '' : 's'} wait${waiting === 1 ? 's' : ''} on a skim`
+  const cities = byCity.filter((c) => c.waiting > 0)
+  const where = cities.length > 1 ? `${cities.map((c) => `${c.city} ${c.waiting}`).join(' · ')}.` : ''
   const waited = oldestDays == null ? '' : oldestDays <= 0 ? 'The oldest arrived today.' : `The oldest has waited ${oldestDays} day${oldestDays === 1 ? '' : 's'}.`
-  return { title, detail: [waited, 'About a minute.'].filter(Boolean).join(' ') }
+  const quick = waiting <= NUDGE_QUICK_MAX ? 'About a minute.' : ''
+  return { title, detail: [where, waited, quick].filter(Boolean).join(' ') }
+}
+
+/** Every city's wait as one: the sum, the longest wait, and each city that has some, the fullest first. */
+export function sumCityWaits(rows: ReadonlyArray<{ city: string; waiting: number; oldestDays: number | null }>): { waiting: number; oldestDays: number | null; byCity: CityWait[] } {
+  const some = rows.filter((r) => r.waiting > 0)
+  const days = some.map((r) => r.oldestDays).filter((d): d is number => d != null)
+  return {
+    waiting: some.reduce((n, r) => n + r.waiting, 0),
+    oldestDays: days.length > 0 ? Math.max(...days) : null,
+    byCity: some.map((r) => ({ city: r.city, waiting: r.waiting })).sort((a, b) => b.waiting - a.waiting || a.city.localeCompare(b.city)),
+  }
 }
 
 /** How long a permit may wait before the whole team is asked. */

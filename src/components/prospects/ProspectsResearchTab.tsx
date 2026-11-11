@@ -415,6 +415,16 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
             <path d="M16.5 16.5 21 21" />
           </svg>
         </button>
+        {/* On a phone a deck hides the filter row, so the city rides on the strip as a chip. */}
+        {phoneSkim && (
+          <select aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} style={{ background: 'var(--bg-200)', color: 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 8px', fontSize: '0.8125rem', minHeight: 36, flex: '0 0 auto', maxWidth: 150 }}>
+            {RESEARCH_CITIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
         {(
           [
             { v: 'skim', words: 'Skim', n: strip.skim },

@@ -58,13 +58,21 @@ const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ perm
 
 describe('permits-to-skim (punch list #302)', () => {
   it('says how many wait and how long the oldest has, with the count as its figure', () => {
-    expect(card({ permitSkim: { waiting: 14, oldestDays: 3 } })).toMatchObject({
+    expect(card({ permitSkim: { waiting: 9, oldestDays: 3 } })).toMatchObject({
       severity: 'amber',
       kicker: 'Permits',
-      title: '14 permits wait on a skim',
+      title: '9 permits wait on a skim',
       detail: 'The oldest has waited 3 days. About a minute.',
-      figure: '14',
+      figure: '9',
       actionLabel: 'Skim them',
+    })
+  })
+
+  it('counts every city and says where they wait', () => {
+    expect(card({ permitSkim: { waiting: 917, oldestDays: 2, byCity: [{ city: 'Austin', waiting: 577 }, { city: 'San Antonio', waiting: 340 }] } })).toMatchObject({
+      title: '917 permits wait on a skim',
+      detail: 'Austin 577 · San Antonio 340. The oldest has waited 2 days.',
+      figure: '917',
     })
   })
 
