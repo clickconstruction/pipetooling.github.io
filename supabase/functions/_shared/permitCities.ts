@@ -28,6 +28,11 @@ export type FeedReader = {
   rowOf: (record: Record<string, unknown>) => PermitRow | null
   /** The most rows the door hands over in one page, when that is fewer than the pull asks for. */
   pageSize?: number
+  /**
+   * Which of two rows of one permit the pull keeps, for a door that hands a permit over more than
+   * once. Without it the later row wins.
+   */
+  prefer?: (held: PermitRow, next: PermitRow) => PermitRow
 }
 
 function assertDay(sinceDay: string, who: string): void {
@@ -217,6 +222,7 @@ type MapLayer = {
   where: (sinceDay: string) => string
   orderBy: string
   rowOf: (record: Record<string, unknown>) => PermitRow | null
+  prefer?: (held: PermitRow, next: PermitRow) => PermitRow
 }
 
 /** A reader over one map layer: its attributes are the record, and its point rides along as `_lat` and `_lng`. */
@@ -247,6 +253,7 @@ function mapLayerReader(layer: MapLayer): FeedReader {
       return (b.features ?? []).map((f) => ({ ...(f.attributes ?? {}), _lat: f.geometry?.y ?? null, _lng: f.geometry?.x ?? null }))
     },
     rowOf: layer.rowOf,
+    prefer: layer.prefer,
   }
 }
 
@@ -457,6 +464,27 @@ export function permitRowFromNewBraunfels(record: Record<string, unknown>): Perm
   }
 }
 
+/**
+ * New Braunfels writes a permit once for every person on it: each applicant, the general
+ * contractor, and each trade's contractor. The row worth keeping names whoever is building it: the
+ * general contractor first, then a row with no contractor (the applicant), then a trade. Among
+ * equals the row the city wrote first.
+ */
+export function newBraunfelsNameRank(row: PermitRow): number {
+  const type = textOf(row.raw['Contractor_Type']) ?? ''
+  if (/^general contractor/i.test(type)) return 0
+  if (type === '') return 1
+  return 2
+}
+
+export function preferNewBraunfels(held: PermitRow, next: PermitRow): PermitRow {
+  const a = newBraunfelsNameRank(held)
+  const b = newBraunfelsNameRank(next)
+  if (a !== b) return a < b ? held : next
+  const first = (r: PermitRow) => numberOf(r.raw['OBJECTID']) ?? Number.MAX_SAFE_INTEGER
+  return first(next) < first(held) ? next : held
+}
+
 export const NEW_BRAUNFELS_READER = mapLayerReader({
   source: 'nb-permits',
   city: 'New Braunfels',
@@ -465,6 +493,7 @@ export const NEW_BRAUNFELS_READER = mapLayerReader({
   where: (since) => `(Permit_Submit_Date >= DATE '${since}' OR Permit_Issue_Date >= DATE '${since}') AND Permit_Group = 'Building' AND Permit_TYPE_DESC IN (${sqlList(NEW_BRAUNFELS_TYPES)})`,
   orderBy: 'Permit_Submit_Date ASC, OBJECTID ASC',
   rowOf: permitRowFromNewBraunfels,
+  prefer: preferNewBraunfels,
 })
 
 // ---- The cities. ----
