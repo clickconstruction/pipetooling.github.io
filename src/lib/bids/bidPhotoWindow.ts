@@ -172,15 +172,36 @@ export function addedWords(out: { added: number; failed: readonly string[] }): {
   return { text: `${added ? `${added} ` : ''}${not}: ${out.failed[0]}`, tone: 'warning' }
 }
 
+/**
+ * A picture the app filed itself is named by its day, its sender and its caption, *2026-11-01 Priya Raman · Gas
+ * meter*. Under a tile that name is cut off before the one part that tells photos apart, so it is read as its
+ * parts: the caption is the name and the sender is who. Null for any other name.
+ */
+export function appFiledNameParts(name: string): { sender: string; caption: string } | null {
+  const m = /^\d{4}-\d{2}-\d{2} (.+?) · (.+)$/.exec(name.trim())
+  return m ? { sender: m[1]!.trim(), caption: m[2]!.trim() } : null
+}
+
 /** The words under a photo in the grid: its name or *Photo*, who and the day, and whether Drive holds it yet. */
 export function gridTileWords(row: Pick<BidPhotoRow, 'name' | 'by_name' | 'taken_at' | 'filed_at' | 'fail_why'>, todayYmd: string): { name: string; unnamed: boolean; who: string; waiting: string | null } {
-  const name = row.name.trim()
+  // Only a row with nobody on it is read this way: a photo a person named keeps the name they gave it.
+  const parts = row.by_name.trim() ? null : appFiledNameParts(row.name)
+  const name = (parts ? parts.caption : row.name).trim()
   return {
     name: name || BID_PHOTO_WORDS.plainName,
     unnamed: !name,
-    who: [row.by_name.trim(), photoDayWords(row.taken_at, todayYmd)].filter(Boolean).join(' · '),
+    who: [parts ? parts.sender : row.by_name.trim(), photoDayWords(row.taken_at, todayYmd)].filter(Boolean).join(' · '),
     waiting: row.filed_at ? null : BID_PHOTO_WORDS.notInDrive,
   }
+}
+
+/**
+ * The line when the Drive side did not answer and the photos came straight from the app. A request that never
+ * reached the function says so in plain words; any other reason is the function's own sentence.
+ */
+export function driveSilentWords(why: string): string {
+  const unreached = /failed to send a request|failed to fetch|networkerror|load failed/i.test(why)
+  return unreached ? 'Drive could not be reached just now. The bid’s photos still show. Its folder does not.' : `Drive did not answer, so the folder is not shown. ${why}`
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

@@ -4,8 +4,10 @@ import {
   addPress,
   addWrites,
   addedWords,
+  appFiledNameParts,
   bidPhotoNameTrimmed,
   bidPhotoStoragePath,
+  driveSilentWords,
   folderIsMade,
   gridHeadWords,
   gridTileWords,
@@ -124,6 +126,21 @@ describe('a tile and the grid', () => {
     const row = { name: 'Gas meter', by_name: 'Priya Raman', taken_at: '2026-11-03T18:00:00.000Z', filed_at: '2026-11-03T18:05:00.000Z', fail_why: null }
     expect(gridTileWords(row, '2026-11-10')).toEqual({ name: 'Gas meter', unnamed: false, who: 'Priya Raman · Nov 3', waiting: null })
     expect(gridTileWords({ ...row, name: ' ', filed_at: null }, '2026-11-10')).toEqual({ name: 'Photo', unnamed: true, who: 'Priya Raman · Nov 3', waiting: 'Not in Drive yet' })
+  })
+
+  it('reads a picture the app filed by its caption and its sender, not its long file name', () => {
+    expect(appFiledNameParts('2026-11-01 Priya Raman · Gas meter (2)')).toEqual({ sender: 'Priya Raman', caption: 'Gas meter (2)' })
+    expect(appFiledNameParts('Gas meter')).toBeNull()
+    expect(appFiledNameParts('2026-11-01 notes')).toBeNull()
+    const filed = { name: '2026-11-01 Priya Raman · Gas meter (2)', by_name: '', taken_at: '2026-11-01T18:00:00.000Z', filed_at: '2026-11-01T18:00:00.000Z', fail_why: null }
+    expect(gridTileWords(filed, '2026-11-10')).toEqual({ name: 'Gas meter (2)', unnamed: false, who: 'Priya Raman · Nov 1', waiting: null })
+    // A photo a person named keeps their name for it, whatever it looks like.
+    expect(gridTileWords({ ...filed, by_name: 'Dana Whitfield' }, '2026-11-10').name).toBe('2026-11-01 Priya Raman · Gas meter (2)')
+  })
+
+  it('says in plain words when Drive could not be reached, and passes a real reason through', () => {
+    expect(driveSilentWords('Failed to send a request to the Edge Function')).toBe('Drive could not be reached just now. The bid’s photos still show. Its folder does not.')
+    expect(driveSilentWords('Drive is not set up here yet.')).toBe('Drive did not answer, so the folder is not shown. Drive is not set up here yet.')
   })
 
   it('reads a day in the company’s zone', () => {
