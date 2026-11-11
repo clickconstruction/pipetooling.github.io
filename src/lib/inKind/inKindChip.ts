@@ -5,6 +5,7 @@
  *
  * A customer's open balance splits in two with it: the part an open deal pays, which nobody chases, and the money.
  */
+import { listPayer, type PayerNamedJob } from '../jobs/billToParty'
 import { money2, monthName } from './inKindLedger'
 import type { InKindListRow } from './inKindList'
 import { usd } from './inKindWords'
@@ -82,6 +83,15 @@ export function moneyApart(openBalance: number, s: InKindStanding | null | undef
 export const scheduledInKindWords = (inKind: number): string | null => (inKind > CENT ? `${usd(inKind)} more is scheduled in kind` : null)
 
 // ---------- a job of a customer who pays in kind ----------
+
+/**
+ * Whose in kind deals a job's bill reads: whoever the bill goes to (the owner's call, 2026-11-11). On a job billed
+ * to its GC that is the GC, never the job's customer, since the GC owes the bill a deal would pay. Bill Customer
+ * already read the payer; before v2.6946 the job's strip read the job's customer, so the two could disagree.
+ */
+export function jobInKindPayer(job: PayerNamedJob | null | undefined): { id: string | null; name: string | null } {
+  return job ? listPayer(job, null) : { id: null, name: null }
+}
 
 /** A job the deal could pay and does not: its customer has an open deal, the job is not on it, and it is not paid. */
 export function jobIsOffTheDeal(job: { in_kind_arrangement_id?: string | null; status?: string | null } | null | undefined, s: InKindStanding | null | undefined): boolean {
