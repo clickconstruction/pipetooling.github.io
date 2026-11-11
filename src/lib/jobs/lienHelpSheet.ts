@@ -16,6 +16,8 @@
  * The words follow `src/lib/plainWords.ts` and name each press as the screen writes it.
  */
 
+import { signingCountyWords } from './lienSigningCounty'
+
 export type LienHelpPaper = {
   /** `868 · Service Visit`, as the desk labels the job. */
   jobLabel: string
@@ -33,6 +35,77 @@ export type LienHelpPaper = {
   /** The original contractor, '' on a job contracted with the owner (the copy goes to the owner alone). */
   contractorName: string
   contractorAddress: string
+  /**
+   * What the app checked on this paper, with its answers (the best-we-can-do pass). Given, the sheet draws these in
+   * place of the list of warnings a reader would check by eye; absent, the list stands.
+   */
+  checks?: ReadonlyArray<LienHelpCheck>
+  /** The county printed on the paper's two county lines (`Travis County`); '' when the notary writes them by hand. */
+  signingCounty?: string
+}
+
+/** One thing the app checked on a paper: `ok` it stands, `ask` it wants a person's answer before the paper is signed. */
+export type LienHelpCheck = { state: 'ok' | 'ask'; lead: string; words: string }
+
+/**
+ * What the app checked on one paper. A warning printed on every paper is one people stop reading, and the app already
+ * holds most of the answers: who the owner is, what the record says of a homestead, and whether each sworn month has a
+ * notice behind it. The reader is left the one check the app cannot make, the paper's own words.
+ */
+export function lienHelpChecks(f: {
+  ownerName: string
+  /** '' | residential | non_residential */
+  propertyKind: string | null | undefined
+  homestead: boolean
+  isSub: boolean
+  /** The months the paper swears, in words. */
+  monthsWords: string
+  /** The notice check's lines (`lienNoticeCheckLines`); none when every month has a timely notice to both. */
+  noticeLines: ReadonlyArray<string>
+  contractorName: string
+}): LienHelpCheck[] {
+  const checks: LienHelpCheck[] = []
+  const owner = f.ownerName.trim()
+  checks.push({ state: 'ok', lead: 'Owner.', words: `${owner ? `${owner}. ` : ''}A private owner, not a city, a county, a school or the State.` })
+  if ((f.propertyKind ?? '').trim() !== 'non_residential') {
+    // What the record says, never more: the app cannot know a house is not a homestead, only that nobody marked it one.
+    if (f.homestead) checks.push({ state: 'ask', lead: 'Homestead.', words: 'The property record says this is a homestead. That goes to the attorney.' })
+    else checks.push({ state: 'ok', lead: 'Homestead.', words: 'The property record is not marked a homestead.' })
+  }
+  if (f.isSub) {
+    const contractor = f.contractorName.trim() || 'the original contractor'
+    if (f.noticeLines.length > 0) checks.push({ state: 'ask', lead: 'Notices.', words: f.noticeLines.join(' ') })
+    else if (f.monthsWords.trim()) checks.push({ state: 'ok', lead: 'Notices.', words: `A notice went on time for every month sworn: ${f.monthsWords.trim()}. It went to the owner and to ${contractor}.` })
+    else checks.push({ state: 'ask', lead: 'Notices.', words: 'The paper names no month of work with a notice behind it.' })
+  }
+  return checks
+}
+
+/** What is left to the reader once the app has answered its own checks. */
+export const LIEN_HELP_YOUR_CHECK = 'Read every name, address and amount on the paper. If one is wrong, stop. Fix it in the app and print again. A signed paper is never fixed by hand.'
+
+/** Above the reader's check when the app has a question about this paper. */
+export const LIEN_HELP_ASK_FIRST = 'Do not sign this one yet. Ask the attorney about the line marked with an exclamation mark.'
+
+/** The four things written on a paper whose counties are printed. */
+export const LIEN_HELP_BLANKS_PRINTED_COUNTY: ReadonlyArray<readonly [string, string]> = [
+  ['The signature line.', 'The signer signs in front of the notary, and not before.'],
+  ['The day, the month and the year.', 'The day it is signed.'],
+  ['The notary’s signature and printed name.', 'Both lines.'],
+  ['The notary’s seal.', 'In ink, dark enough to show on a copy. A paper with no seal goes back.'],
+]
+
+/** The same four in a few words each, for the batch sheet. */
+export const LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT: ReadonlyArray<readonly [string, string]> = [
+  ['Signature:', 'in front of the notary.'],
+  ['Day, month, year:', 'the day it is signed.'],
+  ['Notary:', 'signature and printed name.'],
+  ['Seal:', 'in ink that shows on a copy.'],
+]
+
+/** Under the blanks when the counties are printed: where the paper says it was signed, and what to do if that is wrong. */
+export function lienHelpPrintedCountyLine(signingCounty: string): string {
+  return `The counties are printed: signed in ${signingCounty}. Signing somewhere else? Change the county beside the print press and print again.`
 }
 
 /** A paper the batch left out, with the reason in the desk's words. */
@@ -120,6 +193,14 @@ export const LIEN_HELP_STYLES = `
   .lien-help-stop { border: 2.5pt solid #111418; background: #f1f1f1; }
   .lien-help-stop h3::before { content: 'STOP'; background: #111418; color: #fff; padding: 0 4pt; margin-right: 6pt; }
   .lien-help-two { display: grid; grid-template-columns: 1fr 1fr; gap: 7pt; }
+  .lien-help-checks { border: 1pt solid #111418; margin-bottom: 7pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-checks h3 { padding: 4pt 8pt; margin: 0; border-bottom: 1pt solid #111418; background: #ececec; }
+  .lien-help-checks ul { list-style: none; padding: 4pt 8pt; margin: 0; }
+  .lien-help-checks li { display: grid; grid-template-columns: 13pt 1fr; gap: 3pt; margin: 0 0 2pt; }
+  .lien-help-mark { font-weight: 800; }
+  .lien-help-ask { border: 2.5pt solid #111418; background: #f1f1f1; padding: 5pt 8pt; margin-bottom: 7pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-yours { border-width: 1pt; background: #fff; }
+  .lien-help-ask-tag { background: #111418; color: #fff; padding: 0 4pt; margin-right: 5pt; letter-spacing: 0.05em; }
   .lien-help-tick { display: inline-block; width: 9pt; height: 9pt; border: 1pt solid #111418; vertical-align: -1pt; }
   .lien-help-num { display: inline-flex; align-items: center; justify-content: center; width: 13pt; height: 13pt; border-radius: 50%; background: #111418; color: #fff; font: 700 8pt system-ui, Arial, sans-serif; vertical-align: 1pt; margin: 0 3pt; }
   .lien-help-small { font-size: 8.5pt; color: #333; }
@@ -140,8 +221,16 @@ const band = (tag: string, title: string, right: string[]): string =>
 const stopBox = (title: string, items: ReadonlyArray<string>): string =>
   `<div class="lien-help-box lien-help-stop"><h3>${esc(title)}</h3><ul>${items.map((s) => `<li>${esc(s)}</li>`).join('')}</ul><p class="lien-help-small" style="margin-top:3pt">${esc(LIEN_HELP_NEVER_FIX)}</p></div>`
 
-const blanksBox = (title: string, signer: string, blanks: ReadonlyArray<readonly [string, string]> = LIEN_HELP_BLANKS): string =>
-  `<div class="lien-help-box"><h3>${esc(title)}</h3><ol>${blanks.map(([lead, rest], i) => `<li><strong>${esc(lead)}</strong> ${esc(i === 1 && signer.trim() ? `${signer.trim()} signs in front of the notary, and not before.` : rest)}</li>`).join('')}</ol></div>`
+const blanksBox = (title: string, signer: string, blanks: ReadonlyArray<readonly [string, string]> = LIEN_HELP_BLANKS, under = ''): string =>
+  `<div class="lien-help-box"><h3>${esc(title)}</h3><ol>${blanks.map(([lead, rest]) => `<li><strong>${esc(lead)}</strong> ${esc(lead === 'The signature line.' && signer.trim() ? `${signer.trim()} signs in front of the notary, and not before.` : rest)}</li>`).join('')}</ol>${under ? `<p class="lien-help-small" style="margin-top:3pt">${esc(under)}</p>` : ''}</div>`
+
+const MARK: Record<LienHelpCheck['state'], string> = { ok: '✓', ask: '!' }
+
+/** The block of checks the app answered, then what is left to the reader; an *ask first* band between them when any check wants an answer. */
+const checksBlock = (title: string, checks: ReadonlyArray<LienHelpCheck>): string =>
+  `<div class="lien-help-checks" data-lien-help-checks><h3>${esc(title)}</h3><ul>${checks.map((c) => `<li data-state="${c.state}"><span class="lien-help-mark">${MARK[c.state]}</span><span><strong>${esc(c.lead)}</strong> ${esc(c.words)}</span></li>`).join('')}</ul></div>` +
+  (checks.some((c) => c.state === 'ask') ? `<div class="lien-help-ask" data-lien-help-ask><strong class="lien-help-ask-tag">ASK FIRST</strong> ${esc(LIEN_HELP_ASK_FIRST)}</div>` : '') +
+  `<div class="lien-help-ask lien-help-yours"><strong class="lien-help-ask-tag">YOUR CHECK</strong> ${esc(LIEN_HELP_YOUR_CHECK)}</div>`
 
 const party = (name: string, address: string): string => [name.trim(), address.trim()].filter(Boolean).map(esc).join('<br/>')
 
@@ -161,8 +250,10 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string): str
     `<div><div class="lien-help-k">Claim</div><div class="lien-help-v">${esc(p.claim)}</div></div>` +
     `<div><div class="lien-help-k">File by</div><div class="lien-help-v">${esc(p.fileBy || 'see the Lien desk')}</div></div>` +
     `</div>` +
-    stopBox('Do not sign. Call the office first if any of these is true.', LIEN_HELP_STOPS) +
-    blanksBox('The blanks. Nothing else is written on the paper.', p.signer) +
+    (p.checks && p.checks.length > 0 ? checksBlock('What the app checked on this paper', p.checks) : stopBox('Do not sign. Call the office first if any of these is true.', LIEN_HELP_STOPS)) +
+    (p.signingCounty?.trim()
+      ? blanksBox('Four things to write. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS_PRINTED_COUNTY, lienHelpPrintedCountyLine(p.signingCounty.trim()))
+      : blanksBox('The blanks. Nothing else is written on the paper.', p.signer)) +
     `<div class="lien-help-box"><h3>After it is signed</h3><ol>${after.map((s) => `<li><span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
     `<div class="lien-help-foot"><span>Help sheet for ${esc(p.jobLabel)}</span><span>The paper to sign is the next page</span></div>` +
     `</section>`
@@ -188,17 +279,45 @@ export function lienHelpSameProperty(papers: ReadonlyArray<Pick<LienHelpPaper, '
   return repeats
 }
 
+/**
+ * What each paper of a batch wants asked before it is signed, by its index: a check the app could not clear, and a
+ * property an earlier paper of the batch is on. A paper with nothing to ask is absent.
+ */
+export function lienHelpBatchAsks(papers: ReadonlyArray<Pick<LienHelpPaper, 'propertyAddress' | 'checks'>>): Map<number, string[]> {
+  const repeats = lienHelpSameProperty(papers)
+  const asks = new Map<number, string[]>()
+  papers.forEach((p, i) => {
+    const lines = (p.checks ?? []).filter((c) => c.state === 'ask').map((c) => `${c.lead} ${c.words}`)
+    const repeat = repeats.get(i)
+    if (repeat !== undefined) lines.push(`Same property as paper ${repeat + 1}.`)
+    if (lines.length > 0) asks.set(i, lines)
+  })
+  return asks
+}
+
+/** The batch in one line: how many are clear, how many want a question answered, how many were not printed. */
+export function lienHelpBatchSummary(n: { papers: number; asks: number; leftOut: number }): string {
+  const clear = n.papers - n.asks
+  const parts = [`${clear} clear to sign.`]
+  if (n.asks > 0) parts.push(n.asks === 1 ? '1 with a question: ask first.' : `${n.asks} with a question: ask first.`)
+  if (n.leftOut > 0) parts.push(`${n.leftOut} not printed.`)
+  return parts.join(' ')
+}
+
 /** B, one page in front of a batch: the blanks and the stop list once, then a row for each paper with boxes to tick. */
 export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPaper>; leftOut?: ReadonlyArray<LienHelpLeftOut>; printedOn: string }): string {
   const { papers } = input
   const leftOut = input.leftOut ?? []
-  const repeats = lienHelpSameProperty(papers)
   const fileBys = [...new Set(papers.map((p) => p.fileBy).filter(Boolean))]
   const tick = '<td><span class="lien-help-tick"></span></td>'
+  const asks = lienHelpBatchAsks(papers)
+  // The app's answers are on the sheet only when every paper carries them; a mixed batch keeps the list a reader checks by eye.
+  const checked = papers.length > 0 && papers.every((p) => (p.checks?.length ?? 0) > 0)
+  const counties = [...new Set(papers.map((p) => (p.signingCounty ?? '').trim()))]
+  const printedCounty = counties.length === 1 && counties[0] ? counties[0] : ''
   const rows = papers
     .map((p, i) => {
-      const repeat = repeats.get(i)
-      const note = repeat !== undefined ? `<div class="lien-help-flag">Ask first. Same property as paper ${repeat + 1}.</div>` : ''
+      const note = (asks.get(i) ?? []).map((words) => `<div class="lien-help-flag">Ask first. ${esc(words)}</div>`).join('')
       const copyTo = [p.ownerName.trim(), p.contractorName.trim()].filter(Boolean).map(esc).join(' · ')
       return `<tr><td>${i + 1}</td><td><strong>${esc(p.jobLabel)}</strong><br/>${esc(p.propertyAddress)}${note}</td><td>${esc(p.claim)}</td><td>${esc(p.propertyCounty ? `${p.propertyCounty} County` : 'see the paper')}${fileBys.length > 1 && p.fileBy ? `<br/>by ${esc(p.fileBy)}` : ''}</td><td>${copyTo}</td>${tick.repeat(5)}</tr>`
     })
@@ -209,8 +328,10 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
     `<section class="lien-help" data-lien-help="batch">` +
     band('Help sheet · do not file this page', count === 1 ? 'Lien affidavit: this batch of 1' : `Lien affidavits: this batch of ${count}`, [input.printedOn ? `Printed ${input.printedOn}` : '', fileBys.length === 1 ? `All due ${fileBys[0]}` : '']) +
     `<div class="lien-help-two">` +
-    blanksBox('Each paper has six blanks', '', LIEN_HELP_BLANKS_SHORT) +
-    stopBox('Call the office first', LIEN_HELP_STOPS_SHORT) +
+    (printedCounty ? blanksBox('Each paper has four things to write', '', LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT, lienHelpPrintedCountyLine(printedCounty)) : blanksBox('Each paper has six blanks', '', LIEN_HELP_BLANKS_SHORT)) +
+    (checked
+      ? `<div class="lien-help-box" data-lien-help-batch-checks><h3>What the app checked</h3><p><strong>${esc(lienHelpBatchSummary({ papers: papers.length, asks: asks.size, leftOut: leftOut.length }))}</strong></p><p style="margin-top:3pt">On each paper it read the owner, the homestead mark and the notice behind each month. ${asks.size > 0 ? 'A row marked <strong>Ask first</strong> waits for the attorney. ' : ''}</p><p style="margin-top:3pt"><strong>Your check.</strong> ${esc(LIEN_HELP_YOUR_CHECK)}</p></div>`
+      : stopBox('Call the office first', LIEN_HELP_STOPS_SHORT)) +
     `</div>` +
     `<div class="lien-help-box"><h3>After the notary, for each paper</h3><ol>` +
     `<li>File the original with the county clerk named on its row. Write the recording number on the stamped copy.</li>` +
@@ -270,8 +391,12 @@ export const LIEN_HELP_MARK_NOTES: Readonly<Record<number, string>> = {
  * foot that says this page is never signed or filed. `paperHtml` is the paper as the screen draws it (`filingDocHtml`).
  */
 export function lienHelpGuideCopyHtml(paperHtml: string, p: Pick<LienHelpPaper, 'jobLabel' | 'fileBy' | 'propertyCounty' | 'contractorName'>): string {
-  const marked = lienHelpMarkPaper(paperHtml)
-  const note = (n: number) => (marked.marks.includes(n) ? `<p>${num(n)}${esc(LIEN_HELP_MARK_NOTES[n] ?? '')}</p>` : '')
+  const landed = lienHelpMarkPaper(paperHtml)
+  // The marks count 1, 2, 3 in the order the pen meets them, whichever landed: a paper with its counties printed has no
+  // county blanks, and a reader who sees 2, 4, 5 goes looking for 1 and 3.
+  const shown = new Map(landed.marks.map((n, i) => [n, i + 1]))
+  const marked = { marks: landed.marks, html: landed.html.replace(/<span class="lien-help-num">(\d+)<\/span>/g, (m, n: string) => (shown.has(Number(n)) ? num(shown.get(Number(n)) as number) : m)) }
+  const note = (n: number) => (shown.has(n) ? `<p>${num(shown.get(n) as number)}${esc(LIEN_HELP_MARK_NOTES[n] ?? '')}</p>` : '')
   const blanks = [1, 2, 3, 4, 5, 6].map(note).join('')
   const reads = [7, 8].map(note).join('')
   const bandWords = 'Guide copy · do not sign or file this page'
@@ -300,11 +425,18 @@ export function lienHelpPaperFromFields(input: {
   jobLabel: string
   fileBy: string
   claimWords: string
-  fields: { county: string; propertyAddress: string; claimantPersonName: string; ownerName: string; ownerAddress: string; originalContractorName: string; originalContractorAddress: string; isSub?: boolean }
+  fields: { county: string; propertyAddress: string; claimantPersonName: string; ownerName: string; ownerAddress: string; originalContractorName: string; originalContractorAddress: string; isSub?: boolean; workMonthsWords?: string; signingCounty?: string }
+  /** What the desk knows of the property and the notices, for the checks; absent, the sheet keeps its list of warnings. */
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string> }
 }): LienHelpPaper {
   const f = input.fields
   const sub = f.isSub !== false
+  const signingCounty = signingCountyWords(f.signingCounty)
   return {
+    ...(input.checked
+      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, contractorName: f.originalContractorName }) }
+      : {}),
+    ...(signingCounty ? { signingCounty } : {}),
     jobLabel: input.jobLabel,
     propertyAddress: f.propertyAddress.trim(),
     propertyCounty: f.county.trim(),

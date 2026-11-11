@@ -204,6 +204,14 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     // The county blank's note sits on the county's own line, in the paper's HTML and once only: the notary's blank has none.
     expect(filingDocHtml(blocks)).toContain('<strong>COUNTY OF ___________</strong> <span data-county-note style="font-size:0.85em">(where signed)</span>')
     expect(filingDocHtml(blocks).match(/where signed/g)).toHaveLength(1)
+    // The county the company signs in (punch list #314): both county lines print it, and the note beside the blank is gone with the blank.
+    const signed = filingDocHtml(buildLienAffidavitBlocks({ ...short, signingCounty: 'Travis County' }))
+    expect(signed).toContain('<strong>COUNTY OF TRAVIS</strong></p>')
+    expect(signed).toContain('COUNTY OF TRAVIS</p><p')
+    expect(signed).not.toContain('where signed')
+    expect(signed).not.toContain('COUNTY OF ___')
+    // The county the paper is filed in is still the property's, in its own paragraph.
+    expect(signed).toContain(short.county)
     const last = blocks.length - 1
     expect(filingKeepTogetherRuns(blocks)).toEqual([[last - 2, last]])
   })
