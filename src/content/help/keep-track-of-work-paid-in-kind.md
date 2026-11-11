@@ -132,6 +132,8 @@ Pick **In kind, on the arrangement** to put the job on the deal. Then press **Re
 
 Pick **With money** to bill it like any other job. It is sent and chased as usual.
 
+A customer can have more than one arrangement. Then the first choice reads **In kind, on an arrangement**, and Bill Customer cannot know which one pays. Pick that choice and press **Open the arrangements**. On the customer's page, put the job on one of them under **Change the terms**. Then open Bill Customer again. Nothing is billed until you do. The strip in the job window opens the same page.
+
 A job that is already on the arrangement gets no question. Bill Customer opens ready to record the bill in kind. To bill that job for money, take it off the arrangement first under **Change the terms**.
 
 ## See every arrangement

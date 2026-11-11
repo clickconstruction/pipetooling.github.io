@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billQuestionWords, inKindChipHref, inKindChipTitle, inKindChipWords, billOnDealWords, inKindStandings, jobIsOffTheDeal, jobIsOnTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
+import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_CHOICE, BILL_IN_KIND_CHOICE_MANY, BILL_MONEY_CHOICE, BILL_PICK_FIRST, JOB_ON_DEAL_SAVED, billPickDealWords, billQuestionState, billQuestionWords,inKindChipHref, inKindChipTitle, inKindChipWords, billOnDealWords, inKindStandings, jobIsOffTheDeal, jobIsOnTheDeal, jobOffTheDealWords, moneyApart, scheduledInKindWords } from './inKindChip'
 import type { InKindListRow } from './inKindList'
 import { plainWordsFailures } from '../plainWords'
 
@@ -108,5 +108,40 @@ describe('a job of a customer who pays in kind', () => {
     const all = [w.lead, w.rest, JOB_ON_DEAL_SAVED, billQuestionWords('Calloway Holdings'), BILL_IN_KIND_CHOICE.why, BILL_MONEY_CHOICE.why, BILL_PICK_FIRST, BILL_IN_KIND_CHANNEL_NOTE]
     for (const t of all) expect(plainWordsFailures(t)).toEqual([])
     expect(jobOffTheDealWords('  ').lead).toBe('This customer pays in kind.')
+  })
+})
+
+describe('Bill Customer on a job off the deal (billQuestionState)', () => {
+  const one = inKindStandings([row({})]).get('c1')!
+  const two = inKindStandings([row({}), row({ id: 'a2', whatGiven: 'Gravel' })]).get('c1')!
+
+  it('asks nothing when the job is not off a deal', () => {
+    const none = { asked: false, manyDeals: false, holds: false, recordsInKind: false, dealId: null }
+    expect(billQuestionState(one, false, null)).toEqual(none)
+    expect(billQuestionState(undefined, true, 'in_kind')).toEqual(none)
+    expect(billQuestionState({ ...one, arrangementIds: [] }, true, 'in_kind')).toEqual(none)
+  })
+
+  it('with one open deal: holds until answered, In kind records on that deal, money bills as usual', () => {
+    expect(billQuestionState(one, true, null)).toEqual({ asked: true, manyDeals: false, holds: true, recordsInKind: false, dealId: null })
+    expect(billQuestionState(one, true, 'in_kind')).toEqual({ asked: true, manyDeals: false, holds: false, recordsInKind: true, dealId: 'a1' })
+    expect(billQuestionState(one, true, 'money')).toEqual({ asked: true, manyDeals: false, holds: false, recordsInKind: false, dealId: null })
+  })
+
+  it('with two open deals the question is still asked, and In kind never records or sends here (v2.6934)', () => {
+    expect(two.arrangementIds).toEqual(['a1', 'a2'])
+    // Before v2.6934 two deals asked nothing, and the window billed for money.
+    expect(billQuestionState(two, true, null)).toEqual({ asked: true, manyDeals: true, holds: true, recordsInKind: false, dealId: null })
+    // In kind cannot know which deal pays: the window holds, and no deal is picked for the person.
+    expect(billQuestionState(two, true, 'in_kind')).toEqual({ asked: true, manyDeals: true, holds: true, recordsInKind: false, dealId: null })
+    // Money is an answer the person gave, so the bill goes out as any other.
+    expect(billQuestionState(two, true, 'money')).toEqual({ asked: true, manyDeals: true, holds: false, recordsInKind: false, dealId: null })
+  })
+
+  it('says the two-deal path in plain words', () => {
+    const w = billPickDealWords('Calloway Holdings')
+    expect(w.lead).toBe('Calloway Holdings has more than one arrangement.')
+    for (const t of [w.lead, w.rest, BILL_IN_KIND_CHOICE_MANY.title, BILL_IN_KIND_CHOICE_MANY.why]) expect(plainWordsFailures(t)).toEqual([])
+    expect(billPickDealWords(' ').lead).toBe('This customer has more than one arrangement.')
   })
 })

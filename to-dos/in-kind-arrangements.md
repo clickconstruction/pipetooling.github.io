@@ -92,6 +92,7 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 - **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
 - **A combine of two jobs** carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables).
+- **Bill Customer with two open arrangements, closed in v2.6934 (2026-11-11).** The question required exactly one open deal, so a customer with two got an ordinary money window. It asks now. *In kind* holds every press and opens the customer's page, where a person puts the job on a deal, and *With money* bills as usual. No picker in the window: a wrong pick would put a bill on the wrong deal's ledger.
 - **Not walked live**, covered by the database bed or unit tests only: a line on a bill row (the walk's ZZ jobs were billed with no bill row), a bill on Stripe passed over, the forecast's last line, the overhead pool's display.
 
 ## Where it plugs in
