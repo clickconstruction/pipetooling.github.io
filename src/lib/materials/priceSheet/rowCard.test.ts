@@ -27,6 +27,11 @@ describe('rowCard', () => {
     expect(c.chip).toEqual({ tone: 'blue', label: 'Same model number' })
     expect(c.question).toBe("The model number is on this part. Hillcrest Supply's number is new for it.")
   })
+  it('the model number on a row with no number of the house: nothing is said about the house’s number', () => {
+    const c = rowCard({ ...base, row: row({ houseCode: '' }), match: m({ how: 'model_number', model: 'AX8802XLLRPC', unitFactor: undefined }) })
+    expect(c.status).toBe('offer')
+    expect(c.question).toBe('The model number is on this part.')
+  })
   it('two parts on file: nothing is picked', () => {
     const c = rowCard({ ...base, row: row(), match: m({ how: 'model_number', part: null, rivals: [kit, twin] }) })
     expect(c.status).toBe('pick')

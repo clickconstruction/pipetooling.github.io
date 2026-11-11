@@ -62,12 +62,15 @@ describe('houseVerdict', () => {
     expect(houseVerdict({ houses: HOUSES, codeShare: { houseId: 'hill', known: 2, total: 71 } }).reasons).toEqual([])
   })
   it('nothing names a house: it asks, and says who the bid asked', () => {
-    expect(houseVerdict({ houses: HOUSES, askedHouseIds: ['bord'] })).toMatchObject({
+    expect(houseVerdict({ houses: HOUSES, letterhead: { houseId: null, printed: null }, askedHouseIds: ['bord'] })).toMatchObject({
       houseId: null,
       sure: false,
       question: 'Which house is this sheet from? Nothing on it names one. This bid asked Borden Pipe & Supply for prices.',
       offers: ['bord'],
     })
+  })
+  it('a sheet opened again: its letterhead was not read now, so nothing is said of it', () => {
+    expect(houseVerdict({ houses: HOUSES, askedHouseIds: ['bord'] }).question).toBe('Which house is this sheet from? This bid asked Borden Pipe & Supply for prices.')
   })
 })
 

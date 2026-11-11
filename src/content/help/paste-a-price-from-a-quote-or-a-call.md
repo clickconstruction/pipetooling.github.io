@@ -15,6 +15,8 @@ The app finds the part on file for you. Nothing is made twice.
 2. Pick the supply house. The houses this bid asked for prices come first.
 3. Paste the row into the box. You can also type it: the house's number, the words and the price.
 
+The app reads the house's number only when it is all digits. A number with letters in it counts as words.
+
 A card appears for the row. It shows the part on file and how it was found.
 
 - {{chip:green|Same Hillcrest Supply number}} means the house's own number is on the part.

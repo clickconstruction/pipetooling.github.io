@@ -1,8 +1,8 @@
 ---
 name: "A price sheet read into the parts book, with no second copy of a part"
 number: 308
-group: gated
-status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · the owner said *build all the PRs* the same day, taking every call's default · PR 1 shipped as v2.6898 (the matcher and the Add Part warning) · PR 2 is v2.6901 (house numbers) on `claude/price-sheet-pr2-house-numbers`, with PR 3 (one price) and PR 4 (the sheet in a panel) stacked behind it · a search of company mail for a real quote to measure on was refused without the owner's word, so the reader is unproven on a real sheet
+group: close
+status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · the owner said *build all the PRs* the same day, taking every call's default · PR 1 shipped as v2.6898 (the matcher and the Add Part warning) · PR 2 shipped as v2.6901 (house numbers) and PR 3 as v2.6903 (one price, pasted or typed), each pushed and walked live on a ZZ part and house · PRs 4 to 9 shipped together as v2.6908 to v2.6923 (#7642, merged 2026-11-11): read a sheet, file its rows, place its fixtures, the Parts Book's door and list, merge parts on the Duplicates page, and the pricing twin's draft; their five migrations pushed and `twin-mcp` 1.12.0 deployed the same night · walked live on the ZZ Test bid with a made-up ZZ quote: read, the house asked and answered, two rows filed as the same part, a fixture placed and taken off, the sheet taken back, the Parts Book's list, and two ZZ parts merged, every ZZ row deleted after · the walk found an open sheet reading itself about 220 times a second beside Takeoffs, fixed as v2.6928, and three wording points fixed as v2.6929 · a search of company mail for a real quote to measure on was refused without the owner's word, so the reader is unproven on a real sheet
 mockup: to-dos/price-sheet-reader/mockup.html
 summary: >
   The estimator reads a supply house's quote fixture by fixture, finds or makes each part, builds an
@@ -19,10 +19,10 @@ summary: >
   it, and a file dropped or pasted on Takeoffs is the door. A row is matched by the house's number,
   then the model number, then the words, and a part is only ever made on her press. The first PR is
   the matcher alone, as a warning on the Add Part form.
-next: Merge and push PR 2, then PR 3 and PR 4 in order, each walked live on a ZZ part and house after its push. Then PR 5 (file a sheet's ready rows in one press, take a sheet back).
+next: The estimator drops her first real quote on a bid's Takeoffs, and what it misreads decides the next fix. Left for later, each its own small PR when asked for — the mail's door (*Read as a price sheet* on a mail's file), the price request's door (*Read this quote*), the dev seat's pair, a reader for scans and photos (today only a PDF with a text layer, a text file or a paste is read), and *Fill from a price sheet…* in Add Assembly.
 size: L as a train of nine (S · M · M · M · M · M · S · M · M); PR 1 alone stops a second copy at the part form, and PR 3 is one price in two presses
-blocker: None for the build. The measure on three to five real sheets is still the estimator's: the first real quote she drops is it.
-opinion: build — in train; the words-only match was tightened after the real book showed letter-closeness pairs black with galvanized
+blocker: the measure on a real sheet, which is the estimator's: the first real quote she drops is it.
+opinion: built — live since 2026-11-11; the words-only match was tightened after the real book showed letter-closeness pairs black with galvanized
 ---
 
 # A price sheet read into the parts book, with no second copy of a part (#308)
@@ -450,7 +450,8 @@ learned from it too.
 ## The plan
 
 Each PR is cut from main alone, with its release note, its `docs/recent-features/` fragment and its
-guide.
+guide. The table is the plan as drawn. What shipped, and when, is the status line above; what was
+left out is the *next* line.
 
 | PR | What | Touches | Size | Live check |
 | --- | --- | --- | --- | --- |
@@ -481,7 +482,9 @@ PR 5's limits. The sheets and their rows stay out of the repo.
 - **In and out.** In each walk from PR 4 on, fold the panel, switch bids, reload and come back. The
   chip must open on the card that was left, with nothing answered lost.
 - **The counts** above are the before. Run them again after PR 9: the same-model groups should fall
-  and the parts made a month should not rise.
+  and the parts made a month should not rise. On 2026-11-11, the night PR 9 went live, the
+  Duplicates page's *Same model number* tab listed 42 groups of real parts whose sizes agree, none
+  merged yet: each waits for a person's **Keep this one**.
 
 ## Found in passing, not fixed
 

@@ -80,12 +80,20 @@ describe('PriceSheetPanel', () => {
   })
 
   it('asks which house when the sheet has none, and files nothing until it is said', async () => {
-    renderWithProviders(panel(sheet(null)))
+    renderWithProviders(panel(sheet(null), { letterhead: null }))
     await settle()
     const strip = screen.getByTestId('price-sheet-house')
     expect(strip.textContent).toContain('Which house is this sheet from? Nothing on it names one.')
     expect(strip.textContent).toContain('A price is filed only after you say.')
     expect(screen.queryByRole('button', { name: /file \$/ })).toBeNull()
+  })
+
+  it('a sheet opened again asks for its house without saying its letterhead named none', async () => {
+    renderWithProviders(panel(sheet(null)))
+    await settle()
+    const strip = screen.getByTestId('price-sheet-house')
+    expect(strip.textContent).toContain('Which house is this sheet from?')
+    expect(strip.textContent).not.toContain('Nothing on it names one')
   })
 
   it('says a fixture whose rows do not add up to its subtotal', async () => {

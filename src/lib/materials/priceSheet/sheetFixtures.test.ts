@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlannedGroup, PlannedRow, RowBucket } from './sheetPlan'
-import { assemblyName, countRowKeys, findSameItemsAssembly, fixtureStatus, groupItems, rowsForTag, sameItems, tagKeys } from './sheetFixtures'
+import { assemblyName, countRowKeys, countRowName, findSameItemsAssembly, fixtureStatus, groupItems, rowsForTag, sameItems, tagKeys } from './sheetFixtures'
 
 // Every bid row, part, assembly and price here is made up.
 const ROWS = [
@@ -90,6 +90,15 @@ describe('fixtureStatus', () => {
     const g = group({ tag: 'SK-4A' })
     expect(fixtureStatus({ group: g, countRows: ROWS, lineCount: none })).toMatchObject({ state: 'no_row', why: 'No fixture on this bid is tagged SK-4A.' })
     expect(fixtureStatus({ group: g, countRows: ROWS, lineCount: none, chosenRowIds: ['r1'] })).toMatchObject({ state: 'ready', why: 'Goes on SK-1 OFCI.' })
+  })
+  it('two rows with one name are told apart by their area', () => {
+    const areas = [
+      { id: 'a1', fixture: 'WC', groupTag: 'Restroom A', count: 4 },
+      { id: 'a2', fixture: 'WC', groupTag: 'Break room', count: 1 },
+    ]
+    expect(areas.map(countRowName)).toEqual(['WC · Restroom A', 'WC · Break room'])
+    expect(countRowName({ fixture: 'WH', groupTag: '  ' })).toBe('WH')
+    expect(fixtureStatus({ group: group({ tag: 'ZL-1' }), countRows: areas, lineCount: none, chosenRowIds: ['a2'] })).toMatchObject({ state: 'ready', why: 'Goes on WC · Break room.' })
   })
   it('a row not filed yet, rows that do not add up, and no price to place', () => {
     expect(fixtureStatus({ group: group({ rows: [row(1, 'filed', 'kit'), row(2, 'needs_you', null)] }), countRows: ROWS, lineCount: none })).toMatchObject({ state: 'waits', why: '1 row is not filed yet.' })
