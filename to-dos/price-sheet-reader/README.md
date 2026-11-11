@@ -1,8 +1,8 @@
 ---
 name: "A price sheet read into the parts book, with no second copy of a part"
 number: 308
-group: close
-status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · the owner said *build all the PRs* the same day, taking every call's default · PR 1 shipped as v2.6898 (the matcher and the Add Part warning) · PR 2 shipped as v2.6901 (house numbers) and PR 3 as v2.6903 (one price, pasted or typed), each pushed and walked live on a ZZ part and house · PRs 4 to 9 shipped together as v2.6908 to v2.6923 (#7642, merged 2026-11-11): read a sheet, file its rows, place its fixtures, the Parts Book's door and list, merge parts on the Duplicates page, and the pricing twin's draft; their five migrations pushed and `twin-mcp` 1.12.0 deployed the same night · walked live on the ZZ Test bid with a made-up ZZ quote: read, the house asked and answered, two rows filed as the same part, a fixture placed and taken off, the sheet taken back, the Parts Book's list, and two ZZ parts merged, every ZZ row deleted after · the walk found an open sheet reading itself about 220 times a second beside Takeoffs, fixed as v2.6928, and three wording points fixed as v2.6929 · a search of company mail for a real quote to measure on was refused without the owner's word, so the reader is unproven on a real sheet
+group: waiting
+status: asked 2026-11-10 by the estimator through the owner, with a screenshot of the Add Assembly window beside a supply house's quote · the Takeoffs tab, the parts book, the price requests, the bill reader, card #298 and the twin seat's quote tools read on main the same day · the duplicate problem counted in prod through the dev seat, reads and counts only · two directions drawn at desk width, a second look, and a pick (C) · the owner asked three questions the same day (is it easy to pull up, to jump in and out of, and to use for a one-off) and the honest answers were no, half and no, so frames 8 to 10 were drawn and the train reordered with the one-off third · the owner said *build all the PRs* the same day, taking every call's default · PR 1 shipped as v2.6898 (the matcher and the Add Part warning) · PR 2 shipped as v2.6901 (house numbers) and PR 3 as v2.6903 (one price, pasted or typed), each pushed and walked live on a ZZ part and house · PRs 4 to 9 shipped together as v2.6908 to v2.6923 (#7642, merged 2026-11-11): read a sheet, file its rows, place its fixtures, the Parts Book's door and list, merge parts on the Duplicates page, and the pricing twin's draft; their five migrations pushed and `twin-mcp` 1.12.0 deployed the same night · walked live on the ZZ Test bid with a made-up ZZ quote: read, the house asked and answered, two rows filed as the same part, a fixture placed and taken off, the sheet taken back, the Parts Book's list, and two ZZ parts merged, every ZZ row deleted after · the walk found an open sheet reading itself about 220 times a second beside Takeoffs, fixed as v2.6928, and three wording points fixed as v2.6929, both live the same morning · the owner asked the same day for the two checks left, the first real quote and the pricing twin's first sheet, to be written here for a session on another computer: see *Where it stands* · a search of company mail for a real quote to measure on was refused without the owner's word, so the reader is unproven on a real sheet
 mockup: to-dos/price-sheet-reader/mockup.html
 summary: >
   The estimator reads a supply house's quote fixture by fixture, finds or makes each part, builds an
@@ -19,10 +19,10 @@ summary: >
   it, and a file dropped or pasted on Takeoffs is the door. A row is matched by the house's number,
   then the model number, then the words, and a part is only ever made on her press. The first PR is
   the matcher alone, as a warning on the Add Part form.
-next: The estimator drops her first real quote on a bid's Takeoffs, and what it misreads decides the next fix. Left for later, each its own small PR when asked for — the mail's door (*Read as a price sheet* on a mail's file), the price request's door (*Read this quote*), the dev seat's pair, a reader for scans and photos (today only a PDF with a text layer, a text file or a paste is read), and *Fill from a price sheet…* in Add Assembly.
+next: Two checks, each waiting on real use, with the recipe under *Where it stands* — the first real quote the estimator drops on a bid's Takeoffs, measured and any misread fixed, and the pricing twin's first draft sheet, checked against the quote it read. Left for later, each its own small PR when asked for — the mail's door (*Read as a price sheet* on a mail's file), the price request's door (*Read this quote*), the dev seat's pair, a reader for scans and photos (today only a PDF with a text layer, a text file or a paste is read), and *Fill from a price sheet…* in Add Assembly.
 size: L as a train of nine (S · M · M · M · M · M · S · M · M); PR 1 alone stops a second copy at the part form, and PR 3 is one price in two presses
-blocker: the measure on a real sheet, which is the estimator's: the first real quote she drops is it.
-opinion: built — live since 2026-11-11; the words-only match was tightened after the real book showed letter-closeness pairs black with galvanized
+blocker: real use — a real quote dropped on a bid's Takeoffs, and a pricing twin's run on a bid's price request; neither can be made up on prod, and reading a real quote out of company mail instead needs the owner's word.
+opinion: built — live since 2026-11-11, two checks left that wait on real use; the words-only match was tightened after the real book showed letter-closeness pairs black with galvanized
 ---
 
 # A price sheet read into the parts book, with no second copy of a part (#308)
@@ -446,6 +446,65 @@ learned from it too.
   `plan_price_sheet` → `apply_price_sheet` on the dev seat.
 - `src/lib/materials/priceSheet/pastedRow.ts`, pure: a pasted line or block split into the house's
   number, the model number, the words, the price and its unit, with no model call.
+
+## Where it stands
+
+Every PR of the train is live since 2026-11-11 (v2.6898 to v2.6929). Two checks are left, written
+down on the owner's word for a session on another computer. Each waits on real use, so the session
+looks first and acts only on what it finds. Prod has no staging: reads only, through the dev seat,
+and nothing pressed on a real part, price or assembly.
+
+### 1. The first real quote
+
+The reader has only read a made-up ZZ quote. The first real quote the estimator drops on a bid's
+Takeoffs is the measure.
+
+- **Find it.** `read_rows` on `supply_papers` with `came_by` `eq` `sheet`, newest first. Skip the
+  ZZ walks (a ZZ house or a ZZ number). `read_by` is `text` for a file read on Takeoffs or the
+  Parts Book and `twin:<email>` for the pricing twin's draft. The rows are `supply_paper_lines` by
+  `paper_id` and the fixtures `supply_paper_groups`. The PDF itself is not kept, only its hash and
+  its page count.
+- **Measure, reads only.** Count the rows read, the fixtures, the rows filed and how each was
+  matched (`matched_how`: `crosswalk` for the house's number, `mfr_number` for the model number,
+  `description` for the name or the words, `person` for a pick), the rows held (`held_why`) and the
+  rows still waiting. Ask the estimator, through the owner, what the panel got wrong, or compare
+  with the PDF if she sends it.
+- **A misread** is a row missing or split in two, a price on the wrong row, a fixture heading or a
+  subtotal read as a row, a price by the hundred read as each, an item number with letters read as
+  words (the parser takes 4 to 9 digits only), or the wrong house.
+- **Fix it** in the kernel that read it: `sheetText.ts` turns a PDF's text layer into printed
+  lines, `pastedRow.ts` (`parsePasted`) turns lines into rows and fixtures, `sheetHouse.ts` names
+  the house, and `partMatch.ts` finds the part. Each fix comes with a unit test built from made-up
+  rows of the same shape. Supply house names, bids, customers and real prices stay out of commits,
+  PR text and tests.
+- **Faster, on the owner's word only.** A session may read one real quote out of company mail
+  through the dev seat (`search_mail`, then `read_mail_file_text` for the PDF's words) and run the
+  words through `parsePasted` locally, filing nothing. That search was refused on 2026-11-11
+  without his word, so ask him first.
+
+### 2. The pricing twin's first sheet
+
+Since `twin-mcp` 1.12.0 (v2.6923), the pricing twin leaves each quote it reads for a bid's price
+request as a draft sheet through `put_price_sheet`: the rows as printed under their fixture
+headings, nothing filed and no part named. It has never run, because the walk of 2026-11-11 had no
+pricing twin's key.
+
+- **Find it.** `supply_papers` with `robot_request_id` set (the price request it read for) and
+  `read_by` starting `twin:`. The bid's `bids_submission_entries` carries the note
+  `[pricer STG-2] put_price_sheet` with the house and the row and fixture counts.
+- **Check it.** The sheet waits on that bid's Takeoffs as a chip that ends in *twin*, and opened,
+  its header says *read by the pricing twin*. No line has `filed_at` and no fixture has `placed_at`
+  until a person presses. The house is the request's house. The rows agree with the quote the twin
+  read, which the twin seat's `get_quote_documents` lists.
+- **If the twin skipped the verb**, read its guide (`docs/twins/pricer.md`) and the pricing
+  operator's kickoff (`docs/twins/kickoffs/pricing-operator.md`), which both name it and its rule.
+  A refused call answers `put_price_sheet NOT written` with its reasons.
+- **To run it on purpose**, a session needs a pricing twin's key on its computer: the twin seat
+  refuses `put_price_sheet` to every other key (`PRICER_VERBS` in `_shared/twinSeatGate.ts`). Run
+  one price request as the kickoff says, then check as above.
+
+When both checks pass and any misread is fixed, close the card: delete this folder and add its line
+under *Closed* in `to-dos/README.md`, as the closed cards before it did.
 
 ## The plan
 
