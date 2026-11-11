@@ -132,4 +132,50 @@ describe('LabelsPrintModal · straight to the P-touch over USB', () => {
     expect(usb.print).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Print straight to the P-touch' })).toBeTruthy()
   })
+
+  it('copies of each sends a box’s strips together, 1 1 2 2, and the press names the total (v2.6878)', async () => {
+    usb.granted = true
+    setup()
+    await waitFor(() => expect(screen.getByTestId('labels-print').textContent).toBe('Print 2 tape labels'))
+    expect(screen.getByTestId('labels-copies').textContent).toBe('1')
+    fireEvent.click(screen.getByTestId('labels-copies-more'))
+    expect(screen.getByTestId('labels-copies').textContent).toBe('2')
+    expect(screen.getByTestId('labels-print').textContent).toBe('Print 4 tape labels')
+    expect(screen.getByTestId('labels-count-words').textContent).toBe('2 boxes, 2 strips each. 4 strips.')
+    // the screen still draws each box once
+    expect(screen.getAllByTestId('labels-tape-bitmap')).toHaveLength(2)
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent').textContent).toBe('4 tape labels printed.'))
+    const sent = usb.print.mock.calls[0]![0] as unknown[]
+    expect(sent).toHaveLength(4)
+    expect(sent[0]).toBe(sent[1])
+    expect(sent[2]).toBe(sent[3])
+    expect(sent[1]).not.toBe(sent[2])
+    // remembered on the device, and the test strip is one strip whatever the count
+    expect(localStorage.getItem('pt.labels.tapeCopies')).toBe('2')
+    usb.print.mockClear()
+    fireEvent.click(screen.getByTestId('labels-test-strip'))
+    await waitFor(() => expect(usb.print).toHaveBeenCalledTimes(1))
+    expect((usb.print.mock.calls[0]![0] as unknown[]).length).toBe(1)
+  })
+
+  it('after a print the window is one line for the printer, with the press at the foot (v2.6878)', async () => {
+    usb.granted = true
+    setup()
+    await waitFor(() => expect(screen.getByTestId('labels-print')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('labels-print'))
+    await waitFor(() => expect(screen.getByTestId('labels-usb-sent')).toBeTruthy())
+    // one line where two said the same thing: the settled bar carries the printer's own words
+    expect(screen.getByTestId('labels-tape-ready').textContent).toContain('PT-D610BT · 24 mm tape · ready')
+    expect(screen.getAllByTestId('labels-printer-line')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Use the print window instead' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Printer setup' }))
+    expect(screen.getByRole('button', { name: 'Use the print window instead' })).toBeTruthy()
+    // the press and what it said sit in the foot, after the strips
+    const foot = screen.getByTestId('labels-foot')
+    expect(foot.contains(screen.getByTestId('labels-print'))).toBe(true)
+    expect(foot.contains(screen.getByTestId('labels-usb-sent'))).toBe(true)
+    const strips = screen.getAllByTestId('labels-tape-bitmap')
+    expect(strips[0]!.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

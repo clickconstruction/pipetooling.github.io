@@ -119,8 +119,30 @@ export function tapeReadyWords(widthMm: TapeWidthMm, day: string): { head: strin
   return { head: `Brother tape \u00b7 ${widthMm} mm.`, tail: `This computer printed tape last on ${day}.` }
 }
 
-/** The line under the window's title: what the press will print. */
-export function labelCountWords(format: LabelFormat, n: number, one: boolean): string {
+/**
+ * Strips of each box (v2.6878, the owner: a box has more than one side). Each box's strips come off the printer
+ * together, 1 1 2 2 3 3, so a pair is stuck on one box before the next box's pair is in hand.
+ */
+export const TAPE_COPIES_MAX = 6
+export const TAPE_COPIES_LABEL = 'Copies of each'
+
+/** A whole number of copies from 1 to `TAPE_COPIES_MAX`; anything else is 1. */
+export function clampTapeCopies(n: unknown): number {
+  const v = Math.floor(Number(n))
+  return Number.isFinite(v) ? Math.min(TAPE_COPIES_MAX, Math.max(1, v)) : 1
+}
+
+/** Each item `copies` times, its copies kept together: 1 1 2 2 3 3. */
+export function repeatEach<T>(items: ReadonlyArray<T>, copies: number): T[] {
+  const n = clampTapeCopies(copies)
+  return items.flatMap((item) => Array.from({ length: n }, () => item))
+}
+
+/** The line under the window's title: what the press will print. `copies` is strips of each box, tape only. */
+export function labelCountWords(format: LabelFormat, n: number, one: boolean, copies = 1): string {
+  if (format === 'tape' && copies > 1) {
+    return one ? `${copies} strips of this box: the QR, the stencil and the code.` : `${n} ${n === 1 ? 'box' : 'boxes'}, ${copies} strips each. ${n * copies} strips.`
+  }
   if (format === 'tape') return one ? 'One strip: the QR, the stencil and the code.' : `${n} ${n === 1 ? 'box' : 'boxes'}, one strip each.`
   return one ? 'One sheet: the stencil, the code, and the lines to write on.' : `${n} ${n === 1 ? 'label' : 'labels'}, one a sheet. The camera opens the box from the code.`
 }

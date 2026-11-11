@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LABEL_OUTPUTS, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps } from './tapeLabel'
+import { LABEL_OUTPUTS, TAPE_COPIES_MAX, clampTapeCopies, repeatEach, TAPE_TEST_STRIP_LABEL, TAPE_WIDTH_DEFAULT, isTapeWidth, labelCountWords, sheetPressLabel, tapeLayout, tapePressLabel, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSentWords, tapeSetupSteps } from './tapeLabel'
 
 describe('the tape label (v2.6801)', () => {
   it('lays the strip out inside the tape with a QR that leaves its quiet zone', () => {
@@ -59,5 +59,20 @@ describe('the tape label (v2.6801)', () => {
     expect(tapeSentWords(1, 1)).toBe('1 tape label printed.')
     expect(tapeSentWords(6, 6)).toBe('6 tape labels printed.')
     expect(tapeSentWords(2, 6, 'The printer\u2019s cover is open.')).toBe('2 of 6 printed, then the printer stopped: The printer\u2019s cover is open.')
+  })
+
+  it('copies of each keeps a box’s strips together and names the total (v2.6878)', () => {
+    expect(repeatEach(['1', '2', '3'], 2)).toEqual(['1', '1', '2', '2', '3', '3'])
+    expect(repeatEach(['1', '2'], 1)).toEqual(['1', '2'])
+    expect(clampTapeCopies(0)).toBe(1)
+    expect(clampTapeCopies('3')).toBe(3)
+    expect(clampTapeCopies(99)).toBe(TAPE_COPIES_MAX)
+    expect(clampTapeCopies('x')).toBe(1)
+    expect(clampTapeCopies(null)).toBe(1)
+    expect(labelCountWords('tape', 3, false, 2)).toBe('3 boxes, 2 strips each. 6 strips.')
+    expect(labelCountWords('tape', 1, true, 4)).toBe('4 strips of this box: the QR, the stencil and the code.')
+    expect(labelCountWords('tape', 3, false)).toBe('3 boxes, one strip each.')
+    // a paper sheet has no copies
+    expect(labelCountWords('sheet', 3, false, 2)).toBe(labelCountWords('sheet', 3, false))
   })
 })

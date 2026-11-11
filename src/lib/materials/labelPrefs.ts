@@ -5,11 +5,12 @@
  * away. Keys in `localStorage`, nothing in the database; the browser itself remembers the printer and the paper for
  * the print window. The day says a print was asked for here, never that the printer answered: the app cannot see it.
  */
-import { TAPE_WIDTH_DEFAULT, isTapeWidth, type LabelFormat, type TapeWidthMm } from './tapeLabel'
+import { TAPE_WIDTH_DEFAULT, clampTapeCopies, isTapeWidth, type LabelFormat, type TapeWidthMm } from './tapeLabel'
 
 const FORMAT_KEY = 'pt.labels.format'
 const WIDTH_KEY = 'pt.labels.tapeWidthMm'
 const TAPE_DAY_KEY = 'pt.labels.tapePrintedYmd'
+const COPIES_KEY = 'pt.labels.tapeCopies'
 
 export function readLabelFormat(): LabelFormat {
   try {
@@ -57,6 +58,23 @@ export function readTapePrintedDay(): string | null {
 export function writeTapePrintedDay(ymd: string): void {
   try {
     window.localStorage.setItem(TAPE_DAY_KEY, ymd)
+  } catch {
+    /* the window works without the memory */
+  }
+}
+
+/** Strips of each box, as last set on this device (v2.6878); 1 until it is set. The press always names the total. */
+export function readTapeCopies(): number {
+  try {
+    return clampTapeCopies(window.localStorage.getItem(COPIES_KEY) ?? 1)
+  } catch {
+    return 1
+  }
+}
+
+export function writeTapeCopies(copies: number): void {
+  try {
+    window.localStorage.setItem(COPIES_KEY, String(clampTapeCopies(copies)))
   } catch {
     /* the window works without the memory */
   }
