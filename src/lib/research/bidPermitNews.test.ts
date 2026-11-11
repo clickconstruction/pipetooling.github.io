@@ -21,7 +21,7 @@ describe('bidPermitNews', () => {
   it('says an application was filed, with what it declares', () => {
     const { chips, news } = run([bid()], [permit()])
     expect(chips.get('b1')).toEqual({ words: 'Applied Oct 20', tone: 'amber' })
-    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: '512 · Mill Street Lofts, Building C', day: '2026-10-20', words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.' }])
+    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: '512 · Mill Street Lofts, Building C', day: '2026-10-20', markLost: false, words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.' }])
   })
 
   it('says a building permit was issued, with how long since the last contact on a sent bid', () => {
@@ -47,6 +47,20 @@ describe('bidPermitNews', () => {
     expect(news.map((n) => n.kind)).toEqual(['plumbing', 'issued'])
     expect(news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not yet won or lost.')
     expect(run([bid()], [permit(), plumbing]).news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not sent yet.')
+  })
+
+  it('offers Mark lost… on another plumber’s permit once the bid is sent, and on no other line', () => {
+    const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-08-30', project_name: null, contact: 'Lone Oak Plumbing' })
+    const issued = permit({ stage: 'issued', permit_type: 'Comm New Building Permit', issued_on: '2026-11-03' })
+    // A sent bid: the press. The same permit on a bid not sent yet: no press, since there is no offer out to lose.
+    expect(run([bid({ bid_date_sent: '2026-08-01' })], [permit(), plumbing]).news.map((n) => [n.kind, n.markLost])).toEqual([['plumbing', true]])
+    expect(run([bid()], [permit(), plumbing]).news.map((n) => [n.kind, n.markLost])).toEqual([['plumbing', false]])
+    // A building permit issued or applied for is the day to call, never a loss.
+    expect(run([bid({ bid_date_sent: '2026-09-30' })], [issued]).news.map((n) => [n.kind, n.markLost])).toEqual([['issued', false]])
+    expect(run([bid({ bid_date_sent: '2026-09-30' })], [permit()]).news.map((n) => [n.kind, n.markLost])).toEqual([['applied', false]])
+    // A plumbing permit under the building permit's own name is not another plumber: no plumbing line, no press.
+    const own = permit({ id: 'p3', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-11-01', project_name: null, contact: 'Dana Whitlow' })
+    expect(run([bid({ bid_date_sent: '2026-08-01' })], [permit(), own]).news.some((n) => n.markLost)).toBe(false)
   })
 
   it('does not take a plumbing permit under the building permit’s own name for another plumber', () => {

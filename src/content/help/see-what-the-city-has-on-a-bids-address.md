@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -87,6 +87,13 @@ Three things count as news.
 - A permit application was filed in the last 30 days.
 - A building permit was issued in the last 30 days.
 - A general plumbing permit lists a name other than the building permit's contact. This one comes first. It stays until you mark the bid won or lost.
+
+The plumbing line on a sent bid has a second press, {{button:blue|Mark lost…}}. Press it and the board's own window opens under the line.
+
+- For a bid with one GC, type what they said. Then press the reason.
+- A bid sent to more than one GC lists its GCs. Press the state beside a GC's name, then press **lost**.
+
+Nothing is saved until you pick. Press **Cancel** or **Close** to leave the bid as it was.
 
 The strip marks nothing for you. Read the line, then decide.
 
