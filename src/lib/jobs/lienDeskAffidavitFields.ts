@@ -38,6 +38,8 @@ export type LienDeskAffidavitFacts = {
   form?: LienAffidavitForm
   /** The job's recorded filings (`data.filingsByJob`): the short form names the months and the sends of the § 53.056 notices among them. */
   filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
+  /** The property record's homestead flag: the short form opens with the § 53.254(f) notice. */
+  homestead?: boolean
 }
 
 export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAffidavitFields {
@@ -66,5 +68,6 @@ export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAff
     issuer: f.issuer,
     form: f.form,
     filings: f.filings,
+    homestead: f.homestead,
   })
 }

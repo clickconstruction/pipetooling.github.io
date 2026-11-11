@@ -106,7 +106,7 @@ The affidavit is short. The affidavit says what Texas Property Code § 53.054 li
 
 The months and the notices come from the record. The paper names each month a recorded § 53.056 notice names. A month outside the job's own dates of work is left off. The paper gives the day each notice went to the owner and how the notice was sent. Read both lines before you print. A blank there means no notice to the owner is recorded on the job. Record it on the **§ 53.056 notice** tab, and the paper follows.
 
-Nothing prints above the title. The county under **STATE OF TEXAS** is blank. The notary writes in the county where you sign. The property's county is in the second statement.
+Nothing prints above the title, with one exception. On a property marked homestead, a bold notice comes first. It reads *NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.* Texas Property Code § 53.254 asks for that notice, as the app reads it. The county under **STATE OF TEXAS** is blank. The notary writes in the county where you sign. The property's county is in the second statement.
 
 An affidavit drafted before the short form keeps the earlier form. A grey line under the claim says so. The earlier form has ten statements, and it states the dates of the work. Those dates run from the first approved clock day through the last. To move that paper to the short form, open the job on the Lien desk. On the **Affidavits** tab, press **Redraw on the short form…** above the paper. The top of that list has one press for every ready affidavit at once. The affidavit goes back to **To draft**. The affidavit needs approval again before you file it.
 

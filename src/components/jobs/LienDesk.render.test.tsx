@@ -971,6 +971,20 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(document.querySelector('[data-lien-affidavit-form]')).toBeNull()
   })
 
+  it('on a homestead the paper opens with the § 53.254(f) notice, above the title, and the desk still holds it', async () => {
+    const d = data([], [], true, { homestead: true, property_kind: 'residential' })
+    const row = { ...affRow, homestead: true, property_kind: 'residential' }
+    d.affidavitRows = [row]
+    d.affidavits = buildLienAffidavitQueue([row], [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const top = paper().querySelector('[data-top-notice]') as HTMLElement
+    expect(top.textContent).toBe('NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.')
+    expect(paper().textContent!.indexOf('THIS IS NOT A LIEN')).toBeLessThan(paper().textContent!.indexOf('Lien Affidavit'))
+    expect(document.body.textContent).toContain('Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney')
+  })
+
   it('an affidavit approved before the short form keeps its ten paragraphs, and Redraw on the short form takes it back to a marked draft', async () => {
     redrawOneMock.mockClear()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([draft({ notice: {}, gcEmail: '' })])} initialKind="affidavit" />)
