@@ -167,7 +167,7 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
-import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, affidavitGateMissingWord, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -1986,6 +1986,8 @@ export default function LienDesk({
 
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
+    // Every name the record gives is asked (punch list #314): a city filed beside an attention line is still a city.
+    ownerIsPublic: lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany]),
     ownerMailingAddress: property.owner.mailingAddress,
     gcName: gc?.name ?? '',
     gcAddress: gc?.address ?? '',

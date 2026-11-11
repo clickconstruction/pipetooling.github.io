@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, withContractorAddress, type LienAffidavitRow } from './lienDeskAffidavits'
+import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
 
 const TODAY = '2026-09-14'
 
@@ -103,6 +103,44 @@ describe("the general contractor's address (punch list #305)", () => {
   it('the list row’s missing words name the address, and keep the other gates’ keys', () => {
     expect(affidavitGateMissingWord('contractor')).toBe("the GC's address")
     expect(affidavitGateMissingWord('owner')).toBe('owner')
+  })
+})
+
+describe('a public owner (punch list #314)', () => {
+  const SENTENCE = "Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney."
+
+  it('asks every name the record gives: a city filed beside an attention line is still a city', () => {
+    expect(lienOwnerIsPublic(['SAMPLE CITY OF', 'ATTN REAL ESTATE MANAGER'])).toBe(true)
+    expect(lienOwnerIsPublic(['', 'Marlow Independent School District'])).toBe(true)
+    expect(lienOwnerIsPublic(['Jordan Sample', 'Sample Holdings LLC'])).toBe(false)
+    expect(lienOwnerIsPublic([null, undefined, '  '])).toBe(false)
+  })
+
+  it('the owner slot has three answers: missing, public, the owner', () => {
+    expect(ownerGate({ hasOwner: false, publicOwner: false })).toEqual({ key: 'owner', ok: false, label: 'Owner of record with a mailing address' })
+    expect(ownerGate({ hasOwner: true, publicOwner: true })).toEqual({ key: 'public_owner', ok: false, label: SENTENCE })
+    expect(ownerGate({ hasOwner: true, publicOwner: false })).toEqual({ key: 'owner', ok: true, label: 'Owner of record with a mailing address' })
+    // A row nobody read the record for is not judged.
+    expect(ownerGate({ hasOwner: true, publicOwner: undefined }).ok).toBe(true)
+    expect(affidavitGates(row({ job_id: 'a' }))[0]).toMatchObject({ key: 'owner', ok: true })
+  })
+
+  it('the desk fills the fact from the job’s linked property record, and leaves a job with no record alone', () => {
+    const filled = withPublicOwner(
+      [row({ job_id: 'city' }), row({ job_id: 'house' }), row({ job_id: 'unlinked' }), row({ job_id: 'unread' })],
+      { city: 'p1', house: 'p2', unlinked: null, unread: 'p9' },
+      { p1: { owner_name: 'SAMPLE CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER' }, p2: { owner_name: 'Jordan Sample', owner_company: '' } },
+    )
+    expect(filled.map((r) => [r.job_id, r.owner_public])).toEqual([['city', true], ['house', false], ['unlinked', undefined], ['unread', undefined]])
+  })
+
+  it('a public owner holds a paper not yet sent, and the list row says what is missing', () => {
+    const q = buildLienAffidavitQueue([row({ job_id: 'city', owner_public: true }), row({ job_id: 'house', owner_public: false })], [], TODAY)
+    const of = (id: string) => q.entries.find((e) => e.jobId === id)!
+    expect([of('city').pile, of('city').ready]).toEqual(['needs_property', false])
+    expect(of('city').gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['public_owner'])
+    expect([of('house').pile, of('house').ready]).toEqual(['to_draft', true])
+    expect(affidavitGateMissingWord('public_owner')).toBe('a private owner')
   })
 })
 

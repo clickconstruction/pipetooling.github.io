@@ -1,6 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
-import { LIEN_DESK_SENT_DAYS, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
+import { LIEN_DESK_SENT_DAYS, PUBLIC_OWNER_DESK_SENTENCE, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
+import { ownerKind } from './ownerConfirm'
 import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienDesk'
 
 /**
@@ -37,6 +38,11 @@ export type LienAffidavitRow = {
    * not judge, as on the firm's portal.
    */
   has_contractor_address?: boolean | null
+  /**
+   * Whether the property record names a public body as the owner (punch list #314). Not from the RPC: the desk fills
+   * it from the property rows it reads (`withPublicOwner`). Absent, nobody read the record and the gate does not judge.
+   */
+  owner_public?: boolean | null
   desk_item_id: string | null
   desk_status: string | null
   /** 'job_created' when the job has no approved hours and last_month is its creation month (v2.3747). Absent on an older RPC. */
@@ -55,7 +61,7 @@ export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label
   { key: 'missed', label: 'Missed' },
 ]
 
-export type LienAffidavitGateKey = 'owner' | 'legal' | 'contractor' | 'notice' | 'homestead'
+export type LienAffidavitGateKey = 'owner' | 'public_owner' | 'legal' | 'contractor' | 'notice' | 'homestead'
 
 export type LienAffidavitGate = { key: LienAffidavitGateKey; ok: boolean; label: string }
 
@@ -72,9 +78,41 @@ export function contractorAddressGate(f: { isSub: boolean; hasAddress: boolean |
   return { key: 'contractor', ok: true, label: "The general contractor's last known address" }
 }
 
-/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address. */
+/**
+ * Whether any name the record gives for the owner reads as a public body: a city, a county, a school district, the
+ * State (punch list #314). Every name is asked, not the one the paper would print: the roll sometimes files the body in
+ * one box and an attention line in the other, and the first signed batch carried a paper that named the attention line.
+ */
+export function lienOwnerIsPublic(names: ReadonlyArray<string | null | undefined>): boolean {
+  return names.some((n) => (n ?? '').trim() !== '' && ownerKind((n ?? '').trim()) === 'public')
+}
+
+/**
+ * The owner slot of the gate list, one line with three answers: no owner of record with a mailing address (`owner`),
+ * a public owner (`public_owner`: a mechanic's lien does not attach to public property, as the notice's own gate
+ * says), or the owner. The key says which hold it is, so the *Fill in the record* door stays the missing owner's.
+ */
+export function ownerGate(f: { hasOwner: boolean; publicOwner: boolean | null | undefined }): LienAffidavitGate {
+  if (f.publicOwner === true) return { key: 'public_owner', ok: false, label: PUBLIC_OWNER_DESK_SENTENCE }
+  return { key: 'owner', ok: f.hasOwner, label: 'Owner of record with a mailing address' }
+}
+
+/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, and a public owner's, which is a private owner. */
 export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
-  return key === 'contractor' ? "the GC's address" : key
+  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key
+}
+
+/**
+ * A row with the public-owner fact filled from the property rows the desk read: the job's linked record, by the link
+ * the RPC joins on (`jobs_ledger.customer_address_id`). A job with no linked record, or whose record was not read, is
+ * left as it was.
+ */
+export function withPublicOwner<R extends Pick<LienAffidavitRow, 'job_id'>>(rows: ReadonlyArray<R>, addressIdByJob: Readonly<Record<string, string | null | undefined>>, addressesById: Readonly<Record<string, { owner_name?: string | null; owner_company?: string | null } | undefined>>): Array<R & { owner_public?: boolean | null }> {
+  return rows.map((r) => {
+    const addressId = addressIdByJob[r.job_id]
+    const record = addressId ? addressesById[addressId] : undefined
+    return record ? { ...r, owner_public: lienOwnerIsPublic([record.owner_name, record.owner_company]) } : { ...r }
+  })
 }
 
 /** A row with the GC's address fact filled from the GC rows the desk read. A job with no GC is left as it was. */
@@ -111,9 +149,9 @@ export type LienAffidavitQueue = {
 
 const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
 
-export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address'>): LienAffidavitGate[] {
+export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address' | 'owner_public'>): LienAffidavitGate[] {
   return [
-    { key: 'owner', ok: r.has_owner, label: 'Owner of record with a mailing address' },
+    ownerGate({ hasOwner: r.has_owner, publicOwner: r.owner_public }),
     { key: 'legal', ok: r.has_legal, label: 'County + legal description on the property record' },
     contractorAddressGate({ isSub: r.is_sub, hasAddress: r.has_contractor_address }),
     { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job — a late one counts while this window is open' : 'No monthly notice required (contracted with the owner)' },
