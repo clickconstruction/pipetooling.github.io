@@ -17,7 +17,7 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
+next: The owner's move of the three bid folders into the shared Drive (call 4, his own hand in Drive), then a bid photo on a plumbing bid as its test. His word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 5, the fixed column, needs no further word and can start.
 size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask; left: PRs 4 to 9 (S · M · M · S · S · S)
 blocker: None for PR 5. Call 6 gates PR 4 and call 11 gates PR 6.
 opinion: build — PR 5 next, so every link has its place in the column; then the job's pair
@@ -250,10 +250,31 @@ answered.
    in the shared Drive, apart from the estimator's folder, which works for every bid today and
    leaves a bid with two folders.
    **Answered 2026-11-10: the bid's project folder.**
-4. **The hand-made bid folders in a personal Drive.** This is card #240's call 4, and it now
-   gates this card's Drive leg for most plumbing bids. Until the folders move into the shared
-   Drive, a bid photo files through `DRIVE_IMPERSONATE_USER` where that is set, or waits in the
-   app with its reason. My pick: move them, once the estimators are members of the shared Drive.
+4. **The hand-made bid folders in a personal Drive.** This is card #240's call 4, and it gates this
+   card's Drive leg for most plumbing bids. `DRIVE_IMPERSONATE_USER` is not set on prod, so until the
+   folders move a photo on such a bid waits in the app with its reason. My pick: move them.
+   **Answered 2026-11-10: move the folders.** The move is the owner's own hand in Drive. No session can
+   make it: the Drive connector an agent holds is another account, which cannot add to the shared Drive.
+   - **What moves** (read in Drive 2026-11-10, all three owned by the owner's company account, in its My
+     Drive): *Bids-Plumbing (Wendi)*, *Bids-Electrical (Bryan & Wendi)* and *Bids-HVAC (Ryan)*, the three
+     folders the bid form's Project Folder label links to.
+   - **Where to**: the top of the shared Drive **PipeTooling Jobs**, beside its **Jobs** folder and not
+     inside it. Jobs holds one folder a customer. A second shared Drive of nearly the same name, marked
+     *(old, Douglas Mining)*, is not the one.
+   - **Nothing in the app changes.** Drive keeps a folder's id through a move, so every bid's Project
+     Folder link and the form's three links keep working.
+   - **Who can open them** before the move, to check after it: eight people edit the plumbing folder and
+     two addresses read it; five people edit the electrical folder; six edit the HVAC folder; the app's
+     service account edits all three. Drive is expected to carry a folder's own sharing with it into a
+     shared Drive. Check with one estimator after the move. Should it not carry, share the three folders
+     again. Making every estimator a member of the whole shared Drive would open every job's folder to
+     them, which is more than this needs.
+   - **What the app does next**: a bid photo that was waiting files within the hour. A bid in these folders
+     that becomes a job has its folder moved under the customer and named as a job, which the folder maker
+     could not do while the folder was outside the shared Drive. Up to fifteen open jobs made from a bid
+     have a folder today and may be placed the same way by the ten-minute sweep.
+   - **Not walked**: the move itself, and a held photo filing after it. The first bid photo on a plumbing
+     bid after the move is the test.
 5. **When a bid is won, what happens to its photos?** My pick: nothing moves. The folder is the
    job's by then, and the photos are in its Team only › Photos. A later PR shows them in the job's
    photo window as *from the bid*. Customer Pictures stays the job's own.
@@ -446,7 +467,8 @@ What it did not fix, and is the owner's:
   project folder sits in a personal Drive keeps its photos in the app: they show, they count, and they do not
   reach Drive until the folder moves into the shared Drive or the secret is set (`docs/DRIVE_INTAKE_SETUP.md`).
   Most hand-made plumbing bid folders are such folders (card #240, call 4). This state has not been walked live:
-  no ZZ Test folder sits in a personal Drive.
+  no ZZ Test folder sits in a personal Drive. **The owner chose the move the same day**; the steps are under
+  call 4.
 - **A grey camera on 84 of 85 rows is a lot of grey.** It is what was asked, and it reads as a to-do on every bid.
   Once the fixed column lands with grey for every missing link (PR 5) the owner may want the grey fainter.
 
