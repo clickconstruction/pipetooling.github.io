@@ -260,6 +260,7 @@ when_to_read:
    - [model-config](#model-config)
    - [report-draft](#report-draft)
    - [bill-read](#bill-read)
+   - [bill-lines-sweep](#bill-lines-sweep)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -6166,7 +6167,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/bill-read`
 
-**Required Role**: the office (dev, master_technician, assistant, controller), a real account, not `read_only`, since a fill costs money. Anyone else gets 403. The switch `app_settings.bill_read_on_v1` must read `'true'` (409 `off` otherwise), except for a dev, who may try the function while it is off. The function stops at `BILL_READ_DAILY_CAP` (150) fills in a rolling day (429 `capped`). A dev may name `model: 'claude-haiku-5-5'` for the trial on the made-up set; everyone else fills with Sonnet whatever they send.
+**Required Role**: the office (dev, master_technician, assistant, controller), a real account, not `read_only`, since a fill costs money. Anyone else gets 403. The switch `app_settings.bill_read_on_v1` must read `'true'` (409 `off` otherwise), except for a dev, who may try the function while it is off. The function stops at `BILL_READ_DAILY_CAP` (150) fills of its own in a rolling day (429 `capped`; since v2.6882 it counts `supply_bill_reads` rows with `source = 'form'`, so the sweep's reads never use up the office's). A dev may name `model: 'claude-haiku-5-5'` for the trial on the made-up set; everyone else fills with Sonnet whatever they send.
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the model key from Vault (`model_secret_get('anthropic')`, the Model keys card) else `ANTHROPIC_API_KEY`, as `report-draft` reads it.
 
@@ -6187,6 +6188,36 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 **The made-up set**: `src/test/fixtures/bills/` (five PDFs drawn by `scripts/bills-fixtures.mjs`, each beside the answer the model should give). `node scripts/bill-read-compare.mjs --jwt <access token> --house <a ZZ test house's id> [--model claude-haiku-5-5]` sends them to the deployed function and scores the answers.
 
 **Deploy**: `bash scripts/deploy-functions.sh bill-read` after migration `20261030010000_supply_bill_read.sql` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
+
+### bill-lines-sweep
+
+**Purpose** (punch list #298 PR 2, v2.6882): the lines of the supply house bills already on file, read from the PDF each row links and kept as rows. The office types a bill and pastes a Drive link, so no fill ever saw its lines; this function reads them with no press, and the same call is the backfill of the bills recorded before it. It reads every bill's row, which have a paper and the holds, and plans (`sweepPlan`, `_shared/billSweep.ts`): the files whose rows have no paper, newest bill first, one file once however many rows link it. For each file it claims it (a `reading` hold on the file's first row, so two runs never read one file), asks Drive what it is, downloads it as the service account (`driveFileBytes`; the bills' folder is shared with the account as a viewer and is outside the jobs Shared Drive, so the file index never lists it and the sweep opens each bill by the id in its link), reads the PDF's own text layer (`textFromBytes`, a short budget) and asks Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort `medium`, Anthropic's default fallback on a refusal) for **every paper in the file** held to `PAPERS_SCHEMA`: the bill reader's own fields per paper, with the pages it covers. A file over three pages is split with pdf-lib and read three pages at a time, the ranges side by side, and a paper that runs across two ranges is joined (`joinPapers`); a range whose answer was cut is read again a page at a time; one such file a run, and none past 60 pages. Each row takes its paper by the invoice number, exactly, both folded to letters and digits (`matchRows`); the paper is checked (`checkPaper`: the four sums against the row's amount, and every part code found in the PDF's text where there is a text layer) and written with its lines (`paperRowOf`; `read_by` is `sweep:<model>`, `text_layer` says whether the code check ran). A paper no row took (a second bill in the file, a ship ticket) is kept with no bill and never counted. Nothing is written for a file whose read did not come back whole.
+
+**The holds** (`supply_bill_holds`, one row per bill with no paper after a try): `cannot_open` (Drive answered 404 or 403), `link` (the link is no Drive file; held with no read), `not_readable` (not a PDF or a picture), `too_big` (over 10 MB or 60 pages), `number_not_in_file` (with the numbers the file does hold), `not_a_bill` (the paper with the number is a ship ticket or a quote), `statement` (a statement lists the bill and has no lines of its own), `refused`, `cut`, `failed`. `holdDue` says which come back by themselves: a failed read an hour on, six times; a file the app could not open, a refusal and a cut a day on, four times; the rest wait for a person, and a row whose link or number a person changed is due again at once. `HOLD_WORDS` holds each reason's sentence and its door for the backfill's screen (PR 3).
+
+**Endpoint**: `POST /functions/v1/bill-lines-sweep`
+
+**Required Role**: the cron's secret (`X-Cron-Secret`), or the bearer of a dev (a real account, not `read_only`, not archived). Anyone else gets 401 or 403. The cron (migration [`20261110230000`](./migrations/20261110230000_bill_lines_sweep.md), every ten minutes at :06) runs only while `app_settings.bill_lines_sweep_on_v1` reads `'true'` (409 `off` otherwise; seeded on, the card's call 1); a dev may run it off.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `GOOGLE_SERVICE_ACCOUNT_JSON` (the same service account as `drive-link`); the model key from Vault (`model_secret_get('anthropic')`) else `ANTHROPIC_API_KEY`, as `bill-read` reads it.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks its own two doors.
+
+#### Request body
+
+`{ sweep: { limit? } }`: read up to `limit` files (3; at most 12), four side by side, starting none past 90 seconds. `{ probe: { n? } }`: ask Drive about `n` (20; at most 40) linked files spread from the newest bill to the oldest, and read nothing. `{ status: {} }`: the counts and the line, nothing read and no Drive call.
+
+#### Response
+
+200 `{ ok: true, ran: true, run: { files, kept, addUp, unowned, held, reads, cents, capped }, files: [{ fileId, kept, addUp, unowned, held, why? }], status, ms, line }`. `status` is `{ bills, noPdf, read, held: { <why>: n }, heldTotal, ready, readyFiles }` and `line` the run in words with where the set stands (*Read 3 files: 4 bills' lines kept (3 add up), 1 held, $0.04. Lines read on 216 of 539 bills · 1 held · 303 to read · 19 with no PDF*). A probe answers `{ ok: true, ran: false, probe: { tried, opened, refused: [{ invoiceId, status }] }, status, line }`; a status call `{ ok: true, ran: false, status, line }`. Refusals: 401 `signIn`, 403 `notAllowed`, 405, 409 `off` or `noKey`, 503 without the Drive secret, 500 `failed` with `why`.
+
+**The ledger and the cap**: every model read, whole or not, is one `supply_bill_reads` row with `source = 'sweep'` (`file_path` is `drive:<file id>`, the answer is the papers as read), which the sweep's own cap counts: `BILL_SWEEP_DAILY_CAP`, 600 reads in a rolling day, apart from the form's 150. Past it a run reads nothing and says so (`capped`).
+
+**Cost**: a one-page bill is one read, about a cent at Sonnet 5.5's $2 and $10 a million tokens; a stack of bills scanned into one file is one read for every three pages. `run.cents` is the run's own figure.
+
+**Tests**: the kernel in `src/lib/materials/lines/billSweep.test.ts` (the plan, the holds, the schema, the ranges and the join, the match, the rows written, the words); the migration in `npm run test:pg:bill-lines-sweep`.
+
+**Deploy**: `bash scripts/deploy-functions.sh bill-lines-sweep bill-read` after migration `20261110230000_bill_lines_sweep.sql` is pushed (`bill-read` for the cap that now counts its own rows). The dev-mcp catalog names it, so `check_edge_boot` probes it from `dev-mcp`'s next redeploy.
 
 ### messages-nudge-dispatch
 
