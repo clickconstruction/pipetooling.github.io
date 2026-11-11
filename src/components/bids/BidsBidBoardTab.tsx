@@ -64,6 +64,7 @@ import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountSt
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import { BidBoardPermitNews } from './BidBoardPermitNews'
+import { BidBoardNewsMarkLost } from './BidBoardNewsMarkLost'
 import { PermitChip } from './PermitChip'
 import { useBidPermitNews } from '../../hooks/useBidPermitNews'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
@@ -1924,6 +1925,10 @@ export function BidsBidBoardTab({
             onOpenBid={(bidId) => {
               const bid = bids.find((b) => b.id === bidId)
               if (bid) onEditBid(bid)
+            }}
+            renderMarkLost={(bidId, close) => {
+              const bid = bids.find((b) => b.id === bidId)
+              return bid ? <BidBoardNewsMarkLost bid={bid} bidLabel={bidDisplayName(bid)} packets={gcPacketsByBid[bid.id]} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} onChanged={onReloadBids} onClose={close} /> : null
             }}
           />
           <nav

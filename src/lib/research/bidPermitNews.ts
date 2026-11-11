@@ -24,7 +24,8 @@ export type NewsBid = {
 }
 
 export type NewsKind = 'plumbing' | 'issued' | 'applied'
-export type NewsItem = { bidId: string; kind: NewsKind; title: string; words: string; day: string }
+/** `markLost`: the line offers Mark lost…, a sent bid with a general plumbing permit that lists another name. The press opens the board's outcome and the news marks nothing. */
+export type NewsItem = { bidId: string; kind: NewsKind; title: string; words: string; day: string; markLost: boolean }
 
 /** How long an issued permit or a new application stays news. A plumbing permit under another name stays while the bid is undecided. */
 export const NEWS_DAYS = 30
@@ -66,6 +67,7 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
         kind: 'plumbing',
         title,
         day,
+        markLost: sent,
         words: `A general plumbing permit ${general.stage === 'applied' ? 'was applied for' : 'was issued'} on this address${day ? ` ${shortDay(day)}` : ''}. It lists ${listing.name}. ${sent ? 'The bid is not yet won or lost.' : 'The bid is not sent yet.'}`,
       })
       continue
@@ -77,10 +79,10 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
     if (age == null || age < 0 || age > NEWS_DAYS) continue
     if (building.stage === 'issued') {
       const contact = sent ? agoWords(daysBetween(bid.last_contact ? bid.last_contact.slice(0, 10) : null, todayYmd)) : null
-      news.push({ bidId: bid.id, kind: 'issued', title, day, words: `The building permit on this address was issued ${shortDay(day)}.${contact ? ` Last contact ${contact}.` : sent ? '' : ' The bid is not sent yet.'}` })
+      news.push({ bidId: bid.id, kind: 'issued', title, day, markLost: false, words: `The building permit on this address was issued ${shortDay(day)}.${contact ? ` Last contact ${contact}.` : sent ? '' : ' The bid is not sent yet.'}` })
     } else {
       const facts = [shortMoney(building.declared_value) ? `${shortMoney(building.declared_value)} declared` : null, sqFtWords(building.area_sf)].filter(Boolean).join(', ')
-      news.push({ bidId: bid.id, kind: 'applied', title, day, words: `A permit application was filed on this address ${shortDay(day)}${facts ? `: ${facts}` : ''}.` })
+      news.push({ bidId: bid.id, kind: 'applied', title, day, markLost: false, words: `A permit application was filed on this address ${shortDay(day)}${facts ? `: ${facts}` : ''}.` })
     }
   }
   news.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.day.localeCompare(a.day) || a.title.localeCompare(b.title))
@@ -89,3 +91,6 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
 
 /** "Permit news on your bids". The count sits beside it. */
 export const NEWS_TITLE = 'Permit news on your bids'
+
+/** The second press on a plumbing line of a sent bid. */
+export const MARK_LOST_LABEL = 'Mark lost…'
