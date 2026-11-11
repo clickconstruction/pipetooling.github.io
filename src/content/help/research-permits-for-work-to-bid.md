@@ -21,6 +21,8 @@ Every city's Property line reads its own county for the owner of record. Austin 
 
 A new building often has no parcel under its street address yet. The app then reads the parcel at the permit's point, and the card says so.
 
+Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
+
 The cities do not all publish the same facts.
 
 | City | Who pulled it | Declared value | Shows applications |
