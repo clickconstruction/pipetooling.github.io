@@ -44,7 +44,8 @@ function num(n: number): number {
 }
 
 function colourOf(name: KitColour, layout?: KitLayout): string {
-  return name === 'orange' ? (layout?.orange ?? BRAND.orange) : BRAND.white
+  if (name === 'orange') return layout?.orange ?? BRAND.orange
+  return name === 'white' ? BRAND.white : name
 }
 
 /** A per-letter guess at a line's width, for when no real measure is on hand. */
@@ -111,13 +112,13 @@ function pipe(p: KitPipe, layout: KitLayout): string {
   return out
 }
 
-function logo(at: { x: number; y: number; scale: number }, opts: KitDrawOptions): string {
+function logo(at: NonNullable<KitLayout['logo']>, opts: KitDrawOptions): string {
   const m = BRAND.mark
   let out = `<g transform="translate(${at.x} ${at.y}) scale(${at.scale})">`
   const href = opts.assets?.mark
   if (href) out += `<image href="${esc(href)}" width="${m.width}" height="${m.height}" preserveAspectRatio="none"/>`
   for (const w of BRAND.wordmark) {
-    out += textLine(w.text, w.x, w.y, { weight: w.weight, size: w.size, tracking: w.tracking, colour: 'white' }, undefined, opts)
+    out += textLine(w.text, w.x, w.y, { weight: w.weight, size: w.size, tracking: w.tracking, colour: at.ink ?? 'white' }, undefined, opts)
   }
   return out + '</g>'
 }
@@ -199,7 +200,8 @@ function words(block: KitWords, person: KitPerson, layout: KitLayout, opts: KitD
   for (const q of placeRows(block, person)) {
     if (q.row.icon && block.icons) {
       const ic = block.icons
-      out += icon(q.row.icon, ic.x, q.y - (q.row.rise ?? ic.rise), ic.size, colourOf('orange', layout))
+      // the envelope's flap is cut out in the ground's own colour
+      out += icon(q.row.icon, ic.x, q.y - (q.row.rise ?? ic.rise), ic.size, colourOf('orange', layout)).replace(/#050708/g, layout.ground)
       out += textLine(q.text, ic.textX + (q.row.dx ?? 0), q.y, q.row, layout, opts)
     } else {
       out += textLine(q.text, q.row.x ?? block.x, q.y, q.row, layout, opts)

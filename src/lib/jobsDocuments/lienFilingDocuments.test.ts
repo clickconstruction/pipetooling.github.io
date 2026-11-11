@@ -134,7 +134,8 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     expect(text(short)).toBe(
       [
         "MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT",
-        'STATE OF TEXAS\nCOUNTY OF ___________',
+        // The top blank says which county it wants (punch list #314); the notary's own blank below stays plain.
+        'STATE OF TEXAS\nCOUNTY OF ___________ (where signed)',
         'BEFORE ME, the undersigned authority, on this day personally appeared Malachi Whites, who being by me duly sworn, upon oath states the following:',
         '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
         '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
@@ -200,6 +201,9 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     const blocks = buildLienAffidavitBlocks(short)
     expect(filingDocHtml(blocks)).toContain('Printed name: ______________________________')
     expect(filingDocHtml(blocks)).not.toContain('My commission expires')
+    // The county blank's note sits on the county's own line, in the paper's HTML and once only: the notary's blank has none.
+    expect(filingDocHtml(blocks)).toContain('<strong>COUNTY OF ___________</strong> <span data-county-note style="font-size:0.85em">(where signed)</span>')
+    expect(filingDocHtml(blocks).match(/where signed/g)).toHaveLength(1)
     const last = blocks.length - 1
     expect(filingKeepTogetherRuns(blocks)).toEqual([[last - 2, last]])
   })

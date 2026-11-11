@@ -38,6 +38,7 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
+import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
@@ -218,12 +219,12 @@ export const WRITE_VERBS = {
   // apply needs confirm_no_undo: true beside the hash.
   plan_job_combine: { rpc: null, step: 'plan' },
   apply_job_combine: { rpc: null, step: 'apply' },
-  // v2.6944 / 0.67.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
+  // v2.6944 / 0.70.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
   // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
   // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
   plan_sub_labor: { rpc: null, step: 'plan' },
   apply_sub_labor: { rpc: null, step: 'apply' },
-  // v2.6944 / 0.67.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
+  // v2.6944 / 0.70.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
   // or removed through the payment's own remove_labor_job_payment, which keeps a trace; rpc is null, the dry run the
   // server's read of the sheet, its payments and the bank row with every job it is already allocated to.
   plan_sub_labor_payment: { rpc: null, step: 'plan' },
@@ -425,7 +426,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown } | { op: prepend_section, heading, markdown } | { op: replace_text, heading, find, replace }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -436,6 +437,9 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const ops = Array.isArray(doc.ops) ? doc.ops : null
     if (hasMarkdown && ops) return { ok: false, error: shape }
     if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
+    // v2.6949: a small edit is worked out by the server before it gets here (devMcpDocEdits.ts) and arrives as markdown;
+    // one still in the ops means its doc had no usable target, and the database knows neither op.
+    if (ops && hasSmallEdits(ops)) return { ok: false, error: shape }
     const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
     const archive = typeof doc.archive === 'boolean' ? doc.archive : null
     // v2.6713 (punch list #287): the record the document transcribes — a uuid, or null to untie; a named document only.
@@ -456,7 +460,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (docId) p.doc_id = docId
     if (title) p.title = title
     if (hasMarkdown) p.markdown = doc.markdown
-    if (ops) p.ops = ops
+    if (ops) p.ops = sectionOpsForRpc(ops)
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
     if (evidenceSet) p.evidence_id = evidenceId
@@ -471,14 +475,14 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
     const narrative = obj(input.narrative)
     const matterId = narrative && typeof narrative.matter_id === 'string' ? narrative.matter_id.trim() : ''
-    const shape = `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown (the whole text, which replaces what is there; '' clears it) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20, one of the two; v2.6623), expect_updated_at? (the narrative_updated_at you read; refused when the narrative was saved since) }.`
+    const shape = `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown (the whole text, which replaces what is there; '' clears it) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown } | { op: prepend_section, heading, markdown } | { op: replace_text, heading, find, replace }], at most 20, one of the two; v2.6623), expect_updated_at? (the narrative_updated_at you read; refused when the narrative was saved since) }.`
     if (!narrative || !UUID_RE.test(matterId)) return { ok: false, error: shape }
     const hasMarkdown = typeof narrative.markdown === 'string'
     const ops = Array.isArray(narrative.ops) ? narrative.ops : null
-    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20))) return { ok: false, error: shape }
+    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20 || hasSmallEdits(ops)))) return { ok: false, error: shape }
     const p: Json = { matter_id: matterId }
     if (hasMarkdown) p.markdown = narrative.markdown
-    else p.ops = ops
+    else p.ops = sectionOpsForRpc(ops ?? [])
     if (typeof narrative.expect_updated_at === 'string' && narrative.expect_updated_at.trim()) p.expect_updated_at = narrative.expect_updated_at.trim()
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
