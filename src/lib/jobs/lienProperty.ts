@@ -104,9 +104,16 @@ export function resolveLienProperty(
 
 /** Company-first for building owners, person-first otherwise. '' when no owner. */
 export function lienPropertyOwnerDisplayName(owner: LienPropertyOwner): string {
-  return owner.ownerMode === 'building_owner'
-    ? owner.ownerCompany || owner.ownerName
-    : owner.ownerName || owner.ownerCompany
+  // An attention line is never the owner (punch list #314): a roll that reads "CITY OF … / ATTN REAL ESTATE MANAGER" filed the
+  // second line as the company, and a building owner's paper then named the attention line.
+  const company = lienAttentionLine(owner.ownerCompany) ? '' : owner.ownerCompany
+  const name = lienAttentionLine(owner.ownerName) ? '' : owner.ownerName
+  return owner.ownerMode === 'building_owner' ? company || name : name || company
+}
+
+/** A line that addresses mail inside an owner, not an owner: *ATTN …*, *Attention: …*, *c/o …*, *% …*. */
+export function lienAttentionLine(text: string | null | undefined): boolean {
+  return /^\s*(attn\b|attention\b|c\/o\b|%)/i.test(text ?? '')
 }
 
 /**
