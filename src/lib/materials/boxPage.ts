@@ -5,11 +5,13 @@
  */
 export {
   BOX_PAGE_FIND_MAX,
+  BOX_PAGE_GONE_DAYS,
   BOX_PAGE_LOCKED_WORDS,
   boxPageCode,
   boxPageCodeWords,
   boxPageFind,
   boxPageFindWords,
+  boxPageGoneLines,
   boxPageKind,
   boxPageLines,
   boxPageNoun,
@@ -26,7 +28,7 @@ export {
   type BoxPagePhoto,
   type BoxPageRefusal,
 } from '../../../supabase/functions/_shared/boxPage'
-import { parseBoxPageFindResponse, parseBoxPageResponse, type BoxPageFindPayload, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
+import { boxPageCodeWords, boxPageKind, boxPageNoun, parseBoxPageFindResponse, parseBoxPageResponse, type BoxPageFindPayload, type BoxPageKind, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
 import { portalFailureCause, type PortalFailureCause } from '../portal/portalFailure'
 import { STALE_COUNT_DAYS } from './onSite'
 
@@ -35,7 +37,8 @@ export type BoxPageView =
   | { kind: 'loading' }
   | { kind: 'box'; payload: BoxPagePayload }
   | { kind: 'not_found' }
-  | { kind: 'retired'; retiredOn: string | null }
+  /** A retired box: the day it left, and since v2.6874 its stencil, its kind and the office's number when the function answers them. */
+  | { kind: 'retired'; retiredOn: string | null; stencil: string | null; boxKind: BoxPageKind | null; phone: string | null }
   | { kind: 'locked' }
   /** The box did not open: its class or the function's own known sentence, never other text. */
   | { kind: 'error'; failure: PortalFailureCause }
@@ -43,8 +46,10 @@ export type BoxPageView =
 export function boxPageView(status: number, body: unknown): BoxPageView {
   if (status === 404) return { kind: 'not_found' }
   if (status === 410) {
-    const r = body && typeof body === 'object' ? (body as { retiredOn?: unknown }).retiredOn : null
-    return { kind: 'retired', retiredOn: typeof r === 'string' && r ? r : null }
+    const b = body && typeof body === 'object' ? (body as { retiredOn?: unknown; stencil?: unknown; kind?: unknown; phone?: unknown }) : {}
+    const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+    const stencil = text(b.stencil)
+    return { kind: 'retired', retiredOn: text(b.retiredOn), stencil, boxKind: stencil && typeof b.kind === 'string' ? boxPageKind(b.kind) : null, phone: text(b.phone) }
   }
   if (status === 429 && body && typeof body === 'object' && (body as { code?: unknown }).code === 'locked') return { kind: 'locked' }
   const payload = parseBoxPageResponse(body)
@@ -86,6 +91,38 @@ export function boxPageCountVerdict(lastCountedOn: string | null, todayYmd: stri
 /** *1 part* / *6 parts*: how many lines the box holds, beside the list's heading. Nothing for none. */
 export function boxPagePartsWords(count: number): string {
   return count <= 0 ? '' : count === 1 ? '1 part' : `${count} parts`
+}
+
+/** *2 could not be found since the count*: the Can't find presses on a line since its last count (v2.6874). */
+export function boxPageCannotFindWords(count: number): string {
+  return `${count} could not be found since the count`
+}
+
+/** A US number as a phone dials it, `+15125550142`; null when it is not ten digits, or eleven starting with 1. */
+export function boxPageDialNumber(phone: string | null | undefined): string | null {
+  const d = (phone ?? '').replace(/\D/g, '')
+  if (d.length === 10) return `+1${d}`
+  if (d.length === 11 && d.startsWith('1')) return `+${d}`
+  return null
+}
+
+/** What the text to the office opens with: the box as its label names it, then a colon for the person's own words. */
+export function boxPageTextWords(kind: BoxPageKind, stencil: string, code: string): string {
+  return `${boxPageNoun(kind)} ${stencil}, ${boxPageCodeWords(code)}: `
+}
+
+/**
+ * *Text the office* (v2.6874): a link that opens the phone's own Messages with the number and the box's name filled in.
+ * It writes nothing to the app: the page stays read-only signed out. `?&body=` is the form both iPhone and Android take.
+ */
+export function boxPageTextHref(phone: string | null | undefined, words: string): string | null {
+  const n = boxPageDialNumber(phone)
+  return n ? `sms:${n}?&body=${encodeURIComponent(words)}` : null
+}
+
+export function boxPageCallHref(phone: string | null | undefined): string | null {
+  const n = boxPageDialNumber(phone)
+  return n ? `tel:${n}` : null
 }
 
 /** The Scan a label page, where a typed code opens a box. */

@@ -151,6 +151,46 @@ describe('BoxPublicPage', () => {
     expect(screen.queryByTestId('box-page-find')).toBeNull()
   })
 
+  it('a line emptied since the count reads None left, a Can\'t find shows on its line, and Text the office is a link (v2.6874)', async () => {
+    answer(200, {
+      ...box,
+      box: { ...box.box, lines: [{ partName: '3/4" ball valves', manufacturer: 'Apollo', onHand: 10, cannotFind: 2 }], gone: [{ partName: '1" copper tees', manufacturer: 'Mueller', onHand: 0 }] },
+      office: { phone: '(512) 555-0142' },
+    })
+    mount()
+    expect((await screen.findByTestId('box-page-cannot-find')).textContent).toBe('2 could not be found since the count')
+    expect(screen.getByTestId('box-page-gone').textContent).toBe('1" copper teesMuellerNone left')
+    // The part count is what is on hand, and the line at zero lists after it.
+    expect(screen.getByTestId('box-page-parts').textContent).toBe('1 part')
+    expect(screen.getAllByRole('row').map((r) => r.getAttribute('data-testid'))).toEqual(['box-page-line', 'box-page-gone'])
+    const text = screen.getByTestId('box-page-text-office')
+    expect(text.textContent).toBe('Text the office about Cage B3')
+    expect(text.getAttribute('href')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
+    expect(screen.getByTestId('box-page-call-office').getAttribute('href')).toBe('tel:+15125550142')
+  })
+
+  it('a cage with only lines at zero lists them, not the empty words', async () => {
+    answer(200, { ...box, box: { ...box.box, lines: [], gone: [{ partName: '1" copper tees', manufacturer: null, onHand: 0 }], photo: null } })
+    mount()
+    expect((await screen.findByTestId('box-page-gone')).textContent).toContain('None left')
+    expect(screen.queryByTestId('box-page-empty')).toBeNull()
+    expect(screen.queryByTestId('box-page-parts')).toBeNull()
+  })
+
+  it('an answer with no office number draws no Text the office', async () => {
+    answer(200, box)
+    mount()
+    await screen.findByTestId('box-page-title')
+    expect(screen.queryByTestId('box-page-office')).toBeNull()
+  })
+
+  it('a retired label names its box and offers the text when the function answers them', async () => {
+    answer(410, { error: 'retired', retiredOn: '2026-11-08', stencil: 'B3', kind: 'cage', phone: '(512) 555-0142' })
+    mount()
+    expect((await screen.findByTestId('box-page-retired')).textContent).toContain('Cage B3 was retired')
+    expect(screen.getByTestId('box-page-text-office').getAttribute('href')).toBe('sms:+15125550142?&body=Cage%20B3%2C%204F2A-9C18%3A%20')
+  })
+
   it('a lost signal offers Try again', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
     mount()
