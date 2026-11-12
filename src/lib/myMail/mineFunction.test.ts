@@ -59,6 +59,19 @@ import {
   myMailTagEventWords,
   tagAllFiled,
   myMailTaggedBy,
+  MY_MAIL_TAGGED_PAGE,
+  inAskedBoxes,
+  taggedNextToken,
+  taggedOffset,
+  LABEL_CLEANUP_PER_RUN,
+  LABEL_CLEANUP_TRIES,
+  labelCleanupCounts,
+  labelCleanupDue,
+  labelCleanupMarked,
+  labelCleanupReason,
+  oldLabelId,
+  onWorkspace,
+  readLabelCleanup,
   myMailTagRecord,
   myMailTeam,
   neverRead,
@@ -174,12 +187,28 @@ describe('parseMyMailRequest: what the tab may ask', () => {
 describe('myMailQuery: the Gmail search a page reads', () => {
   const FENCE = '-in:drafts -in:spam -in:trash -in:chats'
 
-  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats; Tagged reads the tag’s label, and To tag reads past it', () => {
-    // A label left behind (an untag that could not take it off, a job deleted with its tag) never hides a mail from
-    // To tag: `viewRows` hides a tagged conversation by the database's own record.
+  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats, and no view names a label of the app’s', () => {
+    // A tag puts no label on a mail (v2.7035): what is tagged is the database's own record alone, in every view.
     expect(myMailQuery({ view: 'toTag' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
     expect(myMailQuery({ view: 'all' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
-    expect(myMailQuery({ view: 'tagged' })).toBe(`(in:inbox OR in:sent) ${FENCE} label:"Tagged in ClickTooling"`)
+    expect(myMailQuery({ view: 'tagged', q: 'water heater' })).toBe(`(in:inbox OR in:sent) ${FENCE} (water heater)`)
+    for (const view of ['toTag', 'tagged', 'all'] as const) expect(myMailQuery({ view })).not.toContain('ClickTooling')
+  })
+
+  it('pages Tagged by a count of our own, a page of conversations at a time', () => {
+    expect([taggedOffset(undefined), taggedOffset(null), taggedOffset(''), taggedOffset('15'), taggedOffset('page-2'), taggedOffset('-3'), taggedOffset('1234567')]).toEqual([0, 0, 0, 15, 0, 0, 0])
+    expect(taggedNextToken(0, MY_MAIL_TAGGED_PAGE)).toBe(String(MY_MAIL_TAGGED_PAGE))
+    expect(taggedNextToken(15, MY_MAIL_TAGGED_PAGE)).toBe(String(15 + MY_MAIL_TAGGED_PAGE))
+    expect(taggedNextToken(15, MY_MAIL_TAGGED_PAGE - 1)).toBeNull()
+    expect(taggedNextToken(0, 0)).toBeNull()
+  })
+
+  it('shows every mail of a tagged conversation, an archived one too, unless one box alone is asked for', () => {
+    expect(inAskedBoxes([], undefined)).toBe(true)
+    expect(inAskedBoxes(['CATEGORY_PERSONAL'], ['INBOX', 'SENT'])).toBe(true)
+    expect(inAskedBoxes(['INBOX'], ['SENT'])).toBe(false)
+    expect(inAskedBoxes(['SENT', 'IMPORTANT'], ['SENT'])).toBe(true)
+    expect(inAskedBoxes(undefined, ['INBOX'])).toBe(false)
   })
 
   it('reads one box when one is asked for, and leaves out each label the person named, once, its quotes dropped', () => {
@@ -489,11 +518,11 @@ describe('the Sent side with no press (punch list #263 PR B)', () => {
   const mill: MyMailJobChip = { kind: 'pipeline', id: MILL, key: `pipeline:${MILL}`, num: 'JP1090', name: '7 Mill Rd' }
   const dale = { name: 'Dale Okafor', address: 'dale@ridgeway.example' }
 
-  it('searches the person’s Sent since the cursor, by the second, never the tag’s label or a label they leave out', () => {
+  it('searches the person’s Sent since the cursor, by the second, never a label they leave out, and names no label of the app’s', () => {
     expect(sentFollowQuery('2026-11-01T00:00:00.000Z', ['Personal', ' personal ', 'Say "hi"'])).toBe(
-      'in:sent after:1793491200 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling" -label:"Personal" -label:"Say hi"',
+      'in:sent after:1793491200 -in:drafts -in:spam -in:trash -in:chats -label:"Personal" -label:"Say hi"',
     )
-    expect(sentFollowQuery('not a time')).toBe('in:sent after:0 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling"')
+    expect(sentFollowQuery('not a time')).toBe('in:sent after:0 -in:drafts -in:spam -in:trash -in:chats')
     expect(sentSince({ at: '2026-11-01T00:00:00.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(true)
     expect(sentSince({ at: '2026-10-31T23:59:59.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(false)
     expect(sentSince({ at: null }, '2026-11-01T00:00:00.000Z')).toBe(true)
@@ -645,6 +674,59 @@ describe('what a tag writes', () => {
     expect(myMailFileRow(copy!)).toMatchObject({ left_in_gmail: 'not_copied' })
     expect(myMailFileRow(big!)).toMatchObject({ kind: 'file', name: 'plans.zip', left_in_gmail: 'too_big' })
     expect(myMailFileRow(link!)).toEqual({ kind: 'link', name: 'elm-plans.pdf', url: 'https://www.dropbox.com/scl/fi/abc/elm-plans.pdf?dl=0', host: 'dropbox' })
+  })
+})
+
+describe('the old Gmail label’s one-time clean-up (v2.7035)', () => {
+  const NOW = '2026-11-12T20:00:00.000Z'
+  const start = readLabelCleanup(null)
+
+  it('reads its record, and anything unreadable as a clean start', () => {
+    expect(start).toEqual({ boxes: {}, finished_at: null })
+    expect(readLabelCleanup('not json')).toEqual(start)
+    expect(readLabelCleanup(JSON.stringify({ boxes: { a: { at: NOW, outcome: 'deleted', tries: 1 }, b: { at: NOW, outcome: 'bogus', tries: 1 }, c: { outcome: 'none' } }, finished_at: NOW }))).toEqual({
+      boxes: { a: { at: NOW, outcome: 'deleted', tries: 1 } },
+      finished_at: NOW,
+    })
+  })
+
+  it('finds the label by its exact name, and no other', () => {
+    expect(oldLabelId([{ id: 'INBOX', name: 'INBOX' }, { id: 'Label_9', name: 'Tagged in ClickTooling' }])).toBe('Label_9')
+    expect(oldLabelId([{ id: 'Label_3', name: 'tagged in clicktooling' }, { id: 'Label_4', name: 'In ClickTooling' }])).toBeNull()
+    expect(oldLabelId(undefined)).toBeNull()
+  })
+
+  it('covers the addresses on the Workspace’s own domain, and every address when the domain is not known', () => {
+    expect(onWorkspace(' Marisol@ClickPlumbing.example ', 'clickplumbing.example')).toBe(true)
+    expect(onWorkspace('robert@douglasmining.example', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace('marisol@notclickplumbing.example', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace('robert@douglasmining.example', null)).toBe(true)
+    expect(onWorkspace('', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace(null, null)).toBe(false)
+  })
+
+  it('settles a box on an answer, counts the tries of one Google will not open, and leaves it after the last', () => {
+    let state = labelCleanupMarked(start, 'a', { outcome: 'deleted' }, NOW)
+    state = labelCleanupMarked(state, 'b', { outcome: 'none' }, NOW)
+    state = labelCleanupMarked(state, 'c', { outcome: 'failed', reason: 'Google refused dana@example-plumbing.test:\n no such user' }, NOW)
+    expect(state.boxes).toEqual({ a: { at: NOW, outcome: 'deleted', tries: 1 }, b: { at: NOW, outcome: 'none', tries: 1 }, c: { at: NOW, outcome: 'failed', tries: 1, reason: 'Google refused (an address) no such user' } })
+    // Still due: the one never asked, first, then the one that failed. The settled two are never asked again.
+    expect(labelCleanupDue(state, ['a', 'b', 'c', 'd', 'd'])).toEqual(['d', 'c'])
+    expect(labelCleanupCounts(state, ['a', 'b', 'c', 'd'])).toEqual({ mailboxes: 4, checked: 3, deleted: 1, none: 1, failed: 1, left: 2 })
+    for (let i = 1; i < LABEL_CLEANUP_TRIES; i++) state = labelCleanupMarked(state, 'c', { outcome: 'failed', reason: 'still refused' }, NOW)
+    expect(state.boxes.c).toMatchObject({ outcome: 'failed', tries: LABEL_CLEANUP_TRIES })
+    expect(labelCleanupDue(state, ['a', 'b', 'c'])).toEqual([])
+    expect(labelCleanupCounts(state, ['a', 'b', 'c'])).toEqual({ mailboxes: 3, checked: 3, deleted: 1, none: 1, failed: 1, left: 0 })
+    // A box that failed and then opened is settled by its answer.
+    expect(labelCleanupMarked(labelCleanupMarked(start, 'e', { outcome: 'failed', reason: 'x' }, NOW), 'e', { outcome: 'deleted' }, NOW).boxes.e).toEqual({ at: NOW, outcome: 'deleted', tries: 2 })
+  })
+
+  it('takes a run’s worth at a time, and keeps a reason to one short line with no address', () => {
+    const ids = Array.from({ length: LABEL_CLEANUP_PER_RUN + 4 }, (_, i) => `u-${i}`)
+    expect(labelCleanupDue(start, ids)).toEqual(ids.slice(0, LABEL_CLEANUP_PER_RUN))
+    const reason = labelCleanupReason(`Delegation denied for <olive@clickplumbing.example> ${'x'.repeat(400)}`)
+    expect(reason.startsWith('Delegation denied for <(an address)> ')).toBe(true)
+    expect(reason).toHaveLength(160)
   })
 })
 

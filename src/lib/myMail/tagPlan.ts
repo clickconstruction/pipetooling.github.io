@@ -3,7 +3,7 @@
  * job) on one mail; the unit is its Gmail conversation, so every mail in it so far lands on the job, in and out, and
  * the function (`gmail-mine`, PR 2) executes this plan: a mail a line already holds is tied, never doubled; any other
  * is written as the bids@ reader writes one, with its files and its raw `.eml`, on the contact `email_place_address`
- * gives its party; then the `email_tag_threads` row and the Gmail label. Pure.
+ * gives its party; then the `email_tag_threads` row. Nothing is written to Gmail. Pure.
  *
  * Whose thread each line lands on is `emailLine.ts`'s `emailParty`, with the person, the team and the boxes as ours
  * and the boxes and the app's sender as the box: a mail in lands on its sender; a mail out to a customer lands on the
@@ -19,7 +19,7 @@ import { fileLinks, type FileHost } from '../emailIn/fileLinks'
 import type { EmailAddress, EmailIn } from '../emailIn/gmailMessage'
 import { filedByAge } from '../messages/filed'
 import { jobKey } from '../messages/jobKeys'
-import { MY_MAIL_GMAIL_LABEL, type MyMailJobChip } from './contract'
+import type { MyMailJobChip } from './contract'
 
 /** What a written line's `messages.mailbox` says: tagged from a person's own box, whose `mail_user_id` names. */
 export const MY_MAIL_MAILBOX = 'mine'
@@ -171,8 +171,6 @@ export interface MyMailTagPlan {
   mailUserId: string
   steps: MyMailTagStep[]
   threadRow: MyMailThreadRow
-  /** The label put on each mail in the person's Gmail once its line is written or tied. */
-  label: typeof MY_MAIL_GMAIL_LABEL
   /** Lines to write, lines to tie, files on the written lines, mails not written, and how many of the lines to write are filed for the record. */
   counts: { lines: number; tied: number; files: number; skipped: number; filed: number }
 }
@@ -308,7 +306,6 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
     mailUserId: person.userId,
     steps,
     threadRow: { user_id: person.userId, gmail_thread_id: thread.threadId, ...jobColumns, tagged_by: person.userId },
-    label: MY_MAIL_GMAIL_LABEL,
     counts: {
       lines: writes.length,
       tied: steps.filter((s) => s.kind === 'tie' && s.tie).length,

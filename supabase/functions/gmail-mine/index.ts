@@ -7,6 +7,9 @@
  * over PR 1's kernels (`rows.ts`, `mailGuess.ts`, `tagPlan.ts`, `view.ts`), all through the edge copy.
  *
  * One POST, a `MyMailRequest`:
+ * The function reads a person's Gmail and changes nothing in it (v2.7035): no label, no move, no mark. The one exception
+ * is `clearOldLabel`, which deletes the label the app used to put on, once a mailbox, and then never runs again.
+ *
  * - `list` ({ view, q?, pageToken?, labels? }): one page of 50 of the Inbox and the Sent box, newest first (`myMailQuery`:
  *   never Drafts, Spam, Trash or Chats, never a label the person left out, their own search as one group), each mail read
  *   whole ten at a time into a row (`readMyMail`), then filled from the database: `tagged` (`email_tag_threads`, the
@@ -28,8 +31,8 @@
  *   `email_write_line` (the same Message-ID fence the boxes use, so nothing is written twice; a line written first by
  *   someone else leaves the copies no line names removed), its person put on the job's people (`contact_jobs`, as
  *   `tie_message` puts them) and its raw mail kept as `mine/<line id>.eml`. Then the grey line in the other party's
- *   thread (the app's own event, keyed `mytag:<row id>`, moved with a tag onto another job), and the Gmail label
- *   *Tagged in ClickTooling* on its mail. Through the dev seat's door the row's `tagged_by` is the dev, its `user_id`
+ *   thread (the app's own event, keyed `mytag:<row id>`, moved with a tag onto another job). Nothing is written to
+ *   Gmail (v2.7035): no label goes on. Through the dev seat's door the row's `tagged_by` is the dev, its `user_id`
  *   still the box, and the grey line says the dev tagged it from the person's mail, through the dev seat. A step the database refuses stops the tag with its words; what was written
  *   stays, the row with it, and the follow or a second tag finishes it.
  * - `untag` ({ threadId }): the row is marked `untagging_at` first, so the follow passes it by and lands nothing back,
@@ -37,8 +40,8 @@
  *   files and raw copies, once the live documents a legal matter made from them are counted (`keptForMatter`: the
  *   matter keeps its own copy); a line the office keeps something on (a promise, a highlight, what we owe) stays with
  *   its files, counted as `held`. A line the boxes wrote stays, untied only when the row records it as the tag's own
- *   tie. The grey line and the `email_tag_threads` row go, and the label comes off, each mail it would not leave counted
- *   as `labelLeft`.
+ *   tie. The grey line and the `email_tag_threads` row go. An untag reads nothing from Gmail and changes nothing there
+ *   (v2.7035).
  *
  * - A conversation onto a person's HR file (punch list #289, the dev seat's alone through its door below): a `tag`
  *   whose body names `person` in place of `job` reads the conversation as the login named and plans one dated entry per
@@ -61,8 +64,8 @@
  * (`untagging_at`, asked again before each row), the least recently read first, a failed read included, 100 a run, as
  * that person with one Google token each: a mail no line holds yet lands through `landMail` as a tag lands it, a mail
  * under a label the person leaves out is skipped, a box's line on no job that nobody placed by hand is recorded on the
- * row and tied to the tag's job as the service role with the tagger stamped, and what landed or was tied gets the
- * label. Then the row's `last_read_at` is now and its `last_mail_at` the newest mail the read found (`newestMailAt`,
+ * row and tied to the tag's job as the service role with the tagger stamped; nothing is written to Gmail. Then the
+ * row's `last_read_at` is now and its `last_mail_at` the newest mail the read found (`newestMailAt`,
  * never earlier than the row's own), or its `last_read_at` now and its `last_error` the reason with its `last_mail_at`
  * left as it was, so every row takes its turn, and the next row still runs; a person whose token fails has their rows
  * marked so and is skipped for the run.
@@ -77,14 +80,11 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   GMAIL_SCOPES,
   GmailError,
-  gmailAddLabel,
   gmailAttachment,
-  gmailLabelId,
   gmailLabels,
   gmailMessage,
   gmailMessagePage,
   gmailMessageRaw,
-  gmailRemoveLabel,
   gmailThreadFull,
   gmailThreadHeaders,
 } from '../_shared/gmail.ts'
@@ -102,7 +102,6 @@ import { isFixtureAccount } from '../_shared/gcKernels/lib/walk/kitDoor.ts'
 import { personEntryRow, planPersonTag, type MyMailPersonTagStep } from '../_shared/gcKernels/lib/myMail/personTagPlan.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
-  MY_MAIL_GMAIL_LABEL,
   MY_MAIL_NO_SUBJECT,
   MY_MAIL_PAGE,
   myMailRefusal,
@@ -173,8 +172,19 @@ import {
   myMailTagEventRow,
   myMailTagRecord,
   myMailTaggedBy,
+  MY_MAIL_TAGGED_PAGE,
+  inAskedBoxes,
+  taggedNextToken,
+  taggedOffset,
+  LABEL_CLEANUP_KEY,
+  labelCleanupCounts,
+  labelCleanupDue,
+  labelCleanupMarked,
+  labelCleanupReason,
+  oldLabelId,
+  onWorkspace,
+  readLabelCleanup,
   myMailTeam,
-  neverRead,
   newestMailAt,
   orphanCopies,
   parseMyMailRequest,
@@ -550,7 +560,61 @@ async function loadDomains(admin: Admin, domains: readonly string[]): Promise<{ 
 
 // ---------- list ----------
 
+/**
+ * A page of Tagged with no search of the person's own (v2.7035): their tagged conversations from `email_tag_threads`,
+ * the newest mail first, `MY_MAIL_TAGGED_PAGE` a page by a count of our own, each read whole from Gmail and its mails
+ * drawn as rows. Until v2.7035 the page was a Gmail search for a label the tag put on; a tag puts none on now, and the
+ * database's record is the only one. A conversation gone from Gmail is passed by: its lines are still on the job.
+ */
+async function listTagged(ctx: Ctx, ask: MyMailListRequest): Promise<Response> {
+  const { admin, me } = ctx
+  const offset = taggedOffset(ask.pageToken)
+  const [tags, box, hidden] = await Promise.all([
+    rows<{ gmail_thread_id: string }>(
+      admin
+        .from('email_tag_threads')
+        .select('gmail_thread_id')
+        .eq('user_id', me.id)
+        .is('person_id', null)
+        .is('untagging_at', null)
+        .order('last_mail_at', { ascending: false, nullsFirst: false })
+        .order('tagged_at', { ascending: false })
+        .limit(offset + MY_MAIL_TAGGED_PAGE),
+      'your tagged conversations',
+    ),
+    loadBox(admin, me),
+    hiddenLabelIds(ctx.token, me.hiddenLabels),
+  ])
+  const page = tags.slice(offset)
+  const messages: MyMailGmailMessage[] = []
+  let gone = 0
+  for (let i = 0; i < page.length; i += 5) {
+    const threads = await Promise.all(
+      page.slice(i, i + 5).map(async (t) => {
+        try {
+          return (await gmailThreadFull(ctx.token, t.gmail_thread_id)).messages ?? []
+        } catch (e) {
+          if (e instanceof GmailError && e.status === 404) {
+            gone++
+            return []
+          }
+          throw e instanceof GmailError ? asGoogle(e) : e
+        }
+      }),
+    )
+    messages.push(...threads.flat())
+  }
+  const reads = messages.filter((m) => !leftOutOfTab(m.labelIds, hidden) && inAskedBoxes(m.labelIds, ask.labels)).map((m) => readMyMail(m, box.reader))
+  const filled = await fillRows(ctx, box, reads, 'all')
+  const view = viewRows(filled, 'tagged')
+  const next = taggedNextToken(offset, page.length)
+  const answer: MyMailListOk = { ok: true, address: me.email, rows: view.rows, nextPageToken: next, folded: 0 }
+  log({ event: 'gmail_mine_list', user: me.id, view: 'tagged', searched: false, listed: page.length, gone, read: reads.length, rows: view.rows.length, folded: 0, tagged: view.rows.length, more: Boolean(next) })
+  return json(answer)
+}
+
 async function list(ctx: Ctx, ask: MyMailListRequest): Promise<Response> {
+  if (ask.view === 'tagged' && !ask.q) return await listTagged(ctx, ask)
   const query = myMailQuery({ view: ask.view, labels: ask.labels, hidden: ctx.me.hiddenLabels, q: ask.q })
   const [page, box, hidden] = await Promise.all([
     gmail(() => gmailMessagePage(ctx.token, query, MY_MAIL_PAGE, ask.pageToken ?? undefined)),
@@ -772,30 +836,6 @@ async function copyFiles(ctx: AsPerson, email: EmailIn, senderKind: string | nul
   return out
 }
 
-/** The tag's label on each mail of the conversation that is on the job now; one that will not take it is logged. */
-async function labelMails(ctx: AsPerson, ids: readonly string[]): Promise<{ labelled: number; missed: number }> {
-  if (ids.length === 0) return { labelled: 0, missed: 0 }
-  let labelId: string
-  try {
-    labelId = await gmailLabelId(ctx.token, MY_MAIL_GMAIL_LABEL)
-  } catch (e) {
-    console.warn(JSON.stringify({ event: 'gmail_mine_label_missed', user: ctx.me.id, reason: words(e).slice(0, 300) }))
-    return { labelled: 0, missed: ids.length }
-  }
-  let labelled = 0
-  let missed = 0
-  for (const id of ids) {
-    try {
-      await gmailAddLabel(ctx.token, id, labelId)
-      labelled++
-    } catch (e) {
-      missed++
-      console.warn(JSON.stringify({ event: 'gmail_mine_label_missed', user: ctx.me.id, reason: words(e).slice(0, 300) }))
-    }
-  }
-  return { labelled, missed }
-}
-
 type WriteStep = Extract<MyMailTagStep, { kind: 'write' }>
 
 /** What landing one mail did: its line, whether it was written now, the contact it went on, and whether that contact was made for it. */
@@ -973,11 +1013,10 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
 
   const moved = wasOn !== null && wasOn !== plan.jobKey
   const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat, filed: tagAllFiled(plan.counts) }) : false
-  const label = await labelMails(ctx, unique(plan.steps.filter((s) => s.kind !== 'skip').map((s) => s.gmailId)))
   // Where the conversation stands in Follow up now (v2.7032), for the line the tab prints after a tag. Best effort.
   const state = contactId ? await contactState(admin, contactId) : null
   const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender, filed: plan.counts.filed, ...(state ? { state } : {}) }
-  log({ event: 'gmail_mine_tag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved, ...label })
+  log({ event: 'gmail_mine_tag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved })
   return json(answer)
 }
 
@@ -1105,13 +1144,7 @@ async function mattersHolding(admin: Admin, me: Pick<Me, 'id'>, lineIds: readonl
 
 async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   const { admin, me } = ctx
-  // The conversation's mails, for the label. Gone from Gmail: the lines still go.
-  let mails: MyMailGmailMessage[] = []
-  try {
-    mails = (await gmailThreadHeaders(ctx.token, ask.threadId, ['Message-ID'])).messages ?? []
-  } catch (e) {
-    if (!(e instanceof GmailError && e.status === 404)) throw e instanceof GmailError ? asGoogle(e) : e
-  }
+  // An untag reads nothing from Gmail and changes nothing there (v2.7035): the lines are the app's own copies.
   const { data: tagRow, error: tagError } = await admin.from('email_tag_threads').select(TAG_ROW_COLUMNS).eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle()
   if (tagError) throw stopped('Reading the tag failed.', tagError.message)
   if ((tagRow as { person_id?: string | null } | null)?.person_id) return refuse(myMailRefusal('badRequest', MY_MAIL_ON_FILE_WORDS), MY_MAIL_REFUSAL_STATUS.badRequest, 'untag')
@@ -1183,30 +1216,8 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
     if (kept.error) console.warn(JSON.stringify({ event: 'gmail_mine_tombstone_missed', user: me.id, reason: String(kept.error.message).slice(0, 300) }))
     else tombstone = true
   }
-  // The label comes off the mail that carries it. A box that never had it has nothing to take off, and nothing is made.
-  // A mail it will not leave is counted in the answer (`labelLeft`), never swallowed; when the box's labels cannot be
-  // read, every mail a tag could have labelled (never a draft, Spam, Trash or a chat) may still carry it.
-  let unlabelled = 0
-  let labelLeft = 0
-  let labelId: string | undefined
-  if (mails.length > 0) {
-    try {
-      labelId = ((await gmailLabels(ctx.token)).labels ?? []).find((l) => l.name === MY_MAIL_GMAIL_LABEL)?.id
-    } catch {
-      labelLeft = mails.filter((m) => !neverRead(m.labelIds)).length
-    }
-  }
-  for (const m of labelId ? mails.filter((x) => (x.labelIds ?? []).includes(labelId!)) : []) {
-    try {
-      await gmailRemoveLabel(ctx.token, m.id, labelId!)
-      unlabelled++
-    } catch {
-      labelLeft++
-    }
-  }
-  if (labelLeft > 0) console.warn(JSON.stringify({ event: 'gmail_mine_label_left', user: me.id, left: labelLeft, mails: mails.length }))
-  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0, held, labelLeft }
-  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, unlabelled, label_left: labelLeft, kept_for_matter: kept, event_line: eventGone, tombstone })
+  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0, held }
+  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, kept_for_matter: kept, event_line: eventGone, tombstone })
   return json(answer)
 }
 
@@ -1280,10 +1291,10 @@ async function recordTies(admin: Admin, tagId: string, ids: readonly string[]): 
  * hold it, then `planFollow`: a box's loose line is recorded on the row and tied, as the service role with the tagger
  * stamped (`tieLine`), each mail no line holds is read whole and lands through `landMail` as a tag lands it (the row
  * asked once more first: an untag that began since stops it, `Untagging`), a mail under a label the person leaves out is
- * skipped, and what landed or was tied gets the label. Answers the conversation's newest mail (`newestMailAt` over the
+ * skipped, and nothing is written to Gmail. Answers the conversation's newest mail (`newestMailAt` over the
  * headers' `internalDate`, never earlier than the row's own). Throws what stopped it; what was done stays.
  */
-async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known: Pick<MyMailKnown, 'team' | 'boxes' | 'hidden'>, run: Run, labels: { labelled: number; missed: number }): Promise<string | null> {
+async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known: Pick<MyMailKnown, 'team' | 'boxes' | 'hidden'>, run: Run): Promise<string | null> {
   const { admin, me } = as
   const { done } = run
   const person = { userId: me.id, address: me.email, name: me.name }
@@ -1299,7 +1310,6 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
     ),
   ])
   const steps = planFollow({ threadId: tag.gmail_thread_id, messages: mails }, person, job, { lines: [...byRfc, ...byId], ...known })
-  const landed: string[] = []
   const ties = steps.flatMap((s) => (s.kind === 'tie' ? [s] : []))
   if (ties.length > 0) await recordTies(admin, tag.id, ties.map((s) => s.messageId))
   for (const step of ties) {
@@ -1308,7 +1318,6 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
       stamp: 'Reading later mail stopped partway. A tied line could not name who tagged it.',
     })
     done.tied++
-    landed.push(step.gmailId)
   }
   const fresh = steps.filter((s) => s.kind === 'write').map((s) => s.gmailId)
   if (fresh.length > 0) {
@@ -1323,13 +1332,9 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
         done.skipped++
         continue
       }
-      const line = await landMail(as, email, step, plan, run, 'Reading later mail')
-      if (line.written) landed.push(step.gmailId)
+      await landMail(as, email, step, plan, run, 'Reading later mail')
     }
   }
-  const label = await labelMails(as, landed)
-  labels.labelled += label.labelled
-  labels.missed += label.missed
   return newestMailAt(mails, tag.last_mail_at)
 }
 
@@ -1344,7 +1349,70 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
  * (`untagging_at`) is never picked, and a row an untag marks after the run picked it is passed by when its turn comes.
  * One line of counts, never a subject or an address.
  */
+// ---------- the old Gmail label, out of every mailbox once (v2.7035) ----------
+
+/**
+ * One label out of one box, by Gmail's id (`users.labels.delete`): Gmail takes it off every mail that carried it, so no
+ * mail is read or listed. Already gone is done. This is the only call in the function that changes a mailbox, and
+ * `clearOldLabel` makes it at most once a box.
+ */
+async function deleteLabel(token: string, labelId: string): Promise<void> {
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/labels/${encodeURIComponent(labelId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  if (res.ok || res.status === 404) return
+  const body = await res.json().catch(() => ({}))
+  throw new GmailError(res.status, `Gmail /labels failed (${res.status}): ${body?.error?.message ?? 'unknown'}`)
+}
+
+/**
+ * The one-time clean-up (v2.7035): the label *Tagged in ClickTooling*, which a tag used to put on, deleted from every
+ * mailbox the delegation reaches, so a person's Gmail looks as if the app was never there. Every login on the
+ * Workspace's own domain is covered, the office team or not, archived or not (the dev seat tagged out of boxes whose
+ * people have no My email tab), never a sample, a twin or the walk tester. At most `LABEL_CLEANUP_PER_RUN` boxes a run
+ * of the follow: the box's labels are listed, the label deleted when it is there, and the box marked in one
+ * `app_settings` row (`LABEL_CLEANUP_KEY`) as `deleted`, `none` or `failed` with Google's reason. A box Google will not
+ * open is asked `LABEL_CLEANUP_TRIES` times, then left. When every box is settled the row says so and the clean-up
+ * reads one row a run and does nothing more. Nothing here can stop the follow: a failure is logged and the run goes on.
+ * One line of counts a run, never an address. The saved conversations are not touched: only the label goes.
+ */
+async function clearOldLabel(admin: Admin, saJson: string): Promise<void> {
+  try {
+    const { data: kept, error } = await admin.from('app_settings').select('value_text').eq('key', LABEL_CLEANUP_KEY).maybeSingle()
+    if (error) throw new Error(error.message)
+    let state = readLabelCleanup((kept as { value_text?: string | null } | null)?.value_text)
+    if (state.finished_at) return
+    const domain = parseAddress(Deno.env.get('GMAIL_IMPERSONATE_USER') ?? '')?.address.split('@')[1] ?? null
+    const logins = await rows<{ id: string; email: string | null; is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>(admin.from('users').select('id, email, is_sample, is_digital_twin, is_walk_tester'), 'the logins')
+    const boxes = logins.filter((u) => !isFixtureAccount(u) && u.is_walk_tester !== true && onWorkspace(u.email, domain))
+    const ids = boxes.map((u) => u.id)
+    const emailOf = new Map(boxes.map((u) => [u.id, String(u.email ?? '').trim()]))
+    const reasons: string[] = []
+    for (const id of labelCleanupDue(state, ids)) {
+      let result: { outcome: 'none' | 'deleted' | 'failed'; reason?: string }
+      try {
+        const token = await googleServiceToken(saJson, GMAIL_SCOPES, emailOf.get(id) ?? '')
+        const labelId = oldLabelId((await gmailLabels(token)).labels)
+        if (labelId) await deleteLabel(token, labelId)
+        result = { outcome: labelId ? 'deleted' : 'none' }
+      } catch (e) {
+        result = { outcome: 'failed', reason: words(e) }
+      }
+      state = labelCleanupMarked(state, id, result, nowIso())
+      const reason = state.boxes[id]?.reason
+      if (reason) reasons.push(reason)
+    }
+    const counts = labelCleanupCounts(state, ids)
+    if (counts.left === 0) state = { ...state, finished_at: nowIso() }
+    const saved = await admin.from('app_settings').upsert({ key: LABEL_CLEANUP_KEY, value_text: JSON.stringify(state) }, { onConflict: 'key' })
+    if (saved.error) throw new Error(saved.error.message)
+    log({ event: 'gmail_mine_label_cleanup', ...counts, finished: counts.left === 0, reasons: unique(reasons).slice(0, 5) })
+  } catch (e) {
+    console.warn(JSON.stringify({ event: 'gmail_mine_label_cleanup_missed', reason: labelCleanupReason(words(e)) }))
+  }
+}
+
 async function follow(admin: Admin, saJson: string): Promise<Response> {
+  // First, once: the label the app used to put on comes out of every mailbox (`clearOldLabel`). It never stops the run.
+  await clearOldLabel(admin, saJson)
   const users = await rows<MyMailFollowUserRow>(admin.from('users').select(FOLLOW_USER_COLUMNS).eq('my_mail_on', true).in('role', [...MY_MAIL_OFFICE_ROLES]), 'the people who tag')
   const people = new Map<string, MyMailFollowPerson>(followPeople(users).map((p) => [p.id, p]))
   const hiddenOf = new Map(users.map((u) => [u.id, myMailHiddenLabels(u.my_mail_hidden_labels)]))
@@ -1372,7 +1440,6 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
   }
   const run = newRun()
   const { done } = run
-  const labels = { labelled: 0, missed: 0 }
   let failed = 0
   let refusedPeople = 0
   let labelsUnread = 0
@@ -1408,7 +1475,7 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
           if (!job) throw stopped('Reading later mail stopped. The tag names no job.', 'no job column is set')
           // Asked again when its turn comes: an untag that marked the row since the run picked it is passed by.
           if (!(await stillFollowed(admin, tag.id))) throw new Untagging()
-          const newest = await followOne(as, tag, job, { team, boxes, hidden }, run, labels)
+          const newest = await followOne(as, tag, job, { team, boxes, hidden }, run)
           await markFollowed(admin, [tag.id], null, newest)
         } catch (e) {
           if (e instanceof Untagging) {
@@ -1450,7 +1517,6 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
     unlisted: done.unlisted,
     copies_removed: done.copiesRemoved,
     copies_left: done.copiesLeft,
-    ...labels,
     sent,
   })
   return json(answer)
@@ -1571,8 +1637,8 @@ interface SentTally {
  * The Sent side (punch list #263 PR B, the owner's call 2 of 2026-11-08): for each person whose switch is on, the mail
  * they sent from their own box since the last run, at most `SENT_FOLLOW_PAGE` a run. A person never read before has
  * their cursor (`users.my_mail_sent_read_at`) set to now and nothing read: no backfill, as `gmail-sync`'s first run reads
- * nothing old. Else the page (`sentFollowQuery`: Sent after the cursor, never a draft, Spam, Trash or a chat, never the
- * tag's label, never a label the person leaves out), each mail read whole, oldest first. A mail in a conversation this
+ * nothing old. Else the page (`sentFollowQuery`: Sent after the cursor, never a draft, Spam, Trash or a chat, never a
+ * label the person leaves out), each mail read whole, oldest first. A mail in a conversation this
  * person has tagged (the follow's own row), or one they untagged after the app placed it (the tombstone
  * `email_tag_threads_off`), is passed by. Else the party is the first To or Cc outside (`planTag`'s own rule for a sent
  * mail), and the job the guess's steps 3 and 4 alone (`sentPlacement`: the party's address on exactly one open job, or
@@ -1580,7 +1646,7 @@ interface SentTally {
  * row is upserted first with `placed_by_app` true, as a tag keeps its row; a line a box already holds is tied as the
  * follow ties a loose one (recorded on the row, never a line someone placed); any other lands through `landMail` exactly
  * as a tag's write lands, then its line is marked `placed_by_app`; the grey line in the party's thread says the app put
- * it there and why (`placedByAppWords`); the label goes on. Then the cursor moves to the newest mail read. A person
+ * it there and why (`placedByAppWords`). Then the cursor moves to the newest mail read. A person
  * whose token or box fails is counted and skipped for the run; a mail that fails is counted and the next still runs.
  */
 async function followSent(admin: Admin, saJson: string, people: ReadonlyMap<string, MyMailFollowPerson>, users: readonly MyMailFollowUserRow[], run: Run): Promise<SentTally> {
@@ -1710,8 +1776,6 @@ async function placeSentMail(as: AsPerson, email: EmailIn, read: MyMailRead, kno
     }
   }
   if (contactId) await writeTagEvent(as, { tagRowId, contactId, jobColumns: plan.jobColumns, moved: false, words: placedByAppWords(me, party, chip, guess.why) })
-  const label = await labelMails(as, [email.gmailId])
-  if (label.missed > 0) console.warn(JSON.stringify({ event: 'gmail_mine_sent_label_missed', user: me.id }))
   return line ? 'tied' : 'placed'
 }
 
