@@ -57,16 +57,18 @@ export function lotWords(facts: LotFacts): string {
     : facts.improvement_value
       ? `buildings on the roll at ${shortDollars(facts.improvement_value)}${facts.year_built ? `, built ${facts.year_built}` : ''}`
       : 'nothing built on the roll'
-  return [built, facts.acres ? `${facts.acres} acres` : null, facts.matched_by === 'point' ? `read at the permit’s point${facts.county ? ` in ${facts.county} County` : ''}` : null].filter(Boolean).join(', ')
+  return [built, facts.acres ? `${facts.acres} acres` : null, facts.matched_by === 'point' ? `read at the permit’s point${facts.county ? ` in ${facts.county} County` : ''}` : facts.county ? `in ${facts.county} County` : null].filter(Boolean).join(', ')
 }
 
 /**
  * The sheets' line when the parcel was found under the permit's point, not its street address.
  * A parcel found on a neighbouring county's layer names that county: the city's limits cross
- * the county line. Null when the address or the permit's own id matched.
+ * the county line. A parcel found there by the permit's own id or its address says only which
+ * county it is in. Null when the city's own county matched the address or the id.
  */
 export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by' | 'county'>): string | null {
-  if (facts.matched_by !== 'point') return null
+  // Found by the permit's own id or its address on a neighbouring county's layer: the card still says whose county it is.
+  if (facts.matched_by !== 'point') return facts.county ? `This lot is in ${facts.county} County.` : null
   const where = facts.situs ? ` The county calls it ${facts.situs}.` : ''
   if (facts.county) return `The permit’s point is in ${facts.county} County, so this is that county’s parcel there.${where}`
   return `The county has no parcel under this street address, so this is the parcel at the permit’s point.${where}`

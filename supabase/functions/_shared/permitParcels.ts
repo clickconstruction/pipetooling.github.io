@@ -105,8 +105,8 @@ export type ParcelIdColumn = {
   column: string
   /** The key in the permit's feed row (`permits.raw`) that holds the id. */
   permitKey: string
-  /** Whether an id is one this layer can hold. A neighbouring county's id is not asked. */
-  askable: (id: string) => boolean
+  /** The id as this layer keeps it, or null when it is not one of this layer's own. A neighbouring county's id is not asked here. */
+  ask: (id: string) => string | null
 }
 
 function num(v: unknown): number | null {
@@ -136,7 +136,8 @@ function sum(...parts: Array<number | null>): number | null {
  * them. A numbered street is kept as its bare number ("5"), a blank part is a single space, and
  * the suffix is written three ways, so the suffix stays out of the match. An Austin permit's
  * `tcad_id` is this layer's `geo_id` (ten digits, leading zeros kept), not its `PROP_ID`. An id
- * that starts with R is Williamson County's, for the zips of Austin over the county line.
+ * that starts with R is Williamson County's, for the zips of Austin over the county line
+ * (`WILLIAMSON_PARCELS`).
  */
 export const TRAVIS_PARCELS: ParcelSource = {
   county: 'Travis',
@@ -152,7 +153,7 @@ export const TRAVIS_PARCELS: ParcelSource = {
   },
   streetOf: (a) => ({ prefix: str(a.situs_street_prefx)?.toUpperCase() ?? null, street: str(a.situs_street)?.toUpperCase() ?? '' }),
   ownerOf: (a) => str(a.py_owner_name),
-  id: { column: 'geo_id', permitKey: 'tcad_id', askable: (id) => !/^r/i.test(id) },
+  id: { column: 'geo_id', permitKey: 'tcad_id', ask: (id) => (/^r/i.test(id) ? null : id) },
   facts: (a) => {
     const propId = idOf(a.PROP_ID)
     return {
@@ -225,7 +226,47 @@ export const HAYS_PARCELS = vendorParcels('Hays', 'https://services6.arcgis.com/
 export const COMAL_PARCELS = vendorParcels('Comal', 'https://services7.arcgis.com/Yz6eib2o8WvEgWq8/arcgis/rest/services/ComalCADWebService/FeatureServer/0/query', (id) => `https://esearch.comalad.org/Property/View/${encodeURIComponent(id)}`, false)
 export const GUADALUPE_PARCELS = vendorParcels('Guadalupe', 'https://services9.arcgis.com/1l4hbpt78hjlsIcl/arcgis/rest/services/GuadalupeCADWebService/FeatureServer/0/query', (id) => `https://esearch.guadalupead.org/Property/View/${encodeURIComponent(id)}`, false)
 
-const SOURCES: readonly ParcelSource[] = [TRAVIS_PARCELS, HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS]
+/**
+ * Williamson County: the appraisal district's parcels on the county's own map server. No city read
+ * here is filed under it. It answers for the part of Austin over the county line: those permits
+ * carry the district's quick reference id (an R and six digits) where the others carry Travis's
+ * `geo_id` (punch list #320). The address is kept in parts, the mailing address on two lines, and
+ * there is no year built.
+ */
+export const WILLIAMSON_PARCELS: ParcelSource = {
+  county: 'Williamson',
+  queryUrl: 'https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0/query',
+  outFields: 'QuickRefID,FullName,MailingAddress,SitusAddress,SStreetNumber,SStreetDirectional,SStreetName,DBA,TotalLandMktValue,TotalImpMktValue,TotalPropMktValue,TotalSqFtLivingArea,Acres,USECD',
+  where: (p) => {
+    const names = nameSpellings(p.name).filter((n) => !/^\d+$/.test(n))
+    return `SStreetNumber = ${quoted(p.num)} AND (${names.map((n) => `UPPER(SStreetName) LIKE ${quoted(`${n}%`)}`).join(' OR ')})`
+  },
+  streetOf: (a) => ({ prefix: str(a.SStreetDirectional)?.toUpperCase() ?? null, street: str(a.SStreetName)?.toUpperCase() ?? '' }),
+  ownerOf: (a) => str(a.FullName),
+  id: { column: 'QuickRefID', permitKey: 'tcad_id', ask: (id) => (/^r\d+$/i.test(id) ? id.toUpperCase() : null) },
+  facts: (a) => {
+    const quickRef = str(a.QuickRefID)
+    // The mailing address comes on two lines: the street, then the city, state and zip.
+    const mailing = typeof a.MailingAddress === 'string' ? a.MailingAddress.split(/\s*\n\s*/).map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean).join(', ') : ''
+    return {
+      prop_id: quickRef,
+      situs: str(a.SitusAddress),
+      owner: str(a.FullName),
+      owner_address: mailing === '' ? null : mailing,
+      dba: str(a.DBA),
+      land_value: num(a.TotalLandMktValue),
+      improvement_value: num(a.TotalImpMktValue),
+      total_value: num(a.TotalPropMktValue),
+      use_code: str(a.USECD),
+      year_built: null,
+      building_sf: num(a.TotalSqFtLivingArea),
+      acres: acresOf(a.Acres),
+      detail_url: quickRef ? `https://search.wcad.org/Property-Detail/PropertyQuickRefID/${encodeURIComponent(quickRef)}` : null,
+    }
+  },
+}
+
+const SOURCES: readonly ParcelSource[] = [TRAVIS_PARCELS, HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS, WILLIAMSON_PARCELS]
 
 /** The parcel layer for a county, by its name; null for Bexar, which `permitLookup.ts` reads its own way, and for a county not read. */
 export function parcelSourceFor(county: string | null | undefined): ParcelSource | null {
@@ -236,14 +277,16 @@ export function parcelSourceFor(county: string | null | undefined): ParcelSource
 /**
  * The counties a city's limits reach into, by the county the city is filed under. New Braunfels
  * is filed under Comal and four of its addresses in ten are in Guadalupe; San Marcos is filed
- * under Hays and one in eight is in Guadalupe (measured 2026-11-11, punch list #320). Only the
- * counties whose layers are read here are listed.
+ * under Hays and one in eight is in Guadalupe; Austin is filed under Travis and one permit in
+ * thirty is in Williamson (measured 2026-11-11, punch list #320). Only the counties whose layers
+ * are read here are listed.
  */
 const NEIGHBOURS: Record<string, readonly string[]> = {
   Comal: ['Guadalupe'],
   Hays: ['Guadalupe', 'Comal'],
   Guadalupe: ['Comal'],
-  Travis: ['Hays'],
+  Travis: ['Williamson', 'Hays'],
+  Williamson: ['Travis'],
 }
 
 /** The neighbouring counties' layers, asked at a permit's point when its city's own county holds no parcel there. */
@@ -282,7 +325,7 @@ export function pointQuery(source: ParcelSource, point: { lat: number; lng: numb
 export function askableParcelId(source: ParcelSource, id: unknown): string | null {
   if (!source.id || (typeof id !== 'string' && typeof id !== 'number')) return null
   const text = String(id).trim()
-  return text !== '' && source.id.askable(text) ? text : null
+  return text === '' ? null : source.id.ask(text)
 }
 
 /** The where clause that asks a layer for one parcel by its id, or null when the layer has no id to ask or the id is not its own. */
@@ -356,10 +399,18 @@ export function parcelFactsByPoint(source: ParcelSource, body: unknown): ParcelF
   return a ? { ...source.facts(a), matched_by: 'point' } : null
 }
 
-/** The facts off a point query put to a neighbouring county: read at the point, and the county named so the card can say whose parcel it is. */
-export function parcelFactsAtNeighbour(neighbour: ParcelSource, body: unknown): ParcelFacts | null {
-  const facts = parcelFactsByPoint(neighbour, body)
-  return facts ? { ...facts, county: neighbour.county } : null
+/**
+ * The layer a permit's parcel id belongs to: the city's own county's when it takes the id, else
+ * the first neighbour's that does, else the city's own. An Austin permit that carries an R id is
+ * in Williamson County, so its id, its address and its point are all asked there.
+ */
+export function sourceForId(home: ParcelSource, id: unknown): ParcelSource {
+  return [home, ...neighbourSources(home)].find((s) => askableParcelId(s, id) !== null) ?? home
+}
+
+/** The facts as the card reads them, by the layer that answered: a layer other than the city's own county's names its county, so the card can say whose parcel it is. */
+export function factsInCounty(home: ParcelSource, answered: ParcelSource, facts: ParcelFacts): ParcelFacts {
+  return answered === home ? facts : { ...facts, county: answered.county }
 }
 
 /** The facts off an id query: the first parcel with an owner, marked as read by the id the permit carries. Null when the layer does not hold the id, which is about one Austin permit in five. */

@@ -26,6 +26,7 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(lotWords({ ...none, improvement_value: 1_604_850, year_built: '2004' })).toBe('buildings on the roll at $1.6M, built 2004')
     expect(lotWords({ ...none, improvement_value: 167_290, matched_by: 'point' })).toBe('buildings on the roll at $167k, read at the permit’s point')
     expect(lotWords({ ...none, improvement_value: 167_290, matched_by: 'point', county: 'Guadalupe' })).toBe('buildings on the roll at $167k, read at the permit’s point in Guadalupe County')
+    expect(lotWords({ ...none, improvement_value: 167_290, matched_by: 'id', county: 'Williamson' })).toBe('buildings on the roll at $167k, in Williamson County')
     // Read by the id the permit carries is the exact lot: nothing to add.
     expect(lotWords({ ...none, improvement_value: 167_290, matched_by: 'id' })).toBe('buildings on the roll at $167k')
     expect(countyGivesBuildingFacts('San Antonio')).toBe(true)
@@ -38,6 +39,8 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(parcelPointWords({ situs: '210 W COURT ST' })).toBeNull()
     expect(parcelPointWords({ situs: '210 W COURT ST', matched_by: 'id' })).toBeNull()
     // Over the county line: the card names the county whose parcel it is.
+    expect(parcelPointWords({ situs: '1500 N SAMPLE BLVD', matched_by: 'id', county: 'Williamson' })).toBe('This lot is in Williamson County.')
+    expect(parcelPointWords({ situs: '1500 N SAMPLE BLVD', county: 'Williamson' })).toBe('This lot is in Williamson County.')
     expect(parcelPointWords({ situs: '210 W COURT ST', matched_by: 'point', county: 'Guadalupe' })).toBe('The permit’s point is in Guadalupe County, so this is that county’s parcel there. The county calls it 210 W COURT ST.')
     expect(parcelPointWords({ situs: null, matched_by: 'point', county: 'Guadalupe' })).toBe('The permit’s point is in Guadalupe County, so this is that county’s parcel there.')
   })
