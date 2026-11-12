@@ -84,7 +84,7 @@ Most of a customer's jobs follow one calendar. One job may have a contract of it
 1. Find the job on **Jobs → Pipeline**.
 2. Press the calendar's words under the row's dates. On a Ready to Bill row, press the *Send by* line.
 3. Under **This calendar is for**, pick the choice that names the job.
-4. Change the days, or tick **No pay calendar on this job**.
+4. Change the days, or tick **This job has no pay calendar**.
 5. Press {{button:blue|Save for this job}}.
 :::
 
@@ -138,7 +138,7 @@ Every bill that customer pays reads the calendar.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
 
-A customer with no calendar reads exactly as before. So does a job with **No pay calendar on this job** ticked.
+A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
 
 ## Who can set one
 
