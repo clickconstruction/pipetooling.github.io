@@ -26,7 +26,7 @@ import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
-import { lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
+import { lienHelpGuideCode, lienHelpRecordCode } from '../../lib/jobs/lienHelpGuideCode'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -436,7 +436,7 @@ export default function LienFilingTabs({
     const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id] }
     // A short-form affidavit prints behind its help sheet (punch list #314). The sheet is never the paper: the copy filed on the job is the paper alone.
     if (currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && helpSheetOn) {
-      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd()), { guideCode: lienHelpGuideCode() }), LIEN_HELP_STYLES))) {
+      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpRecordCode(job.id) }), LIEN_HELP_STYLES))) {
         showToast('Popup blocked — allow popups to print.', 'error')
         return
       }
