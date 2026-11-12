@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  BILLS_SENT_BY_HAND_HOWS,
   BILLS_SENT_GAP_LABEL,
   BILLS_SENT_PATH,
   BILLS_SENT_ROUTE_CHIPS,
@@ -27,6 +28,10 @@ import {
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  byHandFiling,
+  byHandProblem,
+  type BillsSentByHandDraft,
+  type BillsSentByHandHow,
   type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
@@ -35,7 +40,8 @@ import {
   type BillsSentRoute,
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
-import { readBillsSent } from '../../lib/billing/billsSentIo'
+import { readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
@@ -44,6 +50,7 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -63,6 +70,9 @@ import { EmptyState } from '../EmptyState'
  * address is the link to keep or paste. **Print this record** prints it as one page.
  *
  * PR 5: **Print** and **Download CSV** take what the list shows out of the app, in the screen's order and words.
+ *
+ * PR 6: a row of the strip offers **Say how it went…**: how the bill went, to whom and on what day, saved as a
+ * record made by hand. The bill then leaves the strip and reads as a line on that day.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -103,6 +113,7 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   statement: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   text: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
   housecall_pro: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
+  by_hand: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
@@ -207,7 +218,77 @@ const GAPS_SHOWN = 5
 const gapBox: CSSProperties = { border: '1px solid var(--border-amber, var(--border-strong))', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.55rem 0.7rem', fontSize: '0.8125rem', minWidth: 0 }
 const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.6rem', paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }
 
-function GapRow({ gap }: { gap: BillsSentGap }) {
+const fieldLabel: CSSProperties = { display: 'grid', gap: '0.15rem', fontSize: '0.75rem', color: 'var(--text-700)', minWidth: 0 }
+const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0, boxSizing: 'border-box', width: '100%' }
+
+/**
+ * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
+ * made by hand; the list reads again and the bill moves from the strip to its day.
+ */
+function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () => void; onClose: () => void }) {
+  const { showToast } = useToastContext()
+  const today = todayYmdInAppTz()
+  const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
+  const [saving, setSaving] = useState(false)
+  const problem = byHandProblem(draft, today)
+  const save = async () => {
+    if (problem || saving) return
+    setSaving(true)
+    try {
+      await recordBillByHand(byHandFiling(gap, draft))
+      showToast('Recorded. The bill is on the list on the day it went.', 'success')
+      onSaved()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The record was not saved.'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <label style={fieldLabel}>
+        How the bill went
+        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value as BillsSentByHandHow | '' }))} style={field}>
+          <option value="">Pick one</option>
+          {BILLS_SENT_BY_HAND_HOWS.map((h) => (
+            <option key={h.key} value={h.key}>
+              {h.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={fieldLabel}>
+        Who it went to
+        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
+      </label>
+      <label style={fieldLabel}>
+        The day it went
+        <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+      </label>
+      <label style={fieldLabel}>
+        A note, if you want one
+        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
+      </label>
+      <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!!problem || saving}
+          style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid transparent', cursor: problem || saving ? 'default' : 'pointer', background: problem || saving ? DEAD_PRESS_FILL : '#2563eb', color: problem || saving ? DEAD_PRESS_TEXT : '#fff' }}
+        >
+          {saving ? 'Saving…' : 'Record how it went'}
+        </button>
+        <button type="button" onClick={onClose} style={press}>
+          Cancel
+        </button>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{problem || 'The record says it is your word, with your name. It cannot be changed once saved.'}</span>
+      </div>
+    </div>
+  )
+}
+
+function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
+  const [saying, setSaying] = useState(false)
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
@@ -230,8 +311,14 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
       </div>
       <div style={money}>{gap.amount != null ? billsSentMoney(gap.amount) : ''}</div>
       <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
-        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}
+        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}{' '}
+        {saying ? null : (
+          <button type="button" style={press} onClick={() => setSaying(true)}>
+            Say how it went…
+          </button>
+        )}
       </div>
+      {saying ? <ByHandForm gap={gap} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -240,7 +327,7 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean }) {
+function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   if (open.length === 0 && paid.length === 0) return null
@@ -250,7 +337,7 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
       {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} />
+        <GapRow key={g.billId} gap={g} onSaved={onSaved} />
       ))}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
@@ -267,7 +354,7 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} />) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} onSaved={onSaved} />) : null}
     </div>
   )
 }
@@ -460,7 +547,7 @@ export function BillsSentLedger() {
         ))}
       </div>
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
-      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} /> : null}
+      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} onSaved={retry} /> : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
