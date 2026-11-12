@@ -11,6 +11,7 @@ import {
   bexarAddressWhere,
   bexarLotIdsOf,
   bexarLotsAtAddress,
+  bexarNeedsPoint,
   COMAL_PARCELS,
   factsInCounty,
   GUADALUPE_PARCELS,
@@ -21,6 +22,7 @@ import {
   nameSpellings,
   neighbourPointQuestion,
   neighbourSources,
+  oppositeDirections,
   ordinalOf,
   parcelFactsByAddress,
   parcelFactsFromBexarAddress,
@@ -34,6 +36,7 @@ import {
   routeOf,
   sameStreetAddress,
   sourceForId,
+  streetDirections,
   streetParts,
   TRAVIS_PARCELS,
   WILLIAMSON_PARCELS,
@@ -498,5 +501,63 @@ describe("Bexar County, asked by the house number and the street's name", () => 
     expect(bexarLotsAtAddress({}, streetParts('100 SAMPLE LN')!)).toBe(0)
     expect([...bexarLotIdsOf(rows({ PropID: 7 }, { PropID: '8' }, { Situs: 'x' }))]).toEqual(['7', '8'])
     expect(bexarLotIdsOf(null).size).toBe(0)
+  })
+  it('reads the directions around a street, in front and behind', () => {
+    expect(streetDirections('16500 N 1604 W')).toEqual({ front: 'N', behind: 'W' })
+    expect(streetDirections('16500 W LOOP 1604 N \r')).toEqual({ front: 'W', behind: 'N' })
+    expect(streetDirections('100 SAMPLE ST')).toEqual({ front: null, behind: null })
+    expect(streetDirections('100 SAMPLE ST NORTH, San Antonio')).toEqual({ front: null, behind: 'N' })
+    // West Avenue is a name, and so is the last word standing.
+    expect(streetDirections('100 WEST AVE')).toEqual({ front: null, behind: null })
+    expect(streetDirections('100 SAMPLE W STE 200')).toEqual({ front: null, behind: 'W' })
+    expect(streetDirections('SAMPLE ST')).toBeNull()
+  })
+  it('calls a direction the opposite only when it is one: E for W, N for S', () => {
+    const d = (line: string) => streetDirections(`100 ${line}`)
+    expect(oppositeDirections(d('N 1604 W'), d('N LOOP 1604 E'))).toBe(true)
+    expect(oppositeDirections(d('N 1604 E'), d('S LOOP 1604'))).toBe(true)
+    expect(oppositeDirections(d('IH 10 W'), d('INTERSTATE 10 E'))).toBe(true)
+    expect(oppositeDirections(d('NW 410'), d('NE LOOP 410'))).toBe(true)
+    // One stretch the city and the county write two ways.
+    expect(oppositeDirections(d('N 1604 W'), d('W LOOP 1604'))).toBe(false)
+    expect(oppositeDirections(d('W 1604 N'), d('N LOOP 1604 W'))).toBe(false)
+    expect(oppositeDirections(d('IH 10 W'), d('W INTERSTATE 10'))).toBe(false)
+    // A direction on one side only says nothing.
+    expect(oppositeDirections(d('N 1604 W'), d('LOOP 1604'))).toBe(false)
+    expect(oppositeDirections(d('SAMPLE ST'), d('N SAMPLE ST'))).toBe(false)
+    expect(oppositeDirections(d('N SAMPLE ST'), d('E SAMPLE ST'))).toBe(false)
+    expect(oppositeDirections(null, d('N SAMPLE ST'))).toBe(false)
+    expect(oppositeDirections(d('N SAMPLE ST'), null)).toBe(false)
+  })
+  it('passes by a row on the opposite stretch, unless it is the lot under the point', () => {
+    const address = '16500 N 1604 W'
+    const parts = streetParts(address)!
+    const asked = streetDirections(address)
+    const other = body({ id: 1, street: '16500 N LOOP 1604 E' })
+    // Alone and opposite: not this address, so the lookup falls to the permit's point.
+    expect(parcelFactsFromBexarAddress(other, parts, null, asked)).toBeNull()
+    expect(parcelFactsFromBexarAddress(other, parts, new Set(['9']), asked)).toBeNull()
+    // The point says it is the lot all the same.
+    expect(parcelFactsFromBexarAddress(other, parts, new Set(['1']), asked)?.prop_id).toBe('1')
+    // Without the asked directions the pick is as before.
+    expect(parcelFactsFromBexarAddress(other, parts)?.prop_id).toBe('1')
+    const both = body({ id: 1, street: '16500 N LOOP 1604 E' }, { id: 2, street: '16500 W LOOP 1604' })
+    expect(parcelFactsFromBexarAddress(both, parts, null, asked)?.prop_id).toBe('2')
+    expect(parcelFactsFromBexarAddress(both, parts, new Set(['1']), asked)?.prop_id).toBe('1')
+    // The side of town in front follows the same rule: S for N is passed by, E for N is not.
+    const sides = body({ id: 3, street: '700 S SAMPLE ST' })
+    expect(parcelFactsFromBexarAddress(sides, streetParts('700 N SAMPLE ST')!, null, streetDirections('700 N SAMPLE ST'))).toBeNull()
+    expect(parcelFactsFromBexarAddress(body({ id: 4, street: '700 E SAMPLE ST' }), streetParts('700 N SAMPLE ST')!, null, streetDirections('700 N SAMPLE ST'))?.prop_id).toBe('4')
+  })
+  it('asks the point for several lots or an opposite row, and for nothing else', () => {
+    const address = '16500 N 1604 W'
+    const parts = streetParts(address)!
+    const asked = streetDirections(address)
+    expect(bexarNeedsPoint(body({ id: 1, street: '16500 N LOOP 1604 W' }), parts, asked)).toBe(false)
+    expect(bexarNeedsPoint(body({ id: 1, street: '16500 W LOOP 1604' }), parts, asked)).toBe(false)
+    expect(bexarNeedsPoint(body({ id: 1, street: '16500 N LOOP 1604 E' }), parts, asked)).toBe(true)
+    expect(bexarNeedsPoint(body({ id: 1, street: '16500 N LOOP 1604 W' }, { id: 2, street: '16500 N LOOP 1604 W' }), parts, asked)).toBe(true)
+    expect(bexarNeedsPoint(body({ id: 1, street: '16500 N LOOP 1604 E' }), parts, null)).toBe(false)
+    expect(bexarNeedsPoint({}, parts, asked)).toBe(false)
   })
 })

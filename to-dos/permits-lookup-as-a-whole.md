@@ -2,17 +2,17 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PRs 1, 2, 3, 3b, 6, 5 and 7 merged, deployed and checked 2026-11-12 (v2.6978 to v2.6991) · Austin's window read again the same day on the owner's yes · PR 9 (a San Antonio centre with several lots, v2.6997) built after PR 7's walk · PR 4 looked at and dropped · PR 8 measured and not built
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PRs 1, 2, 3, 3b, 6, 5 and 7 merged, deployed and checked 2026-11-12 (v2.6978 to v2.6991) · Austin's window read again the same day on the owner's yes · PR 9 (a San Antonio centre with several lots, v2.6997) built after PR 7's walk · PR 10 (a lot on the opposite stretch of a loop, v2.7008) built on the owner's yes · PR 4 looked at and dropped · PR 8 measured and not built
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: Deploy PR 9 after its merge and open the same San Antonio addresses again. The four whose lot changes are looked up again by hand, since a kept answer stays its thirty days.
+next: Deploy PR 9 and PR 10 after their merges and open the same San Antonio addresses again. The ones whose lot changes are looked up again by hand, since a kept answer stays its thirty days.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line) · v2.6991 (San Antonio's address spelled the county's way) · v2.6997 (several lots at one San Antonio address)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line) · v2.6991 (San Antonio's address spelled the county's way) · v2.6997 (several lots at one San Antonio address) · v2.7008 (a lot on the opposite stretch of a loop)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -119,6 +119,12 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
    Built after PR 7's walk. A centre on a loop is one address and a parcel per pad, each with its
    own owner, and the pick took the first. On 39 addresses 9 have several lots and the owner
    shown changes on 4. One lot at the address asks nothing more, and the card's words stay.
+10. **A San Antonio lot on the opposite stretch of a loop is passed by** (XS). Built on the
+   owner's yes after a measure. A loop keeps one house number on its east and west stretches. A
+   county row with the opposite direction (E for W, N for S) is not the address, unless it is
+   the lot under the permit's point. On 282 addresses with a direction behind the street, 7
+   wrong owners are put right and no right one changes. The city and the county write one
+   stretch two ways 15 times there, and those are still found by their address.
 
 ## What #316 and #310 learned that this needs
 

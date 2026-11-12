@@ -28,8 +28,8 @@ const SUFFIXES = new Set(['ST', 'STREET', 'AVE', 'AVENUE', 'AV', 'DR', 'DRIVE', 
 /** Where the street ends and a unit begins. */
 const UNIT_WORDS = new Set(['STE', 'SUITE', 'UNIT', 'APT', 'BLDG', 'BUILDING', 'FL', 'FLOOR', 'RM', 'ROOM', 'LOT', 'SPC', 'SPACE', 'TRLR'])
 
-/** "2700 E 5TH ST, Austin" → 2700, E, 5TH. Null when the address does not start with a house number or has no street. */
-export function streetParts(address: string | null | undefined): StreetParts | null {
+/** An address's house number, the direction in front of its street, the direction behind it, and the street's words between them. Null when it does not start with a house number. */
+function splitStreet(address: string | null | undefined): { num: string; prefix: string | null; behind: string | null; rest: string[] } | null {
   const street = ((address ?? '').split(',')[0] ?? '').toUpperCase().replace(/[.]/g, '').replace(/#.*$/, '').replace(/[^A-Z0-9' -]/g, ' ')
   const words = street.split(/\s+/).filter(Boolean)
   const first = words[0] ?? ''
@@ -45,13 +45,51 @@ export function streetParts(address: string | null | undefined): StreetParts | n
     prefix = DIRECTIONS[rest[0] ?? ''] ?? null
     rest = rest.slice(1)
   }
-  // "MAIN ST N": the trailing direction, then the suffix, never the last word standing.
-  if (rest.length >= 2 && DIRECTIONS[rest[rest.length - 1] ?? '']) rest = rest.slice(0, -1)
+  // "MAIN ST N": the trailing direction, never the last word standing.
+  let behind: string | null = null
+  if (rest.length >= 2 && DIRECTIONS[rest[rest.length - 1] ?? '']) {
+    behind = DIRECTIONS[rest[rest.length - 1] ?? ''] ?? null
+    rest = rest.slice(0, -1)
+  }
+  return { num, prefix, behind, rest }
+}
+
+/** "2700 E 5TH ST, Austin" → 2700, E, 5TH. Null when the address does not start with a house number or has no street. */
+export function streetParts(address: string | null | undefined): StreetParts | null {
+  const split = splitStreet(address)
+  if (!split) return null
+  let rest = split.rest
+  // The suffix goes after the trailing direction, never the last word standing.
   if (rest.length >= 2 && SUFFIXES.has(rest[rest.length - 1] ?? '')) rest = rest.slice(0, -1)
   const name = rest.join(' ')
   if (name === '') return null
   const interstate = interstateOf(name)
-  return { num, prefix, name: interstate === null ? name : `IH ${interstate}` }
+  return { num: split.num, prefix: split.prefix, name: interstate === null ? name : `IH ${interstate}` }
+}
+
+/** The directions an address carries around its street: in front ("N 1604") and behind ("1604 W"). */
+export type StreetDirections = { front: string | null; behind: string | null }
+
+/** The directions around an address's street; null when the address does not start with a house number. */
+export function streetDirections(address: string | null | undefined): StreetDirections | null {
+  const split = splitStreet(address)
+  return split ? { front: split.prefix, behind: split.behind } : null
+}
+
+const OPPOSITE: Record<string, string> = { N: 'S', S: 'N', E: 'W', W: 'E' }
+
+/**
+ * Whether a county's row carries the opposite of a direction the asked address carries (E for W,
+ * N for S) and not that direction itself: another stretch of the same loop or street, with its
+ * own house numbers. The city and the county write one stretch two ways ("N 1604 W" is
+ * "W LOOP 1604", and "W 1604 N" is "N LOOP 1604 W"), so a direction that is only missing, or
+ * written on the other side, is not the opposite.
+ */
+export function oppositeDirections(asked: StreetDirections | null, theirs: StreetDirections | null): boolean {
+  const letters = (d: StreetDirections | null) => `${d?.front ?? ''}${d?.behind ?? ''}`.split('')
+  const mine = letters(asked)
+  const other = letters(theirs)
+  return mine.some((d) => other.includes(OPPOSITE[d] ?? '') && !other.includes(d))
 }
 
 /** An interstate's number, however the address writes it: "IH 10", "I H 10", "I-35", "INTERSTATE HIGHWAY 35"; null for any other street. */
@@ -526,11 +564,12 @@ function bexarPropId(a: Attributes): string | null {
 }
 
 /** The rows of Bexar's answer that are at the asked number on the asked street, so "MAIN" never answers with "MAINE". */
-function bexarRowsAtAddress(body: unknown, parts: StreetParts): Array<{ row: Attributes; prefix: string | null }> {
-  const rows: Array<{ row: Attributes; prefix: string | null }> = []
+function bexarRowsAtAddress(body: unknown, parts: StreetParts): Array<{ row: Attributes; prefix: string | null; directions: StreetDirections | null }> {
+  const rows: Array<{ row: Attributes; prefix: string | null; directions: StreetDirections | null }> = []
   for (const a of featuresOf(body)) {
-    const theirs = streetParts(bexarStreetLine(a.Situs))
-    if (theirs && theirs.num === parts.num && sameStreetName(parts.name, theirs.name)) rows.push({ row: a, prefix: theirs.prefix })
+    const line = bexarStreetLine(a.Situs)
+    const theirs = streetParts(line)
+    if (theirs && theirs.num === parts.num && sameStreetName(parts.name, theirs.name)) rows.push({ row: a, prefix: theirs.prefix, directions: streetDirections(line) })
   }
   return rows
 }
@@ -542,6 +581,15 @@ function bexarRowsAtAddress(body: unknown, parts: StreetParts): Array<{ row: Att
  */
 export function bexarLotsAtAddress(body: unknown, parts: StreetParts): number {
   return new Set(bexarRowsAtAddress(body, parts).map(({ row }) => bexarPropId(row) ?? '')).size
+}
+
+/**
+ * Whether the permit's point has to be asked before Bexar's answer to the address question can
+ * be read: several lots share the address, or a row there carries the opposite of one of the
+ * asked directions (`oppositeDirections`) and only the point can say it is the lot all the same.
+ */
+export function bexarNeedsPoint(body: unknown, parts: StreetParts, asked: StreetDirections | null): boolean {
+  return bexarLotsAtAddress(body, parts) > 1 || bexarRowsAtAddress(body, parts).some(({ directions }) => oppositeDirections(asked, directions))
 }
 
 /** The ids of the lots in one of Bexar's answers: the lots under the permit's point, for `parcelFactsFromBexarAddress`. */
@@ -558,15 +606,19 @@ export function bexarLotIdsOf(body: unknown): Set<string> {
  * The facts off Bexar's answer to the address question: the row at the asked number on the asked
  * street. Where several lots share the address and one of them is under the permit's point
  * (`underPoint`, the ids of the lots there), that lot. Otherwise the asked side of town before the
- * other, a row with an owner before a blank one. Null when no row is that street.
+ * other, a row with an owner before a blank one. A row that carries the opposite of one of the
+ * asked directions (`asked`, off `streetDirections`) is another stretch of the street and is
+ * passed by, unless it is the lot under the point. Null when no row is that street.
  */
-export function parcelFactsFromBexarAddress(body: unknown, parts: StreetParts, underPoint: ReadonlySet<string> | null = null): ParcelFacts | null {
+export function parcelFactsFromBexarAddress(body: unknown, parts: StreetParts, underPoint: ReadonlySet<string> | null = null, asked: StreetDirections | null = null): ParcelFacts | null {
   let best: Attributes | null = null
   let bestScore = Number.NEGATIVE_INFINITY
-  for (const { row: a, prefix } of bexarRowsAtAddress(body, parts)) {
+  for (const { row: a, prefix, directions } of bexarRowsAtAddress(body, parts)) {
     let score = 0
     const id = bexarPropId(a)
-    if (underPoint && id !== null && underPoint.has(id)) score += 16
+    const isUnderPoint = underPoint !== null && id !== null && underPoint.has(id)
+    if (!isUnderPoint && oppositeDirections(asked, directions)) continue
+    if (isUnderPoint) score += 16
     if (parts.prefix && prefix === parts.prefix) score += 4
     if (!parts.prefix && !prefix) score += 2
     if (parts.prefix && prefix && prefix !== parts.prefix) score -= 4
