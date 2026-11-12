@@ -59,7 +59,8 @@ async function expectFree(page: Page, label: string) {
 
 test('a window freezes the page, and closing it gives the page back', async ({ page }) => {
   await page.goto('/jobs?tab=inspections')
-  const open = page.getByRole('button', { name: 'Add Inspection', exact: true })
+  // first(): an empty list offers the same press inside its sentence, and both open the one window.
+  const open = page.getByRole('button', { name: 'Add Inspection', exact: true }).first()
   await expect(open).toBeVisible({ timeout: 30000 })
   await open.click()
   await expect(page.getByRole('heading', { name: 'Add inspection' })).toBeVisible()
