@@ -266,15 +266,14 @@ export interface MyMailUntagRequest {
 /**
  * The untag done: the lines removed, and whether the office already put the conversation on a legal matter, which keeps
  * its own copy. Since v2.6292 also `held`, the person's lines that stay on the job with their files because the office
- * keeps something on them (a promise written down, a highlight, or what we owe done by one), and `labelLeft`, the mails
- * the label *Tagged in ClickTooling* could not come off in Gmail. A function deployed before v2.6292 sends neither.
+ * keeps something on them (a promise written down, a highlight, or what we owe done by one). Until v2.7035 it also
+ * carried `labelLeft`, the mails a Gmail label could not come off; an untag no longer touches Gmail.
  */
 export interface MyMailUntagOk {
   ok: true
   removed: number
   keptForMatter: boolean
   held?: number
-  labelLeft?: number
 }
 
 /** What the tab posts to the function. */
@@ -325,5 +324,9 @@ export const MY_MAIL_FUNCTION = 'gmail-mine'
 /** How many mails a page of the list reads. */
 export const MY_MAIL_PAGE = 50
 
-/** The Gmail label a tagged mail carries in the person's own box (the owner's call 6), so Gmail shows what is on a job. */
+/**
+ * The Gmail label the app used to put on a tagged mail in the person's own box, until v2.7035. A tagged mail is copied
+ * into the app whole, so the label marked a link that does not exist. Nothing adds it, reads it or takes it off any
+ * more: `gmail-mine`'s one-time clean-up deletes it from every mailbox that has it, and the name is kept for that alone.
+ */
 export const MY_MAIL_GMAIL_LABEL = 'Tagged in ClickTooling'
