@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { ESTIMATE_LINK_LOCKED_CODE, ESTIMATE_LINK_LOCKED_WORDS, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { boxPageOfficePhone } from '../_shared/boxPage.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { OFFICE_HOURS_KEY, nextOpening, officeOpen, parseOfficeHours } from '../_shared/gcKernels/lib/messages/hasRule.ts'
@@ -309,6 +310,9 @@ async function deskList(admin: Admin): Promise<FirstLookDeskRow[]> {
 async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Record<string, unknown>): Promise<Response> {
   const caller = await deskCaller(req, supabaseUrl)
   if (!caller) return json({ error: 'First looks are for the owner and the developers while this is being tried.' }, 403)
+  // A teammate who left is refused here too: the database's own seal sees no caller once this switches to the service role.
+  const archived = await refuseArchivedCaller(admin, caller.userId, corsHeaders)
+  if (archived) return archived
   const action = String(body.action)
   const lookId = typeof body.lookId === 'string' && UUID_RE.test(body.lookId) ? body.lookId : null
 
