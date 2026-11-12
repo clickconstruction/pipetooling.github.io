@@ -123,7 +123,7 @@ import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
-import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
 import { showHeaderNewBidButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
@@ -168,10 +168,10 @@ export default function Bids() {
   // Header layout: one row (trades | board tabs | New Bid) needs ~1150px; below
   // that the board tabs drop to their own single-row scrollable strip (v2.1331).
   const wideBidsHeader = useMatchMedia('(min-width: 1151px)')
-  // v2.6167: every role that can make a bid has Bid in the app header (Layout's press, off in Farm Mode).
+  // v2.6167: every role that can make a bid has Bid in the app header (Layout's press, off in Task Mode).
   // Below the wide header the page's New Bid wrapped onto a row of its own under the trades, so there the
   // header's press is the one New Bid.
-  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+  const [taskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
@@ -1665,7 +1665,7 @@ export default function Bids() {
   // The header's New Bid, and the same press for the empty lists that name it (punch list #184, sweep C).
   const newBidPress = visibleServiceTypes.length > 0 && myRole !== 'primary' ? openNewBid : undefined
   // v2.6167: below the wide header the app header's Bid press is the one New Bid; the empty lists keep theirs.
-  const headerHasNewBid = showHeaderNewBidButton(myRole, farmModeEnabled && !!authUser?.id, location.pathname)
+  const headerHasNewBid = showHeaderNewBidButton(myRole, taskModeEnabled && !!authUser?.id, location.pathname)
   const bidsNewBidButton =
     newBidPress && (wideBidsHeader || !headerHasNewBid) ? (
       <button

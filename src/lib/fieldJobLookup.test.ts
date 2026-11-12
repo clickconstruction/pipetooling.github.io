@@ -41,7 +41,7 @@ describe('header search eligibility (T5-01)', () => {
     }
   })
 
-  it('Farm Mode switches every entry point off', () => {
+  it('Task Mode switches every entry point off', () => {
     for (const r of ROLES) expect(headerSearchEligibleForRole(r, true)).toBe(false)
   })
 
