@@ -1879,6 +1879,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "driving-distance",
   "file-index-sweep",
   "file-submittal-package",
+  "first-look",
   "gc-architect-email",
   "gc-card-bill",
   "gc-customer-email",

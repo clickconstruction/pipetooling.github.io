@@ -46,6 +46,7 @@ export const IMPORTERS = [
   'customer-portal',
   'dev-mcp',
   'drive-link',
+  'first-look',
   'gc-trade-portal',
   'gmail-count',
   'gmail-mine',
