@@ -117,7 +117,10 @@ jobs:
           echo "Contents of dist/index.html:"
           cat dist/index.html
           echo ""
-          if ! grep -q "assets/index-" dist/index.html; then
+          # The app's entry script, whatever the bundler names it. The bundle was index-<hash>.js until a
+          # second entry (show.html, v2.7007) made it main-<hash>.js; a check on the name then failed every
+          # deploy (v2.7034). src/lib/deployVerifyBuildOutput.test.ts holds this line to both names.
+          if ! grep -qE 'src="/assets/[^"]+\.js"' dist/index.html; then
             echo "::error::index.html does not reference built assets correctly"
             exit 1
           fi
