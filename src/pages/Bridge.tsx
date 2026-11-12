@@ -57,7 +57,7 @@ import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
 import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
-import { BID_SIZES, buildBidWins, buildMarketWorth, type BidSent } from '../lib/bridge/bidWins'
+import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
 import type { LeftOutRule } from '../lib/bridge/leftOut'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
@@ -701,7 +701,7 @@ export default function Bridge() {
     const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
     return {
       // Market reads at what the asks are worth at the won rates (punch list #318), once both are read.
-      market: demand ? { ...demand.market, worth: marketWorth?.perWeekUsd != null ? { perWeekUsd: marketWorth.perWeekUsd, bidsPerWeekUsd: bidWins?.wonPerWeekUsd ?? null, estimatesPerWeekUsd: estimateWins?.soldPerWeekUsd ?? null } : null } : null,
+      market: demand ? { ...demand.market, worth: marketWorthInput(marketWorth, bidWins, estimateWins) } : null,
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
       fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
       bill: billPile ? billStageInput(billPile, finishedPerWeek, billedPerWeek) : null,

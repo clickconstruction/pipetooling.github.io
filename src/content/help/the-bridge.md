@@ -189,6 +189,8 @@ Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on 
 
 The email shows the three tiles, the strip of pipe and the week's call with its moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
+Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
+
 The email records nothing. The email's button opens the Bridge, where one press makes the call. A move the page would give to you goes out with no name on it. On a Friday the button opens the Bridge so you can answer.
 
 ## Cash on hand comes from the bank
