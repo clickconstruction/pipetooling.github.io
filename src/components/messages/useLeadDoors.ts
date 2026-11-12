@@ -13,13 +13,11 @@ import { useOptionalAuth } from '../../hooks/useAuth'
 import type { Contact } from '../../lib/contacts/kernel'
 import { pressProblem } from '../../lib/followUp/followUpIo'
 import { jobPrefillFrom, LEAD_DOOR_WORDS, leadFacts, leadFirstName, leadHasName, type LeadFacts } from '../../lib/messages/leadDoors'
-import { supabaseLeadDoorsIo, type LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
+import { defaultLeadDoorsIo, type LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { loadContact } from '../../lib/messages/messagesIo'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
 import { useThreadWindow } from '../gc/messages/useThreadWindow'
-
-const DEFAULT_IO = supabaseLeadDoorsIo()
 
 /** Who the door is for: the contact when the caller has it, else read by id; and their newest words. */
 export interface LeadDoorTarget {
@@ -35,7 +33,8 @@ export interface LeadDoors {
   pressing: string | null
 }
 
-export function useLeadDoors(io: LeadDoorsIo = DEFAULT_IO, read: (contactId: string) => Promise<Pick<Contact, 'id' | 'name' | 'channels'> | null> = loadContact): LeadDoors {
+/** The io and the contact's read default to the app's own, taken when a door is pressed and not before (`defaultLeadDoorsIo`). */
+export function useLeadDoors(io?: LeadDoorsIo, read?: (contactId: string) => Promise<Pick<Contact, 'id' | 'name' | 'channels'> | null>): LeadDoors {
   const auth = useOptionalAuth()
   const toasts = useOptionalToastContext()
   const reread = useMessagesReread()
@@ -52,11 +51,11 @@ export function useLeadDoors(io: LeadDoorsIo = DEFAULT_IO, read: (contactId: str
   const convert = useCallback(
     async (target: LeadDoorTarget): Promise<{ customerId: string; facts: LeadFacts }> => {
       if (!userId) throw new Error(LEAD_DOOR_WORDS.noSignIn)
-      const contact = target.contact ?? (await read(target.contactId))
+      const contact = target.contact ?? (await (read ?? loadContact)(target.contactId))
       if (!contact) throw new Error(LEAD_DOOR_WORDS.gone)
       const facts = leadFacts(contact, target.words)
       if (!leadHasName(facts)) throw new Error(LEAD_DOOR_WORDS.noName)
-      const { customerId } = await io.convert(target.contactId, facts, { userId }, todayYmdInAppTz())
+      const { customerId } = await (io ?? defaultLeadDoorsIo()).convert(target.contactId, facts, { userId }, todayYmdInAppTz())
       say(LEAD_DOOR_WORDS.converted(leadFirstName(facts)), 'success')
       reread()
       return { customerId, facts }
@@ -85,7 +84,7 @@ export function useLeadDoors(io: LeadDoorsIo = DEFAULT_IO, read: (contactId: str
       setPressing(`estimate ${target.contactId}`)
       try {
         const { customerId } = await convert(target)
-        const { estimateNumber } = await io.startEstimate(customerId, { userId: userId ?? '', role })
+        const { estimateNumber } = await (io ?? defaultLeadDoorsIo()).startEstimate(customerId, { userId: userId ?? '', role })
         closeThread()
         navigate(`/estimates/${estimateNumber}`, { state: { freshEstimateDraft: true } })
       } catch (e) {

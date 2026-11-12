@@ -34,8 +34,11 @@ export function SlashList({
   problem,
   papers = [],
   papersTitle = '',
+  extra = null,
+  note = null,
   onPick,
   onPickPaper,
+  onPickExtra,
   onHover,
 }: {
   /** The listbox's id, which the box names in `aria-controls`; row `i` is `${id}-${i}`. */
@@ -55,8 +58,13 @@ export function SlashList({
   /** #127: the customer's papers the words call, after the lines; row `rows.length + j` is paper `j`. */
   papers?: readonly Paper[]
   papersTitle?: string
+  /** Punch list #319 PR 1b: one last row that does something in place of writing a line (Start an estimate); row `rows.length + papers.length`. */
+  extra?: { label: string; hint: string } | null
+  /** #319 PR 1b: a line that says why the papers are empty (*Nothing is owed.*), drawn after them. */
+  note?: string | null
   onPick: (q: QuickReply) => void
   onPickPaper?: (p: Paper) => void
+  onPickExtra?: () => void
   onHover: (i: number) => void
 }) {
   useEffect(() => {
@@ -81,7 +89,7 @@ export function SlashList({
         <div role="alert" style={{ padding: '0.45rem 0.6rem', color: 'var(--text-red-700)' }}>
           {problem}
         </div>
-      ) : rows.length === 0 && papers.length === 0 ? (
+      ) : rows.length === 0 && papers.length === 0 && !extra && !note ? (
         <div data-slash-none style={{ padding: '0.45rem 0.6rem', color: 'var(--text-muted)' }}>
           {SLASH_NONE}
         </div>
@@ -152,6 +160,28 @@ export function SlashList({
               </li>
             )
           })}
+          {note && (
+            <li role="presentation" data-slash-note style={{ padding: '0.4rem 0.6rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+              {note}
+            </li>
+          )}
+          {extra && (
+            <li
+              id={`${id}-${rows.length + papers.length}`}
+              role="option"
+              aria-selected={rows.length + papers.length === active}
+              data-slash-extra
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onPickExtra?.()
+              }}
+              onMouseEnter={() => onHover(rows.length + papers.length)}
+              style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', ...(rows.length + papers.length === active ? LIT : null) }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--text-link)' }}>{extra.label}</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{extra.hint}</span>
+            </li>
+          )}
         </ul>
       )}
       <div aria-hidden="true" style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', padding: '0.25rem 0.6rem', fontSize: '0.7rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>

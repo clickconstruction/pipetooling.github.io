@@ -58,3 +58,15 @@ export function supabaseLeadDoorsIo(client: SupabaseClient<Database> = supabase,
     },
   }
 }
+
+let made: LeadDoorsIo | null = null
+
+/**
+ * The doors' own io, made the first time a door is pressed and kept. Never made when a module loads: the reply box
+ * draws on every thread and every job's window (#319 PR 1b), and it has no reason to read this until someone presses
+ * Start an estimate.
+ */
+export function defaultLeadDoorsIo(): LeadDoorsIo {
+  made ??= supabaseLeadDoorsIo()
+  return made
+}

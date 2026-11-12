@@ -48,6 +48,10 @@ import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type Es
 import { RATING_LINK_MAKING, supabaseRatingLinkIo, type RatingLinkIo } from '../../../../lib/ratings/ratingLinkIo'
 import { SHOW_ASK_WORDS, SHOW_BLANK, showAskLine, slashCallsShow, withAsk } from '../../../../lib/firstLook/ask'
 import { onAskForPhotos } from '../../../../lib/firstLook/askBus'
+import { SEND_PRESSES, sendPressesHead, sendPressesShown, withSlashWord } from '../../../../lib/messages/sendPresses'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../../lib/deadPress'
+import { newestInboundWords } from '../../../../lib/messages/leadDoors'
+import { useLookDoors } from '../../../firstLook/useLookDoors'
 import { supabaseFirstLookThreadIo, type FirstLookThreadIo } from '../../../../lib/firstLook/threadIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
@@ -606,7 +610,13 @@ export function ReplyBox({
   // #127 PR 2: words that call their papers (`/bill`, `/estimate`) list them after the lines, the job's first.
   const paperKind = slashOpen ? slashPaperKind(slashWord.words) : null
   const slashPapers = paperKind && papers ? listedPapers(papers, paperKind, pipelineJobId) : []
-  const slashCount = slashRows.length + slashPapers.length
+  // Punch list #319 PR 1b: `/estimate` ends with a row that starts one, for a customer or a lead; `/bill` with no open
+  // bill says so. Both are the list's own, so the press over the box and the typed word read the same.
+  const doors = useLookDoors(contact)
+  const slashExtra = slashOpen && paperKind === 'estimate' && doors.has ? { label: slashPapers.length ? SEND_PRESSES.startNewEstimate : SEND_PRESSES.startEstimate, hint: SEND_PRESSES.startEstimateHint } : null
+  const papersRead = papers !== null || contact.kind !== 'customer'
+  const slashNote = slashOpen && paperKind === 'bill' && papersRead && !slashPapers.some((p) => p.kind === 'bill' && p.open) ? SEND_PRESSES.nothingOwed : null
+  const slashCount = slashRows.length + slashPapers.length + (slashExtra ? 1 : 0)
   const lit = slashLit.key === slashKey ? Math.min(slashLit.at, Math.max(0, slashCount - 1)) : 0
   useEffect(() => {
     // After a pick the caret lands after the line, in the box, as typing would leave it.
@@ -655,6 +665,21 @@ export function ReplyBox({
   }
   const hearsAsk = !job
   useEffect(() => (hearsAsk ? onAskForPhotos(contact.id, () => askRef.current()) : undefined), [hearsAsk, contact.id])
+  /** Start an estimate from the list: the `/` word leaves the box, and the estimate opens on them. */
+  const pickExtra = () => {
+    if (!slashWord) return
+    putInPlace(body, slashWord)('')
+    void doors.startEstimate(newestInboundWords(open?.lines ?? [], contact.id))
+  }
+  /** An estimate or A bill over the box: the word goes in on a line of its own and the list opens on their papers. */
+  const pressWord = (word: 'estimate' | 'bill') => {
+    const next = withSlashWord(body, word)
+    caretAfter.current = next.caret
+    setSlashShut(null)
+    setBody(next.text)
+    setCaret(next.caret)
+  }
+  const pressesShown = sendPressesShown({ role: auth?.role ?? null, kind: shown, who: contact.kind, folded, textWaits, settling: settling.active })
   const slashKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (!slashOpen || !slashWord || e.nativeEvent.isComposing) return
     if (e.key === 'Escape') {
@@ -671,7 +696,8 @@ export function ReplyBox({
     } else if ((e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) || (e.key === 'Tab' && !e.shiftKey)) {
       e.preventDefault()
       if (lit < slashRows.length) pickSlash(slashRows[lit]!)
-      else pickPaper(slashPapers[lit - slashRows.length]!)
+      else if (lit < slashRows.length + slashPapers.length) pickPaper(slashPapers[lit - slashRows.length]!)
+      else pickExtra()
     }
   }
 
@@ -790,8 +816,43 @@ export function ReplyBox({
           papers={slashPapers}
           papersTitle={paperKind ? papersTitle(contact.kind === 'unknown' ? null : first, paperKind) : ''}
           onPickPaper={pickPaper}
+          extra={slashExtra}
+          note={slashNote}
+          onPickExtra={pickExtra}
           onHover={(at) => setSlashLit({ key: slashKey, at })}
         />
+      )}
+
+      {pressesShown && (
+        <div data-send-presses role="group" aria-label={sendPressesHead(contact.kind === 'unknown' ? null : first)} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{sendPressesHead(contact.kind === 'unknown' ? null : first)}</span>
+          {(
+            [
+              { key: 'photos', label: SEND_PRESSES.photos, tip: SEND_PRESSES.photosTip, run: () => askRef.current() },
+              { key: 'estimate', label: SEND_PRESSES.estimate, tip: SEND_PRESSES.estimateTip, run: () => pressWord('estimate') },
+              { key: 'bill', label: SEND_PRESSES.bill, tip: SEND_PRESSES.billTip, run: () => pressWord('bill') },
+            ] as const
+          ).map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              data-send-press={p.key}
+              disabled={Boolean(blocked)}
+              title={blocked || p.tip}
+              onClick={p.run}
+              style={{
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                padding: '0.2rem 0.65rem',
+                font: 'inherit',
+                fontWeight: 600,
+                ...(blocked ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : { background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }),
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {!textWaits && (

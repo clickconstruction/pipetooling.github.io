@@ -2,7 +2,7 @@
 title: ask a customer to show you the problem before you go out
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: first look, show us the problem, photos, photo, video, picture, link, text, ask for photos, /show, price before a visit, estimate, book a visit, thread, messages, customer, lead, caller
+keywords: first look, show us the problem, send an estimate by text, send a bill by text, /estimate, /bill, three presses, photos, photo, video, picture, link, text, ask for photos, /show, price before a visit, estimate, book a visit, thread, messages, customer, lead, caller
 where: /messages
 order: 120
 ---
@@ -14,14 +14,31 @@ The record is called a First look. It sits above the person's messages until you
 
 1. Open the person's thread in [Messages](/messages).
 2. Press into the reply box and choose **Text**.
-3. Type `/show`. The list opens with the ask at the top.
-4. Press **Enter**. The line goes in with your name and a link made for this person.
-5. Read the line. Change any words you like.
-6. Press {{button:blue|Send text}}.
+3. Press {{button:outline|Ask for photos}} over the box. The line goes in with your name and a link made for this person.
+4. Read the line. Change any words you like.
+5. Press {{button:blue|Send text}}.
 
 The send waits a moment while the link is made. The link takes photos and video for 7 days.
 
-`/photo` and `/video` open the same ask.
+You can type it too. `/show`, `/photo` and `/video` open the same ask.
+
+## The three presses over the box
+
+On a text to a customer, a lead or a new number, three presses sit over the reply box.
+
+:::example Over the reply box
+
+Send Dana {{button:outline|Ask for photos}} {{button:outline|An estimate}} {{button:outline|A bill}}
+
+:::
+
+- {{button:outline|Ask for photos}} puts the ask in the box.
+- {{button:outline|An estimate}} lists their estimates. Pick one and its line goes in with its link. The last row starts a new estimate.
+- {{button:outline|A bill}} lists their bills. Pick one and its line goes in with its pay page. With no open bill it says nothing is owed.
+
+Each press does what its typed word does. The words are `/show`, `/estimate` and `/bill`.
+
+The three are grey for a number that sent STOP. Hold the pointer on one to read why.
 
 ## What the customer sees
 
