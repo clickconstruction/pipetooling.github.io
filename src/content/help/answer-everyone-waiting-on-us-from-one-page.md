@@ -94,6 +94,20 @@ A person with no number and no email on file cannot be answered from the desk. T
 
 The end says what went. When people went quiet on us after our last word, it says how many and offers {{button:outline|Nudge the first}}. That opens the first one with the reminder written. Under **Mine** the desk walks only the people you hold.
 
+## Close a conversation that needs no reply
+
+Some messages need no answer. A thank you is one. Close the conversation so it leaves Follow up.
+
+- On a row in **Needs a reply**, press {{button:outline|No reply needed}}.
+- In a thread, press {{button:outline|No reply needed}} beside **We owe them…**.
+- On the Sort all desk, press **No reply needed** under the card. The sender stays unnamed. **New** asks again when they next write.
+
+The thread keeps a grey line that says who closed it and when. The thread then shows a grey chip, such as *Done · no reply needed · Rosa, Nov 12*. The move line says *Nothing waits*.
+
+Press {{button:outline|Reopen}} beside the chip to put the conversation back on Follow up.
+
+A new message from them opens the conversation again by itself.
+
 ## Supply houses and candidates
 
 Supply houses and people we may hire never count on Follow up. Press {{button:outline|Supply houses and candidates}} to see them.
