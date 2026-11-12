@@ -5,6 +5,7 @@
  * and drawn by `components/firstLook/FirstLookCard.tsx`.
  */
 import type { ThreadMessage } from '../messages/thread'
+import { driveFolderUrl, lookDriveLine } from './drive'
 import { firstLookCountWords, firstLookState, type FirstLookKind } from './look'
 
 /** A look as the thread reads it. */
@@ -20,6 +21,8 @@ export interface ThreadLook {
   closed_at: string | null
   place: string | null
   words: string | null
+  /** The look's own folder in Drive, once the sweep has made it (PR 2). Absent on a read from before the column. */
+  drive_folder_id?: string | null
 }
 
 /** A file that came in through the page, finished and not removed. */
@@ -32,6 +35,9 @@ export interface ThreadLookFile {
   bytes: number | null
   seconds: number | null
   finished_at: string | null
+  /** Its copy in Drive, and why the last try did not file it (PR 2). Absent on a read from before the columns. */
+  drive_file_id?: string | null
+  fail_why?: string | null
 }
 
 /** A picture or a video they texted in, off a line of the thread. */
@@ -149,4 +155,11 @@ export function lookWordsFor(look: Pick<ThreadLook, 'words' | 'place'>, newestIn
   const theirs = look.words?.trim()
   if (theirs) return look.place?.trim() ? `${look.place.trim()}: ${theirs}` : theirs
   return newestInbound
+}
+
+/** The card's Drive line for the page's own files: where they are kept, or why they are not there yet (PR 2). */
+export function lookCardDriveLine(card: Pick<LookCard, 'look' | 'files'>, hasCustomer: boolean): { words: string; href: string | null } | null {
+  const filed = card.files.filter((f) => f.drive_file_id).length
+  const failWhy = card.files.find((f) => !f.drive_file_id && f.fail_why)?.fail_why ?? null
+  return lookDriveLine({ total: card.files.length, filed, folderUrl: card.look.drive_folder_id ? driveFolderUrl(card.look.drive_folder_id) : null, hasCustomer, failWhy })
 }

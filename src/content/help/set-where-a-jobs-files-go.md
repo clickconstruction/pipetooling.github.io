@@ -87,6 +87,14 @@ The list is read from Drive each time the tab opens. Nothing is copied. A file d
 
 An empty folder says what fills it. A folder not made yet says when the app makes it. A held job shows the hold's words instead of a list. If the read fails, the section says why. Press **Try again**.
 
+## Customer supplied photos
+
+A customer's own photos and video are kept under the customer's folder, in **Customer supplied photos**. They come in through a First look.
+
+Each First look gets a folder of its own there, named by its day and place. The folder is made the first time something lands in it. It is never made up front.
+
+[Ask a customer to show you the problem before you go out](/help/ask-a-customer-to-show-you-the-problem) shows how the photos come in.
+
 ## The Fleet folder
 
 A machine's check photos land in a folder of the machine's own. Those folders go under the Fleet folder. The **Fleet folder** card on Documents → Where files go sets it.
