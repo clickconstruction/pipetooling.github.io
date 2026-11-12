@@ -29,6 +29,7 @@ import { telHrefFor } from '../../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { readCustomerProfileView, writeCustomerProfileView, type CustomerProfileView } from '../../lib/customers/customerProfileView'
 import CustomerViewSwitch from './CustomerViewSwitch'
+import PayCalendarLine from './PayCalendarLine'
 import CustomerTimelineView from './CustomerTimelineView'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { isStaffFullJobLedgerDetailRole } from '../../lib/jobDetailModalRole'
@@ -321,6 +322,7 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   {daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : 'no billed→paid history yet'}
                 </div>
+                <PayCalendarLine payerId={customerId} payerName={(data.customer.name ?? '').trim() || 'this customer'} />
               </div>
             </div>
 
