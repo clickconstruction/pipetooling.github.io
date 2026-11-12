@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PIECE_BYTES, pieceMetadata, uploadInPieces, type PiecePlan, type PieceTransport } from './pieces'
+import { PIECE_BYTES, pieceMetadata, signedPiecesEndpoint, uploadInPieces, type PiecePlan, type PieceTransport } from './pieces'
 
 const plan: PiecePlan = { endpoint: 'https://storage.example/upload/resumable', bucket: 'first-look-files', path: 'look/file.mov', mime: 'video/quicktime', headers: { apikey: 'anon', 'x-signature': 'token' } }
 
@@ -106,6 +106,11 @@ describe('an upload in pieces', () => {
     const again = await uploadInPieces(blob, plan, transport, { location: 'https://storage.example/upload/resumable/abc' })
     expect(again).toMatchObject({ ok: true, resumed: true })
     expect(state.patches).toHaveLength(1)
+  })
+
+  it('a link\'s key is taken at the signed address only, whatever the base address ends in', () => {
+    expect(signedPiecesEndpoint('https://ref.supabase.co')).toBe('https://ref.supabase.co/storage/v1/upload/resumable/sign')
+    expect(signedPiecesEndpoint('https://ref.supabase.co/')).toBe('https://ref.supabase.co/storage/v1/upload/resumable/sign')
   })
 
   it('the metadata names the bucket, the object and its type, each base64', () => {
