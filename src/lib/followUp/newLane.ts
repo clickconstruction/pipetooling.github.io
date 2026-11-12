@@ -64,6 +64,8 @@ export type NewLaneMessage = Pick<ThreadMessage, 'id' | 'contactId' | 'jobId' | 
     tiedByHand?: boolean
     /** The app sent it on its own (`messages.auto`, v2.6012). Missing reads false. */
     auto?: boolean
+    /** The mail was filed for the record (`messages.history`, v2.7027): never the line a sort row asks about. Missing reads false. */
+    history?: boolean
     /** What the reader read from an invitation to bid (`messages.invitation`, v2.6222), with a person's answer once there is one. Null or missing: not one. */
     invitation?: Invitation | null
   }
@@ -219,13 +221,13 @@ export function bidCustomerChoices(
   })
 }
 
-/** Their newest line in, whether any line of ours went to them after it, and the newest text the app sent on its own. */
+/** Their newest line in that asks for something (a mail filed for the record does not), whether any line of ours went to them after it, and the newest text the app sent on its own. */
 function newestLines(messages: readonly NewLaneMessage[]): Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }> {
   const by = new Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }>()
   for (const m of messages) {
     const cur = by.get(m.contactId) ?? { lastIn: null, lastOutAt: -Infinity, lastAutoAt: null }
     const at = Date.parse(m.at)
-    if (m.direction === 'in' && (!cur.lastIn || at > Date.parse(cur.lastIn.at))) cur.lastIn = m
+    if (m.direction === 'in' && !m.history && (!cur.lastIn || at > Date.parse(cur.lastIn.at))) cur.lastIn = m
     if (m.direction === 'out' && m.auto) {
       if (!cur.lastAutoAt || at > Date.parse(cur.lastAutoAt)) cur.lastAutoAt = m.at
     } else if (m.direction === 'out' && at > cur.lastOutAt) cur.lastOutAt = at

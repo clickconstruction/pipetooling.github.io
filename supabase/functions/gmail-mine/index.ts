@@ -189,6 +189,7 @@ import {
   orphanCopies,
   parseMyMailRequest,
   placedByAppWords,
+  tagAllFiled,
   tagPlanPreview,
   personTagPlanPreview,
   planFollow,
@@ -893,9 +894,9 @@ async function landMail(as: AsPerson, email: EmailIn, step: WriteStep, plan: Pic
  * the words of whoever moved it. A tag through the dev seat (`seat`) names the dev and the seat, never the person as
  * the one who tagged. Best effort: a miss is logged and the tag stands.
  */
-async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean; words?: string; seat?: MyMailNamed | null }): Promise<boolean> {
+async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean; words?: string; seat?: MyMailNamed | null; filed?: boolean }): Promise<boolean> {
   try {
-    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns, words: input.words, seat: input.seat })
+    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns, words: input.words, seat: input.seat, filed: input.filed })
     const { error } = await ctx.admin.from('messages').upsert(row, { onConflict: 'quo_id', ignoreDuplicates: !input.moved })
     if (error) throw new Error(error.message)
     return true
@@ -938,6 +939,8 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     team,
     boxes: box.boxes,
     hidden,
+    // A mail more than 14 days old lands for the record (v2.7027, punch list #324): its line asks nobody for a reply.
+    nowIso: nowIso(),
   })
   // The seat's dry run (server 0.30.0): the plan read back, nothing written, no label put on.
   if (ask.plan === true) {
@@ -1000,8 +1003,8 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   }
 
   const moved = wasOn !== null && wasOn !== plan.jobKey
-  const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat }) : false
-  const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender }
+  const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat, filed: tagAllFiled(plan.counts) }) : false
+  const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender, filed: plan.counts.filed }
   log({ event: 'gmail_mine_tag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved })
   return json(answer)
 }
@@ -1309,7 +1312,7 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
   if (fresh.length > 0) {
     const emails = (await readAll(as.token, fresh)).map((m) => readGmailMessage(m))
     const emailById = new Map(emails.map((e) => [e.gmailId, e]))
-    const plan = planTag({ threadId: tag.gmail_thread_id, messages: emails }, person, job, { byMessageId: {}, ...known })
+    const plan = planTag({ threadId: tag.gmail_thread_id, messages: emails }, person, job, { byMessageId: {}, ...known, nowIso: nowIso() })
     // Asked once more before anything lands: an untag that marked the row while its mail was read stops the follow here.
     if (!(await stillFollowed(admin, tag.id))) throw new Untagging()
     for (const step of plan.steps) {
@@ -1711,7 +1714,7 @@ async function placeSentMail(as: AsPerson, email: EmailIn, read: MyMailRead, kno
   if (tagRows.length > 0 || offRows.length > 0) return 'skipped'
   // The party: the first To or Cc outside, as a tag plans a sent mail; a note to self or to the team lands nowhere.
   const person = { userId: me.id, address: me.email, name: me.name }
-  const probe = planTag({ threadId, messages: [email] }, person, { kind: 'pipeline', id: '00000000-0000-0000-0000-000000000000', key: 'pipeline:probe', num: '', name: '' }, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden })
+  const probe = planTag({ threadId, messages: [email] }, person, { kind: 'pipeline', id: '00000000-0000-0000-0000-000000000000', key: 'pipeline:probe', num: '', name: '' }, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden, nowIso: nowIso() })
   const write = probe.steps.find((s): s is WriteStep => s.kind === 'write')
   if (!write || write.direction !== 'out') return 'nowhere'
   const party = { name: (write.party.name ?? '').trim(), address: write.party.address }
@@ -1730,7 +1733,7 @@ async function placeSentMail(as: AsPerson, email: EmailIn, read: MyMailRead, kno
   const line = held[0] ?? null
   const loose = line ? !line.mail_user_id && jobKeyOfRow(line) === null && !line.tied_by : false
   if (line && !loose) return 'skipped'
-  const plan = planTag({ threadId, messages: [email] }, person, chip, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden })
+  const plan = planTag({ threadId, messages: [email] }, person, chip, { byMessageId: {}, team: known.team, boxes: known.boxes, hidden: known.hidden, nowIso: nowIso() })
   // The row first, as a tag keeps its own: the app's, so the thread line says so and an untag leaves the tombstone.
   const taggedAt = nowIso()
   const saved = await admin

@@ -64,4 +64,29 @@ describe('a lead’s doors: the two writes (punch list #140 PR 8)', () => {
     expect(Array.isArray(insert.line_items_snapshot) && (insert.line_items_snapshot as unknown[]).length).toBe(1)
     expect(nav.recordNavClick).toHaveBeenCalledWith('u-rosa', 'assistant', 'estimate_draft_created', '#lead:estimate')
   })
+
+  it('started on a First look’s card, the draft remembers the look (#319 PR 5)', async () => {
+    const { client, calls } = fakeClient({ estimates: { data: { id: 'e-1', estimate_number: 42 }, error: null } })
+    await expect(supabaseLeadDoorsIo(client, vi.fn()).startEstimate('cust-1', { userId: 'u-rosa', role: 'assistant' }, { firstLookId: 'look-1' })).resolves.toEqual({ estimateNumber: 42 })
+    const inserts = calls.filter((c) => c[0] === 'insert' && c[1] === 'estimates')
+    expect(inserts).toHaveLength(1)
+    expect(inserts[0]![2]).toMatchObject({ customer_id: 'cust-1', first_look_id: 'look-1' })
+  })
+
+  it('a database from before the column still starts the estimate, without the look', async () => {
+    const { client, calls } = fakeClient({})
+    let asked = 0
+    const from = client.from.bind(client)
+    ;(client as unknown as { from: (t: string) => unknown }).from = (table: string) => {
+      const chain = from(table as never) as unknown as Record<string, unknown>
+      chain.then = (ok: (r: unknown) => unknown) =>
+        Promise.resolve(++asked === 1 ? { data: null, error: { code: 'PGRST204', message: "Could not find the 'first_look_id' column of 'estimates' in the schema cache" } } : { data: { id: 'e-1', estimate_number: 43 }, error: null }).then(ok)
+      return chain
+    }
+    await expect(supabaseLeadDoorsIo(client, vi.fn()).startEstimate('cust-1', { userId: 'u-rosa', role: 'assistant' }, { firstLookId: 'look-1' })).resolves.toEqual({ estimateNumber: 43 })
+    const inserts = calls.filter((c) => c[0] === 'insert' && c[1] === 'estimates').map((c) => c[2] as Record<string, unknown>)
+    expect(inserts).toHaveLength(2)
+    expect(inserts[0]).toHaveProperty('first_look_id', 'look-1')
+    expect(inserts[1]).not.toHaveProperty('first_look_id')
+  })
 })

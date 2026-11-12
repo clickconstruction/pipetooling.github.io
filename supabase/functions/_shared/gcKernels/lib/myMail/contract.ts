@@ -224,6 +224,11 @@ export interface MyMailTagPlanMail {
   tie?: boolean
   why?: string
   files?: number
+  /**
+   * On a write (v2.7027, punch list #324): `record` when the mail is old enough to be filed for the record and will ask
+   * nobody for a reply, `followUp` when it lands as mail that came in today would.
+   */
+  lands?: 'record' | 'followUp'
 }
 
 /** The plan of a tag, written nowhere: the job, the counts, each mail, and the job the conversation was on before. */
@@ -243,6 +248,8 @@ export interface MyMailTagCounts {
   tied: number
   files: number
   skipped: number
+  /** How many of `lines` are filed for the record (v2.7027). */
+  filed: number
 }
 
 /**
@@ -257,6 +264,8 @@ export interface MyMailTagOk {
   files: number
   contactId: string | null
   unknownSender: { contactId: string; address: string; name: string } | null
+  /** How many of the mails the tag planned to write were filed for the record (v2.7027). Absent from a function deployed before it. */
+  filed?: number
 }
 
 /** Take a conversation back off its job. */

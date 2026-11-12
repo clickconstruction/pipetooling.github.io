@@ -1,0 +1,343 @@
+/**
+ * Pay calendar (punch list #323): a payer who pays on a set day of the month.
+ *
+ * A contract of this kind names two days. A bill in by the **cutoff** (the last
+ * day of the month, or an earlier day) is paid on the **pay day** of a later
+ * month, most often the next. So a bill sent on the 1st and one sent on the
+ * 30th fall due the same day, and one day past the cutoff costs a whole month.
+ * A pace in days cannot say either thing.
+ *
+ * The contract says when a bill is DUE. The record says when it LANDS. This
+ * kernel keeps the two apart: `dueDayFor` is the contract, `latenessAgainst`
+ * is the payer's measured payments replayed through the calendar (days after
+ * each one's own due day), and `expectedFromDue` is the due day plus that
+ * lateness: the honest guess. Replayed on the payers the card was written for,
+ * two of three had paid weeks to months after such a day, so the due day is
+ * never passed off as the expected one.
+ *
+ * Pure: no React, no supabase. `payCalendarIo.ts` beside it does the reads and
+ * the save. A calendar is held on the payer (`jobId` null), and a job can carry
+ * its own or switch the payer's off (`calendarFor`).
+ */
+
+/** The three numbers and the note. */
+export type PayCalendar = {
+  /** The day of the month a bill must be in by, 1 to 28; null is the last day of the month. */
+  cutoffDay: number | null
+  /** The day of the month they pay, 1 to 31; a day the month does not have is its last day. */
+  payDay: number
+  /** Months after the cutoff's month: 0 the same month, 1 the next, 2 the month after that. */
+  monthsAfter: number
+  /** They pay when the owner pays them: the due day is the earliest, not a day to count on. */
+  payWhenPaid: boolean
+  /** The clause as the contract numbers it: `§ 5.2`. '' when the office has none. */
+  clause: string
+  /** The clause in a few words. */
+  words: string
+}
+
+/** One stored row: the payer's own calendar (`jobId` null), or one job's. */
+export type PayCalendarRow = {
+  payerCustomerId: string
+  jobId: string | null
+  /** A job's row can say the payer's calendar is not on this job. */
+  off: boolean
+  calendar: PayCalendar | null
+  setByName: string | null
+  setAt: string | null
+}
+
+export const PAY_CALENDAR_CUTOFF_MAX = 28
+export const PAY_CALENDAR_MONTHS_AFTER_MAX = 2
+export const PAY_CALENDAR_CLAUSE_MAX = 40
+export const PAY_CALENDAR_WORDS_MAX = 240
+
+export const PAY_CALENDAR_DEFAULT: PayCalendar = { cutoffDay: null, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '', words: '' }
+
+const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})/
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+const MS_PER_DAY = 86_400_000
+
+type Parts = { y: number; m: number; d: number }
+
+function parts(ymd: string | null | undefined): Parts | null {
+  const hit = YMD_RE.exec((ymd ?? '').trim())
+  if (!hit) return null
+  const y = Number(hit[1])
+  const m = Number(hit[2]) - 1
+  const d = Number(hit[3])
+  if (m < 0 || m > 11 || d < 1 || d > daysInMonth(y, m)) return null
+  return { y, m, d }
+}
+
+function daysInMonth(y: number, m: number): number {
+  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
+}
+
+function ymdOf(y: number, m: number, d: number): string {
+  return `${String(y).padStart(4, '0')}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+/** A month `add` months on, as a year and a month. */
+function monthPlus(y: number, m: number, add: number): { y: number; m: number } {
+  const total = y * 12 + m + add
+  return { y: Math.floor(total / 12), m: ((total % 12) + 12) % 12 }
+}
+
+function utcMs(p: Parts): number {
+  return Date.UTC(p.y, p.m, p.d, 12)
+}
+
+/** Whole calendar days from `fromYmd` to `toYmd`, positive when `toYmd` is later; null on a bad day. */
+export function payCalendarDaysBetween(fromYmd: string, toYmd: string): number | null {
+  const a = parts(fromYmd)
+  const b = parts(toYmd)
+  if (!a || !b) return null
+  return Math.round((utcMs(b) - utcMs(a)) / MS_PER_DAY)
+}
+
+function addDays(ymd: string, days: number): string | null {
+  const p = parts(ymd)
+  if (!p) return null
+  return new Date(utcMs(p) + days * MS_PER_DAY).toISOString().slice(0, 10)
+}
+
+/** "Dec 10": the year is dropped, as on every dates row. */
+export function payCalendarMonthDay(ymd: string): string {
+  const p = parts(ymd)
+  return p ? `${MONTHS[p.m]} ${p.d}` : ymd
+}
+
+/** "1st", "2nd", "3rd", "10th", "21st". */
+export function ordinalDay(n: number): string {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  const one = n % 10
+  return `${n}${one === 1 ? 'st' : one === 2 ? 'nd' : one === 3 ? 'rd' : 'th'}`
+}
+
+const whole = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) ? v : null)
+
+/**
+ * A calendar read defensively from stored or typed values; null when it has no pay day a
+ * month can hold. A cutoff past the 28th is the last day of the month, since every month
+ * has a 28th and none of the contracts read name a 29th.
+ */
+export function normalizePayCalendar(raw: Partial<Record<keyof PayCalendar, unknown>> | null | undefined): PayCalendar | null {
+  if (!raw) return null
+  const payDay = whole(raw.payDay)
+  if (payDay == null || payDay < 1 || payDay > 31) return null
+  const cutoff = whole(raw.cutoffDay)
+  const months = whole(raw.monthsAfter)
+  return {
+    cutoffDay: cutoff != null && cutoff >= 1 && cutoff <= PAY_CALENDAR_CUTOFF_MAX ? cutoff : null,
+    payDay,
+    monthsAfter: months != null && months >= 0 && months <= PAY_CALENDAR_MONTHS_AFTER_MAX ? months : 1,
+    payWhenPaid: raw.payWhenPaid === true,
+    clause: typeof raw.clause === 'string' ? raw.clause.trim().slice(0, PAY_CALENDAR_CLAUSE_MAX) : '',
+    words: typeof raw.words === 'string' ? raw.words.trim().slice(0, PAY_CALENDAR_WORDS_MAX) : '',
+  }
+}
+
+/** A `payer_pay_calendars` row as the database returns it. Every column optional: a read from before the push has none. */
+export type PayCalendarDbRow = {
+  payer_customer_id?: string | null
+  job_id?: string | null
+  off?: boolean | null
+  cutoff_day?: number | null
+  pay_day?: number | null
+  months_after?: number | null
+  pay_when_paid?: boolean | null
+  clause?: string | null
+  words?: string | null
+  set_at?: string | null
+}
+
+/** One stored row, read for a screen; null when it names no payer, or is neither a calendar nor a job's off switch. */
+export function parsePayCalendarRow(row: PayCalendarDbRow | null | undefined, setByName?: string | null): PayCalendarRow | null {
+  const payer = typeof row?.payer_customer_id === 'string' ? row.payer_customer_id : ''
+  if (!row || !payer) return null
+  const jobId = typeof row.job_id === 'string' && row.job_id ? row.job_id : null
+  const off = row.off === true
+  const calendar = off
+    ? null
+    : normalizePayCalendar({ cutoffDay: row.cutoff_day, payDay: row.pay_day, monthsAfter: row.months_after, payWhenPaid: row.pay_when_paid, clause: row.clause, words: row.words })
+  if (!calendar && !(off && jobId)) return null
+  return { payerCustomerId: payer, jobId, off, calendar, setByName: setByName?.trim() || null, setAt: typeof row.set_at === 'string' ? row.set_at : null }
+}
+
+/** Every stored row, keyed for `calendarFor`. */
+export type PayCalendarIndex = {
+  byPayer: ReadonlyMap<string, PayCalendarRow>
+  /** Keyed `payerId|jobId`. */
+  byPayerJob: ReadonlyMap<string, PayCalendarRow>
+}
+
+export const PAY_CALENDAR_INDEX_EMPTY: PayCalendarIndex = { byPayer: new Map(), byPayerJob: new Map() }
+
+export function indexPayCalendars(rows: ReadonlyArray<PayCalendarRow>): PayCalendarIndex {
+  const byPayer = new Map<string, PayCalendarRow>()
+  const byPayerJob = new Map<string, PayCalendarRow>()
+  for (const r of rows) {
+    if (r.jobId) byPayerJob.set(`${r.payerCustomerId}|${r.jobId}`, r)
+    else if (r.calendar) byPayer.set(r.payerCustomerId, r)
+  }
+  return { byPayer, byPayerJob }
+}
+
+/**
+ * The calendar one bill reads: its job's own row for its payer, else the payer's, else none.
+ * A job's row that is off means none, whatever the payer holds. None is today's behavior.
+ */
+export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendar | null {
+  if (!index || !bill.payerId) return null
+  const own = bill.jobId ? index.byPayerJob.get(`${bill.payerId}|${bill.jobId}`) : undefined
+  if (own) return own.off ? null : own.calendar
+  return index.byPayer.get(bill.payerId)?.calendar ?? null
+}
+
+/** The year and month whose cutoff a bill received on `receivedYmd` makes. */
+function cutoffMonthOf(received: Parts, cal: PayCalendar): { y: number; m: number } {
+  const missed = cal.cutoffDay != null && received.d > cal.cutoffDay
+  return monthPlus(received.y, received.m, missed ? 1 : 0)
+}
+
+/** The day a bill received on `receivedYmd` falls due under the calendar; null on a bad day. */
+export function dueDayFor(receivedYmd: string | null | undefined, cal: PayCalendar): string | null {
+  const received = parts(receivedYmd)
+  if (!received) return null
+  const cut = cutoffMonthOf(received, cal)
+  const pay = monthPlus(cut.y, cut.m, cal.monthsAfter)
+  const due = ymdOf(pay.y, pay.m, Math.min(cal.payDay, daysInMonth(pay.y, pay.m)))
+  // A pay day in the cutoff's own month that falls before the bill was in cannot be met: it is the next month's.
+  if (due < ymdOf(received.y, received.m, received.d)) {
+    const next = monthPlus(pay.y, pay.m, 1)
+    return ymdOf(next.y, next.m, Math.min(cal.payDay, daysInMonth(next.y, next.m)))
+  }
+  return due
+}
+
+/** What someone about to bill needs: the last day to send, the day that makes it due, and what one day late costs. */
+export type PayCutoff = {
+  /** The cutoff on or after today. */
+  cutoffYmd: string
+  /** Days from today to the cutoff; 0 on the day itself. */
+  daysLeft: number
+  /** The due day of a bill in by the cutoff. */
+  dueYmd: string
+  /** The due day of a bill in one day after it. */
+  nextDueYmd: string
+}
+
+/** The next cutoff on or after `todayYmd`, with both due days; null on a bad day. */
+export function nextCutoff(todayYmd: string, cal: PayCalendar): PayCutoff | null {
+  const today = parts(todayYmd)
+  if (!today) return null
+  const cut = cutoffMonthOf(today, cal)
+  const cutoffYmd = ymdOf(cut.y, cut.m, cal.cutoffDay ?? daysInMonth(cut.y, cut.m))
+  const dayAfter = addDays(cutoffYmd, 1)
+  const dueYmd = dueDayFor(cutoffYmd, cal)
+  const nextDueYmd = dayAfter ? dueDayFor(dayAfter, cal) : null
+  const daysLeft = payCalendarDaysBetween(todayYmd, cutoffYmd)
+  if (!dueYmd || !nextDueYmd || daysLeft == null) return null
+  return { cutoffYmd, daysLeft, dueYmd, nextDueYmd }
+}
+
+const cutoffWords = (cal: PayCalendar): string => (cal.cutoffDay == null ? 'the last day of the month' : `the ${ordinalDay(cal.cutoffDay)}`)
+const payDayWords = (cal: PayCalendar): string => (cal.payDay >= 31 ? 'the last day' : `the ${ordinalDay(cal.payDay)}`)
+const MONTH_WORDS = ['the same month', 'the next month', 'the month after that'] as const
+
+/** The calendar in one sentence: "A bill in by the last day of the month is paid the 10th of the next month." */
+export function payCalendarWords(cal: PayCalendar): string {
+  return `A bill in by ${cutoffWords(cal)} is paid ${payDayWords(cal)} of ${MONTH_WORDS[cal.monthsAfter] ?? MONTH_WORDS[1]}.`
+}
+
+/** The calendar in a few words, for a line with little room: "In by the 25th, paid the 30th". */
+export function payCalendarShort(cal: PayCalendar): string {
+  return `In by ${cal.cutoffDay == null ? 'month end' : `the ${ordinalDay(cal.cutoffDay)}`}, paid ${payDayWords(cal)}`
+}
+
+/** The window's preview, said back in plain dates: a bill in by the cutoff, and one a day late. */
+export function payCalendarPreview(cal: PayCalendar, todayYmd: string): { inBy: string; dayLate: string } | null {
+  const cut = nextCutoff(todayYmd, cal)
+  const dayAfter = cut ? addDays(cut.cutoffYmd, 1) : null
+  if (!cut || !dayAfter) return null
+  return {
+    inBy: `A bill in by ${payCalendarMonthDay(cut.cutoffYmd)} is due ${payCalendarMonthDay(cut.dueYmd)}.`,
+    dayLate: `A bill in on ${payCalendarMonthDay(dayAfter)} is due ${payCalendarMonthDay(cut.nextDueYmd)}.`,
+  }
+}
+
+/** The cutoff as someone about to bill meets it: "Send by Nov 30 to be due Dec 10." and "After that, Jan 10." */
+export function cutoffWordsFor(cut: PayCutoff): { sendBy: string; after: string } {
+  return { sendBy: `Send by ${payCalendarMonthDay(cut.cutoffYmd)} to be due ${payCalendarMonthDay(cut.dueYmd)}.`, after: `After that, ${payCalendarMonthDay(cut.nextDueYmd)}.` }
+}
+
+/** A measured payment: the day its bill went in and the day the money landed. */
+export type PayCalendarReceipt = { billedYmd: string; paidYmd: string }
+
+/** The payer's record against a calendar: how its measured payments landed against their own due days. */
+export type PayCalendarLateness = {
+  /** Payments measured. */
+  count: number
+  /** The middle lateness in days, never below zero: what `expectedFromDue` adds. */
+  medianDays: number
+  /** The soonest and the latest, in days after the due day; below zero is before it. */
+  minDays: number
+  maxDays: number
+  /** Payments that landed on or before their due day. */
+  onTime: number
+}
+
+/**
+ * The payer's measured payments replayed through the calendar: each one's due day worked out
+ * from the day its bill went in, and the days the money landed after it. Null with nothing to
+ * measure. The receipts are the newest the pay-speeds read returns, at most 12 a payer.
+ */
+export function latenessAgainst(receipts: ReadonlyArray<PayCalendarReceipt> | null | undefined, cal: PayCalendar): PayCalendarLateness | null {
+  const late: number[] = []
+  for (const r of receipts ?? []) {
+    const due = dueDayFor(r.billedYmd, cal)
+    const after = due ? payCalendarDaysBetween(due, r.paidYmd) : null
+    if (after != null) late.push(after)
+  }
+  if (!late.length) return null
+  late.sort((a, b) => a - b)
+  const mid = Math.floor(late.length / 2)
+  const median = late.length % 2 ? late[mid]! : (late[mid - 1]! + late[mid]!) / 2
+  return { count: late.length, medianDays: Math.max(0, Math.round(median)), minDays: late[0]!, maxDays: late[late.length - 1]!, onTime: late.filter((d) => d <= 0).length }
+}
+
+/** The honest guess: the due day plus how late the payer usually runs; the due day itself with no record. */
+export function expectedFromDue(dueYmd: string, lateness: PayCalendarLateness | null | undefined): string {
+  const days = lateness?.medianDays ?? 0
+  return days > 0 ? (addDays(dueYmd, days) ?? dueYmd) : dueYmd
+}
+
+const counted = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/**
+ * The record in the window's words, at most two short sentences. With nothing measured it
+ * says so, and says what the due day is then worth.
+ */
+export function latenessWords(lateness: PayCalendarLateness | null | undefined): string {
+  if (!lateness) return 'No payment on record yet. The due day is the best guess there is.'
+  const { count, minDays, maxDays, medianDays, onTime } = lateness
+  if (count === 1) {
+    if (maxDays <= 0) return 'Their one payment on record landed by its due day.'
+    return `Their one payment on record landed ${counted(maxDays, 'day', 'days')} after its due day.`
+  }
+  if (maxDays <= 0) return `Their last ${count} payments all landed by the due day.`
+  const from = Math.max(0, minDays)
+  const range = from === maxDays ? `${counted(maxDays, 'day', 'days')}` : `${from} to ${counted(maxDays, 'day', 'days')}`
+  const usual = medianDays > 0 ? ` Usually about ${medianDays}.` : ' Usually on the day.'
+  const kept = onTime > 0 && onTime < count ? ` ${onTime} of ${count} were on time.` : ''
+  return `Their last ${count} payments landed ${range} after the due day.${usual}${kept}`
+}
+
+/** The record in a few words for the line under a dates row: "Usually lands about 6d after. About Dec 16." */
+export function usuallyLandsWords(dueYmd: string, lateness: PayCalendarLateness | null | undefined): string | null {
+  if (!lateness) return null
+  if (lateness.medianDays <= 0) return 'Usually lands by the due day.'
+  return `Usually lands about ${lateness.medianDays}d after. About ${payCalendarMonthDay(expectedFromDue(dueYmd, lateness))}.`
+}

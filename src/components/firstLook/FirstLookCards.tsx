@@ -34,7 +34,7 @@ const thumb: CSSProperties = { width: 76, height: 76, objectFit: 'cover', border
 const fileChip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.3rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-base)', background: 'var(--surface)', display: 'inline-flex', gap: 6, alignItems: 'center' }
 
 /** One file on the card: a photo as a picture, a video in a player, either as a named chip when the browser cannot draw it. */
-function LookFile({ kind, url, label, texted }: { kind: 'photo' | 'video'; url: string | undefined; label: string; texted: boolean }) {
+export function LookFile({ kind, url, label, texted }: { kind: 'photo' | 'video'; url: string | undefined; label: string; texted: boolean }) {
   const [failed, setFailed] = useState(false)
   const title = texted ? `${label}, ${LOOK_CARD_WORDS.texted}` : label
   if (!url) {
@@ -79,7 +79,7 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
   const drive = lookCardDriveLine(cardOf, contact.kind === 'customer' && Boolean(contact.customerId))
   const pressing = busy !== null || doors.pressing
   const book = () => doors.book(words)
-  const startEstimate = () => doors.startEstimate(words)
+  const startEstimate = () => doors.startEstimate(words, look.id)
   const close = async () => {
     setBusy('close')
     try {

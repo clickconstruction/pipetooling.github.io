@@ -120,6 +120,20 @@ After the tag, the bar on the mail turns green. Press **open the thread ›** to
 
 A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself.
 
+### Old mail is filed for the record
+
+A mail more than 14 days old when you tag it is filed for the record. You saw it in your own mail when it came, so the app asks nobody to answer it.
+
+- The mail still lands on the thread and on the job, at its own date.
+- Its line wears a small chip, such as *filed Nov 9*. Hover the chip to read when the mail is from.
+- The thread stays off Follow up. A sender nobody has named is not asked about in **New**.
+- When every mail was old, the grey line adds *This is old mail, filed for the record. Nothing went on Follow up.*
+- A thread with nothing else on it says *Nothing waits* where the move line is.
+
+A new mail in the same conversation still opens the thread, as any mail does. A mail from the last 14 days lands as it always has.
+
+To put an old conversation on Follow up after all, open the thread, press {{button:outline|⋯}}, then **Reopen**.
+
 A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 
 ## Mail you send lands by itself
