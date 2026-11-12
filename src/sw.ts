@@ -24,7 +24,7 @@ try {
       // server, not app routes; the shell would 404 them for a signed-in phone.
       // /to-dos/… are the mock-up pages the build copies beside the app (v2.3558) — real
       // files on the server, opened from the Punch list; the shell must not swallow them.
-      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//, /^\/to-dos\//],
+      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//, /^\/to-dos\//, /^\/show\.html$/],
     }),
   )
 } catch {

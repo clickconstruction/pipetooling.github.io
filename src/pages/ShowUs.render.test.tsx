@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import ShowUs from './ShowUs'
+import ShowUsRoute from './ShowUsRoute'
 import { FIRST_LOOK_WORDS, type FirstLookPagePayload, type FirstLookPageView } from '../lib/firstLook/look'
 import type { PieceTransport } from '../lib/firstLook/pieces'
 import type { ShowUsIo } from '../lib/firstLook/showUsIo'
@@ -49,7 +49,7 @@ function mount(io: ShowUsIo, code = CODE) {
   return render(
     <MemoryRouter initialEntries={[`/show/${code}`]}>
       <Routes>
-        <Route path="/show/:code" element={<ShowUs io={io} />} />
+        <Route path="/show/:code" element={<ShowUsRoute io={io} />} />
       </Routes>
     </MemoryRouter>,
   )
