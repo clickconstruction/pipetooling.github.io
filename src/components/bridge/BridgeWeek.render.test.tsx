@@ -61,7 +61,8 @@ describe('BridgeWeek', () => {
     // A move with a door is a link to it.
     expect(screen.getByRole('link', { name: /Bill the 11 finished jobs/ }).getAttribute('href')).toBe('/jobs?tab=stages')
     // Until a first call exists, the desk says how the week runs.
-    expect(screen.getByTestId('bridge-week-how').textContent).toContain('Monday you make the call.')
+    // The side panel that said how the week runs is off the page.
+    expect(screen.queryByTestId('bridge-week-how')).toBeNull()
     // Take the third move off, rename the second move's person, record.
     fireEvent.click(screen.getByRole('button', { name: /Take off the call: Take bank sorting/ }))
     fireEvent.click(screen.getByRole('button', { name: /Sam does: Price the 4 jobs/ }))
@@ -157,6 +158,21 @@ describe('BridgeWeek', () => {
     renderWithProviders(<BridgeWeek model={{ ...propose, cashLeads: true }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
     expect(screen.getAllByTestId('the-strip').length).toBe(1)
     expect(before(screen.getByTestId('bridge-week-card'), screen.getByTestId('the-strip'))).toBe(true)
+  })
+
+  it('sets the standing pipe beside the card at a desk, once, in a usual week and in a week cash leads (#318)', () => {
+    const strip = <div data-testid="the-strip">pipe</div>
+    const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    for (const model of [propose, { ...propose, cashLeads: true }]) {
+      const { unmount } = renderWithProviders(<BridgeWeek model={model} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} stripSide />)
+      expect(screen.getAllByTestId('the-strip').length).toBe(1)
+      // The pipe and the card share one row: the pipe's column comes first.
+      const row = screen.getByTestId('the-strip').parentElement?.parentElement
+      expect(row?.style.gridTemplateColumns).toBe('minmax(260px, 340px) minmax(0, 1fr)')
+      expect(row?.contains(screen.getByTestId('bridge-week-card'))).toBe(true)
+      expect(before(screen.getByTestId('the-strip'), screen.getByTestId('bridge-week-card'))).toBe(true)
+      unmount()
+    }
   })
 
   it('never records an empty call', () => {

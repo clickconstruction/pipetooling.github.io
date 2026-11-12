@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import type { CallLink, CallOutcome, MoveDone } from '../../lib/bridge/calls'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_HOW, movesShown, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, movesShown, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { chipName, type CallPerson, type RecordedMove } from '../../lib/bridge/callPeople'
 
@@ -81,6 +81,7 @@ export function BridgeWeek({
   onPickStep,
   onCashNote,
   strip,
+  stripSide = false,
   people = [],
 }: {
   model: WeekCallModel
@@ -95,6 +96,8 @@ export function BridgeWeek({
   onCashNote: () => void
   /** The strip of pipe (PR 3): under the tiles in a usual week, under the card in a week cash leads. */
   strip?: ReactNode
+  /** At a desk, the standing pipe (punch list #318) sits beside the card instead of over or under it. */
+  stripSide?: boolean
   /** The accounts a move can go to (PR 4). With none, the chip takes a typed name, which reaches nobody. */
   people?: ReadonlyArray<CallPerson>
 }) {
@@ -260,8 +263,8 @@ export function BridgeWeek({
   )
 
   const last = model.last
-  // At a desk, until a first call exists, the side panel says how the week runs.
-  const how = !narrow && !last && proposing && model.link != null
+  // The side panel *How the week runs* is off the page (punch list #318): the owner could not read it, and chose to take it off.
+  const side = !narrow && stripSide && strip != null
   return (
     <section id="bridge-week" aria-label="This week on the Bridge" data-testid="bridge-week" style={{ scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: narrow ? 8 : 12 }}>
@@ -269,9 +272,11 @@ export function BridgeWeek({
           <Tile key={t.id} tile={t} narrow={narrow} onNote={onCashNote} />
         ))}
       </div>
-      {!model.cashLeads && strip}
+      {!side && !model.cashLeads && strip}
 
-      <div style={{ display: 'grid', gridTemplateColumns: (!narrow && last) || how ? 'minmax(0, 1.55fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: narrow ? 8 : 12, marginTop: narrow ? 8 : 12, alignItems: 'start' }}>
+      <div style={side ? { display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 12, alignItems: 'start' } : undefined}>
+      {side && <div style={{ minWidth: 0 }}>{strip}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: !narrow && last ? 'minmax(0, 1.55fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: narrow ? 8 : 12, marginTop: narrow ? 8 : 12, alignItems: 'start' }}>
         <div style={{ background: 'var(--surface)', border: `2px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
           <div style={label}>{model.card.label}</div>
           <div style={{ fontSize: '1.12rem', fontWeight: 800, lineHeight: 1.25, margin: '2px 0' }} data-testid="bridge-week-lead">
@@ -352,18 +357,9 @@ export function BridgeWeek({
             {last.asks ? answerPresses(true) : !narrow && <div style={{ ...fine, marginTop: 6 }}>{last.consequence}</div>}
           </div>
         )}
-        {how && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.75rem 0.95rem' }} data-testid="bridge-week-how">
-            <div style={label}>How the week runs</div>
-            <ol style={{ margin: '6px 0 0', paddingLeft: '1.2rem', fontSize: '0.86rem', color: 'var(--text-700)', display: 'grid', gap: 4 }}>
-              {WEEK_HOW.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ol>
-          </div>
-        )}
       </div>
-      {model.cashLeads && strip}
+      </div>
+      {!side && model.cashLeads && strip}
     </section>
   )
 }

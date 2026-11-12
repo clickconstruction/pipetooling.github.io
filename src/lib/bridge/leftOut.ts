@@ -1,0 +1,44 @@
+/**
+ * What the Bridge leaves out (punch list #318): the rule a list of left-out things is read by. A rule names a whole
+ * development, a customer or an address, and a bid or an estimate that matches one is in no count.
+ *
+ * Only the rule and its test live here so far. The list itself (a row a person sets on the page, its read and its
+ * save) is not shipped: the won-rate loaders (`loadBidWins.ts`, `loadEstimateWins.ts`) take a list and the page hands
+ * them an empty one, so nothing is left out until that list ships.
+ *
+ * A rule names one thing:
+ * - a **development**, by its id: every bid on it;
+ * - a **customer**, by its id: every bid and estimate of that customer, and every job that customer is the general
+ *   contractor on;
+ * - an **address**, by its words: every bid and estimate whose address holds those words.
+ *
+ * Pure.
+ */
+
+export type LeftOutKind = 'development' | 'customer' | 'address'
+
+export type LeftOutRule = {
+  kind: LeftOutKind
+  /** The development's or the customer's id; for an address, its words lowercased. */
+  key: string
+  /** The name shown on the page: the development's or customer's name, or the address as typed. */
+  label: string
+}
+
+/** An address as the rules compare it: lowercased, one space between words. */
+export function addressWords(text: string | null | undefined): string {
+  return (text ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+/** What a job, a bid or an estimate carries that a rule can name. */
+export type LeftOutFacts = { developmentId?: string | null; customerId?: string | null; gcCustomerId?: string | null; address?: string | null }
+
+export function isLeftOut(facts: LeftOutFacts, rules: ReadonlyArray<LeftOutRule>): boolean {
+  if (rules.length === 0) return false
+  const address = addressWords(facts.address)
+  return rules.some((r) => {
+    if (r.kind === 'development') return facts.developmentId != null && facts.developmentId === r.key
+    if (r.kind === 'customer') return (facts.customerId != null && facts.customerId === r.key) || (facts.gcCustomerId != null && facts.gcCustomerId === r.key)
+    return address !== '' && address.includes(r.key)
+  })
+}

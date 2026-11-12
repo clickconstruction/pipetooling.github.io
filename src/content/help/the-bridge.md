@@ -21,7 +21,9 @@ The page opens on three numbers.
 - **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
 - **Slowest step** is the stage the page reads as the weakest link.
 
-Under the three numbers, a strip of pipe draws the five steps in a line. A section is wide when the step moves many dollars a week. The word under each number says what the dollars are: asked, sold, built, billed or paid. A block on top of a section is work waiting in front of that step. The slowest step is red. Press a section to open that step's desk. In a week cash comes first, the strip sits under the card.
+Under the three numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the three numbers. In a week cash comes first, a phone shows it under the card.
+
+Market's row reads what the asks are worth a week. A bid counts at the won rate for bids its size. An estimate counts at the estimates' own won rate. A bid counts as won or lost only when it is marked. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days. An estimate with no answer counts as lost after 90 days. Press **How Market's figure is counted** under the pipe to read the working. The Market and Sales cards behind **The flow** still count the old way.
 
 An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
