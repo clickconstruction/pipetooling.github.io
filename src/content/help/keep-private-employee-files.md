@@ -31,7 +31,23 @@ Write N§16 in an entry to point at section 16 of the narrative. On the Timeline
 
 ## Entries can't be edited or deleted
 
-That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry: "Correction to the Aug 19 entry: …".
+That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry that corrects the old one.
+
+## Correct an entry
+
+1. Find the entry on the **Timeline**.
+2. Press *Correct this entry…* on its line. The entry box opens with that entry picked.
+3. Leave the pick on *corrects* when the old entry is wrong. Change it to *completes* when the old entry is right and you are adding to it.
+4. Write what is true. Set the day it happened.
+5. Press {{button:blue|Add entry}}.
+
+The old entry stays as it was written. Its line now shows *Corrected* with the day of the new entry. Press that chip to open the new entry. The new entry shows what it corrects.
+
+A piece of evidence is corrected the same way. Its line carries *Correct this record…*.
+
+Picked the wrong entry? Press ✕ beside the link on the new entry. Say why the link comes off. The link is taken off and kept on the record with your reason.
+
+In the narrative's Jump to list, a count turns amber when an entry that cites the section was corrected since. Read the section again before you rely on it.
 
 ## See what someone signed
 
