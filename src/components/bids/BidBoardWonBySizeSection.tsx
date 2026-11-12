@@ -32,7 +32,7 @@ function Row({ size }: { size: BidSizeWins }) {
       </div>
       <span style={{ fontSize: '0.95rem', fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: rate == null ? 'var(--text-muted)' : 'var(--text-strong)' }}>{rate != null ? `${pct(rate)} won` : 'no read'}</span>
       <span style={{ gridColumn: '1 / -1', fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-        {decided > 0 ? `${size.won.count} won for ${usd(size.won.usd)}, ${size.lost.count} lost for ${usd(size.lost.usd)}` : 'None marked won or lost yet'}
+        {decided > 0 ? `${size.won.count} won for ${usd(size.won.usd)}, ${size.lost.count} lost for ${usd(size.lost.usd)}` : '0 marked won or lost'}
         {size.noMark.count > 0 ? `, ${size.noMark.count} with no mark for ${usd(size.noMark.usd)}` : ''}.
       </span>
     </div>

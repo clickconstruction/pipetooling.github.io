@@ -53,7 +53,7 @@ describe('BidBoardWonBySizeSection', () => {
       'Under $10k75% won1 won for $6k, 1 lost for $2k.',
       '$10k to $50k100% won1 won for $30k, 0 lost for $0.',
       '$50k to $500k40% won1 won for $60k, 1 lost for $90k.',
-      'Over $500kno readNone marked won or lost yet, 1 with no mark for $700k.',
+      'Over $500kno read0 marked won or lost, 1 with no mark for $700k.',
     ])
     expect(screen.getByTestId('bid-size-wins-foot').textContent).toBe('1 sent bid has no mark, for $700k. Marking them makes these rates true.')
   })
@@ -103,6 +103,6 @@ describe('BidBoardEstimatingHealthSection', () => {
     // Another trade's bids: the same section, another reading.
     renderWithProviders(<BidBoardEstimatingHealthSection weeklySentSummaries={[]} filteredBids={electrical} canSeeEstimatingLabor={false} />)
     expect(rows()[0]).toBe('Under $10k100% won1 won for $5k, 0 lost for $0.')
-    expect(rows()[1]).toBe('$10k to $50kno readNone marked won or lost yet.')
+    expect(rows()[1]).toBe('$10k to $50kno read0 marked won or lost.')
   })
 })
