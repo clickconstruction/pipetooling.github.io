@@ -13,6 +13,7 @@ import {
   askerKey,
   buildSalesDesk,
   decidedYmd,
+  isMarked,
   isWin,
   median,
   plainName,
@@ -222,7 +223,7 @@ describe('buildSalesDesk on the mock-up figures', () => {
   })
 
   it('keeps the bid past the 90-day window off the pile and off the bar', () => {
-    expect(desk.offPile).toEqual({ bids: 1, usd: 480_000, words: '$480k more on 1 bid sits past the 90-day window, off this pile and off the bar.' })
+    expect(desk.offPile).toEqual({ bids: 1, usd: 480_000, words: '1 more bid, $480k, was sent over 90 days ago. It is off this pile and off the bar.' })
     expect(desk.pile.bids).toBe(18)
     expect(desk.pile.bidsUsd).toBe(2_900_000)
     expect(desk.pile.estimates).toBe(17)
@@ -239,7 +240,7 @@ describe('buildSalesDesk on the mock-up figures', () => {
     expect(desk.bar.deadOpenUsd).toBe(290_000)
     expect(desk.pile.expectedUsd).toBeCloseTo(protectedUsd + atRiskUsd + 52_800 * 0.37, 3)
     expect(desk.companyPaceDays).toBe(35)
-    expect(desk.legend.map((l) => l.label)).toEqual(['Protected', 'At risk', 'Evaporating', 'Dead weight, $0'])
+    expect(desk.legend.map((l) => l.label)).toEqual(['On time', 'Past their usual answer', 'Estimates getting old', 'Never answered, $0'])
     expect(desk.legend[3]!.words).toBe('Knight Contracting never answers and holds $290k open.')
   })
 
@@ -249,54 +250,56 @@ describe('buildSalesDesk on the mock-up figures', () => {
     expect(summit.meta).toBe('2 bids · GC')
     expect(summit.winsLabel).toBe('2 of 5 · 22%')
     expect(summit.paceLabel).toBe('answers in about 19 d, as recorded')
-    expect(summit.state).toEqual({ kind: 'past', label: '12 d past pace' })
-    expect(summit.story).toEqual(['Auto Zone Kyle, $410k, 31 days out. 12 past their pace.', 'Pecan St, $230k, 18 days out.'])
-    expect(summit.say).toBe('Deciding Pecan St alone moves $50.6k of expected.')
+    expect(summit.state).toEqual({ kind: 'past', label: '12 days late' })
+    expect(summit.story).toEqual(['Auto Zone Kyle, $410k, 31 days out. 12 days past their usual answer.', 'Pecan St, $230k, 18 days out.'])
+    expect(summit.say).toBe('Deciding Pecan St alone settles $50.6k of what the pile is worth.')
     expect(summit.move).toBe('Call Summit GC about Auto Zone Kyle.')
     expect(summit.door).toEqual({ label: 'Open the bid ›', to: '/bids?tab=bid-board&bidId=az' })
     const burd = row('burd')
     expect(burd.winsLabel).toBe('1 of 7 · 9%')
-    expect(burd.state.label).toBe('34 d past pace')
-    expect(burd.say).toBe('Biggest open dollars on the desk. At 9% they buy less expected than Summit GC.')
+    expect(burd.state.label).toBe('34 days late')
+    expect(burd.say).toBe('Biggest open dollars in the list. At 9% won they are worth less than Summit GC.')
     expect(burd.move).toBe('Call Burd & Assoc. about Take 5 Georgetown.')
     expect(burd.door.to).toBe('/bids?tab=bid-board&bidId=take5')
     const ati = row('ati')
-    expect(ati.state).toEqual({ kind: 'inside', label: 'inside pace' })
+    expect(ati.state).toEqual({ kind: 'inside', label: 'on time' })
     expect(ati.say).toBe('An answer takes about 35 days here, as recorded. Calling early spends goodwill.')
     expect(ati.move).toBe('Leave them.')
     expect(ati.door).toEqual({ label: 'Open the bids ›', to: '/bids?tab=bid-board' })
     const mk = row('mk')
-    expect(mk.winsLabel).toBe("1 of 3 · the window's 14%")
+    expect(mk.winsLabel).toBe('1 of 3 · all bids together, 14%')
     expect(mk.move).toBe('Call MK Builders about Leander clinic.')
     expect(mk.door.to).toBe('/bids?tab=bid-board&bidId=mk1')
     const rest = row('rest')
     expect(rest.meta).toBe('4 bids')
-    expect(rest.story).toEqual(["4 smaller bids, 1 past its asker's pace."])
+    expect(rest.story).toEqual(["4 smaller bids, 1 past its asker's usual answer."])
+    expect(rest.winsLabel).toBe('their own records')
+    expect(rest.state).toEqual({ kind: 'past', label: '1 late' })
     expect(rest.move).toBe('Decide the 1 on the Bid Board.')
     expect(rest.door.to).toBe('/bids?tab=bid-board')
     const est = row('estimates')
     expect(est.meta).toBe('17 customers')
-    expect(est.winsLabel).toBe('37% by value')
+    expect(est.winsLabel).toBe('37% won by dollars')
     expect(est.openUsd).toBe(52_800)
-    expect(est.state).toEqual({ kind: 'aging', label: 'aging daily' })
+    expect(est.state).toEqual({ kind: 'aging', label: 'getting old' })
     expect(est.story).toEqual(['17 sent and not answered. The oldest is 21 days out.', 'Small asks win on speed.'])
     expect(est.move).toBe('1 went out today. Answer the next request the same day.')
     expect(est.door).toEqual({ label: 'Open Estimates ›', to: '/estimates' })
     // No estimate history on this input: the estimates fade at the company's pace and the label says so.
-    expect(est.paceLabel).toBe("fade at the company's 35 d pace, no estimate pace yet")
+    expect(est.paceLabel).toBe("fade at the company's 35 d usual answer, no estimate answers yet")
     expect(desk.estimatesPaceSource).toBe('company')
     expect(desk.estimatesPaceDays).toBe(35)
     expect(desk.estimatesPaceFloored).toBe(false)
     expect(desk.estimateReads).toEqual({ paceDays: null, speed: { sameDay: { decided: 0, accepted: 0 }, later: { decided: 0, accepted: 0 }, ratio: null, words: SALES_SPEED_DEFAULT_WORDS }, requestedTodayUnsent: 0 })
-    expect(desk.howItReads).toContain("They fade at the company's 35 day pace, since no estimate pace is on record yet.")
+    expect(desk.howItReads).toContain("They fade at the company's 35 day answer, since no estimate has one on record yet.")
     const knight = row('knight')
     expect(knight.winsLabel).toBe('0 of 6 · never answered')
-    expect(knight.state).toEqual({ kind: 'dead', label: 'dead weight' })
+    expect(knight.state).toEqual({ kind: 'dead', label: 'never answered' })
     expect(knight.story[2]).toBe('6 asks these 12 months, no answer on any.')
     expect(knight.move).toBe('Decide the relationship, not the bid.')
     expect(knight.door.to).toBe('/bids?tab=bid-board')
-    expect(row('acme').winsLabel).toBe("no decided bids · the window's 14%")
-    expect(row('acme').paceLabel).toBe('no pace on record, 45 d assumed')
+    expect(row('acme').winsLabel).toBe('no decided bids · all bids together, 14%')
+    expect(row('acme').paceLabel).toBe('no answers on record, 45 d assumed')
   })
 
   it('flips to open dollars and names the inversion', () => {
@@ -304,17 +307,21 @@ describe('buildSalesDesk on the mock-up figures', () => {
     expect(byOpen.map((r) => r.key)).toEqual(['burd', 'summit', 'ati', 'knight', 'mk', 'estimates', 'rest', 'acme', 'beta'])
     expect(sortSalesRows(desk.rows, 'expected').map((r) => r.key)).toEqual(desk.rows.map((r) => r.key))
     expect(salesFlipNote(desk.rows, 'expected')).toBeNull()
-    expect(salesFlipNote(desk.rows, 'open')).toBe('By open dollars Burd & Assoc. leads. The 9% win share says otherwise. Press again.')
-    expect(salesSortButtonLabel('expected')).toBe('Ranked by expected dollars · press to see it by open dollars')
-    expect(salesSortButtonLabel('open')).toBe('Ranked by open dollars · press for expected dollars')
+    expect(salesFlipNote(desk.rows, 'open')).toBe('By open dollars Burd & Assoc. leads. Their 9% won rate says otherwise. Press again.')
+    expect(salesSortButtonLabel('expected')).toBe('Ranked by what each ask is worth. Press to rank by open dollars.')
+    expect(salesSortButtonLabel('open')).toBe('Ranked by open dollars. Press to rank by what each ask is worth.')
+    // One row leads both ways: the note says so in the same plain words.
+    expect(salesFlipNote([row('summit')], 'open')).toBe('By open dollars Summit GC leads, and by what the asks are worth too.')
+    expect(salesFlipNote([row('rest'), row('acme')], 'open')).toBe('By open dollars Everyone else leads. What the asks are worth says otherwise. Press again.')
   })
 
   it('writes the tiles, the headline, the verdict and the sub-line', () => {
     expect(desk.tiles[0]).toMatchObject({ head: 'What the pile is worth', value: '≈ $232k', words: 'Open dollars flatter the pile. Say the $232k, never the $3.0M.' })
-    expect(desk.tiles[1]).toMatchObject({ head: 'At risk, the calls', value: '$59.4k on 3 calls', tone: 'amber' })
-    expect(desk.tiles[2]).toMatchObject({ head: 'What thins the reading', value: '2 + 4', words: '2 bids ride at $0 value and 4 losses carry no reason. Both thin every share below.', tone: 'red' })
-    expect(desk.headline).toBe('$3.0M asked · worth about $232k')
-    expect(desk.verdict).toBe('3 calls this week protect $59.4k of it.')
+    expect(desk.tiles[1]).toMatchObject({ head: 'Past their usual answer', value: '$59.4k on 3 calls', words: "These asks are past the asker's usual answer. A call decides the ask or starts its clock again.", tone: 'amber' })
+    expect(desk.tiles[2]).toMatchObject({ head: 'What makes the rates less sure', value: '2 + 4', words: '2 bids have no value and 4 losses carry no reason. Both make every rate here less sure.', tone: 'red' })
+    expect(desk.headline).toBe('$3.0M asked. Worth about $232k.')
+    expect(desk.verdict).toBe('3 calls this week protect $59.4k of what the pile is worth.')
+    expect(desk.ruleLines).toEqual(['Every number here is what the ask is worth.', "That is the ask times the asker's own won rate.", 'It fades to nothing by twice their usual answer.'])
     expect(desk.calls).toEqual({ count: 3, usd: desk.bar.atRiskUsd })
     expect(desk.thins).toEqual({ noValueBids: 2, noReasonLosses: 4 })
     expect(salesSubLines(desk, { soldPerWeekUsd: 50_400, fieldPerWeekUsd: 52_900 })).toEqual(['18 bids, $2.9M.', '17 estimates, $52.8k.', "Sold $50.4k a week against the field's $52.9k."])
@@ -336,7 +343,8 @@ describe('buildSalesDesk on the mock-up figures', () => {
     ])
     expect(f.lines[2]!.label).toBe('Price too high')
     expect(f.words).toEqual(['Won $560k on 7 bids. Lost $3.3M on 25 bids.', 'Most lost to Price too high, $1.0M, then No answer, $850k.'])
-    expect(f.blind).toBe('4 losses carry no reason, so this strip under-reads.')
+    expect(f.blind).toBe('4 losses carry no reason, so the reasons read low.')
+    expect(f.lines[6]!.label).toBe('No reason written')
   })
 
   it('names each unreasoned loss, biggest first, with a door onto its bid', () => {
@@ -356,7 +364,7 @@ describe('buildSalesDesk on the mock-up figures', () => {
     expect(capped.noReasonBids).toHaveLength(SALES_NO_REASON_SHOWN)
     expect(capped.noReasonBids[0]!.label).toBe('B509 · Lot 10')
     expect(capped.noReasonBids[7]!.label).toBe('B502 · Lot 3')
-    expect(capped.blind).toBe('10 losses carry no reason, so this strip under-reads.')
+    expect(capped.blind).toBe('10 losses carry no reason, so the reasons read low.')
   })
 
   it('holds every new sentence of the estimates and the funnel to the plain-words rule', () => {
@@ -374,8 +382,8 @@ describe('buildSalesDesk on the mock-up figures', () => {
   it('reads an empty pile without a call and with no blind spot', () => {
     const empty = buildSalesDesk({ todayYmd: TODAY, openBids: [], decidedBids: [], gcNames: new Map(), openEstimates: [], fallbackRate: null, estimateShare: null })
     expect(empty.rows).toEqual([])
-    expect(empty.verdict).toBe("No ask is past its asker's pace this week.")
-    expect(empty.headline).toBe('$0 asked · worth about $0')
+    expect(empty.verdict).toBe("No ask is past its asker's usual answer this week.")
+    expect(empty.headline).toBe('$0 asked. Worth about $0.')
     expect(empty.funnel.blind).toBeNull()
     expect(empty.funnel.noReasonBids).toEqual([])
     expect(empty.funnel.words).toEqual(['Won $0 on 0 bids. Lost $0 on 0 bids.'])
@@ -452,46 +460,100 @@ describe("the asker is the bid's customer", () => {
   })
 })
 
-describe("a win is the Sales card's own rule", () => {
-  // Delta: one marked won, one a job was made from with no outcome, one marked started, one lost with a job, two lost.
+describe('a win is a mark (the owner’s rule, 2026-11-11)', () => {
+  // Delta: one marked won, one a job was made from with no mark, one marked started, one marked lost with a job, two lost.
   const jobOnly: SalesDecidedBid = { ...decided('delta', 'lost', 120_000, 0), outcome: null, outcomeYmd: null, jobCreatedYmd: ago(90) }
   const started: SalesDecidedBid = { ...decided('delta', 'won', 80_000, 20), outcome: 'started_or_complete' }
   const lostWithJob: SalesDecidedBid = { ...decided('delta', 'lost', 50_000, 15, 'price'), jobCreatedYmd: ago(95) }
   const deltaDecided: SalesDecidedBid[] = [decided('delta', 'won', 100_000, 14), jobOnly, started, lostWithJob, decided('delta', 'lost', 150_000, 16, 'no_answer'), decided('delta', 'lost', 100_000, 30)]
   const d = buildSalesDesk({ ...input, openBids: [open('dl1', 'delta', 'Delta shell', 200_000, 5)], decidedBids: deltaDecided, gcNames: new Map([['delta', 'Delta Build']]) })
 
-  it('counts a bid with a job and no outcome, a started bid and a lost bid with a job as won, in the rate and the funnel', () => {
-    expect(isWin({ outcome: null, jobCreatedYmd: ago(1) })).toBe(true)
-    expect(isWin({ outcome: 'started_or_complete', jobCreatedYmd: null })).toBe(true)
-    expect(isWin({ outcome: 'won', jobCreatedYmd: null })).toBe(true)
-    expect(isWin({ outcome: 'lost', jobCreatedYmd: null })).toBe(false)
-    expect(isWin({ outcome: 'lost', jobCreatedYmd: ago(1) })).toBe(true)
+  it('counts a bid as won only when it is marked won or started, and a job made from a bid decides nothing', () => {
+    expect(isWin({ outcome: null })).toBe(false)
+    expect(isWin({ outcome: 'started_or_complete' })).toBe(true)
+    expect(isWin({ outcome: 'won' })).toBe(true)
+    expect(isWin({ outcome: 'lost' })).toBe(false)
+    // A job made from the bid moves neither answer.
+    expect(isWin(jobOnly)).toBe(false)
+    expect(isWin(lostWithJob)).toBe(false)
+    expect(isMarked(jobOnly)).toBe(false)
+    expect(isMarked(lostWithJob)).toBe(true)
     expect(decidedYmd({ outcomeYmd: null, jobCreatedYmd: ago(9) })).toBe(ago(9))
     expect(decidedYmd({ outcomeYmd: ago(3), jobCreatedYmd: ago(9) })).toBe(ago(3))
     expect(decidedYmd({ outcomeYmd: null })).toBeNull()
+    // The bid with a job and no mark is in no record: five decided, two won. The lost bid with a job stays lost.
     const delta = d.askers.find((a) => a.key === 'delta')!
-    expect(delta.decided).toEqual({ count: 6, won: 4, wonUsd: 350_000, lostUsd: 250_000 })
-    expect(delta.rate).toBeCloseTo(350_000 / 600_000, 6)
+    expect(delta.decided).toEqual({ count: 5, won: 2, wonUsd: 180_000, lostUsd: 300_000 })
+    expect(delta.rate).toBeCloseTo(180_000 / 480_000, 6)
     expect(delta.rateSource).toBe('own')
     expect(delta.deadWeight).toBe(false)
-    // The paces: 14, the job's 10 standing in for outcome_at, 20, 15, 16 and 30, a median of 15.5 rounded up.
+    // The paces: 14, 20, 15, 16 and 30, a median of 16. The unmarked bid's job gives no pace.
     expect(delta.paceDays).toBe(16)
     expect(d.companyPaceDays).toBe(16)
-    expect(d.funnel.won).toEqual({ count: 4, usd: 350_000 })
-    expect(d.funnel.lost).toEqual({ count: 2, usd: 250_000 })
-    expect(d.funnel.words[0]).toBe('Won $350k on 4 bids. Lost $250k on 2 bids.')
+    expect(d.funnel.won).toEqual({ count: 2, usd: 180_000 })
+    expect(d.funnel.lost).toEqual({ count: 3, usd: 300_000 })
+    expect(d.funnel.words[0]).toBe('Won $180k on 2 bids. Lost $300k on 3 bids.')
     expect(d.funnel.lines.map((l) => [l.key, l.count, l.usd])).toEqual([
-      ['won', 4, 350_000],
+      ['won', 2, 180_000],
+      ['price', 1, 50_000],
       ['no_answer', 1, 150_000],
       ['none', 1, 100_000],
     ])
-    expect(d.howItReads).toContain('A bid marked won or started counts as won, and so does a bid a job was made from. The rate is won dollars over won and lost dollars.')
-    expect(d.howItReads).toContain('A bid with no outcome_at reads the day its job was made.')
+    // It is not a loss with no reason either.
+    expect(d.funnel.noReasonBids.map((b) => b.usd)).toEqual([100_000])
+    expect(d.howItReads).toContain('A bid counts as won only when it is marked won, or marked started or complete. A job made from a bid does not make it won. A bid counts as lost only when it is marked lost. The rate is won dollars over won and lost dollars.')
+    expect(d.howItReads).toContain('A marked bid with no answer day reads the day its job was made.')
     plain(d.howItReads)
-    // A bid with neither day on record still counts in the rate and gives no pace.
+  })
+
+  it('reads an asker whose only decided bids are jobs with no mark as having no record', () => {
+    const only = buildSalesDesk({ ...input, openBids: [open('dl1', 'delta', 'Delta shell', 200_000, 5)], decidedBids: [jobOnly, { ...jobOnly, id: 'j2' }], gcNames: new Map([['delta', 'Delta Build']]) })
+    const delta = only.askers[0]!
+    expect(delta.decided).toEqual({ count: 0, won: 0, wonUsd: 0, lostUsd: 0 })
+    expect(delta.rateSource).toBe('window')
+    expect(delta.paceSource).toBe('assumed')
+    expect(only.funnel.won.count + only.funnel.lost.count).toBe(0)
+    expect(only.companyPaceSource).toBe('assumed')
+    // A marked bid with neither day on record still counts in the rate and gives no pace.
     const noDay = buildSalesDesk({ ...input, openBids: [open('x1', 'x', 'X', 10_000, 1)], decidedBids: [{ ...decided('x', 'won', 10_000, 5), outcomeYmd: null }], gcNames: new Map() })
     expect(noDay.askers[0]!.decided.won).toBe(1)
     expect(noDay.askers[0]!.paceSource).toBe('assumed')
+  })
+})
+
+describe('the words on the page', () => {
+  // Every string a typical desk prints, with the estimates' history and the flip both ways.
+  const typical = buildSalesDesk({ ...input, estimateHistory: [...speedHistory('ratio'), ...accepts] })
+  const sentences = [
+    typical.headline,
+    typical.verdict,
+    ...typical.ruleLines,
+    ...salesSubLines(typical, { soldPerWeekUsd: 50_400, fieldPerWeekUsd: 52_900 }),
+    ...typical.tiles.map((t) => t.words),
+    ...typical.legend.map((l) => l.words),
+    typical.offPile.words ?? '',
+    ...typical.rows.flatMap((r) => [...r.story, r.say ?? '', r.move]),
+    ...typical.funnel.words,
+    typical.funnel.blind ?? '',
+    salesSortButtonLabel('expected'),
+    salesSortButtonLabel('open'),
+    salesFlipNote(typical.rows, 'open') ?? '',
+    typical.howItReads,
+  ].filter(Boolean)
+  // The labels: a few words each, where a dot between two figures is a cell wall and not glue.
+  const labels = [...typical.tiles.flatMap((t) => [t.head, t.value]), ...typical.legend.map((l) => l.label), ...typical.rows.flatMap((r) => [r.name, r.meta, r.winsLabel, r.paceLabel, r.state.label, r.door.label]), ...typical.funnel.lines.map((l) => l.label)]
+
+  it('writes every sentence of a typical desk in plain words', () => {
+    expect(sentences.length).toBeGreaterThan(40)
+    for (const text of sentences) expect(plainWordsFailures(text), text).toEqual([])
+  })
+
+  it('uses none of the words a first reader cannot use, and names no column', () => {
+    for (const text of [...sentences, ...labels]) {
+      expect(text, text).not.toMatch(/expected dollars|of expected|win share|win rate|rides? at|evaporating|dead weight|at risk|protected|under-reads|\bpace\b/i)
+      expect(text, text).not.toMatch(/[a-z]_[a-z]/)
+    }
+    expect(typical.legend.map((l) => l.key)).toEqual(['protected', 'risk', 'evaporating', 'dead'])
   })
 })
 
@@ -509,7 +571,7 @@ describe('the estimates pace has a floor', () => {
     expect(est.paceLabel).toBe('fade at a 7 d floor, the estimates answer in ~0 d')
     // Ages 0 to 7 hold, 8 to 13 fade by a seventh a day, 14 and past read 0: 11 whole estimates' worth at 37%.
     expect(floored.bar.evaporatingUsd).toBeCloseTo(3_000 * 0.37 * 11, 3)
-    expect(floored.howItReads).toContain('The estimates answer in 0 days, the median of acceptor_consented_at less sent_at. They fade at a 7 day floor instead. Under it a same day answer would read every open estimate as past pace and worth $0. The floor is an owner call.')
+    expect(floored.howItReads).toContain('The estimates answer in 0 days, the middle number from sent to accepted. They fade at a 7 day floor instead. Under it a same day answer would read every open estimate as late and worth $0. The floor is an owner call.')
     plain(floored.howItReads)
     plain(est.paceLabel)
   })
@@ -521,14 +583,14 @@ describe('the estimates pace has a floor', () => {
     expect(quick.estimatesPaceFloored).toBe(true)
     expect(quick.estimatesPaceDays).toBe(7)
     const est = quick.rows.find((r) => r.key === 'estimates')!
-    expect(est.paceLabel).toBe('fade at a 7 d floor, no estimate pace yet')
-    expect(quick.howItReads).toContain("No estimate pace is on record yet, so the company's 2 day pace would stand in. They fade at a 7 day floor instead. Under it a same day answer would read every open estimate as past pace and worth $0. The floor is an owner call.")
+    expect(est.paceLabel).toBe('fade at a 7 d floor, no estimate answers yet')
+    expect(quick.howItReads).toContain("No estimate has an answer on record yet, so the company's 2 day answer would stand in. They fade at a 7 day floor instead. Under it a same day answer would read every open estimate as late and worth $0. The floor is an owner call.")
     plain(quick.howItReads)
     plain(est.paceLabel)
     const atFloor = buildSalesDesk({ ...input, estimateHistory: [answered('customer_accepted', true, 7)] })
     expect(atFloor.estimatesPaceFloored).toBe(false)
     expect(atFloor.estimatesPaceDays).toBe(7)
-    expect(atFloor.rows.find((r) => r.key === 'estimates')!.paceLabel).toBe("fade at the estimates' ~7 d pace")
+    expect(atFloor.rows.find((r) => r.key === 'estimates')!.paceLabel).toBe("fade at the estimates' ~7 d usual answer")
   })
 })
 
@@ -541,12 +603,12 @@ describe('the estimates read their own history', () => {
     expect(withPace.estimatesPaceSource).toBe('own')
     expect(withPace.estimatesPaceFloored).toBe(false)
     const est = withPace.rows.find((r) => r.key === 'estimates')!
-    expect(est.paceLabel).toBe("fade at the estimates' ~10 d pace")
+    expect(est.paceLabel).toBe("fade at the estimates' ~10 d usual answer")
     // Ages 0 to 10 hold, 11 to 19 fade by a tenth a day, 20 and past read 0: 14.5 whole estimates' worth at 37%.
     expect(withPace.bar.evaporatingUsd).toBeCloseTo(3_000 * 0.37 * 14.5, 3)
-    expect(withPace.howItReads).toContain("They fade at the estimates' own 10 day pace, the median of acceptor_consented_at less sent_at.")
+    expect(withPace.howItReads).toContain("They fade at the estimates' own 10 day answer, the middle number from sent to accepted.")
     expect(withPace.howItReads).not.toContain('floor')
-    expect(withPace.howItReads).toContain('The speed line reads once 5 decided estimates sit on each side of the same-day line.')
+    expect(withPace.howItReads).toContain('The line about speed reads once 5 answered estimates went out the same day and 5 later.')
     // No accepted estimate with both days: no pace, and the company's stands in.
     expect(readEstimateHistory([answered('declined', true), hist('x', { status: 'customer_accepted', sentYmd: null, acceptedYmd: ago(3) })], TODAY).paceDays).toBeNull()
     expect(readEstimateHistory([], TODAY)).toEqual({ paceDays: null, speed: { sameDay: { decided: 0, accepted: 0 }, later: { decided: 0, accepted: 0 }, ratio: null, words: SALES_SPEED_DEFAULT_WORDS }, requestedTodayUnsent: 0 })

@@ -282,6 +282,22 @@ describe('LienFilingTabs · the affidavit prints on the short form (punch list #
   const paper = () => document.body.textContent ?? ''
   const gcProps = { job: sub, activeTab: 'affidavit' as const, isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' }
 
+  it('a home nobody answered the homestead question for holds the paper, and a no on the record draws it (punch list #305)', () => {
+    const home = { ...address, property_kind: 'residential', homestead_answered_at: null }
+    const first = renderWithProviders(<LienFilingTabs {...props({ ...gcProps, linkedAddress: home as never })} />)
+    expect(paper()).toContain("✗ Nobody has answered whether this home is the owner's homestead. Answer yes or no on the property record")
+    expect(paper()).not.toContain('The claim it swears:')
+    first.unmount()
+    const second = renderWithProviders(<LienFilingTabs {...props({ ...gcProps, linkedAddress: { ...home, homestead_answered_at: '2026-11-17T15:00:00Z' } as never })} />)
+    expect(paper()).toContain('✓ Not a homestead')
+    expect(paper()).toContain('The claim it swears:')
+    second.unmount()
+    // A row read before the column exists holds nothing.
+    renderWithProviders(<LienFilingTabs {...props({ ...gcProps, linkedAddress: { ...address, property_kind: 'residential' } as never })} />)
+    expect(paper()).toContain('✓ Not a homestead')
+    expect(paper()).toContain('The claim it swears:')
+  })
+
   it('a public owner holds the paper: the gate says no lien attaches and nothing is drawn (punch list #314)', () => {
     renderWithProviders(<LienFilingTabs {...props({ ...gcProps, linkedAddress: { ...address, owner_name: 'SAMPLE CITY OF', owner_company: 'ATTN REAL ESTATE MANAGER', owner_mode: 'building_owner' } as never })} />)
     expect(paper()).toContain("✗ Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney.")

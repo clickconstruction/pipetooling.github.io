@@ -55,6 +55,20 @@ describe('the owner’s email and phone on the draft (v2.6497)', () => {
     expect(payloadFromDraft(d)).toMatchObject({ owner_email: 'owner@novy.example', owner_phone: '(512) 555-0142' })
     expect(payloadFromDraft({ ...d, owner_email: '' })).toMatchObject({ owner_email: '', owner_phone: '(512) 555-0142' })
   })
+  it('the homestead answer rides the draft only off a row that carries its column, and an empty one writes NULL (punch list #305)', () => {
+    // Before migration 20261112080000: no column on the row, nothing on the draft, nothing written.
+    expect(draftFromRow(row)).not.toHaveProperty('homestead_answered_at')
+    expect(payloadFromDraft(draftFromRow(row))).not.toHaveProperty('homestead_answered_at')
+    expect(payloadFromDraft(emptyPropertyDraft('1 Main St'))).not.toHaveProperty('homestead_answered_at')
+    // After it: nobody answered reads '' and writes NULL back; an answer is kept as it is.
+    const unasked = draftFromRow({ ...row, homestead_answered_at: null } as never)
+    expect(unasked.homestead_answered_at).toBe('')
+    expect(payloadFromDraft(unasked).homestead_answered_at).toBeNull()
+    const answered = draftFromRow({ ...row, homestead_answered_at: '2026-11-17T15:00:00.000Z' } as never)
+    expect(payloadFromDraft(answered).homestead_answered_at).toBe('2026-11-17T15:00:00.000Z')
+    // A yes or no pressed on a draft that never carried the column still goes, as a typed owner email does.
+    expect(payloadFromDraft({ ...emptyPropertyDraft('1 Main St'), homestead: true, homestead_answered_at: '2026-11-17T16:00:00.000Z' })).toMatchObject({ homestead: true, homestead_answered_at: '2026-11-17T16:00:00.000Z' })
+  })
   it('an older row without the columns, and an empty draft, write neither — the save never names a column that is not there yet', () => {
     const d = draftFromRow(row)
     expect(d).not.toHaveProperty('owner_email')
