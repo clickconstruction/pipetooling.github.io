@@ -163,3 +163,10 @@ export function lookCardDriveLine(card: Pick<LookCard, 'look' | 'files'>, hasCus
   const failWhy = card.files.find((f) => !f.drive_file_id && f.fail_why)?.fail_why ?? null
   return lookDriveLine({ total: card.files.length, filed, folderUrl: card.look.drive_folder_id ? driveFolderUrl(card.look.drive_folder_id) : null, hasCustomer, failWhy })
 }
+
+/** The estimate's strip (PR 5): whose look it is and when it was asked. */
+export const LOOK_STRIP_WORDS = {
+  head: 'Photos the customer sent',
+  /** What the customer reads on a price made from their photos (the owner's call 7). */
+  pricedFromPhotos: 'Priced from your photos. The tech confirms the price at your home before any work starts.',
+} as const

@@ -37,6 +37,7 @@ import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { resolveEstimateMasterUserId as resolveMasterUserId } from '../lib/estimateMasterUser'
 import { EstimateFieldPhotosStrip } from '../components/estimates/EstimateFieldPhotosStrip'
+import { EstimateFirstLookStrip } from '../components/firstLook/EstimateFirstLookStrip'
 import { EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS, formatSignedCentsUsd, isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate, parseEstimateChangeOrderFields, type EstimateChangeOrderFields } from '../lib/estimateChangeOrder'
 import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
 import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
@@ -3738,6 +3739,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             lineItemsSlot={
           <section style={{ marginTop: 0 }}>
             <EstimateFieldPhotosStrip estimateId={row.id} />
+            <EstimateFirstLookStrip estimateId={row.id} />
             {isCO ? (
               <div
                 id="est-step-change"
