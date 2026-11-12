@@ -500,3 +500,13 @@ describe('the calls to make (v2.5596)', () => {
     expect(q.count).toBe(0)
   })
 })
+
+describe('a mail filed for the record (v2.7027, punch list #324)', () => {
+  const dale: QueueContact = { id: 'dale', kind: 'customer', name: 'Dale Okafor', state: 'waiting' }
+  const mail = (id: string, at: string, history: boolean): QueueMessage => ({ id, contactId: 'dale', channel: 'email', direction: 'in', at, body: 'The 9th works.', ...(history ? { history: true } : {}) })
+
+  it('is never the line a Needs a reply row waits on', () => {
+    const queue = followUpQueue({ contacts: [dale], messages: [mail('new', '2026-10-01T15:00:00Z', false), mail('filed', '2026-10-02T15:00:00Z', true)], todayYmd: DEMO_TODAY })
+    expect(queue.needsReply.map((r) => [r.landOnId, r.waitingSince])).toEqual([['new', '2026-10-01T15:00:00Z']])
+  })
+})
