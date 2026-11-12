@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Mail, X } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import type { PaceContext } from '../../lib/jobs/payPace'
@@ -14,6 +14,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { summarizeNoticeMonths, noticeStateText, workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import ForecastWorkMonthsPanel, { ForecastNoticeChip } from './ForecastWorkMonthsPanel'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * "Payment forecast" on the Billed Awaiting Payment header: open dollars
@@ -121,7 +122,7 @@ export default function BilledPaymentForecastModal({
   canExcludePayments?: boolean
   /** Devs only: the Data health ⚙ No Count Date setting (v2.2303). */
   canSetNoCountDate?: boolean
-  /** Staff senders: Money waiting's "✉ Email this weekly…" (v2.2565). */
+  /** Staff senders: Money waiting's "Email this weekly…" (v2.2565). */
   canEmailMoneyWaiting?: boolean
   /** Open a drill-down row's job stacked above the modals, refreshing on save (v2.2311). */
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
@@ -203,9 +204,7 @@ export default function BilledPaymentForecastModal({
               Email this forecast…
             </button>
           )}
-          <button type="button" className="forecastHeadClose" onClick={onClose} aria-label="Close">
-            <X size={18} strokeWidth={2} aria-hidden="true" />
-          </button>
+          <WindowCloseButton onClose={onClose} />
           <p className="forecastHeadIntro">
             Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
             months). Click a tile to see just its bills; click a row to jump to that bill on the board.
