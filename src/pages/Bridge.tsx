@@ -1826,6 +1826,10 @@ export default function Bridge() {
               desk={marketDesk}
               error={marketError}
               isLink={stageFlow?.linkId === 'market'}
+              fieldPerWeekUsd={stageInput?.fieldPerWeekUsd ?? null}
+              worth={marketWorth}
+              bidWins={bidWins}
+              estimateWins={estimateWins}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setMarketOpen(false)}
             />
@@ -1837,6 +1841,9 @@ export default function Bridge() {
               card={{ awaitingUsd: (demand?.sales.awaiting.bidsUsd ?? 0) + (demand?.sales.awaiting.estimatesUsd ?? 0), bids: demand?.sales.awaiting.bids ?? 0, bidsUsd: demand?.sales.awaiting.bidsUsd ?? 0, estimates: demand?.sales.awaiting.estimates ?? 0, estimatesUsd: demand?.sales.awaiting.estimatesUsd ?? 0 }}
               paces={{ soldPerWeekUsd: stageInput?.sales?.soldPerWeekUsd ?? null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }}
               isLink={stageFlow?.linkId === 'sales'}
+              worth={marketWorth}
+              bidWins={bidWins}
+              estimateWins={estimateWins}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setSalesOpen(false)}
             />
