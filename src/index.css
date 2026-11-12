@@ -2263,6 +2263,12 @@ body.my-time-boundary-dragging {
   background: #111827;
 }
 
+/* A view from above is a photograph, not a drawing: inverting it turns fields pale and roofs dark.
+   A map showing imagery wears .mapImagery on its own box and keeps its tiles as they are (punch list #328). */
+:root[data-theme='dark'] .mapImagery .leaflet-tile-pane {
+  filter: none;
+}
+
 /* Billing Pipeline: the "Bill Customer" / "Mark Paid" button with its "Open 2 weeks"
    age label. Stacked by default. In the mid-width band below — where the action row
    has already wrapped under the job name/address — laying the pair side-by-side
