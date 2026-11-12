@@ -17,8 +17,11 @@ SET lock_timeout = '3s';
 --   * messages_move_state: a filed mail from them opens nothing. A filed mail of ours still counts as our answer, as
 --     any line of ours that lands late does today, and a filed mail of theirs never holds a thread open against it.
 --   * set_state: Reopen takes the mark off the thread's mail, since the person has said it is live, so the move line
---     and the lanes read it again. A close also ends the tech's hold (has_until), which 20261107083000 fixed for the
---     trigger and mark_notice and missed here: No reply needed on a held thread was refused by contacts_has_until_held.
+--     and the lanes read it again. The office holds UPDATE on a few named columns of messages and history is not one
+--     of them, so the mark comes off through messages_unfile, a definer function that asks the same press check and
+--     can only take a mark off, never put one on. A close also ends the tech's hold (has_until), which 20261107083000
+--     fixed for the trigger and mark_notice and missed here: No reply needed on a held thread was refused by
+--     contacts_has_until_held.
 --   * The mail already there: the lines tagged from a person's own box that landed more than 14 days after they were
 --     written are marked, and a thread that only such mail opened, which nobody holds, goes back to Done.
 --
@@ -119,6 +122,26 @@ $$;
 COMMENT ON FUNCTION public.messages_move_state() IS
   'Messages: a line in puts the thread on Follow up (waiting) unless we answered after it; a line out or a note takes it off (done) and clears who has it, the hold''s end with it (v2.6640), unless they wrote after it. An auto line moves nothing. A filed mail of theirs (messages.history, v2.7026) opens nothing and holds nothing open.';
 
+-- Takes the mark off every filed mail on one thread. The office team's, as every Follow up press is. It never files
+-- a mail: only the tag does that, as the service role.
+CREATE OR REPLACE FUNCTION public.messages_unfile(p_contact_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.follow_up_press('reopen a conversation');
+  UPDATE public.messages SET history = false WHERE contact_id = p_contact_id AND history;
+END;
+$$;
+
+COMMENT ON FUNCTION public.messages_unfile(uuid) IS
+  'Messages (v2.7026, punch list #324): takes the filed-for-the-record mark off every mail on one thread, for set_state on Reopen. The office team only (follow_up_press). SECURITY DEFINER because the office holds no UPDATE on messages.history.';
+
+REVOKE EXECUTE ON FUNCTION public.messages_unfile(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.messages_unfile(uuid) TO authenticated, service_role;
+
 -- set_state as 20261012160000 wrote it. Reopen takes the mark off the thread's filed mail; a close ends the hold.
 CREATE OR REPLACE FUNCTION public.set_state(p_contact_id uuid, p_state text)
 RETURNS date
@@ -147,7 +170,7 @@ BEGIN
     has_until = CASE WHEN p_state = 'done' THEN NULL ELSE has_until END
   WHERE id = p_contact_id;
   IF p_state = 'waiting' THEN
-    UPDATE public.messages SET history = false WHERE contact_id = p_contact_id AND history;
+    PERFORM public.messages_unfile(p_contact_id);
   END IF;
   RETURN v_until;
 END;

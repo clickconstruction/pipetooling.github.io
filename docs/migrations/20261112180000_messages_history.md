@@ -7,7 +7,7 @@ Old mail lands for the record (punch list #324, PR 1 of 5). Every line in Messag
 1. **`messages.history boolean NOT NULL DEFAULT false`**: true on a mail filed for the record. It shows in the thread and on the job at its own date and asks nobody for a reply.
 2. **`email_write_line`** keeps the mark the caller sends in `p_row`. A caller that sends none writes false, so every function deployed today writes as it did. The tag (`gmail-mine`) starts sending it in the next PR. The company boxes' readers never send it: mail in the team box was seen by nobody until the app read it.
 3. **`messages_move_state`** (the AFTER INSERT trigger): a filed mail of theirs opens nothing. A filed mail of ours still counts as our answer, as any line of ours that lands late does today. A filed mail of theirs never holds a thread open against a later line of ours.
-4. **`set_state`**: Reopen (`waiting`) takes the mark off the thread's mail, since a person has said it is live. A close (`done`) now clears `has_until` with the holder. `20261107083000` fixed that for the trigger and `mark_notice` and missed it here, so **No reply needed** on a thread a tech held was refused by `contacts_has_until_held`.
+4. **`set_state`**: Reopen (`waiting`) takes the mark off the thread's mail, since a person has said it is live. It does so through **`messages_unfile(p_contact_id uuid)`**, new here and SECURITY DEFINER: the office holds UPDATE on a few named columns of `messages`, and `history` is not one of them. The function asks the same press check as every Follow up press and can only take a mark off. A close (`done`) now clears `has_until` with the holder. `20261107083000` fixed that for the trigger and `mark_notice` and missed it here, so **No reply needed** on a thread a tech held was refused by `contacts_has_until_held`.
 5. **The mail already there.** An email line from a person's own box (`mailbox = 'mine'`) that landed more than 14 days after it was written is marked. A thread that is Open, that nobody holds, that has filed mail of theirs and no other line of theirs still waiting on us, goes back to Done.
 
 ## What the data step is expected to touch
@@ -16,7 +16,7 @@ Read on prod on 2026-11-12, read-only: 38 lines from the tags of 2026-11-09 land
 
 ## Who may do what
 
-Unchanged. `email_write_line` is the service role's. `set_state` is the office team's, through `follow_up_press`. The trigger is the database's own.
+`email_write_line` is the service role's. `set_state` and `messages_unfile` are the office team's, through `follow_up_press`: a training account, a digital twin and anyone off the office team are refused in words, and `anon` has no EXECUTE. Nobody signed in can put the mark on a mail: only the tag does, as the service role. The trigger is the database's own.
 
 ## Release order
 
