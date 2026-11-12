@@ -170,7 +170,7 @@ describe('PayCalendarModal', () => {
       expect(scope('Every job Larkfield Construction pays').getAttribute('aria-checked')).toBe('true')
       expect(scope('Only 1412 · Larkfield retail shell').getAttribute('aria-checked')).toBe('false')
       expect(screen.getByRole('button', { name: 'Save pay calendar' })).toBeTruthy()
-      expect(screen.queryByLabelText('No pay calendar on this job')).toBeNull()
+      expect(screen.queryByLabelText('This job has no pay calendar')).toBeNull()
     })
 
     it('saves a calendar for the job alone, starting from the payer’s', async () => {
@@ -205,7 +205,7 @@ describe('PayCalendarModal', () => {
       const { onClose } = open({ job: JOB })
       await waitFor(() => expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('25'))
       fireEvent.click(scope('Only 1412 · Larkfield retail shell'))
-      fireEvent.click(screen.getByLabelText('No pay calendar on this job'))
+      fireEvent.click(screen.getByLabelText('This job has no pay calendar'))
       expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).disabled).toBe(true)
       expect(preview()).toBe('This job reads the usual guess: the bill date plus how long they take to pay.')
       expect(screen.queryByTestId('pay-calendar-record')).toBeNull()

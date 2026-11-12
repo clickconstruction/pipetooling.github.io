@@ -291,7 +291,7 @@ export default function PayCalendarModal({
                 </p>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: '0.875rem', marginTop: '0.6rem', cursor: ready ? 'pointer' : 'default' }}>
                   <input type="checkbox" checked={jobOff} disabled={!ready} onChange={(e) => setJobOff(e.target.checked)} style={{ marginTop: 3 }} />
-                  <span>No pay calendar on this job</span>
+                  <span>This job has no pay calendar</span>
                 </label>
               </>
             ) : null}
