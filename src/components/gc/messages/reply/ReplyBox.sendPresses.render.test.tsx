@@ -178,4 +178,29 @@ describe('the three presses over the reply box (punch list #319 PR 1b)', () => {
     expect(buttons.every((b) => b.disabled)).toBe(true)
     expect(buttons[0]!.title).toMatch(/STOP|stop/)
   })
+
+  it('the presses sit on the kinds’ own row, after them, and leave no row of their own (the owner’s side, 2026-11-12)', async () => {
+    const { el } = draw({ kinds: ['text', 'email'] })
+    const row = await waitFor(() => {
+      const found = el.querySelector('[data-reply-top-row]')
+      expect(found).toBeTruthy()
+      return found as HTMLElement
+    })
+    const kinds = row.querySelector('[role="radiogroup"]')
+    const presses = row.querySelector('[data-send-presses]') as HTMLElement
+    expect(kinds).toBeTruthy()
+    expect(presses).toBeTruthy()
+    expect(Array.from(row.children)).toEqual([kinds, presses])
+    // At the right of the row, and still at the right when a narrow window wraps them under the kinds.
+    expect(presses.style.marginLeft).toBe('auto')
+    expect(el.querySelectorAll('[data-send-presses]')).toHaveLength(1)
+  })
+
+  it('on an email the kinds stand alone, with no row around them', async () => {
+    const { el } = draw({ kinds: ['email', 'text'] })
+    fireEvent.click(within(el).getByRole('radio', { name: 'Email' }))
+    await waitFor(() => expect(el.querySelector('[data-send-presses]')).toBeNull())
+    expect(el.querySelector('[data-reply-top-row]')).toBeNull()
+    expect(el.querySelector('[role="radiogroup"]')).toBeTruthy()
+  })
 })
