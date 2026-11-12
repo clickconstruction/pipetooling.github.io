@@ -53,7 +53,7 @@ export function lienDemandLettersFromRows(rows: ReadonlyArray<JobDemandLetterRow
     .map((r) => ({ sentAt: r.sent_at!, deadlineDate: r.deadline_date, amount: Number(r.amount ?? 0), openRemaining: Math.min(Number(r.amount ?? 0), Math.max(0, openBalance)), debtorParty: r.debtor_party ?? '' }))
 }
 
-const GATE_SHORT: Record<string, string> = { owner: 'owner of record', public_owner: 'a private owner', legal: 'legal description', contractor: "the general contractor's address", notice: 'the notice', homestead: 'homestead' }
+const GATE_SHORT: Record<string, string> = { owner: 'owner of record', public_owner: 'a private owner', legal: 'legal description', contractor: "the general contractor's address", notice: 'the notice', homestead: 'homestead', homestead_answer: 'the homestead answer' }
 
 function noticeStateOf(entry: LienDeskEntry | null): LienTimelineNoticeState {
   if (!entry) return ''

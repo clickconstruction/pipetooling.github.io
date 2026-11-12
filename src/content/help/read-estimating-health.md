@@ -2,7 +2,7 @@
 title: read the Estimating Health section
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: estimating health, pulse, weekly bids sent, won rate, win rate, scoreboard, bands, charging too much, field, people cards, waiting, hide people, hidden, archived
+keywords: estimating health, pulse, weekly bids sent, won rate, win rate, scoreboard, bands, charging too much, field, people cards, waiting, hide people, hidden, archived, bid size, won by size, no mark
 order: 69
 ---
 Estimating Health lives at the bottom of Bids → Bid Board. It is your estimating record, with every number one click from its bids.
@@ -49,3 +49,13 @@ People with **archived** accounts start hidden automatically. They show up in th
 :::example What hiding does — and doesn't
 Hide a former estimator and their card and marker vanish, but the weekly bars, the stat cards, and the dark **ALL** marker don't move — hiding is only about what *you* look at, never about the company math.
 :::
+
+## What we win, by the size of the bid
+
+Under the Pulse, a chart reads what we win by the size of the bid. There is one row for each size. The sizes are under $10k, $10k to $50k, $50k to $500k and over $500k.
+
+The green bar is the share won by dollars, among the bids of that size that were sent. The line under it counts the bids won, the bids lost and the bids with no mark.
+
+A bid counts as won or lost only when it is marked. Started or complete counts as won. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days.
+
+The last line says how many sent bids have no mark. Mark them won or lost and the rates come true. The chart reads the bids the board is showing, so it follows the trade you pick.
