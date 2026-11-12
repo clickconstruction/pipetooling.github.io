@@ -150,14 +150,15 @@ export async function saveRoadmapTaskPlace(taskId: string, place: TaskPlaceDraft
  */
 export async function addTaskPlaceFromTheSpot(instanceId: string, fix: { lat: number; lng: number; accuracyM: number | null }, name: string): Promise<string | null> {
   try {
-    const rpc = supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: unknown }>
-    const { error } = await rpc.call(supabase, 'add_task_place_from_the_spot', {
+    // Written as a plain `supabase.rpc('name' …)` on purpose: `check:calls-ahead` reads this form, and holds the deploy
+    // until the migration that creates the function is pushed.
+    const { error } = await supabase.rpc('add_task_place_from_the_spot' as never, {
       p_instance_id: instanceId,
       p_lat: fix.lat,
       p_lng: fix.lng,
       p_accuracy_m: fix.accuracyM == null ? null : Math.round(fix.accuracyM),
       p_name: name.trim() || null,
-    })
+    } as never)
     return error ? formatErrorMessage(error, 'The place did not save.') : null
   } catch (e) {
     return formatErrorMessage(e, 'The place did not save.')
