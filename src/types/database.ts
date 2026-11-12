@@ -11810,8 +11810,10 @@ export type Database = {
           code_hash: string
           contact_id: string | null
           drive_folder_id: string | null
+          drive_job_folder_at: string | null
           expires_at: string
           id: string
+          job_id: string | null
           label: string
           looked_at: string | null
           looked_by: string | null
@@ -11830,8 +11832,10 @@ export type Database = {
           code_hash: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11850,8 +11854,10 @@ export type Database = {
           code_hash?: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at?: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11882,6 +11888,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -46439,6 +46452,10 @@ export type Database = {
       set_default_job: {
         Args: { p_contact_id: string; p_job_id: string; p_job_kind: string }
         Returns: undefined
+      }
+      set_first_look_job: {
+        Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
       }
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
