@@ -2,7 +2,7 @@
 title: read the Bridge
 category: Billing & Money
 roles: dev, master_technician
-keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
+keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
 1. Read the three numbers at the top. They are what the field made last week, cash's low point, and the slowest step.
@@ -23,7 +23,7 @@ The page opens on three numbers.
 
 Under the three numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the three numbers. In a week cash comes first, a phone shows it under the card.
 
-Market's row reads what the asks are worth a week. A bid counts at the won rate for bids its size. An estimate counts at the estimates' own won rate. A bid counts as won or lost only when it is marked. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days. An estimate with no answer counts as lost after 90 days. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
+Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
 An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
@@ -96,6 +96,20 @@ The Bill card's pile is finished work not yet billed. On each working job that i
 The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
+
+## What Market is worth
+
+Market is one amount, in dollars a week. It is what the bids win a week plus what the estimates sell a week. The pipe, the Market card, the dial and the weekly email all read it. It is on the same scale as the other four steps.
+
+**Bids.** A bid counts as won when it is marked won, or marked started or complete. It counts as lost when it is marked lost. Nothing else decides. A job made from a bid does not make it won. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days. It never counts as part won.
+
+Each bid is read at the won rate for bids its size. The sizes are under $10k, $10k to $50k, $50k to $500k and over $500k. A size's rate is its won dollars over its won and lost dollars. A size with nothing won or lost reads at the rate of all sizes together. Take the bids sent in the last eight weeks, as dollars a week. Those dollars times the rates are what the bids win a week.
+
+**Estimates.** An estimate is won when the customer approves it. It is lost when the customer declines it. It is lost when the customer approves another estimate for the same address after it was sent. It is lost after 90 days with no answer. Any other estimate is still out and is in neither count. The won rate is won dollars over won and lost dollars. The estimates sent in the last eight weeks, a week, times that rate are what the estimates sell.
+
+A bid never sent is in no count. A ZZ test bid is in no count. Change orders and bid proposals are left out.
+
+Press **How Market's figure is counted** under the pipe to read today's counts. The Bid Board's Health section shows [the won rate for each size](/help/read-estimating-health#what-we-win-by-the-size-of-the-bid), by trade. Marking old bids won or lost is what makes the rates true.
 
 ## Market, broken down
 
