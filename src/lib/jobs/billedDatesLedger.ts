@@ -28,7 +28,9 @@
  * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
  * arranges them.
  */
-import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel } from './billedDuePay'
+import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 
@@ -41,7 +43,7 @@ export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'inkind' | 'notice' | 
 
 export type LedgerRow = {
   key: LedgerRowKey
-  /** "Billed" · "Expected" · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
+  /** "Billed" · "Expected" · "Due" (the payer's Pay calendar, v2.7025) · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
   label: string
   /** The words between the label and the date: '' · 'by'. */
   joiner: string
@@ -112,6 +114,13 @@ export type BilledDatesLedgerInput = {
    * move a deadline.
    */
   inKind?: boolean
+  /**
+   * The row's Pay calendar (punch list #323, `calendarFor`): the money row reads **Due** with the day the contract
+   * makes the bill due, and the line under it says when their money usually lands. The lien rows still read the
+   * expected day, the due day plus their usual lateness, since a deadline is weighed against when money really comes.
+   * Null or absent: the money row as before.
+   */
+  calendar?: PayCalendar | null
 }
 
 /** What the ledger reads of a paid claim. */
@@ -127,7 +136,7 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null, inKind = false }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null, inKind = false, calendar = null }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
   /** The state line under a lien row (v2.5491), when the desk has one. */
   const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
@@ -144,8 +153,8 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   const said = row && claim && !uncollectible && claimOpen(claim) ? claim : null
   const saidStale = said ? claimStale(said, todayYmd) : false
   const scheduledInKind = inKind && !uncollectible && !said
-  const stat = row && !uncollectible && !said && !scheduledInKind ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
-  const promised = row && promise && !uncollectible && !said && !scheduledInKind ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
+  const stat = row && !uncollectible && !said && !scheduledInKind ? billedPayModel(row, data, todayYmd, null, pace, calendar) : null
+  const promised = row && promise && !uncollectible && !said && !scheduledInKind ? billedPayModel(row, data, todayYmd, promise, pace, calendar) : null
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0
@@ -187,7 +196,28 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       sub: '',
     })
   }
-  if (moneyYmd && moneyTo != null) {
+  // A Pay calendar (v2.7025): the row says the day the contract makes the bill due, and the line under it says when
+  // their money usually lands. Everything below still weighs the expected day (`moneyYmd`), never the due day.
+  const dueYmd = !promised && stat?.source === 'terms' ? stat.dueYmd : null
+  if (dueYmd && stat) {
+    const dueTo = daysBetweenYmd(todayYmd, dueYmd) ?? 0
+    const duePast = dueTo < 0
+    rows.push({
+      key: 'money',
+      label: 'Due',
+      joiner: '',
+      date: formatYmdMonthDay(dueYmd),
+      far: duePast ? `${dWord(-dueTo)} past` : farWords(dueTo, 'in'),
+      tone: inCollections ? 'red' : duePast ? 'amber' : 'green',
+      bold: false,
+      dot: 'filled',
+      action: moneyAction,
+      title: moneyTitle,
+      // The day leads: the row is narrow and cuts the tail. The hover carries the math.
+      sub: usuallyLandsShort(dueYmd, stat.lateness) ?? 'No payment on record yet',
+      subTitle: usuallyLandsWords(dueYmd, stat.lateness) ?? 'No payment of theirs is measured yet, so the due day is the best guess there is.',
+    })
+  } else if (moneyYmd && moneyTo != null) {
     const tone: LedgerTone = inCollections ? 'red' : moneyPast ? 'amber' : 'green'
     rows.push({
       key: 'money',
@@ -200,7 +230,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       dot: 'filled',
       action: moneyAction,
       title: moneyTitle,
-      sub: promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
+      sub: promised && promised.dueYmd ? `due ${formatYmdMonthDay(promised.dueYmd)} by their pay calendar` : promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
     })
   }
 

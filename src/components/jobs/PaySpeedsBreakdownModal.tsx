@@ -12,6 +12,7 @@ import { buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers, billW
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
+import PayCalendarLine from '../customers/PayCalendarLine'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import MoneyWaitingShareModal from './MoneyWaitingShareModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -424,6 +425,10 @@ export default function PaySpeedsBreakdownModal({
                 {focus.sentence}
                 {focus.paysIn ? ' Counted over the last 12 months.' : ''}
               </p>
+              {/* Punch list #323: this payer's Pay calendar in a few words, or the press that sets one; both open its window. */}
+              <div style={{ margin: '-0.25rem 0 0.5rem' }}>
+                <PayCalendarLine payerId={focus.customerId} payerName={focus.name} />
+              </div>
               {receiptsPanel(
                 { customerId: focus.customerId, name: focus.name, segment: focus.segment, medianDays: focus.medianDays, samples: focus.samples, open: focus.open, receipts: focus.receipts },
                 companyMedian,

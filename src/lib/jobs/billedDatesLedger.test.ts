@@ -207,3 +207,70 @@ describe('They say paid (v2.6695 — the customer’s word that they already pai
     expect(l.full).toBe('Billed Sep 23 · 7d ago · They say paid Sep 28 · 2d ago · Lien by Dec 15 · 76d')
   })
 })
+
+describe('buildBilledDatesLedger with a Pay calendar (punch list #323): Due on the row, Expected under it', () => {
+  // Today is Thursday 2026-11-12. Larkfield Construction pays the 10th of the month after a bill is in, and its four
+  // measured payments landed 0, 6, 6 and 14 days after their due days. Its median pay speed is 41 days.
+  const calToday = '2026-11-12'
+  const tenth = { cutoffDay: null, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '§ 5.2', words: '' }
+  const lark: PaySpeedData = {
+    company: { medianDays: 12, samples: 200 },
+    customers: { lark: { medianDays: 41, samples: 4 } },
+    segments: { residential: null, commercial: null },
+    customerTypes: { lark: 'commercial' },
+    receipts: {
+      lark: [
+        { billedYmd: '2026-10-06', paidYmd: '2026-11-10', gapDays: 35, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-10-27', paidYmd: '2026-11-16', gapDays: 20, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-09-03', paidYmd: '2026-10-24', gapDays: 51, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-08-20', paidYmd: '2026-09-16', gapDays: 27, jobId: null, jobName: null, address: null },
+      ],
+    },
+    quality: null,
+  }
+  const billed = (ymd: string, customerId = 'lark') => ({ billedAtIso: null, estBillYmd: ymd, customerId, payerName: 'Larkfield Construction' })
+  const money = (l: ReturnType<typeof buildBilledDatesLedger>) => l.rows.find((r) => r.key === 'money')!
+
+  it('a bill not yet due: Due and its day, green, with when their money usually lands under it', () => {
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: lark, promise: null, runway: null, inCollections: false, calendar: tenth })
+    expect(l.rows.map(line)).toEqual(['Billed Nov 3 9d ago', 'Due Dec 10 in 28d'])
+    expect(money(l)).toMatchObject({ label: 'Due', tone: 'green', sub: 'Usually lands about Dec 16', subTitle: 'Usually lands about 6d after. About Dec 16.', action: 'they-said' })
+    expect(money(l).title).toContain('A bill in by the last day of the month is paid the 10th of the next month.')
+    expect(l.full).toBe('Billed Nov 3 · 9d ago · Due Dec 10 · in 28d')
+  })
+
+  it('without the calendar the same bill reads Expected Dec 14, as before', () => {
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: lark, promise: null, runway: null, inCollections: false })
+    expect(l.rows.map(line)).toEqual(['Billed Nov 3 9d ago', 'Expected Dec 14 in 32d'])
+    expect(money(l).sub).toBe('')
+  })
+
+  it('a bill past its due day reads amber, though the pace guess had it 25 days out', () => {
+    const now = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-10-27'), data: lark, promise: null, runway: null, inCollections: false })
+    expect(line(money(now))).toBe('Expected Dec 7 in 25d')
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-10-27'), data: lark, promise: null, runway: null, inCollections: false, calendar: tenth })
+    expect(line(money(l))).toBe('Due Nov 10 2d past')
+    expect(money(l)).toMatchObject({ tone: 'amber', sub: 'Usually lands about Nov 16' })
+  })
+
+  it('reads red in Collections, and says so when the payer has no payment on record', () => {
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-10-27', 'newco'), data: lark, promise: null, runway: null, inCollections: true, calendar: tenth })
+    expect(money(l)).toMatchObject({ label: 'Due', tone: 'red', sub: 'No payment on record yet' })
+  })
+
+  it('weighs the lien against the expected day, not the due day', () => {
+    // A direct job, last work Sep 20 on a residential property: lien by Dec 15. Due Nov 10 has passed, but their money
+    // is expected Nov 16, 29 days before the lien's last day. So the lien is a ring and the verdict is the slack.
+    const runway = buildLienPayRunway({ todayYmd: calToday, openBalance: 22750, lastWorkYmd: '2026-09-20', propertyKind: 'residential', expectedPayYmd: '2026-11-16', filedYmd: null, releasedYmd: null, isSub: false })
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-10-27'), data: lark, promise: null, runway, inCollections: false, calendar: tenth })
+    expect(l.rows.map((r) => r.label)).toEqual(['Billed', 'Due', 'Lien'])
+    expect(l.rows[2]).toMatchObject({ bold: false, dot: 'ring' })
+    expect(l.verdict).toMatchObject({ label: 'Can run late', value: `${daysBetweenYmd('2026-11-16', runway.lienByYmd)}d` })
+  })
+
+  it('a date the customer named still takes the row, with the due day as the line under it', () => {
+    const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-10-27'), data: lark, promise: { promisedYmd: '2026-11-20', markedByName: 'Rosa' } as never, runway: null, inCollections: false, calendar: tenth })
+    expect(line(money(l))).toBe('They said Nov 20 in 8d')
+    expect(money(l)).toMatchObject({ sub: 'due Nov 10 by their pay calendar', action: 'new-date' })
+  })
+})

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import type { PaceContext } from '../../lib/jobs/payPace'
+import type { PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -103,6 +104,7 @@ export default function BilledPaymentForecastModal({
   workMonths,
   onOpenLienNotice,
   pace,
+  payCalendars,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -138,10 +140,12 @@ export default function BilledPaymentForecastModal({
   onOpenLienNotice?: (jobId: string) => void
   /** The GC facts and the GC pace here (v2.6034): a first-job GC's row reads the GC pace, not the company's. */
   pace?: PaceContext | null
+  /** The stored Pay calendars (punch list #323): a payer on one shows its due day, and buckets by that day plus its usual lateness. */
+  payCalendars?: PayCalendarIndex | null
 }) {
   const forecast = useMemo(
-    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace),
-    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace],
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars),
+    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
@@ -469,6 +473,14 @@ export default function BilledPaymentForecastModal({
                           {r.segment ? <> {segmentTag(r.segment)}</> : null}
                           {r.model?.source === 'promised' ? (
                             <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
+                          ) : r.model?.source === 'terms' && r.model.dueYmd ? (
+                            // A payer on a Pay calendar (punch list #323): the day the contract makes the bill due, amber once
+                            // it has passed. The date on the right is still when their money is expected.
+                            <span data-testid="forecast-due" style={{ color: r.model.daysPastDue > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: r.model.daysPastDue > 0 ? 600 : undefined }} title={r.model.title}>
+                              {' '}
+                              · due {formatYmdMonthDay(r.model.dueYmd)}
+                              {r.model.daysPastDue > 0 ? ` · ${r.model.daysPastDue}d past` : ''}
+                            </span>
                           ) : r.model ? (
                             // The pace it read (v2.6034): pays in ~35d, the GC pace ~35d over 3 payers, commercial pace ~12d, company avg.
                             <span style={{ color: 'var(--text-muted)' }} title={r.model.title}> · {r.model.paceWords}</span>
