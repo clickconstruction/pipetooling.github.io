@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -980,6 +980,9 @@ The press on a one-off or roadmap task card since v2.6597 (punch list #273): an 
 
 ### Done when… line
 A success criterion on a task card (punch list #273, v2.6595): one of up to twelve lines its writer lists under **Done when…** on the Add and Edit windows (`task_criteria`), ticked one at a time on the card (`task_criteria_checks`); the thread keeps each tick as a `criterion` event, the card's percent follows the ticks, and the last tick on a card that asks for a photo opens the finishing sheet. Kernel `src/lib/taskCriteria.ts`.
+
+### Place (on a task)
+An optional named point on a task, such as *Pump house* (punch list #328, the columns since v2.7058; no screen reads them yet). It answers "where is the work" on a property where the street address covers everything: a spot in a yard, a field, behind a building. Six columns on `checklist_items`, the task as written, so a repeating task keeps its place every day: `place_name`, `place_lat`, `place_lng`, `place_accuracy_m`, `place_set_by`, `place_set_at`. The rules and the words are `src/lib/tasks/taskPlace.ts`: a place is whole or absent, the places already used are offered again by name, distance reads in feet across a yard and miles past a fifth of a mile, and a phone's reading says how sure it is. The word a person reads is **place** and the mark on a map is a **dot**: *pin* is Pin Mode's word for a pinned page, and *location* is where a person is. The train and its calls: `to-dos/task-places/README.md`.
 
 ### Your people
 The office's Dashboard section under My Inbox since v2.6600 (punch list #273; `DashboardYourPeopleSection.tsx` over `src/lib/dashboardYourPeople.ts`): one row per person with an open one-off card, the ring on their newest card, *moved today* / *moved Wed* / *stuck 32 days* on Review's own age rule (`ONE_OFF_TASK_AGE`, amber 7 / red 31), **🔔 Remind** through `send-checklist-notification`, **Open Review**, and since v2.6603 **✉ Get this every Monday**. Guide `review-my-teams-completed-tasks`.

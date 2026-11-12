@@ -11,3 +11,14 @@ export function directionsUrlForAddress(address: string | null | undefined): str
   if (!a) return null
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a)}`
 }
+
+/**
+ * Google Maps directions link for a point (punch list #328, a task's place): a spot on a property has no address to
+ * route to. On a road the phone routes there. Off a road it routes to the nearest one, and the place's own map does the
+ * rest. Null for anything that is not two finite numbers on the globe.
+ */
+export function directionsUrlForPoint(lat: number | null | undefined, lng: number | null | undefined): string | null {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat.toFixed(6)},${lng.toFixed(6)}`
+}
