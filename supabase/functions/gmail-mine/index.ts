@@ -866,6 +866,13 @@ async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId
   }
 }
 
+/** The conversation's state in Follow up, or null when it does not read. */
+async function contactState(admin: Admin, contactId: string): Promise<'waiting' | 'snoozed' | 'done' | null> {
+  const { data, error } = await admin.from('contacts').select('state').eq('id', contactId).maybeSingle()
+  const state = (data as { state?: unknown } | null)?.state
+  return !error && (state === 'waiting' || state === 'snoozed' || state === 'done') ? state : null
+}
+
 async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   const { admin, me } = ctx
   const chip = await jobChip(admin, ask.job)
@@ -901,6 +908,8 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     hidden,
     // A mail more than 14 days old lands for the record (v2.7027, punch list #324): its line asks nobody for a reply.
     nowIso: nowIso(),
+    // The seat's for_record (v2.7032): every mail of this tag is filed, whatever its age.
+    forRecord: ask.forRecord === true,
   })
   // The seat's dry run (server 0.30.0): the plan read back, nothing written, no label put on.
   if (ask.plan === true) {
@@ -965,7 +974,9 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   const moved = wasOn !== null && wasOn !== plan.jobKey
   const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat, filed: tagAllFiled(plan.counts) }) : false
   const label = await labelMails(ctx, unique(plan.steps.filter((s) => s.kind !== 'skip').map((s) => s.gmailId)))
-  const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender, filed: plan.counts.filed }
+  // Where the conversation stands in Follow up now (v2.7032), for the line the tab prints after a tag. Best effort.
+  const state = contactId ? await contactState(admin, contactId) : null
+  const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender, filed: plan.counts.filed, ...(state ? { state } : {}) }
   log({ event: 'gmail_mine_tag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved, ...label })
   return json(answer)
 }

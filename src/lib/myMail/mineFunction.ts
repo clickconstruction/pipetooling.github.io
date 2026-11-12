@@ -100,6 +100,7 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
       // The seat's door (server 0.30.0): `as` the login whose box it is, `plan` for the dry run. Anything else in them is no request.
       if (r.plan !== undefined && typeof r.plan !== 'boolean') return null
       if (r.as !== undefined && (typeof r.as !== 'string' || !myMailAddressKey(r.as))) return null
+      if (r.forRecord !== undefined && typeof r.forRecord !== 'boolean') return null
       const plan = r.plan === true ? { plan: true as const } : {}
       const as = typeof r.as === 'string' ? r.as.trim().toLowerCase() : null
       // A person in place of the job (punch list #289): the seat's alone, so `as` is required; `stop` lifts the follow.
@@ -115,7 +116,7 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
       const j = job as Record<string, unknown>
       const kind = JOB_KINDS.find((k) => k === j.kind)
       if (!kind || typeof j.id !== 'string' || !UUID.test(j.id)) return null
-      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...plan, ...(as ? { as } : {}) }
+      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...plan, ...(as ? { as } : {}), ...(r.forRecord === true ? { forRecord: true } : {}) }
     }
     case 'untag':
       return typeof r.threadId === 'string' && GMAIL_ID.test(r.threadId) ? { action: 'untag', threadId: r.threadId } : null

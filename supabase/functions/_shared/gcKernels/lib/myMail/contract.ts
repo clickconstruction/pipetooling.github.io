@@ -142,6 +142,8 @@ export interface MyMailTagRequest {
   job: MyMailJobRef
   plan?: boolean
   as?: string
+  /** File every mail for the record whatever its age (v2.7032): the seat's `for_record`. The tab never sends it. */
+  forRecord?: boolean
 }
 
 /** A person as the seat names one for a tag onto an HR file (punch list #289): a `people.id`. */
@@ -266,6 +268,11 @@ export interface MyMailTagOk {
   unknownSender: { contactId: string; address: string; name: string } | null
   /** How many of the mails the tag planned to write were filed for the record (v2.7027). Absent from a function deployed before it. */
   filed?: number
+  /**
+   * The conversation's state in Follow up once the tag is done (v2.7032, `contacts.state` of `contactId`), for the line
+   * the tab prints after a tag. Absent when it could not be read, and from a function deployed before it.
+   */
+  state?: 'waiting' | 'snoozed' | 'done'
 }
 
 /** Take a conversation back off its job. */

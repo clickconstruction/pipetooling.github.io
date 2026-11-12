@@ -274,4 +274,10 @@ describe('planTag: what a tag writes, mail by mail', () => {
     expect(planTag({ threadId: 't-elm', messages: [email('g-old', { at: '2026-03-03T15:00:00.000Z' })] }, marisol, elm, known()).counts.filed).toBe(0)
     expect(planTag({ threadId: 't-elm', messages: [email('g-none', { at: null })] }, marisol, elm, { ...known(), nowIso: '2026-11-12T18:00:00.000Z' }).counts.filed).toBe(0)
   })
+
+  it('files every mail whatever its age when the seat asks for the record (v2.7032)', () => {
+    const plan = planTag(conversation, marisol, elm, { ...known(), nowIso: '2026-11-02T18:00:00.000Z', forRecord: true })
+    expect(plan.counts).toMatchObject({ lines: 3, filed: 3 })
+    expect(planTag(conversation, marisol, elm, { ...known(), nowIso: '2026-11-02T18:00:00.000Z' }).counts.filed).toBe(0)
+  })
 })

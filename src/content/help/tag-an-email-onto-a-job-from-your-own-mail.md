@@ -131,7 +131,12 @@ A mail more than 14 days old when you tag it is filed for the record. You saw it
 
 A new mail in the same conversation still opens the thread, as any mail does. A mail from the last 14 days lands as it always has.
 
-To put an old conversation on Follow up after all, open the thread, press {{button:outline|⋯}}, then **Reopen**.
+After a tag, the green bar says what the tag did to Follow up.
+
+- *6 old mails were filed for the record. Nothing went on Follow up.* Press {{button:outline|Put on Follow up}} when the old mail does need an answer.
+- *This conversation is on Follow up.* Press {{button:outline|No reply needed}} when nothing is owed.
+
+You can also open the thread later, press {{button:outline|⋯}}, then **Reopen**.
 
 A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 

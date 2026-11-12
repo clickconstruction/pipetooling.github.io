@@ -253,7 +253,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.78.0'
+const SERVER_VERSION = '0.79.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -432,7 +432,7 @@ const TOOLS: McpTool[] = [
   {
     name: 'plan_mail_tag',
     description: "Dry-run tagging a whole Gmail conversation onto a job (server 0.30.0): out of the box of the login named, as that person, through gmail-mine's own tag — the Messages → My email press — so every mail lands on the job's Activity and notes at its own time, a line the boxes already hold is tied instead of written twice, and later mail in the conversation follows by itself. The plan lists each mail with what the tag would do (write, tie, skip and why), the counts, and the job the conversation was on before when a tag would move it. Nothing is written and no label is put on. Find the conversation with search_mail (a hit's thread_id) and the job with find_job. Since server 0.42.0 (punch list #289) the target may be a person instead — tag.person: { person_id } (find_person): each mail becomes a dated entry on that person's HR file (From, To, Cc, Subject, Sent, the files by name and size, the body as plain text), on the mail's own day, as you, carrying its Gmail id, so a mail the file already holds is left and later mail follows as entries; an archived login's box may be read for it. tag.person.stop: true plans lifting that follow instead: the row goes, every entry stays.",
-    inputSchema: { type: 'object', properties: { tag: { type: 'object', description: "{ account (the address the hit names), thread_id (the hit's thread_id), job: { jobs_ledger_id | bid_id | project_id } | person: { person_id, stop? } }" } }, required: ['tag'] },
+    inputSchema: { type: 'object', properties: { tag: { type: 'object', description: "{ account (the address the hit names), thread_id (the hit's thread_id), job: { jobs_ledger_id | bid_id | project_id } | person: { person_id, stop? }, for_record? (a job tag's, since server 0.79.0: true files every mail for the record whatever its age, so nothing opens on Follow up; without it a mail older than 14 days is filed and a newer one lands as today's mail would — each mail's lands says which) }" } }, required: ['tag'] },
   },
   {
     name: 'apply_mail_tag',
@@ -1830,7 +1830,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // Punch list #289 (0.42.0): a person in place of the job — gmail-mine's person tag, the entries as the dev, `stop` lifts the follow.
         const ask = person
           ? { action: 'tag', threadId: parsed.value.threadId, person: { personId: person.personId }, as: parsed.value.account.email, ...(person.stop ? { stop: true } : {}) }
-          : { action: 'tag', threadId: parsed.value.threadId, job: parsed.value.job, as: parsed.value.account.email }
+          : { action: 'tag', threadId: parsed.value.threadId, job: parsed.value.job, as: parsed.value.account.email, ...(parsed.value.forRecord ? { forRecord: true } : {}) }
         const mineWords = (r: { status: number; body: unknown }): string => {
           const b = r.body && typeof r.body === 'object' ? (r.body as { words?: unknown; error?: unknown }) : null
           return typeof b?.words === 'string' ? b.words : restError(r.status, r.body)
