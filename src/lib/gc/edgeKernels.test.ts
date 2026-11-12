@@ -112,6 +112,8 @@ describe('what the index does not carry', () => {
       'lib/bids/legacyTemplatePricing.ts',
       'lib/bids/pickDefaultPriceBookTemplateId.ts',
       'lib/bids/pricingWriteTarget.ts',
+      // The dev seat's plan_bid_pricing: which book entry a row prices from.
+      'lib/bids/resolvePricingEntry.ts',
     ])
     const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
     expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])
