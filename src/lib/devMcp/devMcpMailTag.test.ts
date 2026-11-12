@@ -41,7 +41,6 @@ const plan: MyMailTagPlan = {
     { kind: 'skip', gmailId: 'm3', why: 'draft' },
   ],
   threadRow: { user_id: 'u-dana', gmail_thread_id: THREAD, bid_id: null, project_id: null, jobs_ledger_id: JOB, tagged_by: 'u-dana' },
-  label: 'Tagged in ClickTooling',
   counts: { lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 },
 }
 const emails = [email({}), email({ gmailId: 'm2', at: '2026-08-04T15:00:00.000Z', subject: 'Re: Invoice 4471', from: { name: null, address: 'dana@example-plumbing.test' } }), email({ gmailId: 'm3', at: null, labels: ['DRAFT'] })]
