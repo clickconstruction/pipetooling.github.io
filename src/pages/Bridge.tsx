@@ -54,6 +54,12 @@ import { buildFlowStrip } from '../lib/bridge/flowStrip'
 import type { CallPerson, MoveMark } from '../lib/bridge/callPeople'
 import { loadCallPeople, loadMoveMarks } from '../lib/bridge/callPeopleIo'
 import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
+import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
+import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
+import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
+import { buildBidWins, buildMarketWorth, type BidSent } from '../lib/bridge/bidWins'
+import { loadBidsSent } from '../lib/bridge/loadBidWins'
+import type { LeftOutRule } from '../lib/bridge/leftOut'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -127,6 +133,8 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
+/** What the Bridge leaves out of the won rates. The list a person sets is not shipped yet (punch list #318), so the loaders take none. */
+const NOTHING_LEFT_OUT: ReadonlyArray<LeftOutRule> = []
 /** Where a door on the first screen lands: clear of the app's top bar. */
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
@@ -169,6 +177,8 @@ export default function Bridge() {
   // The Monday sheet's `?view=monday` (v2.5224) retired with it: the first screen is the sheet.
   const [searchParams, setSearchParams] = useSearchParams()
   const doorParam = searchParams.get('door')
+  /** The pipe stands up (punch list #318). `?pipe=across` draws it lying down, as it was. */
+  const pipeAcross = searchParams.get('pipe') === 'across'
   // Where to land after a door opens: the doors row, or a part inside the door.
   const [doorScroll, setDoorScroll] = useState<{ id: string; n: number } | null>(null)
   // Bills and receipts show fourteen days until this is pressed.
@@ -457,6 +467,49 @@ export default function Bridge() {
     }
   }, [data, readZzTestJobIds])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
+
+  // Estimates through their won rate (punch list #318): every estimate ever sent, read once the page's data is in.
+  // A read that fails leaves the line off the pipe; nothing else on the page waits on it.
+  const [estimatesSent, setEstimatesSent] = useState<EstimateSent[] | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const v = await loadEstimatesSent(supabase, { leftOut: NOTHING_LEFT_OUT })
+        if (!cancelled) setEstimatesSent(v)
+      } catch {
+        if (!cancelled) setEstimatesSent(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const estimateWins = useMemo(() => (data && estimatesSent ? buildEstimateWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, estimates: estimatesSent }) : null), [data, estimatesSent])
+
+  // Bids through theirs, the same way: every bid ever sent and the jobs made from them.
+  const [bidsSent, setBidsSent] = useState<BidSent[] | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: NOTHING_LEFT_OUT })
+        if (!cancelled) setBidsSent(v)
+      } catch {
+        if (!cancelled) setBidsSent(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, readZzTestJobIds])
+  const bidWins = useMemo(() => (data && bidsSent ? buildBidWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: bidsSent }) : null), [data, bidsSent])
+  // What Market is worth: both kinds of ask, each through its own won rate. It waits for both reads, so the pipe is sized once.
+  const marketWorth = useMemo(() => (bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null), [bidWins, estimateWins])
 
   // The Bill desk (punch list #192, v2.5930): the leaks, the fast lane and the scorecard, read once when the window first opens.
   // The kernel memo sits after the stage flow below, since its facts read the Bill card's paces and weeks.
@@ -1355,7 +1408,8 @@ export default function Bridge() {
               onAnswer={(o) => void answerCall(o, null)}
               onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
-              strip={flowStrip ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : null}
+              strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
+              stripSide={!pipeAcross}
               people={pickable}
             />
           ) : (
