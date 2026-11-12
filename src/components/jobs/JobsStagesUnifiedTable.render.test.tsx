@@ -351,7 +351,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     ]
     renderWithProviders(
       <JobsStagesUnifiedTable
-        {...makeProps({ rows, canCreateHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
+        {...makeProps({ rows, canCreateHazmatFee: true, offerHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
       />,
     )
     await settle()

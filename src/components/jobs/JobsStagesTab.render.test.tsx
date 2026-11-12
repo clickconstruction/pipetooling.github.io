@@ -518,6 +518,68 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('No bill line')).toBeTruthy()
   })
 
+  describe('the Hazmat fee press shows on the three stages before the bill goes out (v2.7012)', () => {
+    const PRESS = 'Create a hazmat fee for this job'
+    const stageJobs = () => [
+      makeJob({ id: 'hz-waiting', job_name: 'Fee Waiting', status: 'waiting' }),
+      makeJob({ id: 'hz-working', job_name: 'Fee Working', status: 'working' }),
+      makeJob({ id: 'hz-ready', job_name: 'Fee Ready', status: 'ready_to_bill', revenue: 400 }),
+      makeJob({ id: 'hz-billed', job_name: 'Fee Billed', status: 'billed', revenue: 500, payments_made: 0, invoices: [] }),
+      makeJob({ id: 'hz-chased', job_name: 'Fee Chased', status: 'billed', revenue: 600, payments_made: 0, collections_at: '2026-08-01T00:00:00Z', invoices: [] }),
+      makeJob({ id: 'hz-given-up', job_name: 'Fee Given Up', status: 'billed', revenue: 700, payments_made: 0, collections_at: '2026-04-13T00:00:00Z', uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'Made-up reason.', invoices: [] }),
+      makeJob({ id: 'hz-paid', job_name: 'Fee Paid', status: 'paid', revenue: 800, payments_made: 800 }),
+    ]
+    const allOpen = () =>
+      localStorage.setItem(
+        'pipetooling_stages_sections_v2',
+        JSON.stringify({ waiting: true, working: true, readyToBill: true, billed: true, collections: true, paid: true }),
+      )
+    const rowOf = (id: string): HTMLElement => {
+      const el = document.querySelector<HTMLElement>(`[data-stages-job-id="${id}"]`)
+      if (!el) throw new Error(`no row for ${id}`)
+      return el
+    }
+
+    it('on the desk rows: Waiting, Working and Ready to Bill carry it; Billed, Collections, Uncollectible and Paid in Full do not', async () => {
+      allOpen()
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: stageJobs() })} />)
+      await settle()
+      for (const id of ['hz-waiting', 'hz-working', 'hz-ready']) {
+        expect(within(rowOf(id)).getByLabelText(PRESS), id).toBeTruthy()
+      }
+      for (const id of ['hz-billed', 'hz-chased', 'hz-given-up', 'hz-paid']) {
+        // The row is on the board with its other presses; only the fee press is gone.
+        expect(within(rowOf(id)).getByText(/^Fee /), id).toBeTruthy()
+        expect(within(rowOf(id)).queryByLabelText(PRESS), id).toBeNull()
+      }
+      // 3 rows offer it, 4 do not.
+      expect(screen.getAllByLabelText(PRESS)).toHaveLength(3)
+    })
+
+    it('on Mobile cards: the ⋯ sheet lists Hazmat fee on a Waiting, Working and Ready to Bill card and not on a Billed, Collections or Paid card', async () => {
+      allOpen()
+      localStorage.setItem('jobs-stages-mobile-cards', 'true')
+      try {
+        renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: stageJobs() })} />)
+        await settle()
+        const sheetOf = (id: string) => {
+          fireEvent.click(within(rowOf(id)).getByTitle('More actions'))
+          const has = screen.queryByText('Hazmat fee') != null
+          // The sheet is open: its own lines are there.
+          expect(screen.getByText('Edit job'), id).toBeTruthy()
+          fireEvent.click(screen.getByText('Cancel'))
+          return has
+        }
+        expect(sheetOf('hz-waiting')).toBe(true)
+        expect(sheetOf('hz-working')).toBe(true)
+        expect(sheetOf('hz-ready')).toBe(true)
+        for (const id of ['hz-billed', 'hz-chased', 'hz-given-up', 'hz-paid']) expect(sheetOf(id), id).toBe(false)
+      } finally {
+        localStorage.removeItem('jobs-stages-mobile-cards')
+      }
+    })
+  })
+
   it('on the phone board, focusSection picks the stage — ?stagesSection=collections lands on Collections, not the first open stage (punch list #93 D, v2.4759)', async () => {
     const realMatchMedia = window.matchMedia
     window.matchMedia = ((query: string) => ({

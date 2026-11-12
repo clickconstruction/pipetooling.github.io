@@ -168,6 +168,7 @@ import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
+import { stageOffersHazmatFee } from '../../lib/jobs/hazmatFeeStages'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { jobWithDetailsToQuickAssignHubRow } from '../../lib/jobs/quickAssignFromPipeline'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
@@ -2661,6 +2662,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    */
   const stagesSectionActionProps = {
     waiting: {
+      offerHazmatFee: stageOffersHazmatFee('waiting'),
       actionLabel: 'Move to Working',
       onAction: (j) => void updateJobStatus(j.id, 'working'),
       showTimeOpen: true,
@@ -2669,6 +2671,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       showPctComplete: true,
     } satisfies Partial<ComponentProps<typeof JobsStagesTable>>,
     working: {
+      offerHazmatFee: stageOffersHazmatFee('working'),
       actionLabel: 'Ready to Bill',
       onAction: (j) => readyToBillFromWorking(j),
       showTimeOpen: true,
@@ -2680,6 +2683,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       showPctComplete: true,
     } satisfies Partial<ComponentProps<typeof JobsStagesTable>>,
     readyToBill: {
+      offerHazmatFee: stageOffersHazmatFee('readyToBill'),
       actionLabel: 'Bill Customer',
       onJobAction: (j) => {
         if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
@@ -2748,6 +2752,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       invoiceStandaloneActionLabel: DELETE_DRAFT_BILL_LABEL,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
     billed: {
+      // v2.7012 (owner): no Hazmat fee press once the bill is out. Send back to Ready to Bill brings it back.
+      offerHazmatFee: stageOffersHazmatFee('billed'),
       actionLabel: 'Mark Paid',
       onJobAction: (j) => setMarkPaidJob(j),
       onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
@@ -2783,6 +2789,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         : undefined,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
     collections: {
+      offerHazmatFee: stageOffersHazmatFee('collections'),
       actionLabel: 'Mark Paid',
       onJobAction: (j) => setMarkPaidJob(j),
       onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
@@ -2811,6 +2818,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     // The Uncollectible band under Collections (v2.4792): Mark Paid and View Bill still work, no lien door,
     // the stamp in place of the note line, and one way back.
     uncollectible: {
+      offerHazmatFee: stageOffersHazmatFee('uncollectible'),
       actionLabel: 'Mark Paid',
       onJobAction: (j) => setMarkPaidJob(j),
       onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
@@ -4216,6 +4224,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <StagesSectionList
                       {...stagesTableShared}
                       jobList={paid}
+                      offerHazmatFee={stageOffersHazmatFee('paid')}
                       onToggleProgressSort={onToggleProgressSort}
                       actionLabel={null}
                       onAction={() => {}}

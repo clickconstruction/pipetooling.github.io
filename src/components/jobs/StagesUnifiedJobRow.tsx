@@ -64,6 +64,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
     openEdit,
     setAiaG702StagesJob,
     canCreateHazmatFee,
+    offerHazmatFee,
     openHazmatFee,
     hazmatFeeJobIds,
     submitJobThreadNoteWithBody,
@@ -396,7 +397,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     )
                   })()}
                 {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
-                {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
+                {canCreateHazmatFee && offerHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
             </StagesRowIcons>
             {/* v2.4147 (owner): Send back and Collections live under the icons, stacked
                 full width — off the Progress cell, where they sat under the lien runway. */}

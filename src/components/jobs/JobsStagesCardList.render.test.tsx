@@ -111,7 +111,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     const job = makeJob({ job_name: 'Card Beta' })
     renderWithProviders(
       <JobsStagesCardList
-        {...makeProps({ jobList: [job], canCreateHazmatFee: true, openHazmatFee, onSendBack })}
+        {...makeProps({ jobList: [job], canCreateHazmatFee: true, offerHazmatFee: true, openHazmatFee, onSendBack })}
       />,
     )
     await settle()

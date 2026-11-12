@@ -114,6 +114,8 @@ export type JobsStagesUnifiedTableProps = {
   openStagesDetailJobModal: (j: JobWithDetails) => void
   setAiaG702StagesJob: (j: JobWithDetails | null) => void
   canCreateHazmatFee: boolean
+  /** The section's stage offers the Hazmat fee press (v2.7012): Waiting, Working and Ready to Bill say so; a section that says nothing offers none. */
+  offerHazmatFee?: boolean
   openHazmatFee: (j: JobWithDetails) => void
   /** Jobs with a live (non-voided) hazmat fee — their ☣ button wears a bright green box (v2.1040). */
   hazmatFeeJobIds?: ReadonlySet<string>
