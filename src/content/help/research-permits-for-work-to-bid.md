@@ -19,7 +19,9 @@ Austin posts a permit once the city issues it. San Antonio also posts applicatio
 
 Every city's Property line reads its own county for the owner of record. Austin reads Travis County. San Marcos reads Hays County. New Braunfels reads Comal County. Seguin reads Guadalupe County.
 
-A new building often has no parcel under its street address yet. The app then reads the parcel at the permit's point, and the card says so.
+Almost every Austin permit names its lot at Travis County. The app reads that lot first. The owner is then the owner of the lot the permit is on.
+
+A new building often has no parcel under its street address yet. When the permit names no lot the county holds, the app reads the parcel at the permit's point. The card says so.
 
 Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
 

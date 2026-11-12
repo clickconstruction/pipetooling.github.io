@@ -277,7 +277,7 @@ export function PermitSkimDeck({
     if (!topId || !topAddress) return
     let live = true
     setParcels((prev) => (prev.has(topId) ? prev : new Map(prev).set(topId, { state: 'loading' })))
-    lookupParcel(topAddress, city, false, { lat: topLat, lng: topLng })
+    lookupParcel(topAddress, city, false, { lat: topLat, lng: topLng, id: topId })
       .then((a) => live && setParcels((prev) => new Map(prev).set(topId, { state: 'done', facts: a.facts })))
       .catch(() => live && setParcels((prev) => new Map(prev).set(topId, { state: 'done', facts: null })))
     return () => {

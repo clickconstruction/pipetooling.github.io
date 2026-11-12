@@ -6,6 +6,8 @@
  * its direction and its street name, the layer is asked for the number and the name, and the
  * best row is picked here. When the county has no parcel under the street address, which is the
  * rule on new construction, the permit's own point is asked instead and the answer says so.
+ * Where a permit carries the county's own id for its lot (Austin's `tcad_id`, punch list #316),
+ * that id is asked first: it is the lot the permit names, with no matching.
  *
  * Pure: `permit-lookup` runs these, `src/lib/research/permitParcels.test.ts` holds them.
  */
@@ -93,6 +95,18 @@ export type ParcelSource = {
   streetOf: (a: Attributes) => { prefix: string | null; street: string }
   ownerOf: (a: Attributes) => string | null
   facts: (a: Attributes) => ParcelFacts
+  /** Set where a permit can carry this layer's own id for its lot. Only Travis has one. */
+  id?: ParcelIdColumn
+}
+
+/** A parcel layer's id a permit can carry: the layer's column, and where the permit's feed row keeps it. */
+export type ParcelIdColumn = {
+  /** The layer's column the id is asked of. */
+  column: string
+  /** The key in the permit's feed row (`permits.raw`) that holds the id. */
+  permitKey: string
+  /** Whether an id is one this layer can hold. A neighbouring county's id is not asked. */
+  askable: (id: string) => boolean
 }
 
 function num(v: unknown): number | null {
@@ -120,7 +134,9 @@ function sum(...parts: Array<number | null>): number | null {
 /**
  * Travis County: the appraisal district's parcels as the county's road department republishes
  * them. A numbered street is kept as its bare number ("5"), a blank part is a single space, and
- * the suffix is written three ways, so the suffix stays out of the match.
+ * the suffix is written three ways, so the suffix stays out of the match. An Austin permit's
+ * `tcad_id` is this layer's `geo_id` (ten digits, leading zeros kept), not its `PROP_ID`. An id
+ * that starts with R is Williamson County's, for the zips of Austin over the county line.
  */
 export const TRAVIS_PARCELS: ParcelSource = {
   county: 'Travis',
@@ -136,6 +152,7 @@ export const TRAVIS_PARCELS: ParcelSource = {
   },
   streetOf: (a) => ({ prefix: str(a.situs_street_prefx)?.toUpperCase() ?? null, street: str(a.situs_street)?.toUpperCase() ?? '' }),
   ownerOf: (a) => str(a.py_owner_name),
+  id: { column: 'geo_id', permitKey: 'tcad_id', askable: (id) => !/^r/i.test(id) },
   facts: (a) => {
     const propId = idOf(a.PROP_ID)
     return {
@@ -238,6 +255,25 @@ export function pointQuery(source: ParcelSource, point: { lat: number; lng: numb
   })
 }
 
+/** A permit's parcel id as text, or null: blank, or one this layer cannot hold. */
+export function askableParcelId(source: ParcelSource, id: unknown): string | null {
+  if (!source.id || (typeof id !== 'string' && typeof id !== 'number')) return null
+  const text = String(id).trim()
+  return text !== '' && source.id.askable(text) ? text : null
+}
+
+/** The where clause that asks a layer for one parcel by its id, or null when the layer has no id to ask or the id is not its own. */
+export function idWhere(source: ParcelSource, id: unknown): string | null {
+  const text = askableParcelId(source, id)
+  return text === null || !source.id ? null : `${source.id.column} = ${quoted(text)}`
+}
+
+/** The query string for the parcel a permit names by id, or null when there is nothing to ask. One id is a short address, so a GET passes the county's firewall. */
+export function idQuery(source: ParcelSource, id: unknown): URLSearchParams | null {
+  const where = idWhere(source, id)
+  return where === null ? null : new URLSearchParams({ where, outFields: source.outFields, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })
+}
+
 function featuresOf(body: unknown): Attributes[] {
   const features = (body as { features?: Array<{ attributes?: Attributes }> } | null)?.features
   return Array.isArray(features) ? features.map((f) => f.attributes ?? {}) : []
@@ -297,6 +333,13 @@ export function parcelFactsByPoint(source: ParcelSource, body: unknown): ParcelF
   return a ? { ...source.facts(a), matched_by: 'point' } : null
 }
 
+/** The facts off an id query: the first parcel with an owner, marked as read by the id the permit carries. Null when the layer does not hold the id, which is about one Austin permit in five. */
+export function parcelFactsById(source: ParcelSource, body: unknown): ParcelFacts | null {
+  const rows = featuresOf(body)
+  const a = rows.find((r) => source.ownerOf(r)) ?? null
+  return a ? { ...source.facts(a), matched_by: 'id' } : null
+}
+
 /**
  * Whether a kept lookup's question was put to Bexar's layer (`situsWhere` in `permitLookup.ts`).
  * Between the client that asks about the other counties and the function that can answer, the
@@ -307,17 +350,41 @@ export function askedBexarLayer(query: string | null | undefined): boolean {
   return (query ?? '').startsWith('UPPER(Situs)')
 }
 
+/** The questions a kept lookup's `query` holds, in the order they were asked, joined by this. */
+export const QUESTION_JOIN = ' | '
+
+/** Whether a question in a kept `query` is the one that asks a layer by the parcel id. */
+function isIdQuestion(source: ParcelSource, question: string): boolean {
+  return source.id !== undefined && question.startsWith(`${source.id.column} = `)
+}
+
 /**
  * Whether a kept "no parcel" was asked with a different question than this code asks today for
  * the same address: a spelling learned since (a LOOP suffix, an interstate written "I H 10") would
  * find what the old question missed, so the row is asked again instead of waiting out its month.
+ * The id question and the point ride in the same `query` and are not the address question. A row
+ * whose asking stopped at the id question (the county failed there) holds no address question
+ * and is not asked again for that: a dead source is not hammered.
  */
 export function askedOtherQuestion(source: ParcelSource, keptQuery: string | null | undefined, address: string | null | undefined): boolean {
   const parts = streetParts(address)
   if (!parts) return false
-  const now = source.where(parts)
-  const kept = (keptQuery ?? '').split(' | ')[0] ?? ''
-  return kept !== now
+  const questions = (keptQuery ?? '').split(QUESTION_JOIN)
+  const kept = questions.find((q) => !q.startsWith('point ') && !isIdQuestion(source, q))
+  if (kept === undefined) return !questions.some((q) => isIdQuestion(source, q))
+  return kept !== source.where(parts)
+}
+
+/**
+ * Whether a kept answer, found or not, was asked before the permit's parcel id was: its `query`
+ * does not hold the id question this code would ask today. Such a row is asked again once, so an
+ * owner read off a neighbouring lot does not sit for its thirty days; the new row holds the id
+ * question and is then kept like any other. False when the permit carries no id this layer holds.
+ */
+export function askedWithoutId(source: ParcelSource, keptQuery: string | null | undefined, id: unknown): boolean {
+  const where = idWhere(source, id)
+  if (where === null) return false
+  return !(keptQuery ?? '').split(QUESTION_JOIN).includes(where)
 }
 
 /** A point the layer can be asked about: both numbers, inside Texas. */

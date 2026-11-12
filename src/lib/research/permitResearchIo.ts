@@ -285,13 +285,18 @@ export function lookupCompany(contact: string, city: string, refresh = false): P
   return lookup<CompanyFacts>({ kind: 'company', contact, city, refresh })
 }
 
+/** What a permit carries that the parcel lookup can use besides its address: its point and its own id. */
+export type ParcelLookupPermit = { lat: number | null; lng: number | null; id?: string | null }
+
 /** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
-export function lookupParcel(address: string, city: string, refresh = false, point: { lat: number | null; lng: number | null } | null = null): Promise<LookupAnswer<ParcelFacts>> {
+export function lookupParcel(address: string, city: string, refresh = false, permit: ParcelLookupPermit | null = null): Promise<LookupAnswer<ParcelFacts>> {
   // A city whose county's parcel record is not read says so on its card and opens the appraisal district.
   if (!cityReadsParcels(city)) return Promise.resolve({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
   // The permit's point rides along: outside Bexar it is asked when the street address has no parcel, as on new construction.
-  const at = point && point.lat != null && point.lng != null ? { lat: point.lat, lng: point.lng } : {}
-  return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh, ...at })
+  const at = permit && permit.lat != null && permit.lng != null ? { lat: permit.lat, lng: permit.lng } : {}
+  // So does the permit's id: an Austin permit's feed row names its lot at the county, and the function asks by that first. For any other city the function passes it by.
+  const named = permit?.id ? { permit_id: permit.id } : {}
+  return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh, ...at, ...named })
 }
 
 /** One permit's own feed row: every column the city sent, where it came from and when. */

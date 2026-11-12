@@ -4,13 +4,17 @@ import {
   askablePoint,
   askedBexarLayer,
   askedOtherQuestion,
+  askedWithoutId,
   COMAL_PARCELS,
   GUADALUPE_PARCELS,
   HAYS_PARCELS,
+  idQuery,
+  idWhere,
   interstateOf,
   nameSpellings,
   ordinalOf,
   parcelFactsByAddress,
+  parcelFactsById,
   parcelFactsByPoint,
   parcelSourceFor,
   pickParcel,
@@ -142,9 +146,79 @@ describe('the row that is picked', () => {
     expect(askedOtherQuestion(TRAVIS_PARCELS, `${today} | point -97.7,30.2`, '7201 SAMPLE LOOP')).toBe(false)
     expect(askedOtherQuestion(TRAVIS_PARCELS, oldLoop, 'NO NUMBER ST')).toBe(false)
   })
+  it('reads the address question past the id question that is asked in front of it', () => {
+    const today = TRAVIS_PARCELS.where({ num: '7201', prefix: null, name: 'SAMPLE' })
+    const id = "geo_id = '0000000001'"
+    // A kept "no parcel" that asked the id, the address and the point is today's question: it waits out its month.
+    expect(askedOtherQuestion(TRAVIS_PARCELS, `${id} | ${today} | point -97.7,30.2`, '7201 SAMPLE LOOP')).toBe(false)
+    expect(askedOtherQuestion(TRAVIS_PARCELS, `${id} | ${today}`, '7201 SAMPLE LOOP')).toBe(false)
+    // An old spelling behind the id question is still an old spelling.
+    expect(askedOtherQuestion(TRAVIS_PARCELS, `${id} | situs_num = '7201' AND UPPER(situs_street) LIKE 'SAMPLE LOOP%'`, '7201 SAMPLE LOOP')).toBe(true)
+    // The county failed on the id question, so the address was never asked: the failure is kept, not asked on every open.
+    expect(askedOtherQuestion(TRAVIS_PARCELS, id, '7201 SAMPLE LOOP')).toBe(false)
+    // A row kept with no question at all is asked, as before.
+    expect(askedOtherQuestion(TRAVIS_PARCELS, '', '7201 SAMPLE LOOP')).toBe(true)
+    expect(askedOtherQuestion(TRAVIS_PARCELS, null, '7201 SAMPLE LOOP')).toBe(true)
+    // A county with no id column reads that question as an address question it no longer asks.
+    expect(askedOtherQuestion(HAYS_PARCELS, id, '7201 SAMPLE LOOP')).toBe(true)
+  })
+  it('asks a kept answer again once when the permit names its lot and the id was never asked', () => {
+    const address = TRAVIS_PARCELS.where({ num: '7201', prefix: null, name: 'SAMPLE' })
+    // Found by the address before the id was asked: the owner may be a neighbour's, so it does not sit for its month.
+    expect(askedWithoutId(TRAVIS_PARCELS, address, '0000000001')).toBe(true)
+    expect(askedWithoutId(TRAVIS_PARCELS, `${address} | point -97.7,30.2`, '0000000001')).toBe(true)
+    expect(askedWithoutId(TRAVIS_PARCELS, null, '0000000001')).toBe(true)
+    // Asked by the id since, found or not: kept like any other row.
+    expect(askedWithoutId(TRAVIS_PARCELS, "geo_id = '0000000001'", '0000000001')).toBe(false)
+    expect(askedWithoutId(TRAVIS_PARCELS, `geo_id = '0000000001' | ${address} | point -97.7,30.2`, '0000000001')).toBe(false)
+    // Kept for another lot's id: this permit's own is asked.
+    expect(askedWithoutId(TRAVIS_PARCELS, "geo_id = '0000000002'", '0000000001')).toBe(true)
+    expect(askedWithoutId(TRAVIS_PARCELS, "geo_id = '00000000010'", '0000000001')).toBe(true)
+    // No id on the permit, a neighbouring county's id, a county with no id to ask: nothing to ask again.
+    expect(askedWithoutId(TRAVIS_PARCELS, address, null)).toBe(false)
+    expect(askedWithoutId(TRAVIS_PARCELS, address, '  ')).toBe(false)
+    expect(askedWithoutId(TRAVIS_PARCELS, address, 'R000001')).toBe(false)
+    expect(askedWithoutId(HAYS_PARCELS, address, '0000000001')).toBe(false)
+  })
   it('takes a row with an owner over a blank one', () => {
     const body = rows({ prop_id: 1, situs_num: '550', situs_street_prefx: null, situs_street: 'LANDA', file_as_name: null }, { prop_id: 2, situs_num: '550', situs_street_prefx: null, situs_street: 'LANDA', file_as_name: 'SAMPLE LLC' })
     expect(pickParcel(COMAL_PARCELS, body, { num: '550', prefix: null, name: 'LANDA' })?.prop_id).toBe(2)
+  })
+})
+
+describe('the parcel a permit names by its id', () => {
+  it("asks Travis for the id as text, leading zeros kept, with the layer's own columns and no shape", () => {
+    const q = idQuery(TRAVIS_PARCELS, '0000000001')
+    expect(q?.get('where')).toBe("geo_id = '0000000001'")
+    expect(q?.get('outFields')).toBe(TRAVIS_PARCELS.outFields)
+    expect(q?.get('returnGeometry')).toBe('false')
+    expect(q?.get('f')).toBe('json')
+    expect(q?.has('geometry')).toBe(false)
+    expect(idWhere(TRAVIS_PARCELS, ' 0000000001 ')).toBe("geo_id = '0000000001'")
+    expect(idWhere(TRAVIS_PARCELS, 1234567)).toBe("geo_id = '1234567'")
+  })
+  it('doubles a quote, so an id is never more than a value', () => {
+    expect(idWhere(TRAVIS_PARCELS, "0' OR '1'='1")).toBe("geo_id = '0'' OR ''1''=''1'")
+  })
+  it("asks nothing for a blank id, an id that is Williamson County's, or a county with no id column", () => {
+    expect(idQuery(TRAVIS_PARCELS, '')).toBeNull()
+    expect(idQuery(TRAVIS_PARCELS, null)).toBeNull()
+    expect(idQuery(TRAVIS_PARCELS, undefined)).toBeNull()
+    expect(idQuery(TRAVIS_PARCELS, { id: '0000000001' })).toBeNull()
+    expect(idQuery(TRAVIS_PARCELS, 'R000001')).toBeNull()
+    expect(idQuery(TRAVIS_PARCELS, 'r000001')).toBeNull()
+    for (const source of [HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS]) expect(idQuery(source, '0000000001')).toBeNull()
+    expect(TRAVIS_PARCELS.id?.permitKey).toBe('tcad_id')
+  })
+  it('reads the first parcel with an owner and marks it read by the id', () => {
+    const body = rows({ PROP_ID: 0, py_owner_name: null }, { PROP_ID: 700001, situs_address: '100 SAMPLE LN 78701', py_owner_name: 'SAMPLE LOT LLC', market_value: 900 }, { PROP_ID: 700002, py_owner_name: 'OTHER LLC' })
+    expect(parcelFactsById(TRAVIS_PARCELS, body)).toMatchObject({ prop_id: '700001', owner: 'SAMPLE LOT LLC', situs: '100 SAMPLE LN 78701', total_value: 900, matched_by: 'id' })
+  })
+  it('answers nothing when the layer does not hold the id, so the lookup falls back to the address', () => {
+    expect(parcelFactsById(TRAVIS_PARCELS, rows())).toBeNull()
+    expect(parcelFactsById(TRAVIS_PARCELS, rows({ PROP_ID: 0, py_owner_name: ' ' }))).toBeNull()
+    expect(parcelFactsById(TRAVIS_PARCELS, {})).toBeNull()
+    expect(parcelFactsById(TRAVIS_PARCELS, null)).toBeNull()
   })
 })
 
