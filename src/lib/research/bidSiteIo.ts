@@ -143,6 +143,8 @@ export async function recordNameAnswer(input: { builderKey: string; customerId: 
       } as never),
     'save the answer',
   )
+  // A read that began before this answer landed must not be handed to whoever asks next.
+  everyAnswerFlight.flying = null
   // The Dashboard's Needs you line counts the names still to answer, and this answer moved the count.
   forgetLookAlikeCounts()
   for (const fn of answerListeners) fn()
@@ -189,16 +191,38 @@ export async function loadPermitsOfName(builderKey: string): Promise<NamePermit[
   )
 }
 
+/**
+ * One read handed to everyone who asks while it is in flight. Builders has two readers of the
+ * answers and of the customers, the worklist and the Our bids column, and they ask together.
+ */
+type Flight<T> = { flying: Promise<T> | null }
+
+function whileInFlight<T>(flight: Flight<T>, read: () => Promise<T>): Promise<T> {
+  if (flight.flying) return flight.flying
+  const flying: Promise<T> = read().finally(() => {
+    if (flight.flying === flying) flight.flying = null
+  })
+  flight.flying = flying
+  return flying
+}
+
+const everyAnswerFlight: Flight<NameAnswerRow[] | null> = { flying: null }
+const customerNamesFlight: Flight<Array<{ id: string; name: string }>> = { flying: null }
+
 /** Every answer on a name, for the worklist over all customers. Null before the table is on the database. */
 export async function loadAllNameAnswers(): Promise<{ rows: NameAnswerRow[]; me: string | null } | null> {
   const { data: session } = await supabase.auth.getSession()
   const me = session.session?.user.id ?? null
-  const rows = await readEveryAnswer(null)
+  const rows = await whileInFlight(everyAnswerFlight, () => readEveryAnswer(null))
   return rows ? { rows, me } : null
 }
 
 /** Our customers by name, for the worklist, a page at a time. Archived ones are left out. */
-export async function loadCustomerNames(): Promise<Array<{ id: string; name: string }>> {
+export function loadCustomerNames(): Promise<Array<{ id: string; name: string }>> {
+  return whileInFlight(customerNamesFlight, readCustomerNames)
+}
+
+async function readCustomerNames(): Promise<Array<{ id: string; name: string }>> {
   const rows = await fetchAllRows<{ id: string; name: string | null }>(
     async (from, to) => ({ data: await withSupabaseRetry(async () => await supabase.from('customers').select('id, name').is('archived_at', null).order('name').order('id').range(from, to), 'read the customers'), error: null }),
     'read the customers',

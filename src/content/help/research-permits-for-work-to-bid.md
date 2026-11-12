@@ -101,7 +101,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use.
+Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
@@ -112,6 +112,12 @@ The Dashboard's **Needs you** card says how many names wait on that answer. The 
 Press a builder's name. Pick **Good** or **Avoid** and say why in a line. The mark shows on every skim card of that builder. A Good builder's permits come first. An Avoid builder's permits come last.
 
 Pick **Files for others** under what kind of company for a name that pulls permits for other people. Its cards then lead with the county's owner.
+
+The builder's sheet also says which of our customers the name is. Look under **Our customer under this name**. Each customer shows whose word tied the name and the day. Press **Take back** to undo one.
+
+Sometimes a customer's name begins the name on the permit. The sheet then asks **Same company?** Press **Same company**, **Not them** or **Not sure**. Nothing is tied until you press.
+
+Is the right customer not shown? Press **Tie to a customer** and search our customers. Then press **Same company** beside the right one. For a person the press reads **Works for them**.
 
 ## Read the count
 

@@ -36,6 +36,7 @@ import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
+import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
@@ -185,6 +186,12 @@ export const WRITE_VERBS = {
   apply_collections_flag: { rpc: null, step: 'apply' },
   plan_contract_ended: { rpc: null, step: 'plan' },
   apply_contract_ended: { rpc: null, step: 'apply' },
+  // v2.6950 (the first of the Lien desk's verbs): a property record's lien facts as the Property record row, Edit
+  // customer's Properties and the Lien desk's property window save them — the county, the legal description, the kind,
+  // the homestead answer, the owner of record — one PATCH on customer_addresses under RLS; rpc is null, the dry run the
+  // server's read of the record and the jobs linked to it (devMcpPropertyRecord.ts).
+  plan_property_record: { rpc: null, step: 'plan' },
+  apply_property_record: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -361,6 +368,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobMarkVerb(verb)) {
     // v2.6795: the shape check is devMcpJobMarks'; the dry run is the server's read of the job.
     const built = jobMarkInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isPropertyRecordVerb(verb)) {
+    // v2.6950: the shape check is devMcpPropertyRecord's; the dry run is the server's read of the record and its jobs.
+    const built = propertyRecordInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1292,6 +1305,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
+  if (verb === 'apply_property_record') return `Nothing written: this plan was already applied on this property record${when}. The record already reads that way; read_rows on customer_addresses shows it. A plan commits to the record's updated_at and each column's before value, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
   if (verb === 'apply_bid_takeoff') return `Nothing written: this plan was already applied on this bid${when}. The takeoff already reads that way; read_rows on bids_takeoff_rough_part_lines by bid_id lists the lines. A further change needs a new plan from the lines as they stand.`
   if (verb === 'apply_bid_counts') return `Nothing written: this plan was already applied on this bid${when}. The Count Sheet already reads that way; get_bid lists the rows. A further change needs a new plan from the sheet as it stands.`
