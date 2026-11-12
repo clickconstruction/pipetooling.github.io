@@ -3,6 +3,9 @@ import { filingSheetWords, type FilingSheetBreak } from '../jobsDocuments/filing
 import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, filingDocsPrintHtml, lienAffidavitPrintOptions, prependToFilingPrintHtml, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import { demandMoney } from '../jobsDocuments/demandLetter'
 import { LIEN_HELP_STYLES, lienHelpBatchSheetHtml, lienHelpPaperFromFields, type LienHelpClerk, type LienHelpExtras, type LienHelpLeftOut, type LienHelpPaper } from './lienHelpSheet'
+import type { LienNoticeRecord } from './lienNoticeRecord'
+import { LIEN_RECORD_STYLES, lienNoticeCopiesHtml, lienNoticeCopyNotices, lienNoticeRecordBatchHtml } from './lienNoticeRecordSheet'
+import type { FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
@@ -149,6 +152,8 @@ export type LienAffidavitPrintPaper = {
   /** The property's county clerk as Settings hold it, and who to ask about this job (changes 9 and 10). */
   clerk?: LienHelpClerk
   ask?: string
+  /** The notice record behind this paper (punch list #322, `lienNoticeRecord`): null on a job contracted with the owner, absent when the caller did not read one. */
+  noticeRecord?: LienNoticeRecord | null
 }
 
 /**
@@ -167,6 +172,54 @@ export function lienAffidavitBatchHelpSheet(papers: ReadonlyArray<LienAffidavitP
   return lienHelpBatchSheetHtml({ papers: rows, leftOut, printedOn, extras })
 }
 
+/**
+ * The batch's notice records (punch list #322): a block for each paper, in the papers' own order, so a block's number
+ * is its paper's row on the batch sheet. '' when no paper carries a record, so a caller that read none prints none.
+ */
+export function lienAffidavitBatchNoticeRecords(papers: ReadonlyArray<LienAffidavitPrintPaper>, printedOn: string, copiesFollow = false): string {
+  if (!papers.some((p) => p.noticeRecord !== undefined)) return ''
+  return lienNoticeRecordBatchHtml(
+    papers.map((p) => ({
+      head: {
+        jobLabel: p.label?.trim() || `Job ${p.jobNumber}`,
+        propertyAddress: p.fields.propertyAddress.trim(),
+        ownerName: p.fields.ownerName.trim(),
+        contractorName: p.fields.isSub === false ? '' : p.fields.originalContractorName.trim(),
+        claim: demandMoney(p.fields.unpaidAmount),
+      },
+      record: p.noticeRecord ?? null,
+    })),
+    printedOn,
+    copiesFollow,
+  )
+}
+
+/**
+ * A copy of each notice behind each paper of the batch (punch list #322), in the papers' own order and named by the
+ * paper's row: *Paper 2 · Copy of notice 1*. They print in front of the stack, behind the notice records. '' when no
+ * paper's notices keep their words.
+ */
+export function lienAffidavitBatchNoticeCopies(papers: ReadonlyArray<LienAffidavitPrintPaper>, letterhead?: FilingDocExtras['letterhead'], todayYmd?: string | null): string {
+  const withCopies = papers.map((p, i) => ({ p, row: i + 1 })).filter((x) => lienNoticeCopyNotices(x.p.noticeRecord).length > 0)
+  return withCopies
+    .map(({ p, row }, i) =>
+      lienNoticeCopiesHtml(p.noticeRecord, {
+        jobLabel: p.label?.trim() || `Job ${p.jobNumber}`,
+        refJob: `Job #${p.jobNumber}`,
+        letterhead,
+        todayYmd,
+        paper: row,
+        after: i === withCopies.length - 1 ? (papers.length === 1 ? 'The paper to sign is the next page' : 'The papers to sign are next') : `Paper ${withCopies[i + 1]?.row ?? row + 1}’s copies are next`,
+      }),
+    )
+    .join('')
+}
+
+/** How many copies of notices a batch would add: the count the box beside the press says. */
+export function lienAffidavitBatchNoticeCopyCount(papers: ReadonlyArray<LienAffidavitPrintPaper>): number {
+  return papers.reduce((n, p) => n + lienNoticeCopyNotices(p.noticeRecord).length, 0)
+}
+
 /** Why a ready paper on the earlier form is not in the batch, on the help sheet. */
 export const LIEN_HELP_EARLIER_FORM_REASON = 'It is on the earlier form. Redraw it, or print it from its own Lien window.'
 
@@ -175,13 +228,13 @@ export const LIEN_HELP_EARLIER_FORM_REASON = 'It is on the earlier form. Redraw 
  * as a send (`docs/SENT_COPIES.md`), and each job keeps its own paper alone, under the kind and title the Lien
  * window's **Print for notarization** files, so a job's sent copies read the same whichever press printed it.
  */
-export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPaper>, helpSheetHtml?: string | null): { html: string; copies: Array<{ filing: Omit<SentFiling, 'how'>; html: string }> } {
+export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPaper>, helpSheetHtml?: string | null, noticeRecordsHtml?: string | null, noticeCopiesHtml?: string | null): { html: string; copies: Array<{ filing: Omit<SentFiling, 'how'>; html: string }> } {
   const footer = filingDocFooter('affidavit')
   const drawn = papers.map((p) => ({ paper: p, blocks: buildLienAffidavitBlocks(p.fields), opts: lienAffidavitPrintOptions(p.fields) }))
   const sheets = filingDocsPrintHtml(drawn.map((d) => ({ blocks: d.blocks, footer, opts: d.opts })), count(papers.length, 'Lien affidavit', 'Lien affidavits · #'))
   return {
-    // The help sheet prints first and is in no job's filed copy (punch list #314).
-    html: helpSheetHtml ? prependToFilingPrintHtml(sheets, helpSheetHtml, LIEN_HELP_STYLES) : sheets,
+    // The help sheet prints first, then the notice records and the copies of the notices (punch list #322); none of them is in any job's filed copy (punch list #314).
+    html: helpSheetHtml || noticeRecordsHtml || noticeCopiesHtml ? prependToFilingPrintHtml(sheets, `${helpSheetHtml ?? ''}${noticeRecordsHtml ?? ''}${noticeCopiesHtml ?? ''}`, LIEN_HELP_STYLES + LIEN_RECORD_STYLES) : sheets,
     copies: drawn.map((d) => {
       const title = `Lien Affidavit — Job ${d.paper.jobNumber}`
       return { filing: { kind: 'lien_affidavit', title, jobIds: [d.paper.jobId] }, html: filingDocPrintHtml(d.blocks, title, footer, d.opts) }
