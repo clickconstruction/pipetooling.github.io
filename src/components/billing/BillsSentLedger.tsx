@@ -286,6 +286,7 @@ export function BillsSentLedger() {
   }
   const open = useCallback(
     async (line: BillsSentLine) => {
+      if (!line.copy) return
       const ok = await openSentCopy(line.copy, billsSentCopyLabel(line))
       if (!ok) showToast('Could not open the copy. Allow pop-ups for this site and press it again.', 'error')
     },
