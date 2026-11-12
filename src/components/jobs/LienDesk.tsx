@@ -119,7 +119,7 @@ import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
-import { lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
+import { lienHelpBatchRecordCode, lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
@@ -1667,7 +1667,7 @@ export default function LienDesk({
             ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
           ],
           demandDate(todayYmd),
-          { guideCode: lienHelpGuideCode() },
+          { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode() },
         )
       : null
     const run = lienAffidavitPrintRun(affPrintPapers, helpSheet)

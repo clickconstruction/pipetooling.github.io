@@ -445,6 +445,8 @@ export const ENTRIES = {
   'lib/bids/legacyTemplatePricing.ts': { values: [], types: [] },
   'lib/bids/pickDefaultPriceBookTemplateId.ts': { values: [], types: [] },
   'lib/bids/pricingWriteTarget.ts': { values: [], types: [] },
+  // The dev seat's plan_bid_pricing: which book entry a row prices from, the tab's own rule.
+  'lib/bids/resolvePricingEntry.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

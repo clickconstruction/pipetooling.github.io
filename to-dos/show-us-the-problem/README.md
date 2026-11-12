@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · read against main the same day · the card and the mock-up drawn · the owner's side read the mock-up the same day, liked the proposal, asked for one line on the customer's page (drawn) and for a build plan with the files in Google Drive, an upload that works with no signal and a Customer supplied photos folder on jobs and customers · the plan below is that answer · nothing built
+status: asked 2026-11-11 · the card, the mock-up and the build plan the same day · the owner's side liked the proposal, asked for the files in Google Drive, an upload with no signal, a Customer supplied photos folder and three presses for a text, and asked for the spike on main to try on his own phone · THE SPIKE IS BUILT AND LIVE 2026-11-12 (v2.6981 #7742, v2.6993 #7746; migration 20261112060000 pushed, first-look deployed), for the owner and the developers alone · walked on the live site with real uploads · nothing texts a customer and nothing files to Drive yet
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -17,10 +17,10 @@ summary: >
   so the card calls the record a First look and the customer's page Show us the problem. The
   files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
   under each job, and what is picked on the phone is kept there until it has signal to send.
-next: the owner's go on the plan; then the hand trial on five real calls and the one-day spike on two real phones, which settle the upload's road before PR 1
-size: L as a train of seven (M · S · M · M · S · S · M), after a spike that never merges
-blocker: The owner's go. The spike's answers (an upload in pieces with a link's key, a kept video surviving a reload on an iPhone, an iPhone's video playing on the office's machines, the live project's storage size limit).
-opinion: build — the first PR needs no public page at all, so the office is using it on real calls before the hard part is written
+next: the owner's own try on a real iPhone and a real Android phone at clicktooling.com/first-looks, which fills the two answers a desk cannot (how big a real clip is, and whether it plays); then his go on PR 1
+size: L as a train of eight (M · S · S · S · M · S · S · M); the spike already built most of PRs 3 and 4
+blocker: The owner's try on real phones, then his go. Raising the 50 MiB a file limit in the Supabase dashboard if a video longer than about 40 seconds is wanted.
+opinion: build — the spike proved the hard part on the real storage: a video goes up in pieces with the link's key and picks up after a lost signal
 mockup: to-dos/show-us-the-problem/mockup.html
 ---
 
@@ -138,13 +138,14 @@ takes, stores or plays one, and a big file has stopped the app's functions twice
 
 ## The design
 
-Drawn in [`mockup.html`](./mockup.html), ten frames and the Drive tree, every name and number made up.
+Drawn in [`mockup.html`](./mockup.html), eleven frames and the Drive tree, every name and number made up.
 
 - **A · the text.** The office presses `/show` in the thread's reply box. The line goes in with the link made for this thread: *Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: my.clickplumbing.com/show/k7m2p9xq4d*. A first text carries the opt-out line and is held if the opening is trimmed.
 - **B · the page.** *Show us the problem*, who asked, two presses (**Take a photo or a video**, **Choose from your phone**), four lines on what helps, the owner's line under them on why it is worth the customer's while, and the foot: only Click Plumbing sees what is sent, and what to do if water is running now. No name, no address, no price. The owner's line, in his words of 2026-11-11 after reading the mock-up, the one change he asked for: *The more information you give us, and the higher the quality of the photos and videos, the more accurate we can be, allowing us to get you the best service and fewer trips means a better price.*
 - **C · adding.** Each file goes up as it is picked. A photo is shrunk first. A video goes in pieces with a bar and its megabytes, and picks up after a drop. *Where is it?* as chips and *What is going on?* as a box, both optional. The press is dead and says why until every file is in, then reads **Send 3 photos and 1 video**.
 - **C2 · no signal.** *Saved on this phone. No signal right now.* The count of what is kept, **Try now**, and the way round: reply to the text with the photos. Opened again later with files still kept, the page offers **Send them now**.
 - **D · the thank-you.** *Got it. Rosa has your 3 photos and 1 video.* What happens next reads the office hours the app holds (`messages_office_hours_v1`), so after hours it says tomorrow morning. Opened again later the page shows the count, never the pictures.
+- **E2 · the three presses.** Over the reply box on a text: *Send her* **Ask for photos**, **An estimate**, **A bill**. The owner's ask of 2026-11-11 (*The three presses, for a text* below).
 - **E · F · the office.** The ask in the reply box, and what came in: one card on the person's thread with the pictures drawn, the video with its length, their words, and **Start an estimate**, **Book a visit**, **Ask a tech…** and **Ask for more**. The send lands as a line from the customer, so Needs a reply, the header's badge and the push to whoever has the thread all fire with no new code.
 - **G · the estimate.** It remembers the look it came from and shows its pictures to the office. It carries one price, as every estimate does, and the customer reads *Priced from your photos. The tech confirms the price at your home before any work starts.*
 - **H · the tech, before it is booked.** The office asks one tech. He gets a push, sees that one look and nothing else of the thread, and answers with *I can price it from this* or *Needs a visit to price* and a note. His answer lands on the thread as a team note.
@@ -175,6 +176,23 @@ The owner's questions of 2026-11-11: *where are these going to be stored? In Goo
 **A picture a customer texts in** is kept by the app today and saved to Drive by hand into the job's photos. From PR 2 a texted picture saved from a look goes to Customer supplied photos too (call 12).
 
 **Considered and not picked: straight from the phone into Drive.** Drive can hand out a one-file upload address that a browser sends to in pieces. That is one hop and one home. Against it: nothing checks the file's type or size before it is in the company's Drive, the app would have to pass every play of a video through a function, and a caller with no customer has no folder. The spike tries it as the fallback if the first road fails.
+
+## The three presses, for a text
+
+The owner's ask of 2026-11-11, as the spike began: *we need to be able to make it easy for an assistant or estimator in text to be able to respond to which is the /show, /estimate, and /bill. But that is probably a flow all on its own, and we should definitely include in this.*
+
+**What exists.** The reply box already answers two typed words. `/bill` lists the customer's bills and a pick writes the line with the pay link. `/estimate` lists their estimates and a pick writes the line with a link made for the message. `/warranty` does the same for a warranty out to sign (`quickReplies/slash.ts`'s `PAPER_WORDS`, `messages/papers.ts`, `reply/SlashList.tsx`). Both need the person to know the word and type it, and nothing on the box says they exist. `/show` does not exist yet.
+
+**What is asked.** Three presses over the box whenever the kind is Text, read as one line: *Send her* **Ask for photos** · **An estimate** · **A bill**. No word to remember.
+
+- **Ask for photos** makes the look and its link and writes the ask. One press, since there is nothing to pick.
+- **An estimate** lists that customer's estimates, newest first, with **Start a new estimate** last. A pick writes the line with its link. With none, the press is **Start an estimate**.
+- **A bill** lists their open bills. A pick writes the line with the pay link. With none open it says *Nothing is owed. Bill Customer makes a bill.*
+- The typed words stay, for a keyboard. A press and its word run the same code.
+- The presses show for the office team, which is the assistants, the controller, the estimators, the owner and the developers (`canOpenMessages`). A tech's Job Mode box does not draw them.
+- A first text still names who is writing and carries the opt-out line. A number that sent STOP shows the presses dead with the reason.
+
+**Why it is a PR of its own.** It changes the reply box for every thread, not only a look's, and two of the three presses work the day it ships whether or not the page is built. It is drawn on the mock-up as frame E2.
 
 ## With no signal
 
@@ -262,6 +280,50 @@ New:
 - The page `src/pages/ShowUs.tsx` at `/show/:code`, its store on the phone, the upload in pieces, a player, the thread's card, the estimate's line, the Job Mode strip, the tech's read.
 - A guide, *ask a customer to show you the problem before you go out*, and a section in the Messages guides and in *set where a job's files go*.
 
+## The spike, built and on main
+
+The plan said the spike would never merge. On 2026-11-11 the owner asked for it on `main`, tested, so he could try it on his own phone the next morning. So it was built to stay: gated to the owner and the developers, texting nobody, filing nothing to Drive. v2.6981 (#7742) and v2.6993 (#7746); migration `20261112060000_first_looks.sql` pushed and `first-look` deployed on 2026-11-12.
+
+### How to try it
+
+1. Signed in as the owner or a developer, open **clicktooling.com/first-looks**. It is also in Settings, under the developer doors, as *First looks*.
+2. Type what to call it, press **Make a link**. A square code, the link, **Copy the link** and **Copy the ask** show once.
+3. Point a phone's camera at the square. The page opens with no sign-in.
+4. **Take a photo**, **Take a video**, or **Choose from your phone**. Watch each go in. Switch on airplane mode halfway through a video, then switch it off: it picks up.
+5. Pick where it is, type a line, press **Send**.
+6. Back on the desk, press **Read again**. The photos draw, the video plays, and under each is how it went: its size, its length, in pieces or in one go, how often it picked up, how long it took, which phone.
+7. **Close the link** stops it. **Remove this look…** deletes it and its files.
+
+To tie a link to a real person, open their thread on Messages, copy the id after `thread=` in the address, and open `clicktooling.com/first-looks?contact=<that id>`. Their send then writes one line on their thread. Nothing is texted from the app: paste the ask into the thread's own box.
+
+### The five answers
+
+| The question | The answer | How it was learned |
+|---|---|---|
+| 1. Does an upload in pieces work with a link's key? | **Yes, at storage's signed address.** `/storage/v1/upload/resumable/sign` answers 201. The plain address refuses the key as a row the caller may not write. | On the live bucket, 2026-11-12. The first walk met the refusal and the page fell back to one request, so the video still arrived. v2.6993 moved to the signed address. |
+| 2. Does it pick up after a lost signal? | **Yes.** A 14 MB video: two pieces of 6,291,456 bytes landed, the signal was cut, the page read *Saved on this phone*. With the signal back it asked storage how far it had got (12,582,912 bytes) and sent only the last piece. No piece went twice. | Chrome against the live bucket. The same walk passes in Safari's engine against a stand-in. **Not yet on a real phone.** |
+| 3. Does a kept file survive a closed page? | **Yes, once the store learned a second way.** Safari in a private window will not store a file in its own store, and will store its raw bytes. A 14 MB video kept as bytes was still there after the page was closed and opened. | The walk in Safari's engine found it. `kept.ts` keeps a file three ways. **A real iPhone is the owner's try.** |
+| 4. How big is a real clip, and does it play on the office's machines? | **Not known yet.** A video recorded by the browser played in the desk's player. An iPhone's own video was not tried, because no phone was to hand. | The desk shows each video's size, length and phone, so the owner's try answers both. |
+| 5. How heavy is the page, and what is the storage limit? | **Too heavy: 2,465 KB over the wire on a first visit**, 12 files, 2.3 seconds on a fast line. The page's own piece is 24 KB; the rest is the app's shell, which loads first. **The limit is 50 MiB a file** on the live project. | Measured on the live site. The limit was read through the Management API. |
+
+### What it found, beyond the five
+
+- **One camera press for both kinds is not safe.** A file field that asks for pictures and video with the camera opens only the photo camera on some phones. The page has **Take a photo** and **Take a video**.
+- **A link that never finishes a file could still fill the bucket.** The caps count the upload addresses handed out (30 photos, 6 videos), not only the files that arrived (20 and 3).
+- **A video whose pieces keep being refused would have retried for ever.** After two refusals it goes in one request.
+- **A write the browser accepts can be thrown away at the commit.** The store waits for the commit before it trusts a write.
+- **Some phones give a picked file no type.** The page reads the type from the name's ending then.
+- **An older camera's movie opens with no `ftyp`.** The first-bytes check takes the boxes such a file opens with.
+- **A function that reads the caller and switches to the service role must refuse an archived teammate.** CI caught it, and the desk's asks now do.
+- **A customer may add files and never press Send.** The desk reads *in, not sent yet*, and the page offers the press again when the link is opened. In the real build a look with files in and no send for a while should count as sent.
+
+### What it means for the plan
+
+- **PR 3 is mostly built.** The tables, the bucket, the code, the function with its caps and its guard are on main. Left of it: the sweep's twelfth source to Drive with the copy in pieces, and a SQL bed.
+- **PR 4 is mostly built.** The page, the store on the phone and the upload in pieces are on main. Left of it: **the page as a small entry of its own**, since 2.4 MB before the first word is too much on a weak signal; Spanish; the Worker's `/show/` line so the link reads `my.clickplumbing.com`; the `{show}` blank; *What customers see*; the guide; opening it to the office team.
+- **Known and left as it is in the spike:** an upload address is good for two hours, so a link's holder could put other bytes at a finished file's place inside that time. The real build moves a file to a final place when it is done.
+- **The 50 MiB limit** holds a video to about 20 to 40 seconds. The page says so in words. Two minutes needs the limit raised in the Supabase dashboard, which is the owner's press.
+
 ## Is this the best we can do?
 
 Asked of the first plan on 2026-11-11, at the owner's prompt. Eight things changed.
@@ -281,23 +343,18 @@ Looked at and left out for now: the app reading a photo by itself (a model and a
 
 **Step 0, no code: the hand trial.** Five real calls where the office asks for a photo by text. Write down for each: did they send one, how long before the office looked, could it be priced.
 
-**Step 1, a spike that never merges** (a day, on a real iPhone and a real Android phone). Five answers, written back onto this card:
+**Step 1, the spike: done 2026-11-12**, on main at the owner's ask (v2.6981, v2.6993). Its five answers and what it found are in *The spike, built and on main* above. Two answers wait on the owner's own try on real phones.
 
-1. Does an upload in pieces work from a phone's browser with a one-file address the function hands out? If not, does Drive's own one-file address?
-2. Does a 40 MB video kept in the browser's store survive a reload and airplane mode on an iPhone?
-3. How big is a 20 second clip from each phone, picked from the library and taken in the page?
-4. Does each clip play on the office's own machines?
-5. How heavy is the page's first load on a slow connection, and what is the live project's storage size limit?
+Then eight PRs, each cut from main alone and merged before the next.
 
-Then seven PRs, each cut from main alone and merged before the next.
-
-1. **PR 1, the look, fed by a text** (M). The migration for `first_looks`; *Ask for photos* in the thread's menu and `/show` in the reply box, sending the ask with no link yet; the First look card on the thread, gathering the pictures texted in since the ask and drawing them, with a player for a texted video; **Start an estimate** and **Book a visit** on the card for any thread; Close the look; the stamps. The guide. Push the migration. **The first real call is here.**
-2. **PR 2, Customer supplied photos in Drive** (S). The new name in the tree, under the customer and under the job, made when first needed; a folder per look; the card's **Save to Drive** filing a texted picture there; Where files go and the job window's Documents tab showing it. Deploy `photo-save`, `job-photos` and `drive-link`.
-3. **PR 3, the ground for the page** (M). `first_look_files` and the bucket; the ten-letter mint; the `first-look` function with its three asks, the caps and the guard; the sweep's twelfth source with the copy in pieces; the kernels and a SQL bed. No screen. Push and deploy.
-4. **PR 4, the customer's page** (M). `/show/:code` outside the sign-in, light, at 375 first, in English and Spanish: the two presses, the four tips and the owner's line, the Large shrink, the store on the phone, the pieces with the bar, the no-signal and the send-them-now states, the press that names its count, the thank-you from the office hours, the closed and the not-found words. The ask gains the link (`{show}`), with the reply-by-text way round. The Worker's `/show/` line in both copies, the surface registry row, `APP_DIRECTORY.md`, `ACCESS_CONTROL.md`, *What customers see*. `npm run build` before the merge.
-5. **PR 5, the estimate** (S). `estimates.first_look_id`; the office's editor draws the look's pictures; the line the customer reads on a price from photos.
-6. **PR 6, the job** (S). The look follows the job, whether the accept made it or the office pressed Create job: its Drive folder moves under the job, the strip on the Job Mode card and the job window, the photos on the job's Photos as *a photo the customer sent*.
-7. **PR 7, the tech before it is booked** (M). **Ask a tech…** makes a task for one tech with the look as its link; a gate that lets the asked tech read that one look and its files; his read written back to the thread as a team note when he finishes the task.
+- **PR 1, the look, fed by a text** (M). The migration for `first_looks`; *Ask for photos* in the thread's menu and `/show` in the reply box, sending the ask with no link yet; the First look card on the thread, gathering the pictures texted in since the ask and drawing them, with a player for a texted video; **Start an estimate** and **Book a visit** on the card for any thread; Close the look; the stamps. The guide. Push the migration. **The first real call is here.**
+- **PR 1b, the three presses** (S). *Send her* **Ask for photos** · **An estimate** · **A bill** over the reply box on a text, for the office team, each running its typed word's own code; the dead state with its reason for a number that sent STOP; the guide's section. No migration.
+- **PR 2, Customer supplied photos in Drive** (S). The new name in the tree, under the customer and under the job, made when first needed; a folder per look; the card's **Save to Drive** filing a texted picture there; Where files go and the job window's Documents tab showing it. Deploy `photo-save`, `job-photos` and `drive-link`.
+- **PR 3, what is left of the ground** (S). The spike built the tables, the bucket, the code and the function. Left: the sweep's twelfth source with the copy to Drive in pieces, a file moved to its final place when it is done, a look with files in and no send counted as sent after a while, and a SQL bed. Deploy `photo-save`.
+- **PR 4, what is left of the customer's page** (M). The spike built the page, the store on the phone and the upload in pieces. Left: the page as a small entry of its own, so a first visit loads tens of kilobytes and not 2.4 MB; Spanish; the Worker's `/show/` line in both copies; the ask's link (`{show}`) with the reply-by-text way round; the surface registry's homeowner steps, *What customers see*, the guide; the desk and the mint opened to the office team. `npm run build` before the merge.
+- **PR 5, the estimate** (S). `estimates.first_look_id`; the office's editor draws the look's pictures; the line the customer reads on a price from photos.
+- **PR 6, the job** (S). The look follows the job, whether the accept made it or the office pressed Create job: its Drive folder moves under the job, the strip on the Job Mode card and the job window, the photos on the job's Photos as *a photo the customer sent*.
+- **PR 7, the tech before it is booked** (M). **Ask a tech…** makes a task for one tech with the look as its link; a gate that lets the asked tech read that one look and its files; his read written back to the thread as a team note when he finishes the task.
 
 Cards this touches: #306 (`bid-photos-and-links`, whose call 8 held video back for bids; the upload and the player built here are what it would use), #125 (`pipeline-customer-conversation`, where a look's line would show on the job's activity), #189 (`phone-first`, the tech's screens), #115 (`tell-the-customer`, the rule the ask follows), #281 and #290 (the short links whose code and guard this reuses), and the Where files go tree of #236.
 
@@ -325,4 +382,16 @@ No text goes to any number but the test number from a ZZ Test row.
 
 ## Where it stands
 
-Asked 2026-11-11 and read against `main` the same day. The owner's side read the mock-up that day, liked the proposal, asked for one line on the customer's page, and asked for a build plan with the files in Google Drive, an upload with no signal and a Customer supplied photos folder on jobs and customers. The plan, *Where the files live*, *With no signal* and *Is this the best we can do?* are that answer, and the mock-up gained a no-signal frame and the Drive tree. Nothing is built, nothing was sent, and nothing was made on prod. The next thing is the owner's go.
+Asked 2026-11-11 and read against `main` the same day. The owner's side read the mock-up that day, liked the proposal, and asked for one line on the customer's page, a build plan with the files in Google Drive, an upload with no signal, a Customer supplied photos folder, and three presses for a text. Then he asked for the spike built, tested and on `main` by morning.
+
+**2026-11-12: the spike is live.** #7742 (v2.6981) merged at 06:29 UTC; `bash scripts/db-push.sh` applied `20261112060000_first_looks.sql` (1,249 local files, 1,249 remote versions, fully applied); `first-look` deployed; the types PR is #7745. The first walk on the live site found storage refusing the upload in pieces, and #7746 (v2.6993) fixed the address.
+
+**Tested**: 63 unit and render tests on the new code; the whole suite (41,955 tests) green locally before the merge; the real page in Chrome and in Safari's engine at 375 wide, 22 checks each, against a stand-in that drops the signal; the desk at 375, 768 and 1280; and the live walk below.
+
+**The live walk**, on clicktooling.com with ZZ Test looks, signed in as the dev: the desk opened and **Make a link** handed out a link ending in ten letters. Signed out at 390 wide, the link opened the page in 2.3 seconds. Two photos reached the bucket in one request each. A 14 MB video was made as an upload in pieces (201), two pieces landed, the signal was cut and the page read *Saved on this phone*; with the signal back the page asked storage how far it had got (12,582,912 bytes) and sent the last piece, each piece once. A real 5 second video recorded by the browser went in one request. A text file named as a photo was refused by its first bytes and not kept. **Send** answered the thank-you, and the desk read *Sent 2 photos and 2 videos* with the place and the words, *14.0 MB · in pieces · picked up 1 time · took 14 s*, both photos drawn, and the real video playing in its player. A code that opens nothing said so. The function's calls were 1 open, 6 signs, 4 dones, 1 refusal, 1 send. All three ZZ Test looks were then removed from the desk with their rows and their files, and their links open nothing.
+
+**Seen on the walk and since fixed or noted**: the thank-you at 2 AM read *looks at them today, before 11:59 PM*, because the office hours in Settings run to 23:59 (a fix is in review, #7750). A video the browser cannot play shows an empty player on the desk with no word of why.
+
+**Not done**: nothing texts a customer; nothing files to Drive; the thread has no card; the reply box has no `/show` and no three presses; an estimate does not remember a look; a tech sees nothing. No real iPhone or Android phone was used: every walk was a desk browser. The dry run of the migration against prod inside a rolled-back transaction was refused by the session's safety check, so the migration's first run was the push itself, which passed.
+
+**Next**: the owner's try on his own phones, then his go on PR 1.
