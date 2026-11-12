@@ -46,7 +46,7 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
   }
   const flow: StageFlow = {
     stages: [
-      stage('market', 'Market', '45 asks in 8 weeks', null, 'about $210k a week asked'),
+      stage('market', 'Market', '45 asks in 8 weeks', null, 'worth $29k a week'),
       stage('sales', 'Sales', '$1.9M awaiting an answer', null, 'sold $36k of work a week'),
       stage('build', 'Build', '$198k left to build', 6, '6.0 weeks to build what is already sold'),
       stage('bill', 'Bill', '$142k finished, not yet billed', 7.5, '7.5 weeks to bill what is already finished', [{ who: 'the field finishes', usd: '$33k' }, { who: 'the office bills', usd: '$19k' }]),
@@ -76,6 +76,7 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
     now: { stageWeeks: { build: 6, bill: 7.5, collect: 3.7 }, stagePilesUsd: { bill: 142_000 }, keys: numbers },
     dayLabel: md,
   })
-  const strip = buildFlowStrip(flow, { market: 210_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 41_000 })
-  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, gaps: [] }
+  // Market at what the asks are worth at the won rates (punch list #318), with what the amount is made of.
+  const strip = buildFlowStrip(flow, { market: 29_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 41_000 }, { marketIsWorth: true })
+  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, marketParts: ['bids $22k at 7% won', 'estimates $7k at 48% won'], gaps: [] }
 }

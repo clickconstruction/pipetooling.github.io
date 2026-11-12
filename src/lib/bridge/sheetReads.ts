@@ -4,6 +4,10 @@
  * data must come back; every other read that fails leaves its slot null and its name in `gaps`, the way the page
  * shows a tile as not read, so one failed read never holds the mail. The bank is read by the caller (the page
  * through `loadMercuryCash`, the function through Mercury's API) and passed in.
+ *
+ * Since punch list #318 (PR 5) it also reads every bid and every estimate ever sent, as the page does for the Market
+ * amount (`loadBidWins.ts`, `loadEstimateWins.ts`). The list of what the Bridge leaves out is not shipped, so both
+ * take an empty one, as on the page.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
@@ -14,6 +18,8 @@ import { loadVectorDaysInputs } from './loadVectorDays'
 import { loadBuildPaceInputs } from './loadBuildPace'
 import { loadBillPileJobs } from './loadBillPile'
 import { loadDemandInputs } from './loadDemandPace'
+import { loadBidsSent } from './loadBidWins'
+import { loadEstimatesSent } from './loadEstimateWins'
 import { loadBridgeCalls } from './calls'
 import { loadCollectDeskReads } from './collect/loadCollectDesk'
 import { arRowInvoiceId } from './collect/collectBills'
@@ -45,7 +51,7 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
   }
   const data = await loadBridgeData(db, { zzTestJobIds: opts.zzTestJobIds })
   const weeksRange = vectorRangeFor('weeks', data.todayYmd)
-  const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls] = await Promise.all([
+  const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, bidsSent, estimatesSent] = await Promise.all([
     soft('the money owed and due', () => loadDashboardFinancials(db, { assistantAggregates: false, zzTestJobIds: opts.zzTestJobIds })),
     soft('the people', () => loadBridgeVectorInputs(db, data, { zzTestJobIds: opts.zzTestJobIds })),
     soft('the eight weeks', () => loadVectorDaysInputs(db, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
@@ -53,6 +59,8 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
     soft('the calls', () => loadBridgeCalls(db)),
+    soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: opts.zzTestJobIds, leftOut: [] })),
+    soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: [] })),
   ])
   const items = fin ? [...fin.ar.items, ...fin.arCollections.items] : []
   const collectReads = fin
@@ -64,5 +72,5 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
         }),
       )
     : null
-  return { data, fin, bank: opts.bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads, gaps }
+  return { data, fin, bank: opts.bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads, bidsSent, estimatesSent, gaps }
 }

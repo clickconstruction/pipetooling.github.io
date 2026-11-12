@@ -1,4 +1,4 @@
-import { stageUsd } from './stageFlow'
+import { stageUsd, type MarketWorthInput } from './stageFlow'
 
 /**
  * Bids after the won coefficient (punch list #318): what the bids we send can be expected to win,
@@ -238,4 +238,13 @@ export function buildMarketWorth(bids: Pick<BidWins, 'wonPerWeekUsd' | 'line' | 
     parts: [bids?.line, estimates?.line].filter((x): x is string => !!x),
     detail: [...(bids?.detail ?? []), ...(estimates?.detail ?? [])],
   }
+}
+
+/**
+ * The Market amount in the shape the stage flow takes (`MarketStageInput.worth`), so the page and the weekly email
+ * hand the five steps the same thing. Null until the amount reads.
+ */
+export function marketWorthInput(worth: Pick<MarketWorth, 'perWeekUsd'> | null, bids: Pick<BidWins, 'wonPerWeekUsd'> | null, estimates: { soldPerWeekUsd: number | null } | null): MarketWorthInput | null {
+  if (!worth || worth.perWeekUsd == null) return null
+  return { perWeekUsd: worth.perWeekUsd, bidsPerWeekUsd: bids?.wonPerWeekUsd ?? null, estimatesPerWeekUsd: estimates?.soldPerWeekUsd ?? null }
 }

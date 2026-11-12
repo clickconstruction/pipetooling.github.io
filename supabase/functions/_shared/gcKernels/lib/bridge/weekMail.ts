@@ -27,6 +27,11 @@ export type WeekMail = {
   model: WeekCallModel
   /** The five steps as one pipe; null when it was not built. */
   strip: FlowStrip | null
+  /**
+   * What Market's amount is made of, one short part for the bids and one for the estimates (`MarketWorth.parts`,
+   * punch list #318): "bids $22k at 7% won". Empty or absent while Market still reads the dollars that came in.
+   */
+  marketParts?: ReadonlyArray<string>
   /** What could not be read when it was built, in plain words; empty when everything came back. */
   gaps: string[]
 }
@@ -38,6 +43,8 @@ export const WEEK_MAIL_WORDS = {
   last: 'The last call',
   lastAsk: 'Answer it on the Bridge.',
   steps: 'The five steps',
+  /** Over the two parts of the Market amount, under the pipe. */
+  marketWorth: 'What Market is worth',
   slowest: 'the slowest step',
   foot: 'This is the Bridge’s first screen, as it read when this was built.',
   sent: 'It goes out Monday at 6 AM Central. The switch is on the Bridge, behind The flow.',
@@ -56,6 +63,15 @@ export function weekMailMoves(model: WeekCallModel): WeekMove[] {
 /** What could not be read, in one sentence; empty when everything came back. */
 export function weekMailGapsLine(gaps: ReadonlyArray<string>): string {
   return gaps.length ? `Not read when this was built: ${gaps.join(', ')}. The rest reads without it.` : ''
+}
+
+/** What Market's amount is made of, in one line under the pipe; empty while Market still reads the dollars that came in. */
+export function weekMailMarketLine(mail: Pick<WeekMail, 'marketParts'>): string {
+  const parts = mail.marketParts ?? []
+  if (parts.length === 0) return ''
+  // One sentence a part, since a part can carry a comma of its own ("…, a thin count").
+  const [first, ...rest] = parts
+  return [`${WEEK_MAIL_WORDS.marketWorth}: ${first}.`, ...rest.map((p) => `${p.charAt(0).toUpperCase()}${p.slice(1)}.`)].join(' ')
 }
 
 /** The subject: the call, then cash, then what the field made. */
@@ -126,7 +142,7 @@ const STRIP_PILE_PX = 16
  * The strip of pipe as a table, since a mail app draws no SVG: each step is a cell, the pipe sits on one bottom line
  * and is as tall as the step is wide on the page, and the block of waiting work sits on top of it.
  */
-function stripHtml(strip: FlowStrip): string {
+function stripHtml(strip: FlowStrip, marketLine: string): string {
   const share = `${(100 / Math.max(1, strip.sections.length)).toFixed(2)}%`
   const pipe = strip.sections
     .map((s) => {
@@ -146,7 +162,7 @@ function stripHtml(strip: FlowStrip): string {
     .join('')
   return card(
     `<div style="font-size:12px;color:${MUTED};margin-bottom:2px">${esc(STRIP_LEGEND.long)}</div>
-<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed"><tr>${pipe}</tr><tr>${words}</tr></table>`,
+<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed"><tr>${pipe}</tr><tr>${words}</tr></table>${marketLine ? `\n<div style="font-size:12px;color:${MUTED};margin-top:6px">${esc(marketLine)}</div>` : ''}`,
   )
 }
 
@@ -200,7 +216,7 @@ export function weekMailHtml(mail: WeekMail, bridgeUrl: string): string {
   const wide = model.tiles.filter((t) => t.wide)
   const rest = model.tiles.filter((t) => !t.wide)
   const tiles = `${wide.map((t) => block(tileHtml(t))).join('')}${row(rest.map((t) => col(wide.length ? WEEK_MAIL_HALF_PX : WEEK_MAIL_TILE_PX, tileHtml(t))))}`
-  const strip = mail.strip ? block(stripHtml(mail.strip)) : ''
+  const strip = mail.strip ? block(stripHtml(mail.strip, weekMailMarketLine(mail))) : ''
   const gaps = weekMailGapsLine(mail.gaps)
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media (max-width:${WEEK_MAIL_STACK_PX}px){.col{max-width:100%!important}}</style></head><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${INK}">
 <div style="max-width:${WEEK_MAIL_WIDTH_PX}px;margin:0 auto;padding:20px 12px">
@@ -220,7 +236,7 @@ export function weekMailText(mail: WeekMail, bridgeUrl: string): string {
   const c = model.card
   const tiles = model.tiles.flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`, ...(t.note ? [`  ${t.note}`] : [])])
   const strip = mail.strip
-    ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.slowest}` : ''}`)]
+    ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.slowest}` : ''}`), ...(weekMailMarketLine(mail) ? [`  ${weekMailMarketLine(mail)}`] : [])]
     : []
   const moves = weekMailMoves(model).map((m, i) => `  ${i + 1}. ${m.title}${m.why ? ` ${m.why}` : ''}${m.who ? ` ${m.who}.` : ''}${m.doneText ? ` ${m.doneText}.` : ''}`)
   const call = ['', c.label, c.lead, ...(c.line ? [c.line] : []), ...(c.note ? [`Note. ${c.note}`] : []), ...moves, ...(c.foot ? [c.foot] : []), `${WEEK_MAIL_WORDS.open[model.state]}: ${bridgeUrl}`]
