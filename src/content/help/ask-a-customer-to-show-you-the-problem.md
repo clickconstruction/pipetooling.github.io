@@ -71,6 +71,18 @@ Kitchen. They wrote: It drips at night
 
 When they press **Send**, the thread moves to Needs a reply.
 
+## Where the photos are kept
+
+The photos and video are kept in Google Drive. They go in the customer's folder, under **Customer supplied photos**.
+
+Each First look gets a folder of its own there. The folder is named by the day and the place, like *2026-11-12 · Kitchen*.
+
+The card says **Open in Drive** once they are there. That takes a few minutes after the customer presses **Send**.
+
+A caller who is not a customer yet has no folder. The card says *Files to Drive once this number has a customer*. Name them, and the next sweep files them.
+
+Pictures they text back go to the same folder.
+
 ## Price it or book it
 
 Press {{button:outline|Start an estimate}} to open a new estimate on them. [Send an estimate and turn it into a job](/help/send-an-estimate-and-turn-it-into-a-job) shows the rest.

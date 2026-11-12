@@ -28,26 +28,39 @@ export interface FirstLookThreadIo {
   stamp(lookId: string, what: 'looked' | 'closed'): Promise<void>
 }
 
-const LOOK_COLUMNS = 'id, contact_id, asked_by_name, made_at, expires_at, opened_at, sent_at, looked_at, closed_at, place, words'
-const FILE_COLUMNS = 'id, look_id, kind, mime, storage_path, bytes, seconds, finished_at'
+const LOOK_BASE = 'id, contact_id, asked_by_name, made_at, expires_at, opened_at, sent_at, looked_at, closed_at, place, words'
+const FILE_BASE = 'id, look_id, kind, mime, storage_path, bytes, seconds, finished_at'
+/** PR 2's Drive columns. A read that meets a database from before them (the hour between a merge and its push) reads without. */
+const LOOK_COLUMNS = `${LOOK_BASE}, drive_folder_id`
+const FILE_COLUMNS = `${FILE_BASE}, drive_file_id, fail_why`
+
+/** A column the database does not have yet: Postgres says 42703, and PostgREST says it in words. */
+function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  return Boolean(error) && (error?.code === '42703' || /column .* does not exist/i.test(error?.message ?? ''))
+}
 
 export function supabaseFirstLookThreadIo(client: unknown = supabase): FirstLookThreadIo {
   const db = client as SupabaseClient
   return {
     async looks(contactId) {
-      const looks = await db.from('first_looks').select(LOOK_COLUMNS).eq('contact_id', contactId).is('closed_at', null).order('made_at', { ascending: false }).limit(20)
+      const readLooks = (columns: string) => db.from('first_looks').select(columns).eq('contact_id', contactId).is('closed_at', null).order('made_at', { ascending: false }).limit(20)
+      let looks = await readLooks(LOOK_COLUMNS)
+      if (isMissingColumn(looks.error)) looks = await readLooks(LOOK_BASE)
       checkSupabaseError(looks, 'read the looks')
-      const rows = (looks.data ?? []) as ThreadLook[]
+      const rows = (looks.data ?? []) as unknown as ThreadLook[]
       if (!rows.length) return { looks: [], files: [] }
-      const files = await db
-        .from('first_look_files')
-        .select(FILE_COLUMNS)
-        .in('look_id', rows.map((l) => l.id))
-        .not('finished_at', 'is', null)
-        .is('removed_at', null)
-        .order('finished_at', { ascending: true })
+      const readFiles = (columns: string) =>
+        db
+          .from('first_look_files')
+          .select(columns)
+          .in('look_id', rows.map((l) => l.id))
+          .not('finished_at', 'is', null)
+          .is('removed_at', null)
+          .order('finished_at', { ascending: true })
+      let files = await readFiles(FILE_COLUMNS)
+      if (isMissingColumn(files.error)) files = await readFiles(FILE_BASE)
       checkSupabaseError(files, 'read what came in')
-      return { looks: rows, files: (files.data ?? []) as ThreadLookFile[] }
+      return { looks: rows, files: (files.data ?? []) as unknown as ThreadLookFile[] }
     },
     async signLookFiles(paths) {
       if (!paths.length) return {}
