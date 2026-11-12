@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { findOrCreateFolder, googleAccessToken, putResumablePiece, resumableStatus, startResumableUpload, uploadBytes } from '../_shared/driveUpload.ts'
-import { lookFolderOrWhy, lookTree, type LookForFolder, type LookTree } from '../_shared/driveLookFolder.ts'
+import { jobSuppliedFolderOrWhy, lookFolderOrWhy, lookTree, type LookForFolder, type LookTree } from '../_shared/driveLookFolder.ts'
 import { DRIVE_WHOLE_MAX_BYTES, lookCountsAsSent, lookFileDriveName, lookFileDue } from '../_shared/firstLookDrive.ts'
 import { copyInPieces } from '../_shared/driveCopyInPieces.ts'
 import { FIRST_LOOK_UPLOAD_ADDRESS_HOURS, firstLookObjectPath, firstLookSentLine } from '../_shared/firstLook.ts'
@@ -1283,7 +1283,7 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
   const failed: { id: string; why: string }[] = []
   const { data, error } = await admin
     .from('first_look_files')
-    .select('id, look_id, kind, mime, storage_path, bytes, finished_at, drive_upload_uri, drive_upload_offset, first_looks!inner(id, contact_id, made_at, place, drive_folder_id, sent_at, sent_count, words)')
+    .select('id, look_id, kind, mime, storage_path, bytes, finished_at, drive_upload_uri, drive_upload_offset, first_looks!inner(*)')
     .is('drive_file_id', null)
     .not('finished_at', 'is', null)
     .is('removed_at', null)
@@ -1384,7 +1384,7 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
   const since = new Date(nowMs - LOOK_TEXTED_DAYS * 86_400_000).toISOString()
   const { data: openLooks } = await admin
     .from('first_looks')
-    .select('id, contact_id, made_at, place, drive_folder_id')
+    .select('*')
     .is('closed_at', null)
     .not('contact_id', 'is', null)
     .gte('made_at', since)
@@ -1426,6 +1426,24 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
       }
     }
   }
+  // PR 6: a look whose job was made after its files reached Drive. Its folder moves from the customer's Customer
+  // supplied photos to the job's, once; the folder's id and every link to it stay.
+  try {
+    const { data: toMove } = await admin.from('first_looks').select('id, job_id, drive_folder_id').not('job_id', 'is', null).not('drive_folder_id', 'is', null).is('drive_job_folder_at', null).limit(10)
+    for (const look of (toMove ?? []) as { id: string; job_id: string; drive_folder_id: string }[]) {
+      if (Date.now() > deadline) break
+      const under = await jobSuppliedFolderOrWhy(admin, google, look.job_id, trees)
+      if ('why' in under) continue
+      const meta = (await fetch(`https://www.googleapis.com/drive/v3/files/${look.drive_folder_id}?fields=parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${google}` } }).then((r) => r.json())) as { parents?: string[] }
+      const from = meta.parents?.[0] ?? null
+      if (from !== under.id) await moveFolder(google, look.drive_folder_id, from, under.id)
+      await admin.from('first_looks').update({ drive_job_folder_at: new Date().toISOString() }).eq('id', look.id)
+      saved += 1
+    }
+  } catch (e) {
+    failed.push({ id: '', why: driveFailWords(e instanceof Error ? e.message : String(e)) })
+  }
+
   // PR 3: a finished file was moved out from under its upload address (`firstLookKeptPath`). Once that address has run
   // out, anything written to the old place since is dropped. Removing a place that holds nothing is not an error.
   try {
