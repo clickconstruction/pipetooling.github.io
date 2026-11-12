@@ -21,6 +21,8 @@ Every city's Property line reads its own county for the owner of record. Austin 
 
 Almost every Austin permit names its lot at Travis County. The app reads that lot first. The owner is then the owner of the lot the permit is on.
 
+In San Antonio a shopping centre can be several lots under one address. The app then takes the lot under the permit's point.
+
 A new building often has no parcel under its street address yet. When the permit names no lot the county holds, the app reads the parcel at the permit's point. The card says so.
 
 A city reaches over its county line in places. The app then reads the county the lot is in. The card names that county.
