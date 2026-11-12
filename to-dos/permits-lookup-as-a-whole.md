@@ -2,17 +2,17 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) built, the rest not started
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) and PR 3 (Williamson County by the R id, v2.6984) built, the rest not started
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: PR 3, Williamson County as a fifth source asked by the R id an Austin permit carries, then the pull's map point for those rows.
+next: The pull's map point for the R rows the city sends without one (permit-pull), then PR 4, a lot the county's map holds with no owner.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -93,8 +93,9 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
 2. **The county the lot is in** (S). Built. When the city's own county holds nothing at the
    point, its neighbours' layers are asked there, and the card names the county the lot is in.
    Through the new kernel New Braunfels goes from 119 owners in 200 to 199, San Marcos 145 to 166.
-3. **Williamson County as a fifth source**, asked by the R id (S), then the pull's map point for
-   the R rows (S, `permit-pull`).
+3. **Williamson County as a fifth source**, asked by the R id (S). Built: of the 113 R-id
+   addresses none named an owner before and 112 do through the new kernel. Then the pull's map
+   point for the R rows (S, `permit-pull`), not built.
 4. **A lot the county's map holds with no owner** (S). Say so and open that lot's own page at the
    appraisal district. First open one of those pages and see that it names the owner.
 5. **The county's address for the lot when it is not the permit's** (XS). One line on the sheets,

@@ -11,10 +11,10 @@ import {
   askedWithoutId,
   askedWithoutNeighbours,
   askedWithoutPoint,
+  factsInCounty,
   idQuery,
   neighbourPointQuestion,
   neighbourSources,
-  parcelFactsAtNeighbour,
   parcelFactsByAddress,
   parcelFactsById,
   parcelFactsByPoint,
@@ -23,6 +23,7 @@ import {
   pointQueryOf,
   pointQuestion,
   QUESTION_JOIN,
+  sourceForId,
   streetParts,
   type ParcelSource,
 } from '../_shared/permitParcels.ts'
@@ -53,7 +54,9 @@ import {
  * facts name the county the parcel is in. An Austin permit carries
  * the county's own id for its lot (`raw.tcad_id`, the layer's `geo_id`), so with `permit_id`
  * Travis is asked by that id first (punch list #316): the lot the permit names, no matching.
- * An id the layer does not hold falls back to the address and the point. A source that fails
+ * An id the layer does not hold falls back to the address and the point. An Austin permit over
+ * the county line carries Williamson County's id (an R and six digits), so Williamson's layer is
+ * asked for it, by the id, the address and the point (punch list #320). A source that fails
  * answers with its reason, cached too, so a dead source is not hammered.
  *
  * Auth: a researcher's JWT (`user_can_research_permits()`), the archived-caller guard.
@@ -84,18 +87,19 @@ type Body = { kind?: unknown; contact?: unknown; address?: unknown; city?: unkno
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * The parcel id the permit's own feed row carries, when the layer can be asked by it. Read with
- * the service client: the list the app reads (`research_permits_v2`) does not carry the row.
- * Held to the permit at the address being looked up, since the answer is kept under that address.
- * Null on any miss, so the lookup falls back to the address and the point.
+ * The parcel id the permit's own feed row carries, as the feed wrote it, when the city's county
+ * has an id to ask by. Read with the service client: the list the app reads (`research_permits_v2`)
+ * does not carry the row. Held to the permit at the address being looked up, since the answer is
+ * kept under that address. Null on any miss, so the lookup falls back to the address and the point.
  */
-async function parcelIdOnPermit(admin: ReturnType<typeof createClient>, source: ParcelSource, permitId: unknown, key: string): Promise<string | null> {
-  if (!source.id || typeof permitId !== 'string' || !UUID.test(permitId)) return null
-  const { data, error } = await admin.from('permits').select(`city, address, parcel_id:raw->>${source.id.permitKey}`).eq('id', permitId).maybeSingle()
+async function parcelIdOnPermit(admin: ReturnType<typeof createClient>, home: ParcelSource, permitId: unknown, key: string): Promise<string | null> {
+  if (!home.id || typeof permitId !== 'string' || !UUID.test(permitId)) return null
+  const { data, error } = await admin.from('permits').select(`city, address, parcel_id:raw->>${home.id.permitKey}`).eq('id', permitId).maybeSingle()
   if (error) console.warn(JSON.stringify({ fn: 'permit-lookup', permit: error.message }))
   const row = data as { city?: string | null; address?: string | null; parcel_id?: unknown } | null
   if (!row || parcelLookupKey(row.city ?? '', row.address) !== key) return null
-  return askableParcelId(source, row.parcel_id)
+  const text = typeof row.parcel_id === 'string' || typeof row.parcel_id === 'number' ? String(row.parcel_id).trim() : ''
+  return text === '' ? null : text
 }
 
 serve(async (req) => {
@@ -132,12 +136,15 @@ serve(async (req) => {
 
   const { data: cached } = await admin.from('permit_lookups').select('query, found, facts, error, looked_up_at').eq('kind', kind).eq('lookup_key', key).maybeSingle()
   // A row the earlier function kept for a city outside Bexar asked Bexar's layer, so its "no parcel" is not this county's answer.
-  const askedWrongCounty = kind === 'parcel' && askedBexarLayer(cached?.query as string | null | undefined) && parcelSourceFor(permitCity(city)?.county) !== null
-  // A "no parcel" asked with a question this function no longer asks (a spelling learned since) is asked again.
-  const countySource = kind === 'parcel' ? parcelSourceFor(permitCity(city)?.county) : null
+  const homeSource = kind === 'parcel' ? parcelSourceFor(permitCity(city)?.county) : null
+  const askedWrongCounty = kind === 'parcel' && askedBexarLayer(cached?.query as string | null | undefined) && homeSource !== null
+  // The id the permit carries for its lot says which county's layer holds it: Austin's permits over the county line carry Williamson's.
+  const permitParcelId = homeSource !== null ? await parcelIdOnPermit(admin, homeSource, body.permit_id, key) : null
+  const countySource = homeSource !== null ? sourceForId(homeSource, permitParcelId) : null
+  // A "no parcel" asked with a question this function no longer asks (a spelling learned since, another county's layer) is asked again.
   const askedOldQuestion = countySource !== null && cached?.found === false && askedOtherQuestion(countySource, cached?.query as string | null | undefined, typeof body.address === 'string' ? body.address : null)
-  // The id the permit carries for its lot, where the county can be asked by it. A row kept before the id was asked, found or not, is asked again once.
-  const parcelId = countySource !== null ? await parcelIdOnPermit(admin, countySource, body.permit_id, key) : null
+  // The id as that layer keeps it. A row kept before the id was asked, found or not, is asked again once.
+  const parcelId = countySource !== null ? askableParcelId(countySource, permitParcelId) : null
   const askedBeforeId = countySource !== null && cached != null && askedWithoutId(countySource, cached.query as string | null | undefined, parcelId)
   // Bexar was asked by the street address alone until it could be asked by the point: a kept "no parcel" from then is asked again once. A kept failure is left alone.
   const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
@@ -174,9 +181,9 @@ serve(async (req) => {
           }
         }
       }
-    } else if (parcelSourceFor(permitCity(city)?.county)) {
-      // Travis, Hays, Comal, Guadalupe: the id the permit carries where the county has one, then the number and the street name, then the permit's point when the street address has no parcel.
-      const source = parcelSourceFor(permitCity(city)?.county)!
+    } else if (countySource && homeSource) {
+      // Travis, Hays, Comal, Guadalupe, and Williamson for Austin over the county line: the id the permit carries where the county has one, then the number and the street name, then the permit's point when the street address has no parcel.
+      const source = countySource
       const byId = idQuery(source, parcelId)
       const parts = streetParts(typeof body.address === 'string' ? body.address : null)
       const point = askablePoint(body.lat, body.lng)
@@ -190,6 +197,8 @@ serve(async (req) => {
       if (!byId && !parts && !point) error = 'nothing to look up'
       else {
         let f = null
+        // The layer whose parcel answers: the one asked first, or a neighbour at the point.
+        let answered = source
         const asked: string[] = []
         // Each question is written down before it is asked, so a failure's row says how far the asking got.
         const noteAsked = (q: string) => {
@@ -213,13 +222,16 @@ serve(async (req) => {
         if (!f && point) {
           for (const neighbour of neighbourSources(source)) {
             noteAsked(neighbourPointQuestion(neighbour, point))
-            f = parcelFactsAtNeighbour(neighbour, await askAt(neighbour, pointQuery(neighbour, point)))
-            if (f) break
+            f = parcelFactsByPoint(neighbour, await askAt(neighbour, pointQuery(neighbour, point)))
+            if (f) {
+              answered = neighbour
+              break
+            }
           }
         }
         if (f) {
           found = true
-          facts = f
+          facts = factsInCounty(homeSource, answered, f)
         }
       }
     } else {
