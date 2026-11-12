@@ -75,7 +75,8 @@ import {
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedPayModel } from '../../lib/jobs/billedDuePay'
-import { calendarFor, payCalendarShort } from '../../lib/jobs/payCalendar'
+import { calendarFor, nextCutoffChip, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
 import { jobIsScheduledInKind } from '../../lib/inKind/inKindLedger'
 import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/payPace'
@@ -1031,6 +1032,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    */
   // Declared up here since v2.6034, so the pace context below and the billed chips above the filters can read it.
   const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  /** Punch list #323, PR 3: the nearest cutoff among the bills waiting to go, for the Ready to Bill header. Null with no payer on a Pay calendar there. */
+  const readyToBillCutoffChip = useMemo(() => {
+    if (!payCalendars) return null
+    const today = todayYmdInAppTz()
+    const lines = []
+    for (const r of unfilteredBoardLists.readyToBillRows) {
+      const payer = paySpeedPayer(r.job, r.kind === 'job' ? null : r.inv)
+      const calendar = payer.id ? calendarFor(payCalendars, { payerId: payer.id, jobId: r.job.id }) : null
+      const line = calendar ? payCutoffLine(today, calendar) : null
+      if (line) lines.push(line)
+    }
+    return nextCutoffChip(lines)
+  }, [payCalendars, unfilteredBoardLists])
   // v2.6034 (punch list #177, decision 1): the GC facts and the GC pace here, worked out once for every billed chip,
   // forecast row, call and dates ledger on the board. The GC pace rests on the GC payers among the open bills on the
   // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
@@ -1067,6 +1081,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // runway kernel still decides the deadlines; the ledger arranges them
       // with the money.
       const inv = row.kind === 'job' ? null : row.inv
+      // Punch list #323, PR 3: a bill not yet sent, for a payer on a Pay calendar, says its cutoff. Nothing else of
+      // this block belongs to a Ready to Bill row: it has no bill date, no expected day and no lien clock yet.
+      if (row.job.status === 'ready_to_bill') {
+        const rtbPayer = paySpeedPayer(row.job, inv)
+        const rtbCalendar = rtbPayer.id ? calendarFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id }) : null
+        const cutoff = rtbCalendar ? payCutoffLine(todayYmdInAppTz(), rtbCalendar) : null
+        if (!cutoff) return null
+        const rtbPayerId = rtbPayer.id
+        return (
+          <PayCutoffLine
+            line={cutoff}
+            payerName={rtbPayer.name}
+            onOpen={payCalendarModal && rtbPayerId ? () => payCalendarModal.openPayCalendar({ id: rtbPayerId, name: rtbPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars() }) : undefined}
+          />
+        )
+      }
       const runway = lienRunwayFor(row.job, inv)
       const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
       const promise = promisedPayDates?.[row.job.id] ?? null
@@ -3821,6 +3851,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
+                  {readyToBillCutoffChip ? (
+                    <span
+                      data-testid="pay-cutoff-chip"
+                      title="The nearest cutoff among the bills waiting to go, for payers on a pay calendar. A bill in one day past it waits a whole month."
+                      style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 9px', borderRadius: 9999, whiteSpace: 'nowrap', background: readyToBillCutoffChip.soon ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)', color: readyToBillCutoffChip.soon ? 'var(--text-amber-800)' : 'var(--text-blue-800)' }}
+                    >
+                      {readyToBillCutoffChip.label}
+                    </span>
+                  ) : null}
                   {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"

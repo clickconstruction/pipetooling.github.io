@@ -348,3 +348,48 @@ export function usuallyLandsWords(dueYmd: string, lateness: PayCalendarLateness 
   if (lateness.medianDays <= 0) return 'Usually lands by the due day.'
   return `Usually lands about ${lateness.medianDays}d after. About ${payCalendarMonthDay(expectedFromDue(dueYmd, lateness))}.`
 }
+
+/** The cutoff asks in amber once it is this close, the last week a bill can still make this month's run. */
+export const PAY_CUTOFF_SOON_DAYS = 7
+
+/** The cutoff as a row draws it (PR 3): the two sentences, whether it is close, and the reason for the hover. */
+export type PayCutoffLineWords = {
+  /** "Send by Nov 30 to be due Dec 10." */
+  sendBy: string
+  /** "After that, Jan 10." */
+  after: string
+  /** Inside `PAY_CUTOFF_SOON_DAYS`: the line asks in amber. */
+  soon: boolean
+  daysLeft: number
+  cutoffYmd: string
+  /** The calendar in one sentence, and how far off the cutoff is. */
+  title: string
+}
+
+const leftWords = (days: number): string => (days === 0 ? 'The cutoff is today.' : days === 1 ? 'The cutoff is tomorrow.' : `The cutoff is in ${days} days.`)
+
+/** The cutoff line for a bill not yet sent; null on a bad day. */
+export function payCutoffLine(todayYmd: string, cal: PayCalendar): PayCutoffLineWords | null {
+  const cut = nextCutoff(todayYmd, cal)
+  if (!cut) return null
+  return { ...cutoffWordsFor(cut), soon: cut.daysLeft <= PAY_CUTOFF_SOON_DAYS, daysLeft: cut.daysLeft, cutoffYmd: cut.cutoffYmd, title: `${payCalendarWords(cal)} ${leftWords(cut.daysLeft)}` }
+}
+
+/** The cutoff at the moment of sending (PR 3): what sending today makes the bill, and what waiting costs. */
+export function sendTodayCutoffWords(todayYmd: string, cal: PayCalendar): { due: string; cutoff: string; soon: boolean } | null {
+  const cut = nextCutoff(todayYmd, cal)
+  if (!cut) return null
+  return {
+    due: `Sent today, this bill is due ${payCalendarMonthDay(cut.dueYmd)}.`,
+    cutoff: `Their cutoff is ${payCalendarMonthDay(cut.cutoffYmd)}. After that, ${payCalendarMonthDay(cut.nextDueYmd)}.`,
+    soon: cut.daysLeft <= PAY_CUTOFF_SOON_DAYS,
+  }
+}
+
+/** The Ready to Bill header's chip (PR 3): the nearest cutoff among the bills waiting to go, and how many it holds. */
+export function nextCutoffChip(lines: ReadonlyArray<Pick<PayCutoffLineWords, 'cutoffYmd' | 'daysLeft'>>): { label: string; soon: boolean; count: number; cutoffYmd: string } | null {
+  if (!lines.length) return null
+  const first = lines.reduce((a, b) => (b.cutoffYmd < a.cutoffYmd ? b : a))
+  const count = lines.filter((l) => l.cutoffYmd === first.cutoffYmd).length
+  return { label: `Next cutoff ${payCalendarMonthDay(first.cutoffYmd)} · ${count} ${count === 1 ? 'bill' : 'bills'}`, soon: first.daysLeft <= PAY_CUTOFF_SOON_DAYS, count, cutoffYmd: first.cutoffYmd }
+}
