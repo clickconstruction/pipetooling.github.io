@@ -4955,13 +4955,14 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 }
 /* The Pipeline's search box (v2.7014): beside the New Job, Follow-ups, Forecast and Projects presses it takes what
    their line leaves, but never less than its own chips and ⋯, so the row wraps it onto a line of its own instead of
-   pushing the page sideways. On a phone a line is all it has, so it fits the line as before. */
+   pushing the page sideways. On a phone its chips are wider than the screen, so there it takes a line of its own
+   once less than 20rem is left beside the presses, and its chips shrink to fit it (v2.7033). */
 .stagesSearchBox {
   min-width: min-content;
 }
 @media (max-width: 640px) {
   .stagesSearchBox {
-    min-width: 0;
+    min-width: min(100%, 20rem);
   }
 }
 /* Put a GC on notice (v2.4540): the row the "N look wrong" list jumped to stays lit for a moment. */
