@@ -292,7 +292,7 @@ export type ParcelLookupPermit = { lat: number | null; lng: number | null; id?: 
 export function lookupParcel(address: string, city: string, refresh = false, permit: ParcelLookupPermit | null = null): Promise<LookupAnswer<ParcelFacts>> {
   // A city whose county's parcel record is not read says so on its card and opens the appraisal district.
   if (!cityReadsParcels(city)) return Promise.resolve({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })
-  // The permit's point rides along: outside Bexar it is asked when the street address has no parcel, as on new construction.
+  // The permit's point rides along: it is asked when the street address has no parcel, as on new construction.
   const at = permit && permit.lat != null && permit.lng != null ? { lat: permit.lat, lng: permit.lng } : {}
   // So does the permit's id: an Austin permit's feed row names its lot at the county, and the function asks by that first. For any other city the function passes it by.
   const named = permit?.id ? { permit_id: permit.id } : {}

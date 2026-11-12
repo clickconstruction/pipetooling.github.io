@@ -8,6 +8,7 @@ import {
   lookupIsFresh,
   nameKey,
   parcelFactsFromCounty,
+  parcelFactsFromCountyAtPoint,
   parcelLookupKey,
   placesQuery,
   situsWhere,
@@ -83,5 +84,23 @@ describe('builderKeyOf (punch list #302)', () => {
     expect(builderKeyOf('Dana Whitlock')).toBe('danawhitlock')
     expect(builderKeyOf('  ')).toBeNull()
     expect(builderKeyOf(null)).toBeNull()
+  })
+})
+
+describe('the parcel under the permit’s point, at Bexar County', () => {
+  // Every name and number here is made up.
+  const row = (attributes: Record<string, unknown>) => ({ attributes })
+  it('reads the first parcel with an owner and marks it read at the point', () => {
+    const body = { features: [row({ PropID: 0, Owner: ' ' }), row({ PropID: 555001, Situs: '100 SAMPLE LN', Owner: 'SAMPLE TRACT LLC', TotVal: 900, Acres: 2 }), row({ PropID: 555002, Owner: 'OTHER LLC' })] }
+    expect(parcelFactsFromCountyAtPoint(body)).toMatchObject({ prop_id: '555001', situs: '100 SAMPLE LN', owner: 'SAMPLE TRACT LLC', total_value: 900, acres: 2, matched_by: 'point' })
+  })
+  it('answers nothing when no parcel under the point names an owner', () => {
+    expect(parcelFactsFromCountyAtPoint({ features: [row({ PropID: 1, Owner: null })] })).toBeNull()
+    expect(parcelFactsFromCountyAtPoint({ features: [] })).toBeNull()
+    expect(parcelFactsFromCountyAtPoint({})).toBeNull()
+    expect(parcelFactsFromCountyAtPoint(null)).toBeNull()
+  })
+  it('leaves the address answer unmarked', () => {
+    expect(parcelFactsFromCounty({ features: [row({ PropID: 555001, Owner: 'SAMPLE TRACT LLC' })] })?.matched_by).toBeUndefined()
   })
 })
