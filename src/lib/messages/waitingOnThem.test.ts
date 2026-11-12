@@ -116,3 +116,19 @@ describe('their word that is not a line in (v2.6500, Taunya’s report of 2026-1
     expect(HEARD_WORDS.toast('none', 'Evan Johnson')).toBe('No answer needed from Evan Johnson. The line lands on the thread in ten seconds.')
   })
 })
+
+describe('a mail filed for the record (v2.7027, punch list #324)', () => {
+  it('a filed mail of ours makes nobody quiet', () => {
+    expect(waitingOnThem([line({ history: true, atMs: at('2026-10-01T18:31:00Z') })], 'all', NOW)).toEqual([])
+  })
+
+  it('a live line of ours still waits behind a filed mail of ours', () => {
+    const rows = waitingOnThem([line({ id: 'live', atMs: at('2026-10-10T18:31:00Z') }), line({ id: 'filed', history: true, atMs: at('2026-10-12T18:31:00Z') })], 'all', NOW)
+    expect(rows.map((r) => r.days)).toEqual([10])
+  })
+
+  it('a filed mail of theirs is still their answer', () => {
+    const rows = waitingOnThem([line({ id: 'ours', atMs: at('2026-10-01T18:31:00Z') }), line({ id: 'theirs', direction: 'in', history: true, atMs: at('2026-10-03T18:31:00Z') })], 'all', NOW)
+    expect(rows).toEqual([])
+  })
+})

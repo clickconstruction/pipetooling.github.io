@@ -21,7 +21,9 @@ import {
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
-import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
+import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
+import { LIEN_RECORD_STYLES, lienNoticeCopiesHtml, lienNoticeCopyNotices, lienNoticeRecordSheetHtml } from '../../lib/jobs/lienNoticeRecordSheet'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
@@ -365,11 +367,12 @@ export default function LienFilingTabs({
     },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
-  const noticeCheckLines = useMemo(() => {
+  // The months the paper swears: the notice check and the notice record (punch list #322) both read them.
+  const swornMonths = useMemo(() => {
     const days = workDays ?? job
-    const months = lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
-    return lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months, filings: live }))
-  }, [workDays, job, workMonths, isSub, live, property.propertyKind])
+    return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
+  }, [workDays, job, workMonths, isSub, live])
+  const noticeCheckLines = useMemo(() => lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months: swornMonths, filings: live })), [isSub, property.propertyKind, swornMonths, live])
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -449,13 +452,28 @@ export default function LienFilingTabs({
     }
   }, [noticeMonthKeys, property.propertyKind, property.owner.mailingAddress, jobNumber, job.job_name, job.master_user_id, affidavitFields.propertyAddress, affidavitFields.originalContractorAddress, noticeFields.claimAmount, noticeFields.contactPerson, ownerName, originalContractorName, enclosedDocs.length, askFor])
 
+  // The notice record (punch list #322): what was mailed before this paper, read off every filing on the job (the voided ones are counted, never shown).
+  // Null on a job contracted with the owner, which owes no monthly notice.
+  const [noticeRecordOn, setNoticeRecordOn] = useLienNoticeRecordChoice()
+  const noticeRecord = useMemo(
+    () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd }),
+    [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd],
+  )
+
   const printDoc = useCallback(() => {
     if (!currentDoc) return
     const paperHtml = noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions))
     const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id] }
-    // A short-form affidavit prints behind its help sheet (punch list #314). The sheet is never the paper: the copy filed on the job is the paper alone.
-    if (currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && helpSheetOn) {
-      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpRecordCode(job.id) }), LIEN_HELP_STYLES))) {
+    // A short-form affidavit prints behind its help sheet (punch list #314) and its notice record (punch list #322), each when its box is ticked.
+    // Neither is the paper: the copy filed on the job is the paper alone.
+    // Behind the record, a copy of each notice as its row keeps it (the owner, 2026-11-12: "I want to see copies of what was sent").
+    const recordPage = currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && noticeRecordOn && noticeRecord
+      ? lienNoticeRecordSheetHtml({ jobLabel: helpPaper.jobLabel, propertyAddress: helpPaper.propertyAddress, ownerName: helpPaper.ownerName, contractorName: helpPaper.contractorName, claim: helpPaper.claim }, noticeRecord, demandDate(todayYmd()), { jobCode: lienHelpRecordCode(job.id), copiesFollow: lienNoticeCopyNotices(noticeRecord).length }) +
+        lienNoticeCopiesHtml(noticeRecord, { jobLabel: helpPaper.jobLabel, refJob: `Job #${jobNumber}`, letterhead: docExtras.letterhead, todayYmd: todayYmd() })
+      : ''
+    if (currentDoc.kind === 'affidavit' && affidavitFields.form === 'short' && (helpSheetOn || recordPage)) {
+      const cover = helpSheetOn ? lienHelpCoverSheetHtml(helpPaper, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpRecordCode(job.id), recordFollows: Boolean(recordPage) }) : ''
+      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, `${cover}${recordPage}`, LIEN_HELP_STYLES + LIEN_RECORD_STYLES))) {
         showToast('Popup blocked — allow popups to print.', 'error')
         return
       }
@@ -474,7 +492,7 @@ export default function LienFilingTabs({
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
     const ok = printAndFile(paperHtml, filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions, affidavitFields.form, helpSheetOn, helpPaper, helpNotice])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, jobNumber, docExtras.letterhead, printOptions, affidavitFields.form, helpSheetOn, helpPaper, helpNotice, noticeRecordOn, noticeRecord])
 
   // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
   const printGuideCopy = useCallback(() => {
@@ -1220,6 +1238,13 @@ export default function LienFilingTabs({
                     <label data-lien-window-help-sheet style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={helpSheetOn} onChange={(e) => setHelpSheetOn(e.target.checked)} />
                       {LIEN_HELP_SHEET_BOX}
+                    </label>
+                  ) : null}
+                  {/* The notice record (punch list #322): what was mailed before this paper. A job contracted with the owner owes no notice and has no record to print. */}
+                  {affidavitFields.form === 'short' && noticeRecord ? (
+                    <label data-lien-window-notice-record style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={noticeRecordOn} onChange={(e) => setNoticeRecordOn(e.target.checked)} />
+                      {LIEN_NOTICE_RECORD_BOX}
                     </label>
                   ) : null}
                   {affidavitFields.form === 'short' ? <LienSigningCountyBox id="lien-window-signing-county" county={signing.county} onChange={signing.setCounty} /> : null}

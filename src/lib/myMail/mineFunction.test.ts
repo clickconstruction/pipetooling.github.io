@@ -57,6 +57,7 @@ import {
   myMailTagEventKey,
   myMailTagEventRow,
   myMailTagEventWords,
+  tagAllFiled,
   myMailTaggedBy,
   MY_MAIL_TAGGED_PAGE,
   inAskedBoxes,
@@ -953,6 +954,20 @@ describe('the tag’s grey line on the thread', () => {
       project_id: null,
       jobs_ledger_id: ELM,
     })
+  })
+
+  it('says the mail is old and nobody was asked when every mail the tag wrote was filed (v2.7027, punch list #324)', () => {
+    const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
+    const dev = { name: 'Nadia Reyes', email: 'nadia@clickplumbing.example' }
+    const own = myMailTagEventWords(marisol, null, true)
+    expect(own).toBe('Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
+    const seat = myMailTagEventWords(marisol, dev, true)
+    expect(seat).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
+    for (const words of [own, seat]) expect(plainWordsFailures(words)).toEqual([])
+    expect(myMailTagEventRow({ tagRowId: 'r1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: 'j1' }, filed: true }).body).toBe(own)
+    expect(tagAllFiled({ lines: 3, filed: 3 })).toBe(true)
+    expect(tagAllFiled({ lines: 3, filed: 2 })).toBe(false)
+    expect(tagAllFiled({ lines: 0, filed: 0 })).toBe(false)
   })
 
   it('names the dev and the dev seat when the tag came through the seat, never the person as the one who tagged', () => {

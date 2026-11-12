@@ -61,7 +61,7 @@ const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, cr
  * so that migration is pushed right after the merge), for the mark and Untag under a line the app put on a job.
  */
 const MESSAGE_COLS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox, delivery, auto, invitation, introduces_user_id, body_html_path, placed_by_app, mail_user_id, gmail_thread_id'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox, delivery, auto, invitation, introduces_user_id, body_html_path, placed_by_app, mail_user_id, gmail_thread_id, history, created_at'
 /**
  * A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql), a call's length, summary and words,
  * and R5's office-only mark on a team note (20261013190000_messages_tech_door.sql).

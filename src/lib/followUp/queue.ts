@@ -46,7 +46,7 @@ export interface QueueContact {
 }
 
 /** A message as Follow up reads it, with a note's day to come back and the day it was dealt with. */
-export type QueueMessage = Pick<ThreadMessage, 'id' | 'contactId' | 'channel' | 'direction' | 'at' | 'body' | 'backOn' | 'backBy'> & {
+export type QueueMessage = Pick<ThreadMessage, 'id' | 'contactId' | 'channel' | 'direction' | 'at' | 'body' | 'backOn' | 'backBy'> & Partial<Pick<ThreadMessage, 'history'>> & {
   /** A note's day to come back in the words typed, when they did not read as a date (`messages.back_words`). */
   backWords?: string | null
   /** When *Done with it* cleared the note's day (`messages.back_done_at`). The note stays in the thread. */
@@ -84,11 +84,14 @@ export function stateToday(contact: Pick<QueueContact, 'state' | 'snoozedUntil'>
 
 const byTime = (a: { at: string }, b: { at: string }) => Date.parse(a.at) - Date.parse(b.at)
 
-/** Each person's newest message to us, of any channel, in one pass over the messages. */
+/**
+ * Each person's newest message to us, of any channel, in one pass over the messages. A mail filed for the record
+ * (`history`, v2.7027) asked nobody for a reply, so it is never the line a row waits on.
+ */
 function newestIn(messages: ReadonlyArray<QueueMessage>): Map<string, QueueMessage> {
   const out = new Map<string, QueueMessage>()
   for (const m of messages) {
-    if (m.direction !== 'in') continue
+    if (m.direction !== 'in' || m.history) continue
     const best = out.get(m.contactId)
     if (!best || byTime(m, best) > 0) out.set(m.contactId, m)
   }

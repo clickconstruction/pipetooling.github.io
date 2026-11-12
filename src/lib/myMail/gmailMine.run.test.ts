@@ -44,6 +44,16 @@ const FUNCTION_FILE = '../../../supabase/functions/gmail-mine/index.ts'
 const realFetch = globalThis.fetch
 const logged: string[] = []
 
+// The tag files a mail more than 14 days old (v2.7027, punch list #324), so the run's clock is held on the day of the
+// fixtures' mail. Only Date is faked: every await and timer runs as it would.
+const RUN_NOW = '2026-11-02T18:00:00.000Z'
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date(RUN_NOW) })
+})
+afterAll(() => {
+  vi.useRealTimers()
+})
+
 beforeAll(async () => {
   ENV.GOOGLE_SERVICE_ACCOUNT_JSON = await fakeServiceAccountJson()
   ;(globalThis as unknown as { Deno: unknown }).Deno = { env: { get: (k: string) => ENV[k] } }
@@ -568,7 +578,7 @@ describe('gmail-mine: tag and untag', () => {
     const res = await post('marisol-jwt', tagElm)
     expect(res.status).toBe(200)
     const newContact = db.rows('contacts').find((c) => c.name === 'Ana Ruiz')
-    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 2, tied: 1, files: 1, contactId: 'c-dale', unknownSender: { contactId: newContact?.id, address: 'ana@ridgeway.example', name: 'Ana Ruiz' } })
+    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 2, tied: 1, files: 1, contactId: 'c-dale', unknownSender: { contactId: newContact?.id, address: 'ana@ridgeway.example', name: 'Ana Ruiz' }, filed: 0 })
     expect(newContact).toMatchObject({ kind: 'unknown' })
 
     // The line bids@ held is tied as the caller, who is stamped; the job joins Dale's jobs.
@@ -625,7 +635,7 @@ describe('gmail-mine: tag and untag', () => {
     await post('marisol-jwt', tagElm)
     const before = { lines: lines().length, files: Object.keys(db.files).length, writes: rpcs('email_write_line').length, places: rpcs('email_place_address').length, ties: rpcs('tie_message').length }
     const again = await post('marisol-jwt', tagElm)
-    expect(again.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 0, tied: 0, files: 0, contactId: 'c-dale', unknownSender: null })
+    expect(again.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 0, tied: 0, files: 0, contactId: 'c-dale', unknownSender: null, filed: 0 })
     expect({ lines: lines().length, files: Object.keys(db.files).length, writes: rpcs('email_write_line').length, places: rpcs('email_place_address').length, ties: rpcs('tie_message').length }).toEqual(before)
     expect(db.calls.filter((c) => c.includes('storage upload'))).toHaveLength(3)
     expect(db.rows('email_tag_threads')).toHaveLength(1)
@@ -692,6 +702,26 @@ describe('gmail-mine: tag and untag', () => {
   })
 
   const events = () => lines().filter((l) => l.channel === 'event')
+
+  it('files a conversation that is all old mail for the record: each line marked, the grey line saying so (v2.7027, punch list #324)', async () => {
+    // The same conversation, tagged three weeks on.
+    vi.setSystemTime(new Date('2026-11-23T18:00:00.000Z'))
+    try {
+      const res = await post('marisol-jwt', tagElm)
+      expect(res.body).toMatchObject({ ok: true, lines: 2, filed: 2 })
+      const written = lines().filter((l) => l.mailbox === 'mine')
+      expect(written.length).toBe(2)
+      expect(written.every((l) => l.history === true)).toBe(true)
+      expect(events().map((e) => e.body)).toEqual(['Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.'])
+    } finally {
+      vi.setSystemTime(new Date(RUN_NOW))
+    }
+  })
+
+  it('writes no mark on mail from this week', async () => {
+    await post('marisol-jwt', tagElm)
+    expect(lines().filter((l) => l.mailbox === 'mine').some((l) => l.history === true)).toBe(false)
+  })
 
   it('writes one grey line in the other party’s thread, tied to the job, and the untag takes it off', async () => {
     await post('marisol-jwt', tagElm)
@@ -818,7 +848,7 @@ describe('gmail-mine: tag and untag', () => {
     google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'personal' })
     google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-ana-1')!.labelIds.push('Label_7')
     const res = await post('marisol-jwt', tagElm)
-    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 1, tied: 1, files: 0, contactId: 'c-dale', unknownSender: null })
+    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 1, tied: 1, files: 0, contactId: 'c-dale', unknownSender: null, filed: 0 })
     expect(lines().some((l) => l.gmail_id === 'g-ana-1')).toBe(false)
     expect(db.rows('contacts').some((c) => c.name === 'Ana Ruiz')).toBe(false)
     expect(Object.keys(db.files).some((k) => k.includes('g-ana-1'))).toBe(false)

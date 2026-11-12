@@ -758,6 +758,8 @@ export function myMailLineRow(
     rfc_message_id: step.rfcMessageId,
     mail_user_id: plan.mailUserId,
     ...plan.jobColumns,
+    // Filed for the record (v2.7027): `email_write_line` keeps the mark, and `messages_move_state` opens nothing for it.
+    ...(step.history ? { history: true } : {}),
   }
 }
 
@@ -804,14 +806,23 @@ export interface MyMailNamed {
 
 const namedAs = (who: MyMailNamed): string => who.name.trim() || who.email.trim()
 
+/** What the grey line adds when every mail the tag wrote was filed for the record (v2.7027, punch list #324). */
+export const MY_MAIL_FILED_WORDS = 'This is old mail, filed for the record. Nothing went on Follow up.'
+
+/** Whether every mail a tag wrote was filed for the record: at least one line to write, and each of them old. */
+export function tagAllFiled(counts: Pick<MyMailTagPlan['counts'], 'lines' | 'filed'>): boolean {
+  return counts.lines > 0 && counts.filed === counts.lines
+}
+
 /**
  * The grey line's words: who tagged the conversation, and that later mail in it lands by itself. The name, else the
  * address. `who` is the person whose box the conversation is in. `seat` is the dev when the tag came through the dev
  * seat (`plan_mail_tag` → `apply_mail_tag`): the line then names the dev as the one who tagged, the person as the
  * mail's owner, and the seat as the way, so nobody reads the seat's work as the person's own press.
  */
-export function myMailTagEventWords(who: MyMailNamed, seat?: MyMailNamed | null): string {
-  const later = 'Later mail in it lands here by itself.'
+export function myMailTagEventWords(who: MyMailNamed, seat?: MyMailNamed | null, filed = false): string {
+  // Every mail the tag wrote was old (v2.7027, punch list #324): the line says so, and that nobody was asked.
+  const later = `${filed ? `${MY_MAIL_FILED_WORDS} ` : ''}Later mail in it lands here by itself.`
   if (!seat) return `${namedAs(who)} tagged this conversation from their mail. ${later}`
   const own = seat.email.trim() !== '' && seat.email.trim().toLowerCase() === who.email.trim().toLowerCase()
   return `${namedAs(seat)} tagged this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
@@ -831,13 +842,15 @@ export function myMailTagEventRow(input: {
   words?: string
   /** The dev whose seat the tag came through, when it did (`myMailTagEventWords`). */
   seat?: MyMailNamed | null
+  /** Every mail the tag wrote was filed for the record (`tagAllFiled`): the words say so. */
+  filed?: boolean
 }): Record<string, unknown> {
   return {
     contact_id: input.contactId,
     channel: 'event',
     direction: 'team',
     who_text: 'The app',
-    body: input.words?.trim() || myMailTagEventWords(input.who, input.seat),
+    body: input.words?.trim() || myMailTagEventWords(input.who, input.seat, input.filed === true),
     quo_id: myMailTagEventKey(input.tagRowId),
     ...input.jobColumns,
   }
@@ -1463,7 +1476,7 @@ export function tagPlanPreview(plan: MyMailTagPlan, emails: readonly EmailIn[], 
     const head = { gmailId: s.gmailId, at: e?.at ?? null, from: e?.from ? (e.from.name?.trim() ? `${e.from.name.trim()} <${e.from.address}>` : e.from.address) : '', subject: e?.subject ?? '' }
     if (s.kind === 'skip') return { ...head, kind: 'skip', why: MY_MAIL_SKIP_WORDS[s.why] }
     if (s.kind === 'tie') return { ...head, kind: 'tie', tie: s.tie, why: s.tie ? (s.onJob ? `a line on ${s.onJob} moves onto this job` : 'a line on the person is tied to this job') : s.onJob === plan.jobKey ? 'already on this job' : `the office’s tie on ${s.onJob ?? 'nothing'} stays` }
-    return { ...head, kind: 'write', files: s.files.length }
+    return { ...head, kind: 'write', files: s.files.length, lands: s.history ? 'record' : 'followUp' }
   })
   return { ok: true, plan: true, threadId: plan.threadId, account, job: plan.job, counts: plan.counts, mails, movingFrom }
 }

@@ -44,7 +44,9 @@ describe('a First look’s page as an entry of its own (punch list #319 PR 4)', 
   })
 
   it('the build makes it, and the service worker leaves it to the network', () => {
-    expect(read('vite.config.ts')).toMatch(/input: \{ main: resolve\(__dirname, 'index\.html'\), show: resolve\(__dirname, 'show\.html'\) \}/)
+    // The app's entry must be keyed `index`: its script is then `assets/index-<hash>.js`, which the deploy's own check greps for.
+    expect(read('vite.config.ts')).toMatch(/input: \{ index: resolve\(__dirname, 'index\.html'\), show: resolve\(__dirname, 'show\.html'\) \}/)
+    expect(read('.github/workflows/deploy.yml')).toContain('grep -q "assets/index-" dist/index.html')
     expect(read('src/sw.ts')).toContain('/^\\/show\\.html$/')
   })
 })
