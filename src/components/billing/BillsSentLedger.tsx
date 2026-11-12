@@ -3,17 +3,22 @@ import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  BILLS_SENT_GAP_LABEL,
   BILLS_SENT_ROUTE_CHIPS,
   billsSentAgainWords,
   billsSentCopyLabel,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
+  billsSentGapFilter,
+  billsSentGapHeading,
+  billsSentGaps,
   billsSentLines,
   billsSentMoney,
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
   type BillsSentRoute,
@@ -33,6 +38,10 @@ import { EmptyState } from '../EmptyState'
  * went and who pressed send, and opens the copy as it went out. A day's band carries the bills that first went that
  * day and their total. The list is read from the sent copies the app already keeps (`lib/billing/billsSent.ts`), so
  * it starts the day those began, and it says so.
+ *
+ * PR 2: a send that kept no copy is still a line and says what it lacks (an older email with no address, a bill
+ * entered from Housecall Pro with the day only, a text with the pay link). Above the days sits the strip of bills
+ * that were made and have no send on record, so a bill that never went is seen and not left off the list.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -69,6 +78,8 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   email: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
   printed: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
   statement: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
+  text: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
+  housecall_pro: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
@@ -101,9 +112,9 @@ function Tile({ label, sum, testId }: { label: string; sum: BillsSentSum; testId
 function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; onOpen: (line: BillsSentLine) => void }) {
   const colors = ROUTE_COLORS[line.route]
   const again = billsSentAgainWords(line)
-  const time = billsSentTime(line.atIso)
+  const time = line.dayOnly ? 'Day only' : billsSentTime(line.atIso)
   const span: CSSProperties = phone ? { gridColumn: '1 / -1', minWidth: 0 } : { gridColumn: '2 / -1', minWidth: 0 }
-  const kept = !!line.copy.copyPath
+  const kept = !!line.copy?.copyPath
   // The payer is on the line above: the name is said again only when the copy went to someone else, or names no address.
   const toName = line.toAddresses.length > 0 && line.toName === line.payer ? '' : line.toName
   return (
@@ -144,15 +155,85 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
         <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
         {line.by ? <span>by {line.by}</span> : null}
         {again ? <span>{again}</span> : null}
+        {line.delivery ? <span style={{ color: line.delivery === 'Delivered' ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 600 }}>{line.delivery}</span> : null}
         {line.paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>Paid since</span> : null}
         {kept ? (
           <button type="button" style={press} onClick={() => onOpen(line)} title="Open the copy as it went out">
             {line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
           </button>
-        ) : (
+        ) : line.copy ? (
           <span style={{ color: 'var(--text-amber-800)' }}>The copy was not kept. This line is the record.</span>
-        )}
+        ) : null}
       </div>
+    </div>
+  )
+}
+
+/** How many open gaps the strip shows before *Show all*. */
+const GAPS_SHOWN = 5
+
+const gapBox: CSSProperties = { border: '1px solid var(--border-amber, var(--border-strong))', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.55rem 0.7rem', fontSize: '0.8125rem', minWidth: 0 }
+const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.6rem', paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }
+
+function GapRow({ gap }: { gap: BillsSentGap }) {
+  return (
+    <div style={gapRow} data-testid="bills-sent-gap">
+      <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+        <b style={strong}>Bill</b>
+        {gap.jobWords ? (
+          <>
+            {' · '}
+            {gap.jobTo ? (
+              <Link to={gap.jobTo} style={jobLink}>
+                {gap.jobWords}
+              </Link>
+            ) : (
+              gap.jobWords
+            )}
+          </>
+        ) : null}
+        {gap.payer ? ` · ${gap.payer}` : ''}
+      </div>
+      <div style={money}>{gap.amount != null ? billsSentMoney(gap.amount) : ''}</div>
+      <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
+        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
+ * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
+ */
+function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean }) {
+  const [all, setAll] = useState(false)
+  const [showPaid, setShowPaid] = useState(false)
+  if (open.length === 0 && paid.length === 0) return null
+  const shown = all || expanded ? open : open.slice(0, GAPS_SHOWN)
+  return (
+    <div style={gapBox} data-testid="bills-sent-gaps">
+      <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
+      {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
+      {shown.map((g) => (
+        <GapRow key={g.billId} gap={g} />
+      ))}
+      {open.length > shown.length ? (
+        <div style={{ marginTop: '0.4rem' }}>
+          <button type="button" style={press} onClick={() => setAll(true)}>
+            Show all {open.length}
+          </button>
+        </div>
+      ) : null}
+      {paid.length > 0 ? (
+        <div style={{ marginTop: '0.4rem', color: 'var(--text-700)' }}>
+          {paid.length === 1 ? '1 more bill was paid with no send on record.' : `${paid.length} more bills were paid with no send on record.`}{' '}
+          <button type="button" style={press} onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid}>
+            {showPaid ? 'Hide them' : 'Show them'}
+          </button>
+        </div>
+      ) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} />) : null}
     </div>
   )
 }
@@ -160,7 +241,7 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
-  const [route, setRoute] = useState<BillsSentRoute | 'all'>('all')
+  const [route, setRoute] = useState<BillsSentRoute | 'all' | 'gap'>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
   const [data, setData] = useState<BillsSentInput | null>(null)
@@ -194,6 +275,10 @@ export function BillsSentLedger() {
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])
+  const gaps = useMemo(() => (data ? billsSentGaps(data, lines) : { open: [], paid: [] }), [data, lines])
+  const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
+  // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
+  const stripVisible = (route === 'all' || route === 'gap') && gapsShown.open.length + gapsShown.paid.length > 0
   const narrowed = route !== 'all' || typed.trim() !== ''
   const clear = () => {
     setTyped('')
@@ -212,6 +297,12 @@ export function BillsSentLedger() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
+        {gaps.open.length > 0 ? (
+          <div style={{ ...tile, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
+            <span style={{ ...tileSmall, color: 'var(--text-amber-800)' }}>{BILLS_SENT_GAP_LABEL}</span>
+            <b style={{ color: 'var(--text-amber-800)', fontSize: '0.9375rem' }}>{gaps.open.length}</b>
+          </div>
+        ) : null}
       </div>
       <input type="search" value={typed} onChange={(ev) => setTyped(ev.target.value)} placeholder="Find a bill: a job, a customer, an address, a bill number" aria-label="Find a bill" style={input} />
       <div role="group" aria-label="How it went" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
@@ -222,9 +313,10 @@ export function BillsSentLedger() {
         ))}
       </div>
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
+      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} /> : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
-      ) : data != null && shown.length === 0 ? (
+      ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
         <div data-testid="bills-sent-empty">
           {narrowed ? (
             <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sends', query: typed.trim() }), { onPress: clear })} />
@@ -251,7 +343,7 @@ export function BillsSentLedger() {
           })}
         </div>
       )}
-      {data != null && data.copies.length >= limit ? (
+      {data != null && [data.copies.length, data.stripeRows?.length ?? 0, data.stamps?.length ?? 0].some((n) => n >= limit) ? (
         <div>
           <button type="button" onClick={() => setLimit((n) => n + STEP)} disabled={reading} style={{ ...chipStyle(false), borderRadius: 6 }}>
             {reading ? 'Reading…' : 'Show older sends'}
@@ -260,7 +352,7 @@ export function BillsSentLedger() {
       ) : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
-          All times are Central. A day’s total counts each bill once, on the day it first went. This list starts Oct 5, 2026, when the app began keeping a copy of each send.
+          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then.
         </p>
       ) : null}
     </section>
