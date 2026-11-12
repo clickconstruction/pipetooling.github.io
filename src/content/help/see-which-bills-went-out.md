@@ -101,7 +101,7 @@ Press {{button:outline|Download CSV}} to save what the list shows as a spreadshe
 
 The file has a column that says whether a row is in its day's total. Add only those rows to get the same totals as the screen.
 
-The bills with no send on record come along in both. They are last in the file and first on the printed page.
+The bills with no send on record come along in both. Those bills are last in the file and first on the printed page.
 
 ## Bills with no send on record
 
