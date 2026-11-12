@@ -86,6 +86,9 @@ export type DemandLetterRow = { job_id: string; sent_at: string | null; sent_met
 export type LienFilingRow = { job_id: string; kind: string | null; filed_at: string | null; served_at: string | null; sends: unknown; voided_at: string | null }
 export type LienReleaseRow = { job_id: string; sent_to_customer_at: string | null; signed_at: string | null; voided_at: string | null }
 /** v2.5934 (punch list #185): a rating ask to this customer, open or answered (`customer_ratings`). */
+/** A First look as the strip reads it (punch list #319): when it was asked, opened and sent. */
+export type FirstLookStepRow = { id: string; made_at: string | null; opened_at: string | null; sent_at: string | null }
+
 export type RatingRow = { id: string; job_id: string | null; asked_at: string | null; opened_at: string | null; answered_at: string | null; score: number | null; google_pressed_at: string | null; called_at: string | null }
 
 export type CustomerRows = {
@@ -111,6 +114,8 @@ export type CustomerRows = {
   lienReleases: LienReleaseRow[]
   /** v2.5934: their rating asks; absent on a loader from before them. */
   ratings?: RatingRow[]
+  /** Punch list #319: the looks asked of them, for the First look steps; absent on a loader from before them. */
+  firstLooks?: FirstLookStepRow[]
 }
 
 export type SubRows = {
@@ -384,6 +389,21 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   steps['pay-code'] = codeBill
     ? { state: openStripe.length ? 'sent' : 'paid', headline: openStripe.length ? `The code opens the bill · unpaid ${daysBetween(codeBill.sent_to_customer_at!, now)} days` : 'The code says Paid', detail: openStripe.length ? plural(openStripe.length, 'open bill') : `${paidStripe.length} ${paidStripe.length === 1 ? 'bill' : 'bills'} paid`, at: codeBill.sent_to_customer_at, link: payLinkUrl(codeBill.id), action: null }
     : never(rows.invoices.length ? 'No Stripe bill' : 'Nothing billed yet')
+  // Punch list #319: the newest First look asked of them and what came of it. The door is their thread, where the ask is made.
+  const looks = rows.firstLooks ?? []
+  const look = latestBy(looks, (l) => l.made_at)
+  const askDoor = { label: 'Open Messages', to: '/messages' }
+  steps['first-look-text'] = look
+    ? { state: 'sent', headline: `Asked ${dayWord(look.made_at, now)}`, detail: plural(looks.length, 'ask'), at: look.made_at, link: null, action: null }
+    : never('No photos asked for yet', askDoor)
+  steps['first-look-page'] = look?.sent_at
+    ? { state: 'signed', headline: `Sent photos ${dayWord(look.sent_at, now)}`, detail: plural(looks.length, 'ask'), at: look.sent_at, link: null, action: askDoor }
+    : look?.opened_at
+      ? { state: 'opened', headline: `Opened ${dayWord(look.opened_at, now)}, nothing sent`, detail: plural(looks.length, 'ask'), at: look.opened_at, link: null, action: askDoor }
+      : look
+        ? { state: 'sent', headline: `Asked ${dayWord(look.made_at, now)}, not opened`, detail: plural(looks.length, 'ask'), at: look.made_at, link: null, action: askDoor }
+        : never('No photos asked for yet', askDoor)
+  steps['first-look-thanks'] = look?.sent_at ? { state: 'signed', headline: `Sent ${dayWord(look.sent_at, now)}`, at: look.sent_at, link: null, action: null } : na('After they send')
   // v2.5934 (punch list #185): the newest rating ask to them and what came of it (`customer_ratings`, read by job and by
   // their contacts). A low answer that nobody called yet is the office's door to the job.
   const ratings = rows.ratings ?? []

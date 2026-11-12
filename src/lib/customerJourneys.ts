@@ -25,9 +25,9 @@ export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'cont
 export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
-export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating'
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating' | 'text-first-look'
 
-export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating']
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating', 'text-first-look']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -65,6 +65,9 @@ export const RATE_SAMPLE_PATH = `/rate?t=${SAMPLE_TOKEN}`
 /** The review ask's answered pages (v2.5934, punch list #185): five stars with the Google ask, and two stars with the better question and the call. */
 export const RATE_SAMPLE_DONE_PATH = `/rate?t=${SAMPLE_TOKEN_DONE}`
 export const RATE_SAMPLE_LOW_PATH = `/rate?t=${SAMPLE_TOKEN_LOW}`
+/** First look (punch list #319): the Show us the problem page before anything is added, and its thank-you. The sample opens no look and keeps no file. */
+export const SHOW_US_SAMPLE_PATH = `/show/${SAMPLE_TOKEN}`
+export const SHOW_US_SAMPLE_DONE_PATH = `/show/${SAMPLE_TOKEN_DONE}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -100,6 +103,36 @@ export function customerJourneys(): Journey[] {
       title: 'Homeowner',
       subtitle: 'Sam Sample · an estimate, then a job, then a bill',
       steps: [
+        {
+          id: 'first-look-text',
+          label: 'Ask for photos, by text',
+          sublabel: 'Messages → the thread’s reply box → /show, or Ask for photos over the box',
+          when: 'The first call or text, before a truck rolls.',
+          customerCan: 'Open the link, or reply to the text with photos. Either way they land on the same thread.',
+          guide: 'ask-a-customer-to-show-you-the-problem',
+          reflects: ['The sender’s first name', 'Our company name and the company number', 'A link made for this one person, good for 7 days'],
+          render: { kind: 'text', text: 'text-first-look' },
+        },
+        {
+          id: 'first-look-page',
+          label: 'Show us the problem',
+          sublabel: 'the link in the ask · no sign-in',
+          when: 'Minutes after the ask.',
+          customerCan: 'Take a photo or a video, or choose some from the phone, say where the problem is and what is going on, and press Send. With no signal the files wait on the phone and go when it is back.',
+          guide: 'ask-a-customer-to-show-you-the-problem',
+          reflects: ['Who asked, by first name', 'The company’s phone number', 'Nothing about the customer: no name, no address, no price'],
+          render: { kind: 'page', path: SHOW_US_SAMPLE_PATH },
+        },
+        {
+          id: 'first-look-thanks',
+          label: 'Show us the problem: sent',
+          sublabel: 'the same page after Send',
+          when: 'The moment after Send.',
+          customerCan: 'Read what happens next, add more photos or a video, or close the page.',
+          guide: 'ask-a-customer-to-show-you-the-problem',
+          reflects: ['The office hours on Settings → Phone and texts, which set when we say we look', 'Who asked, by first name', 'The company’s phone number'],
+          render: { kind: 'page', path: SHOW_US_SAMPLE_DONE_PATH },
+        },
         {
           id: 'estimate-email',
           label: 'Estimate email',

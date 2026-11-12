@@ -17,6 +17,8 @@ export const FIRST_LOOK_CODE_RE = /^[23456789abcdefghjkmnpqrstuvwxyz]{10}$/
 /** The code as the path carries it: trimmed and lower-cased, or null when it is not ten letters of the alphabet. */
 export function firstLookCode(raw: string | null | undefined): string | null {
   const code = (raw ?? '').trim().toLowerCase()
+  // The two sample words (What customers see) pass as codes: they open the sample and never a look.
+  if (code === 'sample' || code === 'sample-done') return code
   return FIRST_LOOK_CODE_RE.test(code) ? code : null
 }
 
@@ -347,6 +349,8 @@ export type FirstLookPagePayload = {
   look: { askedBy: string; photos: number; videos: number; sentCount: number }
   caps: { photos: number; videos: number; photoBytes: number; videoBytes: number }
   office: { phone: string; open: boolean; closesWords: string | null; opensWords: string | null }
+  /** The thank-you to open on: the sample's done state alone (What customers see). A real look never carries it. */
+  thanks?: FirstLookThanks | null
 }
 
 export type FirstLookPageView =
@@ -386,6 +390,7 @@ export function firstLookPageView(status: number, body: unknown): FirstLookPageV
         closesWords: str(b.office.closesWords) || null,
         opensWords: str(b.office.opensWords) || null,
       },
+      thanks: isRecord(b.thanks) && typeof b.thanks.got === 'string' && Array.isArray(b.thanks.steps) ? { got: b.thanks.got, steps: b.thanks.steps.filter((x): x is string => typeof x === 'string') } : null,
     },
   }
 }
@@ -463,4 +468,36 @@ export function firstLookDeskStanding(row: Pick<FirstLookDeskRow, 'state' | 'ope
   if (row.sentAt) return `Sent ${count || 'nothing'}`
   if (count) return `${count} in, not sent yet`
   return row.openedAt ? 'Opened, nothing in yet' : 'Not opened yet'
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The sample (Settings → What customers see): the page as a customer meets it, with made-up people and the office's
+// own phone and hours. `/show/sample` is the page before anything is added and `/show/sample-done` the thank-you.
+// Neither opens a look, keeps a file or writes a row.
+
+export const FIRST_LOOK_SAMPLE_CODE = 'sample'
+export const FIRST_LOOK_SAMPLE_DONE_CODE = 'sample-done'
+
+/** Which sample a code asks for, or null for a real code. */
+export function firstLookSampleOf(raw: string | null | undefined): 'open' | 'done' | null {
+  const code = (raw ?? '').trim().toLowerCase()
+  return code === FIRST_LOOK_SAMPLE_CODE ? 'open' : code === FIRST_LOOK_SAMPLE_DONE_CODE ? 'done' : null
+}
+
+/** What the sample page answers a file with: it reads as a refusal on the page, so nothing looks sent. */
+export const FIRST_LOOK_SAMPLE_WORDS = 'This is a sample of the page. Nothing is sent from it.'
+
+/** Who asked, on the sample: the made-up office name the mock-ups use. */
+export const FIRST_LOOK_SAMPLE_ASKED_BY = 'Rosa'
+
+/** The sample's payload: nothing in yet, or three photos and a video sent with the thank-you the office's hours give. */
+export function firstLookSamplePayload(which: 'open' | 'done', office: FirstLookPagePayload['office']): FirstLookPagePayload {
+  const done = which === 'done'
+  return {
+    ok: true,
+    look: { askedBy: FIRST_LOOK_SAMPLE_ASKED_BY, photos: done ? 3 : 0, videos: done ? 1 : 0, sentCount: done ? 1 : 0 },
+    caps: { photos: FIRST_LOOK_CAPS.photos, videos: FIRST_LOOK_CAPS.videos, photoBytes: FIRST_LOOK_CAPS.photoBytes, videoBytes: FIRST_LOOK_CAPS.videoBytes },
+    office,
+    thanks: done ? firstLookThanks({ askedBy: FIRST_LOOK_SAMPLE_ASKED_BY, photos: 3, videos: 1, officeOpen: office.open, closesWords: office.closesWords, opensWords: office.opensWords }) : null,
+  }
 }
