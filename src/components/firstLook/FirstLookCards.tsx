@@ -6,28 +6,21 @@
  * link is out, and stamps the look as looked at the first time the office sees files on it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
-import { useOptionalAuth } from '../../hooks/useAuth'
 import type { Contact } from '../../lib/contacts/kernel'
 import { SHOW_ASK_WORDS } from '../../lib/firstLook/ask'
 import { askForPhotos } from '../../lib/firstLook/askBus'
 import { LOOK_CARD_WORDS, lookAskedWords, lookCards, lookStanding, lookWordsFor, type LookCard, type ThreadLook, type ThreadLookFile } from '../../lib/firstLook/card'
 import { firstLookState } from '../../lib/firstLook/look'
 import { supabaseFirstLookThreadIo, type FirstLookThreadIo } from '../../lib/firstLook/threadIo'
-import { pressProblem } from '../../lib/followUp/followUpIo'
-import { jobPrefillFrom, LEAD_DOOR_WORDS, leadFacts, newestInboundWords } from '../../lib/messages/leadDoors'
-import { supabaseLeadDoorsIo, type LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
+import { LEAD_DOOR_WORDS, newestInboundWords } from '../../lib/messages/leadDoors'
+import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useOpenThread } from '../gc/messages/openThread'
-import { useMessagesReread } from '../gc/messages/useMessagesReread'
-import { useThreadWindow } from '../gc/messages/useThreadWindow'
-import { useLeadDoors } from '../messages/useLeadDoors'
+import { useLookDoors } from './useLookDoors'
 
 const DEFAULT_IO = supabaseFirstLookThreadIo()
-const DEFAULT_DOORS_IO = supabaseLeadDoorsIo()
 
 /** How often the card reads again while a link is out, so files show without a press. */
 export const LOOK_CARD_REREAD_MS = 30_000
@@ -73,44 +66,19 @@ function LookFile({ kind, url, label, texted }: { kind: 'photo' | 'video'; url: 
   )
 }
 
-function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { contact: Contact; cardOf: LookCard; urls: Readonly<Record<string, string>>; nowIso: string; io: FirstLookThreadIo; doorsIo: LeadDoorsIo; onChanged: () => void }) {
+function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { contact: Contact; cardOf: LookCard; urls: Readonly<Record<string, string>>; nowIso: string; io: FirstLookThreadIo; doorsIo?: LeadDoorsIo; onChanged: () => void }) {
   const open = useOpenThread()
   const toasts = useOptionalToastContext()
-  const auth = useOptionalAuth()
-  const jobForm = useJobFormModal()
-  const navigate = useNavigate()
-  const reread = useMessagesReread()
-  const { closeThread } = useThreadWindow()
-  const lead = useLeadDoors(doorsIo)
+  const doors = useLookDoors(contact, doorsIo)
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const { look } = cardOf
   const words = lookWordsFor(look, newestInboundWords(open?.lines ?? [], contact.id))
   const say = (text: string, tone: 'success' | 'error' | 'info') => toasts?.showToast(text, tone)
-  const isCustomer = contact.kind === 'customer' && Boolean(contact.customerId)
-  const hasDoors = isCustomer || contact.kind === 'lead'
-  const pressing = busy !== null || lead.pressing !== null
-
-  const book = async () => {
-    if (!isCustomer) return lead.book({ contactId: contact.id, contact, words })
-    if (jobForm) jobForm.openNewJob({ prefillCustomer: jobPrefillFrom(leadFacts(contact, words)), onSaved: reread })
-    else say(LEAD_DOOR_WORDS.noJobForm, 'info')
-  }
-  const startEstimate = async () => {
-    if (!isCustomer || !contact.customerId) return lead.startEstimate({ contactId: contact.id, contact, words })
-    setBusy('estimate')
-    try {
-      const userId = auth?.user?.id
-      if (!userId) throw new Error(LEAD_DOOR_WORDS.noSignIn)
-      const { estimateNumber } = await doorsIo.startEstimate(contact.customerId, { userId, role: auth?.role ?? null })
-      closeThread()
-      navigate(`/estimates/${estimateNumber}`, { state: { freshEstimateDraft: true } })
-    } catch (e) {
-      say(pressProblem(e), 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
+  const hasDoors = doors.has
+  const pressing = busy !== null || doors.pressing
+  const book = () => doors.book(words)
+  const startEstimate = () => doors.startEstimate(words)
   const close = async () => {
     setBusy('close')
     try {
@@ -193,7 +161,7 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
   )
 }
 
-export function FirstLookCards({ contact, io = DEFAULT_IO, doorsIo = DEFAULT_DOORS_IO }: { contact: Contact; io?: FirstLookThreadIo; doorsIo?: LeadDoorsIo }) {
+export function FirstLookCards({ contact, io = DEFAULT_IO, doorsIo }: { contact: Contact; io?: FirstLookThreadIo; doorsIo?: LeadDoorsIo }) {
   const open = useOpenThread()
   const lines = open?.lines
   const lineCount = lines?.length ?? 0
