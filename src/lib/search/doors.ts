@@ -10,6 +10,7 @@
  * whole index in node and hold it against `src/App.tsx`, the Settings groups and anchors, and the route guard.
  */
 import type { UserRole } from '../../hooks/useAuth'
+import { BILLS_SENT_PATH, canOpenBillsSent } from '../billing/billsSent'
 import { isAssistantLike, isSubcontractorLikeRole } from '../subcontractorLikeRole'
 import { isPathAllowedForRole } from '../layoutRouteAccess'
 import { canAccessBanking } from '../bankingAccess'
@@ -278,6 +279,8 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'On site', where: 'Tally · On site', words: ['on site', 'materials on site', 'my boxes', 'cage', 'box', 'put away', 'unsorted', 'count this box', 'count a box', "can't find"], to: '/tally?tab=on-site', gate: notFarm(notField) }),
   p({ label: 'Banking', where: 'Banking', words: ['bank ledger', 'card sorting', 'accounting review', 'bank', 'mercury', 'banking'], to: '/banking', gate: (v) => canAccessBanking(v.role) }),
   p({ label: 'Accounts receivable', where: 'AR', words: ['who owes us', 'owed', 'ar', 'receivables', 'accounts receivable', 'money owed'], to: '/accounts-receivable', gate: office }),
+  // v2.7049: every bill that left, to whom and the minute it went (punch list #327).
+  p({ label: 'Bills sent', where: 'Bills sent', words: ['bills sent', 'sent bills', 'bill ledger', 'which bills went out', 'when was the bill sent', 'who got the bill', 'invoice sent', 'went out'], to: BILLS_SENT_PATH, gate: (v) => canOpenBillsSent(v.role) }),
   // v2.6836: every arrangement where work is paid with something other than money (punch list #301).
   p({ label: 'In kind', where: 'AR', words: ['in kind', 'paid in kind', 'trade', 'barter', 'rent credit', 'credit instead of money', 'arrangement'], to: '/in-kind', gate: office }),
   p({ label: 'Prospects', where: 'Prospects', words: ['prospects', 'new builders', 'new builder pipeline', 'hiring', 'candidates', 'hiring pipeline'], to: '/prospects', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),
