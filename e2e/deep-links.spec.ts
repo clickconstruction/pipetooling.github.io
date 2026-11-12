@@ -25,13 +25,15 @@ test('?openBankPayments=1 opens the Accounts Receivable modal (v2.832/v2.838 reg
 // movement" to "Stage moves this week" (the emailed report keeps the old name).
 test('?stagesWeekly=1 opens the Stage moves this week modal (v2.1436)', async ({ page }) => {
   await page.goto('/jobs?tab=stages&stagesWeekly=1')
-  await expect(page.getByRole('heading', { name: 'Stage moves this week' })).toBeVisible()
+  // 30 s: the window opens once the Stages board has loaded, and on prod that cold load can pass 15 s.
+  await expect(page.getByRole('heading', { name: 'Stage moves this week' })).toBeVisible({ timeout: 30_000 })
   await expect.poll(() => new URL(page.url()).searchParams.get('stagesWeekly')).toBeNull()
 })
 
 test('?stagesMoney=1 opens the Weekly money movement modal (v2.1443)', async ({ page }) => {
   await page.goto('/jobs?tab=stages&stagesMoney=1')
-  await expect(page.getByRole('heading', { name: 'Weekly money movement' })).toBeVisible()
+  // 30 s: the window opens once the Stages board has loaded, and on prod that cold load can pass 15 s.
+  await expect(page.getByRole('heading', { name: 'Weekly money movement' })).toBeVisible({ timeout: 30_000 })
   await expect.poll(() => new URL(page.url()).searchParams.get('stagesMoney')).toBeNull()
 })
 

@@ -10,7 +10,7 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import type { Contact } from '../../lib/contacts/kernel'
 import { SHOW_ASK_WORDS } from '../../lib/firstLook/ask'
 import { askForPhotos } from '../../lib/firstLook/askBus'
-import { LOOK_CARD_WORDS, lookAskedWords, lookCards, lookStanding, lookWordsFor, type LookCard, type ThreadLook, type ThreadLookFile } from '../../lib/firstLook/card'
+import { LOOK_CARD_WORDS, lookAskedWords, lookCardDriveLine, lookCards, lookStanding, lookWordsFor, type LookCard, type ThreadLook, type ThreadLookFile } from '../../lib/firstLook/card'
 import { firstLookState } from '../../lib/firstLook/look'
 import { supabaseFirstLookThreadIo, type FirstLookThreadIo } from '../../lib/firstLook/threadIo'
 import { LEAD_DOOR_WORDS, newestInboundWords } from '../../lib/messages/leadDoors'
@@ -76,6 +76,7 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
   const words = lookWordsFor(look, newestInboundWords(open?.lines ?? [], contact.id))
   const say = (text: string, tone: 'success' | 'error' | 'info') => toasts?.showToast(text, tone)
   const hasDoors = doors.has
+  const drive = lookCardDriveLine(cardOf, contact.kind === 'customer' && Boolean(contact.customerId))
   const pressing = busy !== null || doors.pressing
   const book = () => doors.book(words)
   const startEstimate = () => doors.startEstimate(words)
@@ -113,6 +114,17 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
           {cardOf.texted.map((f) => (
             <LookFile key={f.id} kind={f.kind} url={urls[`text:${f.id}`]} label={label(f.kind)} texted />
           ))}
+        </div>
+      )}
+      {drive && (
+        <div data-look-drive style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {drive.href ? (
+            <a href={drive.href} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+              {drive.words}
+            </a>
+          ) : (
+            drive.words
+          )}
         </div>
       )}
       {(look.words?.trim() || look.place?.trim()) && (

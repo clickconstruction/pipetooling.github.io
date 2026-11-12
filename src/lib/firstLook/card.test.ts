@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lookAskedWords, lookCards, lookCounts, lookStanding, lookWordsFor, textedKind, textedSince, type ThreadLook, type ThreadLookFile } from './card'
+import { lookAskedWords, lookCardDriveLine, lookCards, lookCounts, lookStanding, lookWordsFor, textedKind, textedSince, type ThreadLook, type ThreadLookFile } from './card'
 
 const look = (over: Partial<ThreadLook> = {}): ThreadLook => ({
   id: 'L1',
@@ -103,5 +103,17 @@ describe('a First look card on a thread (punch list #319 PR 1)', () => {
     expect(lookWordsFor(look({ words: 'It drips' }), 'older text')).toBe('It drips')
     expect(lookWordsFor(look(), 'Can you come Thursday?')).toBe('Can you come Thursday?')
     expect(lookWordsFor(look(), null)).toBeNull()
+  })
+
+  it('the Drive line counts the page’s own files and names the look’s folder', () => {
+    const none = lookCards([look()], [], [], 'dana', NOW)[0]!
+    expect(lookCardDriveLine(none, true)).toBeNull()
+    const waiting = lookCards([look()], [file()], [], 'dana', NOW)[0]!
+    expect(lookCardDriveLine(waiting, false)).toEqual({ words: 'Files to Drive once this number has a customer.', href: null })
+    expect(lookCardDriveLine(waiting, true)).toEqual({ words: 'Files to Drive within a few minutes of their Send.', href: null })
+    const filed = lookCards([look({ drive_folder_id: 'FOLDER' })], [file({ drive_file_id: 'D1' }), file({ id: 'F2', storage_path: 'L1/F2.jpg' })], [], 'dana', NOW)[0]!
+    expect(lookCardDriveLine(filed, true)).toEqual({ words: '1 of 2 in Drive so far.', href: 'https://drive.google.com/drive/folders/FOLDER' })
+    const held = lookCards([look()], [file({ fail_why: 'The jobs root is not set yet.' })], [], 'dana', NOW)[0]!
+    expect(lookCardDriveLine(held, true)?.words).toBe('Not in Drive yet: The jobs root is not set yet.')
   })
 })

@@ -11,7 +11,7 @@ The **biohazard remediation fee** is the charge for that cleanup. It is document
 
 ## Creating the fee
 
-On **Jobs → Pipeline**, every job card has a red ☣ button. It sits next to the AIA G702 button. It opens a four-step wizard:
+On **Jobs → Pipeline**, a job in **Waiting**, **Working** or **Ready to Bill** has an orange ☣ button. It sits under the row's small icons, above **Send back**. On a phone it is the **Hazmat fee** line in the job's ⋯ sheet. Press and hold the row to open the sheet. A job in **Billed Awaiting Payment**, **Collections** or **Paid in Full** has no ☣ button. See [When the job is already billed](#when-the-job-is-already-billed). The button opens a four-step wizard:
 
 1. **Incident**: when it happened, what happened, who was exposed, and the stage of work. The stage is optional.
 2. **Evidence**: at least one **photo link** and at least one **technician testimonial** in the tech's own words. Paste URLs for the photo links. The job's customer-pictures folder works well. Both are required. The fee won't generate without them.
@@ -21,6 +21,21 @@ On **Jobs → Pipeline**, every job card has a red ☣ button. It sits next to t
 :::example what generating does
 Generating **adds the fee to the job's main bill** — a $1,380 billing line becomes $1,880 on the spot — and saves the incident record with all the evidence. When the bill goes out (Stripe or Physical Invoice), the fee appears as its **own labeled line item** ("Biohazard remediation fee — incident MM/DD/YYYY") so it never blends into the work lines. If the job has no open main bill (already billed, or nothing ready yet), no separate bill is created — the fee simply joins the **Job Total** (the rider shows an **In job total** tag on Edit Job) and rides on the next bill you send, where it appears as its own labeled line.
 :::
+
+## When the job is already billed
+
+Sometimes an exposure is found after the bill went out. The ☣ button is not on a billed row.
+
+:::steps
+1. Find the job in **Billed Awaiting Payment**.
+2. Press {{button:outline|Send back}}. The job returns to **Ready to Bill**.
+3. Press the ☣ button on its row there and make the fee.
+4. Bill the job again. The fee rides on that bill as its own line.
+:::
+
+A job in **Collections** takes one more press first. Press {{button:outline|Send back to Billed}}, then follow the steps above.
+
+A fee already on a billed job is not lost. Its notice, its PDF and its email presses stay in **Edit Job → ① Line Items**.
 
 ## The printable notice
 
@@ -53,7 +68,7 @@ The fee may belong to a different payer than the job's customer. Then click {{bu
 
 ## Spotting jobs that have a fee
 
-On **Jobs → Pipeline**, the ☣ button wears a **bright green box** on a job with a live hazmat fee. Hover it to confirm. Clicking still opens the wizard if the job needs another fee. Voided fees don't count.
+On **Jobs → Pipeline**, the ☣ button wears a **bright green box** on a job with a live hazmat fee. Hover it to confirm. Clicking still opens the wizard if the job needs another fee. Voided fees don't count. A billed row has no ☣ button. Its fee shows as a red rider line in **Edit Job → ① Line Items**.
 
 ## Sending the notice email after the fact
 

@@ -122,7 +122,8 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     fireEvent.change(county, { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     html = openPrintMock.mock.calls[2]![0]
-    expect(html).toContain('where signed')
+    expect(html).not.toContain('where signed')
+    expect(paperOf(html)).toContain('<strong>COUNTY OF ___________</strong></p>')
     expect(html).toContain('COUNTY OF, at the top.')
   })
 

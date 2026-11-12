@@ -142,7 +142,8 @@ describe('C · a guide copy of the paper', () => {
     const marked = lienHelpMarkPaper(paperHtml)
     expect(marked.marks).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     expect(marked.html.replace(/<span class="lien-help-num">\d<\/span>/g, '')).toBe(paperHtml)
-    expect(marked.html).toContain('(where signed)</span><span class="lien-help-num">1</span>')
+    expect(marked.html).toContain('<strong>COUNTY OF ___________</strong><span class="lien-help-num">1</span>')
+    expect(marked.html).not.toContain('where signed')
     expect(marked.html).toContain('the original contractor.')
   })
   it('a job contracted with the owner names no months and no notices, so it gets no mark 8', () => {

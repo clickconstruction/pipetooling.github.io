@@ -1,7 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
-import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { findOrCreateFolder, googleAccessToken, putResumablePiece, resumableStatus, startResumableUpload, uploadBytes } from '../_shared/driveUpload.ts'
+import { lookFolderOrWhy, lookTree, type LookForFolder, type LookTree } from '../_shared/driveLookFolder.ts'
+import { DRIVE_WHOLE_MAX_BYTES, lookCountsAsSent, lookFileDriveName, lookFileDue } from '../_shared/firstLookDrive.ts'
+import { copyInPieces } from '../_shared/driveCopyInPieces.ts'
+import { firstLookSentLine } from '../_shared/firstLook.ts'
 import { driveFileState, folderFiles, freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
 import { REFILE_ASK_REFUSAL, REFILE_BUDGET_MS, REFILE_SWEEP_BATCH, dueRowsByJob, mayAskRefile, nextFreeName, refileAskOf, refileResult, refileRowNeedsClearing, refileRowPatch, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
@@ -43,7 +47,8 @@ import {
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
  *     checklists: { saved, failed }, jobPhotos: { saved, failed }, machines: { saved, failed }, records: { saved, failed },
- *     taskPhotos: { saved, failed }, tickets: { saved, failed }, bidPhotos: { saved, failed }, boxRefiles: { saved, failed } }
+ *     taskPhotos: { saved, failed }, tickets: { saved, failed }, bidPhotos: { saved, failed }, boxRefiles: { saved, failed },
+ *     looks: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -1181,6 +1186,250 @@ async function sweepBidPhotos(admin: SupabaseClient): Promise<{ saved: number; f
   return { saved, failed }
 }
 
+/* ------------------------------------------------------------------ a twelfth source: a First look's files */
+
+const LOOK_FILE_BATCH = 24
+const LOOK_BUDGET_MS = 40_000
+const LOOK_FILES_BUCKET = 'first-look-files'
+const LOOK_TEXTED_DAYS = 14
+const LOOK_TEXTED_LOOKS = 20
+
+type LookRow = LookForFolder & { sent_at: string | null; sent_count: number; words: string | null }
+type LookFileRow = {
+  id: string
+  look_id: string
+  kind: 'photo' | 'video'
+  mime: string
+  storage_path: string
+  bytes: number | null
+  finished_at: string | null
+  drive_upload_uri: string | null
+  drive_upload_offset: number | null
+  first_looks: LookRow
+}
+
+/**
+ * One file from the app's storage into a Drive folder. A file of 8 MiB or less goes in one request, as every photo
+ * does. A bigger one, a video, goes in pieces read from storage one range at a time, so the function never holds more
+ * than a piece; `resume` keeps Drive's address and how far it got, and past the deadline the copy stops where it is
+ * and answers `paused` for the next run to pick up.
+ */
+async function copyToDrive(
+  admin: SupabaseClient,
+  google: string,
+  src: { bucket: string; path: string; bytes: number | null; mime: string },
+  into: string,
+  name: string,
+  resume: { uri: string | null; save: (uri: string | null, offset: number | null) => Promise<void> } | null,
+  deadline: number,
+): Promise<{ id: string } | { paused: true }> {
+  const total = Number(src.bytes ?? 0)
+  if (!(total > DRIVE_WHOLE_MAX_BYTES)) {
+    const { data: blob, error } = await admin.storage.from(src.bucket).download(src.path)
+    if (error || !blob) throw new Error('Our copy of that file did not read.')
+    return uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, src.mime)
+  }
+  const { data: signed, error: signErr } = await admin.storage.from(src.bucket).createSignedUrl(src.path, 900)
+  if (signErr || !signed?.signedUrl) throw new Error('Our copy of that file did not read.')
+  return copyInPieces(
+    total,
+    resume?.uri ?? null,
+    {
+      start: () => startResumableUpload(google, into, name, src.mime, total),
+      status: (uri) => resumableStatus(google, uri, total),
+      put: (uri, bytes, contentRange) => putResumablePiece(google, uri, bytes, contentRange),
+      read: async (from, to) => {
+        const got = await fetch(signed.signedUrl, { headers: { Range: `bytes=${from}-${to}` } })
+        if (!got.ok) throw new Error('Our copy of that file did not read.')
+        return new Uint8Array(await got.arrayBuffer())
+      },
+      save: async (uri, offset) => {
+        await resume?.save(uri, offset)
+      },
+    },
+    deadline,
+  )
+}
+
+/** A name nobody in the folder holds: *Photo 1.jpg*, then *Photo 2.jpg*, in the order the files reach Drive. */
+function lookFreeName(google: string, into: string, kind: 'photo' | 'video', mime: string): Promise<string> {
+  return freeName(
+    google,
+    into,
+    (taken) => {
+      let n = 1
+      let candidate = lookFileDriveName(kind, n, mime)
+      while (taken.has(candidate) && n < 60) candidate = lookFileDriveName(kind, ++n, mime)
+      return candidate
+    },
+    60,
+  )
+}
+
+/**
+ * First look (punch list #319 PR 2): the files a customer sent through a look's link, and the pictures they texted in
+ * since the ask, filed in Drive under the customer's **Customer supplied photos**, a folder a look
+ * (`driveLookFolder.ts`). Up to twenty-four `first_look_files` rows that are finished, not removed and not in Drive,
+ * the ones not tried lately first. A file is due once its look was sent, or half an hour after it finished with no
+ * Send; a look whose newest file is that old is stamped sent here, with the thread's line the Send would have written.
+ * A photo goes in one request and a video in pieces, its place kept on the row. A caller who is not a customer yet has
+ * no folder: the reason is written as fail_why and the row waits at the back of the line. The app's own copy stays,
+ * since the thread, the estimate and a tech draw from it.
+ */
+async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const nowMs = Date.now()
+  const deadline = nowMs + LOOK_BUDGET_MS
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const { data, error } = await admin
+    .from('first_look_files')
+    .select('id, look_id, kind, mime, storage_path, bytes, finished_at, drive_upload_uri, drive_upload_offset, first_looks!inner(id, contact_id, made_at, place, drive_folder_id, sent_at, sent_count, words)')
+    .is('drive_file_id', null)
+    .not('finished_at', 'is', null)
+    .is('removed_at', null)
+    .order('drive_tried_at', { ascending: true, nullsFirst: true })
+    .order('finished_at', { ascending: true })
+    .limit(LOOK_FILE_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the looks' files did not read: ${error.message}` }] }
+  const rows = (data ?? []) as unknown as LookFileRow[]
+
+  // A look with files in and no Send for half an hour counts as sent.
+  const looks = new Map<string, LookRow>()
+  for (const r of rows) if (!looks.has(r.look_id)) looks.set(r.look_id, r.first_looks)
+  for (const look of looks.values()) {
+    if (look.sent_at) continue
+    const { data: all } = await admin.from('first_look_files').select('kind, finished_at').eq('look_id', look.id).not('finished_at', 'is', null).is('removed_at', null)
+    const files = (all ?? []) as { kind: string; finished_at: string | null }[]
+    if (!lookCountsAsSent(look, files.map((f) => f.finished_at), nowMs)) continue
+    const nowIso = new Date(nowMs).toISOString()
+    const { data: stamped } = await admin.from('first_looks').update({ sent_at: nowIso, sent_count: look.sent_count + 1 }).eq('id', look.id).is('sent_at', null).select('id')
+    if (!(stamped ?? []).length) continue
+    look.sent_at = nowIso
+    if (look.contact_id) {
+      const line = firstLookSentLine({ lookId: look.id, sentCount: look.sent_count + 1, photos: files.filter((f) => f.kind === 'photo').length, videos: files.filter((f) => f.kind === 'video').length })
+      await admin.from('messages').upsert({ contact_id: look.contact_id, channel: 'portal', direction: 'in', body: line.body, quo_id: line.key }, { onConflict: 'quo_id', ignoreDuplicates: true })
+    }
+  }
+
+  const due = rows.filter((r) => lookFileDue(r, r.first_looks, nowMs))
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  const tried = async (r: LookFileRow, why: string | null) => {
+    if (why) failed.push({ id: r.id, why })
+    await admin.from('first_look_files').update({ fail_why: why ? why.slice(0, 300) : null, drive_tried_at: new Date().toISOString() }).eq('id', r.id).is('drive_file_id', null)
+  }
+  if (!saJson) {
+    for (const r of due) await tried(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  let trees: LookTree
+  try {
+    google = await googleAccessToken(saJson)
+    trees = await lookTree(admin, google)
+  } catch (e) {
+    for (const r of due) await tried(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, { id: string } | { why: string }>()
+  const folderOf = async (look: LookForFolder) => {
+    if (!folders.has(look.id)) folders.set(look.id, await lookFolderOrWhy(admin, google, look, trees))
+    return folders.get(look.id)!
+  }
+  for (const r of due) {
+    if (Date.now() > deadline) break
+    try {
+      const landing = await folderOf(r.first_looks)
+      if ('why' in landing) {
+        await tried(r, landing.why)
+        continue
+      }
+      const name = await lookFreeName(google, landing.id, r.kind, r.mime)
+      const put = await copyToDrive(
+        admin,
+        google,
+        { bucket: LOOK_FILES_BUCKET, path: r.storage_path, bytes: r.bytes, mime: r.mime },
+        landing.id,
+        name,
+        {
+          uri: r.drive_upload_uri,
+          save: async (uri, offset) => {
+            await admin.from('first_look_files').update({ drive_upload_uri: uri, drive_upload_offset: offset }).eq('id', r.id)
+          },
+        },
+        deadline,
+      )
+      if ('paused' in put) {
+        // Part way: no reason to show, and the next run goes on from where Drive says it stopped.
+        await tried(r, null)
+        continue
+      }
+      const { error: kept } = await admin
+        .from('first_look_files')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null, drive_upload_uri: null, drive_upload_offset: null, drive_tried_at: new Date().toISOString() })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        await tried(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      saved += 1
+    } catch (e) {
+      await tried(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+
+  // The pictures and videos they texted in since the ask go to the look's folder too (the owner's call 12): a file on a
+  // line from that person, kept by us and in Drive nowhere yet. One the Messages pass above already took for a ticked
+  // job stays where that put it.
+  const since = new Date(nowMs - LOOK_TEXTED_DAYS * 86_400_000).toISOString()
+  const { data: openLooks } = await admin
+    .from('first_looks')
+    .select('id, contact_id, made_at, place, drive_folder_id')
+    .is('closed_at', null)
+    .not('contact_id', 'is', null)
+    .gte('made_at', since)
+    .order('made_at', { ascending: false })
+    .limit(LOOK_TEXTED_LOOKS)
+  const claimed = new Set<string>()
+  for (const look of (openLooks ?? []) as LookForFolder[]) {
+    if (Date.now() > deadline) break
+    const { data: texted } = await admin
+      .from('message_attachments')
+      .select('id, name, mime, size_bytes, bucket_path, messages!inner(contact_id, direction, at)')
+      .eq('kind', 'file')
+      .is('drive_file_id', null)
+      .is('sent_as', null)
+      .not('bucket_path', 'is', null)
+      .eq('messages.direction', 'in')
+      .eq('messages.contact_id', look.contact_id)
+      .gte('messages.at', look.made_at)
+      .limit(10)
+    for (const a of (texted ?? []) as unknown as { id: string; name: string; mime: string | null; size_bytes: number | null; bucket_path: string }[]) {
+      if (Date.now() > deadline) break
+      // The newest look asked before it came holds it; an older open look does not take it again.
+      if (claimed.has(a.id)) continue
+      claimed.add(a.id)
+      const mime = (a.mime ?? '').toLowerCase()
+      const kind = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : null
+      if (!kind) continue
+      try {
+        const landing = await folderOf(look)
+        if ('why' in landing) break
+        const name = await lookFreeName(google, landing.id, kind, mime)
+        const put = await copyToDrive(admin, google, { bucket: 'message-attachments', path: a.bucket_path, bytes: a.size_bytes, mime }, landing.id, name, null, deadline)
+        if ('paused' in put) continue
+        const { error: kept } = await admin.from('message_attachments').update({ drive_file_id: put.id }).eq('id', a.id).is('drive_file_id', null)
+        if (kept) failed.push({ id: a.id, why: 'Saved to Drive, but the row did not keep it.' })
+        else saved += 1
+      } catch (e) {
+        failed.push({ id: a.id, why: driveFailWords(e instanceof Error ? e.message : String(e)) })
+      }
+    }
+  }
+  if (failed.length) console.warn('photo-save: some of a look’s files were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -1225,8 +1474,10 @@ serve(async (req) => {
     const tickets = await sweepTickets(admin)
     const bidPhotos = await sweepBidPhotos(admin)
     const boxRefiles = await sweepRefileDue(admin)
+    // The newest source runs last and inside its own guard, so nothing it meets can cost the eleven before it.
+    const looks = await sweepLooks(admin).catch((e) => ({ saved: 0, failed: [{ id: '', why: e instanceof Error ? e.message : 'The looks pass failed.' }] }))
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets, bidPhotos, boxRefiles }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets, bidPhotos, boxRefiles, looks }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

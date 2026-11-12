@@ -165,6 +165,7 @@ describe('JobsStagesTable render smoke', () => {
         {...makeProps({
           jobList: [withFee, without],
           canCreateHazmatFee: true,
+          offerHazmatFee: true,
           hazmatFeeJobIds: new Set([withFee.id]),
         })}
       />,

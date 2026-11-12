@@ -101,6 +101,8 @@ export type JobsStagesTableProps = {
   openStagesDetailJobModal: (j: JobWithDetails) => void
   setAiaG702StagesJob: (j: JobWithDetails | null) => void
   canCreateHazmatFee: boolean
+  /** The section's stage offers the Hazmat fee press (v2.7012): Waiting, Working and Ready to Bill say so; a section that says nothing offers none. */
+  offerHazmatFee?: boolean
   openHazmatFee: (j: JobWithDetails) => void
   /** Jobs with a live (non-voided) hazmat fee — their ☣ button wears a bright green box (v2.1040). */
   hazmatFeeJobIds?: ReadonlySet<string>
@@ -185,6 +187,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     openEdit,
     setAiaG702StagesJob,
     canCreateHazmatFee,
+    offerHazmatFee,
     openHazmatFee,
     hazmatFeeJobIds,
     canEditJobPctComplete,
@@ -552,7 +555,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             {openChecklistDoor && checklistDoorFor(j).kind !== 'none' ? <StagesChecklistDoorButton door={checklistDoorFor(j)} onClick={() => openChecklistDoor(j)} /> : null}
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
-                            {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
+                            {canCreateHazmatFee && offerHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
                         </StagesRowIcons>
                       </div>
                     </div>

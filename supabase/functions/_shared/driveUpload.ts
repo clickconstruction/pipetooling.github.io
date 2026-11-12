@@ -137,3 +137,58 @@ export async function uploadBytes(token: string, folderId: string, bytes: Uint8A
   if (!res.ok || !body.id) throw new Error(`Upload failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
   return { id: body.id as string }
 }
+
+/**
+ * An upload in pieces (punch list #319 PR 2, a customer's video on its way to Drive): Drive hands out one address for
+ * the file, each piece goes to it with the bytes it covers, and Drive says how far it has got. The address is good for
+ * a week, so a copy that is cut off asks where it stopped and goes on from there. A piece is a multiple of 256 KiB,
+ * except the last.
+ */
+export async function startResumableUpload(token: string, folderId: string, name: string, mime: string, totalBytes: number): Promise<string> {
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(totalBytes) },
+    body: JSON.stringify({ name, parents: [folderId] }),
+  })
+  const uri = res.headers.get('location')
+  if (!res.ok || !uri) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(`Upload start failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+  }
+  await res.body?.cancel()
+  return uri
+}
+
+// Drive answers a piece that is not the last with 308 and no Location. A 308 with no Location is not a redirect to
+// follow: fetch hands the response back as it is, so the calls below ask for nothing special.
+
+/** How far Drive has got, from its `Range: bytes=0-N` header: N + 1, or 0 with none. */
+function resumableOffset(res: Response): number {
+  const m = /bytes=0-(\d+)/.exec(res.headers.get('range') ?? '')
+  return m ? Number(m[1]) + 1 : 0
+}
+
+/** One piece. Answers the file's id when it was the last piece, else how far Drive has got. */
+export async function putResumablePiece(token: string, sessionUri: string, bytes: Uint8Array, contentRange: string): Promise<{ id: string } | { offset: number }> {
+  const res = await fetch(sessionUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Range': contentRange }, body: bytes })
+  if (res.status === 308) {
+    await res.body?.cancel()
+    return { offset: resumableOffset(res) }
+  }
+  const body = await res.json().catch(() => ({}))
+  if ((res.status === 200 || res.status === 201) && body.id) return { id: body.id as string }
+  throw new Error(`Upload piece failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+}
+
+/** Where an upload in pieces stands: whole (its id), part way (the offset), or null when Drive no longer knows the address. */
+export async function resumableStatus(token: string, sessionUri: string, totalBytes: number): Promise<{ id: string } | { offset: number } | null> {
+  const res = await fetch(sessionUri, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Range': `bytes */${totalBytes}` } })
+  if (res.status === 308) {
+    await res.body?.cancel()
+    return { offset: resumableOffset(res) }
+  }
+  const body = await res.json().catch(() => ({}))
+  if ((res.status === 200 || res.status === 201) && body.id) return { id: body.id as string }
+  if (res.status === 404 || res.status === 410) return null
+  throw new Error(`Upload status failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+}

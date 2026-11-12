@@ -24,6 +24,7 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 import { NO_CUSTOMER_FOLDER_NAME } from '../../lib/documents/folderName'
+import { CUSTOMER_SUPPLIED_FOLDER } from '../../lib/firstLook/drive'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import {
   BID_FOLDER_PIECE_LABELS,
@@ -78,6 +79,10 @@ import {
 import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, makeFleetFolder, makeTasksFolder, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
 
 // --- looks -----------------------------------------------------------------------------------------------------------
+
+/** Punch list #319 PR 2: the folder a customer's own photos and video are kept in, drawn under the customer. */
+const LOOK_FOLDER_LEAF_WORDS = 'a folder for each First look, by its day and place'
+const CUSTOMER_SUPPLIED_WORDS = 'Customer supplied photos is made the first time a customer sends photos or a video through a First look. It is never made up front.'
 
 const cards: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 12, marginTop: 12 }
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, alignContent: 'start', minWidth: 0 }
@@ -819,6 +824,8 @@ function TreeCard({ settings, exampleName: name, customerName, save }: { setting
           {settings.root?.folder?.name || 'The jobs root'}
         </li>
         {leaf(1, customerName ?? 'The customer')}
+        {leaf(2, CUSTOMER_SUPPLIED_FOLDER)}
+        {leaf(3, LOOK_FOLDER_LEAF_WORDS)}
         <li style={{ paddingLeft: 32, listStyle: 'none', fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span aria-hidden="true" style={{ color: 'var(--text-faint)', marginRight: 4 }}>└</span>
           <FolderGlyph />
@@ -831,6 +838,7 @@ function TreeCard({ settings, exampleName: name, customerName, save }: { setting
         {leaf(4, JOB_FOLDER_TREE.sentByUs)}
       </ul>
       <p style={{ ...muted, margin: 0 }}>{UNDER_CUSTOMER_WORDS}</p>
+      <p style={{ ...muted, margin: 0 }} data-testid="wfg-customer-supplied">{CUSTOMER_SUPPLIED_WORDS}</p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }} disabled={saving}>
         <legend style={{ ...muted, padding: 0, marginBottom: 4 }}>When the folders are made</legend>
         {(['upfront', 'as-needed'] as const).map((made) => (
