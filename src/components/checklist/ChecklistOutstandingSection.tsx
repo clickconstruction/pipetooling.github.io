@@ -10,6 +10,7 @@ import { ChecklistItemActivity, type ChecklistItemActivityItem } from './Checkli
 import { TaskLinesList } from './TaskLinesList'
 import { TaskPhotoStrip } from './TaskPhotoStrip'
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
+import { TaskPlaceAddHere } from './TaskPlaceAddHere'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
 
@@ -51,6 +52,7 @@ export function ChecklistOutstandingSection({
   placeFarFor,
   openInstance,
   spotPhotoUrlFor,
+  onPlaceAdded,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -82,6 +84,8 @@ export function ChecklistOutstandingSection({
   openInstance?: { id: string; n: number } | null
   /** The giver's photo of the spot (PR 6), a signed address. */
   spotPhotoUrlFor?: (inst: LedgerInstance) => string | null
+  /** The person doing a task may add its missing place from where they stand (PR 8). Called once it has landed. */
+  onPlaceAdded?: () => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const openId = openInstance?.id ?? null
@@ -155,6 +159,7 @@ export function ChecklistOutstandingSection({
             placeNumber={placeNumberFor?.(inst) ?? null}
             placeFar={placeFarFor?.(inst) ?? null}
             spotPhotoUrl={spotPhotoUrlFor?.(inst) ?? null}
+            onPlaceAdded={onPlaceAdded}
             placedByName={(() => {
               const by = placeFor?.(inst)?.setBy
               return by && nameById?.[by] ? nameById[by]! : null
@@ -193,6 +198,7 @@ function OutstandingRow({
   placeFar,
   placedByName,
   spotPhotoUrl,
+  onPlaceAdded,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -220,6 +226,7 @@ function OutstandingRow({
   placeFar: string | null
   placedByName: string | null
   spotPhotoUrl: string | null
+  onPlaceAdded?: () => void
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
   const sheets = useTaskCardSheets({
@@ -321,6 +328,11 @@ function OutstandingRow({
           ) : spotPhotoUrl ? (
             <div style={{ marginBottom: '0.7rem' }}>
               <TaskSpotPhotoView url={spotPhotoUrl} />
+            </div>
+          ) : null}
+          {!place && onPlaceAdded ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskPlaceAddHere instanceId={inst.id} onAdded={onPlaceAdded} />
             </div>
           ) : null}
           <ChecklistItemActivity
