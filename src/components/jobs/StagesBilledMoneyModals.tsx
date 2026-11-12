@@ -7,6 +7,7 @@ import FixBillLinesModal from './FixBillLinesModal'
 import PaidProfitChartModal from './PaidProfitChartModal'
 import PaymentChaseModal from './PaymentChaseModal'
 import PaymentForecastShareModal from './PaymentForecastShareModal'
+import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
@@ -18,6 +19,7 @@ import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import { buildPaymentChaseQueue } from '../../lib/jobs/paymentChase'
 import type { PaceContext } from '../../lib/jobs/payPace'
+import type { PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import type { StagesSectionOpenState } from '../../lib/jobs/stagesSectionPrefs'
 import type { latestTemperatureByGc } from '../../lib/jobs/temperatureBoard'
@@ -31,7 +33,8 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
  * Email… window, call mode, Fix bill lines, the promised pay date, the paid profit chart and the
  * billed report share. The open flags stay in the tab — the handle, the money overview, the ☰ menu
  * and the Billed header write them — except the forecast's share window, which only the forecast
- * opens. With the windows come what only they read: the scope kicks that keep the non-paid scopes
+ * opens. Since v2.7013 the Pay speeds window also opens here by itself, on one payer, from a billed row's
+ * "Pays in" line: the same window the forecast opens, with the same doors and gates. With the windows come what only they read: the scope kicks that keep the non-paid scopes
  * loading while one is open, call mode's full queue and the forecast's work months. Every prop keeps
  * the tab's name, so the JSX is the tab's.
  */
@@ -60,6 +63,9 @@ export type StagesBilledMoneyModalsProps = {
   setPaidProfitChartOpen: Dispatch<SetStateAction<boolean>>
   billedShareModalOpen: boolean
   setBilledShareModalOpen: Dispatch<SetStateAction<boolean>>
+  /** The payer whose "Pays in" line was pressed on a billed row (v2.7013): Pay speeds opens on them. */
+  paySpeedsPayer: PaySpeedsPayer | null
+  setPaySpeedsPayer: (next: PaySpeedsPayer | null) => void
   billedPaySpeeds: BilledMoneyData['billedPaySpeeds']
   refreshBilledPaySpeeds: BilledMoneyData['refreshBilledPaySpeeds']
   promisedPayDates: BilledMoneyData['promisedPayDates']
@@ -112,6 +118,8 @@ export default function StagesBilledMoneyModals({
   setPaidProfitChartOpen,
   billedShareModalOpen,
   setBilledShareModalOpen,
+  paySpeedsPayer,
+  setPaySpeedsPayer,
   billedPaySpeeds,
   refreshBilledPaySpeeds,
   promisedPayDates,
@@ -146,6 +154,11 @@ export default function StagesBilledMoneyModals({
   } = useJobsListCache()
   /** Email… on the Payment forecast header (v2.2226) — the payment_forecast stream's share modal. */
   const [forecastShareModalOpen, setForecastShareModalOpen] = useState(false)
+  // A payer's open bills for their Pay speeds card (v2.7013): the billed rows and the ones flagged for Collections.
+  const payerFocusRows = useMemo(
+    () => [...unfilteredBoardLists.billedActiveRows, ...(unfilteredBoardLists.collectionsRows ?? [])],
+    [unfilteredBoardLists.billedActiveRows, unfilteredBoardLists.collectionsRows],
+  )
   // The three billed money modals (aging chart / payment forecast / who owes
   // what) work from a collapsed section too: while any is open, keep kicking
   // the scope fetches until they merge — a one-shot call no-ops when the base
@@ -287,6 +300,27 @@ export default function StagesBilledMoneyModals({
         />
       )}
       {forecastShareModalOpen && <PaymentForecastShareModal onClose={() => setForecastShareModalOpen(false)} />}
+      {paySpeedsPayer && (
+        // v2.7013: the forecast's Pay speeds window, opened on one payer from their row. Same rows, gates and doors
+        // as the forecast hands it; the payer's own open bills are looked for in Collections too.
+        <PaySpeedsBreakdownModal
+          focusPayer={paySpeedsPayer}
+          focusRows={payerFocusRows}
+          rows={unfilteredBoardLists.billedActiveRows}
+          paySpeeds={billedPaySpeeds}
+          todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
+          onClose={() => setPaySpeedsPayer(null)}
+          onOpenJobDetail={(jobId) => {
+            setPaySpeedsPayer(null)
+            tryOpenEditJob(jobId, { initialTab: 'bill' })
+          }}
+          canExcludePayments={stagesGates.canTunePaySpeeds(authRole)}
+          canSetNoCountDate={stagesGates.canSetPaySpeedNoCountDate(authRole)}
+          canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
+          onOpenJobStacked={(jobId, onSaved) => tryOpenEditJob(jobId, { initialTab: 'bill', onSaved })}
+          onSpeedsChanged={() => void refreshBilledPaySpeeds()}
+        />
+      )}
       {chaseModalOpen && (
         <PaymentChaseModal
           queue={chaseFullQueue}

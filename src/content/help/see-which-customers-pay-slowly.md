@@ -6,6 +6,8 @@ keywords: pay speeds, breakdown, money waiting, slowest first, by customer, data
 ---
 The pay-speeds breakdown shows who is behind the company's pay-speed medians. You open it from the Pay speeds strip under the payment forecast's buckets.
 
+You can also open it on one customer. Press the *Pays in* words on a billed row of the Pipeline. See [Open their pay speeds from the line](/help/see-when-a-customer-will-pay#open-their-pay-speeds-from-the-line).
+
 ## The pay-speeds breakdown
 
 The strip is a door. You click anywhere on the strip. The link at the strip's right end reads **See the breakdown ›**. A second view opens, showing *who* is behind those medians.

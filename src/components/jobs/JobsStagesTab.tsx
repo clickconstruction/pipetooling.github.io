@@ -136,6 +136,7 @@ import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import { payerReturnsWords } from '../../lib/jobs/arReturnedCheckPayers'
 import { useArReturnedCheckPayers } from '../../hooks/useArReturnedCheckPayers'
 import BilledReliabilityLine from './BilledReliabilityLine'
+import type { PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import JobBookModal from './JobBookModal'
 import { useLegalMatters } from '../../hooks/useLegalMatters'
@@ -813,6 +814,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
   const [readyToBillNotifySettingsOpen, setReadyToBillNotifySettingsOpen] = useState(false)
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
+  /** The payer whose "Pays in" line was pressed on a billed row (v2.7013): the Pay speeds window opens on them. */
+  const [paySpeedsPayer, setPaySpeedsPayer] = useState<PaySpeedsPayer | null>(null)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
@@ -1083,6 +1086,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       if (ledger.rows.length === 0) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
+      const pressedPayer = payer?.id ? { id: payer.id, name: payer.name } : null
       const evidence = inv ? (
         <BilledReliabilityLine
           line={buildReliabilityLine(
@@ -1091,6 +1095,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
           )}
           showBars={false}
+          // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens).
+          onOpenPaySpeeds={pressedPayer ? () => setPaySpeedsPayer(pressedPayer) : undefined}
+          payerName={payer?.name}
         />
       ) : null
       return (
@@ -4530,6 +4537,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         setPaidProfitChartOpen={setPaidProfitChartOpen}
         billedShareModalOpen={billedShareModalOpen}
         setBilledShareModalOpen={setBilledShareModalOpen}
+        paySpeedsPayer={paySpeedsPayer}
+        setPaySpeedsPayer={setPaySpeedsPayer}
         billedPaySpeeds={billedPaySpeeds}
         refreshBilledPaySpeeds={refreshBilledPaySpeeds}
         promisedPayDates={promisedPayDates}

@@ -49,6 +49,26 @@ Anyone who can see the board sees promises. Marking them is for dev, leaders and
 
 Under the Expected row, a small line reads how this customer actually pays. The line reads like *Pays in 9–41d · keeps 3 of 7 · slips ~9d*. With four or more payments, the range is the middle half of their payments. With fewer, it runs from their quickest to their slowest. One payment reads *Pays in ~9d*. The promise part appears once they have named dates. See *know whether a customer keeps their word*. The forecast uses the same record. A promise from a customer who usually slips nine days is filed nine days later than the date they gave.
 
+### Open their pay speeds from the line
+
+The *Pays in* words are a press. They wear a dotted underline. Press them and the **Pay speeds** window opens on that row's payer.
+
+:::cards
+:::card Their range
+The top line repeats the row's words, like *Pays in 9–41d*. The sentence under it says what the two numbers are.
+:::
+:::card Owes now
+Each open bill of theirs is a row, with its wait in days and its dollars.
+:::
+:::card Paid before
+Each payment behind the range is a row. A {{chip:green|+8}} pill means the money came eight days after the bill.
+:::
+:::
+
+Press a bill or a payment to open its job. Press {{button:outline|All customers}} to open the whole window under their card. That is the window **Payment forecast** opens. See [see which customers pay slowly](/help/see-which-customers-pay-slowly).
+
+The line and its press are on the desk rows and on Mobile cards. The phone's two-line rows do not carry the line.
+
 ## Where the speed number comes from
 
 The speed number is the same "pays in ~N days" stat the customer profile shows. Only payments that are linked to a billed invoice count. A payment with no bill date can't be measured. Only the last 12 months count, so a customer who cleaned up their act isn't haunted by old habits.

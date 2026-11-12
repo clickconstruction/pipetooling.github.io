@@ -6,14 +6,44 @@ import type { ReliabilityLine } from '../../lib/jobs/paymentReliability'
  * (days from bill to money — green at or under their median, amber to 1.5×,
  * red beyond) and "Pays in 9–41d · keeps 3 of 7 · slips ~9d". Renders
  * nothing when nothing is known, so a brand-new customer's row stays clean.
+ *
+ * v2.7013: with `onOpenPaySpeeds`, the "Pays in 9–41d" words are a press that opens the Pay speeds
+ * window on this payer. The promise record and the returned checks after it stay plain words: the
+ * window does not hold them. A line with no "Pays in" has nothing to open and stays plain.
  */
-export default function BilledReliabilityLine({ line, showBars = true }: { line: ReliabilityLine; /** v2.4193: the dates block prints the words alone, in the legend's grey. */ showBars?: boolean }) {
+export default function BilledReliabilityLine({
+  line,
+  showBars = true,
+  onOpenPaySpeeds,
+  payerName,
+}: {
+  line: ReliabilityLine
+  /** v2.4193: the dates block prints the words alone, in the legend's grey. */
+  showBars?: boolean
+  /** Opens the Pay speeds window on this row's payer. Absent, the line is plain words. */
+  onOpenPaySpeeds?: () => void
+  /** The payer, for the press's name: "Open pay speeds for …". */
+  payerName?: string | null
+}) {
   if (!line.text && line.bars.length === 0) return null
+  const press = onOpenPaySpeeds != null && line.paysIn != null
+  const rest = press ? [line.kept, line.slip, line.bounced ?? null].filter((x): x is string => x != null).join(' · ') : ''
+  const who = (payerName ?? '').trim() || 'this customer'
   return (
     <span
       data-testid="billed-reliability-line"
       title={line.title || undefined}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        fontSize: '0.7rem',
+        color: 'var(--text-muted)',
+        whiteSpace: 'nowrap',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
     >
       {showBars && line.bars.length > 0 ? (
         <span aria-hidden style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1, height: 11 }}>
@@ -32,7 +62,26 @@ export default function BilledReliabilityLine({ line, showBars = true }: { line:
           ))}
         </span>
       ) : null}
-      {line.text ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{line.text}</span> : null}
+      {press ? (
+        <>
+          <button
+            type="button"
+            className="billedPaysInPress"
+            data-testid="billed-pays-in-press"
+            aria-label={`${line.paysIn}. Open pay speeds for ${who}`}
+            title={`${line.title ? `${line.title} ` : ''}Click to open pay speeds for ${who}.`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenPaySpeeds()
+            }}
+          >
+            {line.paysIn}
+          </button>
+          {rest ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', marginLeft: -2 }}>{`· ${rest}`}</span> : null}
+        </>
+      ) : line.text ? (
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{line.text}</span>
+      ) : null}
     </span>
   )
 }

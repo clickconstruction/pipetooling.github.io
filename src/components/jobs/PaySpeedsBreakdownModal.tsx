@@ -10,6 +10,7 @@ import {
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers, billWaitTone,type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import MoneyWaitingShareModal from './MoneyWaitingShareModal'
@@ -27,6 +28,10 @@ import { useIsMobile } from '../../hooks/useIsMobile'
  * list with a "—" median, because their forecasts run on a borrowed pace
  * (since v2.6034 the GC pace here for a GC, else the segment median, else
  * the company median — `payPace.ts`).
+ *
+ * v2.7013: opened from a Pipeline row's "Pays in 3–67d" line with `focusPayer`, the window opens on that one
+ * payer: their range in the row's words, what the two numbers are, what they owe now and each payment behind
+ * it. Everything above sits under **All customers**, one press down, closed until asked for.
  */
 
 function segTag(segment: CustomerSegment | null) {
@@ -157,12 +162,14 @@ function receiptsPanel(
   onOpenBills?: () => void,
   onOpenJob?: (jobId: string) => void,
   bills?: OpenBill[],
+  /** The payer card (v2.7013): no indent, and the payments always wear their label. */
+  flush = false,
 ) {
   const hasBills = bills != null && bills.length > 0
   return (
     <div
       style={{
-        padding: '0.1rem 0.5rem 0.55rem 2rem',
+        padding: flush ? 0 : '0.1rem 0.5rem 0.55rem 2rem',
         background: striped ? 'var(--bg-muted)' : 'transparent',
         borderRadius: '0 0 6px 6px',
       }}
@@ -173,7 +180,11 @@ function receiptsPanel(
           {bills.map((b, i) => openBillRow(b, i, onOpenJob))}
         </>
       )}
-      {hasBills && <span style={panelLabelStyle}>Paid before — the payments behind the median</span>}
+      {flush ? (
+        <span style={panelLabelStyle}>Paid before — each payment, days from bill to money</span>
+      ) : (
+        hasBills && <span style={panelLabelStyle}>Paid before — the payments behind the median</span>
+      )}
       {c.receipts.length > 0 ? (
         c.receipts.map((r, i) => receiptRow(r, companyMedian, i, onOpenJob))
       ) : (
@@ -293,6 +304,8 @@ export default function PaySpeedsBreakdownModal({
   canEmailMoneyWaiting = false,
   onOpenJobStacked,
   onSpeedsChanged,
+  focusPayer = null,
+  focusRows,
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
@@ -313,6 +326,10 @@ export default function PaySpeedsBreakdownModal({
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
   /** Refetch the pay-speeds RPC after an exclusion toggles, so medians update live. */
   onSpeedsChanged?: () => void
+  /** Open on this one payer (v2.7013, a Pipeline row's "Pays in" press); the whole window waits under All customers. */
+  focusPayer?: PaySpeedsPayer | null
+  /** The bills to look for the payer's open ones in, when wider than `rows` (a Collections row's payer). */
+  focusRows?: StageRow[]
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
   // One list: real medians slowest-first, then thin-history customers
@@ -338,12 +355,19 @@ export default function PaySpeedsBreakdownModal({
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
   const quality = paySpeeds?.quality ?? null
+  // One payer first (v2.7013): their card leads and the whole window opens under All customers.
+  const focus = useMemo(
+    () => (focusPayer ? buildPaySpeedsPayerFocus(focusPayer, focusRows ?? rows, paySpeeds, todayYmd) : null),
+    [focusPayer, focusRows, rows, paySpeeds, todayYmd],
+  )
+  const [allCustomersOpen, setAllCustomersOpen] = useState(false)
+  const showWhole = focus == null || allCustomersOpen
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Pay speeds breakdown"
+      aria-label={focus ? `Pay speeds for ${focus.name}` : 'Pay speeds breakdown'}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
@@ -370,7 +394,66 @@ export default function PaySpeedsBreakdownModal({
             ✕
           </button>
         </div>
-        <p style={{ margin: '0.3rem 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
+        {focus ? (
+          <>
+            <section
+              data-testid="pay-speeds-payer"
+              aria-label={`${focus.name}, their pay speed`}
+              style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem 0.65rem', margin: '0.7rem 0 0.7rem' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                {segTag(focus.segment)}
+                <h3 style={{ margin: 0, fontSize: '0.95rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{focus.name}</h3>
+                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '0.76rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                  {focus.open > 0 ? (
+                    <>
+                      <b style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(focus.open)}</b> open
+                    </>
+                  ) : (
+                    'nothing open'
+                  )}
+                </span>
+                <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                  <CustomerPortalGlobeButton customerId={focus.customerId} customerName={focus.name} size={13} />
+                </span>
+              </div>
+              <div data-testid="pay-speeds-payer-range" style={{ marginTop: '0.4rem', fontSize: '1.2rem', fontWeight: 650, fontVariantNumeric: 'tabular-nums' }}>
+                {focus.paysIn ?? 'No pay speed of their own yet'}
+              </div>
+              <p style={{ margin: '0.15rem 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
+                {focus.sentence}
+                {focus.paysIn ? ' Counted over the last 12 months.' : ''}
+              </p>
+              {receiptsPanel(
+                { customerId: focus.customerId, name: focus.name, segment: focus.segment, medianDays: focus.medianDays, samples: focus.samples, open: focus.open, receipts: focus.receipts },
+                companyMedian,
+                false,
+                undefined,
+                onOpenJobDetail,
+                focus.bills,
+                true,
+              )}
+            </section>
+            <button
+              type="button"
+              className="paySpeedsAllPress"
+              data-testid="pay-speeds-all-customers"
+              aria-expanded={allCustomersOpen}
+              onClick={() => setAllCustomersOpen((v) => !v)}
+            >
+              <span aria-hidden style={{ fontSize: '0.6rem', width: '0.8em', display: 'inline-block', transform: allCustomersOpen ? 'rotate(90deg)' : 'none' }}>
+                ▶
+              </span>
+              <span>All customers</span>
+              <span style={{ marginLeft: 'auto', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                {merged.length} with open bills, slowest first
+              </span>
+            </button>
+          </>
+        ) : null}
+        {showWhole ? (
+          <>
+        <p style={{ margin: focus ? '0.8rem 0 1rem' : '0.3rem 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           Median days from bill to payment, per customer, last 12 months — the clock the Payment forecast runs on. A
           customer with no measurable payment yet borrows a pace: the GC pace here for a GC, else its segment's median,
           else the company's.
@@ -819,6 +902,8 @@ export default function PaySpeedsBreakdownModal({
             })}
           </>
         )}
+          </>
+        ) : null}
 
       </div>
     </div>
