@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Mail, X } from 'lucide-react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import type { PaceContext } from '../../lib/jobs/payPace'
@@ -126,7 +127,7 @@ export default function BilledPaymentForecastModal({
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
   /** Refetch pay speeds after an exclusion toggles (v2.2290). */
   onPaySpeedsChanged?: () => void
-  /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
+  /** Opens the Email payment forecast window (v2.2226), from Email this forecast… in the header — passed only for sender roles. */
   onEmail?: () => void
   /**
    * Work months per job (the lien clock's evidence): a chevron on rows that
@@ -188,48 +189,28 @@ export default function BilledPaymentForecastModal({
         onClick={(e) => e.stopPropagation()}
         style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(880px, calc(100vw - 2rem))', maxHeight: 'min(92vh, 100%)', overflow: 'auto' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Payment forecast</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {onEmail && (
-              <button
-                type="button"
-                onClick={onEmail}
-                title="Email this forecast to a teammate — now, scheduled, or weekly"
-                aria-label="Email payment forecast"
-                style={{
-                  height: 30,
-                  padding: '0 0.75rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 6,
-                  background: 'var(--surface)',
-                  cursor: 'pointer',
-                  color: 'var(--text-700)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span aria-hidden>✉</span>
-                Email…
-              </button>
-            )}
+        {/* The header (v2.7019): the title and the intro sit left of the two presses, so no words run under them (`.forecastHead` in index.css). */}
+        <div className="forecastHead">
+          <h2>Payment forecast</h2>
+          {onEmail && (
             <button
               type="button"
-              onClick={onClose}
-              aria-label="Close"
-              style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
+              className="forecastHeadEmail"
+              onClick={onEmail}
+              title="Email this forecast to a teammate now, at a set time, or every week"
             >
-              ×
+              <Mail size={16} strokeWidth={2} aria-hidden="true" />
+              Email this forecast…
             </button>
-          </div>
+          )}
+          <button type="button" className="forecastHeadClose" onClick={onClose} aria-label="Close">
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <p className="forecastHeadIntro">
+            Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
+            months). Click a tile to see just its bills; click a row to jump to that bill on the board.
+          </p>
         </div>
-        <p style={{ margin: '0.25rem 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
-          months). Click a tile to see just its bills; click a row to jump to that bill on the board.
-        </p>
         {loading ? (
           <p style={{ margin: '0 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status" aria-busy>
             Loading the whole board — totals can still grow…
