@@ -8,7 +8,7 @@
 # applied in order, then the pay calendar migration a second time, which must change nothing. The scenario, inside one
 # transaction that rolls back: the office sets a payer's calendar and the row stamps who set it, a second set replaces
 # the one row, a job carries its own row or an off switch, clearing removes one row and leaves the rest, the
-# billed-money roles read the table and a helper reads nothing, a helper, a primary and a read-only account cannot
+# billed-money roles read the table and a subcontractor reads nothing, a subcontractor, a primary and a read-only account cannot
 # set one, days and a month count out of range are refused in words, and the shape and the one row a
 # payer hold under a direct write. It raises on its first failed assertion and ends with "pay_calendar PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
