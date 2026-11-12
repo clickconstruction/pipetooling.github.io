@@ -1,21 +1,21 @@
 ---
-name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a pay day, and the forecast reads them"
+name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a due day, and the forecast keeps its honest guess"
 number: 323
 group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's calls
+status: asked 2026-11-12 · the card and the mock-up the same day · a second pass the same day changed the design (the contract's day is a due date, not a forecast) · nothing built · waits on Grace's go on the revised train
 summary: >
   Some commercial payers pay on a calendar, not at a pace: a pay application in by the end of the
   month, or by an earlier day, is paid on a set day of the next month. A bill sent on the 1st and
   one sent on the 30th land the same day, and one day past the cutoff costs a whole month. The
   app guesses every pay date as the bill date plus the payer's median days to pay, which cannot
   say either thing. The card proposes one small setting, a Pay calendar, held on the payer with an
-  exception a job can carry. It gives each billed row its pay day with the contract as the reason,
-  shows the payer's real record against that day, and puts the cutoff in front of whoever is about
-  to bill: send by Nov 30 to be paid Dec 10, after that Jan 10.
-next: Grace's calls at the foot of the card, then PR 1 (the setting, and the pay day on a billed row and in the forecast).
-size: L as a train of eight (M · S · S · M · M · M · S · S); PRs 1 to 3 (M · S · S) carry most of the worth
-blocker: Grace's go, and her answer on where the setting lives and which date leads when the record disagrees.
-opinion: build PRs 1 to 3 — the cutoff is the part that moves money, and it is cheap once the setting exists
+  exception a job can carry. It gives each billed row the day the bill is due under the contract,
+  keeps the expected day as the payer's real record measured against that due day, and puts the
+  cutoff in front of whoever is about to bill: send by Nov 30 to be due Dec 10, after that Jan 10.
+next: Grace's go on the revised train, then PR 1 (the setting, with the payer's record replayed against it).
+size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
+blocker: Grace's go on the revised train.
+opinion: build — the cutoff and the due day are facts the app has never had, and the second pass took the wishful part out of the forecast
 ---
 
 # Pay calendar (#323)
@@ -44,14 +44,24 @@ Add one setting, a **Pay calendar**, on the payer. It holds three things: the da
 by, the day they pay, and how many months later. A job can carry an exception. A payer with no
 calendar reads exactly as today.
 
-It does two jobs. The smaller one is the forecast: a billed row reads the contract's pay day
-instead of a guess, and says so. The larger one is the **cutoff**, which the app has never known:
-before a bill goes out, the row says the last day to send it and what one day late costs.
+It gives the app two facts it has never had:
 
-One thing to be plain about. Measured against the payments on record, a calendar is the better
-guess for only a few payers. It is much better for those few, and worse for the rest. So the
-setting is something a person turns on for a payer, with the payer's real record shown beside it.
-It is never a rule the app applies by itself.
+- **The cutoff.** Before a bill goes out, the row says the last day to send it and what one day
+  late costs.
+- **The due day.** A billed row says the day the contract makes it due, and how far past it is.
+
+It does not turn the contract into the forecast. See *The second pass*: of the three payers Grace
+named, the two with a record have paid weeks to months after a monthly pay day. So the rule is:
+
+> The contract says when a bill is **due**. The record says when it **lands**. The app shows both
+> and never passes one off as the other.
+
+*Expected* stays the app's honest guess. For a payer on a calendar it becomes the due day plus how
+late they usually run. For a payer with a contract and no record yet, the due day is the best
+guess there is, and far better than a borrowed average.
+
+The setting is something a person turns on for a payer. It is never a rule the app applies by
+itself.
 
 ## What the app does today
 
@@ -138,6 +148,32 @@ from the others: once as today (bill date plus median), once by the best-fitting
 Two limits on that read. The RPC keeps 12 payments a payer, so the samples are small. And waits
 are measured from the day we billed, since no received day exists.
 
+## The second pass
+
+Grace asked for one more pass before the build: is this the best we can do? The first design had
+not been tested on the payers she named. So the terms she quoted were replayed against their real
+payments, read the same way, figures kept out of the repo.
+
+- **The payer whose contract she was reading has no payment on record.** Today the app can only
+  lend it an average. A calendar is the one real thing the app could know about it.
+- **The GC with many jobs has paid in a few batches, one to two months after a monthly pay day.**
+  The first design would have printed that pay day as *Expected*. It would have been wrong on
+  every bill, and wrong in the hopeful direction.
+- **The third has one payment, about two months after such a day.**
+
+That changed five things:
+
+1. **Due and Expected are two dates.** The first design put the contract's day in the Expected
+   row. Now the row reads *Due*, and Expected is the due day plus their usual lateness.
+2. **The record ships with the date, not four PRs later.** A due day with no record beside it is
+   the wishful forecast above. The replay is in PR 1, inside the setting's own window.
+3. **The window proves itself as you type.** Type a contract's terms and it says at once how that
+   payer's past payments landed against them. That is this pass, built into the product.
+4. **The accepted day and the job exception move up,** to PR 4. They are what keeps a due day
+   from being a month wrong, and Grace's own words were *many of* a GC's jobs, not all.
+5. **The train is seven, not eight.** The Pay speeds hint folds into the readers' PR. Reading the
+   clause out of a contract's text is dropped. A person reads the clause and types three numbers.
+
 ## The setting
 
 ### Its shape
@@ -197,49 +233,59 @@ this development* instead. See Grace's call 6.
 The contract counts from the day an acceptable application is received. The app has no such day.
 So the calendar reads the best day it has, in this order:
 
-1. The day the payer accepted it, when someone has recorded one (new, PR 6).
+1. The day the payer accepted it, when someone has recorded one (new, PR 4).
 2. The day it went out from here (`sent_to_customer_at`).
 3. The day it was marked billed (`billed_at`), which is how a pay application is recorded today.
 4. The estimated bill date.
 
-Without an accepted day the row says what it assumed: *Counted from the day it went out, Nov 3.*
-PR 6 adds the press that corrects it: **They accepted it on…**, kept in a small side table the
+Without an accepted day the hover says what it assumed: *Counted from the day it went out, Nov 3.*
+PR 4 adds the press that corrects it: **They accepted it on…**, kept in a small side table the
 way promises are. It only matters when the day crosses a cutoff.
 
 ## What it changes
 
-### The expected date, with the terms as the reason
+### Due, on a billed row
 
-`billedExpectedPayModel` gains a calendar argument and one new source, `terms`. The order becomes:
-a promise, else the calendar's pay day, else the bill date plus the pace. A caller that passes no
-calendar gets today's answer.
+The dates block already names its money row by where the date came from: *Expected*, or *They
+said* when the customer named a date. A calendar adds a third: **Due**.
 
-On a billed row:
+- *Due Dec 10 · in 28d*, with a quiet line under it: *Usually lands about Dec 16.*
+- Past the day it reads *Due Nov 10 · 2d past* in amber. This is a reason to call that the office
+  can say out loud: the contract says the 10th.
+- A payer who runs far late reads plainly: *Due Oct 30 · 13d past*, and under it *Usually lands
+  about 45d after. About Dec 14.*
+- A promise still wins the row. *They said Nov 20* replaces it, and the due day stays as the quiet
+  line.
+- Hover gives the reason: the calendar in words, the clause, and the day the clock was counted
+  from.
 
-- *Expected Dec 10 · in 28d*, with a quiet line under it: *Pays the 10th after the month it is
-  received.*
-- Past the day it reads *Expected Nov 10 · 2d past* in amber, with *Their contract says the 10th*
-  under it. That is a sharper reason to call than a statistic.
-- A promise still wins. *They said Nov 20* replaces the row, and the pay day stays as the quiet
-  line under it, as the estimate does today.
+### Expected, everywhere money is counted
+
+`billedExpectedPayModel` gains a calendar argument, a `dueYmd` on its answer and one new source,
+`terms`. A caller that passes no calendar gets today's answer.
+
+- **Lateness** is new and small: the payer's measured payments replayed through the calendar,
+  each as days after its own due day, and the middle one taken. It is never less than zero.
+- **Expected is the due day plus that lateness.** With no payment on record it is the due day.
+- The forecast's weeks, the Bridge's cash runway, Money waiting and the Lien desk's comparison all
+  read Expected, as they do today. Each row also carries the due day, so *2d past due* can show
+  on a bill whose money is not expected until next week.
+- *Past expected* keeps its meaning: later than this payer usually is. *Past due* is new and
+  means later than the contract allows. A payer can be the second without being the first.
+- With *They pay when the owner pays them* ticked, the due day reads *no sooner than*.
+
+The app already treats a promise this way. It shows the date they gave, counts on that date plus
+their usual slip, and keeps score. A calendar is a standing promise and gets the same treatment.
 
 ### The record against the calendar
 
-The measured record still matters. It is measured the wrong way for these payers today. Days from
-bill to payment says little. **Days after their own pay day** says everything.
+The line under the row changes for a payer on a calendar. *Pays in 12–68d* is replaced by the
+lateness: *Lands about 6d after their pay day · on the day 1 of 4.* The wide range was the
+calendar's doing, not the payer's.
 
-The app already does this for promises: *keeps 3 of 7 · slips ~9d*, and the forecast buckets a
-promise by the promised day plus the usual slip (`slipAdjustedYmd`). A calendar is a standing
-promise, so it gets the same treatment:
-
-- Under the row, in place of *Pays in 12–68d*: *Lands about 6d after their pay day · on the day 1
-  of 4.*
-- The forecast buckets the bill by pay day plus usual slip, and shows both: *~Dec 16 · pay day
-  Dec 10 + 6d.*
-- When the record is far from the terms, the row says so: *Their terms say the 10th. Their last 3
-  payments landed near the 24th.* The contract's day still leads, because it is the date the
-  office can hold them to.
-- In Pay speeds, the payer's card shows the calendar beside the median.
+In Pay speeds, the payer's card shows the calendar beside the median. A payer with no calendar
+whose payments land in a few batches with a wide spread of waits gets one line: *This looks like a
+pay calendar.* It opens the setting with nothing filled.
 
 ### The cutoff
 
@@ -247,12 +293,12 @@ This is the new information, and the part that moves money. It shows before a bi
 
 | Where | What it says |
 |---|---|
-| A Ready to Bill row | *Send by Nov 30 to be paid Dec 10. After that, Jan 10.* Amber in the last 7 days. |
+| A Ready to Bill row | *Send by Nov 30 to be due Dec 10. After that, Jan 10.* Amber in the last 7 days. |
 | The Ready to Bill header | *2 bills go by Nov 30*, a chip that filters to them. |
-| The send window | The same line at the moment of sending. Past the cutoff: *This one will be paid Jan 10.* |
+| The send window | The same line at the moment of sending. Past the cutoff: *This one will be due Jan 10.* |
 | A pay application | Under *Period to*: *Their cutoff is the last day of the month.* |
 | A Working row | *Bill by Nov 30 for Dec 10*, only in the last 10 days, only for a payer on a calendar. |
-| Payment forecast | A **Cutoffs coming** strip: each calendar payer, its next cutoff and pay day, what is ready and what is still working. |
+| Payment forecast | A **Cutoffs coming** strip: each calendar payer, its next cutoff and due day, the dollars ready and the dollars still to bill on working jobs. |
 | Needs you | *2 bills for Larkfield Construction go by Nov 30*, from 7 days out. The door is Ready to Bill. |
 
 No separate calendar page. The strip in the forecast is the calendar.
@@ -260,20 +306,19 @@ No separate calendar page. The strip in the forecast is the calendar.
 ### What follows by itself
 
 Everything that reads `billedExpectedPayModel` moves once its loader passes the calendar. The Lien
-desk is the one to name. Today it compares a guess with the lien's last day. With a calendar it
-compares a contract date: *Their pay day is Jan 10. The notice's last day is Dec 15.* That is a
-lien decision made on a fact.
+desk is the one to name. It still compares Expected with the lien's last day, and it can now say
+why: *Due Jan 10 under their contract. The notice's last day is Dec 15.* A bill that cannot be due
+before a notice's last day is a lien decision made on a fact, on the day the bill goes out.
+
+GC Review's *expected pay by* box, filled when a statement is marked sent, offers the due day.
 
 ### How terms get entered without typing them thirty times
 
 1. **Once on the payer.** Every job of theirs inherits it. This is PR 1 and covers most cases.
 2. **From the job, across a development.** One press sets the other jobs there.
-3. **From the stored paper.** *Their paper* gains a *Pay calendar* key term. Saving it offers to
-   set the jobs that paper covers. Where the file's text is indexed, the app finds the clause and
-   proposes the three numbers. A person confirms. PR 7.
-4. **From the record.** On a payer whose payments land in batches with a wide spread of waits,
-   Pay speeds says: *This looks like a pay calendar.* It opens the setting with nothing filled.
-   PR 8, and the least sure of the eight.
+3. **From the stored paper.** *Their paper* gains a *Pay calendar* key term, with its clause.
+   Saving it offers to set the jobs that paper covers.
+4. **From the record.** The one line in Pay speeds above. It only opens the window.
 
 The app never sets a calendar by itself. The record shows it would be wrong more often than right.
 
@@ -281,22 +326,22 @@ The app never sets a calendar by itself. The record shows it would be wrong more
 
 | PR | What | Size | Migration |
 |---|---|---|---|
-| 1 | The kernel `src/lib/jobs/payCalendar.ts` (the pay day, the cutoff, the words). The table. The **Pay calendar** window on a customer's profile. The pay day on billed rows, the Payment forecast, GC Review and the Lien desk, through `useBilledMoneyData`. The guide. | M | Yes: `payer_pay_calendars`, with the four fence calls. The client reads a table the migration creates, so push right after the merge. |
-| 2 | The cutoff on Ready to Bill rows, the header chip and the send window. | S | No |
-| 3 | **Cutoffs coming** in the forecast, the Needs you item, the Working row's line, the pay application's line. | S | No |
-| 4 | The record against the calendar: the line under the row, the forecast by pay day plus slip, the Pay speeds card. | M | No |
-| 5 | The readers with their own code: the job window, Call mode, Money waiting, Dashboard AR, the Collect pile and cash runway, the two emails. Edge kernel copies and deploys. | M | Yes: the two email payload RPCs carry the calendars. |
-| 6 | A job's exception, with *Also set on the other jobs in this development*. **They accepted it on…** | M | Yes: one small side table for the accepted day. |
-| 7 | *Their paper* gains the *Pay calendar* key term and proposes it from the file's text. | S | No |
-| 8 | The hint in Pay speeds for a payer whose record looks like a calendar. | S | No |
+| 1 | The kernel `src/lib/jobs/payCalendar.ts`: the due day, the cutoff, the lateness, the words. The table. The **Pay calendar** window on a customer's profile, with the plain-date preview and the payer's record replayed against what is typed. The guide. | M | Yes: `payer_pay_calendars`, with the four fence calls. The client reads a table the migration creates, so push right after the merge. |
+| 2 | **Due** on billed rows, desk and phone, with Expected as due plus lateness. The Payment forecast, GC Review and the Lien desk follow through `useBilledMoneyData`. The line under the row. | M | No |
+| 3 | The cutoff on Ready to Bill rows, the header chip and the send window. | S | No |
+| 4 | A job's exception, with *Also set on the other jobs in this development*. **They accepted it on…** | M | Yes: one small side table for the accepted day. |
+| 5 | **Cutoffs coming** in the forecast, the Needs you item, the Working row's line, the pay application's line. | S | No |
+| 6 | The readers with their own code: the job window, Call mode, Money waiting, Dashboard AR, the Pay speeds card and its one-line hint, GC Review's box, the Collect pile and cash runway, the two emails. Edge kernel copies and deploys. | M | Yes: the two email payload RPCs carry the calendars. |
+| 7 | *Their paper* gains the *Pay calendar* key term and sets the jobs the paper covers. | S | No |
 
-PRs 1 to 3 stand alone and carry most of the worth. PR 5 touches the Bridge's Collect pile and
-cash runway, which the Bridge work (#318) is reshaping, so it waits for that to land.
-`BilledReliabilityLine.tsx` is touched only in PR 4, after the open *Pays in* press PR has merged.
+PRs 1 to 3 stand alone and carry most of the worth. PR 6 touches the Bridge's Collect pile and
+cash runway, which the Bridge work (#318) is reshaping, so that part waits for it to land.
+`BilledReliabilityLine.tsx` and `BilledPaymentForecastModal.tsx` are touched in PR 2, after the two
+open PRs on them have merged.
 
 Each PR ships its release note, fragment and guide changes. PR 1 adds the guide *set a payer's pay
-calendar* and a section in *see when a customer will pay*. PR 3 adds one in *read the payment
-forecast*.
+calendar*. PR 2 adds a section in *see when a customer will pay*. PR 5 adds one in *read the
+payment forecast*.
 
 ## How to verify
 
@@ -304,22 +349,26 @@ forecast*.
   `/dev-login?as=1&to=/jobs?tab=stages`. Abort every non-GET except the sign-in and the read RPCs.
 - The kernel is pure. Its tests are the table in *Its shape*, plus month ends: a pay day of 31 in
   February, a cutoff on the last day of a 30-day month, a bill on the cutoff day itself.
-- Before PR 1 merges, replay the record: for each payer Grace names, the calendar's pay day for
-  each past bill against the day the money landed. That fills the row's *Lands about Nd after*.
+- The replay is the product now: open the window on a payer with payments, type terms, and read
+  the record line. Check it against the same replay done by hand from the payer's receipts.
 - The first real payers are set by Grace or the owner in the window. No seed, no backfill.
 
 ## What I would not build
 
 - **A rule language.** Business days, holidays, two check runs a month, a different day by bill
   size. Each is real somewhere. Three numbers and the measured slip cover them well enough, and
-  the slip soaks up a pay day that falls on a Saturday.
+  the lateness soaks up a pay day that falls on a Saturday.
 - **Net 30 as a setting.** For a payer who pays some days after each bill, the measured pace is
   already the better answer. The calendar is the one thing a median cannot say.
-- **A date for pay when paid.** Nobody knows it. The box makes the pay day read as *no sooner
+- **A date for pay when paid.** Nobody knows it. The box makes the due day read as *no sooner
   than*, and the forecast leans on the record.
 - **Retainage on the calendar.** A retainage release bill waits on their final acceptance, not on
   a month. It keeps today's behavior.
 - **Setting a calendar from the record or the contract with no person.** See the record above.
+- **Reading the clause out of a contract's text.** A pattern match on legal prose that is wrong
+  once costs more trust than typing three numbers costs time.
+- **A margin before the cutoff as its own field.** The amber week and the Needs you line ask
+  early. If accepted days later show that late-month bills slip, the record line will say so.
 - **A level for developments,** until one GC pays two developments on two calendars.
 - **A cutoff calendar page.** The strip in the forecast and the Needs you line reach the same
   people sooner.
@@ -330,40 +379,45 @@ forecast*.
 
 ## Is this the best we can do?
 
-On the shape, yes. Three numbers on the payer, read through the one function nearly every screen
-already calls, is about as small as this can be and still tell the truth.
+Asked twice. The first answer was yes on the shape, with limits. The second pass found the first
+design was not the best: it would have shown a contract's day as the expected day for payers who
+are known to pay long after it. That is fixed above, and the design is better for having been
+tested on the payers it was written for.
 
-Four honest limits:
+What still holds, and what is still weak:
 
-1. **It helps few payers, a lot.** On the record a calendar beat today's guess for 3 of 11
-   commercial payers. Those few hold the long waits. Set on a fast payer it would do harm, which
-   is why a person sets it and the record shows beside it.
-2. **The clock start is the weak link.** With no accepted day, a pay application that is kicked
-   back and resent a month later still reads the earlier pay day. Until PR 6 the row can be a
-   month wrong with full confidence. The row says what it assumed, and that is the most it can do.
-3. **The cutoff is worth more than the forecast.** A better date on a few rows is nice. A bill
-   that goes out on the 1st instead of the 30th is a month of that money. If only two PRs are
-   built, they are 1 and 2.
-4. **Better would be the payer's real check run.** Remittance emails and the bank feed could show
-   the day each payer actually cuts checks. That is a bigger build and the slip gets most of it.
+1. **The shape is small.** Three numbers on the payer, read through the one function nearly every
+   screen already calls.
+2. **The forecast gains least.** For a payer with a steady record, due plus lateness is close to
+   what the median already says. The gain is for a payer with a contract and no record, and for
+   one whose waits swing with the day of the month a bill was sent.
+3. **The cutoff and the due day are the worth.** One moves a bill into this month's run. The other
+   gives the office a date it can hold a payer to, and gives the Lien desk a fact.
+4. **The clock start is still the weak link.** With no accepted day, a pay application that is
+   sent back and resent a month later reads a due day a month early. PR 4 adds the press. Until
+   then the hover says what day it counted from.
+5. **Lateness rests on 12 payments a payer,** the newest the RPC returns. That is recent
+   behavior, which is what a forecast wants, and it is thin.
+6. **Better still would be the payer's real check run,** read from remittance emails and the bank
+   feed. That is a bigger build. Lateness gets most of it.
 
 ## Grace's calls
 
-My pick is first on each.
+Grace said to build the whole train (2026-11-12), then asked for the second pass. So call 1 is
+answered. The rest stand as my picks unless she says otherwise. My pick is first on each.
 
-1. **Build it?** PRs 1 to 3 now, then look at what the cutoff did before the rest. Or the whole
-   train. Or not yet.
+1. **Build it?** Answered: the whole train. It is seven PRs after the second pass.
 2. **Where it lives.** On the payer with an exception a job can carry. Or on each contract only,
    which is truer to the paper and misses every job with no paper stored.
-3. **Which date leads when the record disagrees.** The contract's pay day leads, the record sits
-   under it, and the forecast buckets by pay day plus the usual slip. Or the measured guess leads
-   and the contract is the quiet line.
+3. **Which date the row leads with.** *Due*, the date the office can hold them to, with the
+   expected day under it. The forecast and the Bridge count on Expected. Or the row keeps
+   *Expected* and the due day is the quiet line.
 4. **Who may set it.** The roles that record a promise today: dev, leaders and assistant-type
-   roles. Or the owner and dev only, since it moves the forecast for every bill of that payer.
+   roles. Or the owner and dev only, since it moves the dates on every bill of that payer.
 5. **How early the cutoff asks.** Needs you from 7 days out, the Working row from 10. Or other
    numbers. Or no Needs you line at all.
 6. **A level for developments.** No, with *Also set on the other jobs in this development*. Or
    yes, a development can hold its own calendar.
-7. **The name.** *Pay calendar*, with *cutoff* and *pay day*. Or her own words for it.
+7. **The name.** *Pay calendar*, with *cutoff* and *due*. Or her own words for it.
 
 And one thing only she can supply: which payers to set first, and what each contract says.
