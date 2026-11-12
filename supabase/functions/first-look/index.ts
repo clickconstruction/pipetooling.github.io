@@ -439,7 +439,7 @@ serve(async (req) => {
       }
       const mime = typeof body.mime === 'string' ? body.mime.trim().toLowerCase().split(';')[0] ?? '' : ''
       const bytes = typeof body.bytes === 'number' ? Math.floor(body.bytes) : 0
-      const refusal = firstLookSignRefusal({ mime, bytes }, await countsOf(admin, look.id))
+      const refusal = firstLookSignRefusal({ mime, bytes }, await countsOf(admin, look.id), body.lang === 'es' ? 'es' : 'en')
       if (refusal) return json({ error: refusal.words, code: refusal.code }, 422)
       const kind = firstLookKindOfMime(mime)!
       const fileId = crypto.randomUUID()
@@ -510,7 +510,7 @@ serve(async (req) => {
       }
       const office = await officeNow(admin, nowIso)
       console.log(JSON.stringify({ event: 'first_look_send', look: look.id, photos: counts.photos, videos: counts.videos, contact: Boolean(look.contact_id) }))
-      return json({ ok: true, thanks: firstLookThanks({ askedBy: look.asked_by_name, photos: counts.photos, videos: counts.videos, officeOpen: office.open, closesWords: office.closesWords, opensWords: office.opensWords }) })
+      return json({ ok: true, thanks: firstLookThanks({ askedBy: look.asked_by_name, photos: counts.photos, videos: counts.videos, officeOpen: office.open, closesWords: office.closesWords, opensWords: office.opensWords, lang: body.lang === 'es' ? 'es' : 'en' }) })
     }
 
     return json({ error: 'bad_action' }, 400)

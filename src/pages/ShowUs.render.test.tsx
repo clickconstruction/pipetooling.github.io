@@ -57,9 +57,12 @@ function mount(io: ShowUsIo, code = CODE) {
 
 const photo = (name = 'sink.jpg') => new File([new Uint8Array(2000)], name, { type: 'image/jpeg' })
 
+const phoneSpeaks = (language: string) => Object.defineProperty(window.navigator, 'language', { value: language, configurable: true })
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  phoneSpeaks('en-US')
 })
 
 describe('Show us the problem', () => {
@@ -87,14 +90,14 @@ describe('Show us the problem', () => {
     await screen.findByRole('heading', { name: FIRST_LOOK_WORDS.heading })
     fireEvent.change(screen.getByTestId('show-us-choose'), { target: { files: [photo()] } })
     const send = await screen.findByRole('button', { name: 'Send 1 photo' })
-    expect(io.sign).toHaveBeenCalledWith(CODE, expect.objectContaining({ mime: 'image/jpeg', bytes: 2000, fileId: null }))
+    expect(io.sign).toHaveBeenCalledWith(CODE, expect.objectContaining({ mime: 'image/jpeg', bytes: 2000, fileId: null }), 'en')
     expect(io.putWhole).toHaveBeenCalledTimes(1)
     expect(io.done).toHaveBeenCalledWith(CODE, expect.objectContaining({ fileId: 'f1', road: 'whole', resumed: 0 }))
     fireEvent.click(screen.getByRole('button', { name: 'Kitchen' }))
     fireEvent.change(screen.getByLabelText(/What is going on\?/), { target: { value: 'It drips when the dishwasher runs.' } })
     fireEvent.click(send)
     expect(await screen.findByText('Got it. Rosa has your 1 photo.')).toBeTruthy()
-    expect(io.send).toHaveBeenCalledWith(CODE, { place: 'Kitchen', words: 'It drips when the dishwasher runs.' })
+    expect(io.send).toHaveBeenCalledWith(CODE, { place: 'Kitchen', words: 'It drips when the dishwasher runs.', lang: 'en' })
     expect(screen.getByRole('button', { name: FIRST_LOOK_WORDS.more })).toBeTruthy()
   })
 
@@ -196,5 +199,33 @@ describe('Show us the problem', () => {
     mount(io, 'sample')
     expect(await screen.findByRole('heading', { name: FIRST_LOOK_WORDS.heading })).toBeTruthy()
     expect(io.read).toHaveBeenCalledWith('sample')
+  })
+
+  it('a phone set to Spanish reads the page in Spanish, sends the place by its English name, and can change to English (PR 4b)', async () => {
+    phoneSpeaks('es-MX')
+    const io = fakeIo({ kind: 'open', payload: payload() })
+    mount(io)
+    expect(await screen.findByRole('heading', { name: 'Muéstrenos el problema' })).toBeTruthy()
+    expect(screen.getByText(/Rosa pidió verlo\./)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Tomar una foto' })).toBeTruthy()
+    expect(screen.getByText(/Entre más información nos dé/)).toBeTruthy()
+    expect(document.documentElement.lang).toBe('es')
+    fireEvent.change(screen.getByTestId('show-us-take-photo'), { target: { files: [photo()] } })
+    await waitFor(() => expect(io.sign).toHaveBeenCalledWith(CODE, expect.objectContaining({ mime: 'image/jpeg' }), 'es'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cocina' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Enviar 1 foto' }))
+    await waitFor(() => expect(io.send).toHaveBeenCalledWith(CODE, { place: 'Kitchen', words: null, lang: 'es' }))
+  })
+
+  it('the language press changes the page and keeps the place that was picked', async () => {
+    const io = fakeIo({ kind: 'open', payload: payload() })
+    mount(io)
+    await screen.findByRole('heading', { name: FIRST_LOOK_WORDS.heading })
+    fireEvent.change(screen.getByTestId('show-us-take-photo'), { target: { files: [photo()] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Bathroom' }))
+    fireEvent.click(screen.getByTestId('show-us-lang'))
+    expect(await screen.findByRole('heading', { name: 'Muéstrenos el problema' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Baño' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('show-us-lang').textContent).toBe('English')
   })
 })
