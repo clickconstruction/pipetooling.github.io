@@ -2,7 +2,7 @@
 name: "The parts book filled from Reece and Ferguson, with a page on every price so it can be checked again"
 number: 311
 group: gated
-status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run
+status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run · later that day the estimator chose to ask Ferguson for a price file by email and for its word on a tool by phone, and parked the ask on this card
 mockup: to-dos/parts-book-house-links/mockup.html
 summary: >
   The estimator asked to scrape Reece's and Ferguson's websites to fill the parts book, and to keep
@@ -17,7 +17,7 @@ summary: >
   a check knows which house it is checking. The book already holds 113 Reece pages and 7 Ferguson
   pages pasted by hand, and their addresses carry the house's number, so the first PR teaches those
   with no page opened at all.
-next: The owner's calls 1 to 5 below, then the estimator's first list — one list downloaded from the Reece account with pricing, and one Ferguson list printed to a PDF with the account's price, both read privately to measure. PR 1 needs neither and can start on the owner's word.
+next: Ferguson's answer to the estimator's ask (the email and the call under The ask to Ferguson), which settles call 2. The owner's calls 1 to 5 below, then the estimator's first list — one list downloaded from the Reece account with pricing, and one Ferguson list printed to a PDF with the account's price, both read privately to measure. PR 1 needs neither and can start on the owner's word.
 size: L as a train of six (S · M · S · M · S · S); a seventh (M) waits on a supply house's written word
 blocker: the owner's calls on the route for each house, and a first real list from each account; reading either house's pages with a tool waits on that house's written word, and Ferguson's terms forbid it today
 opinion: build, without a scraper — use each house's own list, and keep the page beside the house's number; the address of a page already says the house's number, so the 120 pages on file teach themselves
@@ -141,6 +141,79 @@ person should read the clause before any call rests on it.
     spreadsheet download is named. A printed PDF has a text layer the price sheet reader can read.
 - **Not verified:** a developer program (`https://developer.ferguson.com/` showed only its title),
   and whether a rep will email a full price sheet.
+
+### The ask to Ferguson, parked 2026-11-11
+
+The estimator read the finding the same day and set the order herself. First an email that asks
+only for a price file. Then a phone call that asks for Ferguson's word on a tool. Whether either
+went out is not known to this card. She said to park it here and come back.
+
+**Her question, and the answer.** She asked whether she may use a tool on Ferguson "for my
+personal use". No. The ban in Ferguson's terms is on the method, whatever the data is for. The
+personal-use wording is Reece's, and filling a company's parts book to price bids is business use
+at either house. A person reading a page herself and typing the price in is allowed today.
+
+**What she wants from the file,** in her words: "a raw export where we can search more quickly
+than their website allows." So the ask has two sizes. One is every part the account bought. The
+other is the wider plumbing lines the shop buys from, to find a part never ordered. The wide file
+is something to search. It is not poured into the parts book (call 13).
+
+**The email, as drafted.** The brackets are hers to fill in. No account number goes on this card.
+
+> **Subject:** Price file for our account
+>
+> Hi [rep's name],
+>
+> I keep the parts book we price our bids from at [company name], account [number]. Looking parts
+> up one at a time on the website is slow for us. I would like a raw file we can search ourselves.
+>
+> Could you send a spreadsheet for our account with these columns?
+>
+> - Ferguson part number
+> - Manufacturer and manufacturer's number
+> - Description
+> - Unit of measure
+> - Our account price
+>
+> Two sizes would both help:
+>
+> 1. Everything we have bought in the last [12 or 24] months.
+> 2. The wider plumbing lines we buy from, if a file that size exists, so we can price parts we
+>    have not ordered yet.
+>
+> Excel or CSV is fine. Monthly would be ideal and quarterly would work. If the Commodity Pricing
+> Service is the right fit for this, please tell me how to sign up.
+>
+> The file stays inside our company. We use it only to price our own bids.
+>
+> Thank you,
+> [name, title, phone]
+
+**The call.** A yes on the phone counts once it is in writing. The rep may not be the one who can
+set the site's terms aside, so the call also asks who can. Afterwards one line goes by email and
+the reply is kept as a file: "Per our call today, you confirmed that [company] may use its own
+software to look up our account pricing on ferguson.com for parts we buy, about monthly. Please
+reply yes to confirm." The yes names four things:
+
+- the account
+- that software does the looking, signed in
+- about how many parts and how often
+- that the prices stay inside the company
+
+The call also asks whether the file can come on a schedule with no one asking each time. That is
+what makes a periodic check work with no tool at all.
+
+**What a yes does not change.** A person signs in herself. A session stops at any bot check and
+never works around one. Nothing is filed into the parts book in bulk without the owner's word. The
+seat's check is still PR 7, and it is not built.
+
+**When she comes back,** three answers decide the next step:
+
+| Ferguson says | Then |
+| --- | --- |
+| A file is coming | Read the first one privately and measure it, as call 9 does for a list. PR 4 reads it. |
+| No file, a yes to a tool, in writing | Call 2 is settled for Ferguson and PR 7 opens for it. |
+| Neither | My Lists printed with the account's price, as call 2's default says. |
 
 ### What a signed-out page shows
 
@@ -331,7 +404,8 @@ worth it where the link is kept, and with the list the link is free.
    sheet reader. No tool reads Reece's pages unless Reece says so in writing.
 2. **Ferguson's route.** Its terms forbid a tool. *Default:* ask the rep which feed fits a shop this
    size (the Commodity Pricing Service, System-to-System, or a price sheet by email), and use My
-   Lists printed with the account's price meanwhile. Only 17 parts are priced there today.
+   Lists printed with the account's price meanwhile. Only 17 parts are priced there today. The
+   estimator took the ask up on 2026-11-11: the email and the call are under *The ask to Ferguson*.
 3. **Ask Reece for its written word, or leave it.** *Default:* ask once, in the same email that
    asks about the list. A yes opens PR 7. Nothing waits on the answer.
 4. **Where the page lives and what the part's link means.** *Default:* picks 1 and 2 above.
@@ -351,6 +425,9 @@ worth it where the link is kept, and with the list the link is free.
     *Default:* the unit factor is asked once per house number and kept.
 12. **The held pages.** About ten parts carry a page that looks wrong. *Default:* she looks at each
     once, in PR 2's offer.
+13. **A wide file to search.** She wants a raw file that is quicker to search than the house's
+    website. *Default:* a wide file is kept to search, and a part comes out of it into the book
+    only on a press, as C in pick 3. Where the file is kept and searched is not designed yet.
 
 ## Where it plugs in
 
