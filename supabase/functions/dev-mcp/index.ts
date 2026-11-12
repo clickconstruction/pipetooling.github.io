@@ -210,6 +210,11 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // before and after through computeBidCostBreakdown at the bid's own rate. It never teaches the labor book. No wrapper
 // RPC, no migration.
 //
+// 0.77.0 (v2.6990, the bid train's PR 5a): get_bid.totals is no longer a sentence. It reads what the Pricing tab reads,
+// picks the open pricing by the tab's own rule (pickActiveVersion, deriveActivePricingId, with nobody's last-used book) and
+// states the grid's revenue total through scenarioPricingRows from the kernel copy (devMcpBidPricing.ts). Revenue never
+// reads the labor rate; cost and margin stay the tab's, and the reply names the margin it last stamped.
+//
 // Sub labor on a job (v2.6944 / 0.71.0; the owner, 2026-11-11: "Do we have the dev verbs to add sub labor?" then "Can you
 // help me add those verbs?"): plan_sub_labor → apply_sub_labor makes, changes or removes a sheet as Jobs → Subs → Pay's
 // New Sub Labor and Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), and
@@ -239,7 +244,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.76.0'
+const SERVER_VERSION = '0.77.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -327,7 +332,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_bid',
-    description: "One bid's stored facts: the row, count rows, pricing assignments, versions, sends, the submission ledger and the account strip. The priced total on Bids → Pricing is computed in a client hook and is NOT restated here — the reply says so. `bid` is an id, or text that matches exactly one bid.",
+    description: "One bid's stored facts: the row, count rows, pricing assignments, versions, sends, the submission ledger and the account strip. Since v2.6990 `totals` is the Pricing grid's revenue total, to the cent, through the tab's own kernel (scenarioPricingRows): the pricing the tab opens on (its ★ on the active version, else its own copy, else the shared book it falls back on), the count rows priced and not, and the margin the tab last stamped. Cost and margin stay the tab's to compute. `bid` is an id, or text that matches exactly one bid.",
     inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b482'" } }, required: ['bid'] },
   },
   {

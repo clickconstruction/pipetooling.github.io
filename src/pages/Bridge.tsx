@@ -57,7 +57,7 @@ import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
 import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
-import { buildBidWins, buildMarketWorth, type BidSent } from '../lib/bridge/bidWins'
+import { BID_SIZES, buildBidWins, buildMarketWorth, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
 import type { LeftOutRule } from '../lib/bridge/leftOut'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
@@ -86,7 +86,7 @@ import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
-import { buildDialReading, dialSpec, todayPace } from '../lib/bridge/dial'
+import { buildDialReading, dialSpec, marketPaceIsWorth, todayPace } from '../lib/bridge/dial'
 import type { StageFlowInput } from '../lib/bridge/stageFlow'
 import { BridgeDial } from '../components/bridge/BridgeDial'
 import { buildResources, type ResourceId } from '../lib/bridge/resources'
@@ -113,7 +113,6 @@ import { loadBuildDeskReads } from '../lib/bridge/build/loadBuildDesk'
 import { BridgeMarketDesk } from '../components/bridge/BridgeMarketDesk'
 import { buildMarketDesk, marketHeader } from '../lib/bridge/market/marketDesk'
 import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/loadMarketDesk'
-import { marketWinShare } from '../lib/bridge/stageFlow'
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
 import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
@@ -590,7 +589,6 @@ export default function Bridge() {
       cancelled = true
     }
   }, [marketOpen, data, marketReads, marketReadKey, readZzTestJobIds])
-  const marketWinShareNow = useMemo(() => (demand ? marketWinShare(demand.sales) : null), [demand])
 
   // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
   const [salesOpen, setSalesOpen] = useState(false)
@@ -619,9 +617,10 @@ export default function Bridge() {
   }, [salesOpen, data, demand, salesReads, salesReadKey, readZzTestJobIds])
   const salesDesk = useMemo(() => {
     if (!data || !demand || !salesReads || salesReads.forKey !== salesReadKey) return null
-    const est = demand.sales.estimates
-    return buildSalesDesk({ ...salesReads.reads, todayYmd: data.todayYmd, fallbackRate: marketWinShare(demand.sales), estimateShare: est.sentUsd > 0 ? est.wonUsd / est.sentUsd : null })
-  }, [data, demand, salesReads, salesReadKey])
+    // An asker with few marked bids is read at the won rate for bids the size of each ask, and the estimates at their own won rate (punch list #318).
+    const bidSizeRates = bidWins ? BID_SIZES.map((size, i) => ({ underUsd: size.underUsd, rate: bidWins.sizes[i]?.usedRate ?? null })) : null
+    return buildSalesDesk({ ...salesReads.reads, todayYmd: data.todayYmd, fallbackRate: bidWins?.coefficient ?? null, bidSizeRates, estimateShare: estimateWins?.coefficient ?? null })
+  }, [data, demand, salesReads, salesReadKey, bidWins, estimateWins])
 
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
@@ -701,7 +700,8 @@ export default function Bridge() {
     const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
     const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
     return {
-      market: demand?.market ?? null,
+      // Market reads at what the asks are worth at the won rates (punch list #318), once both are read.
+      market: demand ? { ...demand.market, worth: marketWorth?.perWeekUsd != null ? { perWeekUsd: marketWorth.perWeekUsd, bidsPerWeekUsd: bidWins?.wonPerWeekUsd ?? null, estimatesPerWeekUsd: estimateWins?.soldPerWeekUsd ?? null } : null } : null,
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
       fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
       bill: billPile ? billStageInput(billPile, finishedPerWeek, billedPerWeek) : null,
@@ -716,7 +716,7 @@ export default function Bridge() {
       // "reading…" on Market and Sales while their loader is in flight; the error line below the cards is the failure state.
       demandLoading: !demand && !demandError,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk, marketWorth, bidWins, estimateWins])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The Bill desk's kernel (v2.5930): the facts the page knows at once, and the rows once the desk's own reads land.
   const billDesk = useMemo(() => {
@@ -752,12 +752,12 @@ export default function Bridge() {
     return buildBuildDesk({ openJobs: buildInputs.openJobs, points: buildInputs.points, sessions: weeksInputs.sessions, spanWeeks, todayYmd: data.todayYmd, reads, paces: b?.paces ?? null, outPerWeekUsd: b?.outPerWeekUsd ?? null, weeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null })
   }, [buildInputs, weeksInputs, weeksRange, data, buildReads, buildReadKey, stageInput, stageFlow])
   // The Market desk's kernel and header (v2.5931) sit after the stage input because they read the field's pace from it.
-  const marketHeaderNow = useMemo(() => (demand ? marketHeader({ askedPerWeekUsd: (demand.market.bidsInvitedUsd + demand.market.estimatesRequestedUsd) / Math.max(1, demand.market.weeks), winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }) : null), [demand, marketWinShareNow, stageInput])
+  const marketHeaderNow = useMemo(() => (demand ? marketHeader({ askedPerWeekUsd: (demand.market.bidsInvitedUsd + demand.market.estimatesRequestedUsd) / Math.max(1, demand.market.weeks), winShare: null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }) : null), [demand, stageInput])
   const marketDesk = useMemo(() => {
     if (!data || !marketReads || marketReads.forKey !== marketReadKey) return null
     const r = marketReads.reads
-    return buildMarketDesk({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: r.bids, estimates: r.estimates, gcNames: r.gcNames, firstBidYmdByGc: r.firstBidYmdByGc, lifetimeByGc: r.lifetimeByGc, winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null, dayLabel: md })
-  }, [data, marketReads, marketReadKey, marketWinShareNow, stageInput])
+    return buildMarketDesk({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: r.bids, estimates: r.estimates, gcNames: r.gcNames, firstBidYmdByGc: r.firstBidYmdByGc, lifetimeByGc: r.lifetimeByGc, winShare: null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null, dayLabel: md })
+  }, [data, marketReads, marketReadKey, stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
   const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
@@ -776,9 +776,11 @@ export default function Bridge() {
       return data.crew.fieldHoursWindow > 0 ? b.outPerWeekUsd / (data.crew.fieldHoursWindow / weeks) : null
     }
     if (litStage === 'sales') return buildPace && buildPace.soldJobs > 0 ? buildPace.soldUsd / buildPace.soldJobs : null
-    const m = demand?.market
-    return m && m.bidsInvited + m.estimatesRequested > 0 ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / (m.bidsInvited + m.estimatesRequested) : null
-  }, [litStage, data, billPile, fin.data, stageInput, fieldPace, buildPace, demand])
+    // Market's dial is in dollars of worth, so an ask is worth the window's worth over its asks.
+    const m = stageInput?.market
+    const asks = m ? m.bidsInvited + m.estimatesRequested : 0
+    return m?.worth && asks > 0 ? (m.worth.perWeekUsd * m.weeks) / asks : null
+  }, [litStage, data, billPile, fin.data, stageInput, fieldPace, buildPace])
   const dialSpecNow = useMemo(() => (stageInput && litStage ? dialSpec(stageInput, litStage, { perUnitUsd }) : null), [stageInput, litStage, perUnitUsd])
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
@@ -1287,7 +1289,7 @@ export default function Bridge() {
   // The strip of pipe (PR 3): today's flow and each step's pace today, never the dial's what-if.
   const flowStrip = useMemo(() => {
     if (!stageFlow || !stageInput) return null
-    return buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') })
+    return buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth: marketPaceIsWorth(stageInput) })
   }, [stageFlow, stageInput])
 
   // Every move for the pressed step (v2.6840), for its desk: which of them the card at the top holds.

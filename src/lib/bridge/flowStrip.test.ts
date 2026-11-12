@@ -24,6 +24,17 @@ describe('buildFlowStrip', () => {
     expect(strip.label).toBe('The five steps as one pipe. Bill is lit.')
   })
 
+  it('says worth on Market once its pace is what the asks are worth, to the eye and to a screen reader (#318)', () => {
+    const strip = buildFlowStrip(flow('bill'), { ...paces, market: 29_000 }, { marketIsWorth: true })
+    const market = strip.sections[0]!
+    expect(market.paceText).toBe('$29k worth')
+    expect(market.label).toBe('Market. Worth $29k a week.')
+    // The other four keep their words, and without the flag Market keeps asked.
+    expect(strip.sections.slice(1).map((s) => s.paceText)).toEqual(['$36k sold', '$33k built', '$19k billed', '$26k paid'])
+    expect(buildFlowStrip(flow('bill'), paces).sections[0]!.label).toBe('Market. $44k asked a week.')
+    expect(plainWordsFailures(market.label)).toEqual([])
+  })
+
   it('sizes a section the way pipe is sized: four times the flow is twice as wide', () => {
     const strip = buildFlowStrip(flow('bill'), { market: 40_000, sales: 10_000, build: 40_000, bill: 40_000, collect: 40_000 })
     const [market, sales] = strip.sections

@@ -19,10 +19,11 @@ const rows = {
 }
 
 describe('loadSalesDeskReads', () => {
-  it('a ZZ job is no job a bid became in the span and takes no bid out of the open pile', async () => {
+  it('a job takes no bid out of the open pile, and a ZZ job is no job a bid became in the span', async () => {
     const { db } = makeProxyFakeSupabase(rows)
     const reads = await loadSalesDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: new Set(['zzById']) })
-    expect(reads.openBids.map((b) => b.id)).toEqual(['b2', 'b3'])
+    // b1 has a real job and no mark: under the rule it is still out, with the two whose jobs are ZZ.
+    expect(reads.openBids.map((b) => b.id)).toEqual(['b1', 'b2', 'b3'])
     expect(reads.decidedBids.filter(jobMade).map((b) => b.id)).toEqual(['b1'])
     // A job made from a bid with no mark is neither a win nor decided.
     expect(reads.decidedBids.filter(isWin)).toEqual([])
@@ -31,7 +32,7 @@ describe('loadSalesDeskReads', () => {
   it('keeps every job for a dev who shows them', async () => {
     const { db } = makeProxyFakeSupabase(rows)
     const reads = await loadSalesDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: null })
-    expect(reads.openBids.map((b) => b.id)).toEqual(['zz'])
+    expect(reads.openBids.map((b) => b.id)).toEqual(['b1', 'b2', 'b3', 'zz'])
     expect(reads.decidedBids.filter(jobMade).map((b) => b.id)).toEqual(['b1', 'b2', 'b3'])
   })
 })

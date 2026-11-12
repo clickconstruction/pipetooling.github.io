@@ -29,6 +29,7 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
     legal_description: '',
     property_kind: '',
     homestead: false,
+    homestead_answered_at: null,
     owner_mode: '',
     owner_name: '',
     owner_company: '',

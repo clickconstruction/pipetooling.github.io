@@ -5,8 +5,8 @@ import { buildStageFlow, type StageFlowInput } from './stageFlow'
 import { buildReflexes, otherLevers, reflexLine } from './waits'
 
 const input: StageFlowInput = {
-  market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 },
-  sales: { bids: { sentUsd: 2_400_000, wonUsd: 0, startedUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
+  market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8, worth: { perWeekUsd: 29_000, bidsPerWeekUsd: 22_000, estimatesPerWeekUsd: 7_000 } },
+  sales: { bids: { sentUsd: 2_400_000, wonUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
   fieldPerWeekUsd: 35_000,
   build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
   bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
@@ -15,14 +15,17 @@ const input: StageFlowInput = {
 }
 
 describe('everything else waits', () => {
-  it('sizes the four presses from the field’s rate and today’s asks', () => {
+  it('sizes the four presses from the field’s rate and what Market is worth today', () => {
     const r = buildReflexes({ stageInput: input, fieldHoursPerWeek: 300, fieldPeople: 7 })
     expect(r.map((x) => [x.id, x.stage, x.usd, x.addUsd])).toEqual([
       ['plumber', 'build', 40_000, 5000],
-      ['bids', 'market', 411_000, 103_000],
+      ['bids', 'market', 39_000, 10_000],
       ['fieldday', 'build', 42_000, 7000],
       ['overhead', null, null, 0],
     ])
+    // Until Market's worth is read the bids press has no number to move.
+    const unread = buildReflexes({ stageInput: { ...input, market: { ...input.market!, worth: null } }, fieldHoursPerWeek: 300, fieldPeople: 7 })
+    expect(unread.find((x) => x.id === 'bids')).toMatchObject({ usd: null, addUsd: 0 })
   })
 
   it('reads what each press did, and that the link did not move', () => {
@@ -39,7 +42,7 @@ describe('everything else waits', () => {
     const mspec = dialSpec(input, 'market', { perUnitUsd: null })!
     const mreading = buildDialReading(input, 'market', bids.usd as number, { spec: mspec, todayYmd: '2026-10-10', dayLabel: (y) => y })
     const bline = reflexLine({ reflex: bids, before, reading: mreading, stageInput: input, overheadPerDayUsd: 348, billPerJobUsd: null })
-    expect(bline.text).toBe('Push for more bids: $103k more asked a week. The field still builds $35k. More sold only adds to the piles. The link did not move.')
+    expect(bline.text).toBe('Push for more bids: Market is worth $10k more a week. The field still builds $35k. More sold only adds to the piles. The link did not move.')
     for (const t of [line.text, overhead.text, bline.text]) expect(plainWordsFailures(t), t).toEqual([])
   })
 

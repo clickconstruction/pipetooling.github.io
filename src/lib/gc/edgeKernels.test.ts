@@ -79,7 +79,7 @@ describe('the copy of the kernels', () => {
     expect(bundle.files.some((f) => f === 'supabase/functions/_shared/billTruth.ts')).toBe(true)
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
     // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
-    expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts'])
+    expect(typeFiles).toEqual(['lib/bids/bidPricingEngineTypes.ts', 'lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts'])
   })
 })
 
@@ -107,6 +107,11 @@ describe('what the index does not carry', () => {
       // The dev seat's plan_bid_labor: the tab's cost line and the sync's fixture key.
       'lib/bids/bidTotalCostBreakdown.ts',
       'lib/bids/laborSyncPlan.ts',
+      // The dev seat's priced total: the grid's projection and the tab's picks.
+      'lib/bids/scenarioPricingRows.ts',
+      'lib/bids/legacyTemplatePricing.ts',
+      'lib/bids/pickDefaultPriceBookTemplateId.ts',
+      'lib/bids/pricingWriteTarget.ts',
     ])
     const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
     expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])
