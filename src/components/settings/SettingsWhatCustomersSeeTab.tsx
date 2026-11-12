@@ -21,6 +21,8 @@ import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 import { stepFrameProps, type SampleEmails } from '../../lib/journeys/stepFrame'
 import { sampleText, type SampleText } from '../../lib/journeys/sampleTexts'
 import { contractEntriesForStep, parseStepParam } from '../../lib/contracts/customerContractCatalog'
+import { SIDE_BY_SIDE_PARAM, shapeViewAsked } from '../../lib/prototypes/shapeView'
+import { withSideBySide } from '../../lib/prototypes/publicShapeView'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -94,6 +96,15 @@ export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a car
     return () => window.clearTimeout(timer)
   }, [stepFromUrl])
   const [reloadNonce, setReloadNonce] = useState(0)
+  // Punch list #217: `?sbs=1` on this tab frames each paper that has a prototype as today's look over the shape; the
+  // *Side by side* press beside a page opens the page itself with `?sbs=1`, where its own prototypes answer.
+  const sideBySide = shapeViewAsked(searchParams.get(SIDE_BY_SIDE_PARAM), 'what-customers-see')
+  const toggleSideBySide = () => {
+    const next = new URLSearchParams(searchParams)
+    if (sideBySide) next.delete(SIDE_BY_SIDE_PARAM)
+    else next.set(SIDE_BY_SIDE_PARAM, '1')
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -212,7 +223,7 @@ export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a car
           papers={papers}
         >
           {selected?.journeyId === j.id && selectedStep ? (
-            <ExpandedStep step={selectedStep} journeyId={j.id} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} papers={papers} onOpenContract={onOpenContract} />
+            <ExpandedStep step={selectedStep} journeyId={j.id} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} papers={papers} onOpenContract={onOpenContract} sideBySide={sideBySide} onToggleSideBySide={toggleSideBySide} />
           ) : null}
         </JourneyStrip>
       ))}
@@ -328,10 +339,22 @@ function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; pape
   )
 }
 
-function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: Device; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onOpenContract?: (entryId: string) => void }) {
+function ExpandedStep(props: {
+  step: JourneyStep
+  journeyId: JourneyId
+  device: Device
+  emails: SampleEmails | null
+  papers: Partial<Record<string, PaperSample>>
+  origin: string
+  reloadNonce: number
+  onOpenContract?: (entryId: string) => void
+  /** Punch list #217: the tab's `?sbs=1`, and the press that turns it. */
+  sideBySide?: boolean
+  onToggleSideBySide?: () => void
+}) {
   const { step, device } = props
   const wording = props.onOpenContract ? contractEntriesForStep(props.journeyId, step.id) : []
-  const frame = stepFrameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
+  const frame = stepFrameProps(step, props.emails, props.papers, props.origin, props.reloadNonce, { sideBySide: props.sideBySide })
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
   const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
@@ -348,6 +371,16 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
           <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{ ...PILL, textDecoration: 'none' }}>
             Open in new tab
           </a>
+        ) : null}
+        {openUrl ? (
+          <a href={withSideBySide(openUrl)} target="_blank" rel="noopener noreferrer" style={{ ...PILL, textDecoration: 'none' }} title="The page with today's look over each prototype it carries (punch list #217)">
+            Side by side
+          </a>
+        ) : null}
+        {paper?.sideBySideHtml && props.onToggleSideBySide ? (
+          <button type="button" style={props.sideBySide ? PILL_ON : PILL} aria-pressed={props.sideBySide === true} onClick={props.onToggleSideBySide} title="Today's paper over the prototype's (punch list #217)">
+            Side by side
+          </button>
         ) : null}
         <Link to={`/help?g=${encodeURIComponent(step.guide)}`} style={{ ...PILL, textDecoration: 'none' }} title="The help guide for sending this">
           How to send it →
