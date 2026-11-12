@@ -8,7 +8,7 @@ import { MARKET_COUNTED_MAX_WORDS, MARKET_STEP_WORDS, buildMarketStep, marketCou
 const TODAY = '2026-10-26'
 const WINDOW = '2026-08-31'
 let seq = 0
-const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: createdYmd, usd, outcome: null, outcomeYmd: null, jobCreatedYmd: null, gcId, projectName: null, ...over })
+const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: createdYmd, usd, outcome: null, outcomeYmd: null, gcId, projectName: null, ...over })
 const est = (createdYmd: string, usd: number): MarketDeskEstimate => ({ id: `e${++seq}`, createdYmd, sentYmd: createdYmd, status: 'sent', usd, acceptedYmd: null, updatedYmd: createdYmd })
 
 /** Made-up sources: Ridgeway asks every month, Oak Hollow went quiet in June, Pine Fork sent a bid with no value. */

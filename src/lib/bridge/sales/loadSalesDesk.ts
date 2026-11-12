@@ -2,9 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../types/database'
 /**
  * The Sales desk (punch list #192, v2.5932): the reads the Bridge does not
- * already make, lazy on the desk's first open. The open bids (sent, not
- * decided, not yet a job, every age so the ones past the awaiting window can
- * be counted apart), the decided bids of the last `SALES_DECIDED_DAYS` for
+ * already make, lazy on the desk's first open. The open bids (sent, with no
+ * mark, every age so the ones past the awaiting window can be counted apart;
+ * since punch list #318 a bid a job was made from is still open until it is
+ * marked), the decided bids of the last `SALES_DECIDED_DAYS` for
  * the per-asker win rates and answer paces and the funnel (marked won, lost
  * or started_or_complete with `outcome_at` in the span, plus the bids a job
  * was created from in the span, the Sales card's own rule), the asker names
@@ -13,9 +14,9 @@ import type { Database } from '../../../types/database'
  * every estimate asked for in the decided span for the estimates' own pace
  * and the speed sentence. Read-only; nothing new on the server.
  * `salesDesk.ts` does the arithmetic and the words. A ZZ test job is no job
- * a bid became (v2.6813): it is no win in the span, and it takes no bid out
- * of the open pile. The caller passes the ZZ ids, or null to keep them, and
- * the job rows carry their names (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid
+ * a bid became (v2.6813): it dates no bid in the span. The caller passes the
+ * ZZ ids, or null to keep them, and the job rows carry their names
+ * (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid
  * (`isZzBidName`: the robots' and the office's test bids) is in neither the
  * open pile nor the decided set, for the same viewer. The estimates are not
  * touched: they have no ZZ rule.
@@ -48,7 +49,7 @@ const OPEN_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, b
 const DECIDED_SELECT = 'id, bid_number, project_name, gc_builder_id, customer_id, bid_value, agreed_value, bid_date_sent, outcome, outcome_at, loss_category, loss_reason'
 const JOB_SELECT = 'id, job_name, customer_name, bid_id, created_at, billing_only'
 const HISTORY_SELECT = 'id, created_at, sent_at, status, acceptor_consented_at, updated_at, total_cents, doc_kind'
-/** A bid with one of these outcomes is decided; anything else, or none, is open unless a job was made from it. */
+/** A bid with one of these outcomes is decided; anything else, or none, is open. */
 const DECIDED_OUTCOME_LIST = ['won', 'lost', 'started_or_complete'] as const
 const DECIDED_OUTCOMES = `(${DECIDED_OUTCOME_LIST.join(',')})`
 
@@ -73,7 +74,7 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
       async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(DECIDED_SELECT).in('outcome', [...DECIDED_OUTCOME_LIST]).gte('outcome_at', decidedSinceIso).order('id').range(from, to), 'sales desk decided bids')) as DecidedBidRow[] | null, error: null }),
       'sales desk decided bids',
     ),
-    // The jobs created from a bid in the span: each is a win by the Sales card's rule, whatever the bid's outcome says.
+    // The jobs created from a bid in the span: each dates a marked bid that has no answer day. A job decides nothing by itself.
     fetchAllRows(
       async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_SELECT).not('bid_id', 'is', null).gte('created_at', decidedSinceIso).order('id').range(from, to), 'sales desk jobs of the span')) as JobRow[] | null, error: null }),
       'sales desk jobs of the span',
@@ -91,36 +92,24 @@ export async function loadSalesDeskReads(db: SupabaseClient<Database>, opts: { t
   const decidedRows = withoutZzBridgeBids(decidedRead, opts.zzTestJobIds)
   const openById = new Map<string, OpenBidRow>()
   for (const r of withoutZzBridgeBids([...openNullRead, ...openOtherRead], opts.zzTestJobIds)) if (r.bid_date_sent) openById.set(r.id, r)
+  // Still out is no mark at all (punch list #318): a bid a job was made from stays in the open pile until it is marked.
   const openIds = [...openById.keys()]
-  const jobRead = openIds.length
-    ? await fetchAllRowsChunkedIn<JobRow, string>(
-        openIds,
-        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_SELECT).in('bid_id', chunk).order('id').range(from, to), 'sales desk jobs from bids')) as JobRow[] | null, error: null }),
-        'sales desk jobs from bids',
-      )
-    : []
-  const jobs = withoutZzBridgeJobs(jobRead, opts.zzTestJobIds)
-  // A bid that became a job is not open, whatever its outcome says; a billing-only job is not the work.
-  const becameJob = new Set<string>()
-  for (const j of jobs) if (j.bid_id && !j.billing_only) becameJob.add(j.bid_id)
 
-  const openBids: SalesOpenBid[] = openIds
-    .filter((id) => !becameJob.has(id))
-    .map((id) => {
-      const r = openById.get(id) as OpenBidRow
-      return {
-        id,
-        bidNumber: r.bid_number,
-        projectName: r.project_name,
-        gcBuilderId: r.gc_builder_id,
-        customerId: r.customer_id,
-        usd: usdOf(r),
-        sentYmd: (r.bid_date_sent as string).slice(0, 10),
-        nextFollowupYmd: ymdOf(r.next_followup_on),
-        nextFollowupReason: r.next_followup_reason,
-        lastContactYmd: ymdOf(r.last_contact),
-      }
-    })
+  const openBids: SalesOpenBid[] = openIds.map((id) => {
+    const r = openById.get(id) as OpenBidRow
+    return {
+      id,
+      bidNumber: r.bid_number,
+      projectName: r.project_name,
+      gcBuilderId: r.gc_builder_id,
+      customerId: r.customer_id,
+      usd: usdOf(r),
+      sentYmd: (r.bid_date_sent as string).slice(0, 10),
+      nextFollowupYmd: ymdOf(r.next_followup_on),
+      nextFollowupReason: r.next_followup_reason,
+      lastContactYmd: ymdOf(r.last_contact),
+    }
+  })
 
   // The decided set: the bids with an outcome in the span, plus the bids a job was created from in the span, read by id when not already in hand.
   const spanJobByBid = new Map<string, JobRow>()

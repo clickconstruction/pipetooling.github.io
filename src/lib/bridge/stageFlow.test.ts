@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, marketWinShare, stageUsd, weeksToClear, withFieldPaces } from './stageFlow'
+import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, marketWorthPerWeek, stageUsd, weeksToClear, withFieldPaces } from './stageFlow'
 
 const today = () =>
   buildStageFlow({
@@ -194,8 +194,8 @@ describe('buildStageFlow', () => {
 
   it('reads Market and Sales by pace against the field, with the SENT / WON / LOST table', () => {
     const flow = buildStageFlow({
-      market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 },
-      sales: { bids: { sentUsd: 2_400_000, wonUsd: 0, startedUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
+      market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8, worth: { perWeekUsd: 29_000, bidsPerWeekUsd: 22_000, estimatesPerWeekUsd: 7_000 } },
+      sales: { bids: { sentUsd: 2_400_000, wonUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
       fieldPerWeekUsd: 35_000,
       bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
       collect: null,
@@ -209,28 +209,39 @@ describe('buildStageFlow', () => {
       { who: 'bids', usd: '$2.4M', tail: 'from GCs' },
       { who: 'estimates', usd: '$64k', tail: 'from customers' },
     ])
-    // Market reads against the field through the window's win share by value, not the raw asks: $2.4M invited converts to $15.4k a week here.
-    expect(market.weeksText).toBe('about $308k a week asked')
-    expect(market.weeksText2).toBe('≈ $15.4k a week at the window’s 5% win share')
+    // Market reads against the field on what the asks are worth at the won rates, never on the $308k a week that came in.
+    expect(market.weeksText).toBe('worth $29k a week')
+    expect(market.weeksText2).toBe('bids win $22k, estimates sell $7k')
     expect(market.badge).toBe('short of the field')
     const sales = flow.stages.find((s) => s.id === 'sales')!
     expect(sales.pile.headline).toBe('$4.8M awaiting an answer')
-    expect(sales.table!.rows[0]).toEqual({ label: 'bids', cells: ['$2.4M', '$98k', '$645k'], note: 'won counts $98k of bids that became jobs' })
+    expect(sales.table!.rows[0]).toEqual({ label: 'bids', cells: ['$2.4M', '$98k', '$645k'] })
     expect(sales.table!.rows[1]!.cells).toEqual(['$64k', '$25k', '$0'])
     expect(sales.weeksText).toBe('sold $49k of work a week')
     expect(sales.weeksText2).toBe('the field builds $35k a week')
     expect(sales.badge).toBe('ahead of the field · wait')
     expect(flow.linkId).toBe('bill')
-    const behind = buildStageFlow({ market: null, sales: { bids: { sentUsd: 0, wonUsd: 0, startedUsd: 0, lostUsd: 0 }, estimates: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: 20_000 }, fieldPerWeekUsd: 35_000, bill: null, collect: null, build: null, heldLinkId: null })
+    const behind = buildStageFlow({ market: null, sales: { bids: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, estimates: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: 20_000 }, fieldPerWeekUsd: 35_000, bill: null, collect: null, build: null, heldLinkId: null })
     expect(behind.stages.find((s) => s.id === 'sales')!.badge).toBe('behind the field')
   })
 
-  it('reads the window’s win share by value, and falls back to the asks alone without one', () => {
-    const sales = { bids: { sentUsd: 2_400_000, wonUsd: 0, startedUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: null }
-    expect(marketWinShare(sales)).toBeCloseTo(123_000 / 2_464_000, 6)
-    expect(marketWinShare({ ...sales, bids: { ...sales.bids, sentUsd: 0 }, estimates: { ...sales.estimates, sentUsd: 0 } })).toBeNull()
-    expect(marketWinShare(null)).toBeNull()
-    // With no Sales reading, Market compares the asks alone and the card says so.
+  it('reads Market at what the asks are worth: not short once the worth meets the field, and one part alone when only one reads', () => {
+    const base = { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 }
+    const build = { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 }
+    const marketOf = (worth: { perWeekUsd: number; bidsPerWeekUsd: number | null; estimatesPerWeekUsd: number | null }) =>
+      buildStageFlow({ market: { ...base, worth }, sales: null, fieldPerWeekUsd: 35_000, bill: null, collect: null, build, heldLinkId: null }).stages.find((s) => s.id === 'market')!
+    const enough = marketOf({ perWeekUsd: 40_000, bidsPerWeekUsd: 31_000, estimatesPerWeekUsd: 9_000 })
+    expect(enough.badge).toBe('not short')
+    expect(enough.tone).toBe('green')
+    const onlyEstimates = marketOf({ perWeekUsd: 7_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: 7_000 })
+    expect(onlyEstimates.weeksText).toBe('worth $7k a week')
+    expect(onlyEstimates.weeksText2).toBe('estimates sell $7k')
+    expect(onlyEstimates.badge).toBe('short of the field')
+    expect(marketWorthPerWeek({ worth: { perWeekUsd: 40_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: null } })).toBe(40_000)
+  })
+
+  it('judges nothing until Market’s worth is read: the dollars that came in never stand in for it', () => {
+    // $308k a week came in, far over the field's $35k. On the raw dollars Market would read not short forever.
     const flow = buildStageFlow({
       market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 },
       sales: null,
@@ -241,7 +252,10 @@ describe('buildStageFlow', () => {
       heldLinkId: null,
     })
     const market = flow.stages.find((s) => s.id === 'market')!
-    expect(market.badge).toBe('not short')
-    expect(market.weeksText2).toBe('win share not readable: compared on the asks alone')
+    expect(market.weeksText).toBe('about $308k a week bid')
+    expect(market.weeksText2).toBe('what it is worth is not read yet')
+    expect(market.badge).toBe('wait')
+    expect(market.tone).toBe('plain')
+    for (const worth of [null, undefined, { perWeekUsd: 0, bidsPerWeekUsd: null, estimatesPerWeekUsd: null }]) expect(marketWorthPerWeek({ worth })).toBeNull()
   })
 })
