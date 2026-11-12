@@ -7,6 +7,8 @@ import {
   askedWithoutId,
   askedWithoutNeighbours,
   askedWithoutPoint,
+  bexarAddressQuery,
+  bexarAddressWhere,
   COMAL_PARCELS,
   factsInCounty,
   GUADALUPE_PARCELS,
@@ -19,6 +21,7 @@ import {
   neighbourSources,
   ordinalOf,
   parcelFactsByAddress,
+  parcelFactsFromBexarAddress,
   parcelFactsById,
   parcelFactsByPoint,
   parcelSourceFor,
@@ -26,6 +29,7 @@ import {
   pointQuery,
   pointQueryOf,
   pointQuestion,
+  routeOf,
   sameStreetAddress,
   sourceForId,
   streetParts,
@@ -422,5 +426,50 @@ describe("the county's address for a lot, against the permit's", () => {
     expect(sameStreetAddress('100 SAMPLE LN', '   ')).toBe(false)
     expect(sameStreetAddress('100 SAMPLE LN', 'SAMPLE LN 78700')).toBe(false)
     expect(sameStreetAddress(null, '100 SAMPLE LN')).toBe(false)
+  })
+})
+
+describe("Bexar County, asked by the house number and the street's name", () => {
+  const situs = (street: string) => `${street} \nSAN ANTONIO, TX 78201`
+  const body = (...list: Array<{ id: number; street: string; owner?: string | null }>) => rows(...list.map((r) => ({ PropID: r.id, Situs: situs(r.street), Owner: r.owner === undefined ? 'SAMPLE LLC' : r.owner })))
+  it('asks inside the one string the county keeps', () => {
+    expect(bexarAddressWhere({ num: '100', prefix: null, name: 'SAMPLE' })).toBe("UPPER(Situs) LIKE '100 %' AND UPPER(Situs) LIKE '%SAMPLE%'")
+    expect(bexarAddressWhere({ num: '900', prefix: 'E', name: '5TH' })).toBe("UPPER(Situs) LIKE '900 %' AND (UPPER(Situs) LIKE '%5TH%' OR UPPER(Situs) LIKE '%5%' OR UPPER(Situs) LIKE '%FIFTH%')")
+    // A loop is asked by its number, since the city leaves the word out.
+    expect(bexarAddressWhere({ num: '16500', prefix: 'N', name: '1604' })).toBe("UPPER(Situs) LIKE '16500 %' AND UPPER(Situs) LIKE '%1604%'")
+    expect(bexarAddressWhere({ num: '16500', prefix: 'N', name: 'LOOP 1604' })).toBe("UPPER(Situs) LIKE '16500 %' AND UPPER(Situs) LIKE '%1604%'")
+    expect(bexarAddressWhere({ num: '1', prefix: null, name: "O'SAMPLE" })).toContain("'%O''SAMPLE%'")
+    expect(bexarAddressQuery({ num: '100', prefix: null, name: 'SAMPLE' }).get('returnGeometry')).toBe('false')
+  })
+  it('reads a numbered road however it is written, and leaves a numbered street alone', () => {
+    expect(routeOf('1604')).toBe(1604)
+    expect(routeOf('LOOP 1604')).toBe(1604)
+    expect(routeOf('FM 78')).toBe(78)
+    expect(routeOf('HWY 90')).toBe(90)
+    expect(routeOf('5TH')).toBeNull()
+    expect(routeOf('SAMPLE')).toBeNull()
+    expect(routeOf('LOOP SAMPLE')).toBeNull()
+  })
+  it('finds the lot the whole-string match missed: a suffix spelled out, a direction on one side, a loop the county names', () => {
+    expect(parcelFactsFromBexarAddress(body({ id: 1, street: '100 SAMPLE LN' }), streetParts('100 SAMPLE LANE')!)?.prop_id).toBe('1')
+    expect(parcelFactsFromBexarAddress(body({ id: 2, street: '200 SAMPLE CT' }), streetParts('200 Sample Court')!)?.prop_id).toBe('2')
+    expect(parcelFactsFromBexarAddress(body({ id: 3, street: '300 SAMPLE' }), streetParts('300 E SAMPLE ST')!)?.prop_id).toBe('3')
+    expect(parcelFactsFromBexarAddress(body({ id: 4, street: '400 SAMPLE RD' }), streetParts('400 S SAMPLE RD')!)?.prop_id).toBe('4')
+    expect(parcelFactsFromBexarAddress(body({ id: 5, street: '16500 N LOOP 1604 W' }), streetParts('16500 N 1604 W')!)?.prop_id).toBe('5')
+    expect(parcelFactsFromBexarAddress(body({ id: 6, street: '8000 NW LOOP 410' }), streetParts('8000 NW 410')!)?.prop_id).toBe('6')
+  })
+  it('never answers with another street, another number or another loop', () => {
+    expect(parcelFactsFromBexarAddress(body({ id: 1, street: '100 SAMPLER AVE' }), streetParts('100 SAMPLE')!)).toBeNull()
+    expect(parcelFactsFromBexarAddress(body({ id: 2, street: '100 LIVE SAMPLE ST' }), streetParts('100 SAMPLE ST')!)).toBeNull()
+    expect(parcelFactsFromBexarAddress(body({ id: 3, street: '1000 SAMPLE ST' }), streetParts('100 SAMPLE ST')!)).toBeNull()
+    expect(parcelFactsFromBexarAddress(body({ id: 4, street: '8000 NW LOOP 1604' }), streetParts('8000 NW 410')!)).toBeNull()
+    expect(parcelFactsFromBexarAddress({}, streetParts('100 SAMPLE ST')!)).toBeNull()
+  })
+  it('takes the asked side of town, then a row with an owner', () => {
+    const two = body({ id: 1, street: '500 S SAMPLE ST' }, { id: 2, street: '500 N SAMPLE ST' })
+    expect(parcelFactsFromBexarAddress(two, streetParts('500 N SAMPLE ST')!)?.prop_id).toBe('2')
+    const blank = body({ id: 3, street: '600 SAMPLE ST', owner: null }, { id: 4, street: '600 SAMPLE ST' })
+    expect(parcelFactsFromBexarAddress(blank, streetParts('600 SAMPLE ST')!)).toMatchObject({ prop_id: '4', owner: 'SAMPLE LLC' })
+    expect(parcelFactsFromBexarAddress(blank, streetParts('600 SAMPLE ST')!)?.matched_by).toBeUndefined()
   })
 })
