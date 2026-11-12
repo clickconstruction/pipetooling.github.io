@@ -1289,7 +1289,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginTop: '0.8rem', fontSize: '0.8rem', cursor: 'pointer' }} data-testid="evidence-counsel-only">
           <input type="checkbox" checked={Boolean(evDraft.counselOnly)} onChange={(e) => setEvDraft((d) => ({ ...d, counselOnly: e.target.checked }))} style={{ marginTop: 2 }} />
           <span>
-            <span style={{ fontWeight: 600 }}>Counsel-only.</span> Kept here only: never filed in Drive, never read by the agent or by the dev seat. A dev signed in still reads it.
+            <span style={{ fontWeight: 600 }}>Counsel-only.</span> Kept here only: never filed in Drive. Devs read it, and so does the dev seat their agents use. The HR agent's key does not.
           </span>
         </label>
         <p style={{ margin: '0.8rem 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>

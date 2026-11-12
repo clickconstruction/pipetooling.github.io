@@ -210,6 +210,11 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // before and after through computeBidCostBreakdown at the bid's own rate. It never teaches the labor book. No wrapper
 // RPC, no migration.
 //
+// 0.77.0 (v2.6990, the bid train's PR 5a): get_bid.totals is no longer a sentence. It reads what the Pricing tab reads,
+// picks the open pricing by the tab's own rule (pickActiveVersion, deriveActivePricingId, with nobody's last-used book) and
+// states the grid's revenue total through scenarioPricingRows from the kernel copy (devMcpBidPricing.ts). Revenue never
+// reads the labor rate; cost and margin stay the tab's, and the reply names the margin it last stamped.
+//
 // Sub labor on a job (v2.6944 / 0.71.0; the owner, 2026-11-11: "Do we have the dev verbs to add sub labor?" then "Can you
 // help me add those verbs?"): plan_sub_labor → apply_sub_labor makes, changes or removes a sheet as Jobs → Subs → Pay's
 // New Sub Labor and Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), and
@@ -227,10 +232,19 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // own id, with every job that follows the change named in the plan (devMcpPropertyRecord.ts). No wrapper RPC, no
 // migration.
 //
+// 0.76.0 (v2.6986; the owner, 2026-11-11: "Because only devs and council can see the council only things, I think it's
+// totally fine for an agent to", then "Yes, those too"): counsel-only material is read by this seat. The six restrictive
+// policies and dev_matter_doc_read's refusal now also ask counsel_only_held_from_seat(), which answers false (migration
+// 20261112090000), so a counsel-only evidence record, its files and indexed text, the correction links that touch one and
+// a counsel-only matter document come back with the rest, each marked counsel_only. get_person_file and get_case_brief
+// name a hold only for counsel-only items the count names that the read did not hand back (devMcpCounselOnly.ts), so
+// they read right whichever way the switch stands. The Drive filer, the firm's portal and print, and the hr_agent key
+// keep their fences.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.75.0'
+const SERVER_VERSION = '0.77.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -318,7 +332,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_bid',
-    description: "One bid's stored facts: the row, count rows, pricing assignments, versions, sends, the submission ledger and the account strip. The priced total on Bids → Pricing is computed in a client hook and is NOT restated here — the reply says so. `bid` is an id, or text that matches exactly one bid.",
+    description: "One bid's stored facts: the row, count rows, pricing assignments, versions, sends, the submission ledger and the account strip. Since v2.6990 `totals` is the Pricing grid's revenue total, to the cent, through the tab's own kernel (scenarioPricingRows): the pricing the tab opens on (its ★ on the active version, else its own copy, else the shared book it falls back on), the count rows priced and not, and the margin the tab last stamped. Cost and margin stay the tab's to compute. `bid` is an id, or text that matches exactly one bid.",
     inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b482'" } }, required: ['bid'] },
   },
   {
@@ -618,7 +632,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_matter_document',
-    description: "A text document on a legal matter's Evidence tab a piece at a time (v2.6722, punch list #288): without section, the index — every heading with its number, level, line and size — of a .md or .txt the office or the seat filed on the matter (doc_id is the Evidence row, from get_case_brief's matter.documents or a search_case matter_document hit); with section (a number as the heading carries it, or a heading's text), that section's text alone with the sections before and after named. A PDF, an image or an .eml is refused with what it is; a counsel-only paper is refused to the seat as deployed. Dev-only.",
+    description: "A text document on a legal matter's Evidence tab a piece at a time (v2.6722, punch list #288): without section, the index — every heading with its number, level, line and size — of a .md or .txt the office or the seat filed on the matter (doc_id is the Evidence row, from get_case_brief's matter.documents or a search_case matter_document hit); with section (a number as the heading carries it, or a heading's text), that section's text alone with the sections before and after named. A PDF, an image or an .eml is refused with what it is; a counsel-only paper is read like any other since 0.76.0, its target marked counsel_only. Dev-only.",
     inputSchema: { type: 'object', properties: { matter_id: { type: 'string', description: 'legal_matters.id (read_rows on legal_matters by payer_name, or get_case_brief)' }, doc_id: { type: 'string', description: 'the Evidence row (legal_matter_documents.id)' }, section: { type: 'string', description: 'a section number or heading; the index alone when left out' } }, required: ['matter_id', 'doc_id'] },
   },
   {
@@ -3902,12 +3916,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // Drive after the rows, as the panel asks it: a function not deployed, a refusal or no People folder leaves the
         // record standing as not in Drive, and the cron sweep tries again while a file waits.
         const evidenceId = (reply as { evidence_id?: unknown }).evidence_id
-        // v2.6554: a counsel-only record never asks Drive, and this seat will not read it back: it is held from the header it sends.
+        // v2.6554: a counsel-only record never asks Drive. Since v2.6986 this seat reads it back, marked counsel-only.
         const counselOnly = (built.body as { p?: { counsel_only?: unknown } }).p?.counsel_only === true
         if (counselOnly) {
           // #285: the Drive filer is never asked, so its index hook never runs; the files go through the records pass here, fail-soft.
           const index = await indexRecordsAfterWrite({ personId: String(built.target) })
-          return ok({ ...(reply as Record<string, unknown>), drive: { asked: false, ok: true, why: null, counsel_only: true }, index, next: 'Kept here only, counsel-only: never filed in Drive, never read by the agent or by this seat. get_person_file names it among the held; a dev reads it on People → HR.' }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
+          return ok({ ...(reply as Record<string, unknown>), drive: { asked: false, ok: true, why: null, counsel_only: true }, index, next: 'Kept here only, counsel-only: never filed in Drive and never read by the HR agent\'s key. This seat reads it back, marked counsel_only (since 0.76.0); keep its words out of open entries, open documents, job notes, Drive and the repo.' }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
         }
         const drive = typeof evidenceId === 'string' ? await fileEvidenceToDrive(session, evidenceId) : { asked: false, ok: false, why: 'the RPC answered no evidence_id' }
         return ok({ ...(reply as Record<string, unknown>), drive, next: evidenceDriveNext(drive) }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })

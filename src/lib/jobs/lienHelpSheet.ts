@@ -195,15 +195,18 @@ const WRITE = '<span class="lien-help-write"></span>'
  * the mail-by day each have a line to write on. `clerkLine` is the clerk's address, fee and hours as the office typed
  * them in Settings (`lienHelpClerkLine`); without one the step says only that the clerk charges a fee.
  */
-export function lienHelpAfterSteps(clerkCounty: string, hasContractor: boolean, clerkLine = ''): string[] {
+export function lienHelpAfterSteps(clerkCounty: string, hasContractor: boolean, clerkLine = '', hasCode = false): string[] {
   const clerk = clerkCounty.trim() ? `${clerkCounty.trim()} County Clerk` : 'County Clerk of the property’s county'
   return [
     `File the original with the <strong>${esc(clerk)}</strong>. That is the property’s county. ${clerkLine.trim() ? `<br/><span class="lien-help-small">${esc(clerkLine.trim())}</span>` : 'The clerk charges a fee for each paper.'}`,
     `Write on the stamped copy, and here. Recording number ${WRITE} Filed on ${WRITE}`,
-    'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.',
+    // With a code on the sheet (change 5, the code half) the phone lands on the job's affidavit tab; the desk's own door stays named for a computer.
+    hasCode
+      ? 'The same day, scan the code with a phone. On a computer, open the job on the Lien desk and press <strong>Open the affidavit tab ›</strong>. Press <strong>Record filing…</strong> and type both.'
+      : 'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.',
     `${hasContractor ? 'Mail a copy by certified mail to the owner and to the original contractor.' : 'Mail a copy by certified mail to the owner.'} The app shows the last day to mail. Mail by ${WRITE}`,
-    // The form takes the day the copies went out. It has no place for a tracking number, so the receipts stay with the job.
-    'Press <strong>Record service…</strong> and set the day the copies were mailed.',
+    // The form takes the day the copies went out, and since punch list #314's change 5 each copy's certified mail number and a photo of its receipt.
+    `${hasCode ? 'Scan the code again. ' : ''}Press <strong>Record service…</strong> and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.`,
     'Keep the clerk’s stamped copy and the certified mail receipts with the job.',
   ]
 }
@@ -213,6 +216,27 @@ export function lienHelpAfterStepsShort(clerkCounty: string, hasContractor: bool
   const clerk = clerkCounty.trim() ? `${clerkCounty.trim()} County Clerk` : 'County Clerk of the property’s county'
   return [`File with the <strong>${esc(clerk)}</strong>.`, 'In the app: <strong>Record filing…</strong>', hasContractor ? 'Mail copies to the owner and the contractor.' : 'Mail a copy to the owner.', 'In the app: <strong>Record service…</strong>']
 }
+
+/**
+ * The batch sheet's steps after the notary. With a code on the sheet the phone lands on the Affidavits list, each job a
+ * press from its own affidavit tab. Record service… asks for each copy's mail number and receipt photo, so the step does.
+ */
+export function lienHelpBatchAfterSteps(hasCode = false): string[] {
+  return [
+    'File each clerk’s papers together. Write the recording number and the day filed on the stamped copy, and on the row.',
+    hasCode
+      ? 'The same day, scan the code with a phone. It opens the Affidavits list. On each job press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.'
+      : 'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>.',
+    'Mail a copy by certified mail to each name on the row. The app shows the last day to mail.',
+    `${hasCode ? 'Scan the code again. On each job press' : 'Press'} <strong>Record service…</strong> and set the day the copies were mailed. Type each mail number and take a photo of each receipt. Tick the row. Keep the receipts with the job.`,
+  ]
+}
+
+/** The words under the code that opens the place to record. A cover sheet's corner holds the lead alone; its steps say what the code opens. */
+export const LIEN_HELP_RECORD_CODE_WORDS = {
+  lead: 'Scan to record',
+  batch: 'Opens the Affidavits list',
+} as const
 
 /** The page's own styles. Every rule sits under `.lien-help`, so the paper beside it keeps its look. */
 export const LIEN_HELP_STYLES = `
@@ -227,6 +251,10 @@ export const LIEN_HELP_STYLES = `
   .lien-help-watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 44pt system-ui, Arial, sans-serif; color: rgba(0, 0, 0, 0.1); transform: rotate(-28deg); pointer-events: none; letter-spacing: 0.08em; white-space: nowrap; }
   .lien-help-code { display: flex; gap: 6pt; align-items: center; }
   .lien-help-code img { width: 38pt; height: 38pt; display: block; }
+  .lien-help-record { float: right; width: 78pt; margin: 0 0 2pt 10pt; text-align: center; font-size: 7.5pt; line-height: 1.2; }
+  .lien-help-record img { width: 54pt; height: 54pt; display: block; margin: 0 auto 1pt; image-rendering: pixelated; }
+  .lien-help-record-corner { width: 62pt; margin: -3pt 0 0 10pt; white-space: nowrap; }
+  .lien-help-record-corner img { width: 44pt; height: 44pt; }
   .lien-help-rows tr.lien-help-group td { background: #ececec; font-weight: 800; }
   .lien-help h2 { font-size: 15pt; margin: 0; line-height: 1.15; }
   .lien-help h3 { font-size: 10.5pt; margin: 0 0 3pt; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -266,8 +294,23 @@ export const LIEN_HELP_STYLES = `
   @media print { .lien-help { margin: 0 -0.35in; } }
 `
 
-/** What the caller draws for a sheet: `guideCode` is a QR code's own markup (an image) that opens the full guide. */
-export type LienHelpExtras = { guideCode?: string }
+/**
+ * What the caller draws for a sheet, each a QR code's own markup (an image). `guideCode` opens the full guide and sits in
+ * the band's corner. `recordCode` opens the place in the app where the filing and the mail receipts are recorded, and
+ * sits beside the steps after the notary, where the reader is when it is wanted (change 5, the code half). The guide
+ * copy takes none: it is a page to learn from, and nothing is recorded off it.
+ */
+export type LienHelpExtras = { guideCode?: string; recordCode?: string }
+
+/**
+ * The code to record, floated in a box of steps, so only the lines beside it run short. The batch sheet has room, and
+ * its code sits in the box's top corner with what it opens under it. The cover sheet has none: its fullest print fills
+ * the page to the point, and a column for the code, or the top corner, put the foot on a second page. There the code
+ * is smaller and hangs from the last step, beside that one short line and the names the copies go to, where the box
+ * was empty.
+ */
+const recordCodeBlock = (code: string | undefined, under: string): string =>
+  code ? `<div class="lien-help-record${under ? '' : ' lien-help-record-corner'}" data-lien-help-record-code>${code}<strong>${esc(LIEN_HELP_RECORD_CODE_WORDS.lead)}</strong>${under ? `<br/>${esc(under)}` : ''}</div>` : ''
 
 /** The band at the top of every sheet. The code to scan sits in its right corner, where the band has room to spare, so it adds no height to the page. */
 const band = (tag: string, title: string, right: string[], extras?: LienHelpExtras): string =>
@@ -324,7 +367,8 @@ const party = (name: string, address: string): string => [name.trim(), address.t
 
 /** A, one page in front of one paper: the job's facts, when to stop, the blanks, and what happens after the notary. */
 export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extras?: LienHelpExtras): string {
-  const after = lienHelpAfterSteps(p.propertyCounty, Boolean(p.contractorName.trim()), lienHelpClerkLine(p.clerk))
+  const recordCode = extras?.recordCode
+  const after = lienHelpAfterSteps(p.propertyCounty, Boolean(p.contractorName.trim()), lienHelpClerkLine(p.clerk), Boolean(recordCode))
   const ask = (p.ask ?? '').trim()
   const printedCounty = p.signingCounty?.trim() ?? ''
   const copies = [
@@ -345,7 +389,7 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
     (printedCounty
       ? blanksBox('Four things to write. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS_PRINTED_COUNTY, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty))
       : blanksBox('The blanks. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS, '', lienHelpPictureHtml(''))) +
-    `<div class="lien-help-box"><h3>After it is signed</h3><ol>${after.map((s) => `<li><span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
+    `<div class="lien-help-box" style="overflow:hidden"><h3>After it is signed</h3><ol>${after.map((s, i) => `<li>${i === after.length - 1 ? recordCodeBlock(recordCode, '') : ''}<span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
     foot(`Help sheet for ${p.jobLabel}${ask && !(p.checks && p.checks.length > 0) ? ` · ${ask}` : ''}`, 'The paper to sign is the next page') +
     `</section>`
   )
@@ -441,12 +485,7 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
       ? `<div class="lien-help-box" data-lien-help-batch-checks><h3>What the app checked</h3><p><strong>${esc(lienHelpBatchSummary({ papers: papers.length, asks: asks.size, leftOut: leftOut.length }))}</strong></p><p style="margin-top:3pt">On each paper it read the owner, the homestead mark and the notice behind each month. ${asks.size > 0 ? 'A row marked <strong>Ask first</strong> waits for the attorney. ' : ''}</p><p style="margin-top:3pt"><strong>Your check.</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${oneAsk ? ` <strong data-lien-help-ask-who>${esc(oneAsk)}</strong>` : ''}</p></div>`
       : stopBox('Call the office first', LIEN_HELP_STOPS_SHORT)) +
     `</div>` +
-    `<div class="lien-help-box"><h3>After the notary, one trip for each clerk</h3><ol>` +
-    `<li>File each clerk’s papers together. Write the recording number and the day filed on the stamped copy, and on the row.</li>` +
-    `<li>The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>.</li>` +
-    `<li>Mail a copy by certified mail to each name on the row. The app shows the last day to mail.</li>` +
-    `<li>Press <strong>Record service…</strong> and set the day the copies were mailed. Tick the row. Keep the receipts with the job.</li>` +
-    `</ol></div>` +
+    `<div class="lien-help-box" style="overflow:hidden">${recordCodeBlock(input.extras?.recordCode, LIEN_HELP_RECORD_CODE_WORDS.batch)}<h3>After the notary, one trip for each clerk</h3><ol>${lienHelpBatchAfterSteps(Boolean(input.extras?.recordCode)).map((s) => `<li>${s}</li>`).join('')}</ol></div>` +
     `<table class="lien-help-rows"><colgroup><col style="width:3%"/><col style="width:26%"/><col style="width:9%"/><col style="width:17%"/><col style="width:13%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/></colgroup><tr><th>#</th><th>Job · property</th><th>Claim</th><th>Mail a copy to</th><th>Recording no. · day filed</th><th>Signed</th><th>Sealed</th><th>Filed</th><th>In app</th><th>Mailed</th></tr>${rows}${left}</table>` +
     foot(`Help sheet for the batch${input.printedOn ? ` printed ${input.printedOn}` : ''}${oneAsk && !checked ? ` · ${oneAsk}` : ''}`, count === 1 ? '1 paper follows this page' : `${count} papers follow this page`) +
     `</section>`

@@ -50,7 +50,7 @@ export type PersonEvidenceRecord = {
   drive_folder_url: string | null
   filed_at: string | null
   fail_why: string | null
-  /** v2.6554: kept here only — never filed in Drive, never read by the agent or by the seat as deployed. */
+  /** v2.6554: kept here only — never filed in Drive, never read by the HR agent's key. Since v2.6986 the dev seat reads it. */
   counsel_only?: boolean
   files: PersonEvidenceFile[]
 }

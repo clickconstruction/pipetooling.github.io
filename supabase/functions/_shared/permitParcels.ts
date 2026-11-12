@@ -233,6 +233,24 @@ export function parcelSourceFor(county: string | null | undefined): ParcelSource
   return SOURCES.find((s) => s.county.toLowerCase() === want) ?? null
 }
 
+/**
+ * The counties a city's limits reach into, by the county the city is filed under. New Braunfels
+ * is filed under Comal and four of its addresses in ten are in Guadalupe; San Marcos is filed
+ * under Hays and one in eight is in Guadalupe (measured 2026-11-11, punch list #320). Only the
+ * counties whose layers are read here are listed.
+ */
+const NEIGHBOURS: Record<string, readonly string[]> = {
+  Comal: ['Guadalupe'],
+  Hays: ['Guadalupe', 'Comal'],
+  Guadalupe: ['Comal'],
+  Travis: ['Hays'],
+}
+
+/** The neighbouring counties' layers, asked at a permit's point when its city's own county holds no parcel there. */
+export function neighbourSources(source: ParcelSource): ParcelSource[] {
+  return (NEIGHBOURS[source.county] ?? []).map((county) => parcelSourceFor(county)).filter((s): s is ParcelSource => s !== null)
+}
+
 /** How many rows to ask for: a number and a name can match a few streets ("MAIN", "MAIN PLAZA"). */
 export const PARCEL_ROWS_ASKED = 12
 
@@ -241,18 +259,23 @@ export function addressQuery(source: ParcelSource, parts: StreetParts): URLSearc
   return new URLSearchParams({ where: source.where(parts), outFields: source.outFields, returnGeometry: 'false', resultRecordCount: String(PARCEL_ROWS_ASKED), f: 'json' })
 }
 
-/** The query string for the parcel under a point. */
-export function pointQuery(source: ParcelSource, point: { lat: number; lng: number }): URLSearchParams {
+/** The query string for the parcel under a point, for a layer by the columns it is asked for. */
+export function pointQueryOf(outFields: string, point: { lat: number; lng: number }): URLSearchParams {
   return new URLSearchParams({
     geometry: `${point.lng},${point.lat}`,
     geometryType: 'esriGeometryPoint',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    outFields: source.outFields,
+    outFields,
     returnGeometry: 'false',
     resultRecordCount: '3',
     f: 'json',
   })
+}
+
+/** The query string for the parcel under a point. */
+export function pointQuery(source: ParcelSource, point: { lat: number; lng: number }): URLSearchParams {
+  return pointQueryOf(source.outFields, point)
 }
 
 /** A permit's parcel id as text, or null: blank, or one this layer cannot hold. */
@@ -333,6 +356,12 @@ export function parcelFactsByPoint(source: ParcelSource, body: unknown): ParcelF
   return a ? { ...source.facts(a), matched_by: 'point' } : null
 }
 
+/** The facts off a point query put to a neighbouring county: read at the point, and the county named so the card can say whose parcel it is. */
+export function parcelFactsAtNeighbour(neighbour: ParcelSource, body: unknown): ParcelFacts | null {
+  const facts = parcelFactsByPoint(neighbour, body)
+  return facts ? { ...facts, county: neighbour.county } : null
+}
+
 /** The facts off an id query: the first parcel with an owner, marked as read by the id the permit carries. Null when the layer does not hold the id, which is about one Austin permit in five. */
 export function parcelFactsById(source: ParcelSource, body: unknown): ParcelFacts | null {
   const rows = featuresOf(body)
@@ -385,6 +414,37 @@ export function askedWithoutId(source: ParcelSource, keptQuery: string | null | 
   const where = idWhere(source, id)
   if (where === null) return false
   return !(keptQuery ?? '').split(QUESTION_JOIN).includes(where)
+}
+
+/** The words a kept `query` holds for the point question: `point <lng>,<lat>`. */
+export function pointQuestion(point: { lat: number; lng: number }): string {
+  return `point ${point.lng},${point.lat}`
+}
+
+/** The words a kept `query` holds for the point put to a neighbouring county: `point <lng>,<lat> in <County>`. It starts like the point question, so it is never read as the address question. */
+export function neighbourPointQuestion(neighbour: ParcelSource, point: { lat: number; lng: number }): string {
+  return `${pointQuestion(point)} in ${neighbour.county}`
+}
+
+/**
+ * Whether a kept "no parcel" was asked before the neighbouring counties could be: the permit has
+ * a point, its county has neighbours read here, and the kept `query` does not hold the point
+ * question for each of them. Such a row is asked again once instead of waiting out its month.
+ */
+export function askedWithoutNeighbours(source: ParcelSource, keptQuery: string | null | undefined, point: { lat: number; lng: number } | null): boolean {
+  if (point === null) return false
+  const asked = (keptQuery ?? '').split(QUESTION_JOIN)
+  return neighbourSources(source).some((n) => !asked.some((q) => q.startsWith('point ') && q.endsWith(` in ${n.county}`)))
+}
+
+/**
+ * Whether a kept "no parcel" was asked before the permit's point could be: its `query` holds no
+ * point question and the permit has a point. Bexar's layer was asked by the street address alone
+ * until punch list #320, so such a row is asked again once instead of waiting out its month.
+ */
+export function askedWithoutPoint(keptQuery: string | null | undefined, point: { lat: number; lng: number } | null): boolean {
+  if (point === null) return false
+  return !(keptQuery ?? '').split(QUESTION_JOIN).some((q) => q.startsWith('point '))
 }
 
 /** A point the layer can be asked about: both numbers, inside Texas. */

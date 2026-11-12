@@ -9,12 +9,19 @@ import {
   askedBexarLayer,
   askedOtherQuestion,
   askedWithoutId,
+  askedWithoutNeighbours,
+  askedWithoutPoint,
   idQuery,
+  neighbourPointQuestion,
+  neighbourSources,
+  parcelFactsAtNeighbour,
   parcelFactsByAddress,
   parcelFactsById,
   parcelFactsByPoint,
   parcelSourceFor,
   pointQuery,
+  pointQueryOf,
+  pointQuestion,
   QUESTION_JOIN,
   streetParts,
   type ParcelSource,
@@ -26,6 +33,7 @@ import {
   companyLookupKey,
   lookupIsFresh,
   parcelFactsFromCounty,
+  parcelFactsFromCountyAtPoint,
   parcelLookupKey,
   placesQuery,
   situsWhere,
@@ -38,8 +46,11 @@ import {
  * server-side GOOGLE_MAPS_API_KEY the address autocomplete uses, leaning toward the permit's
  * city. `parcel`: the permit's street address on its county's parcel layer (owner of record,
  * mailing address, values; the DBA in Bexar). Bexar's layer takes the address as one string;
- * Travis, Hays, Comal and Guadalupe take its number and street name (`_shared/permitParcels.ts`)
- * and, when the street address has no parcel, the permit's own point. An Austin permit carries
+ * Travis, Hays, Comal and Guadalupe take its number and street name (`_shared/permitParcels.ts`).
+ * Every county is asked for the parcel under the permit's own point when the street address has
+ * no parcel (Bexar since punch list #320). A city's limits cross county lines, so when its own
+ * county holds nothing at the point the neighbouring counties' layers are asked there, and the
+ * facts name the county the parcel is in. An Austin permit carries
  * the county's own id for its lot (`raw.tcad_id`, the layer's `geo_id`), so with `permit_id`
  * Travis is asked by that id first (punch list #316): the lot the permit names, no matching.
  * An id the layer does not hold falls back to the address and the point. A source that fails
@@ -128,7 +139,11 @@ serve(async (req) => {
   // The id the permit carries for its lot, where the county can be asked by it. A row kept before the id was asked, found or not, is asked again once.
   const parcelId = countySource !== null ? await parcelIdOnPermit(admin, countySource, body.permit_id, key) : null
   const askedBeforeId = countySource !== null && cached != null && askedWithoutId(countySource, cached.query as string | null | undefined, parcelId)
-  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
+  // Bexar was asked by the street address alone until it could be asked by the point: a kept "no parcel" from then is asked again once. A kept failure is left alone.
+  const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
+  // The neighbouring counties were not asked until they could be: a kept "no parcel" from then is asked again once. A kept failure is left alone.
+  const askedBeforeNeighbours = countySource !== null && cached?.found === false && !cached.error && askedWithoutNeighbours(countySource, cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
+  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && !askedBeforeNeighbours && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
     return jsonResponse({ ok: true, kind, key, found: cached.found, facts: cached.facts, error: cached.error, cached: true, looked_up_at: cached.looked_up_at })
   }
 
@@ -165,12 +180,13 @@ serve(async (req) => {
       const byId = idQuery(source, parcelId)
       const parts = streetParts(typeof body.address === 'string' ? body.address : null)
       const point = askablePoint(body.lat, body.lng)
-      const ask = async (params: URLSearchParams): Promise<unknown> => {
-        const res = await fetch(`${source.queryUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
+      const askAt = async (layer: ParcelSource, params: URLSearchParams): Promise<unknown> => {
+        const res = await fetch(`${layer.queryUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
         const json = await res.json().catch(() => ({}))
         if (!res.ok || (json as { error?: unknown }).error) throw new Error(`the county answered ${res.status}: ${JSON.stringify((json as { error?: unknown }).error ?? {}).slice(0, 160)}`)
         return json
       }
+      const ask = (params: URLSearchParams) => askAt(source, params)
       if (!byId && !parts && !point) error = 'nothing to look up'
       else {
         let f = null
@@ -190,8 +206,16 @@ serve(async (req) => {
           f = parcelFactsByAddress(source, await ask(params), parts)
         }
         if (!f && point) {
-          noteAsked(`point ${point.lng},${point.lat}`)
+          noteAsked(pointQuestion(point))
           f = parcelFactsByPoint(source, await ask(pointQuery(source, point)))
+        }
+        // The city's own county holds nothing at the point: the lot may be over the county line.
+        if (!f && point) {
+          for (const neighbour of neighbourSources(source)) {
+            noteAsked(neighbourPointQuestion(neighbour, point))
+            f = parcelFactsAtNeighbour(neighbour, await askAt(neighbour, pointQuery(neighbour, point)))
+            if (f) break
+          }
         }
         if (f) {
           found = true
@@ -199,20 +223,29 @@ serve(async (req) => {
         }
       }
     } else {
+      // Bexar: the street address as one string, then the permit's point when the address has no parcel.
       const where = situsWhere(typeof body.address === 'string' ? body.address : null)
-      query = where ?? ''
-      if (!where) error = 'nothing to look up'
-      else {
-        const params = new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })
+      const point = askablePoint(body.lat, body.lng)
+      const ask = async (params: URLSearchParams): Promise<unknown> => {
         const res = await fetch(`${BEXAR_PARCELS_QUERY}?${params.toString()}`, { headers: { Accept: 'application/json' } })
         const json = await res.json().catch(() => ({}))
-        if (!res.ok || (json as { error?: unknown }).error) error = `the county answered ${res.status}: ${JSON.stringify((json as { error?: unknown }).error ?? {}).slice(0, 160)}`
-        else {
-          const f = parcelFactsFromCounty(json)
-          if (f) {
-            found = true
-            facts = f
-          }
+        if (!res.ok || (json as { error?: unknown }).error) throw new Error(`the county answered ${res.status}: ${JSON.stringify((json as { error?: unknown }).error ?? {}).slice(0, 160)}`)
+        return json
+      }
+      if (!where && !point) error = 'nothing to look up'
+      else {
+        let f = null
+        if (where) {
+          query = where
+          f = parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
+        }
+        if (!f && point) {
+          query = [query, pointQuestion(point)].filter(Boolean).join(QUESTION_JOIN)
+          f = parcelFactsFromCountyAtPoint(await ask(pointQueryOf(BEXAR_PARCEL_FIELDS, point)))
+        }
+        if (f) {
+          found = true
+          facts = f
         }
       }
     }
