@@ -9,8 +9,12 @@ import {
   askedBexarLayer,
   askedOtherQuestion,
   askedWithoutId,
+  askedWithoutNeighbours,
   askedWithoutPoint,
   idQuery,
+  neighbourPointQuestion,
+  neighbourSources,
+  parcelFactsAtNeighbour,
   parcelFactsByAddress,
   parcelFactsById,
   parcelFactsByPoint,
@@ -44,7 +48,9 @@ import {
  * mailing address, values; the DBA in Bexar). Bexar's layer takes the address as one string;
  * Travis, Hays, Comal and Guadalupe take its number and street name (`_shared/permitParcels.ts`).
  * Every county is asked for the parcel under the permit's own point when the street address has
- * no parcel (Bexar since punch list #320). An Austin permit carries
+ * no parcel (Bexar since punch list #320). A city's limits cross county lines, so when its own
+ * county holds nothing at the point the neighbouring counties' layers are asked there, and the
+ * facts name the county the parcel is in. An Austin permit carries
  * the county's own id for its lot (`raw.tcad_id`, the layer's `geo_id`), so with `permit_id`
  * Travis is asked by that id first (punch list #316): the lot the permit names, no matching.
  * An id the layer does not hold falls back to the address and the point. A source that fails
@@ -135,7 +141,9 @@ serve(async (req) => {
   const askedBeforeId = countySource !== null && cached != null && askedWithoutId(countySource, cached.query as string | null | undefined, parcelId)
   // Bexar was asked by the street address alone until it could be asked by the point: a kept "no parcel" from then is asked again once. A kept failure is left alone.
   const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
-  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
+  // The neighbouring counties were not asked until they could be: a kept "no parcel" from then is asked again once. A kept failure is left alone.
+  const askedBeforeNeighbours = countySource !== null && cached?.found === false && !cached.error && askedWithoutNeighbours(countySource, cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
+  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && !askedBeforeNeighbours && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
     return jsonResponse({ ok: true, kind, key, found: cached.found, facts: cached.facts, error: cached.error, cached: true, looked_up_at: cached.looked_up_at })
   }
 
@@ -172,12 +180,13 @@ serve(async (req) => {
       const byId = idQuery(source, parcelId)
       const parts = streetParts(typeof body.address === 'string' ? body.address : null)
       const point = askablePoint(body.lat, body.lng)
-      const ask = async (params: URLSearchParams): Promise<unknown> => {
-        const res = await fetch(`${source.queryUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
+      const askAt = async (layer: ParcelSource, params: URLSearchParams): Promise<unknown> => {
+        const res = await fetch(`${layer.queryUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
         const json = await res.json().catch(() => ({}))
         if (!res.ok || (json as { error?: unknown }).error) throw new Error(`the county answered ${res.status}: ${JSON.stringify((json as { error?: unknown }).error ?? {}).slice(0, 160)}`)
         return json
       }
+      const ask = (params: URLSearchParams) => askAt(source, params)
       if (!byId && !parts && !point) error = 'nothing to look up'
       else {
         let f = null
@@ -199,6 +208,14 @@ serve(async (req) => {
         if (!f && point) {
           noteAsked(pointQuestion(point))
           f = parcelFactsByPoint(source, await ask(pointQuery(source, point)))
+        }
+        // The city's own county holds nothing at the point: the lot may be over the county line.
+        if (!f && point) {
+          for (const neighbour of neighbourSources(source)) {
+            noteAsked(neighbourPointQuestion(neighbour, point))
+            f = parcelFactsAtNeighbour(neighbour, await askAt(neighbour, pointQuery(neighbour, point)))
+            if (f) break
+          }
         }
         if (f) {
           found = true

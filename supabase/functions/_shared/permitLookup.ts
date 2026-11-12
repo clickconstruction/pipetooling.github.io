@@ -120,6 +120,8 @@ export type ParcelFacts = {
   detail_url: string | null
   /** How the parcel was found when not by the street address (`permitParcels.ts`): `point`, the permit's own point, asked when the address has no parcel; `id`, the county's id for the lot the permit carries, which is the exact lot. */
   matched_by?: 'point' | 'id'
+  /** Set when the parcel is in another county than the permit's city is filed under: a city's limits cross county lines, so the lot under the point was found on a neighbouring county's layer. The county's name without the word County. */
+  county?: string
 }
 
 function num(v: unknown): number | null {
