@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First look: the customer shows us the problem before we come out</title>
+<style>
+  /* Punch list #319. A customer who called or texted gets a link by text, adds photos and a short video of the
+     problem on a page with no sign-in, and the office prices it before a truck rolls. Drawn 2026-11-11. Nothing here
+     is built. Every name, number, street, price and code is made up: Dana Whitfield, Rosa, Jorge, (512) 555-0100,
+     (512) 555-0142, 418 Larkspur Lane, estimate 2291, job JP1187, the code k7m2p9xq4d. The pictures are drawn
+     blocks, not photos. The customer's own page stays light in both themes, as every customer page in the app does. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-red: #fca5a5; --border-amber: #fcd34d; --border-green: #86efac; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --ph-a: #c9d3de; --ph-b: #9fb0c2; --ph-c: #e4d5c3; --ph-d: #b99f85; --ph-ink: #4b5563;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-red: #991b1b; --border-amber: #92400e; --border-green: #166534; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+    --ph-a: #3b4758; --ph-b: #566579; --ph-c: #4f4436; --ph-d: #6d5a45; --ph-ink: #cbd5e1;
+  }
+  /* The customer's page and the customer's own phone stay light whatever the theme. */
+  [data-theme="dark"] [data-theme="light"] {
+    color-scheme: light;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-red: #fca5a5; --border-amber: #fcd34d; --border-green: #86efac; --border-blue: #bfdbfe;
+    --ph-a: #c9d3de; --ph-b: #9fb0c2; --ph-c: #e4d5c3; --ph-d: #b99f85; --ph-ink: #4b5563;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 26px 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; width: 375px; max-width: 100%; align-content: start; }
+  .col.wide { width: 600px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap b { color: var(--copper); }
+  .say { margin: 0; font-size: 13px; }
+  .frame { max-width: 100%; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); overflow: hidden; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  .tw { overflow-x: auto; max-width: 100%; }
+  .tw table { min-width: 0; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ol { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* ---- a phone, drawn ---- */
+  .screen { width: 100%; background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: .8rem; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: .9rem; }
+  .bar .url { flex: 1; min-width: 0; background: var(--bg-muted); border-radius: 8px; padding: 4px 9px; font-size: .74rem; color: var(--text-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pad { padding: 12px; }
+  .k { font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .h { margin: 3px 0 4px; font-size: 1.3rem; font-weight: 800; line-height: 1.2; color: var(--text-strong); }
+  .p { margin: 0; font-size: .86rem; color: var(--text-700); }
+  .det { font-size: .76rem; color: var(--text-muted); line-height: 1.35; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 10px; }
+  .btn { display: flex; align-items: center; justify-content: center; text-align: center; font: inherit; font-size: .86rem; font-weight: 700; min-height: 46px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.dead { background: var(--bg-muted); border-color: var(--border); color: var(--text-muted); }
+  .btn.sm { min-height: 36px; font-size: .78rem; padding: 4px 10px; display: inline-flex; }
+  .btns { display: grid; gap: 8px; margin-top: 10px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  ol.tips { margin: 6px 0 0; padding-left: 20px; font-size: .82rem; color: var(--text-700); }
+  ol.tips li { margin: 0 0 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font-size: .76rem; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 10px; color: var(--text-700); background: var(--surface); }
+  .chip.on { background: var(--bg-blue-tint); border-color: #2563eb; color: var(--text-link); }
+  .field { margin-top: 6px; border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 10px; font-size: .84rem; color: var(--text-base); background: var(--surface); min-height: 58px; }
+  .foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: .76rem; color: var(--text-muted); }
+  .foot b { color: var(--text-700); }
+  .warn { margin-top: 10px; background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 9px; padding: 8px 10px; font-size: .78rem; }
+  .ok { background: var(--bg-green-tint); border: 1px solid var(--border-green); color: var(--text-green-700); border-radius: 9px; padding: 8px 10px; font-size: .82rem; font-weight: 600; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-strong); font-size: .95rem; }
+  .brand i { width: 22px; height: 22px; border-radius: 6px; background: #2563eb; display: inline-block; position: relative; }
+  .brand i::after { content: ""; position: absolute; left: 7px; top: 5px; width: 8px; height: 12px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: #fff; }
+  .brand span { margin-left: auto; font-weight: 600; font-size: .76rem; color: var(--text-link); }
+
+  /* drawn pictures */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+  .ph { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, var(--ph-a), var(--ph-b)); border: 1px solid var(--border); }
+  .ph.b { background: linear-gradient(160deg, var(--ph-c), var(--ph-d)); }
+  .ph.c { background: linear-gradient(200deg, var(--ph-b), var(--ph-c)); }
+  .ph::before { content: ""; position: absolute; left: 18%; right: 18%; top: 44%; height: 14%; border-radius: 4px; background: var(--ph-ink); opacity: .45; }
+  .ph::after { content: ""; position: absolute; left: 46%; top: 58%; width: 9%; height: 16%; border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%; background: #2563eb; opacity: .8; }
+  .ph .tag { position: absolute; left: 4px; bottom: 4px; font-size: .6rem; font-weight: 700; background: rgba(17,24,39,.78); color: #fff; border-radius: 5px; padding: 1px 5px; z-index: 1; }
+  .ph .tick { position: absolute; right: 4px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: #16a34a; color: #fff; font-size: .62rem; font-weight: 800; display: grid; place-items: center; z-index: 1; }
+  .ph.vid .play { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; }
+  .ph.vid .play::after { content: ""; border-left: 14px solid #fff; border-top: 9px solid transparent; border-bottom: 9px solid transparent; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); margin-left: 4px; }
+  .ph.add { background: var(--bg-subtle); border: 1px dashed var(--border-strong); display: grid; place-items: center; font-size: 1.3rem; color: var(--text-muted); }
+  .ph.add::before, .ph.add::after { display: none; }
+  .meter { height: 8px; border-radius: 4px; background: var(--bg-muted); overflow: hidden; margin-top: 6px; }
+  .meter u { display: block; height: 100%; background: #2563eb; }
+
+  /* the phone's own text app */
+  .sms { background: var(--surface); padding: 12px; display: grid; gap: 8px; }
+  .sms .who { text-align: center; font-size: .74rem; color: var(--text-muted); }
+  .sms .who b { display: block; font-size: .86rem; color: var(--text-strong); }
+  .bub { max-width: 86%; padding: 8px 11px; border-radius: 16px; font-size: .86rem; line-height: 1.35; }
+  .bub.in { background: var(--bg-muted); color: var(--text-base); justify-self: start; border-bottom-left-radius: 5px; }
+  .bub.me { background: #2563eb; color: #fff; justify-self: end; border-bottom-right-radius: 5px; }
+  .bub a { color: var(--text-link); text-decoration: underline; word-break: break-all; }
+  .stamp { text-align: center; font-size: .68rem; color: var(--text-muted); }
+
+  /* the office's thread */
+  .thread { background: var(--bg-page); color: var(--text-base); font-size: 14px; }
+  .thead { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .thead b { font-size: 1rem; color: var(--text-strong); }
+  .thead small { display: block; color: var(--text-muted); font-size: .78rem; }
+  .lines { padding: 10px 12px; display: grid; gap: 8px; }
+  .ln { font-size: .82rem; }
+  .ln .meta { font-size: .68rem; color: var(--text-muted); margin-bottom: 2px; }
+  .ln.out { justify-self: end; max-width: 88%; }
+  .ln.out .body { background: var(--bg-blue-tint); border: 1px solid var(--border-blue); border-radius: 10px; padding: 7px 10px; color: var(--text-base); }
+  .ln.inn { justify-self: start; max-width: 100%; width: 100%; }
+  .ln.ev { color: var(--text-muted); font-size: .76rem; text-align: center; }
+  .look { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #2563eb; border-radius: 10px; padding: 10px 12px; }
+  .look .t { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .look .t b { color: var(--text-strong); font-size: .92rem; }
+  .look .t small { color: var(--text-muted); font-size: .74rem; }
+  .look q { display: block; quotes: none; margin-top: 8px; padding: 6px 9px; border-left: 3px solid var(--border-strong); color: var(--text-700); font-size: .82rem; background: var(--bg-subtle); border-radius: 0 6px 6px 0; }
+  .pill { display: inline-block; font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 1px 7px; border: 1px solid var(--border-blue); color: var(--text-link); background: var(--bg-blue-tint); }
+  .pill.g { border-color: var(--border-green); color: var(--text-green-700); background: var(--bg-green-tint); }
+  .pill.a { border-color: var(--border-amber); color: var(--text-amber-800); background: var(--bg-amber-tint); }
+  .box { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 12px; }
+  .slash { border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden; margin-bottom: 8px; }
+  .slash div { padding: 7px 10px; font-size: .8rem; border-top: 1px solid var(--border); color: var(--text-700); }
+  .slash div:first-child { border-top: 0; background: var(--bg-blue-tint); color: var(--text-strong); }
+  .slash code { font-size: .76rem; color: var(--text-link); }
+  .newmark { outline: 2px solid var(--new); outline-offset: 2px; }
+  .key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--new); border-radius: 3px; background: var(--new-tint); vertical-align: -1px; margin-right: 6px; }
+  .est { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); margin-top: 10px; }
+  .est .n { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; font-weight: 800; color: var(--text-strong); }
+  .est .n span { white-space: nowrap; }
+  .jm { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .jm .t { font-weight: 800; color: var(--text-strong); font-size: 1rem; }
+  .strip { margin-top: 10px; border: 1px solid var(--border-blue); background: var(--bg-blue-tint); border-radius: 10px; padding: 9px 10px; }
+  .push { margin: 10px 12px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 9px 11px; font-size: .8rem; box-shadow: 0 3px 10px rgba(0,0,0,.14); }
+  .push b { display: block; color: var(--text-strong); }
+  ul.calls { margin: 10px 0 0; padding-left: 20px; max-width: 96ch; }
+  ul.calls li { margin: 0 0 8px; }
+  ul.calls b { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #319 · First look · drawn 2026-11-11 · nothing here is built</p>
+    <h1>The customer shows us the problem before we come out</h1>
+    <p>Someone calls or texts. The office texts back one link. The customer adds photos and a short video on a page with no sign-in. The office prices it from what it sees, and the tech sees it before the visit. <span class="key"></span>A violet outline marks what is new on a screen the app already has. Every name, number, price and picture is made up.</p>
+    <nav class="jump"><a href="#short">The short of it</a><a href="#customer">1 · The customer's phone</a><a href="#office">2 · The office</a><a href="#tech">3 · The tech</a><a href="#guard">What the page never shows</a><a href="#calls">The owner's calls</a></nav>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+
+<h2 id="short">The short of it</h2>
+<p class="lede">Build it, in small steps, and call the record a <b>First look</b>. The word <i>case</i> already means four other things in the app.</p>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ol>
+      <li>Dana calls about a leak and describes it in words.</li>
+      <li>The office guesses the job from the call.</li>
+      <li>A truck goes out to find out what it is.</li>
+      <li>The price is made in her kitchen.</li>
+    </ol>
+    <p>Dana can text a photo to the company number today. The thread lists it as a file to open. A video sent as a text is squeezed small by the phone carrier, and nothing ties either one to an estimate or to the tech.</p>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ol>
+      <li>Dana calls. Rosa presses one line in the thread and the link goes by text.</li>
+      <li>Dana adds 3 photos and a 24 second video. No sign-in.</li>
+      <li>Rosa sees them in Dana's thread and starts the estimate there.</li>
+      <li>Jorge sees them before the visit, with the right parts on the truck.</li>
+    </ol>
+    <p>The first build is steps 1 to 3 on one real call. The tech's part follows once the office has used it.</p>
+  </div>
+</div>
+
+<h2 id="customer">1 · The customer's phone <small>from the text to the thank-you</small></h2>
+<p class="lede">Four screens, each 375 wide. The page is the customer's, so it stays light whatever theme the app is in.</p>
+<div class="row">
+
+  <div class="col">
+    <div class="cap"><b>A</b> · the text</div>
+    <div class="frame" data-theme="light">
+      <div class="screen">
+        <div class="sms">
+          <div class="who"><b>(512) 555-0100</b>Text message</div>
+          <div class="stamp">Today 2:16 PM</div>
+          <div class="bub in">Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: <a>my.clickplumbing.com/show/k7m2p9xq4d</a></div>
+          <div class="bub in">Click Plumbing and Electrical. Reply STOP to opt out.</div>
+          <div class="stamp">Delivered</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Rosa pressed Send. Nothing goes by itself. It is Dana's first text from us, so it says who is writing and the app adds the opt-out line, as it does on a bill.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><b>B</b> · the page opens</div>
+    <div class="frame" data-theme="light">
+      <div class="screen">
+        <div class="bar"><span class="url">my.clickplumbing.com/show/k7m2p9xq4d</span></div>
+        <div class="pad">
+          <div class="brand"><i></i>Click Plumbing<span>(512) 555-0100</span></div>
+          <div class="h" style="margin-top:12px">Show us the problem</div>
+          <p class="p">Rosa asked for a look. Add a few photos or a short video. We price it before we come out.</p>
+          <div class="btns">
+            <div class="btn blue">Take a photo or a video</div>
+            <div class="btn">Choose from your phone</div>
+          </div>
+          <div class="card">
+            <div class="k">What helps us most</div>
+            <ol class="tips">
+              <li>The whole thing, from a step back.</li>
+              <li>A close-up of the leak or the broken part.</li>
+              <li>The label on the water heater or the fixture.</li>
+              <li>A video of 10 to 20 seconds if it drips, runs or makes a noise.</li>
+            </ol>
+          </div>
+          <div class="foot"><b>Only Click Plumbing sees what you send.</b> Water running right now? Shut off the main and call (512) 555-0100.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">No sign-in and no name on the page. The link is the key, like the estimate link. The page says who asked and nothing about Dana, her address or a price.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><b>C</b> · adding, on a weak signal</div>
+    <div class="frame" data-theme="light">
+      <div class="screen">
+        <div class="bar"><span class="url">my.clickplumbing.com/show/k7m2p9xq4d</span></div>
+        <div class="pad">
+          <div class="brand"><i></i>Click Plumbing<span>(512) 555-0100</span></div>
+          <div class="card" style="margin-top:12px">
+            <div class="k">3 photos sent · 1 video sending</div>
+            <div class="grid">
+              <div class="ph"><span class="tick">✓</span></div>
+              <div class="ph b"><span class="tick">✓</span></div>
+              <div class="ph c"><span class="tick">✓</span></div>
+              <div class="ph vid b"><span class="play"></span><span class="tag">0:24</span></div>
+            </div>
+            <div class="meter"><u style="width:62%"></u></div>
+            <div class="det" style="margin-top:4px">Video: 15 of 24 MB. Keep this page open. If the signal drops it picks up where it stopped.</div>
+            <div class="btnrow"><span class="btn sm">+ Add another</span></div>
+          </div>
+          <div class="card">
+            <div class="k">Where is it?</div>
+            <div class="chips"><span class="chip on">Kitchen</span><span class="chip">Bathroom</span><span class="chip">Water heater</span><span class="chip">Outside</span><span class="chip">Somewhere else</span></div>
+            <div class="k" style="margin-top:10px">What is going on? <span style="text-transform:none;letter-spacing:0;font-weight:500">(if you like)</span></div>
+            <div class="field">Under the kitchen sink. It drips when the dishwasher runs. Started Sunday.</div>
+          </div>
+          <div class="btns"><div class="btn dead">Waiting for the video, 62%</div></div>
+          <div class="det" style="margin-top:6px">The button reads <b>Send 3 photos and 1 video</b> when the video is in.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Each file goes up as it is picked, straight from the phone to storage in small pieces. A video never passes through the app's own servers, which is where a big file has stopped a function before.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><b>D</b> · the thank-you</div>
+    <div class="frame" data-theme="light">
+      <div class="screen">
+        <div class="bar"><span class="url">my.clickplumbing.com/show/k7m2p9xq4d</span></div>
+        <div class="pad">
+          <div class="brand"><i></i>Click Plumbing<span>(512) 555-0100</span></div>
+          <div class="ok" style="margin-top:12px">Got it. Rosa has your 3 photos and 1 video.</div>
+          <div class="card">
+            <div class="k">What happens next</div>
+            <ol class="tips">
+              <li>Rosa looks at them today, before 5 PM.</li>
+              <li>She texts you at this number with a price or a time to come out.</li>
+              <li>The tech confirms the price at your home before any work starts.</li>
+            </ol>
+          </div>
+          <div class="btns"><div class="btn">Add more photos or video</div></div>
+          <div class="foot">You can close this page. <b>Water running right now?</b> Shut off the main and call (512) 555-0100.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The promise reads the office hours the app already holds. After 5 PM the first line says <i>We look first thing tomorrow, at 7:30 AM.</i> Opened again later, the page shows the count only, never the pictures.</p>
+  </div>
+
+</div>
+
+<h2 id="office">2 · The office <small>what came in, and the press to start an estimate</small></h2>
+<p class="lede">Everything lands in the person's thread on Messages, where the call already is. There is no new page to watch.</p>
+<div class="row">
+
+  <div class="col wide">
+    <div class="cap"><b>E</b> · asking, from the reply box</div>
+    <div class="frame">
+      <div class="thread">
+        <div class="thead"><b>Dana Whitfield</b><small>Customer · (512) 555-0142 · missed call 2:14 PM</small></div>
+        <div class="box">
+          <div class="slash newmark">
+            <div><code>/show</code> &nbsp;Ask for photos or a video · puts in a link made for Dana</div>
+            <div><code>/estimate</code> &nbsp;Send an estimate</div>
+            <div><code>/bill</code> &nbsp;Send a bill's pay link</div>
+          </div>
+          <div class="field">Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: <span style="color:var(--text-link)">my.clickplumbing.com/show/k7m2p9xq4d</span></div>
+          <div class="det" style="margin-top:6px"><span class="pill a">First text to this number</span> names you and Click Plumbing. The app adds the opt-out line.</div>
+          <div class="btnrow"><span class="btn sm blue">Send text</span><span class="btn sm">Preview</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">One more line in the box's own list, beside the bill and the estimate. The link is made for this thread when the line goes in, as the rating link is today. The first-text check is the bill sheet's, brought to this one line. A number that sent STOP gets no text, and the box says so as it does today.</p>
+  </div>
+
+  <div class="col wide">
+    <div class="cap"><b>F</b> · what came in, in Dana's thread</div>
+    <div class="frame">
+      <div class="thread">
+        <div class="thead"><b>Dana Whitfield</b><small>Customer · (512) 555-0142 · Needs a reply</small></div>
+        <div class="lines">
+          <div class="ln ev">Missed call · 2:14 PM</div>
+          <div class="ln out"><div class="meta">Rosa · text · 2:16 PM · ✓ delivered</div><div class="body">Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: my.clickplumbing.com/show/k7m2p9xq4d</div></div>
+          <div class="ln ev">Dana opened the link · 2:19 PM</div>
+          <div class="ln inn">
+            <div class="look newmark">
+              <div class="t"><span class="pill">First look</span><b>Dana sent 3 photos and 1 video</b><small>2:27 PM · Kitchen</small></div>
+              <div class="grid">
+                <div class="ph"></div>
+                <div class="ph b"></div>
+                <div class="ph c"></div>
+                <div class="ph vid b"><span class="play"></span><span class="tag">0:24</span></div>
+              </div>
+              <q>Under the kitchen sink. It drips when the dishwasher runs. Started Sunday.</q>
+              <div class="btnrow">
+                <span class="btn sm blue">Start an estimate</span>
+                <span class="btn sm">Book a visit</span>
+                <span class="btn sm">Ask a tech…</span>
+                <span class="btn sm">Ask for more</span>
+              </div>
+              <div class="det" style="margin-top:8px">Kept in the app until a job is made. Then the photos file into Dana's Customer Pictures folder as crew photos do.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The thread goes to Needs a reply, and whoever has the thread gets the push a text gives. <b>Start an estimate</b> and <b>Book a visit</b> are the two presses a lead's thread has today. On the look they work for a customer too, and they carry the look with them.</p>
+  </div>
+
+  <div class="col wide">
+    <div class="cap"><b>G</b> · the estimate that comes from it</div>
+    <div class="frame">
+      <div class="thread">
+        <div class="pad">
+          <div class="est newmark" style="margin-top:0">
+            <div class="n"><span>Estimate 2291 · Dana Whitfield</span><span>$310.00</span></div>
+            <div class="det" style="margin-top:2px">Kitchen sink trap and dishwasher branch · from Dana's First look of Nov 11</div>
+            <div class="grid" style="grid-template-columns:repeat(6,1fr)">
+              <div class="ph"></div><div class="ph b"></div><div class="ph c"></div><div class="ph vid b"><span class="play"></span></div>
+            </div>
+            <div class="warn" style="margin-top:8px">Dana reads: <b>Priced from your photos. The tech confirms the price at your home before any work starts.</b></div>
+          </div>
+          <div class="det" style="margin-top:8px">Goes out by text and email through Send to customer, as every estimate does. Dana accepts on the estimate's own link.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The estimate remembers which look it came from, and the office sees the pictures on it. It carries one price, as every estimate does. A price made from photos says so in words the customer reads, so a change at the house is no surprise.</p>
+  </div>
+
+</div>
+
+<h2 id="tech">3 · The tech <small>before it is on the schedule, and before the visit</small></h2>
+<p class="lede">Two moments. The first is the owner's novel part: a tech looks before anything is booked. The second is plain: the look rides on the job.</p>
+<div class="row">
+
+  <div class="col">
+    <div class="cap"><b>H</b> · asked before it is booked</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="push"><b>Rosa asks for your eyes</b>Dana W. · kitchen sink leak · 3 photos and 1 video</div>
+        <div class="pad">
+          <div class="jm newmark">
+            <div class="k">First look · asked by Rosa 2:31 PM</div>
+            <div class="t" style="margin-top:2px">Dana W. · Kitchen</div>
+            <div class="grid">
+              <div class="ph"></div><div class="ph b"></div><div class="ph c"></div>
+              <div class="ph vid b"><span class="play"></span><span class="tag">0:24</span></div>
+            </div>
+            <q style="display:block;quotes:none;margin-top:8px;font-size:.82rem;color:var(--text-700)">Under the kitchen sink. It drips when the dishwasher runs. Started Sunday.</q>
+            <div class="k" style="margin-top:10px">Your read</div>
+            <div class="chips"><span class="chip on">I can price it from this</span><span class="chip">Needs a visit to price</span></div>
+            <div class="field">Trap and the dishwasher branch. About an hour. Bring a 1½ inch trap kit.</div>
+            <div class="btns"><div class="btn blue">Send to Rosa</div></div>
+          </div>
+          <div class="det" style="margin-top:8px">Jorge sees this one look and nothing else of the thread. No number and no street until a visit is booked.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The office picks one tech to ask. His answer lands in Dana's thread as a team note, and Rosa prices from it. Nothing like this exists today: Schedule Dispatch has no place for work that is not booked.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><b>I</b> · on the job, before the visit</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="pad">
+          <div class="jm">
+            <div class="k">Job Mode · today 10:30 AM</div>
+            <div class="t" style="margin-top:2px">JP1187 · Dana Whitfield</div>
+            <div class="det">418 Larkspur Lane · kitchen sink trap and dishwasher branch</div>
+            <div class="strip newmark">
+              <div class="k">What Dana sent · Nov 11</div>
+              <div class="grid">
+                <div class="ph"></div><div class="ph b"></div><div class="ph c"></div>
+                <div class="ph vid b"><span class="play"></span><span class="tag">0:24</span></div>
+              </div>
+              <div class="det" style="margin-top:6px"><b>She said:</b> It drips when the dishwasher runs. Started Sunday.</div>
+              <div class="det"><b>Jorge's read:</b> About an hour. Bring a 1½ inch trap kit.</div>
+              <div class="det"><b>Estimate 2291:</b> $310.00, accepted Nov 11.</div>
+            </div>
+            <div class="btns"><div class="btn blue">On my way</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Once the job exists the look is on its card. The photos are also in the job's Photos with every other picture, marked as the customer's.</p>
+  </div>
+
+</div>
+
+<h2 id="guard">What the page never shows, and what guards it</h2>
+<p class="lede">A text can be forwarded. So the link is treated as a key that opens very little.</p>
+<div class="tw">
+<table class="t">
+  <tr><th>The worry</th><th>What the design does</th></tr>
+  <tr><td>The link is forwarded or seen by someone else</td><td>The page shows who asked and a count. It never shows a name, an address, a price, a job or a picture sent before. The worst a stranger can do is add a file, and the office sees who it came in on.</td></tr>
+  <tr><td>Someone guesses a code</td><td>Ten letters, the estimate link's own alphabet and its guard: 20 wrong tries in an hour from one place and the door locks for that place.</td></tr>
+  <tr><td>A link left open forever</td><td>It closes after 7 days, or when the office closes the look. A closed link says so and gives the phone number.</td></tr>
+  <tr><td>A huge or endless upload</td><td>A cap per link: 20 photos and 3 videos, each video 2 minutes at most. Only pictures and video are taken.</td></tr>
+  <tr><td>A weak signal</td><td>Files go up in small pieces and pick up where they stopped. A photo is shrunk on the phone first, as crew photos are.</td></tr>
+  <tr><td>Nobody looks</td><td>It lands on the thread as a customer's line, so Needs a reply, the badge and the push all fire. The thank-you promises only the office's own hours.</td></tr>
+  <tr><td>A price from photos that the visit changes</td><td>The estimate says it was priced from photos and that the tech confirms it at the home before work starts.</td></tr>
+</table>
+</div>
+
+<h2 id="calls">The owner's calls <small>my pick first on each</small></h2>
+<ul class="calls">
+  <li><b>1. The name.</b> <i>First look</i> for the record and <i>Show us the problem</i> on the customer's page. Or: Problem report, Look-ahead, your own word. Not <i>case</i>, which already means an HR file, a legal matter, a check that came back and a card dispute.</li>
+  <li><b>2. Who sends the link.</b> A person's press only. Or: the missed-call text back carries it too, with no person in between.</li>
+  <li><b>3. What the page says about the customer.</b> Nothing: who asked, and Click Plumbing. Or: greet them by first name.</li>
+  <li><b>4. How much video.</b> Ask for 10 to 20 seconds, take up to 2 minutes. Or: longer, or photos only at first.</li>
+  <li><b>5. How long the link lives.</b> 7 days and it takes more than one visit. Or: one day, or until the office closes it.</li>
+  <li><b>6. What we promise back.</b> A look within office hours, said in the hours the app holds. Or: a clock, such as within an hour.</li>
+  <li><b>7. The price from photos.</b> One price, with the line that the tech confirms it at the home. Or: two options to pick between, or never a price without a visit.</li>
+  <li><b>8. The tech's part.</b> The office asks one tech by name. Or: every tech sees a shared list and whoever is free answers.</li>
+  <li><b>9. Where the files live.</b> In the app until a job exists, then photos to the customer's Drive folder and the video kept in the app for a year. Or: everything to Drive, or the video dropped after the job is paid.</li>
+  <li><b>10. A caller who is not a customer yet.</b> The look hangs on their number's thread and makes no customer until the office names them. Or: make the customer when the link goes.</li>
+</ul>
+<p class="note"><b>Before any code:</b> try it by hand on the next five calls. Ask each caller to text a photo to the company number. It lands in their thread today. That shows whether callers will do it and whether the office can price from it, for nothing.</p>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var want = new URLSearchParams(location.search).get('theme');
+    function set(t) {
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('.themes button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === t)); });
+    }
+    if (want === 'dark' || want === 'light') set(want);
+    document.querySelectorAll('.themes button').forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.set); }); });
+  })();
+</script>
+</body>
+</html>
