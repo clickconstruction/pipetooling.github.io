@@ -10,6 +10,10 @@
  * PR 2 adds four reads beside the copies, each best effort: the send log of Stripe bill emails, the bills stamped as
  * sent from Housecall Pro or as a PDF, the texts that carried a pay link, and the Stripe bills that carry no send
  * stamp at all. A text names its bill by the link in its words: the bill's id, or its short pay code.
+ *
+ * PR 3 adds whether each email arrived and the day its bill was paid: `bill_send_marks`, one definer read over the
+ * mail log for the copies the caller can read. Before its migration is on the database the call is refused and the
+ * lines draw with no word about arriving.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
@@ -23,6 +27,7 @@ import {
   type BillsSentEarlier,
   type BillsSentInput,
   type BillsSentJob,
+  type BillsSentMark,
   type BillsSentStamp,
   type BillsSentStatement,
   type BillsSentStripeRow,
@@ -74,6 +79,35 @@ async function rows(read: () => PromiseLike<{ data: unknown; error: unknown }>):
   } catch {
     return []
   }
+}
+
+/** Copy ids per call of the marks read. */
+const MARKS_SLICE = 200
+
+/** What the mail service last said of each copy, and the day its bill was paid. Best effort: no marks when the read is refused. */
+async function readMarks(copyIds: string[]): Promise<Map<string, BillsSentMark>> {
+  const out = new Map<string, BillsSentMark>()
+  for (let i = 0; i < copyIds.length; i += MARKS_SLICE) {
+    try {
+      // The function is not in the generated types until the types pass that follows its migration.
+      const result = (await supabase.rpc('bill_send_marks' as never, { p_ids: copyIds.slice(i, i + MARKS_SLICE) } as never)) as unknown as { data: Array<Record<string, unknown>> | null; error: unknown }
+      if (result.error) return out
+      for (const r of result.data ?? []) {
+        if (!text(r.id)) continue
+        out.set(text(r.id), {
+          id: text(r.id),
+          lastEvent: text(r.last_event) || null,
+          lastEventAtIso: text(r.last_event_at) || null,
+          emailType: text(r.email_type) || null,
+          paidOn: text(r.paid_on) || null,
+          paidHow: text(r.paid_how) || null,
+        })
+      }
+    } catch {
+      return out
+    }
+  }
+  return out
 }
 
 /**
@@ -158,7 +192,7 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
   ].filter((id) => !known.some((b) => b.id === id))
   const resendIds = [...new Set(copies.filter((c) => c.kind.startsWith('gc_statement') && c.resendEmailId).map((c) => c.resendEmailId as string))]
 
-  const [bills, statements, earlier] = await Promise.all([
+  const [bills, statements, earlier, marks] = await Promise.all([
     inChunks<BillRow>(billIds, (chunk) => supabase.from('jobs_ledger_invoices').select(BILL_COLS).in('id', chunk), billOf),
     inChunks<BillsSentStatement>(
       resendIds,
@@ -170,6 +204,7 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
       (chunk) => supabase.from('sent_documents').select('source_id, sent_at, kind').eq('source_table', 'jobs_ledger_invoices').in('source_id', chunk).neq('kind', 'bill_copy'),
       (r) => (text(r.source_id) && text(r.sent_at) && text(r.kind).startsWith(BILLS_SENT_KIND_PREFIX) ? { billId: text(r.source_id), atIso: text(r.sent_at) } : null),
     ),
+    readMarks(copies.map((c) => c.id)),
   ])
 
   const allBills = new Map<string, BillRow>([...known, ...coded, ...bills].map((b) => [b.id, b]))
@@ -220,5 +255,6 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
     stamps,
     texts,
     unsent,
+    marks,
   }
 }
