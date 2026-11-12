@@ -4,7 +4,7 @@
  * (v2.2022) with per-customer payment receipts (billed → paid → gap chips).
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 
 // The Data health drill-down (v2.2290) fetches + writes through supabase and
@@ -80,6 +80,86 @@ function invRow(customerId: string, name: string, amount: number): StageRow {
 const rows = [invRow('knight', 'Knight Contracting', 75585), invRow('ingram', 'Johnny Ingram', 786), invRow('rmc', 'RMC- Dudley Mason', 49171)]
 
 describe('PaySpeedsBreakdownModal render smoke', () => {
+  describe('opened on one payer, from a Pipeline row’s Pays in line (v2.7013)', () => {
+    const payer = { id: 'knight', name: 'Made Up Builders' }
+
+    it('names the payer, leads with their range in the row’s words and shows every payment behind it with no click', async () => {
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={payer} />)
+      await settle()
+      expect(screen.getByRole('dialog', { name: 'Pay speeds for Made Up Builders' })).toBeTruthy()
+      const card = within(screen.getByTestId('pay-speeds-payer'))
+      expect(card.getByRole('heading', { name: 'Made Up Builders' })).toBeTruthy()
+      // 12, 16, 20 and 31 days: the middle half is 15 to 23, the middle one 18.
+      expect(card.getByTestId('pay-speeds-payer-range').textContent).toBe('Pays in 15–23d')
+      expect(card.getByText(/^The middle half of their last 4 measured payments came 15 to 23 days after the bill\. The middle one took 18 days\./)).toBeTruthy()
+      for (const gap of ['+12', '+16', '+20', '+31']) expect(card.getByText(gap)).toBeTruthy()
+      expect(card.getByText('05/01–05/17')).toBeTruthy()
+      // What they owe now, from the board's rows.
+      expect(card.getByText('Owes now — by job')).toBeTruthy()
+      // Once as the card's open total, once on the bill's own line.
+      expect(card.getAllByText('$75,585')).toHaveLength(2)
+    })
+
+    it('keeps the whole window one press away: All customers opens it under the card and closes it again', async () => {
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={payer} />)
+      await settle()
+      expect(screen.queryByText('By customer — slowest first')).toBeNull()
+      expect(screen.queryByText('Data health')).toBeNull()
+      const all = screen.getByRole('button', { name: /^All customers/ })
+      expect(all.getAttribute('aria-expanded')).toBe('false')
+      expect(all.className).toBe('paySpeedsAllPress')
+      expect(all.textContent).toContain('3 with open bills')
+      fireEvent.click(all)
+      expect(all.getAttribute('aria-expanded')).toBe('true')
+      expect(screen.getByText('By customer — slowest first')).toBeTruthy()
+      expect(screen.getByText('Data health')).toBeTruthy()
+      expect(screen.getByText('Money waiting')).toBeTruthy()
+      // The payer's card stays on top.
+      expect(screen.getByTestId('pay-speeds-payer')).toBeTruthy()
+      fireEvent.click(all)
+      expect(screen.queryByText('By customer — slowest first')).toBeNull()
+    })
+
+    it('a payment in the card opens its job, as in the list', async () => {
+      const onOpenJobDetail = vi.fn()
+      const withJob: PaySpeedData = {
+        ...speeds,
+        receipts: { ...speeds.receipts, knight: [{ billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: 'job-9', jobName: 'Made-up panel swap', address: '1 Example St' }, ...speeds.receipts.knight!.slice(1)] },
+      }
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={onOpenJobDetail} focusPayer={payer} />)
+      await settle()
+      fireEvent.click(within(screen.getByTestId('pay-speeds-payer')).getByText('Made-up panel swap'))
+      expect(onOpenJobDetail).toHaveBeenCalledWith('job-9')
+    })
+
+    it('a payer with nothing measured says so, and what the forecast uses instead', async () => {
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={{ id: 'rmc', name: 'Made Up Mechanical' }} />)
+      await settle()
+      const card = within(screen.getByTestId('pay-speeds-payer'))
+      expect(card.getByTestId('pay-speeds-payer-range').textContent).toBe('No pay speed of their own yet')
+      expect(card.getByText(/^No payment of theirs can be measured yet\./)).toBeTruthy()
+    })
+
+    it('finds the payer’s open bills in the wider rows it is handed (a Collections row’s payer)', async () => {
+      const chased = invRow('chased', 'Made Up Chased Co', 4200)
+      const withChased: PaySpeedData = { ...speeds, receipts: { ...speeds.receipts, chased: [{ billedYmd: '2026-02-01', paidYmd: '2026-03-13', gapDays: 40, jobId: null, jobName: null, address: null }] } }
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} focusRows={[...rows, chased]} paySpeeds={withChased} onClose={vi.fn()} focusPayer={{ id: 'chased', name: 'Made Up Chased Co' }} />)
+      await settle()
+      const card = within(screen.getByTestId('pay-speeds-payer'))
+      expect(card.getByTestId('pay-speeds-payer-range').textContent).toBe('Pays in ~40d')
+      expect(card.getAllByText('$4,200')).toHaveLength(2)
+    })
+
+    it('with no payer the window opens whole, as Payment forecast opens it', async () => {
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+      await settle()
+      expect(screen.getByRole('dialog', { name: 'Pay speeds breakdown' })).toBeTruthy()
+      expect(screen.queryByTestId('pay-speeds-payer')).toBeNull()
+      expect(screen.queryByRole('button', { name: /^All customers/ })).toBeNull()
+      expect(screen.getByText('By customer — slowest first')).toBeTruthy()
+    })
+  })
+
   it('clicking a ranked row reveals its receipt chips; clicking again hides them', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     await settle()

@@ -37,6 +37,7 @@ vi.mock('./BilledByCustomerBreakdownModal', () => ({ default: probe('breakdown')
 vi.mock('./BilledAgingChartModal', () => ({ default: probe('aging') }))
 vi.mock('./BilledPaymentForecastModal', () => ({ default: probe('forecast') }))
 vi.mock('./PaymentForecastShareModal', () => ({ default: probe('forecastShare') }))
+vi.mock('./PaySpeedsBreakdownModal', () => ({ default: probe('paySpeeds') }))
 vi.mock('./PaymentChaseModal', () => ({ default: probe('chase') }))
 vi.mock('./FixBillLinesModal', () => ({ default: probe('fixLines') }))
 vi.mock('./SetPromisedPayDateModal', () => ({ default: probe('promisedPay') }))
@@ -112,6 +113,8 @@ function mount(over: Partial<Props> = {}) {
     setPaidProfitChartOpen: vi.fn(),
     billedShareModalOpen: false,
     setBilledShareModalOpen: vi.fn(),
+    paySpeedsPayer: null,
+    setPaySpeedsPayer: vi.fn(),
     billedPaySpeeds: { speeds: 'pay-speeds' },
     refreshBilledPaySpeeds: vi.fn(),
     promisedPayDates: { 'inv-1': { ymd: '2026-10-20' } },
@@ -166,6 +169,45 @@ describe('StagesBilledMoneyModals — nothing open', () => {
     expect(Object.keys(h.seen)).toEqual([])
     expect(h.fetches).toEqual([])
     expect(last(h.workMonthArgs)?.[0]).toBeNull()
+  })
+})
+
+describe('Pay speeds on one payer, from a billed row’s Pays in line (v2.7013)', () => {
+  const PAYER = { id: 'cust-9', name: 'Made Up Diner' }
+  const CHASED_ROWS = [invoiceRow(J2, 'inv-chased')]
+  const withCollections = { ...lists(UNFILTERED_ROWS, [J1, J2]), collectionsRows: CHASED_ROWS } as unknown as JobsStagesBoardLists
+
+  it('opens the forecast’s window on the payer: the unfiltered billed rows, the Collections rows for their card, the same gates', () => {
+    mount({ paySpeedsPayer: PAYER, unfilteredBoardLists: withCollections, authRole: 'dev' })
+    const w = h.seen.paySpeeds!
+    expect(w.focusPayer).toBe(PAYER)
+    expect(w.rows).toBe(UNFILTERED_ROWS)
+    expect(w.focusRows).toEqual([...UNFILTERED_ROWS, ...CHASED_ROWS])
+    expect(w.paySpeeds).toEqual({ speeds: 'pay-speeds' })
+    expect(w.canExcludePayments).toBe(true)
+    // The forecast itself stays shut: the window stands alone.
+    expect(screen.queryByTestId('forecast')).toBeNull()
+  })
+
+  it('its doors: close, a payment’s job on the Bill tab, a job stacked above it, and the medians read again', () => {
+    const { p } = mount({ paySpeedsPayer: PAYER })
+    call('paySpeeds', 'onOpenJobStacked', 'j-2', 'saved-cb')
+    expect(p.tryOpenEditJob).toHaveBeenLastCalledWith('j-2', { initialTab: 'bill', onSaved: 'saved-cb' })
+    expect(p.setPaySpeedsPayer).not.toHaveBeenCalled()
+    call('paySpeeds', 'onSpeedsChanged')
+    expect(p.refreshBilledPaySpeeds).toHaveBeenCalledTimes(1)
+    call('paySpeeds', 'onOpenJobDetail', 'j-1')
+    expect(p.setPaySpeedsPayer).toHaveBeenLastCalledWith(null)
+    expect(p.tryOpenEditJob).toHaveBeenLastCalledWith('j-1', { initialTab: 'bill' })
+    call('paySpeeds', 'onClose')
+    expect(p.setPaySpeedsPayer).toHaveBeenCalledTimes(2)
+  })
+
+  it('a role outside the tuning set gets the window with its exclude and email presses off', () => {
+    mount({ paySpeedsPayer: PAYER, authRole: 'primary' })
+    expect(h.seen.paySpeeds!.canExcludePayments).toBe(false)
+    expect(h.seen.paySpeeds!.canSetNoCountDate).toBe(false)
+    expect(h.seen.paySpeeds!.canEmailMoneyWaiting).toBe(false)
   })
 })
 

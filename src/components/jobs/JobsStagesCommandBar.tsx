@@ -227,11 +227,14 @@ export function JobsStagesCommandBar({
           Projects
         </button>
       )}
-      {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
+      {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container.
+          `.stagesSearchBox` holds its min-width (v2.7014): above a phone the box is never narrower than its chips,
+          which never shrink, so the row wraps it onto a line of its own rather than letting the chips and the ⋯ run
+          past the page (760 px, once Projects joined the buttons in v2.6330). */}
       <div
+        className="stagesSearchBox"
         style={{
           flex: '1 1 16rem',
-          minWidth: 0,
           display: 'flex',
           alignItems: 'center',
           gap: '0.35rem',

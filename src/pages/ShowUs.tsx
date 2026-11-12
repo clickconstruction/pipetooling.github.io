@@ -11,7 +11,6 @@
  * `/pay` and `/b` are.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
-import { useParams } from 'react-router-dom'
 import {
   FIRST_LOOK_COMPANY,
   FIRST_LOOK_WORDS as W,
@@ -115,9 +114,12 @@ function Stop({ head, body, phone }: { head: string; body: string; phone?: strin
   )
 }
 
-export default function ShowUs({ io = showUsIo }: { io?: ShowUsIo }) {
-  const params = useParams()
-  const code = useMemo(() => firstLookCode(params.code), [params.code])
+/**
+ * The page itself, given the link's code. It reads no router, so the same component is the app's route
+ * (`ShowUsRoute.tsx`) and the whole of the page's own small entry (`src/showEntry.tsx`, punch list #319 PR 4).
+ */
+export default function ShowUs({ code: given, io = showUsIo }: { code: string | null | undefined; io?: ShowUsIo }) {
+  const code = useMemo(() => firstLookCode(given), [given])
   const [view, setView] = useState<View>(code ? { kind: 'loading' } : { kind: 'not_found' })
   const [reloadKey, setReloadKey] = useState(0)
   const [items, setItems] = useState<Item[]>([])
