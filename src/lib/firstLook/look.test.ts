@@ -230,8 +230,12 @@ describe('first look: the words', () => {
 
   it('the ask names who is writing', () => {
     expect(firstLookAskLine({ customerFirst: 'Dana', me: 'Rosa Delgado', url: 'https://x/show/abc' })).toBe(
-      'Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: https://x/show/abc',
+      'Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: https://x/show/abc Or reply to this text with the photos.',
     )
+    expect(firstLookAskLine({ customerFirst: 'Dana', me: 'Rosa Delgado', url: 'u', lang: 'es' })).toBe(
+      'Hola Dana, habla Rosa de Click Plumbing. Para darle un precio antes de ir, envíenos unas fotos o un video corto aquí: u O responda a este mensaje con las fotos.',
+    )
+    expect(firstLookAskLine({ customerFirst: null, me: '{me}', url: '{show}' })).toMatch(/^Hi, this is \{me\} with Click Plumbing\..*\{show\} Or reply/)
     expect(firstLookAskLine({ customerFirst: null, me: '', url: 'u' })).toMatch(/^Hi, this is the office with Click Plumbing\./)
   })
 

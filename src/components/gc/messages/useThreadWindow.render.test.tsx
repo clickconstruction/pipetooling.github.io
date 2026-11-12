@@ -93,7 +93,8 @@ describe('opening a thread on /gc (the URL holds it)', () => {
   it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, #207’s own-mailbox strip above the box, cut 3’s reply box, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {
     const { result } = renderHook(() => useThreadSlots())
     // `aboveBox` since v2.6745: #207's *Answered them from your own mailbox?* strip (`useOwnMailboxThreadSlots`).
-    expect(Object.keys(result.current).sort()).toEqual(['aboveBox', 'box', 'headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
+    // `aboveLines` since v2.6999: #319's First look card (`useFirstLookThreadSlots`), which draws nothing with no look.
+    expect(Object.keys(result.current).sort()).toEqual(['aboveBox', 'aboveLines', 'box', 'headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
     expect(result.current.headerRight).toBe(cut2.headerRight)
     expect(result.current.statusRow).toBe(cut2.statusRow)
     expect(result.current.menuRows?.({} as Contact)).toEqual([])

@@ -46,6 +46,9 @@ import { jobRefOf } from '../../../../lib/messages/jobKeys'
 import { defaultEstimatePaper, defaultPaperFills, defaultWarrantyPaper, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
 import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
 import { RATING_LINK_MAKING, supabaseRatingLinkIo, type RatingLinkIo } from '../../../../lib/ratings/ratingLinkIo'
+import { SHOW_ASK_WORDS, SHOW_BLANK, showAskLine, slashCallsShow, withAsk } from '../../../../lib/firstLook/ask'
+import { onAskForPhotos } from '../../../../lib/firstLook/askBus'
+import { supabaseFirstLookThreadIo, type FirstLookThreadIo } from '../../../../lib/firstLook/threadIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
@@ -140,6 +143,7 @@ export function ReplyBox({
   papersIo,
   estimateLinkIo,
   ratingLinkIo,
+  showLinkIo,
   job,
   billLink = null,
   startWords = null,
@@ -160,6 +164,8 @@ export function ReplyBox({
   estimateLinkIo?: EstimateLinkIo
   /** v2.5877: mints a one-tap rating ask's link for `{rate}` (`mint_customer_rating`); a smoke hands its own. */
   ratingLinkIo?: RatingLinkIo
+  /** Punch list #319 PR 1: makes a First look and its link for `{show}` (`mint_first_look`); a smoke hands its own. */
+  showLinkIo?: Pick<FirstLookThreadIo, 'mint'>
   /** The job's window: the job every reply here is tied to, and its name. */
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
@@ -467,7 +473,9 @@ export function ReplyBox({
   const [linking, setLinking] = useState(false)
   // v2.5877: {rate}'s link the same way — the line is in, the blank takes the minted link when it is back.
   const [rateLinking, setRateLinking] = useState(false)
-  const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : rateLinking ? RATING_LINK_MAKING : sendWaits(body)) : null
+  // Punch list #319 PR 1: {show}'s link the same way, a First look made for this thread.
+  const [showLinking, setShowLinking] = useState(false)
+  const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : rateLinking ? RATING_LINK_MAKING : showLinking ? SHOW_ASK_WORDS.making : sendWaits(body)) : null
   const lang = customerLang(contact)
   const where =
     flowNow === undefined
@@ -486,6 +494,8 @@ export function ReplyBox({
   // so no line ever takes another's link.
   const eio = useMemo(() => estimateLinkIo ?? supabaseEstimateLinkIo(), [estimateLinkIo])
   const rio = useMemo(() => ratingLinkIo ?? supabaseRatingLinkIo(), [ratingLinkIo])
+  const sio = useMemo(() => showLinkIo ?? supabaseFirstLookThreadIo(), [showLinkIo])
+  const showSeq = useRef(0)
   const [made, setMade] = useState<{ link: string; number: string } | null>(null)
   const linkSeq = useRef(0)
   const rateSeq = useRef(0)
@@ -516,11 +526,29 @@ export function ReplyBox({
         if (mine === rateSeq.current) setRateLinking(false)
       })
   }
+  /** The ask for photos: the look is made for this thread and the blank takes its link when it is back. */
+  const mintShow = () => {
+    const mine = ++showSeq.current
+    setShowLinking(true)
+    sio.mint(contact.id)
+      .then(
+        ({ link }) => {
+          if (mine === showSeq.current) setBody((b) => b.replace(SHOW_BLANK, link))
+        },
+        (e: unknown) => {
+          if (mine === showSeq.current) showToast(formatErrorMessage(e, SHOW_ASK_WORDS.notMade), 'error')
+        },
+      )
+      .finally(() => {
+        if (mine === showSeq.current) setShowLinking(false)
+      })
+  }
   const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
     const estimate = words.includes('{estimate}') ? (paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null) : null
     const warranty = words.includes('{warranty}') ? (paper?.kind === 'warranty' ? paper : !paper ? defaultWarranty : null) : null
     put(fillNow(words, paper ?? estimate ?? warranty))
     if (words.includes('{rate}')) mintRate()
+    if (words.includes(SHOW_BLANK)) mintShow()
     if (!estimate) return
     const mine = ++linkSeq.current
     setLinking(true)
@@ -572,7 +600,9 @@ export function ReplyBox({
   const slashOpen = slashWord !== null && slashWord.start !== slashShut
   const slashKey = slashWord ? `${slashWord.start}:${slashWord.words}` : ''
   const slashInput = { kind: contact.kind, nowStepId, stageStepIds, steps: kindSteps, me }
-  const slashRows = slashOpen && stripLines ? slashLines(stripLines, slashInput, slashWord.words) : []
+  // Punch list #319 PR 1: `/show` (or `/photo`, `/video`) leads the list with the app's own ask for photos.
+  const showLine = useMemo(() => showAskLine(contact.kind === 'unknown' ? null : first), [contact.kind, first])
+  const slashRows = slashOpen ? [...(slashCallsShow(slashWord.words) ? [showLine] : []), ...(stripLines ? slashLines(stripLines, slashInput, slashWord.words) : [])] : []
   // #127 PR 2: words that call their papers (`/bill`, `/estimate`) list them after the lines, the job's first.
   const paperKind = slashOpen ? slashPaperKind(slashWord.words) : null
   const slashPapers = paperKind && papers ? listedPapers(papers, paperKind, pipelineJobId) : []
@@ -613,6 +643,18 @@ export function ReplyBox({
     setPeek(false)
     if (team && !isAppLine(team)) quick.press(team, contact.id)
   }
+  // Punch list #319 PR 1: a press on the look's card (Ask again, Ask for more) asks this box for the ask. The thread's
+  // own box hears it, never a job's: the box wakes on a text, or an email when a text cannot go, and the line goes in
+  // under whatever is already written.
+  const askRef = useRef<() => void>(() => undefined)
+  askRef.current = () => {
+    setKind(canSend('text', to) && textsOn !== false ? 'text' : canSend('email', to) ? 'email' : 'text')
+    setWoke(true)
+    setPressedOut(false)
+    withLink(lineWords(showLine, lang), null, (filled) => setBody((was) => withAsk(was, filled)))
+  }
+  const hearsAsk = !job
+  useEffect(() => (hearsAsk ? onAskForPhotos(contact.id, () => askRef.current()) : undefined), [hearsAsk, contact.id])
   const slashKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (!slashOpen || !slashWord || e.nativeEvent.isComposing) return
     if (e.key === 'Escape') {
