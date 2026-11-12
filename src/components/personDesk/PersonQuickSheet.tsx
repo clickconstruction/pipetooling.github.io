@@ -4,7 +4,7 @@ import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { useAuth } from '../../hooks/useAuth'
 import { usePersonDeskContext } from '../../contexts/PersonDeskContext'
 import { canOpenPersonQuickSheet } from '../../lib/people/personDeskGates'
-import { useFarmModeEnabled } from '../../hooks/useFarmModeEnabled'
+import { useTaskModeEnabled } from '../../hooks/useTaskModeEnabled'
 import { normaliseKind } from '../../lib/people/deskRailAttention'
 import { DESK_Z, initials } from './personDeskShared'
 
@@ -26,22 +26,22 @@ function isTypingSurface(target: EventTarget | null): boolean {
 /**
  * The quick sheet (PR 4, proposal variant C): press `/` anywhere, type a
  * name, Enter opens their Desk. A third door into the same drawer, not a
- * separate surface. Office roles only, and never under Farm Mode (Tier-2 #41 —
+ * separate surface. Office roles only, and never under Task Mode (Tier-2 #41 —
  * the mode is "one page, the daily list"; the sheet was the one office door it
  * forgot); the header's job/bid search keeps its own button and never binds `/`.
  */
 export function PersonQuickSheet() {
   const desk = usePersonDeskContext()
   const { role, user } = useAuth()
-  const [farmModeEnabled] = useFarmModeEnabled(user?.id ?? null)
+  const [taskModeEnabled] = useTaskModeEnabled(user?.id ?? null)
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<Hit[]>([])
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const allowed = canOpenPersonQuickSheet(role, farmModeEnabled)
+  const allowed = canOpenPersonQuickSheet(role, taskModeEnabled)
 
-  // Farm Mode turned on while the sheet was up: close it — the gate, not the keystroke, decides.
+  // Task Mode turned on while the sheet was up: close it — the gate, not the keystroke, decides.
   useEffect(() => {
     if (!allowed) setOpen(false)
   }, [allowed])

@@ -150,6 +150,19 @@ describe('guideOpens (punch list #187 PR 1)', () => {
     expect(g.missing).toEqual([{ slug: 'gone-guide', clicks: 4 }])
   })
 
+  it('a renamed guide\'s old opens count with its new ones (v2.7050, Farm Mode → Task Mode)', () => {
+    const g = guideOpens(
+      [
+        { role: 'helpers', control: 'guide_opened', target: '/help?g=farm-mode#via=list', clicks: 4, people: 2 },
+        { role: 'helpers', control: 'guide_opened', target: '/help?g=task-mode#via=share', clicks: 1, people: 1 },
+      ],
+      438,
+    )
+    expect(g.rows.map((r) => [r.slug, r.clicks])).toEqual([['task-mode', 5]])
+    expect(g.opened).toBe(1)
+    expect(g.neverOpened).toBe(437)
+  })
+
   it('trims the ranked rows to the limit, reads every row for the counts, and is quiet on no rows', () => {
     expect(guideOpens(ROWS, 438, 1).rows.map((r) => r.slug)).toEqual(['quickfill'])
     expect(guideOpens(ROWS, 438, 1).opened).toBe(2)
