@@ -25,10 +25,10 @@ export const LEGAL_TEXT_DOCUMENT_MAX_CHARS = 1_000_000
 export const COUNSEL_ONLY_DOCUMENT_WORDS = {
   /** The tick on the Add form. */
   tick: 'Counsel-only.',
-  tickSentence: 'For counsel alone: the firm reads it on its portal with a lock, the printed packet leaves it out, and the dev seat and the agent never read it. A dev signed in still reads it.',
+  tickSentence: 'For counsel alone: the firm reads it on its portal with a lock, and the printed packet leaves it out. Devs read it, and so does the dev seat their agents use.',
   /** The chip on the desk's row and the portal's. */
   chip: 'counsel-only',
-  chipTip: 'For counsel alone — on the portal with a lock, never in the printed packet, never read by the dev seat or the agent.',
+  chipTip: 'For counsel alone — on the portal with a lock, never in the printed packet.',
   /** The portal's line under a locked row. */
   portalLine: 'For counsel alone. Not in the printed packet.',
   /** The print's line in place of the rows it leaves out. */
@@ -92,7 +92,7 @@ export type LegalPortalDocument = {
   receivedOn: string
   /** The paper's words when it is a text document (v2.6716): markdown or plain text the page renders; '' on a file alone. */
   text: string
-  /** For counsel alone (v2.6720, punch list #288): the firm's page wears a lock and the printed packet leaves it out; the seat and the agent never read it. */
+  /** For counsel alone (v2.6720, punch list #288): the firm's page wears a lock and the printed packet leaves it out. Since v2.6986 the dev seat reads it, as the dev it reads as. */
   counselOnly: boolean
 }
 

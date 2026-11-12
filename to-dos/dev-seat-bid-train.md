@@ -1,8 +1,8 @@
 ---
-name: "The dev seat's bid train, to pick up: takeoff shipped, labor is drafted, pricing and the submission pair are briefed"
+name: "The dev seat's bid train, to pick up: counts, takeoff and labor shipped, pricing and the submission pair are briefed"
 number: 317
 group: ready
-status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) shipped at `dev-mcp` 0.74.0 after #7686 landed (deploy and a dry run on b398 follow its merge) · PR 4 (labor) has its kernel drafted and untested on the branch `claude/dev-seat-bid-labor-draft` · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
+status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) is live on `dev-mcp` 0.74.0 (2026-11-12) · PR 4 (`plan_bid_labor`, v2.6976) shipped at `dev-mcp` 0.75.0 (deploy and a dry run on b398 follow its merge) · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
 summary: >
   The owner asked on 2026-11-11 for dev seat verbs that change a bid and fill in its counts, takeoff,
   labor and pricing, so an agent can enter a bid from a paper proposal. He gave the go on the map's
@@ -10,7 +10,7 @@ summary: >
   on which branch, what each still needs, and the recipe that gets a seat PR past the version
   collisions every other seat PR causes. The map and a build brief per pair stay in
   to-dos/mcp-servers.md under "The bid train"; this card is only the state.
-next: If `whoami` does not list `plan_bid_takeoff` yet, deploy `dev-mcp` from `origin/main` and dry-run it on b398. Then build PR 4 from the labor draft (steps below), then PR 5.
+next: If `whoami` does not list `plan_bid_labor` yet, deploy `dev-mcp` from `origin/main` and dry-run it on b398. Then PR 5, pricing (notes below), in two PRs.
 size: L as a train (takeoff XS to finish · labor M · pricing L in two PRs · the submission pair M)
 blocker: none.
 opinion: build in order — counts, takeoff, labor and pricing each hang on the one before, and a paper proposal is entered in that order.
@@ -29,8 +29,8 @@ what is on which branch, and what each piece still needs.
 |---|---|---|
 | 1 · `plan_bid_update` | Merged (v2.6945, PR #7680). Live since `dev-mcp` 0.70.0. | A live apply was never walked: the building session's permission layer refused a write on prod. Read the first real apply's reply closely. |
 | 2 · `plan_bid_counts` | Merged (v2.6967, PR #7714). Live on `dev-mcp` 0.72.0. | The same: dry runs on b398 only. |
-| 3 · `plan_bid_takeoff` | Shipped (v2.6968, PR #7717) at `dev-mcp` 0.74.0, ninety-three write verbs. | Its deploy, `whoami` and a dry run on b398, if the building session did not get to them after the merge. |
-| 4 · `plan_bid_labor` | Branch `claude/dev-seat-bid-labor-draft`: `supabase/functions/_shared/devMcpBidLabor.ts`, one commit on top of takeoff's. **Never run.** | Tests, the kernel copy entries, the wiring, the docs, a version. Brief below. |
+| 3 · `plan_bid_takeoff` | Merged (v2.6968, PR #7717). Live on `dev-mcp` 0.74.0. | The same: dry runs on b398 only. |
+| 4 · `plan_bid_labor` | Shipped (v2.6976) at `dev-mcp` 0.75.0, ninety-five write verbs. | Its deploy, `whoami` and a dry run on b398, if the building session did not get to them after the merge. |
 | 5 · `plan_bid_pricing` | Not started. | Two PRs: the pricing kernels into the kernel copy, then the pair. Brief in `mcp-servers.md`; notes below. |
 | 6 · `plan_bid_submission` | Not started. | Brief in `mcp-servers.md`. The proposals work needs it to file a paper from Drive onto its bid. |
 
@@ -49,73 +49,12 @@ git show origin/claude/bid-train-handoff:to-dos/dev-seat-bid-train/README.md
 Copy the folder's `scripts/` out to a scratch folder with `git show` or a second worktree. The
 README there is the long form of the steps below.
 
-## Finish PR 3 (takeoff)
+## Bring a seat PR up to main
 
-1. Wait for #7686 to be on main. Two seat PRs must never carry the same server version.
-2. Check out `claude/dev-seat-bid-takeoff`. Read main's pins: `SERVER_VERSION`, the words in
-   *Writes are N verbs and nothing else*, the count of `restRows(` in `dev-mcp/index.ts`.
-3. `git merge origin/main`, then take main's copy of every shared file and run takeoff's scripts
-   again: `wire-takeoff-edge.mjs`, `npm run gen:edge-kernels`, `wire-takeoff.mjs`, `bump.mjs`,
-   `fix-tv3.mjs`, `docs-takeoff.mjs`, and the one pin in `src/lib/photos/boxPhotoRefile.test.ts`.
-   Takeoff adds two write verbs and five `restRows(` calls to whatever main reads.
-4. `docs-takeoff.mjs` also marks pair 2 as live in `mcp-servers.md` and pair 3 as built. If an
-   anchor is not found once, main's sentence moved: read it and fix the anchor.
-5. Run the checks in the kit's README. Commit the merge, `git push` (no rebase, no force),
-   `gh pr ready 7717`, `gh pr merge 7717 --auto`.
-6. After the merge: deploy `dev-mcp` from `origin/main`, confirm `whoami`, deploy the four
-   functions `check:edge-drift` names, and dry-run on b398.
-
-A dry run for it, once live (b398 holds a "Water closet" count row or its like; read its sheet
-with `plan_bid_counts` first and name a fixture it has):
-
-```bash
-seat.sh plan_bid_takeoff '{"takeoff":{"bid_id":"a5a3a840-0a7b-4c67-8b59-3e95d0d80150","rows":[{"fixture":"<a fixture on the sheet>","materials_each":1}]}}'
-```
-
-## Build PR 4 (labor) from the draft
-
-What the draft kernel holds, as designed from a reading of the Labor tab on 2026-11-11:
-
-- **The ask**: `labor = { bid_id, estimate?, rows?, direct?, version_id? }`.
-- **The estimate's boxes** (`cost_estimates`): held to the ranges `buildCostEstimateAutosavePayload`
-  holds them to. The estimate is made (`{ bid_id }`) when the bid has none, as the tab makes it on a
-  counted bid; a bid with no count rows is refused.
-- **Labor rows** are keyed by the fixture's name, and no screen adds one by hand. The draft
-  changes an existing row, mints a row for a counted fixture that has none (the sync's own insert,
-  with the ask's hours), and holds a fixture nobody counts. Typed hours carry `source: typed` and
-  the queue's note, so the database's mint on a first sent date leaves them alone. A task is fixed
-  hours; a sub line has none.
-- **Direct cost lines**: the five tables, dollars a stage, found again by kind and note.
-- **The cost** is `computeBidCostBreakdown` at the bid's own rate. With no rate the tab uses the
-  company crew rate, which the seat does not compute, so the plan leaves labor dollars out and
-  says so.
-- **Refused in words**: a bid whose `created_by` is null. `can_access_bid_for_pricing` answers
-  false for it even to a dev, so nobody can write its labor or its prices. PR 5 needs the same
-  refusal.
-
-What it still needs:
-
-1. A branch from main once PR 3 is merged, with the draft file taken from
-   `claude/dev-seat-bid-labor-draft`. It imports `devMcpBidTakeoff.ts`, which PR 3 brings.
-2. Kernel copy entries in `scripts/edge-kernels.mjs`, off the index like the others:
-   `lib/bids/bidTotalCostBreakdown.ts` (it brings `bidCostCalc`, `costEstimateDirectCosts` and
-   `bidPricingRowCalculations` with `laborRowHours`) and `lib/bids/laborSyncPlan.ts`. Then
-   `npm run gen:edge-kernels` and the list in `src/lib/gc/edgeKernels.test.ts`.
-3. A test file on a made-up bid, in the shape of `devMcpBidTakeoff.test.ts`: the columns against
-   the generated catalog, the mint row against the sync's insert in `useBidPricingEngine.ts`, the
-   typed patch against `saveQueueRow` in `BidsLaborNewView.tsx`, the job scope rule against
-   `jobScopeRows`, the kinds and units against the table's CHECKs (migration `20260911161857`),
-   the cost against `computeBidCostBreakdown`.
-4. The wiring, copied from takeoff's scripts: `WRITE_VERBS`, `writeRpcBody`, `alreadyApplied`,
-   the tool entries, the instructions phrase, the case. The apply's order: make the estimate
-   when missing, PATCH its boxes, insert the minted rows, PATCH each changed row, then the direct
-   cost lines table by table. A row that fails is named and the rest goes on.
-5. Decide one thing before writing the apply: the draft leaves the mint untagged, since the hours
-   are a person's. The tab's own mint is tagged `labor-sync`, which History shows as the app's own
-   doing. Untagged is the honest reading; keep it unless the owner says otherwise.
-6. The docs every seat PR carries: the README row and counts, GLOSSARY, ACCESS_CONTROL, the
-   EDGE_FUNCTIONS note, the verb row and the section item in `mcp-servers.md`, a release note and
-   its fragment, a claimed version.
+Every seat PR moves the same pin lines, so one that lands first makes the next conflict. Take
+main's copy of every shared file and run the PR's own splice and pin scripts again; never
+hand-resolve. The kit's README has the steps. Each PR of the train keeps its scripts beside the
+kit's (`wire-<pair>.mjs`, `docs-<pair>.mjs`): copy the latest pair's as the pattern for the next.
 
 ## Notes for PR 5 (pricing)
 

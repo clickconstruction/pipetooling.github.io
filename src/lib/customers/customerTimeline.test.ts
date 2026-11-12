@@ -453,3 +453,19 @@ describe('the money', () => {
     expect(day(t, '2026-06-01').snapshot.owed).toBe(0)
   })
 })
+
+describe('a filed lien affidavit and its mailed copies (punch list #314)', () => {
+  it('keeps the filing its own line and adds one for each copy mailed', () => {
+    const input = ridgeway()
+    input.lienFilings = [{ id: 'lf9', jobId: 'j901', kind: 'affidavit', createdAt: at('2026-09-28'), amount: 31250, sends: [{ method: 'certified_mail', recipient: 'owner', sentOn: '2026-09-30' }] }]
+    const t = build(input)
+    expect(cards(day(t, '2026-09-28')).map((c) => c.title)).toContain('Lien affidavit recorded')
+    expect(cards(day(t, '2026-09-30')).map((c) => c.title)).toContain('Lien affidavit copy mailed')
+  })
+
+  it('a notice is still its sends, with no second line for the record', () => {
+    const titles = build().rows.flatMap((r) => (r.kind === 'day' ? cards(r).map((c) => c.title) : []))
+    expect(titles).toContain('Notice of unpaid balance mailed')
+    expect(titles).not.toContain('Notice of unpaid balance recorded')
+  })
+})

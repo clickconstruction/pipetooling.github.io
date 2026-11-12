@@ -35,6 +35,8 @@ import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintS
 import { supabase } from '../../lib/supabase'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
+import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
+import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -42,6 +44,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
+import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadQuestionOpen } from '../../lib/customers/homesteadAnswer'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
 import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
@@ -166,6 +169,9 @@ export default function LienFilingTabs({
   const [filingNumber, setFilingNumber] = useState('')
   const [filingDate, setFilingDate] = useState(todayYmd())
   const [serviceDate, setServiceDate] = useState(todayYmd())
+  // The proof each mailed copy carries (punch list #314): a certified mail number and a photo of its receipt. Neither holds the day.
+  const [ownerProof, setOwnerProof] = useState<ServiceCopyDraft>({ ...EMPTY_SERVICE_COPY })
+  const [ocProof, setOcProof] = useState<ServiceCopyDraft>({ ...EMPTY_SERVICE_COPY })
   const [releasePaymentDate, setReleasePaymentDate] = useState(todayYmd())
   const [busy, setBusy] = useState(false)
 
@@ -173,6 +179,14 @@ export default function LienFilingTabs({
   const live = useMemo(() => liveFilings(filings), [filings])
   const liveNotices = live.filter((f) => f.kind === 'notice_53_056')
   const filedAffidavit = live.find((f) => f.kind === 'affidavit' && f.filed_at) ?? null
+  /** Open the service step on what the filing already holds, so a day recorded alone can take its receipts later. */
+  const openServiceStep = () => {
+    if (!filedAffidavit) return
+    setServiceDate(filedAffidavit.served_at || todayYmd())
+    setOwnerProof(serviceCopyDraft(filedAffidavit.sends, 'owner'))
+    setOcProof(serviceCopyDraft(filedAffidavit.sends, 'original_contractor'))
+    setRecordStep('affidavit_service')
+  }
   const anyAffidavit = live.find((f) => f.kind === 'affidavit') ?? null
   // The claim is the desk's: what the sent bills still owe, less a claim set by hand. This tab counted the job's whole balance and read no correction.
   const claim = useMemo(() => lienWindowClaim(job, claimCorrection), [job, claimCorrection])
@@ -331,6 +345,7 @@ export default function LienFilingTabs({
 
   // ---------- gates ----------
 
+  const homesteadUnanswered = homesteadQuestionOpen({ propertyKind: property.propertyKind, homestead: property.homestead, answered: property.homesteadAnswered })
   // Punch list #314: a mechanic's lien does not attach to public property. Every name the record gives is asked, not the one the paper prints.
   const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany])
   const affidavitGates: { ok: boolean; label: string }[] = [
@@ -343,7 +358,11 @@ export default function LienFilingTabs({
     // Punch list #305: the paper gives the hiring party's and the original contractor's last known address, both the GC on a job under one.
     contractorAddressGate({ isSub, hasAddress: originalContractorAddressRead ? Boolean(originalContractorAddress.trim()) : undefined }),
     { ok: !isSub || liveNotices.length > 0, label: isSub ? `§ 53.056 notice recorded${liveNotices.length > 0 ? ` — ${liveNotices.length} on file` : ''}` : 'No monthly notice required (original contractor)' },
-    { ok: !property.homestead, label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : 'Not a homestead' },
+    // Punch list #305: nobody asked is not a no. A residential property holds until the homestead question has a yes or a no on its record.
+    {
+      ok: !property.homestead && !homesteadUnanswered,
+      label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : homesteadUnanswered ? HOMESTEAD_QUESTION_GATE_LABEL : 'Not a homestead',
+    },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
   const noticeCheckLines = useMemo(() => {
@@ -576,13 +595,15 @@ export default function LienFilingTabs({
 
   const recordService = useCallback(async () => {
     if (!filedAffidavit || busy) return
+    // A job contracted with the owner mails one copy; a job under a GC mails the contractor's too (§ 53.055).
+    const sends = serviceSends({ servedOn: serviceDate, owner: ownerProof, contractor: isSub ? ocProof : null })
     setBusy(true)
     try {
       await withSupabaseRetry(
-        () => supabase.from('job_lien_filings').update({ served_at: serviceDate || null }).eq('id', filedAffidavit.id),
+        () => supabase.from('job_lien_filings').update({ served_at: serviceDate || null, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filedAffidavit.id),
         'record lien service',
       )
-      showToast('Service recorded — the serve-by watch is cleared.', 'success')
+      showToast(serviceSavedWords(sends, isSub), 'success')
       setRecordStep(null)
       onChanged()
     } catch (e) {
@@ -590,7 +611,7 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [filedAffidavit, busy, serviceDate, showToast, onChanged])
+  }, [filedAffidavit, busy, serviceDate, ownerProof, ocProof, isSub, showToast, onChanged])
 
   const recordRelease = () =>
     insertFiling(
@@ -651,7 +672,8 @@ export default function LienFilingTabs({
         blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras, { instrument: 'retainage_53_057' })
         kind = 'retainage_53_057'
       } else if (f.kind === 'affidavit') {
-        blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, snapExtras)
+        // A sworn paper redraws as it was sworn: the mail receipts its copies carry (punch list #314) live on the row, never on the page.
+        blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, { ...snapExtras, deliveryLines: undefined })
         kind = 'affidavit'
         printOpts = lienAffidavitPrintOptions(snap as LienAffidavitFields)
       } else if (f.kind === 'release_of_record') {
@@ -742,6 +764,28 @@ export default function LienFilingTabs({
               )
             })()}
             {(f.kind === 'notice_53_056' || f.kind === 'retainage_53_057') && sendsTrackingOwed(f.sends).length ? <LienTrackingOwedEditor filing={f} onSaved={onChanged} compact /> : null}
+            {/* The mail receipts of a filed affidavit's copies (punch list #314), and the door to add them once the day is recorded. */}
+            {f.kind === 'affidavit' && f.filed_at ? (
+              <span data-lien-service-proof style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.6rem', alignItems: 'center', color: 'var(--text-muted)' }}>
+                {serviceProofLines(f.sends).map((l) => (
+                  <span key={l.recipient}>
+                    {l.who}
+                    {l.tracking ? ` ${l.tracking}` : ''}
+                    {l.receiptUrl ? (
+                      <>
+                        {' '}
+                        <a href={l.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>receipt ›</a>
+                      </>
+                    ) : null}
+                  </span>
+                ))}
+                {f.served_at && activeTab === 'affidavit' && filedAffidavit?.id === f.id && recordStep !== 'affidavit_service' ? (
+                  <button type="button" onClick={openServiceStep} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
+                    {serviceProofLines(f.sends).length > 0 ? LIEN_SERVICE_PROOF_WORDS.change : LIEN_SERVICE_PROOF_WORDS.addLater}
+                  </button>
+                ) : null}
+              </span>
+            ) : null}
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => viewFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
                 View
@@ -805,6 +849,21 @@ export default function LienFilingTabs({
       ) : null}
     </fieldset>
   )
+  /** A photo of the clerk's stamped page fills the filing's saved copy (punch list #314): the link, and a note that says what it is. */
+  const clerkPagePhoto = (compact: boolean) => (
+    <LienReceiptPhotoPress
+      jobId={job.id}
+      jobNumber={jobNumber}
+      of="clerk"
+      day={filingDate}
+      url={docNote.trim() === LIEN_CLERK_PAGE_NOTE ? docUrl : ''}
+      compact={compact}
+      onSaved={(url) => {
+        setDocUrl(url)
+        setDocNote(LIEN_CLERK_PAGE_NOTE)
+      }}
+    />
+  )
   const sheetSavedCopy = (
     <div data-testid="filing-saved-copy" style={{ display: 'grid', gap: '0.5rem' }}>
       <span style={{ ...recordSheetLabel, marginBottom: 0 }}>
@@ -813,6 +872,19 @@ export default function LienFilingTabs({
       <input type="text" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Drive link (optional)" aria-label="Saved copy — link" autoComplete="off" style={recordSheetField} />
       <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" autoComplete="off" style={recordSheetField} />
     </div>
+  )
+  /** The press that saves the service step: the day the first time, the receipts once the day is on record. */
+  const serviceActionLabel = filedAffidavit?.served_at ? 'Save the mail receipts' : 'Record service'
+  /** One mailed copy on the phone's service sheet (punch list #314): its certified mail number and a photo of its receipt. */
+  const sheetServiceCopy = (label: string, of: 'owner' | 'original_contractor', draft: ServiceCopyDraft, set: (d: ServiceCopyDraft) => void) => (
+    <fieldset data-lien-service-copy={of} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem 0.75rem', margin: 0, minWidth: 0, display: 'grid', gap: '0.6rem' }}>
+      <legend style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.3rem' }}>{label}</legend>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>{LIEN_SERVICE_PROOF_WORDS.number}</span>
+        <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.numberPlaceholder} aria-label={`${label}, certified mail number`} autoComplete="off" style={recordSheetField} />
+      </label>
+      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+    </fieldset>
   )
   const recordSheet = !isMobile ? null : activeTab === 'notice' && isSub && recordStep === 'notice_sends' ? (
     <LienRecordSheet
@@ -852,14 +924,15 @@ export default function LienFilingTabs({
         <input type="date" value={filingDate} onChange={(e) => setFilingDate(e.target.value)} style={recordSheetField} />
       </label>
       {sheetSavedCopy}
+      {clerkPagePhoto(false)}
     </LienRecordSheet>
-  ) : activeTab === 'affidavit' && affidavitReady && recordStep === 'affidavit_service' && filedAffidavit ? (
+  ) : activeTab === 'affidavit' && recordStep === 'affidavit_service' && filedAffidavit ? (
     <LienRecordSheet
       kind="affidavit_service"
       title="Record service"
       headline="Lien affidavit · the filed copy"
       lines={[jobLine, `Service is due ${demandDate(filedAffidavit.serve_due ?? '')}.`]}
-      action={{ label: 'Record service', busyLabel: 'Saving…', busy, onClick: () => void recordService(), fill: '#8C1D2F' }}
+      action={{ label: serviceActionLabel, busyLabel: 'Saving…', busy, onClick: () => void recordService(), fill: '#8C1D2F' }}
       onBack={() => setRecordStep(null)}
       onClose={onClose}
     >
@@ -867,6 +940,11 @@ export default function LienFilingTabs({
         <span style={recordSheetLabel}>Served on</span>
         <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} style={recordSheetField} />
       </label>
+      {sheetServiceCopy(LIEN_SERVICE_PROOF_WORDS.ownerCopy, 'owner', ownerProof, setOwnerProof)}
+      {isSub ? sheetServiceCopy(LIEN_SERVICE_PROOF_WORDS.contractorCopy, 'original_contractor', ocProof, setOcProof) : null}
+      <span data-lien-service-hint style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        {LIEN_SERVICE_PROOF_WORDS.hint} {LIEN_SERVICE_PROOF_WORDS.where}
+      </span>
     </LienRecordSheet>
   ) : null
 
@@ -970,6 +1048,7 @@ export default function LienFilingTabs({
       <div data-lien-record-box="affidavit_filing" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
         <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
         {savedCopyRow}
+        <div style={{ margin: '0 0 0.45rem' }}>{clerkPagePhoto(true)}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
           <label style={{ fontSize: '0.75rem' }}>
             County
@@ -995,6 +1074,39 @@ export default function LienFilingTabs({
         </div>
       </div>
     )
+    // The service's record box on a computer: the day, then each mailed copy's certified mail number and a photo of its receipt
+    // (punch list #314). Drawn once, offered behind the gate and in front of it, since a paper on file is served whether or not a hold has closed since.
+    const serviceCopyRow = (label: string, of: 'owner' | 'original_contractor', draft: ServiceCopyDraft, set: (d: ServiceCopyDraft) => void) => (
+      <div data-lien-service-copy={of} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.35rem 0' }}>
+        <span style={{ fontWeight: 700, minWidth: '11.5rem' }}>{label}</span>
+        <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.number.toLowerCase()} aria-label={`${label}, certified mail number`} autoComplete="off" style={{ flex: '1 1 11rem', minWidth: 0, padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+      </div>
+    )
+    const serviceRecordBox = filedAffidavit ? (
+      <div data-lien-record-box="affidavit_service" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>
+          Record service of the filed copy (due {demandDate(filedAffidavit.serve_due ?? '')})
+        </div>
+        <label style={{ fontSize: '0.75rem', display: 'inline-block', marginBottom: '0.2rem' }}>
+          Served on
+          <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+        </label>
+        {serviceCopyRow(LIEN_SERVICE_PROOF_WORDS.ownerCopy, 'owner', ownerProof, setOwnerProof)}
+        {isSub ? serviceCopyRow(LIEN_SERVICE_PROOF_WORDS.contractorCopy, 'original_contractor', ocProof, setOcProof) : null}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.45rem' }}>
+          <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+            Back
+          </button>
+          <button type="button" onClick={() => void recordService()} disabled={busy} style={{ padding: '0.35rem 0.9rem', fontSize: '0.78rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
+            {busy ? 'Saving…' : serviceActionLabel}
+          </button>
+        </div>
+        <div data-lien-service-hint style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+          {LIEN_SERVICE_PROOF_WORDS.hint} {LIEN_SERVICE_PROOF_WORDS.where}
+        </div>
+      </div>
+    ) : null
     return (
       <>
       {recordSheet}
@@ -1046,23 +1158,7 @@ export default function LienFilingTabs({
               {recordStep === 'affidavit_filing' && !isMobile ? (
                 filingRecordBox
               ) : recordStep === 'affidavit_service' && filedAffidavit && !isMobile ? (
-                <div data-lien-record-box="affidavit_service" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>
-                    Record service of the filed copy (due {demandDate(filedAffidavit.serve_due ?? '')})
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <label style={{ fontSize: '0.75rem' }}>
-                      Served on
-                      <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    </label>
-                    <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
-                      Back
-                    </button>
-                    <button type="button" onClick={() => void recordService()} disabled={busy} style={{ padding: '0.35rem 0.9rem', fontSize: '0.78rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
-                      {busy ? 'Saving…' : 'Record service'}
-                    </button>
-                  </div>
-                </div>
+                serviceRecordBox
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
@@ -1081,7 +1177,7 @@ export default function LienFilingTabs({
                       Record filing…
                     </button>
                   ) : filedAffidavit && !filedAffidavit.served_at ? (
-                    <button type="button" onClick={() => setRecordStep('affidavit_service')} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                    <button type="button" onClick={openServiceStep} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                       Record service…
                     </button>
                   ) : null}
@@ -1099,6 +1195,8 @@ export default function LienFilingTabs({
             </>
           ) : recordStep === 'affidavit_filing' && !isMobile ? (
             filingRecordBox
+          ) : recordStep === 'affidavit_service' && filedAffidavit && !isMobile ? (
+            serviceRecordBox
           ) : (
             <>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -1106,6 +1204,15 @@ export default function LienFilingTabs({
                 recorded on the § 53.056 tab.
               </p>
               {/* A lien already on file (v2.4835): the gates hold the paper the app draws, not the record of one filed by hand or by counsel. */}
+              {/* A lien on file is served whatever has closed since (punch list #314): the holds stop a new paper, never the record of this one's copies, whose five days are running. */}
+              {filedAffidavit && !filedAffidavit.served_at ? (
+                <div style={{ marginTop: '0.7rem' }}>
+                  <button type="button" onClick={openServiceStep} data-lien-held-service style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, ...(isMobile ? { minHeight: 44 } : {}) }}>
+                    Record service…
+                  </button>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>{heldServiceWords(demandDate(filedAffidavit.serve_due ?? ''))}</div>
+                </div>
+              ) : null}
               {!anyAffidavit ? (
                 <div style={{ marginTop: '0.7rem' }}>
                   <button type="button" onClick={() => setRecordStep('affidavit_filing')} data-lien-already-filed style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }} title="The affidavit was filed with the County Clerk without this tab — by counsel, or printed elsewhere. Record its date and number so the clocks run from it.">

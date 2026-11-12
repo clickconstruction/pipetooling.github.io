@@ -141,7 +141,8 @@ export function filingSnapshotPage(f: JobLienFilingRow, { issuer, jobNumber }: {
   let label = 'the notice'
   if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, extras)
   else if (f.kind === 'retainage_53_057') { blocks = buildLienNoticeBlocks(snap as LienNoticeFields, extras, { instrument: 'retainage_53_057' }); label = 'the § 53.057 notice' }
-  else if (f.kind === 'affidavit') { blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, extras); label = 'the affidavit' }
+  // A sworn paper redraws as it was sworn: the mail receipts its copies carry (punch list #314) live on the row, never on the page.
+  else if (f.kind === 'affidavit') { blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, { ...extras, deliveryLines: undefined }); label = 'the affidavit' }
   else if (f.kind === 'release_of_record') { blocks = buildReleaseOfRecordBlocks(snap as ReleaseOfRecordFields, extras); label = 'the release of record' }
   if (!blocks) return null
   return { key: `filing:${f.id}`, label: `As it went out · ${label}`, html: filingDocHtml(blocks) }
