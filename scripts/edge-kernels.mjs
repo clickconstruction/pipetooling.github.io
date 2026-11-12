@@ -434,6 +434,10 @@ export const ENTRIES = {
   // with the order rounding) and how a part is sold, so the plan states the tab's own total. Off the index.
   'lib/bids/bidMaterials.ts': { values: [], types: [] },
   'lib/materials/orderIncrement.ts': { values: [], types: [] },
+  // The dev seat's plan_bid_labor: the Labor tab's "Direct cost of this bid" (with the row hours and the direct cost
+  // tables it reads) and the load sync's fixture key, so the plan states the tab's own numbers. Off the index.
+  'lib/bids/bidTotalCostBreakdown.ts': { values: [], types: [] },
+  'lib/bids/laborSyncPlan.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
