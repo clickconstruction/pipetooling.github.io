@@ -1302,7 +1302,7 @@ describe('gmail-mine: the old Gmail label comes out of every mailbox, once (v2.7
   })
 
   it('touches no saved conversation: the lines, the files and the tag rows stay', async () => {
-    db.tables.app_settings.push({ key: LABEL_CLEANUP_KEY, value_text: JSON.stringify({ boxes: {}, finished_at: '2026-11-12T20:00:00.000Z' }) })
+    db.rows('app_settings').push({ key: LABEL_CLEANUP_KEY, value_text: JSON.stringify({ boxes: {}, finished_at: '2026-11-12T20:00:00.000Z' }) })
     db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
     await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
     const before = { lines: JSON.stringify(lines()), files: Object.keys(db.files).sort(), tags: JSON.stringify(db.rows('email_tag_threads').map((r) => ({ ...r, last_read_at: null }))) }
