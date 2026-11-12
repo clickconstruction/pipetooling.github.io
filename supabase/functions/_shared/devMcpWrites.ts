@@ -44,6 +44,7 @@ import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { bidUpdateInput, isBidUpdateVerb } from './devMcpBidUpdate.ts'
 import { bidCountsInput, isBidCountsVerb } from './devMcpBidCounts.ts'
+import { bidTakeoffInput, isBidTakeoffVerb } from './devMcpBidTakeoff.ts'
 import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
@@ -240,6 +241,11 @@ export const WRITE_VERBS = {
   // (devMcpBidCounts.ts). A row with a fault is held and the rest goes on.
   plan_bid_counts: { rpc: null, step: 'plan' },
   apply_bid_counts: { rpc: null, step: 'apply' },
+  // v2.6968 (the bid train's PR 3): a bid's takeoff as the Takeoffs tab holds it — the part lines on a count row, added,
+  // changed or rewritten whole, and the quoted materials cost each; rpc is null, the dry run the server's read of the
+  // bid, the active version's count rows and lines, the parts and their lowest prices (devMcpBidTakeoff.ts).
+  plan_bid_takeoff: { rpc: null, step: 'plan' },
+  apply_bid_takeoff: { rpc: null, step: 'apply' },
   // v2.6944 / 0.71.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
   // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
   // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
@@ -404,6 +410,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
     // dry run is the server's read of the job, its payment rows and the bank row.
     const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidTakeoffVerb(verb)) {
+    // v2.6968: the shape is devMcpBidTakeoff's; a row or a line with a fault is kept for the plan to hold.
+    const built = bidTakeoffInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1295,6 +1307,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_property_record') return `Nothing written: this plan was already applied on this property record${when}. The record already reads that way; read_rows on customer_addresses shows it. A plan commits to the record's updated_at and each column's before value, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_bid_takeoff') return `Nothing written: this plan was already applied on this bid${when}. The takeoff already reads that way; read_rows on bids_takeoff_rough_part_lines by bid_id lists the lines. A further change needs a new plan from the lines as they stand.`
   if (verb === 'apply_bid_counts') return `Nothing written: this plan was already applied on this bid${when}. The Count Sheet already reads that way; get_bid lists the rows. A further change needs a new plan from the sheet as it stands.`
   if (verb === 'apply_bid_update') return `Nothing written: this plan was already applied on this bid${when}. The bid already reads that way; get_bid shows it. A plan commits to the columns' before values and the bid's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_sub_labor') return `Nothing written: this plan was already applied${when}. The sheet already reads that way; plan_sub_labor lists the job's sheets. A plan commits to the job's sheets as they stood, so a further change needs a new plan.`
