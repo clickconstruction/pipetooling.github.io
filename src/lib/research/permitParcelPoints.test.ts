@@ -3,14 +3,17 @@ import {
   fillPoints,
   hasPoint,
   idBatches,
+  idOfAny,
   parcelIdsToAsk,
   parcelPointsOf,
   pointOfRings,
   travisParcelQuery,
   TRAVIS_PARCEL_POINTS,
+  WILLIAMSON_PARCEL_POINTS,
+  williamsonParcelQuery,
   withoutPointColumns,
 } from '../../../supabase/functions/_shared/permitParcelPoints'
-import { TRAVIS_PARCELS } from '../../../supabase/functions/_shared/permitParcels'
+import { TRAVIS_PARCELS, WILLIAMSON_PARCELS } from '../../../supabase/functions/_shared/permitParcels'
 import { AUSTIN_READER, PERMIT_CITIES, permitRowFromAustin } from '../../../supabase/functions/_shared/permitCities'
 import type { PermitRow } from '../../../supabase/functions/_shared/permitFeed'
 
@@ -231,10 +234,54 @@ describe('the rows with their points filled', () => {
 })
 
 describe('which feeds fill a point', () => {
-  it("is Austin's, from Travis County, and no other city's", () => {
-    expect(AUSTIN_READER.fillPoint).toBe(TRAVIS_PARCEL_POINTS)
+  it("is Austin's, from Travis County and from Williamson, and no other city's", () => {
+    expect(AUSTIN_READER.fillPoints).toEqual([TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS])
     const others = PERMIT_CITIES.flatMap((c) => [...c.feeds]).filter((f) => f.city !== 'Austin')
     expect(others.length).toBeGreaterThan(0)
-    expect(others.every((f) => f.fillPoint === undefined)).toBe(true)
+    expect(others.every((f) => f.fillPoints === undefined)).toBe(true)
+  })
+})
+
+describe('Austin over the county line: Williamson County by its own id', () => {
+  const answerQuick = (...features: Array<{ id: unknown; rings?: number[][][] | null }>) => ({
+    features: features.map((f) => ({ attributes: { QuickRefID: f.id }, geometry: f.rings === null ? null : { rings: f.rings ?? [] } })),
+  })
+  const square = [[[-97.71, 30.5], [-97.7, 30.5], [-97.7, 30.51], [-97.71, 30.51], [-97.71, 30.5]]]
+  it('sends each id to its own layer, and no id to both', () => {
+    const rows = [row({ tcad_id: '0000000001' }), row({ tcad_id: 'R000001' }), row({ tcad_id: ' r000002 ' }), row({ tcad_id: 'R000001' }), row({ tcad_id: 'R000003', latitude: '30.5', longitude: '-97.7' }), row({})]
+    expect(parcelIdsToAsk(TRAVIS_PARCEL_POINTS, rows)).toEqual(['0000000001'])
+    expect(parcelIdsToAsk(WILLIAMSON_PARCEL_POINTS, rows)).toEqual(['R000001', 'R000002'])
+    const idOf = idOfAny([TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS])
+    expect(rows.map(idOf)).toEqual(['0000000001', 'R000001', 'R000002', 'R000001', 'R000003', null])
+    expect(idOfAny([])(rows[0]!)).toBeNull()
+  })
+  it("asks Williamson's layer for the shapes by the quick reference id, fifty to a request", () => {
+    expect(WILLIAMSON_PARCEL_POINTS.queryUrl).toBe(WILLIAMSON_PARCELS.queryUrl)
+    expect(WILLIAMSON_PARCEL_POINTS.idsPerRequest).toBe(50)
+    const q = williamsonParcelQuery(['R000001', "R'2"])
+    expect(q.get('where')).toBe("QuickRefID IN ('R000001','R''2')")
+    expect(q.get('outFields')).toBe('QuickRefID')
+    expect(q.get('returnGeometry')).toBe('true')
+    expect(q.get('outSR')).toBe('4326')
+    expect(williamsonParcelQuery([]).get('where')).toBe('1 = 0')
+    expect(idBatches(WILLIAMSON_PARCEL_POINTS, Array.from({ length: 120 }, (_, i) => `R${String(i).padStart(6, '0')}`)).map((b) => b.length)).toEqual([50, 50, 20])
+  })
+  it('fills a row from either layer, and holds a row whose layer did not answer', () => {
+    const rows = [row({ tcad_id: '0000000001' }), row({ tcad_id: 'R000001' }), row({ tcad_id: 'R000002' }), row({ tcad_id: 'R000009' })]
+    const found = new Map([...WILLIAMSON_PARCEL_POINTS.pointsOf(answerQuick({ id: 'R000001', rings: square }))])
+    const out = fillPoints({ idOf: idOfAny([TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS]) }, rows, found, new Set(['R000002']))
+    expect(out.filled).toBe(1)
+    const filled = out.settled.find((r) => r.raw['tcad_id'] === 'R000001')
+    expect(filled?.lat).toBeCloseTo(30.505, 3)
+    expect(filled?.lng).toBeCloseTo(-97.705, 3)
+    // Travis's row and the R id Williamson does not hold are settled without a point; the unanswered one is held.
+    expect(out.settled.map((r) => r.raw['tcad_id'])).toEqual(['0000000001', 'R000001', 'R000009'])
+    expect(out.unknown.map((r) => r.raw['tcad_id'])).toEqual(['R000002'])
+    expect(() => WILLIAMSON_PARCEL_POINTS.pointsOf({ error: { message: 'Invalid query' } })).toThrow(/Invalid query/)
+  })
+  it("leaves Williamson's ids out of Travis's question", () => {
+    expect(TRAVIS_PARCEL_POINTS.idOf(row({ tcad_id: 'R000001' }))).toBeNull()
+    expect(WILLIAMSON_PARCEL_POINTS.idOf(row({ tcad_id: '0000000001' }))).toBeNull()
+    expect(WILLIAMSON_PARCEL_POINTS.idOf(row({ tcad_id: 'r000001' }))).toBe('R000001')
   })
 })

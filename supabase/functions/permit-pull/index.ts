@@ -4,7 +4,7 @@ import { pullSinceDay, type PermitRow } from '../_shared/permitFeed.ts'
 import { feedsToPull, permitCity, PERMIT_CITY_NAMES, type FeedReader } from '../_shared/permitCities.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { builderKeyOf } from '../_shared/permitLookup.ts'
-import { fillPoints, idBatches, parcelIdsToAsk, withoutPointColumns, type ParcelPoint, type ParcelPointSource } from '../_shared/permitParcelPoints.ts'
+import { fillPoints, idBatches, idOfAny, parcelIdsToAsk, withoutPointColumns, type ParcelPoint, type ParcelPointSource } from '../_shared/permitParcelPoints.ts'
 
 /**
  * Research (punch list #292, v2.6782): pull a city's permits into `permits`. Each city's feeds
@@ -26,8 +26,9 @@ import { fillPoints, idBatches, parcelIdsToAsk, withoutPointColumns, type Parcel
  * is left exactly as it is. It needs migration *_permit_history and refuses to run without it,
  * and it runs only for a city whose feeds can be read up to a day (`pageUrlBefore`).
  *
- * A feed with `fillPoint` (Austin, punch list #310) has its rows that came without a point asked
- * of the county's parcel layer by the id they carry, a page at a time, before the upsert: the
+ * A feed with `fillPoints` (Austin, punch list #310) has its rows that came without a point asked
+ * of the parcel layer their id belongs to (Travis County's, or Williamson's for the part of
+ * Austin over the county line), a page at a time, before the upsert: the
  * upsert writes the point on every read, so a point filled anywhere else is wiped the next night.
  * A layer that does not answer never stops the pull: its rows land without their point columns,
  * so a point filled earlier stands, and the feed's `points` in the answer says why.
@@ -147,6 +148,8 @@ serve(async (req) => {
       let offset = 0
       // A door that hands over fewer rows a page than the pull asks for sets the page.
       const size = Math.min(PAGE, feed.pageSize ?? PAGE)
+      // The parcel layers that refused a read in this run: one refusal ends the asking of that layer, so a layer that is down does not spend the time budget.
+      const refused = new Set<ParcelPointSource>()
       for (let page = 0; page < MAX_PAGES_PER_FEED; page++) {
         if (Date.now() - started > BUDGET_MS) {
           outcome.error = 'stopped on the time budget; the next run carries on'
@@ -171,25 +174,28 @@ serve(async (req) => {
         const unique = [...byKey.values()]
         // The page's rows as they are written: whole, or without the point columns where the point is not known.
         let writes: Array<Record<string, unknown>[]> = [unique]
-        if (feed.fillPoint) {
+        const pointSources = feed.fillPoints ?? []
+        if (pointSources.length > 0) {
           const points: PointOutcome = outcome.points ?? { asked: 0, filled: 0, held: 0, error: null }
           outcome.points = points
           const found = new Map<string, ParcelPoint>()
           const unanswered = new Set<string>()
-          for (const batch of idBatches(feed.fillPoint, parcelIdsToAsk(feed.fillPoint, unique))) {
-            // One refusal ends the asking for this run: a layer that is down must not spend the time budget.
-            if (points.error == null) {
-              try {
-                for (const [id, point] of await askPoints(feed.fillPoint, batch)) found.set(id, point)
-                points.asked += batch.length
-                continue
-              } catch (e) {
-                points.error = e instanceof Error ? e.message : String(e)
+          for (const source of pointSources) {
+            for (const batch of idBatches(source, parcelIdsToAsk(source, unique))) {
+              if (!refused.has(source)) {
+                try {
+                  for (const [id, point] of await askPoints(source, batch)) found.set(id, point)
+                  points.asked += batch.length
+                  continue
+                } catch (e) {
+                  refused.add(source)
+                  points.error = points.error ?? (e instanceof Error ? e.message : String(e))
+                }
               }
+              for (const id of batch) unanswered.add(id)
             }
-            for (const id of batch) unanswered.add(id)
           }
-          const filled = fillPoints(feed.fillPoint, unique, found, unanswered)
+          const filled = fillPoints({ idOf: idOfAny(pointSources) }, unique, found, unanswered)
           points.filled += filled.filled
           points.held += filled.unknown.length
           writes = [filled.settled, filled.unknown.map(withoutPointColumns)]

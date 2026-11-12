@@ -8,7 +8,7 @@
  */
 import { addressKeyOf, dayOf, feedPageSql, numberOf, permitRowFromSanAntonio, SA_APPLIED_FEED, SA_ISSUED_FEED, SAN_ANTONIO_CKAN, textOf, type PermitFeed, type PermitRow, type PermitStage, type PermitTypeClass } from './permitFeed.ts'
 import { builderKeyOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
-import { TRAVIS_PARCEL_POINTS, type ParcelPointSource } from './permitParcelPoints.ts'
+import { TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS, type ParcelPointSource } from './permitParcelPoints.ts'
 
 /** One feed of one city, whatever door it is read through. */
 export type FeedReader = {
@@ -35,10 +35,11 @@ export type FeedReader = {
    */
   prefer?: (held: PermitRow, next: PermitRow) => PermitRow
   /**
-   * Where a row the door sent without a point finds one (punch list #310): the county's parcel
-   * layer, asked by the id the row carries. A feed without it keeps the points its door sends.
+   * Where a row the door sent without a point finds one (punch list #310): the parcel layers its
+   * rows' ids belong to, each asked by the ids that are its own. A feed without it keeps the
+   * points its door sends.
    */
-  fillPoint?: ParcelPointSource
+  fillPoints?: readonly ParcelPointSource[]
 }
 
 function assertDay(sinceDay: string, who: string): void {
@@ -197,8 +198,8 @@ export const AUSTIN_READER: FeedReader = {
     throw new Error(`the feed refused the read: ${String(b?.message ?? JSON.stringify(b?.error ?? b ?? {})).slice(0, 300)}`)
   },
   rowOf: permitRowFromAustin,
-  // About half of the city's rows carry no latitude; almost every one of those names its lot.
-  fillPoint: TRAVIS_PARCEL_POINTS,
+  // About half of the city's rows carry no latitude; almost every one of those names its lot, at Travis County or, over the county line, at Williamson.
+  fillPoints: [TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS],
 }
 
 // ---- A city's map layer (ArcGIS): New Braunfels, San Marcos and Seguin each publish one. ----

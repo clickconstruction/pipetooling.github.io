@@ -3,12 +3,14 @@
  * Austin's permits come off the city's feed with no latitude, and almost every one of those
  * carries the appraisal district's id for its lot (`tcad_id`, the county layer's `geo_id`). The
  * county's parcel layer hands back the lot's shape for an id, and a point inside that shape is
- * the permit's point: the right lot, with no key and no paid call.
+ * the permit's point: the right lot, with no key and no paid call. The part of Austin over the
+ * county line carries Williamson County's id, so a feed names every layer its rows' ids belong
+ * to and each id goes to its own (punch list #320).
  *
  * Pure: `permit-pull` asks the layer, `src/lib/research/permitParcelPoints.test.ts` holds this.
  */
 import type { PermitRow } from './permitFeed.ts'
-import { askablePoint, TRAVIS_PARCELS } from './permitParcels.ts'
+import { askableParcelId, askablePoint, TRAVIS_PARCELS, WILLIAMSON_PARCELS } from './permitParcels.ts'
 
 export type ParcelPoint = { lat: number; lng: number }
 
@@ -29,6 +31,17 @@ export type ParcelPointSource = {
 /** Whether a row came with its point. */
 export function hasPoint(row: Pick<PermitRow, 'lat' | 'lng'>): boolean {
   return row.lat != null && row.lng != null
+}
+
+/** The parcel id a row carries, by the first layer of a feed's that takes it: one row, one layer. */
+export function idOfAny(sources: readonly ParcelPointSource[]): (row: PermitRow) => string | null {
+  return (row) => {
+    for (const source of sources) {
+      const id = source.idOf(row)
+      if (id) return id
+    }
+    return null
+  }
 }
 
 /** The ids to ask the layer about: the rows with no point that carry an id, each id once, in the rows' order. */
@@ -189,7 +202,7 @@ function idText(value: unknown): string | null {
  *   night stands until the layer answers again.
  */
 export function fillPoints(
-  source: ParcelPointSource,
+  source: Pick<ParcelPointSource, 'idOf'>,
   rows: readonly PermitRow[],
   points: ReadonlyMap<string, ParcelPoint>,
   unanswered: ReadonlySet<string>,
@@ -237,12 +250,38 @@ export function travisParcelQuery(ids: readonly string[]): URLSearchParams {
 /**
  * Travis County's parcels by the id an Austin permit carries. The city's `tcad_id` is the
  * layer's `geo_id` (ten digits, leading zeros kept), not its `PROP_ID`. A hundred ids in a URL
- * is turned away by the county's firewall; the same list posted as a form is answered.
+ * is turned away by the county's firewall; the same list posted as a form is answered. An id
+ * that starts with R is Williamson County's and is left to its own layer.
  */
 export const TRAVIS_PARCEL_POINTS: ParcelPointSource = {
   queryUrl: TRAVIS_PARCELS.queryUrl,
   idsPerRequest: 100,
-  idOf: (row) => idText(row.raw['tcad_id']),
+  idOf: (row) => askableParcelId(TRAVIS_PARCELS, row.raw['tcad_id']),
   query: travisParcelQuery,
   pointsOf: (body) => parcelPointsOf(body, 'geo_id'),
+}
+
+/** The form that asks Williamson County's parcel layer for the shapes of a list of quick reference ids, in degrees. */
+export function williamsonParcelQuery(ids: readonly string[]): URLSearchParams {
+  return new URLSearchParams({
+    where: ids.length === 0 ? '1 = 0' : `QuickRefID IN (${ids.map(quoted).join(',')})`,
+    outFields: 'QuickRefID',
+    returnGeometry: 'true',
+    outSR: '4326',
+    geometryPrecision: '6',
+    f: 'json',
+  })
+}
+
+/**
+ * Williamson County's parcels by the id an Austin permit over the county line carries: the
+ * appraisal district's quick reference id, an R and six digits, in the same `tcad_id`. Fifty ids
+ * posted as a form were answered when it was tried, so that is one request.
+ */
+export const WILLIAMSON_PARCEL_POINTS: ParcelPointSource = {
+  queryUrl: WILLIAMSON_PARCELS.queryUrl,
+  idsPerRequest: 50,
+  idOf: (row) => askableParcelId(WILLIAMSON_PARCELS, row.raw['tcad_id']),
+  query: williamsonParcelQuery,
+  pointsOf: (body) => parcelPointsOf(body, 'QuickRefID'),
 }
