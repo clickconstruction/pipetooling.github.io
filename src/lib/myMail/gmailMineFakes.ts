@@ -451,6 +451,8 @@ export class FakeGoogle {
   sent: { sub: string; raw: string; id: string; threadId: string }[] = []
   /** Boxes whose send Gmail refuses (a 403), until a test takes them out. */
   sendRefused = new Set<string>()
+  /** Boxes whose label Gmail will not delete (a 403), until a test takes them out. */
+  labelDeleteRefused = new Set<string>()
 
   reset() {
     this.boxes = {}
@@ -465,6 +467,7 @@ export class FakeGoogle {
     this.nextLabel = 1
     this.sent = []
     this.sendRefused = new Set()
+    this.labelDeleteRefused = new Set()
   }
 
   /** A mail as `users.messages.get` answers it, in the format asked. */
@@ -570,6 +573,15 @@ export class FakeGoogle {
       const made = { id: `Label_${this.nextLabel++}`, name: String(body.name) }
       box.labels.push(made)
       return reply(200, made)
+    }
+    // `users.labels.delete`: the label goes, and comes off every mail that carried it, as Gmail takes it.
+    if ((m = /^\/labels\/([^/]+)$/.exec(path)) && method === 'DELETE') {
+      const id = decodeURIComponent(m[1]!)
+      if (this.labelDeleteRefused.has(sub)) return reply(403, { error: { code: 403, message: 'Insufficient Permission' } })
+      if (!box.labels.some((l) => l.id === id)) return reply(404, { error: { code: 404, message: 'Not Found' } })
+      box.labels = box.labels.filter((l) => l.id !== id)
+      for (const mail of box.mails) mail.labelIds = mail.labelIds.filter((l) => l !== id)
+      return new Response(null, { status: 204 })
     }
     return reply(400, { error: { code: 400, message: `the fake has no ${method} ${path}` } })
   }

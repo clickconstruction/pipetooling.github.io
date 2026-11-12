@@ -29,6 +29,8 @@ function money(cents: number): string {
 
 /** Who the sample is, for the band over the frame: the person, the place, and the number the page shows. */
 export function readerSampleLine(surface: Pick<ReaderSurface, 'journeyId' | 'stepId'>): string {
+  // The lien letters (punch list #326): the owner of the sample project, under the sample builder.
+  if (surface.journeyId === 'lien') return `Sample Owner LLC · Cedar Bend Apartments · under ${SAMPLE_GC.company}`
   if (surface.journeyId === 'gc') return `${SAMPLE_GC.contact}, ${SAMPLE_GC.company} · Cedar Bend Apartments`
   if (surface.journeyId === 'sub') return "Sam Plumber, Sam's Plumbing LLC"
   if (surface.journeyId === 'homeowner') {

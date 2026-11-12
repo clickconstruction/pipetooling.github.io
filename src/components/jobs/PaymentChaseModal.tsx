@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -28,6 +29,7 @@ import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForReve
 import type { UserRole } from '../../hooks/useAuth'
 import { telHrefFor } from '../../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * Payment follow-up call mode (owner-approved "Payment Chase Loop" v2 mockup,
@@ -583,23 +585,17 @@ export default function PaymentChaseModal({
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '1rem 1.2rem 0.6rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+        {/* The title's line is the close press's height, so the two share a centre line; the padding above gives the difference back. */}
+        <div style={{ padding: '0.8rem 1.2rem 0.6rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Payment follow-up</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0.2rem 0 0' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', lineHeight: '32px' }}>Payment follow-up</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
               {snapshot
                 ? `${due.length} customer${due.length === 1 ? '' : 's'} · ${formatUsdNoCents(snapshot.dueDollars)} past expected · promises you record here turn the board chips green`
                 : 'Loading the billed board…'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close payment follow-up"
-            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
-          >
-            ✕
-          </button>
+          <WindowCloseButton onClose={onClose} label="Close payment follow-up" style={{ marginLeft: 'auto' }} />
         </div>
 
         {!snapshot ? (
@@ -771,7 +767,9 @@ export default function PaymentChaseModal({
                           title={`Email ${contacts[current.customerId]?.email ?? ''} — the bill went out by email, so a reply threads back to it`}
                           style={{ color: 'var(--text-link)', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
                         >
-                          ✉ email
+                          {/* The icon hangs from the word's baseline, so the link still lines up with the phone number beside it. */}
+                          <Mail size={16} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: '-3px', marginRight: 5 }} />
+                          email
                         </a>
                       ) : null
                     })()}

@@ -14,11 +14,11 @@
  * line holds, and read the person's mail sent from an alias as theirs. The token is signed by the real
  * `_shared/googleToken.ts` with a key made for the run; Google answers from the fake behind `fetch`.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MY_MAIL_NOT_SIGN_IN_WORDS } from './imitation'
 import { MY_MAIL_REFUSAL_WORDS } from './contract'
 import { FakeDb, FakeGoogle, fakeServiceAccountJson, type FakeMail, type Row } from './gmailMineFakes'
-import { FOLLOW_ROWS_PER_RUN, MY_MAIL_FOLLOW_GONE } from './mineFunction'
+import { FOLLOW_ROWS_PER_RUN, LABEL_CLEANUP_KEY, LABEL_CLEANUP_PER_RUN, LABEL_CLEANUP_TRIES, MY_MAIL_FOLLOW_GONE, MY_MAIL_TAGGED_PAGE } from './mineFunction'
 
 type Handler = (req: Request) => Promise<Response>
 const box: { handler: Handler | null } = { handler: null }
@@ -145,7 +145,11 @@ beforeEach(() => {
   for (const id of ['u-marisol', 'u-rosa', 'u-off', 'u-trainee', 'u-dev']) db.office.add(id)
   db.tables = {
     users: USERS.map((u) => ({ ...u })),
-    app_settings: [{ key: 'messages_boxes_v1', value_text: JSON.stringify({ bids: { address: 'bids@clickplumbing.example' }, team: { address: 'team@clickplumbing.example' } }) }],
+    app_settings: [
+      { key: 'messages_boxes_v1', value_text: JSON.stringify({ bids: { address: 'bids@clickplumbing.example' }, team: { address: 'team@clickplumbing.example' } }) },
+      // The old label's one-time clean-up has finished (its own tests take this row out), so no run here looks in a box for it.
+      { key: LABEL_CLEANUP_KEY, value_text: JSON.stringify({ boxes: {}, finished_at: '2026-11-12T20:00:00.000Z' }) },
+    ],
     email_left_out_senders: [{ value: 'statements@harlanfreight.example', kind: 'address', mailbox: null }],
     service_types: [{ id: 'st-plumb', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }],
     jobs_ledger: [pipelineJob(ELM, '1077', '4 Elm Ct', 'cust-ridgeway'), pipelineJob(HARBOR, '1081', '19 Harbor Ln', 'cust-harbor'), pipelineJob(MILL, '1090', '7 Mill Rd', 'cust-cedar')],
@@ -198,6 +202,15 @@ async function cron(body: unknown, secret: string = ENV.CRON_SECRET!, bearer: st
   const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
   return { status: res.status, body: (await res.json()) as Record<string, unknown> }
 }
+
+/** Every Gmail call that is not a read: what the function changed in someone's mailbox. */
+const gmailChanges = () => google.calls.filter((c) => !/ GET \//.test(c))
+
+// The app leaves no mark in a personal mailbox (v2.7035): whatever a test did, tag, untag, follow or the Sent read, the
+// only call that is not a read is the one-time clean-up's delete of the old label.
+afterEach(() => {
+  for (const call of gmailChanges()) expect(call, call).toMatch(/ DELETE \/labels\/[^/?]+$/)
+})
 
 const writes = () => db.calls.filter((c) => / (insert|upsert|update|delete) /.test(c) || c.includes(' storage upload') || c.includes(' storage remove'))
 const rpcs = (fn: string) => db.rpcCalls.filter((c) => c.fn === fn)
@@ -411,11 +424,53 @@ describe('gmail-mine: list', () => {
     expect(res.body.folded).toBe(1)
     // Tagged has no fold: what is on a job alone.
     expect((await post('marisol-jwt', { action: 'list', view: 'tagged' })).body).toMatchObject({ folded: 0, rows: [expect.objectContaining({ gmailId: 'g-elm-old', folded: null })] })
-    // To tag reads past the tag's label: the database's own record hides what is tagged, so a label left behind never
-    // hides a mail. Tagged still reads by the label.
-    expect(google.queries[0]).toBe('(in:inbox OR in:sent) -in:drafts -in:spam -in:trash -in:chats -label:"Personal"')
+    // To tag names no label of the app's: the database's own record hides what is tagged. Tagged searches Gmail for
+    // nothing: it reads the tagged conversation itself, by the app's record.
+    expect(google.queries).toEqual(['(in:inbox OR in:sent) -in:drafts -in:spam -in:trash -in:chats -label:"Personal"'])
     expect(google.calls[0]).toBe(`${MARISOL} GET /messages?q=${encodeURIComponent(google.queries[0]!)}&maxResults=50`)
-    expect(google.queries[1]).toBe('(in:inbox OR in:sent) -in:drafts -in:spam -in:trash -in:chats -label:"Personal" label:"Tagged in ClickTooling"')
+    expect(google.calls.filter((c) => c.includes(' GET /threads/t-tagged'))).toHaveLength(1)
+  })
+
+  it('reads Tagged from the app’s own record: each tagged conversation whole, the newest first, a page at a time', async () => {
+    // Twenty tagged conversations of one mail each, the newest mail the highest number, and none carrying any label of ours.
+    const n = MY_MAIL_TAGGED_PAGE + 5
+    const at = (i: number) => `2026-10-${String(i + 1).padStart(2, '0')}T12:00:00.000Z`
+    google.boxes[MARISOL]!.mails = Array.from({ length: n }, (_, i) => mail(`g-t${i}`, `t-t${i}`, at(i), { From: DALE, Subject: `Note ${i}`, 'Message-ID': `<t${i}@ridgeway.example>` }, 'Words.', i === 3 ? { labelIds: [] } : {}))
+    db.tables.email_tag_threads = Array.from({ length: n }, (_, i) => ({ id: `tag-t${i}`, user_id: 'u-marisol', gmail_thread_id: `t-t${i}`, bid_id: null, project_id: null, jobs_ledger_id: ELM, person_id: null, untagging_at: null, tagged_by: 'u-marisol', tagged_at: at(i), last_mail_at: at(i) }))
+    const first = await post('marisol-jwt', { action: 'list', view: 'tagged' })
+    expect((first.body.rows as Row[]).map((r) => r.gmailId)).toEqual(Array.from({ length: MY_MAIL_TAGGED_PAGE }, (_, i) => `g-t${n - 1 - i}`))
+    expect(first.body).toMatchObject({ ok: true, folded: 0, nextPageToken: String(MY_MAIL_TAGGED_PAGE) })
+    expect((first.body.rows as Row[]).every((r) => (r.tagged as Row | null)?.key === `pipeline:${ELM}`)).toBe(true)
+    // The second page is what is left, an archived mail among it (no Inbox, no Sent), and there is no third.
+    const second = await post('marisol-jwt', { action: 'list', view: 'tagged', pageToken: String(MY_MAIL_TAGGED_PAGE) })
+    expect((second.body.rows as Row[]).map((r) => r.gmailId)).toEqual(['g-t4', 'g-t3', 'g-t2', 'g-t1', 'g-t0'])
+    expect(second.body.nextPageToken).toBeNull()
+    // No search was made, and nothing in the mailbox changed.
+    expect(google.queries).toEqual([])
+    expect(gmailChanges()).toEqual([])
+  })
+
+  it('passes by a tagged conversation gone from Gmail, one an untag is taking off and one on an HR file, and keeps to the boxes asked for', async () => {
+    const elm = google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-elm-old')!
+    db.tables.email_tag_threads = [
+      { id: 'tag-1', user_id: 'u-marisol', gmail_thread_id: 't-tagged', bid_id: null, project_id: null, jobs_ledger_id: ELM, person_id: null, untagging_at: null, tagged_by: 'u-marisol', last_mail_at: elm.at },
+      { id: 'tag-gone', user_id: 'u-marisol', gmail_thread_id: 't-not-in-gmail', bid_id: null, project_id: null, jobs_ledger_id: ELM, person_id: null, untagging_at: null, tagged_by: 'u-marisol', last_mail_at: '2026-11-02T00:00:00.000Z' },
+      { id: 'tag-off', user_id: 'u-marisol', gmail_thread_id: 't-jo', bid_id: null, project_id: null, jobs_ledger_id: ELM, person_id: null, untagging_at: '2026-11-02T00:00:00.000Z', tagged_by: 'u-marisol', last_mail_at: '2026-11-02T00:00:00.000Z' },
+      { id: 'tag-file', user_id: 'u-marisol', gmail_thread_id: 't-sam', bid_id: null, project_id: null, jobs_ledger_id: null, person_id: '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', untagging_at: null, tagged_by: 'u-dev', last_mail_at: '2026-11-02T00:00:00.000Z' },
+      { id: 'tag-rosa', user_id: 'u-rosa', gmail_thread_id: 't-board', bid_id: null, project_id: null, jobs_ledger_id: ELM, person_id: null, untagging_at: null, tagged_by: 'u-rosa', last_mail_at: '2026-11-02T00:00:00.000Z' },
+    ]
+    const res = await post('marisol-jwt', { action: 'list', view: 'tagged' })
+    expect((res.body.rows as Row[]).map((r) => r.gmailId)).toEqual(['g-elm-old'])
+    expect(res.body.nextPageToken).toBeNull()
+    // Asked for Sent alone, an Inbox mail is left out; asked for both, or for neither, it shows.
+    expect(((await post('marisol-jwt', { action: 'list', view: 'tagged', labels: ['SENT'] })).body.rows as Row[]).map((r) => r.gmailId)).toEqual([])
+    expect(((await post('marisol-jwt', { action: 'list', view: 'tagged', labels: ['INBOX', 'SENT'] })).body.rows as Row[]).map((r) => r.gmailId)).toEqual(['g-elm-old'])
+  })
+
+  it('searches Tagged as it searches All when the person types a search, and keeps what is tagged', async () => {
+    const res = await post('marisol-jwt', { action: 'list', view: 'tagged', q: 'water heater' })
+    expect((res.body.rows as Row[]).map((r) => r.gmailId)).toEqual(['g-elm-old'])
+    expect(google.queries).toEqual(['(in:inbox OR in:sent) -in:drafts -in:spam -in:trash -in:chats -label:"Personal" (water heater)'])
   })
 
   it('draws a mail a stale label is left on in To tag, since no tag row holds its conversation', async () => {
@@ -519,7 +574,7 @@ describe('gmail-mine: tag and untag', () => {
   const labelOf = () => google.boxes[MARISOL]!.labels.find((l) => l.name === LABEL)?.id
   const labelled = () => google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelOf() ?? '-')).map((m) => m.id)
 
-  it('tags a three-mail conversation with one file: two lines written, the boxes’ line tied, the raw kept, the label on', async () => {
+  it('tags a three-mail conversation with one file: two lines written, the boxes’ line tied, the raw kept, and nothing changed in Gmail', async () => {
     const res = await post('marisol-jwt', tagElm)
     expect(res.status).toBe(200)
     const newContact = db.rows('contacts').find((c) => c.name === 'Ana Ruiz')
@@ -565,9 +620,11 @@ describe('gmail-mine: tag and untag', () => {
       expect(new TextDecoder().decode(eml!.bytes)).toContain(`Message-ID: ${l.rfc_message_id}`)
     }
 
-    // The conversation's row, and the label on every mail now on the job, the draft left alone.
+    // The conversation's row. In Gmail nothing changed: no label was made, and none is on any mail.
     expect(db.rows('email_tag_threads')).toEqual([expect.objectContaining({ user_id: 'u-marisol', gmail_thread_id: 't-elm', bid_id: null, project_id: null, jobs_ledger_id: ELM, tagged_by: 'u-marisol' })])
-    expect(labelled()).toEqual(['g-dale-1', 'g-marisol-1', 'g-ana-1'])
+    expect(labelled()).toEqual([])
+    expect(google.boxes[MARISOL]!.labels.map((l) => l.name)).toEqual(['INBOX', 'SENT'])
+    expect(gmailChanges()).toEqual([])
 
     // One line of counts in the log, and never a subject, a body or an address in any line.
     expect(logged.filter((l) => l.includes('"event":"gmail_mine_tag"'))).toHaveLength(1)
@@ -617,10 +674,13 @@ describe('gmail-mine: tag and untag', () => {
     expect(writes()).toEqual([])
   })
 
-  it('untags: the person’s lines, files and raw copies go, the boxes’ line is untied, the row goes and the label comes off', async () => {
+  it('untags: the person’s lines, files and raw copies go, the boxes’ line is untied and the row goes, with no call to Gmail', async () => {
     await post('marisol-jwt', tagElm)
+    google.calls.length = 0
     const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
     expect(res).toMatchObject({ status: 200, body: { ok: true, removed: 2, keptForMatter: false } })
+    // The lines are the app's own copies: an untag reads nothing from Gmail and changes nothing there.
+    expect(google.calls).toEqual([])
     expect(mine()).toEqual([])
     expect(db.rows('message_attachments')).toEqual([])
     expect(Object.keys(db.files)).toEqual([])
@@ -635,7 +695,7 @@ describe('gmail-mine: tag and untag', () => {
     await post('marisol-jwt', tagElm)
     db.refuse['admin delete messages'] = 'update or delete on table "messages" violates foreign key constraint "contact_owed_done_note_message_id_fkey"'
     const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
-    expect(res.body).toEqual({ ok: true, removed: 0, keptForMatter: false, held: 2, labelLeft: 0 })
+    expect(res.body).toEqual({ ok: true, removed: 0, keptForMatter: false, held: 2 })
     expect(mine()).toHaveLength(2)
     expect(Object.keys(db.files)).toHaveLength(3)
     expect(db.rows('email_tag_threads')).toEqual([])
@@ -701,11 +761,11 @@ describe('gmail-mine: tag and untag', () => {
       db.tables.legal_matter_documents = doc ? [{ id: 'doc-1', matter_id: 'matter-1', source_message_id: ana.id, ...doc }] : []
       return post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
     }
-    expect((await untagWith({ voided_at: null })).body).toEqual({ ok: true, removed: 2, keptForMatter: true, held: 0, labelLeft: 0 })
+    expect((await untagWith({ voided_at: null })).body).toEqual({ ok: true, removed: 2, keptForMatter: true, held: 0 })
     // The matter's copy stays (ON DELETE SET NULL in the database); the line is gone from the thread.
     expect(mine()).toEqual([])
-    expect((await untagWith({ voided_at: '2026-11-01T12:00:00.000Z' })).body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0, labelLeft: 0 })
-    expect((await untagWith(null)).body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0, labelLeft: 0 })
+    expect((await untagWith({ voided_at: '2026-11-01T12:00:00.000Z' })).body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0 })
+    expect((await untagWith(null)).body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0 })
   })
 
   it('reads no matter copies before the Legal desk’s column is pushed, and still untags', async () => {
@@ -725,7 +785,7 @@ describe('gmail-mine: tag and untag', () => {
     db.tables.message_promises = [{ id: 'mp-1', message_id: ana!.id, kind: 'payment', state: 'written', day: '2026-11-06' }]
     db.tables.message_highlights = [{ id: 'mh-1', message_id: out!.id, text: '$340 more for the 50.' }]
     const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
-    expect(res.body).toEqual({ ok: true, removed: 0, keptForMatter: false, held: 2, labelLeft: 0 })
+    expect(res.body).toEqual({ ok: true, removed: 0, keptForMatter: false, held: 2 })
     expect(mine().map((l) => l.id)).toEqual([out!.id, ana!.id])
     // What the office wrote stands (a line's delete takes both with it), and so do the spec sheet and both raw copies.
     expect(db.rows('message_promises')).toHaveLength(1)
@@ -740,7 +800,7 @@ describe('gmail-mine: tag and untag', () => {
     const [out] = mine()
     db.tables.contact_owed = [{ id: 'co-1', contact_id: 'c-dale', what: 'The price for the 50', done_at: '2026-11-01T10:00:00.000Z', done_how: 'message', done_note_message_id: out!.id }]
     const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
-    expect(res.body).toEqual({ ok: true, removed: 1, keptForMatter: false, held: 1, labelLeft: 0 })
+    expect(res.body).toEqual({ ok: true, removed: 1, keptForMatter: false, held: 1 })
     expect(mine().map((l) => l.id)).toEqual([out!.id])
     // Its raw copy stays; Ana's line goes with its spec sheet and its raw copy.
     expect(Object.keys(db.files)).toEqual([`message-attachments/mine/${out!.id}.eml`])
@@ -792,7 +852,7 @@ describe('gmail-mine: tag and untag', () => {
     expect(lines().some((l) => l.gmail_id === 'g-ana-1')).toBe(false)
     expect(db.rows('contacts').some((c) => c.name === 'Ana Ruiz')).toBe(false)
     expect(Object.keys(db.files).some((k) => k.includes('g-ana-1'))).toBe(false)
-    expect(labelled()).toEqual(['g-dale-1', 'g-marisol-1'])
+    expect(labelled()).toEqual([])
   })
 
   it('stops a tag before anything is written when Gmail will not list the labels the person leaves out', async () => {
@@ -850,19 +910,14 @@ describe('gmail-mine: tag and untag', () => {
     expect(db.rows('contacts').some((c) => c.name === 'Click Estimating')).toBe(false)
   })
 
-  it('counts in its answer the mails the label would not come off, and logs the count alone', async () => {
+  it('leaves a box that still carries the old label as it is, on a tag and on an untag: the clean-up alone takes it out', async () => {
+    google.boxes[MARISOL]!.labels.push({ id: 'Label_old', name: LABEL })
+    google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-dale-1')!.labelIds.push('Label_old')
     await post('marisol-jwt', tagElm)
-    google.stuck.add('g-ana-1')
-    logged.length = 0
     const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
-    expect(res.body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0, labelLeft: 1 })
-    expect(labelled()).toEqual(['g-ana-1'])
-    expect(logged.filter((l) => l.includes('"event":"gmail_mine_label_left"'))).toEqual([JSON.stringify({ event: 'gmail_mine_label_left', user: 'u-marisol', left: 1, mails: 4 })])
-    // A box whose labels cannot be read may still carry the label on every mail a tag labels, never the draft.
-    google.stuck.clear()
-    await post('marisol-jwt', tagElm)
-    google.labelsDown = true
-    expect((await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })).body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0, labelLeft: 3 })
+    expect(res.body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0 })
+    expect(labelled()).toEqual(['g-dale-1'])
+    expect(gmailChanges()).toEqual([])
   })
 
   it('finds the line of a mail with no Message-ID by its Gmail id, so a tag onto another job moves it and copies nothing again', async () => {
@@ -976,12 +1031,12 @@ describe('gmail-mine: follow, the cron’s', () => {
       expect(lines().find((l) => l.id === 'm-box-2')).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-marisol', mail_user_id: null })
       expect(lines().some((l) => l.gmail_id === 'g-ana-2')).toBe(false)
 
-      // Read by the headers, and only the new mail whole; both now carry the label.
+      // Read by the headers, and only the new mail whole. The follow puts no label on, and changes nothing in Gmail.
       expect(threadReads()).toEqual(['t-elm'])
       expect(google.calls.find((c) => c.includes('/threads/t-elm'))).toContain('format=metadata&metadataHeaders=From')
       expect(fullReads()).toEqual(['g-dale-2'])
-      const labelled = google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelOf() ?? '-')).map((m) => m.id)
-      expect(labelled).toEqual(expect.arrayContaining(['g-dale-2', 'g-ana-2']))
+      expect(labelOf()).toBeUndefined()
+      expect(gmailChanges()).toEqual([])
 
       // The row's place moves, and nothing is wrong with it.
       const row = db.rows('email_tag_threads')[0]!
@@ -1227,6 +1282,129 @@ describe('gmail-mine: follow, the cron’s', () => {
   })
 })
 
+describe('gmail-mine: the old Gmail label comes out of every mailbox, once (v2.7035)', () => {
+  const ROSA = 'rosa@clickplumbing.example'
+  const OLIVE = 'olive@clickplumbing.example'
+  const TAM = 'tam@clickplumbing.example'
+  const FIELD = 'field@clickplumbing.example'
+  const marker = () => {
+    const row = db.rows('app_settings').find((r) => r.key === LABEL_CLEANUP_KEY)
+    return row ? (JSON.parse(String(row.value_text)) as { boxes: Record<string, { outcome: string; tries: number; reason?: string }>; finished_at: string | null }) : null
+  }
+  const cleanupLog = () => logged.filter((l) => l.includes('"event":"gmail_mine_label_cleanup"')).map((l) => JSON.parse(l) as Row)
+  const labelsOf = (address: string) => google.boxes[address]!.labels.map((l) => l.name)
+  const withOldLabel = (address: string, mails: FakeMail[] = []) => {
+    google.boxes[address] = { mails, labels: [{ id: 'INBOX', name: 'INBOX' }, { id: 'SENT', name: 'SENT' }, { id: 'Label_7', name: 'Personal' }, { id: 'Label_old', name: LABEL }] }
+    for (const m of mails) m.labelIds.push('Label_old')
+  }
+
+  beforeEach(() => {
+    // The clean-up has not run: no marker.
+    db.tables.app_settings = db.rows('app_settings').filter((r) => r.key !== LABEL_CLEANUP_KEY)
+    // A field-role login who has left, whose box the dev seat once tagged out of: no My email tab, and still covered.
+    db.rows('users').push({ ...account, id: 'u-field', name: 'Field Fern', role: 'helper', email: FIELD, my_mail_on: false, archived_at: '2026-11-10T00:00:00.000Z' })
+    withOldLabel(MARISOL, elmThread())
+    withOldLabel(ROSA)
+    withOldLabel(OLIVE)
+    withOldLabel(FIELD)
+    google.boxes[TAM] = { mails: [], labels: [{ id: 'INBOX', name: 'INBOX' }] }
+  })
+
+  it('deletes the label in every mailbox on the Workspace that has it, office team or not, and reads no mail to do it', async () => {
+    expect((await cron({ action: 'follow' })).status).toBe(200)
+    // Gone from every box, and off every mail that carried it; every other label is as it was.
+    for (const address of [MARISOL, ROSA, OLIVE, FIELD]) expect(labelsOf(address)).toEqual(['INBOX', 'SENT', 'Personal'])
+    expect(google.boxes[MARISOL]!.mails.some((m) => m.labelIds.includes('Label_old'))).toBe(false)
+    expect(google.boxes[MARISOL]!.mails).toHaveLength(4)
+    // One delete a box that had it, and nothing else that changes a mailbox.
+    expect(gmailChanges().sort()).toEqual([FIELD, MARISOL, OLIVE, ROSA].map((a) => `${a} DELETE /labels/Label_old`))
+    // Every login on the Workspace's own domain was looked in, the training account too; never the dev on another
+    // domain, a sample, a twin or the walk tester.
+    for (const address of [MARISOL, ROSA, OLIVE, TAM, FIELD]) expect(google.calls).toContain(`${address} GET /labels`)
+    for (const off of ['robert@douglasmining.example', 'sample-estimator@samples.pipetooling.local', 'twin-1@twins.pipetooling.local', 'walk-tester@walk.pipetooling.local']) expect(google.subs).not.toContain(off)
+    // The record: each box settled, and the clean-up finished.
+    const kept = marker()!
+    expect(Object.fromEntries(Object.entries(kept.boxes).map(([id, m]) => [id, m.outcome]))).toEqual({ 'u-marisol': 'deleted', 'u-rosa': 'deleted', 'u-off': 'deleted', 'u-field': 'deleted', 'u-trainee': 'none' })
+    expect(kept.finished_at).toEqual(expect.any(String))
+    // One line of counts, and never an address in any line.
+    expect(cleanupLog()).toEqual([expect.objectContaining({ mailboxes: 5, checked: 5, deleted: 4, none: 1, failed: 0, left: 0, finished: true, reasons: [] })])
+    for (const line of logged) for (const address of [MARISOL, ROSA, OLIVE, TAM, FIELD]) expect(line, line).not.toContain(address)
+  })
+
+  it('touches no saved conversation: the lines, the files and the tag rows stay', async () => {
+    db.rows('app_settings').push({ key: LABEL_CLEANUP_KEY, value_text: JSON.stringify({ boxes: {}, finished_at: '2026-11-12T20:00:00.000Z' }) })
+    db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    const before = { lines: JSON.stringify(lines()), files: Object.keys(db.files).sort(), tags: JSON.stringify(db.rows('email_tag_threads').map((r) => ({ ...r, last_read_at: null }))) }
+    db.tables.app_settings = db.rows('app_settings').filter((r) => r.key !== LABEL_CLEANUP_KEY)
+    await cron({ action: 'follow' })
+    expect(labelsOf(MARISOL)).not.toContain(LABEL)
+    expect(JSON.stringify(lines())).toBe(before.lines)
+    expect(Object.keys(db.files).sort()).toEqual(before.files)
+    expect(JSON.stringify(db.rows('email_tag_threads').map((r) => ({ ...r, last_read_at: null })))).toBe(before.tags)
+  })
+
+  it('runs once: when every box is settled it looks in none again', async () => {
+    await cron({ action: 'follow' })
+    const done = JSON.stringify(marker())
+    google.calls.length = 0
+    google.subs.length = 0
+    logged.length = 0
+    // Someone makes a label of that name by hand afterwards: it is theirs, and the app leaves it.
+    google.boxes[ROSA]!.labels.push({ id: 'Label_again', name: LABEL })
+    await cron({ action: 'follow' })
+    expect(gmailChanges()).toEqual([])
+    expect(google.subs).not.toContain(FIELD)
+    expect(labelsOf(ROSA)).toContain(LABEL)
+    expect(JSON.stringify(marker())).toBe(done)
+    expect(cleanupLog()).toEqual([])
+  })
+
+  it('looks in a run’s worth of boxes at a time, and finishes on a later run', async () => {
+    const extra = Array.from({ length: LABEL_CLEANUP_PER_RUN + 2 }, (_, i) => `crew${i}@clickplumbing.example`)
+    extra.forEach((address, i) => {
+      db.rows('users').push({ ...account, id: `u-crew-${i}`, name: `Crew ${i}`, role: 'helper', email: address, my_mail_on: false })
+      withOldLabel(address)
+    })
+    await cron({ action: 'follow' })
+    expect(gmailChanges()).toHaveLength(LABEL_CLEANUP_PER_RUN - 1) // one of the ten had no label: the training account, or it is among the next run's
+    expect(cleanupLog()[0]).toMatchObject({ mailboxes: 5 + extra.length, checked: LABEL_CLEANUP_PER_RUN, finished: false, left: extra.length + 5 - LABEL_CLEANUP_PER_RUN })
+    expect(marker()!.finished_at).toBeNull()
+    await cron({ action: 'follow' })
+    expect(cleanupLog()[1]).toMatchObject({ checked: 5 + extra.length, deleted: 4 + extra.length, none: 1, left: 0, finished: true })
+    for (const address of extra) expect(labelsOf(address)).not.toContain(LABEL)
+  })
+
+  it('asks a box Google will not open three times, then leaves it, with Google’s reason and never an address', async () => {
+    google.refuse[ROSA] = { status: 400, body: { error: 'invalid_grant', error_description: `Invalid email or User ID ${ROSA}` } }
+    google.labelDeleteRefused.add(OLIVE)
+    for (let run = 1; run <= LABEL_CLEANUP_TRIES; run++) {
+      await cron({ action: 'follow' })
+      const kept = marker()!
+      expect(kept.boxes['u-rosa']).toMatchObject({ outcome: 'failed', tries: run })
+      expect(kept.boxes['u-off']).toMatchObject({ outcome: 'failed', tries: run })
+      expect(kept.finished_at === null).toBe(run < LABEL_CLEANUP_TRIES)
+    }
+    // The other boxes were settled on the first run and never asked again; the two failures are counted, with why.
+    expect(google.calls.filter((c) => c === `${MARISOL} DELETE /labels/Label_old`)).toHaveLength(1)
+    const last = cleanupLog().slice(-1)[0]!
+    expect(last).toMatchObject({ mailboxes: 5, deleted: 2, none: 1, failed: 2, left: 0, finished: true })
+    expect(String(marker()!.boxes['u-off']!.reason)).toContain('Insufficient Permission')
+    expect(JSON.stringify(marker())).not.toContain('@')
+    for (const line of logged.filter((l) => l.includes('label_cleanup'))) expect(line, line).not.toContain('@')
+    // Left as they were: the clean-up could not reach them.
+    expect(labelsOf(OLIVE)).toContain(LABEL)
+  })
+
+  it('never stops the follow: a clean-up that cannot read its place is logged, and the run goes on', async () => {
+    db.refuse['admin select app_settings'] = 'the settings could not be read'
+    const res = await cron({ action: 'follow' })
+    expect(res).toMatchObject({ status: 200, body: { ok: true } })
+    expect(logged.some((l) => l.includes('"event":"gmail_mine_label_cleanup_missed"'))).toBe(true)
+    expect(gmailChanges()).toEqual([])
+  })
+})
+
 describe('gmail-mine: a tag onto a job through the dev seat names the dev, never the person', () => {
   const seatTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL }
   const ownTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }
@@ -1461,7 +1639,7 @@ describe('gmail-mine: the Sent side with no press (punch list #263 PR B)', () =>
     expect(logged.find((l) => l.includes('"event":"gmail_mine_follow"'))).toContain('"cursorsSet":3')
   })
 
-  it('lands a mail sent to a person on one open job on that job as ours, marked as the app’s, with the grey line and the label, and moves the cursor', async () => {
+  it('lands a mail sent to a person on one open job on that job as ours, marked as the app’s, with the grey line and no label, and moves the cursor', async () => {
     marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
     google.boxes[MARISOL]!.mails = [
       // Dale's starred job is JP1081; the treasurer's domain is Cedar Bend HOA's, with one open Pipeline job.
@@ -1471,7 +1649,7 @@ describe('gmail-mine: the Sent side with no press (punch list #263 PR B)', () =>
     const res = await cron({ action: 'follow' })
     expect(res.status).toBe(200)
     // The search: the person's Sent since the cursor, never the tag's label, never a label they leave out.
-    expect(sentQueries()).toEqual([`in:sent after:${Math.floor(Date.parse('2026-11-01T00:00:00.000Z') / 1000)} -in:drafts -in:spam -in:trash -in:chats -label:"${LABEL}" -label:"Personal"`])
+    expect(sentQueries()).toEqual([`in:sent after:${Math.floor(Date.parse('2026-11-01T00:00:00.000Z') / 1000)} -in:drafts -in:spam -in:trash -in:chats -label:"Personal"`])
     const dale = lines().find((l) => l.gmail_id === 'g-sent-dale')!
     expect(dale).toMatchObject({ direction: 'out', mailbox: 'mine', mail_user_id: 'u-marisol', who_user_id: 'u-marisol', jobs_ledger_id: HARBOR, placed_by_app: true, contact_id: 'c-dale' })
     const board = lines().find((l) => l.gmail_id === 'g-sent-board')!
@@ -1488,9 +1666,9 @@ describe('gmail-mine: the Sent side with no press (punch list #263 PR B)', () =>
       'The app put Marisol Vega\'s mail to Dale Okafor on JP1081, since Dale Okafor is on this job. Later mail in it lands here by itself.',
     ])
     expect(events().every((e) => e.who_text === 'The app' && e.channel === 'event')).toBe(true)
-    // The label, and the cursor at the newest mail read.
-    const labelId = google.boxes[MARISOL]!.labels.find((l) => l.name === LABEL)?.id
-    expect(google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelId ?? '-')).map((m) => m.id).sort()).toEqual(['g-sent-board', 'g-sent-dale'])
+    // No label is made or put on, and the cursor is at the newest mail read.
+    expect(google.boxes[MARISOL]!.labels.some((l) => l.name === LABEL)).toBe(false)
+    expect(gmailChanges()).toEqual([])
     expect(marisol().my_mail_sent_read_at).toBe('2026-11-02T11:00:00.000Z')
     // Counts alone in the log, never a subject or an address.
     const line = logged.find((l) => l.includes('"event":"gmail_mine_follow"'))!

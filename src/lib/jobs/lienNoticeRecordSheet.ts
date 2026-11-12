@@ -120,19 +120,30 @@ function copyRow(c: LienNoticeRecordCopy): string {
   )
 }
 
-/** A notice's own line above its copies: the months it named, its amount, when it was entered, and the saved copy. */
+/** The first cell of the row that carries the office's own line on a notice's saved copy: a receipt, the day it was delivered. */
+export const LIEN_RECORD_SAVED_NOTE = 'Note on the saved copy'
+
+/** A notice whose saved copy is a note alone, with no file behind it. */
+export const LIEN_RECORD_NOTE_ONLY = 'A note, no saved file'
+
+/** A notice's own line above its copies: the months it named, its amount, when it was entered, and the saved copy. Its note has a row of its own. */
 export function lienRecordNoticeWords(n: LienNoticeRecordNotice): string {
   const months = n.months.length > 0 ? `Names ${describeNoticeMonths(n.months)}` : 'Names no month'
   const claim = n.claim === null ? '' : n.printedClaim !== null ? `Claim ${demandMoney(n.printedClaim.toFixed(2))} on the paper, ${demandMoney(n.claim.toFixed(2))} for this job` : `Claim ${demandMoney(n.claim.toFixed(2))}`
   const entered = n.recordedOn ? `${n.byHand ? 'Entered after the fact' : 'Entered'} ${lienRecordDay(n.recordedOn)}` : n.byHand ? 'Entered after the fact' : ''
-  const saved = n.savedCopy ? 'Saved copy on file' : n.savedNote ? `Saved copy: ${n.savedNote}` : 'No saved copy'
+  const saved = n.savedCopy ? 'Saved copy on file' : n.savedNote ? LIEN_RECORD_NOTE_ONLY : 'No saved copy'
   return [months, claim, entered, saved].filter(Boolean).join(' · ')
+}
+
+/** Under a notice's copies: the line the office wrote beside its saved copy, whole. '' when it wrote none. */
+function savedNoteRow(n: LienNoticeRecordNotice): string {
+  return n.savedNote ? `<tr data-lien-record-saved-note="${n.n}"><td>${LIEN_RECORD_SAVED_NOTE}</td><td colspan="3">${esc(n.savedNote)}</td></tr>` : ''
 }
 
 function noticesTable(record: LienNoticeRecord): string {
   if (record.notices.length === 0) return `<p data-lien-record-no-notice><strong>${esc(LIEN_RECORD_NO_NOTICE)}</strong></p>`
   const rows = record.notices
-    .map((n) => `<tr class="lien-help-group" data-lien-record-notice="${n.n}"><td colspan="4">Notice ${n.n} · ${esc(lienRecordNoticeWords(n))}</td></tr>${n.copies.map(copyRow).join('')}`)
+    .map((n) => `<tr class="lien-help-group" data-lien-record-notice="${n.n}"><td colspan="4">Notice ${n.n} · ${esc(lienRecordNoticeWords(n))}</td></tr>${n.copies.map(copyRow).join('')}${savedNoteRow(n)}`)
     .join('')
   return (
     `<table class="lien-help-rows lien-record-rows" data-lien-record-notices><colgroup><col style="width:22%"/><col style="width:17%"/><col style="width:19%"/><col style="width:42%"/></colgroup>` +
@@ -281,6 +292,7 @@ export const LIEN_RECORD_COPY_DRAWN = 'This page is drawn from the app’s recor
 /** Above a copy of a notice the office entered after it went out by hand. */
 export const LIEN_RECORD_COPY_BY_HAND = 'This notice was entered after it was mailed. The paper that went is the saved copy, under Filings on this job.'
 export const LIEN_RECORD_COPY_BY_HAND_NO_FILE = 'This notice was entered after it was mailed. The app has no saved copy of the paper that went.'
+export const LIEN_RECORD_COPY_BY_HAND_NOTE = 'This notice was entered after it was mailed. The app has a note on the paper that went, and no file.'
 
 /** Above a copy whose mailed paper was saved to the job. */
 export const LIEN_RECORD_COPY_SAVED = 'The saved copy of the mailed paper opens from the job’s Lien window, under Filings on this job.'
@@ -312,7 +324,8 @@ export function lienRecordSentWhatWords(n: LienNoticeRecordNotice, mailedYmd: st
  * The delivery record at the top of a copy (the owner, 2026-11-12: at the top, a big check on its left, and the days
  * since it went, so a reader sees at first glance how long ago it was sent and what was sent). The big mark is a check
  * when a copy went on a day the record holds, and an exclamation mark when none did. Each copy has its own line and its
- * own mark, so a copy the record lacks is plain beside the check.
+ * own mark, so a copy the record lacks is plain beside the check. The office's line on the saved copy closes the box:
+ * it is where a receipt and the day of delivery are written (the owner's own job, 2026-11-12).
  */
 function sentBox(n: LienNoticeRecordNotice, todayYmd: string | null | undefined): string {
   const days = [...new Set(n.copies.filter((c) => c.onRecord && c.sentOn).map((c) => c.sentOn))].sort()
@@ -323,13 +336,14 @@ function sentBox(n: LienNoticeRecordNotice, todayYmd: string | null | undefined)
       return `<li data-state="${ok ? 'ok' : 'ask'}"><span class="lien-help-mark">${ok ? '✓' : '!'}</span><span>${ok ? esc(lienRecordDeliveryLine(c)) : `<strong>${esc(lienRecordDeliveryLine(c))}</strong>`}</span></li>`
     })
     .join('')
+  const note = n.savedNote ? `<li data-state="note" data-lien-record-sent-note><span class="lien-help-mark">•</span><span>${LIEN_RECORD_SAVED_NOTE} — ${esc(n.savedNote)}</span></li>` : ''
   return (
     `<div class="lien-record-sent" data-lien-record-sent="${mailed ? 'sent' : 'none'}">` +
     `<div class="lien-record-sent-mark" aria-hidden="true">${mailed ? '✓' : '!'}</div>` +
     `<div><div class="lien-help-k">Delivery record</div>` +
     `<div class="lien-record-sent-ago" data-lien-record-sent-ago>${esc(lienRecordSentAgoWords(mailed, todayYmd, days.length > 1))}</div>` +
     `<div class="lien-record-sent-what">${esc(lienRecordSentWhatWords(n, mailed))}</div>` +
-    `<ul class="lien-record-sent-lines">${lines}</ul></div></div>`
+    `<ul class="lien-record-sent-lines">${lines}${note}</ul></div></div>`
   )
 }
 
@@ -359,7 +373,8 @@ function copyPage(n: LienNoticeRecordNotice, opts: LienNoticeCopyOptions, footRi
     refItems: [opts.refJob ?? '', n.months.length > 0 ? `Work months ${describeNoticeMonths(n.months)}` : ''].filter(Boolean),
   }
   // One line for where the mailed paper is: a notice entered after the fact says the saved copy is the paper that went.
-  const where = n.byHand ? (n.savedCopy ? LIEN_RECORD_COPY_BY_HAND : n.savedNote ? `This notice was entered after it was mailed. Saved copy: ${n.savedNote}` : LIEN_RECORD_COPY_BY_HAND_NO_FILE) : n.savedCopy ? LIEN_RECORD_COPY_SAVED : n.savedNote ? `Saved copy: ${n.savedNote}` : ''
+  // The office's note on that copy is in the delivery record above, so it is not said twice.
+  const where = n.byHand ? (n.savedCopy ? LIEN_RECORD_COPY_BY_HAND : n.savedNote ? LIEN_RECORD_COPY_BY_HAND_NOTE : LIEN_RECORD_COPY_BY_HAND_NO_FILE) : n.savedCopy ? LIEN_RECORD_COPY_SAVED : ''
   const lead = [LIEN_RECORD_COPY_DRAWN, where].filter(Boolean)
   const name = `${opts.paper ? `Paper ${opts.paper} · ` : ''}Copy of notice ${n.n}`
   return (

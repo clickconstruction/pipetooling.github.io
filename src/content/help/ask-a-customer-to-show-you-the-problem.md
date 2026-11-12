@@ -48,6 +48,8 @@ The page has **Take a photo**, **Take a video** and **Choose from your phone**. 
 
 They can also reply to your text with the photos. Those show on the same card.
 
+A phone set to Spanish reads the page in Spanish. A press at the top changes it to English and back. A Spanish reader's ask goes out in Spanish too.
+
 ## Read what came in
 
 The First look card sits above the person's messages.
@@ -96,6 +98,14 @@ Press {{button:outline|Book a visit}} to open Add Job with their name and their 
 A lead becomes a customer on either press. The thread comes with them.
 
 A number nobody has named has neither press. Name them first, as [Name a number nobody knows](/help/find-every-message-with-a-person-in-one-place#name-a-number-nobody-knows) shows.
+
+## The look goes with the job
+
+When a job is made from a look, the look goes with it. That happens when the customer accepts the estimate, when you press Create job, and when you press {{button:outline|Book a visit}}.
+
+The tech sees it on the job's Job Mode card before the visit. The card shows **What the customer sent** with the photos, the video and their words.
+
+In Drive the look's folder moves under the job. It sits in the job's own **Customer supplied photos** folder, and every link to it still opens.
 
 ## Ask again or close the look
 
