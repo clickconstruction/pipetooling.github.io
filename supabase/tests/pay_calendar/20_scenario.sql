@@ -59,11 +59,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', coalesce(p_user::text, ''), true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
--- What the signed-in person reads, the payer's own row first: "payer in by eom paid 10 +1; job 1412 in by 25 paid 30 +1".
+-- What the signed-in person reads, the payer's own row first. The job is named from its id, never read from
+-- jobs_ledger: a primary reads a calendar and not every job. The words: "payer in by eom paid 10 +1; job 1412 in by 25 paid 30 +1".
 CREATE FUNCTION pcal.reads() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce((
     SELECT string_agg(
-      CASE WHEN c.job_id IS NULL THEN 'payer' ELSE 'job ' || (SELECT j.hcp_number FROM public.jobs_ledger j WHERE j.id = c.job_id) END
+      CASE WHEN c.job_id IS NULL THEN 'payer' ELSE 'job ' || CASE right(c.job_id::text, 2) WHEN '01' THEN '1406' WHEN '02' THEN '1412' ELSE '?' END END
       || CASE WHEN c.off THEN ' off' ELSE ' in by ' || coalesce(c.cutoff_day::text, 'eom') || ' paid ' || c.pay_day || ' +' || c.months_after || CASE WHEN c.pay_when_paid THEN ' when paid' ELSE '' END END,
       '; ' ORDER BY (c.job_id IS NOT NULL), c.job_id)
     FROM public.payer_pay_calendars c WHERE c.payer_customer_id = '00000000-0000-0000-0000-0000000cac01'), 'nothing')
