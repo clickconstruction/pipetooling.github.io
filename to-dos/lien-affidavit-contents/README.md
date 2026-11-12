@@ -1,8 +1,8 @@
 ---
 name: "The lien affidavit, cut to what § 53.054 lists: a short form for counsel"
 number: 305
-group: gated
-status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), that print press names each paper that takes a second sheet (v2.6930), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), the homestead hold is built on PR #7667 and waits on the owner's word
+group: waiting
+status: asked 2026-11-10 on the line *Work month 2026-08* at the top of the affidavit · the sworn text and its recipe read on main the same day against § 53.054 · the owner's lens the same day, the minimum the law requires, short and sweet · a short form drawn for counsel with five questions · the owner chose the same day to build before counsel answers · the short form is live (v2.6855) for every new draft, a paper already drafted keeps the earlier form until someone redraws it, one press redraws every ready one (v2.6867), a homestead paper opens with the § 53.254(f) notice (v2.6884), the short form prints on one sheet (v2.6895), the Lien window says when a paper takes a second sheet (v2.6896), one press sends every drafted affidavit for approval and one prints every ready one (v2.6918), that print press names each paper that takes a second sheet (v2.6930), an affidavit holds while the GC has no address on file (v2.6932), Settings hold a second company address and the short form prints it (v2.6936), a house holds until the homestead question is answered (v2.6937)
 mockup: to-dos/lien-affidavit-contents/redline.html
 summary: >
   The owner asked what *Work month 2026-08* is doing at the top of the Mechanic's and
@@ -15,10 +15,10 @@ summary: >
   asks five questions. A property where nobody answered the homestead question passes today as not
   a homestead. The owner chose to build before counsel answers, so the wording may change on
   counsel's word.
-next: The owner's word on item 3, the homestead hold: ship PR #7667 now or on 2026-11-17. It is built, open and not armed. On his yes, a session arms it, and once it is on main pushes its migration with `supabase db push`. Items 4 and 5 are shipped (v2.6932, v2.6936). Item 6 waits on counsel.
+next: Item 6 of *The build*, one affidavit per property, on counsel's yes to question 5. Items 1 to 5 are built. Counsel's answers to the five questions may still change the wording, which sits in `buildShortLienAffidavitBlocks`.
 size: M as a train of four (S · M · S · M); the one-affidavit-per-property PR waits on question 5
-blocker: Item 3 is built on PR #7667 and waits on the owner: it ships after this month's affidavits are filed on 2026-11-16 unless he says sooner. Item 6 waits on counsel's answer to question 5. Counsel's answers may still change the wording.
-opinion: your call — item 3 is built on PR #7667: ship it now, or on 2026-11-17 after this month's affidavits are filed
+blocker: Item 6 waits on counsel's answer to question 5. Counsel's answers may still change the wording.
+opinion: later — items 1 to 5 are built; item 6 is built only on counsel's yes to question 5
 ---
 
 # The lien affidavit, cut to what § 53.054 lists (#305)
@@ -158,15 +158,14 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    (`docs/recent-features/v2.6884.md`): on a property marked homestead the short form opens with the
    notice above the title, bold at 12 point. The paper side only; the desk still holds every
    homestead, and no property on the desk was marked on 2026-11-10.
-3. **The homestead hold** (S, with a migration). `customer_addresses.homestead` is
-   `boolean NOT NULL DEFAULT false`, so a property nobody asked about reads the same as one answered
-   *no*. A column records that the question was answered. `affidavitGates`
-   (`src/lib/jobs/lienDeskAffidavits.ts`) holds a residential property with no answer, with a press
-   that opens the property record to answer it. On the day it ships every property is unanswered:
-   read on 2026-11-10, it would hold 11 of the 12 papers ready for 2026-11-16, on 6 properties, and
-   the one to draft on a 7th. Built on 2026-11-11 as PR #7667 (v2.6937, migration
-   `20261111160000_homestead_answered.sql`), open and not armed. Read again that day the count was
-   the same: 11 of the 12 approved papers, on 6 property records, and the one to draft on a 7th.
+3. **The homestead hold** (S, with a migration). Shipped as v2.6937
+   (`docs/recent-features/v2.6937.md`): `customer_addresses.homestead_answered_at` (migration
+   `20261112080000`) records that a person answered, the property record asks *Is this the owner's
+   homestead?* with **Yes** and **No**, and `homesteadGate` in `affidavitGates`
+   (`src/lib/jobs/lienDeskAffidavits.ts`) holds a residential property with no answer, with
+   **Answer it ›** opening the property record on the question. Read again on 2026-11-11 the
+   day-one count was the same: 11 of the 12 papers ready for 2026-11-16, on 6 property records, and
+   the one to draft on a 7th. The owner first set 2026-11-17 (2026-11-11, so this month's papers were filed on the 16th first), then on 2026-11-12 asked for it in main at once. The migration, renumbered `20261112080000` past main's newest, is pushed right after the merge.
 4. **A hold while an address is missing** (S), the hiring party's or the original contractor's.
    Shipped as v2.6932 (`docs/recent-features/v2.6932.md`): a fifth gate on a job under a GC, the
    GC's address on its customer record, with **Add the address ›** on the Affidavits pane and the
@@ -184,28 +183,24 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
 
 ## The brief for the next session
 
-Items 4 and 5 are shipped and item 3 is built on PR #7667, open and not armed (see `next`). The
-rest of this brief is how they were built, for the session that ships item 3 or builds item 6.
-Small PRs, one per item, in the repo's usual way: `npm run
-claim` for the version, a kernel with unit tests and a render smoke, one release note and one
-`docs/recent-features` fragment, the lien help guides in plain words, `docs/LIEN_DESK_ARCHITECTURE.md`
-amended in place, this card's status amended, `gh pr merge --auto`. Done when each is merged and
-live, checked read only on clicktooling.com.
+Items 3 to 5 of *The build* were built on 2026-11-11 (v2.6937, v2.6932 and v2.6936), one PR each.
+What is left is item 6, one affidavit per property, and only on counsel's yes to question 5. A
+session that builds it works in the repo's usual way: `npm run claim` for the version, a kernel
+with unit tests and a render smoke, one release note and one `docs/recent-features` fragment, the
+lien help guides in plain words, `docs/LIEN_DESK_ARCHITECTURE.md` amended in place, this card's
+status amended, `gh pr merge --auto`. Done when it is merged and live, checked read only on
+clicktooling.com.
 
-- **Order.** Items 4 and 5 any time. Item 3 only after 2026-11-16, when this month's affidavits
-  are filed: it only makes the desk stricter, and before the 16th it would take ready papers out of
-  Ready. Before 2026-11-17, ask the owner first.
-- **The migration** goes in with `supabase db push` after the PR merges, never through MCP or the
-  dashboard (`CLAUDE.md`). A new column needs no new table, so no fence calls.
 - **Every statute reading is the app's, not counsel's.** Counsel has not answered the five
-  questions. Keep each change small and easy to revise. Item 6 is not part of this.
+  questions. Keep each change small and easy to revise.
 - **What a paper keeps.** A paper keeps the form it was drafted on (`lienAffidavitForm.ts`). A
   filed paper stores its own fields. A hold changes which pile a paper sits in, never its words.
 - **What is live to build on:** the short form (v2.6855), the one-press redraw (v2.6867), the
   homestead notice on the paper (v2.6884), one-sheet printing (v2.6895), the page-count line under
   the Lien window's print press (v2.6896), the Affidavits list's **Send N for approval…** and
-  **Print N for notarization** (v2.6918), and the second-sheet line under that print press
-  (v2.6930). Each `docs/recent-features/v2.NNNN.md` says how.
+  **Print N for notarization** (v2.6918), the second-sheet line under that print press
+  (v2.6930), and the two holds of 2026-11-11: the GC's address (v2.6932) and the homestead
+  question (v2.6937). Each `docs/recent-features/v2.NNNN.md` says how.
 - **The hold's words** go where the gates already speak: the gate list on the Affidavits pane
   and the Lien window's affidavit tab, which draws no paper while a gate is closed.
 

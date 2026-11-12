@@ -47,6 +47,36 @@ describe('CustomerPropertyRecordPanel', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ legal_description: 'ABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC', owner_name: 'HALL BRUCE & REBECCA' }))
     expect(onChange.mock.calls[0]![0]).not.toHaveProperty('homestead')
   })
+  it('asks the homestead question as a yes or a no on a residential property, and says so while nobody has answered (punch list #305)', () => {
+    const onChange = vi.fn()
+    const home = { ...lookedUp, property_kind: 'residential', homestead_answered_at: '' }
+    renderWithProviders(<CustomerPropertyRecordPanel address={home.address} fields={home} onChange={onChange} />)
+    const question = document.querySelector('[data-homestead-question]') as HTMLElement
+    expect(question.getAttribute('data-homestead-question')).toBe('unanswered')
+    expect(question.textContent).toContain("Is this the owner's homestead?")
+    expect(question.textContent).toContain('Not answered yet. A lien affidavit on this home waits for a yes or a no.')
+    expect(screen.getByRole('button', { name: 'Homestead: yes' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Homestead: no' }).getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(screen.getByRole('button', { name: 'Homestead: no' }))
+    expect(onChange).toHaveBeenCalledWith({ homestead: false, homestead_answered_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+    fireEvent.click(screen.getByRole('button', { name: 'Homestead: yes' }))
+    expect(onChange).toHaveBeenLastCalledWith({ homestead: true, homestead_answered_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+  })
+  it('shows the answer once one is on record, reads a row from before the column by its flag, and asks nothing of a commercial property', () => {
+    const answeredNo = { ...lookedUp, property_kind: 'residential', homestead_answered_at: '2026-11-17T15:00:00Z' }
+    const { unmount } = renderWithProviders(<CustomerPropertyRecordPanel address={answeredNo.address} fields={answeredNo} onChange={() => {}} />)
+    expect(document.querySelector('[data-homestead-question]')!.getAttribute('data-homestead-question')).toBe('no')
+    expect(screen.getByRole('button', { name: 'Homestead: no' }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.body.textContent).not.toContain('Not answered yet')
+    unmount()
+    // No column on the row yet: the flag alone, as the tick read it.
+    const older = { ...lookedUp, property_kind: 'residential' }
+    const second = renderWithProviders(<CustomerPropertyRecordPanel address={older.address} fields={older} onChange={() => {}} />)
+    expect(document.querySelector('[data-homestead-question]')!.getAttribute('data-homestead-question')).toBe('no')
+    second.unmount()
+    renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={{ ...lookedUp, property_kind: 'non_residential', homestead_answered_at: '' }} onChange={() => {}} />)
+    expect(document.querySelector('[data-homestead-question]')).toBeNull()
+  })
   it('says the map has no such street when the lookup holds the pin, fills the county alone and never claims a parcel (v2.6520)', async () => {
     const onChange = vi.fn()
     const address = '123 ZZ Test Ln, Taylor, TX 76574'

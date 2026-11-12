@@ -346,6 +346,12 @@ export function bidTakeoffDryRun(p: BidTakeoffPayload, world: BidTakeoffWorld): 
     }
     const removeIds = ask.replace ? existing.map((l) => l.id) : []
     const moving = removeIds.length > 0 || lines.some((x) => x.status === 'add' || x.status === 'change') || cost?.status === 'set' || cost?.status === 'clear'
+    // Found on b398 (2026-11-12): a row whose only asks are held read as unchanged. It is held, with each reason.
+    const heldWhy = [...lines.flatMap((x) => (x.status === 'held' ? [`line ${x.n} — ${x.why}`] : [])), ...(cost?.status === 'held' ? [cost.why] : [])]
+    if (!moving && heldWhy.length) {
+      rows.push({ n: ask.n, status: 'held', why: heldWhy.join('; '), count_row_id: row.id, reads: rowWords(row), remove_line_ids: [], lines, cost })
+      continue
+    }
     // The bid's lines after this row's part of the plan.
     for (let i = afterLines.length - 1; i >= 0; i--) if (afterLines[i]?.count_row_id === row.id) afterLines.splice(i, 1)
     afterLines.push(...rowAfter)
@@ -381,7 +387,7 @@ export function bidTakeoffDryRun(p: BidTakeoffPayload, world: BidTakeoffWorld): 
       version: world.versionId ? { id: world.versionId, name: version?.name ?? null } : null,
       counts: {
         rows_ready: ready.length, rows_unchanged: rows.filter((r) => r.status === 'unchanged').length, rows_held: rows.filter((r) => r.status === 'held').length,
-        lines_added: count((l) => l.status === 'add'), lines_changed: count((l) => l.status === 'change'), lines_removed: ready.reduce((s, r) => s + r.remove_line_ids.length, 0), lines_held: count((l) => l.status === 'held'),
+        lines_added: count((l) => l.status === 'add'), lines_changed: count((l) => l.status === 'change'), lines_removed: ready.reduce((s, r) => s + r.remove_line_ids.length, 0), lines_held: rows.reduce((s, r) => s + r.lines.filter((l) => l.status === 'held').length, 0),
         costs_set: ready.filter((r) => r.cost?.status === 'set').length, costs_cleared: ready.filter((r) => r.cost?.status === 'clear').length,
       },
       rows,
