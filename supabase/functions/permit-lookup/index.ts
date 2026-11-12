@@ -14,7 +14,7 @@ import {
   bexarAddressQuery,
   bexarAddressWhere,
   bexarLotIdsOf,
-  bexarLotsAtAddress,
+  bexarNeedsPoint,
   factsInCounty,
   idQuery,
   neighbourPointQuestion,
@@ -29,6 +29,7 @@ import {
   pointQuestion,
   QUESTION_JOIN,
   sourceForId,
+  streetDirections,
   streetParts,
   type ParcelSource,
 } from '../_shared/permitParcels.ts'
@@ -258,24 +259,31 @@ serve(async (req) => {
       if (!where && !point) error = 'nothing to look up'
       else {
         let f = null
+        let atPoint: unknown = null
         if (where) {
           query = where
           if (parts) {
             const answered = await ask(bexarAddressQuery(parts))
-            // Several lots under one address (a centre on a loop, a campus): the address cannot say which, so the lot under the permit's point is the one.
+            // Several lots under one address (a centre on a loop, a campus), or a row there on the opposite stretch of the street ("N LOOP 1604 E" for "N 1604 W"): the address cannot say which lot, so the permit's point is asked and the lot under it is the one.
+            const asked = streetDirections(typeof body.address === 'string' ? body.address : null)
             let underPoint: Set<string> | null = null
-            if (point && bexarLotsAtAddress(answered, parts) > 1) {
+            if (point && bexarNeedsPoint(answered, parts, asked)) {
               query = [query, pointQuestion(point)].join(QUESTION_JOIN)
-              underPoint = bexarLotIdsOf(await ask(pointQueryOf('PropID', point)))
+              atPoint = await ask(pointQueryOf(BEXAR_PARCEL_FIELDS, point))
+              underPoint = bexarLotIdsOf(atPoint)
             }
-            f = parcelFactsFromBexarAddress(answered, parts, underPoint)
+            f = parcelFactsFromBexarAddress(answered, parts, underPoint, asked)
           } else {
             f = parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
           }
         }
         if (!f && point) {
-          query = [query, pointQuestion(point)].filter(Boolean).join(QUESTION_JOIN)
-          f = parcelFactsFromCountyAtPoint(await ask(pointQueryOf(BEXAR_PARCEL_FIELDS, point)))
+          // The point's answer is read once: it was asked above when every row at the address was passed by.
+          if (atPoint === null) {
+            query = [query, pointQuestion(point)].filter(Boolean).join(QUESTION_JOIN)
+            atPoint = await ask(pointQueryOf(BEXAR_PARCEL_FIELDS, point))
+          }
+          f = parcelFactsFromCountyAtPoint(atPoint)
         }
         if (f) {
           found = true
