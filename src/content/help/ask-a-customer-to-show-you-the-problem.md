@@ -48,6 +48,8 @@ The page has **Take a photo**, **Take a video** and **Choose from your phone**. 
 
 They can also reply to your text with the photos. Those show on the same card.
 
+A phone set to Spanish reads the page in Spanish. A press at the top changes it to English and back. A Spanish reader's ask goes out in Spanish too.
+
 ## Read what came in
 
 The First look card sits above the person's messages.
