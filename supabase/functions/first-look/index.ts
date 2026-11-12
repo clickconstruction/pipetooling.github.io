@@ -15,6 +15,7 @@ import {
   firstLookCode,
   firstLookExpiry,
   firstLookKindOfMime,
+  firstLookKeptPath,
   firstLookObjectPath,
   firstLookSampleOf,
   firstLookSamplePayload,
@@ -472,9 +473,14 @@ serve(async (req) => {
         const road = body.road === 'pieces' || body.road === 'whole' ? body.road : null
         const whole = (v: unknown, max: number): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), max) : null)
         const seconds = typeof body.seconds === 'number' && Number.isFinite(body.seconds) && body.seconds >= 0 ? Math.min(body.seconds, 36_000) : null
+        // The checked file moves out from under its upload address, which is good for two hours and may write its
+        // place again. A move that fails keeps the file where it is: a customer's photo is never lost to this.
+        const keptPath = firstLookKeptPath(look.id, f.id, f.mime)
+        const { error: moveErr } = await admin.storage.from(FIRST_LOOK_BUCKET).move(f.storage_path, keptPath)
+        if (moveErr) console.error('first-look: the file did not move to its kept place', JSON.stringify({ file: f.id, why: moveErr.message }))
         const { error: upErr } = await admin
           .from('first_look_files')
-          .update({ finished_at: new Date().toISOString(), bytes: size, road, resumed: whole(body.resumed, 10_000) ?? 0, took_ms: whole(body.tookMs, 2_000_000_000), seconds })
+          .update({ finished_at: new Date().toISOString(), bytes: size, road, resumed: whole(body.resumed, 10_000) ?? 0, took_ms: whole(body.tookMs, 2_000_000_000), seconds, ...(moveErr ? {} : { storage_path: keptPath }) })
           .eq('id', f.id)
         if (upErr) throw new Error(upErr.message)
         console.log(JSON.stringify({ event: 'first_look_file', look: look.id, kind: f.kind, bytes: size, road, resumed: whole(body.resumed, 10_000) ?? 0 }))
