@@ -60,6 +60,7 @@ const BoxCode = lazy(() => import('./pages/BoxCode'))
 const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BillsSent = lazy(() => import('./pages/BillsSent'))
+const FirstLookRead = lazy(() => import('./pages/FirstLookRead'))
 const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
@@ -457,6 +458,7 @@ function AppContent() {
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="punch-list" element={<PunchList />} />
           <Route path="first-looks" element={<ErrorBoundary><FirstLooks /></ErrorBoundary>} />
+          <Route path="first-look/:id" element={<ErrorBoundary><FirstLookRead /></ErrorBoundary>} />
           <Route path="tally" element={<JobTally />} />
           <Route path="m/:code" element={<MachineCode />} />
           <Route path="settings" element={<Settings />} />

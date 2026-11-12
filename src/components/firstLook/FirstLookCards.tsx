@@ -18,6 +18,8 @@ import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useOpenThread } from '../gc/messages/openThread'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { lookTaskPreset, TECH_READ_WORDS, techLine } from '../../lib/firstLook/tech'
 import { LookFile } from './LookFile'
 import { useLookDoors } from './useLookDoors'
 
@@ -47,6 +49,16 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
   // The job Add Job makes takes the look with it (PR 6): its Drive folder moves under the job and the tech sees it.
   const book = () => doors.book(words, (jobId) => void io.setJob(look.id, jobId).then(onChanged, () => undefined))
   const startEstimate = () => doors.startEstimate(words, look.id)
+  // PR 7: the ask rides a task card. Whoever the task is given to may open this one look; their answer comes back to the thread.
+  const addTask = useChecklistAddModal()
+  const askTech = () =>
+    addTask?.openAddModal({
+      preset: lookTaskPreset(contact, look, window.location.origin),
+      onSaved: (taskId) => {
+        if (taskId) void io.askTech(look.id, taskId).then(onChanged, (e: unknown) => say(formatErrorMessage(e, 'The task went, and the look was not opened to the tech.'), 'error'))
+      },
+    })
+  const tech = techLine(look, (iso) => formatDenverCalendarDayShort(Date.parse(iso)))
   const close = async () => {
     setBusy('close')
     try {
@@ -83,6 +95,11 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
           ))}
         </div>
       )}
+      {tech && (
+        <div data-look-tech style={{ fontSize: '0.85rem', fontWeight: look.tech_read ? 600 : 400 }}>
+          {tech}
+        </div>
+      )}
       {drive && (
         <div data-look-drive style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {drive.href ? (
@@ -115,6 +132,11 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
               {LOOK_CARD_WORDS.bookVisit}
             </button>
           </>
+        )}
+        {addTask && (
+          <button type="button" style={press} title={TECH_READ_WORDS.askTip} disabled={pressing} onClick={askTech}>
+            {TECH_READ_WORDS.ask}
+          </button>
         )}
         <button type="button" style={press} disabled={pressing} onClick={() => askForPhotos(contact.id)}>
           {cardOf.files.length + cardOf.texted.length === 0 ? SHOW_ASK_WORDS.again : SHOW_ASK_WORDS.more}

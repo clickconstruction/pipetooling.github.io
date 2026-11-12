@@ -31,6 +31,8 @@ vi.mock('../../contexts/JobFormModalContext', () => ({ useJobFormModal: () => ({
 const router = vi.hoisted(() => ({ navigate: vi.fn() }))
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => router.navigate }))
 const win = vi.hoisted(() => ({ closeThread: vi.fn() }))
+const tasks = vi.hoisted(() => ({ openAddModal: vi.fn() }))
+vi.mock('../../contexts/ChecklistAddModalContext', () => ({ useChecklistAddModal: () => ({ openAddModal: tasks.openAddModal, closeModal: vi.fn(), isOpen: false }) }))
 vi.mock('../gc/messages/useThreadWindow', () => ({ useThreadWindow: () => ({ contactId: 'dana', at: null, openThread: vi.fn(), closeThread: win.closeThread }) }))
 
 const channel = (value: string): Contact['channels'][number] => ({ id: 'ch-phone', kind: 'phone', value, optedOutAt: null })
@@ -165,5 +167,28 @@ describe('the First look card on a thread (punch list #319 PR 1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close the look' }))
     await waitFor(() => expect(io.stamp).toHaveBeenCalledWith('L1', 'closed'))
     await waitFor(() => expect(looks.mock.calls.length).toBeGreaterThan(before))
+  })
+
+  it('Ask a tech opens Add a task with the look on it, and the saved task opens the look to its people (PR 7)', async () => {
+    const io = fakeIo({ looks: vi.fn(async () => ({ looks: [{ ...LOOK, place: 'Kitchen' }], files: [PHOTO] })) })
+    draw(DANA, io)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask a tech…' }))
+    const opened = tasks.openAddModal.mock.calls[0]![0]
+    expect(opened.preset.title).toBe('Can you price this from the photos?')
+    expect(opened.preset.job).toMatchObject({ number: 'First look', name: 'Dana Whitfield · Kitchen', path: '/first-look/L1' })
+    expect(opened.preset.links[0]).toMatch(/\/first-look\/L1$/)
+    opened.onSaved('task-9')
+    await waitFor(() => expect(io.askTech).toHaveBeenCalledWith('L1', 'task-9'))
+    tasks.openAddModal.mockClear()
+  })
+
+  it('the card says a tech was asked, then reads the answer (PR 7)', async () => {
+    const asked = fakeIo({ looks: vi.fn(async () => ({ looks: [{ ...LOOK, asked_tech_at: iso(5) }], files: [PHOTO] })) })
+    draw(DANA, asked)
+    await waitFor(() => expect(document.querySelector('[data-look-tech]')?.textContent).toMatch(/^A tech was asked .*\. No answer yet\.$/))
+    cleanup()
+    const answered = fakeIo({ looks: vi.fn(async () => ({ looks: [{ ...LOOK, asked_tech_at: iso(5), tech_read: 'can_price', tech_note: 'Bring a 3/4 inch stop.', tech_read_name: 'Luis Ortega' }], files: [PHOTO] })) })
+    draw(DANA, answered)
+    await waitFor(() => expect(document.querySelector('[data-look-tech]')?.textContent).toBe('Luis: I can price it from this. Bring a 3/4 inch stop.'))
   })
 })
