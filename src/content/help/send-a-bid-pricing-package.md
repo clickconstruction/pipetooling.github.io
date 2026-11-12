@@ -15,7 +15,7 @@ On Bids → Pricing with a bid open, you tap {{button:green|Share with a teammat
 
 - **Job address** is the bid's address with an {{button:gray|Open in Maps}} button. The recipient's copy gets the same thing. Tapping the address in the email opens it straight in Google Maps. So does the Map link in a text.
 - **Job plans** and **CountTooling Plans** are the links on the bid. Each link opens right from the window.
-- **Pricing preview** shows the four columns the recipient will see: Fixture or Tie-in, Count, Sale Price and Revenue. Hidden rows stay hidden. The total still matches the Pricing tab.
+- **Pricing preview** shows the four columns the recipient will see: Fixture or Tie-in, Count, Sale Price and Revenue. Hidden rows stay hidden. The total still matches the Pricing tab. Each amount shows its cents in smaller type, so the dollars read first.
 
 No address on the bid? The package still sends without one. If the crew will need directions, you use **Edit bid** in that section to add it first.
 
@@ -33,7 +33,7 @@ Wendi opens BP376's pricing, taps {{button:green|Share with a teammate}}, taps t
 
 ## Whole dollars in the text
 
-The text from {{button:gray|Copy for text}} shows no cents. It is a quick look for a teammate on a phone. The email and the Pricing tab still show cents.
+The text from {{button:gray|Copy for text}} shows no cents. It is a quick look for a teammate on a phone. The email still shows cents, in smaller type. The Pricing tab shows them as before.
 
 - Each line's total is the true amount, rounded to the nearest dollar.
 - The total is the bid's true total, rounded the same way. Add the lines up yourself and you can land a dollar or two away.
