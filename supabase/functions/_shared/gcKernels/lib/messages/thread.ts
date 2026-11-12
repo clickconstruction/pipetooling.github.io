@@ -171,10 +171,19 @@ const newest = (messages: readonly ThreadMessage[], keep: (m: ThreadMessage) => 
 }
 
 /**
- * Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them. A mail filed
- * for the record (`history`, v2.7027) asked nobody for a reply, so it is not their word here.
+ * Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them, a mail filed
+ * for the record included. When they last wrote is a fact, and the stamps sentence says it (v2.7029: v2.7027 left
+ * filed mail out here, and a thread of old mail read *They have not written yet*).
  */
 export function lastIn(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
+  return newest(messages, (m) => m.contactId === contactId && m.direction === 'in')
+}
+
+/**
+ * Their last word that asks for something: `lastIn` without the mail filed for the record (`history`, v2.7027), which
+ * asked nobody for a reply. The move line counts from this one, never from `lastIn`.
+ */
+export function lastAsk(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
   return newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && !m.history)
 }
 
@@ -269,6 +278,11 @@ function monthDay(ymd: string, nowYmd: string): string {
   return `${month(m)} ${d}${String(y) === nowYmd.slice(0, 4) ? '' : `, ${y}`}`
 }
 
+/** A day, short, for a chip: "Nov 9", with the year when it is not this year's. */
+export function shortDay(atIso: string, nowIso: string): string {
+  return monthDay(chicagoDay(atIso), chicagoDay(nowIso))
+}
+
 /** A thread's day divider: "Today, Fri Oct 2", "Thursday, Oct 1". */
 export function dayLabel(atIso: string, nowIso: string): string {
   const ymd = chicagoDay(atIso)
@@ -346,6 +360,12 @@ export interface CourtOptions {
   owed?: { what: string; by?: string | null } | null
   /** Their running promise's line, which their move runs until (cut 2's `runningPromise(...).until`): "until Wed Oct 7 · quote". */
   promisedUntil?: string | null
+  /**
+   * The conversation is Done (`contacts.state`, v2.7029): a word of theirs with nothing of ours after it was closed by a
+   * person, with No reply needed or a team note, so it waits on nobody and the line says *Nothing waits*. Unset on a
+   * read that does not know the state, which reads the lines alone as before.
+   */
+  closed?: boolean
 }
 
 /**
@@ -359,9 +379,12 @@ export function courtOf(messages: readonly ThreadMessage[], contactId: string, n
     const by = opts.owed.by ? ` · by ${opts.owed.by}` : ''
     return { side: 'ours', word: `Our move · we owe ${opts.owed.what}${by}`, owed: true }
   }
-  const i = lastIn(messages, contactId)
+  const i = lastAsk(messages, contactId)
   const o = lastOut(messages, contactId)
-  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
+  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) {
+    if (opts.closed) return { side: 'none', word: NOTHING_WAITS }
+    return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
+  }
   // Nothing of theirs waits on us. A filed mail starts no clock either way: with no word of ours, with a filed mail of
   // ours as the last word, or with a filed mail of theirs after our last word, nobody owes anybody.
   const filedIn = newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && m.history === true)
