@@ -202,8 +202,8 @@ export function lienHelpAfterSteps(clerkCounty: string, hasContractor: boolean, 
     `Write on the stamped copy, and here. Recording number ${WRITE} Filed on ${WRITE}`,
     'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.',
     `${hasContractor ? 'Mail a copy by certified mail to the owner and to the original contractor.' : 'Mail a copy by certified mail to the owner.'} The app shows the last day to mail. Mail by ${WRITE}`,
-    // The form takes the day the copies went out. It has no place for a tracking number, so the receipts stay with the job.
-    'Press <strong>Record service…</strong> and set the day the copies were mailed.',
+    // The form takes the day the copies went out, and since punch list #314's change 5 each copy's certified mail number and a photo of its receipt.
+    'Press <strong>Record service…</strong> and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.',
     'Keep the clerk’s stamped copy and the certified mail receipts with the job.',
   ]
 }
