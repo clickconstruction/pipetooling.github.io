@@ -108,17 +108,17 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(given.verdict).toBeNull()
   })
 
-  it('the money is expected after the deadline: the row goes red and the verdict says how short — Notice first on a sub, File the lien first on a direct job', () => {
+  it('the money is expected after the deadline: the row goes red and the line under the rule speaks of the money alone, on a sub and on a direct job', () => {
     const late = { promisedYmd: '2026-10-20', markedByName: 'Wendi' }
     const sub = buildBilledDatesLedger({ todayYmd: today, row, data, promise: late, runway: buildLienPayRunway(runwayInput({ expectedPayYmd: '2026-10-20' })), inCollections: false })
     expect(sub.rows[2]).toMatchObject({ key: 'notice', label: 'Lien notice', tone: 'red', bold: true })
-    expect(sub.verdict).toMatchObject({ label: 'Notice first', value: '5d short', tone: 'red' })
+    expect(sub.verdict).toMatchObject({ label: 'Money lands too late', value: '5d short', tone: 'red' })
     const runway = buildLienPayRunway(runwayInput({ isSub: false, lastWorkYmd: '2026-07-10', expectedPayYmd: '2026-10-20' }))
     expect(runway.state).toBe('file_first')
     const direct = buildBilledDatesLedger({ todayYmd: today, row, data, promise: late, runway, inCollections: false })
     const short = daysBetweenYmd(runway.lienByYmd, '2026-10-20')!
-    expect(direct.rows[2]).toMatchObject({ key: 'lien', label: 'File the lien', tone: 'red', bold: true, dot: 'filled' })
-    expect(direct.verdict).toMatchObject({ label: 'File the lien first', value: `${short}d short`, tone: 'red' })
+    expect(direct.rows[2]).toMatchObject({ key: 'lien', label: 'File the affidavit', tone: 'red', bold: true, dot: 'filled' })
+    expect(direct.verdict).toMatchObject({ label: 'Money lands too late', value: `${short}d short`, tone: 'red' })
   })
 
   it('past expected on a direct job with the lien far off: the lien is a plain ring and the verdict asks for a date; red in Collections', () => {
@@ -129,13 +129,14 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     // #87 J: the pay estimate counts from the bill date; the lien row counts from the last work month, so the hover names only the first.
     expect(l.rows[0]?.title).toBe('The bill went out Sep 23 — the day the pay estimate below counts from')
     expect(l.rows[2]).toMatchObject({ label: 'Lien', tone: 'plain', bold: false, dot: 'ring' })
-    expect(l.verdict).toMatchObject({ label: 'Ask for a date', value: '1d past', tone: 'amber', action: 'they-said' })
+    // v2.7042: no count beside it, since the Expected row already says 1d past.
+    expect(l.verdict).toMatchObject({ label: 'Ask for a date', value: '', tone: 'amber', action: 'they-said' })
     const c = buildBilledDatesLedger({ todayYmd: '2026-10-05', row, data, promise: null, runway, inCollections: true })
     expect(c.rows[1]?.tone).toBe('red')
     expect(c.verdict?.tone).toBe('red')
     // Inside three weeks the lien row itself asks, and nothing repeats it.
     const near = buildBilledDatesLedger({ todayYmd: '2026-11-01', row, data, promise: null, runway: buildLienPayRunway(runwayInput({ todayYmd: '2026-11-01', isSub: false })), inCollections: false })
-    expect(near.rows[2]).toMatchObject({ label: 'File the lien', bold: true, tone: 'amber' })
+    expect(near.rows[2]).toMatchObject({ label: 'File the affidavit', bold: true, tone: 'amber' })
     expect(near.verdict).toBeNull()
   })
 
@@ -154,6 +155,27 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     const lf = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: filed, inCollections: false })
     expect(lf.rows[2]).toMatchObject({ key: 'filed', label: 'Lien filed', date: 'Sep 25', tone: 'green' })
     expect(lf.verdict).toBeNull()
+  })
+
+  it('the line under the lien row never says the row’s day and count again (v2.7042, punch list #325)', () => {
+    // The chip names the row's own day: only its words are drawn.
+    const same = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false, lienState: { words: 'Needs the owner · by Oct 15 · 2d', lead: 'Needs the owner', dueOn: '2026-10-15', paper: 'notice', action: 'find_owner', tone: 'red' } })
+    expect(same.rows[2]).toMatchObject({ key: 'notice', date: 'Oct 15', sub: 'Needs the owner', subTone: 'red' })
+    // The chip is about the row's own paper and names another day (a month already closed on the same notice): the clock's day stands alone.
+    const twoDays = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false, lienState: { words: 'Approve the notice · by Sep 15 · 13d late', lead: 'Approve the notice', dueOn: '2026-09-15', paper: 'notice', action: 'approve', tone: 'red' } })
+    expect(twoDays.rows[2]).toMatchObject({ key: 'notice', date: 'Oct 15', sub: 'Approve the notice' })
+    // Another paper keeps its own day: a retainage notice under the notice row.
+    const other = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false, lienState: { words: 'Retainage · Notice to draft · by Oct 30 · 17d', lead: 'Retainage · Notice to draft', dueOn: '2026-10-30', paper: 'retainage', action: 'draft', tone: 'amber' } })
+    expect(other.rows[2]?.sub).toBe('Retainage · Notice to draft · by Oct 30 · 17d')
+    // The row asks to file and the desk's move is filing: one line, not two. Nov 12, four days before the affidavit's day, the money long past.
+    const late = '2026-11-12'
+    const fileRunway = buildLienPayRunway(runwayInput({ todayYmd: late, noticedMonths: ['2026-08'], expectedPayYmd: '2026-10-04' }))
+    const file = buildBilledDatesLedger({ todayYmd: late, row, data, promise: null, runway: fileRunway, inCollections: false, lienState: { words: 'File the affidavit · by Nov 16 · 4d', lead: 'File the affidavit', dueOn: '2026-11-16', paper: 'affidavit', action: 'file_affidavit', tone: 'red' } })
+    expect(file.rows[2]).toMatchObject({ key: 'lien', label: 'File the affidavit', date: 'Nov 16', far: '4d', bold: true, sub: '' })
+    expect(file.rows[2]?.subTone).toBeUndefined()
+    // An earlier step on the same paper stays, without its day.
+    const draft = buildBilledDatesLedger({ todayYmd: late, row, data, promise: null, runway: fileRunway, inCollections: false, lienState: { words: 'Affidavit to draft · by Nov 16 · 4d', lead: 'Affidavit to draft', dueOn: '2026-11-16', paper: 'affidavit', action: 'draft', tone: 'red' } })
+    expect(draft.rows[2]).toMatchObject({ label: 'File the affidavit', sub: 'Affidavit to draft', subTone: 'red' })
   })
 
   it('the notice’s state (v2.5491) is the line under the lien row, in its tone, with the sentence as its hover; without one the old “notice sent” line stands', () => {
