@@ -41053,6 +41053,7 @@ export type Database = {
         Args: { p_batch_id: string; p_reason?: string }
         Returns: Json
       }
+      counsel_only_held_from_seat: { Args: never; Returns: boolean }
       count_job_account_evidence_gaps: {
         Args: never
         Returns: {
@@ -45037,6 +45038,7 @@ export type Database = {
         }
         Returns: Json
       }
+      mint_first_look: { Args: { p_contact_id: string }; Returns: Json }
       mint_gc_trade_portal_link: {
         Args: { p_company_id: string; p_rotate?: boolean }
         Returns: Json
@@ -46594,6 +46596,10 @@ export type Database = {
           p_revenue_usd: number
           p_uncosted_usd: number
         }
+        Returns: Json
+      }
+      stamp_first_look: {
+        Args: { p_look_id: string; p_what: string }
         Returns: Json
       }
       stamp_line_budgets_reviewed: {
