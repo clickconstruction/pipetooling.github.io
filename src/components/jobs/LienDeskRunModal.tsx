@@ -7,6 +7,7 @@ import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
@@ -508,7 +509,7 @@ export default function LienDeskRunModal({
     // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
     const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
     const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
-    if (!printAndFile(runPacketHtml(paperShown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
+    if (!printAndFile(runPacketHtml(paperShown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, lienRunGuideCode()), filing)) {
       showToast('Popup blocked — allow popups to print the packet.', 'error')
       return
     }

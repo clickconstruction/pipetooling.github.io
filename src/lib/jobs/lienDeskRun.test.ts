@@ -105,6 +105,9 @@ describe('buildLienDeskRun', () => {
   it('the packet is one document (v2.4971): the checklist sheet, then per envelope its divider, the cover page and the copy, every page with its foot', () => {
     const d = data([approved])
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    // The monthly notice carries the desk's earliest open day as its last day to mail (punch list #314).
+    expect(d.queue.piles.ready[0]!.earliestDeadline).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(run[0]!.mailBy).toBe(d.queue.piles.ready[0]!.earliestDeadline)
     expect(runCoverNoteBlocks(run[0]!).some((b) => b.kind === 'paragraph')).toBe(true)
     const ownerCopy = runNoticeBlocks(run[0]!, run[0]!.recipients[0]!)
     expect(ownerCopy.find((b) => b.kind === 'refstrip')).toMatchObject({ items: ['Job #650', 'Work months June and July 2026', 'September 14, 2026', 'Copy for: Owner of record'] })
@@ -240,6 +243,9 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run).toHaveLength(1)
     const n = run[0]!
     expect(n.kind).toBe('retainage_53_057')
+    // The last day to mail rides on the notice, for Today's mail (punch list #314).
+    expect(n.mailBy).toBe('2026-10-05')
+    expect(runPacketHtml([n], TODAY, null)).toContain('<b>Mail every envelope by October 5, 2026.</b>')
     expect(n.months).toEqual([])
     expect(n.amount).toBe(1_760)
     expect(n.fields.claimAmount).toBe('1760.00')

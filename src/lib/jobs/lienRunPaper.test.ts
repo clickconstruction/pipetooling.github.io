@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runAddressLines, runDividerHtml, runDocumentWords, runEnvelopeHold, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
+import { runAddressLines, runDividerHtml, runDocumentWords, runEnvelopeHold, runEnvelopeMailBy, runMailByWords, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
 import { runEnvelopes } from './runEnvelopes'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import { plainWordsFailures } from '../plainWords'
@@ -122,5 +122,54 @@ describe('an unsigned notice is held (v2.5086)', () => {
     const printed = runMailing(runEnvelopes([notice({ signature: null, printedAt: '2026-10-08T15:00:00Z' })]))
     expect(printed.held).toHaveLength(0)
     expect(printed.mailed).toHaveLength(2)
+  })
+})
+
+describe('Today’s mail says by when (punch list #314, the notices)', () => {
+  const docsFor = () => ['§ 53.056 notice · copy for owner of record']
+  const sheet = (notices: RunNotice[], today = '2026-11-12', guideCode?: string) => runSheetHtml({ mailing: runMailing(runEnvelopes(notices)), todayYmd: today, issuer, docsFor, ...(guideCode ? { guideCode } : {}) })
+
+  it('an envelope’s day is the earliest of its notices’ days', () => {
+    const one = runEnvelopes([notice({ mailBy: '2026-12-15' }), notice({ itemId: 'it2', jobId: 'j2', label: '901 · Another job', jobNumber: '901', mailBy: '2026-11-16' })])
+    expect(one.map(runEnvelopeMailBy)).toEqual(['2026-11-16', '2026-11-16'])
+    expect(runEnvelopeMailBy(runEnvelopes([notice()])[0]!)).toBe('')
+  })
+
+  it('one day for the whole run reads once at the top, and no row repeats it', () => {
+    const html = sheet([notice({ mailBy: '2026-11-16' })])
+    expect(html).toContain('<b>Mail every envelope by November 16, 2026.</b>')
+    expect(html).not.toContain('data-run-mail-by')
+  })
+
+  it('days that differ read under each row, and the top names the first', () => {
+    const other = notice({ itemId: 'it2', jobId: 'j2', label: '901 · Another job', jobNumber: '901', mailBy: '2026-12-15', recipients: [owner({ name: 'Second Owner LLC', address: '1 Elm Street, Alder, TX 70001' }), gc({ name: 'Second Builder', address: '2 Oak Street, Alder, TX 70001' })] })
+    const html = sheet([notice({ mailBy: '2026-11-16' }), other])
+    expect(html).toContain('<b>Mail the first envelopes by November 16, 2026.</b> Each row shows its own day.')
+    expect((html.match(/<small class="by" data-run-mail-by>Mail by November 16, 2026<\/small>/g) ?? []).length).toBe(2)
+    expect((html.match(/<small class="by" data-run-mail-by>Mail by December 15, 2026<\/small>/g) ?? []).length).toBe(2)
+  })
+
+  it('a day that has gone by is said plainly, with the count', () => {
+    expect(sheet([notice({ mailBy: '2026-11-10' })])).toContain('<b>The last day has passed for 2 envelopes.</b> Ask before you mail them.')
+    const other = notice({ itemId: 'it2', jobId: 'j2', label: '901 · Another job', jobNumber: '901', mailBy: '2026-12-15', recipients: [owner({ name: 'Second Owner LLC', address: '1 Elm Street, Alder, TX 70001' })] })
+    const mixed = sheet([notice({ mailBy: '2026-11-10', recipients: [owner()] }), other])
+    expect(mixed).toContain('<b>Mail the first envelopes by December 15, 2026.</b> Each row shows its own day. <b>The last day has passed for 1 envelope.</b> Ask before you mail it.')
+    expect(mixed).toContain('<small class="by late" data-run-mail-by>The last day to mail was November 10, 2026</small>')
+  })
+
+  it('a run whose notices carry no day says nothing of one, as before', () => {
+    const html = sheet([notice()])
+    expect(html).not.toMatch(/Mail every envelope by|last day/)
+    expect(runMailByWords(runMailing(runEnvelopes([notice()])).mailed, '2026-11-12')).toEqual({ intro: '', perRow: false })
+  })
+
+  it('the code for the guide prints when the caller draws one', () => {
+    expect(sheet([notice()], '2026-11-12', '<img alt="" src="data:guide"/>')).toContain('<span class="runcode" data-run-guide-code><img alt="" src="data:guide"/><small>Scan for the full guide</small></span>')
+    expect(sheet([notice()])).not.toContain('data-run-guide-code')
+  })
+
+  it('the new words follow the plain-words rules', () => {
+    const words = ['Mail every envelope by November 16, 2026.', 'Mail the first envelopes by November 16, 2026.', 'Each row shows its own day.', 'Each row shows its last day to mail.', 'The last day has passed for 2 envelopes.', 'Ask before you mail them.']
+    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })

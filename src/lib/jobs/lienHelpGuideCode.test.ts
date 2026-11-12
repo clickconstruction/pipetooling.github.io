@@ -4,7 +4,7 @@ import { qrMatrix } from '../../../supabase/functions/_shared/qrMatrix'
 import { parseStagesDeepLinks } from './stagesDeepLinks'
 import { lienDeskFromSearch } from '../lien/lienDeskRoute'
 import { LIEN_HELP_STYLES } from './lienHelpSheet'
-import { LIEN_HELP_GUIDE_SLUG, LIEN_HELP_RECORD_CODE_QUIET, lienHelpBatchRecordCode, lienHelpBatchRecordUrl, lienHelpGuideCode, lienHelpGuideUrl, lienHelpRecordCode, lienHelpRecordUrl } from './lienHelpGuideCode'
+import { LIEN_HELP_GUIDE_SLUG, LIEN_HELP_RECORD_CODE_QUIET, LIEN_RUN_GUIDE_SLUG, lienHelpBatchRecordCode, lienHelpBatchRecordUrl, lienHelpGuideCode, lienHelpGuideUrl, lienHelpNoticeRecordCode, lienHelpNoticeRecordUrl, lienHelpRecordCode, lienHelpRecordUrl, lienRunGuideCode, lienRunGuideUrl } from './lienHelpGuideCode'
 
 describe('the code a lien help sheet prints (punch list #314, change 11)', () => {
   it('points at a guide that exists, on its public share page', () => {
@@ -42,5 +42,19 @@ describe('the code a lien help sheet prints (punch list #314, change 11)', () =>
     expect(modules).not.toBeNull()
     expect((modules?.length ?? 99) + 2 * LIEN_HELP_RECORD_CODE_QUIET).toBeLessThanOrEqual(45)
     expect(LIEN_HELP_STYLES).toContain('.lien-help-record-corner img { width: 44pt; height: 44pt; }')
+  })
+  it('a notice sheet’s code opens its own job’s notice tab, and the run’s first page points at the run’s guide', () => {
+    const jobId = '00000000-0000-4000-8000-000000000001'
+    const job = new URL(lienHelpNoticeRecordUrl(jobId))
+    expect(job.origin).toBe('https://clicktooling.com')
+    expect(parseStagesDeepLinks(job.searchParams).lienWindow).toEqual({ jobId, tab: 'notice' })
+    const code = lienHelpNoticeRecordCode(jobId)
+    expect(code).toMatch(/^<img alt="" src="data:image\/png;base64,[A-Za-z0-9+/=]+"\/>$/)
+    expect(code).not.toBe(lienHelpRecordCode(jobId))
+    expect(lienHelpNoticeRecordCode(' ')).toBe('')
+    expect(existsSync(`src/content/help/${LIEN_RUN_GUIDE_SLUG}.md`)).toBe(true)
+    expect(lienRunGuideUrl()).toBe(`https://clicktooling.com/g/${LIEN_RUN_GUIDE_SLUG}/`)
+    expect(lienRunGuideCode()).toMatch(/^<img alt="" src="data:image\/png;base64,/)
+    expect(lienRunGuideCode()).not.toBe(lienHelpGuideCode())
   })
 })
