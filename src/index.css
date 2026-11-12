@@ -4955,13 +4955,14 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 }
 /* The Pipeline's search box (v2.7014): beside the New Job, Follow-ups, Forecast and Projects presses it takes what
    their line leaves, but never less than its own chips and ⋯, so the row wraps it onto a line of its own instead of
-   pushing the page sideways. On a phone a line is all it has, so it fits the line as before. */
+   pushing the page sideways. On a phone its chips are wider than the screen, so there it takes a line of its own
+   once less than 20rem is left beside the presses, and its chips shrink to fit it (v2.7033). */
 .stagesSearchBox {
   min-width: min-content;
 }
 @media (max-width: 640px) {
   .stagesSearchBox {
-    min-width: 0;
+    min-width: min(100%, 20rem);
   }
 }
 /* Put a GC on notice (v2.4540): the row the "N look wrong" list jumped to stays lit for a moment. */
@@ -6019,22 +6020,32 @@ tr[data-stages-row-stamped] {
   }
 }
 
+/* A window's close press (`WindowCloseButton`, v2.7019 on the Payment forecast window and shared since): the
+   library's X in a 32 px square, pulled 7 px into the window's padding so the X itself sits on the content's
+   edge. A phone gets a 44 px press that still takes a 32 px row. Hover and focus need a class, so the looks
+   live here and the windows pass placement only. */
+.windowClose { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; margin-right: -7px; padding: 0; border: none; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
+.windowClose:hover { background: var(--bg-muted); color: var(--text-strong); }
+.windowClose:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .windowClose { width: 44px; height: 44px; margin: -6px -13px -6px 0; }
+}
+
 /* The Payment forecast window's header (v2.7019): the title and the intro sit left of the two presses, so no
-   words run under them. Both presses are 32 px squares of the same height on the desk. A phone gives each a
-   44 px press: the close beside the title, the Email press on its own row under the intro. */
+   words run under them. Both presses are 32 px tall on the desk. A phone gives each a 44 px press: the close
+   (`.windowClose`, above) beside the title, the Email press on its own row under the intro. */
 .forecastHead { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'title email close' 'intro . .'; column-gap: 0.35rem; row-gap: 0.2rem; align-items: start; margin-bottom: 0.9rem; }
 .forecastHead > h2 { grid-area: title; margin: 0; font-size: 1.125rem; line-height: 32px; }
 .forecastHeadIntro { grid-area: intro; margin: 0; font-size: 0.8125rem; color: var(--text-muted); text-wrap: pretty; }
 .forecastHeadEmail { grid-area: email; display: inline-flex; align-items: center; gap: 7px; height: 32px; margin-left: 1rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8125rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
-.forecastHeadClose { grid-area: close; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-right: -7px; padding: 0; border: none; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
-.forecastHeadEmail:hover, .forecastHeadClose:hover { background: var(--bg-muted); color: var(--text-strong); }
-.forecastHeadEmail:focus-visible, .forecastHeadClose:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+.forecastHead > .windowClose { grid-area: close; }
+.forecastHeadEmail:hover { background: var(--bg-muted); color: var(--text-strong); }
+.forecastHeadEmail:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
 @media (max-width: 640px) {
   /* The Email press takes a row of its own only when it is drawn, so a reader with no Email press gets no empty row. */
   .forecastHead { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title close' 'intro intro'; row-gap: 0.35rem; }
   .forecastHead > h2 { align-self: center; line-height: 1.3; }
   .forecastHeadEmail { grid-area: auto; grid-column: 1 / -1; justify-self: start; height: auto; min-height: 44px; margin: 0.25rem 0 0; padding: 0 0.9rem; font-size: 0.875rem; }
-  .forecastHeadClose { width: 44px; height: 44px; margin: -6px -13px -6px 0; }
 }
 
 /* The aging-cell window by job (v2.5694): the split strip, one heading per job with its job-account state, the

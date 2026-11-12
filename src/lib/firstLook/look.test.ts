@@ -18,6 +18,8 @@ import {
   firstLookDeskStanding,
   firstLookExpiry,
   firstLookFileFacts,
+  FIRST_LOOK_UPLOAD_ADDRESS_HOURS,
+  firstLookKeptPath,
   firstLookKindOfMime,
   firstLookMimeOf,
   firstLookObjectPath,
@@ -224,6 +226,13 @@ describe('first look: the words', () => {
     expect(firstLookClosesWords({ closes: '23:30', always: false })).toBeNull()
     expect(firstLookClosesWords({ closes: '17:00', always: true })).toBeNull()
     expect(firstLookClosesWords({ closes: 'late', always: false })).toBeNull()
+  })
+
+  it('a finished file is kept apart from where it was uploaded (PR 3)', () => {
+    expect(firstLookObjectPath('L', 'F', 'image/jpeg')).toBe('L/F.jpg')
+    expect(firstLookKeptPath('L', 'F', 'image/jpeg')).toBe('L/kept/F.jpg')
+    expect(firstLookKeptPath('L', 'F', 'video/quicktime')).toBe('L/kept/F.mov')
+    expect(FIRST_LOOK_UPLOAD_ADDRESS_HOURS).toBe(2)
   })
 
   it('the thread line is keyed by the send, so a second send is a second line', () => {

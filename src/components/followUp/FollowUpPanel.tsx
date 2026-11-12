@@ -197,7 +197,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
       const to = userId === null ? null : userId === me.id ? me.name : (userNames[userId] ?? 'Someone')
       void run(`hand ${contactId}`, (x) => (userId === me.id ? x.takeIt(contactId) : x.handTo(contactId, userId)), hasToast(me.name, nameOf(contactId), to))
     },
-    noReplyNeeded: (contactId) => void run(`state ${contactId}`, (x) => x.setState(contactId, 'done'), stateToast('noReplyNeeded', nameOf(contactId))),
+    noReplyNeeded: (contactId) => void run(`state ${contactId}`, (x) => x.noReplyNeeded(contactId, me.name), stateToast('noReplyNeeded', nameOf(contactId))),
     remindMonday: (contactId) => void run(`state ${contactId}`, (x) => x.setState(contactId, 'snoozed'), stateToast('remindMonday', nameOf(contactId))),
     backDone: (noteId) => void run(`back ${noteId}`, (x) => x.backDone(noteId), BACK_CLEARED_TOAST),
     anotherDay: (noteId) => {
@@ -257,7 +257,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           contacts={q.contacts}
           lines={q.lines}
           reread={() => void q.reload()}
-          noReplyNeeded={(contactId) => q.press(`state ${contactId}`, (x) => x.setState(contactId, 'done'))}
+          noReplyNeeded={(contactId) => q.press(`state ${contactId}`, (x) => x.noReplyNeeded(contactId, me.name))}
           pressing={q.pressing}
           onClose={() => answerAll.onChange(false)}
           onOpenThread={onOpenThread}

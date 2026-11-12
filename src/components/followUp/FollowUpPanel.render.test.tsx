@@ -146,6 +146,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}, rows: FollowUpRows = ROWS):
     takeIt: vi.fn(async () => undefined),
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: vi.fn(async () => undefined),
@@ -242,7 +243,7 @@ describe('FollowUpPanel', () => {
     fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Reply' }))
     expect(onOpenThread).toHaveBeenCalledTimes(2)
     fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'No reply needed' }))
-    await waitFor(() => expect(io.setState).toHaveBeenCalledWith('greg', 'done'))
+    await waitFor(() => expect(io.noReplyNeeded).toHaveBeenCalledWith('greg', 'Robert'))
     expect(onOpenThread).toHaveBeenCalledTimes(2)
     // What we owe opens the thread at the reply box, where the ways to deal with it are.
     fireEvent.click(rowIn('We owe them', 'priya').getByRole('button', { name: /we owe the start date/ }))
@@ -271,7 +272,7 @@ describe('FollowUpPanel', () => {
     await loaded()
     fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'No reply needed' }))
     await waitFor(() => expect(say).toHaveBeenLastCalledWith('Greg Paulk cleared from Follow up.', 'success'))
-    expect(io.setState).toHaveBeenLastCalledWith('greg', 'done')
+    expect(io.noReplyNeeded).toHaveBeenLastCalledWith('greg', 'Robert')
     expect(io.loadQueue).toHaveBeenCalledTimes(2)
 
     fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Remind me Monday' }))
@@ -371,7 +372,7 @@ describe('FollowUpPanel', () => {
       serverMessage: 'That conversation is not there.',
       operationName: 'set a conversation’s state',
     })
-    const { say } = renderPanel({}, fakeIo({ setState: vi.fn(async () => Promise.reject(refused)) }))
+    const { say } = renderPanel({}, fakeIo({ noReplyNeeded: vi.fn(async () => Promise.reject(refused)) }))
     await loaded()
     fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'No reply needed' }))
     expect((await screen.findByText('That conversation is not there.')).getAttribute('role')).toBe('alert')

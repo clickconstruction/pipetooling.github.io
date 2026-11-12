@@ -49,6 +49,14 @@ export type LienArChip = {
   paper: LienArPaper
   /** The chip: "Notice by Oct 15 · 2d", "Delivered Sep 16 · day 12 · letter two", "Lien filed Oct 2 · served Oct 6". */
   words: string
+  /**
+   * The same words with no last day and no count after them (v2.7042, punch list #325): "Waiting on Robert". A reader
+   * that already prints the paper's day beside the chip draws these, so the day and the count are said once. Equal to
+   * `words` when the chip carries no day.
+   */
+  lead: string
+  /** The Do now move the chip stands for; null when it reads paper that is out or a closed window. */
+  action: LienNextUpAction | null
   /** The plain words after the chip: the paper, who holds it, what came of the mailing. */
   sentence: string
   /** The chip's hover: where the door goes. */
@@ -198,11 +206,16 @@ function missedWords(entry: LienDeskEntry | null, fmt: (ymd: string) => string):
   return { closedOn, sentence: `${which} notice never went out${closedOn ? ` · the window closed ${fmt(closedOn)}` : ''} · the money is still owed, chase it in Collections` }
 }
 
-function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => string): LienArChip {
+/** A chip before `lienArChipFor` fills what every chip carries: `lead` falls to `words`, `action` to none. */
+type ChipDraft = Omit<LienArChip, 'lead' | 'action'> & { lead?: string }
+
+function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => string): ChipDraft {
   const { entry, letterTwo } = input
   const door = doorFor(row, input.jobId)
   const paper = paperOf(row)
-  const prefix = row.kind === 'retainage' && !MOVE_WORDS[row.action].startsWith('Retainage') ? 'Retainage · ' : row.kind === 'affidavit' && !/affidavit|lien filed/i.test(MOVE_WORDS[row.action]) ? 'Affidavit · ' : ''
+  // An affidavit to draft is not a notice to draft (v2.7042): the row names its own paper, as the desk's row does.
+  const move = row.kind === 'affidavit' && row.action === 'draft' ? 'Affidavit to draft' : MOVE_WORDS[row.action]
+  const prefix = row.kind === 'retainage' && !move.startsWith('Retainage') ? 'Retainage · ' : row.kind === 'affidavit' && !/affidavit|lien filed/i.test(move) ? 'Affidavit · ' : ''
   const title = door.to === 'desk' ? 'Open it on the Lien desk' : 'Open the job’s Lien window'
   const red = row.severity === 'red'
 
@@ -247,12 +260,14 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
       return { tone: 'red', state: 'due', paper: 'notice', words: `${lead}${who ? ` · ${who}` : ''}`, sentence: `${noticeSentence(input, fmt)}${state || !what ? '' : ` · ${what}`} · the envelope to the ${who || 'recipient'} needs you · open the notice under Sent to send it again`, title, door, dueOn: null, daysLeft: null }
     }
     case 'approve': {
-      // The desk's row already names the leader and the day: "Waiting on Robert · since Oct 7".
-      const who = /^Waiting on (.+?)(?: · |$)/.exec(row.sub)?.[1] ?? 'the leader'
-      return { tone: red ? 'red' : 'amber', state: 'due', paper, words: `${prefix}${/your approval/i.test(row.sub) ? 'Approve the notice' : `Waiting on ${who}`}${dueTail(row.dueOn, row.daysLeft, fmt)}`, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+      // The desk's row already names the leader and the day: "Waiting on Robert · since Oct 7". An affidavit's or a
+      // retainage notice's row leads with its paper ("Affidavit · waiting on Robert"), and the name is read past it (v2.7042).
+      const who = /^(?:(?:Affidavit|Retainage) · )?waiting on (.+?)(?: · |$)/i.exec(row.sub)?.[1] ?? 'the leader'
+      const lead = /your approval/i.test(row.sub) ? (row.kind === 'affidavit' ? 'Approve the affidavit' : `${prefix}Approve the notice`) : `${prefix}Waiting on ${who}`
+      return { tone: red ? 'red' : 'amber', state: 'due', paper, words: `${lead}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
     }
     default:
-      return { tone: red || row.action === 'draft_late' ? 'red' : 'amber', state: 'due', paper, words: `${prefix}${MOVE_WORDS[row.action]}${dueTail(row.dueOn, row.daysLeft, fmt)}`, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+      return { tone: red || row.action === 'draft_late' ? 'red' : 'amber', state: 'due', paper, words: `${prefix}${move}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead: `${prefix}${move}`, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
   }
 }
 
@@ -327,7 +342,7 @@ function mailState(pieces: ReadonlyArray<LienMailPieceRow>): { tone: LienArTone;
   return { tone: 'green', words: `Mailed${mailed[0] ? ` ${formatYmdMonthDay(mailed[0])}` : ''} · in transit` }
 }
 
-function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): LienArChip | null {
+function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): ChipDraft | null {
   const live = input.filings.filter((f) => !f.voided_at)
   const newest = <T extends JobLienFilingRow>(rows: T[]): T | null => rows.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))[0] ?? null
   const release = newest(live.filter((f) => f.kind === 'release_of_record'))
@@ -383,7 +398,7 @@ function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): Lien
   return { tone, state: 'out', paper, words, sentence: `${noticeSentence(input, fmt)}${twoWords}`, title: 'Open the job’s Lien window', door: { to: 'window', jobId: input.jobId, tab: 'notice' }, dueOn: null, daysLeft: null }
 }
 
-function fromMissed(input: LienArJobInput, fmt: (ymd: string) => string): LienArChip | null {
+function fromMissed(input: LienArJobInput, fmt: (ymd: string) => string): ChipDraft | null {
   const { entry, affidavit } = input
   if (entry?.pile === 'missed' && entry.dueMonths.length === 0) {
     const m = missedWords(entry, fmt)
@@ -400,8 +415,9 @@ function fromMissed(input: LienArJobInput, fmt: (ymd: string) => string): LienAr
 export function lienArChipFor(input: LienArJobInput): LienArChip | null {
   const fmt = input.formatDay ?? formatYmdMonthDay
   const rows = rowsForJob(input.nextUp, input.jobId, input.entry)
-  if (rows[0]) return fromNextUp(rows[0], input, fmt)
-  return fromPaperOut(input, fmt) ?? fromMissed(input, fmt)
+  const first = rows[0] ?? null
+  const draft = first ? fromNextUp(first, input, fmt) : fromPaperOut(input, fmt) ?? fromMissed(input, fmt)
+  return draft ? { ...draft, lead: draft.lead ?? draft.words, action: first?.action ?? null } : null
 }
 
 export type LienArCustomerChip = { tone: LienArTone; state: LienArState; words: string; title: string }

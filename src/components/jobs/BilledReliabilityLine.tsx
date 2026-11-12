@@ -16,6 +16,7 @@ export default function BilledReliabilityLine({
   showBars = true,
   onOpenPaySpeeds,
   payerName,
+  opens = 'pay speeds',
 }: {
   line: ReliabilityLine
   /** v2.4193: the dates block prints the words alone, in the legend's grey. */
@@ -24,6 +25,8 @@ export default function BilledReliabilityLine({
   onOpenPaySpeeds?: () => void
   /** The payer, for the press's name: "Open pay speeds for …". */
   payerName?: string | null
+  /** What the press opens, for its name. A payer on a Pay calendar (punch list #323) opens that window, since the words are the calendar's. */
+  opens?: 'pay speeds' | 'the pay calendar'
 }) {
   if (!line.text && line.bars.length === 0) return null
   const press = onOpenPaySpeeds != null && line.paysIn != null
@@ -68,8 +71,8 @@ export default function BilledReliabilityLine({
             type="button"
             className="billedPaysInPress"
             data-testid="billed-pays-in-press"
-            aria-label={`${line.paysIn}. Open pay speeds for ${who}`}
-            title={`${line.title ? `${line.title} ` : ''}Click to open pay speeds for ${who}.`}
+            aria-label={`${line.paysIn}. Open ${opens} for ${who}`}
+            title={`${line.title ? `${line.title} ` : ''}Click to open ${opens} for ${who}.`}
             onClick={(e) => {
               e.stopPropagation()
               onOpenPaySpeeds()

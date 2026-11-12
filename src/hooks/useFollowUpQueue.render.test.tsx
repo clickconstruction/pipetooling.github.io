@@ -76,6 +76,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}): FollowUpIo {
     takeIt: none,
     handTo: none,
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o1'),
     owedDone: vi.fn(async () => 'n1'),
     owedSentDone: vi.fn(async () => undefined),
