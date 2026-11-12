@@ -11,7 +11,7 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.6970, v2.6971
+ver: v2.6966, v2.6969, v2.6970, v2.6971, v2.6972
 next: Upgrade 1 PR 2, the Timeline's chips and Correct this entry in the composer, once PR 1's migration is pushed. Then the seat's reads, then upgrade 2.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.

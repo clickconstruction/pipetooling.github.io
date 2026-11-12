@@ -88,6 +88,33 @@ Evidence is never edited or deleted. A mistake is corrected by a new record that
 
 Tick **Counsel-only** for a record the firm alone should hold. The record stays in the app only. The record is never filed in Drive. The agent and the dev seat cannot read the record. A dev signed in still can. The record wears a lock chip, and the Evidence tab gains a Counsel-only filter.
 
+## Evidence numbers
+
+The file numbers each piece of evidence when you add it. The number reads like *Ev #41*. Two people adding evidence at once get two different numbers.
+
+Write *Ev #41* in an entry to point at that piece of evidence. On the Timeline it becomes a press that opens the record.
+
+Older evidence keeps the number typed into its title. The **Evidence** view tells you when records have no number from the file yet.
+
+1. Open **Evidence**.
+2. Press *See what numbering would do*. Nothing changes yet.
+3. Read the list. A record takes the number in its title only when no other record carries that number.
+4. Press the button that starts with *Number*.
+
+Two records with the same number are listed and left alone. A number with a letter is left alone too. You decide those yourself.
+
+## Keep a case's open items and log
+
+1. Open the **Case** view.
+2. Press {{button:blue|+ Add an item}}. Say what the item is and who has it.
+3. Press {{button:blue|Add the item}}. The file gives the item its number.
+
+Press *Close…* on an item when it is finished. Pick *Done* or *Dropped* and say why. Press *Hand over…* to change who has it.
+
+Every change to an item writes a line on the log. You can add a line of your own under **Log**.
+
+Does the item already have a number that people use? Type it in the number box. The file refuses a number that is taken.
+
 ## Name a theme to look for
 
 A long record is read by pattern, not by date. A theme is a plain name for one pattern. Dishonesty is a theme. Interference with the business is a theme.

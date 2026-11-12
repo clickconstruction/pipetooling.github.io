@@ -10,9 +10,12 @@ import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/peop
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
 import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsByEvidenceId, documentsTabCount, recordPickWords, tieToRecordProblem, transcribedRecordWords, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
 import { loadPersonDocument, loadPersonDocuments, savePersonDocument, tieDocumentToEvidence } from '../../../lib/people/personDocumentsIo'
-import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
+import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, sectionByNumber, splitByDoors } from '../../../lib/people/hrDocCitations'
 import { amendmentCountWords, amendmentEnds, amendmentIndex, amendmentKey, amendmentKindOfTable, amendmentTargetsProblem, amendmentThingWord, correctedKeys, type AmendmentHow, type AmendmentTarget, type PersonAmendmentRow } from '../../../lib/people/personAmendments'
 import { addAmendments, loadPersonAmendments, withdrawAmendment } from '../../../lib/people/personAmendmentsIo'
+import { caseItemCounts, exhibitBackfillWords, exhibitBesideTitle, exhibitLabel, exhibitNoFromTitle, type ExhibitBackfillReport, type PersonCaseItem, type PersonCaseLogLine } from '../../../lib/people/personCase'
+import { loadExhibitNumbers, loadPersonCase, runExhibitBackfill } from '../../../lib/people/personCaseIo'
+import { PersonCaseView } from './PersonCaseView'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
@@ -87,7 +90,7 @@ const SOURCE_LABELS: Record<string, string> = {
 const HR_FILES_BUCKET = 'hr-files'
 const PEOPLE_FOLDER_WORDS = 'People'
 
-export type PersonFileView = 'timeline' | 'evidence' | 'narrative' | 'themes' | 'matter'
+export type PersonFileView = 'timeline' | 'evidence' | 'narrative' | 'case' | 'themes' | 'matter'
 
 type LaneLook = { background: string; color: string; border?: string }
 
@@ -251,6 +254,15 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [withdrawingLinkId, setWithdrawingLinkId] = useState<string | null>(null)
   const [withdrawWhy, setWithdrawWhy] = useState('')
   const [withdrawBusy, setWithdrawBusy] = useState(false)
+  /** Punch list #315, upgrade 2: the number each evidence record goes by, the records with none yet, and the case's items and log. */
+  const [exhibitNoById, setExhibitNoById] = useState<Map<string, number>>(new Map())
+  const [unnumbered, setUnnumbered] = useState(0)
+  const [caseItems, setCaseItems] = useState<PersonCaseItem[]>([])
+  const [caseLog, setCaseLog] = useState<PersonCaseLogLine[]>([])
+  const [caseHeld, setCaseHeld] = useState<string | null>(null)
+  /** The numbering of old records: the dry run's report once asked for, whether titles with no number are numbered too, and a run in flight. */
+  const [numbering, setNumbering] = useState<{ report: ExhibitBackfillReport; rest: boolean } | null>(null)
+  const [numberingBusy, setNumberingBusy] = useState(false)
   /** A field report being filed or dismissed from its own line, and the dismissal's reason. */
   const [reportBusyId, setReportBusyId] = useState<string | null>(null)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
@@ -343,6 +355,37 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     void reloadAmendments()
   }, [reloadAmendments, changeKey])
 
+  const reloadNumbers = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setExhibitNoById(new Map())
+      setUnnumbered(0)
+      return
+    }
+    const r = await loadExhibitNumbers(personId)
+    setExhibitNoById(r.byId)
+    // A read that failed (the column is not there before its migration) says nothing about which records lack a number.
+    setUnnumbered(r.heldWhy ? 0 : r.unnumbered)
+  }, [viewer.isDev, personId])
+
+  const reloadCase = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setCaseItems([])
+      setCaseLog([])
+      setCaseHeld(null)
+      return
+    }
+    const r = await loadPersonCase(personId)
+    setCaseItems(r.items)
+    setCaseLog(r.log)
+    setCaseHeld(r.heldWhy)
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    setNumbering(null)
+    void reloadNumbers()
+    void reloadCase()
+  }, [reloadNumbers, reloadCase, changeKey, sources])
+
   const reloadThemes = useCallback(async () => {
     if (!viewer.isDev || !personId) {
       setThemes([])
@@ -434,6 +477,21 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     return m
   }, [lines])
   const amendIndex = useMemo(() => amendmentIndex(amendRows), [amendRows])
+  /** The record a number names: the database's number first, then the number an old title wears when only one record wears it. */
+  const evidenceIdByNumber = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const [id, n] of exhibitNoById) m.set(n, id)
+    const worn = new Map<number, string[]>()
+    for (const r of sources?.evidence ?? []) {
+      if (exhibitNoById.has(r.id)) continue
+      const n = exhibitNoFromTitle(r.title)
+      if (n === null) continue
+      worn.set(n, [...(worn.get(n) ?? []), r.id])
+    }
+    for (const [n, ids] of worn) if (!m.has(n) && ids.length === 1 && ids[0]) m.set(n, ids[0])
+    return m
+  }, [exhibitNoById, sources])
+  const exhibitBeside = (r: { id: string; title: string }): string | null => exhibitBesideTitle({ exhibit_no: exhibitNoById.get(r.id) ?? null, title: r.title })
   /** The Timeline line a linked thing stands on: an entry's own, a record's own, or the entry a record proves. */
   const lineByAmendKey = useMemo(() => {
     const m = new Map<string, PersonTimelineLine>()
@@ -855,7 +913,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }, 50)
   }
 
-  /** v2.6713 (punch list #287): from a document's header, the Evidence tab scrolled to the record it transcribes and lit for a moment. */
+  /** v2.6713 (punch list #287): from a document's header, and since punch list #315 from an `Ev #41` in an entry's words, the Evidence tab scrolled to the record and lit for a moment. */
   const openEvidenceRecord = (id: string) => {
     setOpenDoc(null)
     setDocEdit(null)
@@ -1176,6 +1234,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap' }}>
             <span style={chip(look)}>{line.kindWords}</span>
+            {line.ref.table === 'person_file_evidence' && exhibitBeside({ id: line.ref.id, title: line.what }) ? (
+              <span style={chip(FACT_TONE.gray)} data-testid={`line-exhibit-${line.ref.id}`}>{exhibitBeside({ id: line.ref.id, title: line.what })}</span>
+            ) : null}
             {line.ref.table === 'person_file_evidence' && transcriptByEvidenceId.has(line.ref.id) ? (
               <button type="button" onClick={() => { const t = transcriptByEvidenceId.get(line.ref.id); if (t) openTranscript(t.id) }} aria-label={`Open the transcript of ${line.what}`} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                 Transcript on file ›
@@ -1189,9 +1250,24 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           </span>
           <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
             {line.ref.table === 'person_file_entries' && viewer.isDev
-              ? splitByCitations(line.what).map((part, i) =>
+              ? splitByDoors(line.what).map((part, i) =>
                   part.kind === 'text' ? (
                     <span key={i}>{part.text}</span>
+                  ) : part.kind === 'exhibit' ? (
+                    evidenceIdByNumber.has(part.exhibitNo) ? (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-label={`Open the evidence record ${exhibitLabel(part.exhibitNo)}`}
+                        title={`The evidence record ${exhibitLabel(part.exhibitNo)}`}
+                        onClick={() => openEvidenceRecord(evidenceIdByNumber.get(part.exhibitNo) ?? '')}
+                        style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline dotted' }}
+                      >
+                        {part.raw}
+                      </button>
+                    ) : (
+                      <span key={i}>{part.raw}</span>
+                    )
                   ) : (
                     <button
                       key={i}
@@ -1502,6 +1578,78 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     </div>
   ) : null
 
+  /** Ask the file what numbering the old records would do (a dry run), or do it. */
+  const askNumbering = async (rest: boolean, write: boolean) => {
+    if (!personId || numberingBusy) return
+    setNumberingBusy(true)
+    const r = await runExhibitBackfill({ personId, dryRun: !write, numberRest: rest })
+    setNumberingBusy(false)
+    if (!r.ok) {
+      showToast(`The numbering was not read: ${r.why}`, 'error')
+      return
+    }
+    if (!write) {
+      setNumbering({ report: r.report, rest })
+      return
+    }
+    showToast(`${countedLabel('Numbered', r.report.numbered + r.report.no_number_numbered, ['record', 'records'])}. The titles are as they were.`, 'success')
+    setNumbering(null)
+    await reloadNumbers()
+  }
+
+  /** Punch list #315: records made before the file numbered them. The dry run is read first; nothing is guessed. */
+  const numberingStrip = (
+    <div style={{ ...CARD, marginBottom: '0.7rem', fontSize: '0.82rem', color: 'var(--text-base)' }} data-testid="evidence-numbering">
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <span>
+          {unnumbered} {unnumbered === 1 ? 'record has' : 'records have'} no number from the file yet. A record keeps its title either way.
+        </span>
+        {numbering === null ? (
+          <button type="button" disabled={numberingBusy} onClick={() => void askNumbering(false, false)} style={smallPress(false)}>
+            {numberingBusy ? 'Reading…' : 'See what numbering would do'}
+          </button>
+        ) : null}
+      </div>
+      {numbering ? (
+        <div style={{ marginTop: '0.5rem' }}>
+          <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {exhibitBackfillWords(numbering.report).map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+          {numbering.report.clashes.length > 0 ? (
+            <div style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="evidence-numbering-clashes">
+              {numbering.report.clashes.map((c) => (
+                <div key={c.number}>
+                  {exhibitLabel(c.number)} is worn by: {c.records.map((x) => `${dayWordsWithYear(x.day)} ${x.title}`).join(' · ')}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {numbering.report.no_number.length > 0 || numbering.rest ? (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.45rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <input type="checkbox" checked={numbering.rest} disabled={numberingBusy} onChange={(e) => void askNumbering(e.target.checked, false)} />
+              Also number the titles with no number, after the highest
+            </label>
+          ) : null}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.55rem' }}>
+            <button
+              type="button"
+              disabled={numberingBusy || numbering.report.numbered + numbering.report.no_number_numbered === 0}
+              onClick={() => void askNumbering(numbering.rest, true)}
+              style={{ ...smallPress(true), ...(numberingBusy || numbering.report.numbered + numbering.report.no_number_numbered === 0 ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : {}) }}
+            >
+              {countedLabel('Number', numbering.report.numbered + numbering.report.no_number_numbered, ['record', 'records'])}
+            </button>
+            <button type="button" onClick={() => setNumbering(null)} style={smallPress(false)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+
   const evidenceView = (() => {
     const older = sources?.attachments ?? []
     const nothing = evidenceRecords.length === 0 && older.length === 0
@@ -1531,6 +1679,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
             </button>
           ) : null}
         </div>
+        {canWrite && unnumbered > 0 ? numberingStrip : null}
         {nothing ? (
           <EmptyState compact main="No evidence on file yet." {...(canWrite ? { next: { label: '+ Add evidence', onPress: openEvidenceWindow }, tail: 'keeps the first: the day, a title, a memo and the files.' } : {})} />
         ) : (
@@ -1544,7 +1693,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                   <li key={r.id} data-person-evidence={r.id} style={{ ...CARD, display: 'grid', gridTemplateColumns: '5.6rem 1fr', gap: '0.3rem 0.8rem' }}>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingTop: 2, whiteSpace: 'nowrap' }}>{dayWordsWithYear(r.dated_on)}</span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{r.title}</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                        {exhibitBeside(r) ? <span style={{ ...chip(FACT_TONE.gray), marginRight: '0.4rem' }} data-testid={`evidence-exhibit-${r.id}`}>{exhibitBeside(r)}</span> : null}
+                        {r.title}
+                      </div>
                       {r.memo ? <div style={{ fontSize: '0.84rem', color: 'var(--text-base)', marginTop: '0.2rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.memo}</div> : null}
                       {r.files.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.45rem' }}>{r.files.map((f) => evidenceFileChip(f, r))}</div> : null}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.7rem', marginTop: '0.45rem', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
@@ -2117,6 +2269,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <button type="button" role="tab" aria-selected={view === 'narrative'} onClick={() => setView('narrative')} style={viewTab(view === 'narrative')}>
           Documents{documentsTab > 0 ? ` (${documentsTab})` : ''}
         </button>
+        {viewer.isDev ? (
+          <button type="button" role="tab" aria-selected={view === 'case'} onClick={() => setView('case')} style={viewTab(view === 'case')} data-testid="person-file-tab-case">
+            Case{caseItemCounts(caseItems).open > 0 ? ` (${caseItemCounts(caseItems).open})` : ''}
+          </button>
+        ) : null}
         {viewer.isDev && themes.length > 0 ? (
           <button type="button" role="tab" aria-selected={view === 'themes'} onClick={() => setView('themes')} style={viewTab(view === 'themes')} data-testid="person-file-tab-themes">
             By theme{marks.some((m) => !m.removed_at) ? ` (${new Set(marks.filter((m) => !m.removed_at).map((m) => `${m.target_kind}:${m.target_id}`)).size})` : ''}
@@ -2135,7 +2292,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the file…</p>
       ) : (
         <>
-          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={() => { void reloadMatter(); onChanged?.() }} namesById={sources?.input.namesById ?? {}} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : documentsView}
+          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'case' ? (personId ? <PersonCaseView personId={personId} canWrite={canWrite} items={caseItems} log={caseLog} heldWhy={caseHeld} onChanged={reloadCase} showToast={showToast} /> : null) : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={() => { void reloadMatter(); onChanged?.() }} namesById={sources?.input.namesById ?? {}} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : documentsView}
           {heldWords.length > 0 ? (
             <p style={{ margin: '1rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Not read here: {heldWords.join(' · ')}.</p>
           ) : null}
