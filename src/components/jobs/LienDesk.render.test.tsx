@@ -1300,7 +1300,8 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
     const html = openPrintMock.mock.calls[0]![0]
     expect(html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(2)
-    expect(html.match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
+    // On the two papers, behind the help sheet (whose small picture of the paper names the county too).
+    expect(html.slice(html.lastIndexOf('</section>')).match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
     expect(html).not.toContain('where signed')
     expect(html).toContain('Each paper has four things to write')
     expect(html).toContain('data-lien-help-batch-checks')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answeredWords, foldNameAnswers, listedName, listedOnWords, nameStanding, questionWords, standingChip, tiePreviewWords, tiedNames, wordOfWords, type NameAnswerRow } from './nameAnswers'
+import { answeredWords, foldNameAnswers, listedName, listedOnWords, nameGrade, nameStanding, questionWords, standingChip, tiePreviewWords, tiedNames, wordOfWords, type NameAnswerRow } from './nameAnswers'
 
 // Every name here is made up.
 const GC = 'Ridgeway Builders'
@@ -52,7 +52,7 @@ describe('nameStanding', () => {
   const states = (rows: NameAnswerRow[]) => foldNameAnswers(rows, ['c1'])
 
   it('asks while nothing is settled', () => {
-    expect(nameStanding(permit, GC, states([]), ME, NONE)).toEqual({ kind: 'ask', key: 'danawhitlow', name: 'Dana Whitlow' })
+    expect(nameStanding(permit, GC, states([]), ME, NONE)).toEqual({ kind: 'ask', key: 'danawhitlow', name: 'Dana Whitlow', grade: 'possible' })
   })
 
   it('does not ask about the GC’s own name, or a permit that lists nobody', () => {
@@ -61,7 +61,7 @@ describe('nameStanding', () => {
   })
 
   it('reads the key off the contact line when the row carries none', () => {
-    expect(nameStanding({ id: 'p1', contact: 'Paula Kemp, Hartwell Interiors LLC' }, GC, states([]), ME, NONE)).toEqual({ kind: 'ask', key: 'hartwellinteriors', name: 'Hartwell Interiors LLC' })
+    expect(nameStanding({ id: 'p1', contact: 'Paula Kemp, Hartwell Interiors LLC' }, GC, states([]), ME, NONE)).toEqual({ kind: 'ask', key: 'hartwellinteriors', name: 'Hartwell Interiors LLC', grade: 'possible' })
   })
 
   it('is settled by a tie to every permit, or to this one alone', () => {
@@ -82,6 +82,39 @@ describe('nameStanding', () => {
     expect(nameStanding(permit, GC, s, 'u1', NONE).kind).toBe('not_sure')
     expect(nameStanding(permit, GC, s, 'u2', NONE).kind).toBe('ask')
   })
+
+  it('asks the likely grade when one name begins the other, and still ties nothing by itself', () => {
+    const branch = { id: 'p1', contact: 'Ridgeway Builders of Texas LLC', builder_key: 'ridgewaybuildersoftexas' }
+    expect(nameStanding(branch, GC, states([]), ME, NONE)).toEqual({ kind: 'ask', key: 'ridgewaybuildersoftexas', name: 'Ridgeway Builders of Texas LLC', grade: 'likely' })
+    // The answers settle it the way they settle any name: the same rows.
+    const tied = states([row({ builder_key: 'ridgewaybuildersoftexas', name: 'Ridgeway Builders of Texas LLC' })])
+    expect(nameStanding(branch, GC, tied, ME, NONE)).toMatchObject({ kind: 'tied', scope: 'all' })
+    const no = states([row({ builder_key: 'ridgewaybuildersoftexas', answer: 'someone_else', scope: null })])
+    expect(nameStanding(branch, GC, no, ME, NONE).kind).toBe('someone_else')
+    const passed = states([row({ builder_key: 'ridgewaybuildersoftexas', answer: 'not_sure', scope: null, answered_by: ME })])
+    expect(nameStanding(branch, GC, passed, ME, NONE).kind).toBe('not_sure')
+    // A name that files for others is never asked, however alike.
+    expect(nameStanding(branch, GC, states([]), ME, new Map([['ridgewaybuildersoftexas', 'files_for_others']])).kind).toBe('files_for_others')
+  })
+})
+
+describe('nameGrade', () => {
+  it('is likely when one name begins the other, either way round, word for word', () => {
+    expect(nameGrade('Ridgeway Builders of Texas LLC', GC)).toBe('likely')
+    expect(nameGrade('Ridgeway Builders San Antonio', GC)).toBe('likely')
+    expect(nameGrade('Ridgeway', 'Ridgeway Builders')).toBe('likely')
+    // A legal word apart is the longer legal name too, though the keys differ.
+    expect(nameGrade('Ridgeway Builders LP', GC)).toBe('likely')
+  })
+
+  it('is possible for a shared word, a near miss, a person, or a word that only starts the same', () => {
+    expect(nameGrade('Ridgeway Roofing Co', GC)).toBe('possible')
+    expect(nameGrade('Ridgway Builders', GC)).toBe('possible')
+    expect(nameGrade('Dana Whitlow', GC)).toBe('possible')
+    expect(nameGrade('Ridgewayne Builders', GC)).toBe('possible')
+    // A trade word alone begins nothing.
+    expect(nameGrade('Builders', 'Builders Supply Group')).toBe('possible')
+  })
 })
 
 describe('the words', () => {
@@ -96,8 +129,21 @@ describe('the words', () => {
       lead: 'The city lists Dana Whitlow on this permit.',
       ask: 'Do you know who that is?',
       worksFor: 'Works for Ridgeway Builders',
+      someoneElse: 'Someone else…',
       why: 'Asked because you are bidding this address to Ridgeway Builders. Asked once.',
     })
+  })
+
+  it('asks Same company? on the likely grade, beside the customer’s own name', () => {
+    expect(questionWords('Ridgeway Builders of Texas LLC', GC, 'likely')).toEqual({
+      lead: 'The city lists Ridgeway Builders of Texas LLC on this permit. Your customer is Ridgeway Builders.',
+      ask: 'Same company?',
+      worksFor: 'Same company',
+      someoneElse: 'Not them…',
+      why: 'Asked because one name begins the other. Asked once.',
+    })
+    expect(questionWords('Hartwell', 'Hartwell & Assoc.', 'likely').lead).toBe('The city lists Hartwell on this permit. Your customer is Hartwell & Assoc.')
+    expect(questionWords('Dana Whitlow', GC, 'possible')).toEqual(questionWords('Dana Whitlow', GC))
   })
 
   it('ends a sentence once after a name that ends in a full stop', () => {
@@ -116,6 +162,16 @@ describe('the words', () => {
     expect(tiePreviewWords('Dana Whitlow', GC, 0)).toMatchObject({ all: 'Tie Dana Whitlow to Ridgeway Builders', one: null })
   })
 
+  it('shows a likely tie as the same company, with the same two presses', () => {
+    expect(tiePreviewWords('Ridgeway Builders of Texas LLC', GC, 7, 'likely')).toEqual({
+      lead: 'Ridgeway Builders of Texas LLC is the same company as Ridgeway Builders. The city lists Ridgeway Builders of Texas LLC on 7 other permits we can see.',
+      all: 'Show all 7 under Ridgeway Builders',
+      one: 'This permit only',
+      why: 'Look at them first. Two companies can share the start of a name.',
+    })
+    expect(tiePreviewWords('Ridgeway Builders of Texas LLC', GC, 0, 'likely')).toMatchObject({ lead: 'Ridgeway Builders of Texas LLC is the same company as Ridgeway Builders. The city lists Ridgeway Builders of Texas LLC on no other permit we can see.', one: null })
+  })
+
   it('says whose word an answer is', () => {
     expect(wordOfWords('u1', '2026-11-10T18:00:00Z', 'u1', nameOf)).toBe('your word, Nov 10')
     expect(wordOfWords('u2', '2026-11-10T18:00:00Z', 'u1', nameOf)).toBe('Sam’s word, Nov 10')
@@ -131,14 +187,21 @@ describe('the words', () => {
     expect(answeredWords(tied, GC, 0, 'Sam’s word, Nov 9')).toBe('Tied on Sam’s word, Nov 9. Dana Whitlow works for Ridgeway Builders.')
     expect(answeredWords({ kind: 'someone_else', key: 'k', name: 'Dana Whitlow', by: 'u2', at: null }, GC, 0, 'Sam’s word, Nov 10')).toBe('Sam’s word, Nov 10. Dana Whitlow does not work for Ridgeway Builders.')
     expect(answeredWords({ kind: 'not_sure', key: 'k', name: 'Dana Whitlow' }, GC, 0, '')).toBe('You said you are not sure who Dana Whitlow is. The question stays open for the rest of the team.')
-    expect(answeredWords({ kind: 'ask', key: 'k', name: 'Dana Whitlow' }, GC, 0, '')).toBeNull()
+    expect(answeredWords({ kind: 'ask', key: 'k', name: 'Dana Whitlow', grade: 'possible' }, GC, 0, '')).toBeNull()
+  })
+
+  it('says what an answer on the likely grade did, as the same company', () => {
+    const tied = { kind: 'tied' as const, key: 'k', name: 'Ridgeway Builders of Texas LLC', scope: 'all' as const, by: 'u1', at: null }
+    expect(answeredWords(tied, GC, 7, 'your word, Nov 10')).toBe('Tied on your word, Nov 10. Ridgeway Builders of Texas LLC is the same company as Ridgeway Builders. 7 other permits now show under Ridgeway Builders.')
+    expect(answeredWords({ kind: 'someone_else', key: 'k', name: 'Ridgeway Builders of Texas LLC', by: 'u2', at: null }, GC, 0, 'Sam’s word, Nov 10')).toBe('Sam’s word, Nov 10. Ridgeway Builders of Texas LLC is not Ridgeway Builders.')
+    expect(standingChip(tied, GC)).toEqual({ words: 'Same company as Ridgeway Builders', tone: 'blue' })
   })
 
   it('draws a chip once the question is settled', () => {
     expect(standingChip({ kind: 'tied', key: 'k', name: 'n', scope: 'all', by: null, at: null }, GC)).toEqual({ words: 'Works for Ridgeway Builders', tone: 'blue' })
     expect(standingChip({ kind: 'own_name', key: 'k', name: 'n' }, GC)).toEqual({ words: 'Their own name', tone: 'blue' })
     expect(standingChip({ kind: 'someone_else', key: 'k', name: 'n', by: null, at: null }, GC)).toEqual({ words: 'Not theirs', tone: 'grey' })
-    expect(standingChip({ kind: 'ask', key: 'k', name: 'n' }, GC)).toBeNull()
+    expect(standingChip({ kind: 'ask', key: 'k', name: 'n', grade: 'possible' }, GC)).toBeNull()
   })
 })
 

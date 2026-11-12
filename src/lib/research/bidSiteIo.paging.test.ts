@@ -10,7 +10,7 @@ const { rpc, from, getSession } = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(
 vi.mock('../supabase', () => ({ supabase: { rpc, from, auth: { getSession } } }))
 
 import { resetRowCapHitWarningsForTests } from '../supabasePaging'
-import { loadAllNameAnswers, loadCustomerNames, loadNameAnswers, loadPermitsByHouseNumber, SITE_PERMITS_RPC_LIMIT } from './bidSiteIo'
+import { loadAllNameAnswers, loadCustomerNames, loadNameAnswers, loadPermitsByHouseNumber, recordNameAnswer, SITE_PERMITS_RPC_LIMIT } from './bidSiteIo'
 
 type Failure = { code: string; message: string }
 type Call = [method: string, ...args: unknown[]]
@@ -187,5 +187,54 @@ describe('our customers by name, past 1,000 rows', () => {
     expect(steps(asked.calls, 'is')).toEqual([['archived_at', null], ['archived_at', null]])
     expect(steps(asked.calls, 'order')).toEqual([['name'], ['id'], ['name'], ['id']])
     expect(steps(asked.calls, 'range')).toEqual([[0, 999], [1000, 1999]])
+  })
+})
+
+describe('one read for everyone who asks together', () => {
+  const answers = Array.from({ length: 12 }, (_, i) => ({ id: `a${i}`, customer_id: 'c1', builder_key: `k${i}`, answered_at: '2026-11-10T12:00:00Z' }))
+
+  it('hands Builders’ two readers of the answers one read, and reads again for the next to ask', async () => {
+    const asked = read(answers)
+    from.mockReturnValue(asked.chain)
+
+    const [worklist, column] = await Promise.all([loadAllNameAnswers(), loadAllNameAnswers()])
+
+    expect(worklist?.rows).toHaveLength(12)
+    expect(column?.rows).toBe(worklist?.rows)
+    expect(steps(asked.calls, 'range')).toEqual([[0, 999]])
+    await loadAllNameAnswers()
+    expect(steps(asked.calls, 'range')).toEqual([[0, 999], [0, 999]])
+  })
+
+  it('hands them one read of the customers too', async () => {
+    const asked = read([{ id: 'c1', name: 'Ridgeway Builders' }])
+    from.mockReturnValue(asked.chain)
+
+    const [a, b] = await Promise.all([loadCustomerNames(), loadCustomerNames()])
+
+    expect(a).toBe(b)
+    expect(steps(asked.calls, 'range')).toEqual([[0, 999]])
+  })
+
+  it('never hands a read that began before an answer landed to whoever asks after it', async () => {
+    // The first read hangs until it is let go; the answer lands meanwhile.
+    let letGo: (value: unknown) => void = () => undefined
+    const slow = read([])
+    slow.chain.range = () => new Promise((resolve) => (letGo = resolve))
+    const insert = vi.fn().mockResolvedValue({ data: null, error: null, status: 201 })
+    const fresh = read(answers)
+    let reads = 0
+    from.mockImplementation(() => ({ ...(reads++ === 0 ? slow.chain : fresh.chain), insert }))
+
+    const before = loadAllNameAnswers()
+    // Let the first read reach the database before the answer is saved.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await recordNameAnswer({ builderKey: 'k1', customerId: 'c1', answer: 'works_for', scope: 'all', permitId: null, name: 'Dana Whitlow' })
+    const after = await loadAllNameAnswers()
+    letGo({ data: [], error: null, status: 200 })
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ builder_key: 'k1', answer: 'works_for', scope: 'all', answered_by: 'u1' }))
+    expect(after?.rows).toHaveLength(12)
+    expect((await before)?.rows).toEqual([])
   })
 })

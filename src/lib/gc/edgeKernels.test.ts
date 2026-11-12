@@ -96,6 +96,17 @@ describe('what the index does not carry', () => {
       'lib/outcomeChangeBidNote.ts',
       'lib/bidLossCategories.ts',
       'lib/bids/submissionSections.ts',
+      // The dev seat's plan_bid_counts (v2.6967): the Count Sheet's rules.
+      'lib/bids/countSheet.ts',
+      'lib/bids/countRowUnit.ts',
+      'lib/bids/parseCountsImportText.ts',
+      'lib/bids/pickActiveVersion.ts',
+      // The dev seat's plan_bid_takeoff: the materials total and how a part is sold.
+      'lib/bids/bidMaterials.ts',
+      'lib/materials/orderIncrement.ts',
+      // The dev seat's plan_bid_labor: the tab's cost line and the sync's fixture key.
+      'lib/bids/bidTotalCostBreakdown.ts',
+      'lib/bids/laborSyncPlan.ts',
     ])
     const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
     expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])

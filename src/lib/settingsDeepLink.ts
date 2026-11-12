@@ -27,6 +27,7 @@
 
 import { JOBS_BILLING_CHILD_ANCHORS, JOBS_BILLING_TAB, jobsBillingAnchorToTab } from './settings/jobsBillingGroups'
 import { movedSettingsCardAnchorNow, movedSettingsCardAnchorToTab } from './settings/settingsFoldCards'
+import { OUR_NAMES_CARD, OUR_NAMES_TAB } from './research/ourNames'
 
 /** Section anchor id → the settings tab/group that renders it. */
 export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
@@ -43,6 +44,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   ...jobsBillingAnchorToTab(),
   // The three cards that left Jobs, bills and liens (punch list #261 PR 2): each on its new tab, by its new anchor and its old one.
   ...movedSettingsCardAnchorToTab(),
+  // Our names on plumbing permits (punch list #307): the bid guide and the search land on the card.
+  [OUR_NAMES_CARD.anchor]: OUR_NAMES_TAB,
   // The editors Settings → Contracts & terms opens.
   'settings-estimate-public-terms': 'settings-catalogs',
   'settings-estimate-cx-defaults': 'settings-catalogs',

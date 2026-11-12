@@ -4,6 +4,7 @@ import { RESEARCH_CITIES } from '../lib/research/permitResearch'
 import { numbersToAsk, type Chip, type SitePermitRow } from '../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../lib/research/bidSiteIo'
 import { bidPermitNews, type NewsBid, type NewsItem } from '../lib/research/bidPermitNews'
+import { NO_OUR_KEYS, type OurNameKeys } from '../lib/research/ourNames'
 
 const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map(), news: [] }
 
@@ -11,9 +12,10 @@ const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map
  * Permit news for the Bid Board (punch list #307, PR 5): one read for every undecided bid on the
  * board, never one per row. The house numbers of the bids that are street addresses in a city we
  * read are asked once; the chips and the news are worked out here. A failed read, or the read
- * not on the database yet, draws nothing: the board is whole without it.
+ * not on the database yet, draws nothing: the board is whole without it. `ourKeys` are the names
+ * that are us on a plumbing permit (`useOurPermitNames`); the board passes them in.
  */
-export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean): { chips: Map<string, Chip>; news: NewsItem[] } {
+export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, ourKeys: OurNameKeys = NO_OUR_KEYS): { chips: Map<string, Chip>; news: NewsItem[] } {
   const undecided = useMemo(() => (enabled ? bids.filter((b) => b.outcome == null) : []), [bids, enabled])
   const asks = useMemo(() => numbersToAsk(undecided, RESEARCH_CITIES), [undecided])
   // The read runs again only when the set of house numbers changes, not on every reload of the board.
@@ -48,5 +50,5 @@ export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean): { 
     }
   }, [asksKey])
 
-  return useMemo(() => (permits ? bidPermitNews(undecided, permits, RESEARCH_CITIES, todayYmdInAppTz()) : NOTHING), [permits, undecided])
+  return useMemo(() => (permits ? bidPermitNews(undecided, permits, RESEARCH_CITIES, todayYmdInAppTz(), ourKeys) : NOTHING), [permits, undecided, ourKeys])
 }

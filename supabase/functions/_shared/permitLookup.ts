@@ -118,8 +118,8 @@ export type ParcelFacts = {
   building_sf: number | null
   acres: number | null
   detail_url: string | null
-  /** Set when the county had no parcel under the street address and the permit's own point was asked instead (`permitParcels.ts`). */
-  matched_by?: 'point'
+  /** How the parcel was found when not by the street address (`permitParcels.ts`): `point`, the permit's own point, asked when the address has no parcel; `id`, the county's id for the lot the permit carries, which is the exact lot. */
+  matched_by?: 'point' | 'id'
 }
 
 function num(v: unknown): number | null {

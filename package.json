@@ -155,6 +155,8 @@
     "test:pg:bill-lines-sweep": "bash scripts/pgtest-bill-lines-sweep.sh",
     "test:pg:price-sheets": "bash scripts/pgtest-price-sheets.sh",
     "test:pg:case-search-phrases": "bash scripts/pgtest-case-search-phrases.sh",
+    "test:pg:person-matter-document-fence": "bash scripts/pgtest-person-matter-document-fence.sh",
+    "test:pg:person-file-amendments": "bash scripts/pgtest-person-file-amendments.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

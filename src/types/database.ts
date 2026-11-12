@@ -38173,6 +38173,7 @@ export type Database = {
           calibration_standard: boolean
           card_look: string | null
           card_name: string | null
+          card_size: string | null
           charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
@@ -38215,6 +38216,7 @@ export type Database = {
           calibration_standard?: boolean
           card_look?: string | null
           card_name?: string | null
+          card_size?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
@@ -38257,6 +38259,7 @@ export type Database = {
           calibration_standard?: boolean
           card_look?: string | null
           card_name?: string | null
+          card_size?: string | null
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null

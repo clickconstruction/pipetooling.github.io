@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -25,7 +26,12 @@ import { googleAskForCompany, sitePermitLines, type SitePermit } from '../../lib
 import { historyAsk, historyDoneWords, permitsColumnWords, reachWords, recordsReach, recordsStartLine, theirPermitsTitle, type RecordsReach } from '../../lib/research/permitReach'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { usePermitLookAlikes } from '../../hooks/usePermitLookAlikes'
+import { useBuilderAnswers } from '../../hooks/useBuilderAnswers'
+import { byWordWords, openLookAlikes, throughWords, withAnsweredBids } from '../../lib/research/builderAnswers'
+import type { BuilderAnswersGround } from '../../lib/research/builderAnswersIo'
+import { BuilderNameTies } from './BuilderNameTies'
 import { PermitLookAlikes } from './PermitLookAlikes'
+import { permitsLinkWithLooks, readPermitsLink } from '../../lib/research/permitsLink'
 import { loadBuilders, loadPermitsOfBuilder, markBuilder, pullPermitsBack, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
 
@@ -34,7 +40,9 @@ import { GoogleSearchPress } from './GoogleSearchPress'
  * in the city as far back as the records go, a year at most, with our mark, how busy it is, how many of its permits have no
  * plumber yet, our bids with it and the plumber it uses. The chip *3 or more permits and never
  * bid* is who to get to know. A row opens the builder: its mark with the reason, what kind of
- * company it is, and its permits.
+ * company it is, and its permits. Our bids are the customer of the same name plus the customers
+ * someone tied the name to (punch list #307): the answers are read once for the list, and the
+ * builder's sheet shows each tie with whose word it is and takes it back.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' })
@@ -104,10 +112,21 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
     }
   }
 
-  const all = useMemo(() => rows ?? [], [rows])
+  // The answers on names (punch list #307): a name someone tied to a customer counts that customer's bids as ours with it.
+  const answers = useBuilderAnswers()
+  const ground = answers.ground
+  const all = useMemo(() => (ground ? withAnsweredBids(rows ?? [], ground.book, ground.bids) : (rows ?? [])), [rows, ground])
   // Names that may be one of our customers (punch list #307): a chip with its count, and the list behind it.
   const lookAlikes = usePermitLookAlikes(city, all)
-  const [looking, setLooking] = useState(false)
+  // A pair answered from a builder's sheet leaves the worklist at once.
+  const pairs = useMemo(() => (lookAlikes.pairs == null ? null : ground ? openLookAlikes(lookAlikes.pairs, ground.book) : lookAlikes.pairs), [lookAlikes.pairs, ground])
+  // The chip rides the address (`looks=1`), so the Needs you line opens on it and a reload comes back to it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [looking, setLooking] = useState(() => readPermitsLink(searchParams).looks)
+  const showLooks = (on: boolean) => {
+    setLooking(on)
+    setSearchParams(permitsLinkWithLooks(searchParams, on), { replace: true })
+  }
   const counts = useMemo(() => builderChipCounts(all), [all])
   const list = useMemo(() => buildersShowing(all, showing, search), [all, showing, search])
   const open = useMemo(() => all.find((r) => r.key === openKey) ?? null, [all, openKey])
@@ -133,9 +152,9 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
             {BUILDER_SHOWING_WORDS[s]} {counts[s]}
           </button>
         ))}
-        {lookAlikes.pairs != null && (
-          <button type="button" aria-pressed={looking} onClick={() => setLooking((v) => !v)} style={chip(looking)}>
-            Looks like a customer {lookAlikes.pairs.length}
+        {pairs != null && (
+          <button type="button" aria-pressed={looking} onClick={() => showLooks(!looking)} style={chip(looking)}>
+            Looks like a customer {pairs.length}
           </button>
         )}
         <input type="search" aria-label="Search builders" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a builder or a plumber" style={{ flex: '1 1 200px', minWidth: 0, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 11px', font: 'inherit', fontSize: '0.875rem', minHeight: 36, background: 'var(--surface)', color: 'var(--text)' }} />
@@ -152,13 +171,23 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
         </div>
       )}
 
-      {looking && lookAlikes.pairs != null ? (
+      {answers.error && (
+        <div style={{ ...muted, color: 'var(--text-red-700)' }}>
+          <div>{answers.error}</div>
+          <div style={muted}>Until the answers on names read, Our bids counts the same name only.</div>
+        </div>
+      )}
+
+      {looking && pairs != null ? (
         <PermitLookAlikes
-          pairs={lookAlikes.pairs}
+          pairs={pairs}
           busy={lookAlikes.busy}
           error={lookAlikes.error}
           onAnswer={(pair, tie) => {
-            void lookAlikes.answer(pair, tie).then(() => onChanged())
+            void lookAlikes.answer(pair, tie).then(() => {
+              answers.reload()
+              onChanged()
+            })
           }}
         />
       ) : list.length === 0 ? (
@@ -224,7 +253,15 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
                   <td style={num}>{r.permits}</td>
                   <td style={num}>{r.open}</td>
                   <td style={td}>{shortDay(r.last_permit_on)}</td>
-                  <td style={td}>{ourBidsWords(r)}</td>
+                  <td style={td}>
+                    {ourBidsWords(r)}
+                    {throughWords(r) && (
+                      <>
+                        <br />
+                        <span style={muted}>{throughWords(r)}</span>
+                      </>
+                    )}
+                  </td>
                   <td style={td}>{plumberUsedWords(r)}</td>
                 </tr>
               ))}
@@ -240,6 +277,8 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
           authUserId={authUserId}
           todayYmd={todayYmd}
           reach={reach}
+          ground={ground}
+          onAnswered={answers.reload}
           onClose={() => setOpenKey(null)}
           onSaved={() => {
             void load()
@@ -252,7 +291,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
 }
 
 /** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. */
-function BuilderSheet({ row, city, authUserId, todayYmd, reach, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; onClose: () => void; onSaved: () => void }) {
+function BuilderSheet({ row, city, authUserId, todayYmd, reach, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToastContext()
   const name = builderName(row)
   const [mark, setMark] = useState<BuilderMarkValue | 'none'>(row.mark ?? 'none')
@@ -374,8 +413,11 @@ function BuilderSheet({ row, city, authUserId, todayYmd, reach, onClose, onSaved
             Our bids: {ourBidsWords(row)}
             {row.last_bid_on ? `, the last on ${shortDay(row.last_bid_on)}` : ''}. Plumber they use: {plumberUsedWords(row)}.
           </div>
+          {byWordWords(row) && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{byWordWords(row)}</div>}
           <div style={{ ...muted, marginTop: 4 }}>People and calls are kept on the lead a pursued permit makes, on its calling deck.</div>
         </section>
+
+        {ground && <BuilderNameTies row={row} ground={ground} onAnswered={onAnswered} />}
 
         <section>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>{theirPermitsTitle(reach, todayYmd)}</div>

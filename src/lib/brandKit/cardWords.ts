@@ -35,6 +35,11 @@ export const CARD_WORDS = {
   lookSaved: 'Look saved',
   lookNotSaved: 'The look was not saved.',
 
+  sizeLabel: 'Card size',
+  sizeHint: 'The owner approved these. Pick one and the back of your card changes. Your footer stays as it is.',
+  sizeSaved: 'Card size saved',
+  sizeNotSaved: 'The card size was not saved.',
+
   save: 'Save the card',
   saving: 'Saving…',
   saved: 'Card saved',
@@ -90,6 +95,7 @@ export function cardWordsFor(teammate: string | null) {
     loading: 'Reading the card…',
     notRead: 'The card could not be read.',
     lookHint: 'The owner approved these. Pick one and their footer and their card both change.',
+    sizeHint: 'The owner approved these. Pick one and the back of their card changes. Their footer stays as it is.',
     nameHint: 'Their full name, as a customer should read it.',
     titleHint: 'The same title their email signature uses. Leave it empty and the line is left off.',
     emailHint: 'Their sign-in email.',
@@ -118,6 +124,12 @@ export const LOOKS_WORDS = {
   saved: 'Looks saved',
   notSaved: 'The looks were not saved.',
   foot: 'Switching a look off moves the people on it to the default. Their next footer and card are drawn in the default.',
+
+  sizesTitle: 'Card sizes',
+  sizesLead: 'Switch a size on to offer it to the team. A size changes the back of the card. The front and the footer stay as they are.',
+  sizesSaved: 'Card sizes saved',
+  sizesNotSaved: 'The card sizes were not saved.',
+  sizesFoot: 'Switching a size off moves the people on it to the default. Their next card is drawn in the default.',
 } as const
 
 /** How many people a look is drawn for, as the owner's card says it. */

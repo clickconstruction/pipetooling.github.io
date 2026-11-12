@@ -12,6 +12,7 @@ import { guessTextWidth } from '../../lib/brandKit/draw'
 import { DEFAULT_CROP } from '../../lib/brandKit/person'
 import type { CardLooksSetting } from '../../lib/brandKit/looks'
 import type { KitRenderer } from '../../lib/brandKit/render'
+import type { CardSizesSetting } from '../../lib/brandKit/sizes'
 import type { TeamCardRow } from '../../lib/brandKit/team'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { TeamCardsWindow } from './TeamCardsWindow'
@@ -31,10 +32,11 @@ const row = (id: string, name: string, photoPath: string | null, over: Partial<T
 })
 const TEAM = [row('m', 'Marisol Vega', 'm/photo-1.jpg'), row('d', 'Dale Okafor', 'd/photo-1.jpg'), row('h', 'Hank Brewer', null), row('l', 'Lucia Ferrante', 'l/photo-1.jpg', { phone: null })]
 
-function fakeIo(photo?: TeamCardIo['photo'], team: TeamCardRow[] = TEAM, looks: CardLooksSetting = { approved: ['classic'], default: 'classic' }) {
+function fakeIo(photo?: TeamCardIo['photo'], team: TeamCardRow[] = TEAM, looks: CardLooksSetting = { approved: ['classic'], default: 'classic' }, sizes: CardSizesSetting = { approved: ['standard'], default: 'standard' }) {
   return {
     team: vi.fn(async () => team),
     looks: vi.fn(async () => looks),
+    sizes: vi.fn(async () => sizes),
     photo: vi.fn(photo ?? (async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 }))),
   } satisfies TeamCardIo
 }
@@ -93,6 +95,22 @@ describe('TeamCardsWindow', () => {
     expect(pages[3]?.svg).toContain('Marisol Vega')
     expect(pages[3]?.svg).toContain('fill="#f6c700"')
     expect(pages[2]?.svg).toContain('fill="#16283c">CLICK</text>')
+  })
+
+  it('prints each person’s card in the size they picked, the rest in the default, and a pick that is off in the default', async () => {
+    const renderer = fakeRenderer()
+    const team = [{ ...row('m', 'Marisol Vega', 'm/photo-1.jpg'), size: 'photo' }, row('d', 'Dale Okafor', 'd/photo-1.jpg'), { ...row('l', 'Lucia Ferrante', 'l/photo-1.jpg'), size: 'text' }]
+    renderWithProviders(<TeamCardsWindow io={fakeIo(undefined, team, undefined, { approved: ['standard', 'photo'], default: 'standard' })} renderer={renderer} onClose={() => undefined} onOpenCard={() => undefined} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Make 3 cards' }))
+    await waitFor(() => expect(renderer.pdf).toHaveBeenCalledTimes(1))
+    const pages = (renderer.pdf.mock.calls[0] as unknown as [{ svg: string }[]])[0]
+    // Dale, Lucia, Marisol: a front and a back each
+    expect(pages[1]?.svg).toContain('Dale Okafor')
+    expect(pages[1]?.svg).toContain('font-size="52.0"')
+    expect(pages[3]?.svg).toContain('Lucia Ferrante')
+    expect(pages[3]?.svg).toContain('font-size="52.0"')
+    expect(pages[5]?.svg).toContain('Marisol Vega')
+    expect(pages[5]?.svg).toContain('font-size="62.0"')
   })
 
   it('keeps going past a person whose photo will not load, and names them', async () => {

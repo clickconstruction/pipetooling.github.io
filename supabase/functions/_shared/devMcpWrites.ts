@@ -36,12 +36,17 @@ import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
+import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
 import { bidUpdateInput, isBidUpdateVerb } from './devMcpBidUpdate.ts'
+import { bidCountsInput, isBidCountsVerb } from './devMcpBidCounts.ts'
+import { bidTakeoffInput, isBidTakeoffVerb } from './devMcpBidTakeoff.ts'
+import { bidLaborInput, isBidLaborVerb } from './devMcpBidLabor.ts'
+import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -182,6 +187,12 @@ export const WRITE_VERBS = {
   apply_collections_flag: { rpc: null, step: 'apply' },
   plan_contract_ended: { rpc: null, step: 'plan' },
   apply_contract_ended: { rpc: null, step: 'apply' },
+  // v2.6950 (the first of the Lien desk's verbs): a property record's lien facts as the Property record row, Edit
+  // customer's Properties and the Lien desk's property window save them — the county, the legal description, the kind,
+  // the homestead answer, the owner of record — one PATCH on customer_addresses under RLS; rpc is null, the dry run the
+  // server's read of the record and the jobs linked to it (devMcpPropertyRecord.ts).
+  plan_property_record: { rpc: null, step: 'plan' },
+  apply_property_record: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -225,6 +236,32 @@ export const WRITE_VERBS = {
   // it and each row a new id names (devMcpBidUpdate.ts).
   plan_bid_update: { rpc: null, step: 'plan' },
   apply_bid_update: { rpc: null, step: 'apply' },
+  // v2.6967 (the bid train's PR 2): a bid's count rows as the Counts tab writes them — a row added as the Count Sheet's
+  // quick add adds it, changed as its inline edit changes it, removed as its delete removes it, an alternate joined to
+  // the bid's; rpc is null, the dry run the server's read of the bid, its versions and the active version's rows
+  // (devMcpBidCounts.ts). A row with a fault is held and the rest goes on.
+  plan_bid_counts: { rpc: null, step: 'plan' },
+  apply_bid_counts: { rpc: null, step: 'apply' },
+  // v2.6968 (the bid train's PR 3): a bid's takeoff as the Takeoffs tab holds it — the part lines on a count row, added,
+  // changed or rewritten whole, and the quoted materials cost each; rpc is null, the dry run the server's read of the
+  // bid, the active version's count rows and lines, the parts and their lowest prices (devMcpBidTakeoff.ts).
+  plan_bid_takeoff: { rpc: null, step: 'plan' },
+  apply_bid_takeoff: { rpc: null, step: 'apply' },
+  // v2.6976 (the bid train's PR 4): a bid's Labor tab — the estimate's boxes, the hours on the counted fixtures' labor
+  // rows (typed, as the tab's queue writes them) and the five direct cost tables' lines; rpc is null, the dry run the
+  // server's read of the bid, its counts, the estimate and its rows (devMcpBidLabor.ts).
+  plan_bid_labor: { rpc: null, step: 'plan' },
+  apply_bid_labor: { rpc: null, step: 'apply' },
+  // v2.6944 / 0.71.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
+  // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
+  // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
+  plan_sub_labor: { rpc: null, step: 'plan' },
+  apply_sub_labor: { rpc: null, step: 'apply' },
+  // v2.6944 / 0.71.0: what was paid against a sheet — recorded as Make Payment writes it (people_labor_job_payments),
+  // or removed through the payment's own remove_labor_job_payment, which keeps a trace; rpc is null, the dry run the
+  // server's read of the sheet, its payments and the bank row with every job it is already allocated to.
+  plan_sub_labor_payment: { rpc: null, step: 'plan' },
+  apply_sub_labor_payment: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -340,6 +377,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isPropertyRecordVerb(verb)) {
+    // v2.6950: the shape check is devMcpPropertyRecord's; the dry run is the server's read of the record and its jobs.
+    const built = propertyRecordInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isBillVerb(verb)) {
     // v2.6794: the shape is devMcpBill's billInput, run by the server with today's date (a due date left out is today);
     // the hash is checked there too. Nothing to build here but the hand-off.
@@ -376,6 +419,24 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isBidLaborVerb(verb)) {
+    // v2.6976: the shape is devMcpBidLabor's; a box out of range refuses, a row or a line with a fault is kept to be held.
+    const built = bidLaborInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidTakeoffVerb(verb)) {
+    // v2.6968: the shape is devMcpBidTakeoff's; a row or a line with a fault is kept for the plan to hold.
+    const built = bidTakeoffInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidCountsVerb(verb)) {
+    // v2.6967: the shape is devMcpBidCounts'; a row with a fault is kept for the plan to hold, never a refusal here.
+    const built = bidCountsInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isBidUpdateVerb(verb)) {
     // v2.6945: the shape check is devMcpBidUpdate's, with the day (a bid is never sent or decided ahead of today); the
     // dry run is the server's read of the bid and what hangs on it.
@@ -386,6 +447,19 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobCombineVerb(verb)) {
     // v2.6940: the shape check is devMcpJobCombine's, confirm_no_undo with it; the dry run is the server's read of both jobs.
     const built = jobCombineInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubLaborVerb(verb)) {
+    // v2.6944: the shape check is devMcpSubLabor's, with the day (a sheet is never dated ahead of today); the dry run is
+    // the server's read of the job, the person and the job's sheets.
+    const built = subLaborInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubLaborPaymentVerb(verb)) {
+    // v2.6944: the same for a payment on a sheet; the dry run is the server's read of the sheet, its payments and the bank row.
+    const built = subLaborPaymentInput(verb, input, todayYmd())
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1243,8 +1317,14 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
+  if (verb === 'apply_property_record') return `Nothing written: this plan was already applied on this property record${when}. The record already reads that way; read_rows on customer_addresses shows it. A plan commits to the record's updated_at and each column's before value, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_bid_labor') return `Nothing written: this plan was already applied on this bid${when}. The Labor tab already reads that way; read_rows on cost_estimate_labor_rows lists the rows. A further change needs a new plan from the tab as it stands.`
+  if (verb === 'apply_bid_takeoff') return `Nothing written: this plan was already applied on this bid${when}. The takeoff already reads that way; read_rows on bids_takeoff_rough_part_lines by bid_id lists the lines. A further change needs a new plan from the lines as they stand.`
+  if (verb === 'apply_bid_counts') return `Nothing written: this plan was already applied on this bid${when}. The Count Sheet already reads that way; get_bid lists the rows. A further change needs a new plan from the sheet as it stands.`
   if (verb === 'apply_bid_update') return `Nothing written: this plan was already applied on this bid${when}. The bid already reads that way; get_bid shows it. A plan commits to the columns' before values and the bid's updated_at, so a further change needs a new plan from the fresh row.`
+  if (verb === 'apply_sub_labor') return `Nothing written: this plan was already applied${when}. The sheet already reads that way; plan_sub_labor lists the job's sheets. A plan commits to the job's sheets as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_sub_labor_payment') return `Nothing written: this plan was already applied${when}. The payment is on the sheet (or off it) already; plan_sub_labor_payment lists the sheet's payments. A second payment of the same amount on the same day needs duplicate_ok and a new plan.`
   if (verb === 'apply_job_combine') return `Nothing written: this plan was already applied${when}. The source job is gone and its rows are on the target; get_job shows it.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`

@@ -101,6 +101,7 @@ import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCad
 import LegalThemesSettingsBlock from '../components/settings/LegalThemesSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
 import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSettingsBlock'
+import { PermitOurNamesSettingsCard } from '../components/settings/PermitOurNamesSettingsCard'
 import BankTransferDetailsSettingsBlock from '../components/settings/BankTransferDetailsSettingsBlock'
 import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
@@ -1344,6 +1345,8 @@ export default function Settings() {
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {/* Punch list #188 rows 14 and 15 (v2.6753): the shop's address is the owner's, where the Map opens is the office's. */}
           {isOwnerOrDev(myRole) && <OfficeAddressSettingsBlock />}
+          {/* Punch list #307: the names a city lists on a plumbing permit that are us, so a bid reads our own permit as ours. */}
+          {isOwnerOrDev(myRole) && <PermitOurNamesSettingsCard />}
           {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs, bills and liens; its old anchor still lands here. */}
           {myRole === 'dev' && (
             <SettingsFoldCard card={MOVED_SETTINGS_CARDS['office-county']} track="settings-company">

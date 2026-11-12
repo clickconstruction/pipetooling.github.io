@@ -19,12 +19,17 @@ import { billTextLink } from '../_shared/gcKernels/lib/billing/billTextLink.ts'
 import { billDollars } from '../_shared/gcKernels/lib/billing/newestBill.ts'
 import { moneyCents } from '../_shared/gcKernels/lib/billing/openLineAllocation.ts'
 import { COLLECTIONS_RPC, collectionsRpcBody, contractEndedPatch, jobLabelOf, jobMarkAppliedWords, jobMarkDryRun, readMarkJob, type JobMarkPayload, type JobMarkReads } from '../_shared/devMcpJobMarks.ts'
+import { propertyPatch, propertyPatchBody, propertyLienReading, propertyRecordAppliedWords, propertyRecordDryRun, readPropertyWorld, type PropertyRecordPayload, type PropertyReads } from '../_shared/devMcpPropertyRecord.ts'
 import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload } from '../_shared/devMcpJobs.ts'
 import { getSubmittals, readSubmittalWorld, submittalAppliedWords, submittalDryRun, submittalWrites, type SubmittalPayload } from '../_shared/devMcpSubmittals.ts'
 import { activityNoteAppliedWords, activityNoteDryRun, activityNoteRow, readActivityNoteWorld, type ActivityNotePayload } from '../_shared/devMcpActivityNote.ts'
 import { PAYMENT_LINK_RPC, PAYMENT_REMOVE_RPC, PAY_ROW_COLS, jobPaymentAppliedWords, jobStatusWords, jobPaymentDryRun, payJobLabel, paymentInsertRow, paymentLine, paymentLinkRpcBody, paymentNoteBody, paymentWordsPatch, readJobPaymentWorld, type JobPaymentPayload, type JobPaymentReads, type PayRow } from '../_shared/devMcpJobPayment.ts'
+import { bidLaborAppliedWords, bidLaborDryRun, laborCostFromWorld, readBidLaborWorld, type BidLaborPayload, type LaborReads, type PlanDirect, type PlanLaborRow } from '../_shared/devMcpBidLabor.ts'
+import { bidTakeoffAppliedWords, bidTakeoffDryRun, materialsTotal, readBidTakeoffWorld, type BidTakeoffPayload, type PlanLine, type PlanTakeoffRow, type TakeoffReads } from '../_shared/devMcpBidTakeoff.ts'
+import { COUNTS_INSERT_ACTION, bidCountsAppliedWords, bidCountsDryRun, readBidCountsWorld, sheetSummaryWords, type BidCountsPayload, type CountsReads, type PlanRemove, type PlanRow } from '../_shared/devMcpBidCounts.ts'
 import { bidUpdateAppliedWords, bidUpdateDryRun, bidUpdateLanded, outcomeNoteRow, readBidUpdateWorld, type BidChange, type BidReads, type BidUpdatePayload } from '../_shared/devMcpBidUpdate.ts'
 import { COMBINE_JOB_COLS, COMBINE_RPC, combineBoxPhotos, combineRpcBody, jobCombineAppliedWords, jobCombineDryRun, readJobCombineWorld, type CombineStop, type JobCombinePayload, type JobCombineReads } from '../_shared/devMcpJobCombine.ts'
+import { SHEET_COLS, SHEET_PAYMENT_REMOVE_RPC, SHEET_PAY_COLS, laborJobLabel, laborPersonFacts, readSubLaborPaymentWorld, readSubLaborWorld, sheetBalance, sheetInsertRow, sheetItemRows, sheetOwedCents, sheetPaymentInsertRow, subLaborAppliedWords, subLaborCommitment, subLaborDryRun, subLaborNoteJobId, subLaborPaymentAppliedWords, subLaborPaymentDryRun, type JobMoney, type SheetPayRow, type SheetRow, type SubLaborPayload, type SubLaborPaymentPayload, type SubLaborReads } from '../_shared/devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, evidenceLinkProblem, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
 import { getHoursStatement, hoursStatementClockLabel, prepareHoursStatementWrite, sendHoursStatementAsDev, type HoursStatementPrepared } from '../_shared/devMcpHoursStatement.ts'
 import { hoursStatementLongDate } from '../_shared/hoursStatement.ts'
@@ -181,10 +186,51 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // the database does after: the decided day, the labor mint and the shadow score on a first sent date, the History
 // lines, and that a win opens no job. No wrapper RPC, no migration.
 //
+// 0.72.0 (v2.6967, the bid train's PR 2): plan_bid_counts → apply_bid_counts writes a bid's count rows as the Counts
+// tab writes them — a row added as the Count Sheet's quick add adds it (the active version, after the bid's last row,
+// the unit pinned, tagged as the sheet's import for the bid's History), changed as the inline edit changes it, removed
+// as its delete removes it, and an alternate group joined to bids.alternate_group_tags (devMcpBidCounts.ts). The key is
+// the sheet's own rule, one row a fixture in a scope (the base bid or one alternate). A row with a fault is held with
+// its reason and the rest goes on; a plan with nothing ready is refused. restRows takes DELETE and extra headers for it.
+// No wrapper RPC, no migration.
+//
+// 0.74.0 (v2.6968, the bid train's PR 3): plan_bid_takeoff → apply_bid_takeoff writes what the Takeoffs tab holds on a
+// count row — its part lines, each as the tab's own save writes it (the quantity for one counted unit, the book's lowest
+// price and its price row when no price is given, how the part is sold snapshotted, after the row's last line), and the
+// quoted materials cost each (bid_count_row_custom_costs, one a row) (devMcpBidTakeoff.ts). One line a part on a row:
+// the line that carries the part is changed, a new part is added, replace rewrites the row's lines whole. The plan
+// states the bid's materials before and after through the tab's own kernel (combinedMaterials, from the kernel copy).
+// No wrapper RPC, no migration.
+//
+// 0.75.0 (v2.6976, the bid train's PR 4): plan_bid_labor → apply_bid_labor writes what the Labor tab holds — the
+// estimate's boxes (cost_estimates, made when the bid has none, as the tab makes it), the hours on the labor rows of the
+// counted fixtures (a row changed, or minted as the tab's sync mints it, with source typed and the queue's note so the
+// database's mint on a first sent date leaves them alone; a fixture nobody counts is held), and the five direct cost
+// tables' lines, found again by kind and note (devMcpBidLabor.ts). The plan states the tab's "Direct cost of this bid"
+// before and after through computeBidCostBreakdown at the bid's own rate. It never teaches the labor book. No wrapper
+// RPC, no migration.
+//
+// Sub labor on a job (v2.6944 / 0.71.0; the owner, 2026-11-11: "Do we have the dev verbs to add sub labor?" then "Can you
+// help me add those verbs?"): plan_sub_labor → apply_sub_labor makes, changes or removes a sheet as Jobs → Subs → Pay's
+// New Sub Labor and Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), and
+// plan_sub_labor_payment → apply_sub_labor_payment records what was paid against one as Make Payment does, or removes a
+// payment through remove_labor_job_payment (devMcpSubLabor.ts). A sheet has no column for a note, a span or where its
+// days came from, so the stated mark rides in the lines' words and the rest on the job's activity; a payment has none
+// for a bank row, so the plan reads the row and warns when it is already allocated to a job as cost. No wrapper RPC,
+// no migration. restDelete is the one new write: a DELETE by query, as the dev under RLS, for the Edit window's
+// Delete, a change's old lines and a sheet whose lines were refused.
+//
+// 0.73.0 (v2.6950, the first of the Lien desk's verbs; the owner, 2026-11-11: "everything a user can do a dev can do",
+// after a homestead found on the county's page had no verb to mark it): plan_property_record → apply_property_record
+// changes a property record's lien facts as the Property record row, Edit customer's Properties and the Lien desk's
+// property window save them — one PATCH on customer_addresses under RLS as the dev, the record named by a job or by its
+// own id, with every job that follows the change named in the plan (devMcpPropertyRecord.ts). No wrapper RPC, no
+// migration.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.70.0'
+const SERVER_VERSION = '0.75.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -694,6 +740,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { contract: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['contract', 'plan_hash'] },
   },
   {
+    name: 'plan_property_record',
+    description: "Dry-run a change to a property record's lien facts (v2.6950, the first of the Lien desk's verbs): the record the Property record row on Edit Job, Edit customer's Properties and the Lien desk's property window save — the county, the legal description, the kind (residential | commercial), the homestead answer, the owner of record (mode, name, company), where the owner's mail goes, the owner's email and phone — as one write on customer_addresses under the form's own RLS. Name the record by job_id (the job's linked property) or property_id. The form's rules hold: a typed county is marked typed by hand, a commercial kind clears homestead, homestead is asked only of a residential property, and a yes or a no stamps the answer where the record carries that column. The record is shared, so the dry run names every job that follows the change, each column before → after, what the Lien desk reads off the record before and after (the dates' footing, the homestead hold) and what the lien papers still lack, under a plan_hash; nothing is written. Refused when the job has no record linked or the record already reads that way.",
+    inputSchema: { type: 'object', properties: { record: { type: 'object', description: '{ job_id (find_job) | property_id, set: { county?, legal_description?, property_kind? (residential | commercial | ""), homestead? (true | false), owner_mode? (homeowner | building_owner | ""), owner_name?, owner_company?, owner_mailing_address?, owner_email?, owner_phone? } }' } }, required: ['record'] },
+  },
+  {
+    name: 'apply_property_record',
+    description: 'Save the change you planned: the same record plus the plan_hash from plan_property_record. Reads the record again first and writes only when it still matches: one PATCH on customer_addresses as you, read back to confirm it landed (a row RLS kept is said). Replies with the columns changed and what the Lien desk reads off the record now.',
+    inputSchema: { type: 'object', properties: { record: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['record', 'plan_hash'] },
+  },
+  {
     name: 'plan_job_payment',
     description: "Dry-run a change to a payment on a job (v2.6940), as the Job window's payments and Accounts Receivable make it, as you. Three actions. remove takes a payment row off through remove_jobs_ledger_payment_and_reconcile, the RPC behind the Job window's Remove: the paid figure is worked out again, a bill it sat on reads Billed again, a Paid job that no longer covers its total moves back to Billed, and your reason (required) lands on the job's activity as a note in your name; a row with a bank deposit behind it is refused unless unlink_bank: true (Accounts Receivable's Unlink and remove, which frees the deposit to be matched again). record adds one row as the payments table writes it (amount, paid_on, payment_type, reference_number, note); a row of the same amount on the same day refuses the plan unless duplicate_ok. link ties an existing row to its bank row (mercury_transaction_id) through apply_mercury_bank_payment_allocations, Accounts Receivable's link of a recorded payment, or changes its type, reference or note. The plan is this server's read: the job with its total, paid figure and status, every payment row on it, the row named and what stands behind it (a bank row, a typed type and reference, or nothing), the paid figure and status after, what the write sets off and the note it leaves, under a plan_hash; nothing is written. Refused for a row Stripe holds (a credit note, a bill marked paid in Stripe, a payment Stripe recorded), a deposit the bank returned, a deposit with less left than the payment, and a remove with no reason. Nothing goes to the customer.",
     inputSchema: { type: 'object', properties: { payment: { type: 'object', description: "{ action: 'remove', payment_id (get_job lists them), reason, unlink_bank? } | { action: 'record', job_id (find_job), amount, paid_on (YYYY-MM-DD), payment_type? (Cash | Check | Wire | ACH | Card (external) | Other), reference_number?, note?, reason?, duplicate_ok? } | { action: 'link', payment_id, mercury_transaction_id?, payment_type?, reference_number?, note?, reason? }" } }, required: ['payment'] },
@@ -714,6 +770,36 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { combine: { type: 'object' }, plan_hash: { type: 'string' }, confirm_no_undo: { type: 'boolean' } }, required: ['combine', 'plan_hash', 'confirm_no_undo'] },
   },
   {
+    name: 'plan_bid_labor',
+    description: "Dry-run a bid's Labor tab (v2.6976), as you under the tab's own RLS: estimate = { labor_rate, driving_cost_rate, hours_per_trip, estimator_cost_per_count, estimator_cost_flat_amount, travel_people, travel_nights, travel_meals_rate, travel_hotel_rate } (each held to the tab's own ranges), rows = [{ fixture, rough_in?, top_out?, trim_set?, kind?, unit? }] and direct = [{ kind (equipment | permit | sub | waste | other), note, rough_in?, top_out?, trim_set?, remove? }]. A labor row is keyed by the fixture's name and only a counted fixture has one, as on the tab: a fixture with a row is changed in the hours you name, a counted fixture with no row yet is minted as the tab's sync mints it, and a fixture nobody counts is held (plan_bid_counts adds it). Hours are for ONE unit; a task's hours are the whole task's (kind: task); a sub line has none (kind: sub). Hours here read as typed, as the tab's queue writes them, so the database's labor fill on a first sent date leaves them alone. A direct cost line is dollars a stage, found again by its kind and note. The estimate is made when the bid has none. The reply lists each box before → after, each row and line as mint, add, change, remove, unchanged or held with its reason, and the tab's \"Direct cost of this bid\" before and after through its own kernel at the bid's own rate; with no rate, labor dollars are left out and said. A bid with no creator on record is refused: the database lets nobody write its labor. Never teaches the labor book. Nothing is written.",
+    inputSchema: { type: 'object', properties: { labor: { type: 'object', description: '{ bid_id (find_bid), estimate?, rows?: [{ fixture, rough_in?, top_out?, trim_set?, kind? (fixture | task | sub), unit? (each | per_100ft) }], direct?: [{ kind, note, rough_in?, top_out?, trim_set?, remove? }], version_id? }' } }, required: ['labor'] },
+  },
+  {
+    name: 'apply_bid_labor',
+    description: 'Write the labor you planned: the same labor plus the plan_hash from plan_bid_labor. Reads the tab again first and writes only when the plan still matches. In the tab\'s order: the estimate made when missing, its boxes, the minted rows in one insert, each changed row, then each direct cost line; a write that fails is named with its reason and the rest still goes on. Replies with what landed, what failed and the cost line as it reads now.',
+    inputSchema: { type: 'object', properties: { labor: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['labor', 'plan_hash'] },
+  },
+  {
+    name: 'plan_bid_takeoff',
+    description: "Dry-run a bid's takeoff (v2.6968), as the Takeoffs tab holds it on a count row, as you under the tab's own RLS: rows = [{ fixture, group?, lines?: [{ part_id | part (its exact name in the bid's trade's parts book), quantity, unit_price? }], replace?, materials_each?, materials_from? }]. The count row is named by the Count Sheet's key (plan_bid_counts adds one). A line's quantity is for ONE counted unit: the row's count multiplies it. With no unit_price a new line takes the parts book's lowest price and remembers the price row; a part with no price lands at $0 and the plan says so; a typed price forgets the price row. The line snapshots how the part is sold (20 ft sticks, a box), so the order rounding works as on the tab. One line a part on a row: the line that already carries the part is changed (its price kept unless you give one), a part not on the row is added after its last line, and replace: true rewrites the row's lines whole (a replace with a held line holds the whole row). materials_each is a quoted materials cost for one counted unit, in dollars, with materials_from naming who quoted it; Pricing costs the row from it over the lines, and null clears it. Held, not refused: a fixture with no count row, a part not found or named by several parts, a part of another trade's book, a quantity not above zero, the same part twice in a row's lines. A plan with nothing ready is refused. The reply lists every row and line as add, change, unchanged or held with its reason, one unit's materials before and after, and the bid's materials before and after, before tax and with order rounding, through the tab's own kernel, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { takeoff: { type: 'object', description: '{ bid_id (find_bid), rows: [{ fixture, group?, lines?: [{ part_id | part, quantity, unit_price? }], replace?, materials_each?, materials_from? }], version_id? }' } }, required: ['takeoff'] },
+  },
+  {
+    name: 'apply_bid_takeoff',
+    description: 'Write the takeoff you planned: the same takeoff plus the plan_hash from plan_bid_takeoff. Reads the lines again first and writes only when the plan still matches. Row by row: a replace removes the row\'s lines, the new lines go in as one insert, each changed line is its own write, then the quoted cost is set or cleared; a row that fails is named with its reason and the next row still goes on. Replies with what landed, what failed and the bid\'s materials as they read now.',
+    inputSchema: { type: 'object', properties: { takeoff: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['takeoff', 'plan_hash'] },
+  },
+  {
+    name: 'plan_bid_counts',
+    description: "Dry-run count rows onto a bid (v2.6967), as the Counts tab's Count Sheet writes them, as you under the tab's own RLS: rows = [{ fixture, count, unit?, page?, group?, alternate? }] added or changed, remove = [{ fixture, group? }]. The key is the sheet's own rule, one row a fixture in a scope, where a scope is the base bid or one alternate group: a fixture not on the sheet there is added after the bid's last row (the unit read off its name when left out, as quick add does); one already there is changed in the fields you name (count, unit, page, group); the same fixture twice in a scope is held, as quick add refuses it, so an area is the row's group and not a second row. A `[Group] ` prefix on a fixture is lifted off the name, as the sheet's import does. alternate: true joins the row's group to the bid's alternates, priced with and without. Rows land on the bid's active version (version_id names another). Held, not refused: a row with no fixture, a count that is not above zero, a unit that is not ea, ft, px or sqft, an alternate with no group, a fixture several rows already wear. A plan with nothing ready is refused. The reply lists every row as add, change, unchanged or held with its reason, every remove with the takeoff lines and prices that go with the row, the sheet's totals before and after in its own words, what follows on Labor and Pricing, and what the verb does not do, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { counts: { type: 'object', description: '{ bid_id (find_bid), rows?: [{ fixture, count, unit? (ea | ft | px | sqft), page?, group?, alternate? }], remove?: [{ fixture, group? }], version_id? }' } }, required: ['counts'] },
+  },
+  {
+    name: 'apply_bid_counts',
+    description: 'Write the count rows you planned: the same counts plus the plan_hash from plan_bid_counts. Reads the sheet again first and writes only when the plan still matches. The new rows go in as one insert tagged as the sheet\'s import, each changed row as its own edit, each remove as the row\'s delete, then the alternates onto the bid; a row that fails is named with its reason and the rest still lands. Replies with what landed, what failed and the sheet\'s totals as they read now.',
+    inputSchema: { type: 'object', properties: { counts: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['counts', 'plan_hash'] },
+  },
+  {
     name: 'plan_bid_update',
     description: "Dry-run a change to a bid (v2.6945), as Edit Bid and the Bid Board change it: the form's columns — project name, address, the GC (customer_id), project, development, service type, estimator, account manager, due date and time, start date, drawing date, bid value, agreed value, profit, the sent date and who it went to (submitted_to), the outcome (won, lost, started_or_complete, or null for open) with the day it was decided (outcome_at) and why it was lost (loss_category, loss_reason), the GC contact, the links, distance, the robot opt-out, notes — as one write under the form's own RLS. The columns that ride with another are written with it, as the form writes them: a bid that stops being lost drops its reason, a cleared due date drops its time, a cleared sent date drops the checklist that confirmed it. The sent date lands as the Cover Letter's Mark sent lands it, with no checklist: those three lines are a person's own word. On a bid with versions, Sent and Won / Lost are per GC and are refused here, as the form locks them. The dry run reads the bid, its versions, the jobs that point at it and every row a new id names, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the line the form leaves on the bid's notes when the outcome moves, what the database does after the write (the decided day, the labor rows filled from the book on a first sent date, the robot shadow scored, the Board section it moves to, the History lines), warnings and what the verb does not do, under a plan_hash committed to the before values and the bid's updated_at; nothing is written.",
     inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ bid_id (find_bid), set ({ column: value }; null clears a column that may be blank) }' } }, required: ['update'] },
@@ -722,6 +808,26 @@ const TOOLS: McpTool[] = [
     name: 'apply_bid_update',
     description: "Change the bid you planned: the same update plus the plan_hash from plan_bid_update. Reads the bid again first and writes only when it still matches — a change by anyone since refuses. One PATCH on bids as you (read back to say what landed; a row RLS kept is said), then the outcome line on the bid's notes when the outcome moved, as Edit Bid leaves it. A win opens no job and nothing is sent to anyone. Replies with what changed, where the bid stands on the Bid Board and the next step.",
     inputSchema: { type: 'object', properties: { update: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['update', 'plan_hash'] },
+  },
+  {
+    name: 'plan_sub_labor',
+    description: "Dry-run a sub labor sheet on a job (v2.6944), as Jobs → Subs → Pay's New Sub Labor and Edit window write it, as you under RLS. Three actions. add makes a sheet for one subcontractor or primary on one job (the two the form's Subcontractors list offers): its day (date, with through when the work ran several days), its lines (each a flat amount, or hours at a rate — one way a sheet, as the form's switch holds it), a note, and stated: { source } when the days come from a record outside the app and not a punch. A sheet has no column for a note, a span or a source, so a line's day and the stated mark ride in the line's own words (\"2026-10-14 · Rough-in (stated, their own day log)\") and the note, the span and the source land on the job's activity as a note by you. change moves a sheet's day, replaces its lines whole (the Edit window's save) or moves the sheet to another job with job_id (the Edit window's change beside the job: the sheet takes that job, its number and its address, its payments go with it, and the plan shows both jobs' sub labor and profit before and after). remove deletes a sheet, held while it carries a payment (the screen would delete those without a trace). The plan is the server's read: the job and the person as they stand (refused for a teammate who is neither a subcontractor nor a primary; for an archived person, a sub on the bench, a job with no address; a primary's sheet is one the Pay ledger files under Crew pay, and the plan says so), the sheet and each line as it would land with what it owes them and what it costs the job, their other sheets on the job (a sheet of theirs on the same days refuses the plan unless second_sheet_ok), every sheet on the job, the job's sub labor before and after from the Job window's own kernel and the profit band before and after as get_job works it out, the job's allocated bank rows that may be this same pay (the same dollars would count twice: as a card charge and as sub labor), what it sets off and what it does not do. The hash commits to all of it but the profit band, so a sheet added or changed on the job since refuses the apply. It tells nobody and records no payment: plan_sub_labor_payment does that.",
+    inputSchema: { type: 'object', properties: { labor: { type: 'object', description: "{ action?: 'add', job_id (find_job), person (a people.id, a users.id or one sub's whole name), date (YYYY-MM-DD, never ahead of today), through?, lines: [{ what, day?, amount } | { what, day?, hours, rate, count? }] (1 to 40, all flat or all hours at a rate), note?, stated?: { source }, second_sheet_ok? } | { action: 'change', sheet_id, job_id? (move the sheet to this job), date?, lines? (replaces every line), stated?, reason? } | { action: 'remove', sheet_id, reason }" } }, required: ['labor'] },
+  },
+  {
+    name: 'apply_sub_labor',
+    description: "Write the sheet you planned: the same labor plus the plan_hash from plan_sub_labor. Reads the job, the person and the job's sheets again first and writes only when they still match; then the screen's own rows as you — the sheet, its assignee row and its lines for an add (a sheet whose lines are refused is taken off again), the new lines then the old ones removed and the sheet's patch (its day, its rate, its job) for a change, the sheet's delete for a remove — and the note on the job's activity when the plan showed one. Replies with the sheet's id, whether it is tied to their roster row, and whether the note landed. A removed sheet is not restored: add it again.",
+    inputSchema: { type: 'object', properties: { labor: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['labor', 'plan_hash'] },
+  },
+  {
+    name: 'plan_sub_labor_payment',
+    description: "Dry-run what was paid against a sub labor sheet (v2.6944), as the Pay ledger's Make Payment and a payment's Remove do, as you. record adds one payment line (amount, paid_on, and a memo made of method, reference and note — a sheet payment has no column for any of the three, and the memo shows to the sub on their portal unless hidden_from_sub). remove takes a payment off through remove_labor_job_payment with your reason, which keeps its snapshot on the payment's trace for a 30-day Undo in the app. Name the bank row that paid it as mercury_transaction_id and the plan checks it: money out, not returned, its payee and amount beside the payment's, and every job that row is already allocated to as cost — an allocated bank row counts in a job's profit as a card charge and the sheet already counts as sub labor, so the plan warns in words that the dollars would count twice and names each allocation. It never moves an allocation (plan_cost_batch does) and never writes the bank row anywhere. With no bank row named, the plan lists the job's allocated bank rows that may be this payment. The plan shows the sheet with its payments, the balance before and after (paid in full reads Paid by itself), and what it does not do: no approval step exists on a sheet payment, a backcharge and a move to another sheet stay the app's own presses, and nothing is sent. A sheet's payments move no job profit: a sheet counts for what it owes, paid or not.",
+    inputSchema: { type: 'object', properties: { payment: { type: 'object', description: "{ action?: 'record', sheet_id (plan_sub_labor lists a job's sheets), amount, paid_on (YYYY-MM-DD), method?, reference?, note?, mercury_transaction_id? (the bank row that paid it, read and checked only), hidden_from_sub?, duplicate_ok? } | { action: 'remove', payment_id, reason }" } }, required: ['payment'] },
+  },
+  {
+    name: 'apply_sub_labor_payment',
+    description: "Make the payment change you planned: the same payment plus the plan_hash from plan_sub_labor_payment. Reads the sheet, its payments and the bank row's allocations again first and writes only when they still match; then one row into people_labor_job_payments as you, or the remove RPC. Replies with the row or the trace event, and the sheet's paid and open figures read back.",
+    inputSchema: { type: 'object', properties: { payment: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['payment', 'plan_hash'] },
   },
   {
     name: 'plan_submittal_rows',
@@ -865,7 +971,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, a piece at a time past 54,000 bytes (offset, then each reply's next_offset), read_mail_file_text hands back its words instead — a PDF's text layer, a text file or an .eml, 60,000 characters a reply, a scan refused in words — the cheap way to read a supplier's PDF, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are eighty-three verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text, a section at a time against its own headings, or since 0.69.0 a line set under a heading or one run of text swapped inside a section, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_theme_review → apply_theme_review (the review of marks already there: keep the proposed marks named and take the named marks off with a reason each, up to 200 a call; a kept mark carries your name, and a mark that came off is made again, never reworded), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.53.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.55.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.56.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.56.0), plan_job_payment → apply_job_payment (a payment on a job: a row removed through the Job window's own remove RPC with your reason left on the job's activity, one recorded as the payments table writes it, or one tied to its bank row as Accounts Receivable links it; the plan says what stands behind the row and what the paid figure and status read after; since 0.65.0) and plan_job_combine → apply_job_combine (one job combined into another as Pipeline's Combine does it, the source's total added to the target's and its numbers kept as prior numbers; the plan lists what moves and every reason it would stop, bills and payments never move, there is no undo and apply needs confirm_no_undo: true; take a duplicate payment off first, then combine; since 0.65.0), plan_submittal_rows → apply_submittal_rows (submittal rows onto a bid's draft revision, one or many, added or changed by tag, as Bids → Submittals writes them; Rev 1 is made when the bid has none) and plan_submittal_log → apply_submittal_log (the order log's facts on a line: ordered, PO, expected, delivered, a note for the GC) — get_submittals reads where every row and line stands first, with the status in plain words to read back; nothing in the three shares with the GC or tells anyone (since 0.51.0), plan_activity_note → apply_activity_note (one line of your words on a job's Job activity / notes or on a bid's Notes, as the Note press and the Bid Board write them — where the team reads what moved; it tells nobody; since 0.54.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_bid_update → apply_bid_update (a bid changed as Edit Bid and the Bid Board change it: its value, the sent date and who it went to, the outcome with the day it was decided and why it was lost, the due date, the estimator, the GC, the development, the links, the notes; the plan shows each column before and after and what the database does next — a win opens no job, a first sent date fills the labor rows from the book; a bid with versions keeps Sent and Won / Lost per GC; since 0.70.0), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_materials_move → apply_materials_move (everything a job holds on site moved to another job, for a count recorded under the wrong job: places, cages and boxes, the ledger, box moves and photos, every box keeping its id and printed code, a same-name place becoming one, Unsorted folding, a stencil the target already holds renumbered; the plan counts both jobs before and after and says where the photos' files stay); plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, a piece at a time past 54,000 bytes (offset, then each reply's next_offset), read_mail_file_text hands back its words instead — a PDF's text layer, a text file or an .eml, 60,000 characters a reply, a scan refused in words — the cheap way to read a supplier's PDF, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are ninety-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text, a section at a time against its own headings, or since 0.69.0 a line set under a heading or one run of text swapped inside a section, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_theme_review → apply_theme_review (the review of marks already there: keep the proposed marks named and take the named marks off with a reason each, up to 200 a call; a kept mark carries your name, and a mark that came off is made again, never reworded), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.53.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.55.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.56.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.56.0), plan_property_record → apply_property_record (a property record's lien facts as the Property record row saves them: the county, the legal description, the kind, the homestead answer, the owner of record and where the owner's mail goes, named by a job or by the record, with every job that follows the change named in the plan; since 0.73.0), plan_job_payment → apply_job_payment (a payment on a job: a row removed through the Job window's own remove RPC with your reason left on the job's activity, one recorded as the payments table writes it, or one tied to its bank row as Accounts Receivable links it; the plan says what stands behind the row and what the paid figure and status read after; since 0.65.0) and plan_job_combine → apply_job_combine (one job combined into another as Pipeline's Combine does it, the source's total added to the target's and its numbers kept as prior numbers; the plan lists what moves and every reason it would stop, bills and payments never move, there is no undo and apply needs confirm_no_undo: true; take a duplicate payment off first, then combine; since 0.65.0), plan_sub_labor → apply_sub_labor (a sub labor sheet on a job, made, changed, moved to another job or removed as Jobs → Subs → Pay's New Sub Labor and Edit window write it: one subcontractor or primary, the day or the span, lines as flat amounts or hours at a rate, a note, and stated: { source } when the days come from an outside record and not a punch, the mark riding in each line's words; the plan shows the sheet, their other sheets on the job, the job's sub labor and profit before and after, and the job's allocated bank rows that may be the same pay; since 0.71.0) and plan_sub_labor_payment → apply_sub_labor_payment (what was paid against a sheet, as Make Payment writes it, or a payment removed with its trace; name the bank row that paid it and the plan says whether it is already allocated to a job as cost, where the dollars would count twice — it never moves the allocation, plan_cost_batch does; since 0.71.0), plan_submittal_rows → apply_submittal_rows (submittal rows onto a bid's draft revision, one or many, added or changed by tag, as Bids → Submittals writes them; Rev 1 is made when the bid has none) and plan_submittal_log → apply_submittal_log (the order log's facts on a line: ordered, PO, expected, delivered, a note for the GC) — get_submittals reads where every row and line stands first, with the status in plain words to read back; nothing in the three shares with the GC or tells anyone (since 0.51.0), plan_activity_note → apply_activity_note (one line of your words on a job's Job activity / notes or on a bid's Notes, as the Note press and the Bid Board write them — where the team reads what moved; it tells nobody; since 0.54.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_bid_update → apply_bid_update (a bid changed as Edit Bid and the Bid Board change it: its value, the sent date and who it went to, the outcome with the day it was decided and why it was lost, the due date, the estimator, the GC, the development, the links, the notes; the plan shows each column before and after and what the database does next — a win opens no job, a first sent date fills the labor rows from the book; a bid with versions keeps Sent and Won / Lost per GC; plan_bid_counts → apply_bid_counts writes its count rows as the Count Sheet does, one row a fixture in the base bid or in an alternate, added, changed or removed, a faulty row held and the rest going on; plan_bid_takeoff → apply_bid_takeoff writes the part lines on a count row and the quoted materials cost each, as the Takeoffs tab holds them, a line's quantity for one counted unit, the plan stating the bid's materials before and after; plan_bid_labor → apply_bid_labor writes the Labor tab's estimate boxes, the hours on the counted fixtures' labor rows (typed, never teaching the labor book) and the direct cost lines, the plan stating the tab's direct cost of the bid before and after, since 0.75.0; the takeoff since 0.74.0; the counts since 0.72.0; the update since 0.70.0), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_materials_move → apply_materials_move (everything a job holds on site moved to another job, for a count recorded under the wrong job: places, cages and boxes, the ledger, box moves and photos, every box keeping its id and printed code, a same-name place becoming one, Unsorted folding, a stencil the target already holds renumbered; the plan counts both jobs before and after and says where the photos' files stay); plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -981,11 +1087,11 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
  * RLS. Reached only from that branch, apply_file_plans' part leg, apply_job (v2.6790) and the submittal branch
  * (v2.6804, which sends the new rows as one array); every other write is restPost to a named RPC.
  */
-async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown> | Record<string, unknown>[], prefer?: string): Promise<{ ok: boolean; status: number; body: unknown }> {
+async function restRows(jwt: string, method: 'POST' | 'PATCH' | 'DELETE', table: string, query: string, body: Record<string, unknown> | Record<string, unknown>[] | null, prefer?: string, extra?: Record<string, string>): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
     method,
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: prefer ?? (method === 'POST' ? 'return=representation' : 'return=minimal') },
-    body: JSON.stringify(body),
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: prefer ?? (method === 'POST' ? 'return=representation' : 'return=minimal'), ...(extra ?? {}) },
+    ...(body === null ? {} : { body: JSON.stringify(body) }),
   })
   const text = await res.text()
   let parsed: unknown = text
@@ -993,6 +1099,25 @@ async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, qu
     parsed = text ? JSON.parse(text) : null
   } catch { /* a non-JSON reply is reported as text */ }
   return { ok: res.ok, status: res.status, body: parsed }
+}
+
+/**
+ * The sub labor verbs' deletes (v2.6944): a DELETE by query, as the dev under RLS, that says how many rows went — the
+ * Edit window's Delete of a sheet, the old lines a change replaces, and a new sheet whose lines were refused.
+ * Reached only from that branch, with a filter always: a DELETE with no filter is never sent.
+ */
+async function restDelete(jwt: string, table: string, query: string): Promise<{ ok: boolean; status: number; body: unknown; rows: number }> {
+  if (!/(^|&)(id|job_id)=(eq|in)\./.test(query)) return { ok: false, status: 0, body: { message: 'a delete names its rows' }, rows: 0 }
+  const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}?${query}`, {
+    method: 'DELETE',
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  const text = await res.text()
+  let parsed: unknown = text
+  try {
+    parsed = text ? JSON.parse(text) : null
+  } catch { /* a non-JSON reply is reported as text */ }
+  return { ok: res.ok, status: res.status, body: parsed, rows: Array.isArray(parsed) ? parsed.length : 0 }
 }
 
 /** A document verb's file (v2.6004): decoded, checked against the Evidence tab's rules, digested. `args` is the input with content_base64 replaced by mime, size_bytes and sha256. */
@@ -2147,6 +2272,224 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (!landed) return ok(jobMarkAppliedWords(p, label, { ok: false, error: 'This account could not change this job (RLS let no row through).' }), { target: p.job_id })
       return ok(jobMarkAppliedWords(p, label, { ok: true, detail: { row } }), { target: p.job_id })
     }
+    case 'plan_sub_labor':
+    case 'apply_sub_labor': {
+      // v2.6944: a sub labor sheet through the screen's own rows as the dev under RLS — New Sub Labor's sheet, assignee
+      // and line rows, the Edit window's save and its Delete. No wrapper RPC: the dry run is this server's read of the
+      // job, the person, the job's sheets with their lines and payments and the job's allocated bank rows
+      // (devMcpSubLabor.ts), hashed with the payload but for the profit band, which get_job's own kernels work out and
+      // a cost elsewhere on the job may move. Apply reads again and writes only when the hash still matches. Never as
+      // anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as SubLaborPayload
+      const reads: SubLaborReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+        // The profit band is shown on the plan only; the apply's hash does not hold it, so the apply skips the read.
+        ...(built.step === 'plan'
+          ? {
+              money: async (jobId: string): Promise<JobMoney> => {
+                const got = (await getJob(readerAs(session), jobId, todayYmdInAppTz())) as { refused?: string; money?: { error?: string; profit?: { laborCost: number; partsCost: number; totalBill: number; profit: number } } }
+                if (got.refused) return { error: got.refused }
+                if (!got.money?.profit) return { error: got.money?.error ?? 'the job\'s money could not be read' }
+                return { profit: got.money.profit }
+              },
+            }
+          : {}),
+      }
+      const errored = (text: string, target: string | null = built.target): Outcome => ({ log: { status: 'error', target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readSubLaborWorld(reads, p, who.userId)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = subLaborDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const target = world.job?.id ?? built.target
+      const fresh = await planHash(name, p, subLaborCommitment(dry.reply))
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      const label = world.job ? laborJobLabel(world.job) : 'no job'
+      const noRow = 'RLS let no row through: this account cannot write this sheet.'
+      let detail: Record<string, unknown>
+      if (p.action === 'add') {
+        const facts = laborPersonFacts(world.person!)
+        if (!facts.ok || !world.job) return errored('The plan passed and the person or the job no longer reads. Plan again.', target)
+        const made = await restRows(session, 'POST', 'people_labor_jobs', `select=${SHEET_COLS}`, sheetInsertRow(p, world.job, facts.person, world))
+        if (!made.ok) return errored(restError(made.status, made.body), target)
+        const sheet = (Array.isArray(made.body) ? made.body[0] : made.body) as SheetRow | null
+        if (!sheet || typeof sheet.id !== 'string') return errored(`The insert answered with no row. ${noRow}`, target)
+        // The form's backup to the name trigger: the assignee row by id, best effort as the form's is.
+        if (facts.person.people_id) await restRows(session, 'POST', 'people_labor_job_assignees', 'on_conflict=labor_job_id,person_id', { labor_job_id: sheet.id, person_id: facts.person.people_id }, 'resolution=ignore-duplicates,return=minimal')
+        const lines = await restRows(session, 'POST', 'people_labor_job_items', 'select=id', sheetItemRows(p.lines, p.stated).map((it) => ({ job_id: sheet.id, ...it })))
+        if (!lines.ok || !Array.isArray(lines.body) || lines.body.length !== p.lines.length) {
+          // A sheet with no lines is a $0 sheet in the ledger: take it off again, and say which way that went.
+          const undone = await restDelete(session, 'people_labor_jobs', `id=eq.${sheet.id}`)
+          const why = lines.ok ? noRow : restError(lines.status, lines.body)
+          return errored(`${why} The lines did not land, so the sheet was ${undone.ok && undone.rows > 0 ? 'taken off again: nothing is written' : `left with no lines (${sheet.id}): take it off with plan_sub_labor { action: 'remove', sheet_id, reason }`}.`, target)
+        }
+        const tied = await restGet(session, 'people_labor_job_assignees', `select=person_id&labor_job_id=eq.${sheet.id}`)
+        const tiedRows = tied.ok && Array.isArray(tied.body) ? tied.body.length : 0
+        detail = {
+          sheet_id: sheet.id,
+          sheet: { who: sheet.assigned_to_name, day: sheet.job_date, job_number: sheet.job_number, stage: sheet.stage },
+          lines: p.lines.length,
+          tied_to_their_roster_row: tiedRows > 0,
+          ...(tiedRows > 0 ? {} : { roster_warning: `No assignee row stands on the sheet: the name "${sheet.assigned_to_name}" did not resolve to one roster row. Their portal and get_hours_statement find a sheet by that row; People → Subs assigns the sheet to them.` }),
+        }
+      } else if (p.action === 'change') {
+        const patch = (dry.reply.sheet_patch ?? {}) as Record<string, unknown>
+        const landed: string[] = []
+        if (dry.reply.replaces_lines === true && p.lines) {
+          // The new lines first, then the old ones by id: a refusal part-way leaves the sheet's old lines standing.
+          const old = world.items.filter((i) => i.job_id === p.sheet_id).map((i) => i.id)
+          const made = await restRows(session, 'POST', 'people_labor_job_items', 'select=id', sheetItemRows(p.lines, p.stated).map((it) => ({ job_id: p.sheet_id, ...it })))
+          if (!made.ok || !Array.isArray(made.body) || made.body.length !== p.lines.length) return errored(`${made.ok ? noRow : restError(made.status, made.body)} The new lines did not land; the sheet reads as it did.`, target)
+          for (let i = 0; i < old.length; i += 80) {
+            const gone = await restDelete(session, 'people_labor_job_items', `id=in.(${old.slice(i, i + 80).join(',')})`)
+            if (!gone.ok) return errored(`${restError(gone.status, gone.body)} The new lines landed and the old ones are still there: the sheet reads double. Plan the change again; it replaces every line.`, target)
+          }
+          landed.push(`${p.lines.length} ${p.lines.length === 1 ? 'line' : 'lines'} in place of ${old.length}`)
+        }
+        if (Object.keys(patch).length) {
+          const res = await restRows(session, 'PATCH', 'people_labor_jobs', `id=eq.${p.sheet_id}`, patch)
+          if (!res.ok) return errored(`${restError(res.status, res.body)}${landed.length ? ` Written before that: ${landed.join(', ')}.` : ''}`, target)
+          landed.push(`the sheet's ${Object.keys(patch).join(' and ')}`)
+        }
+        // return=minimal says nothing about rows RLS kept: read the sheet back.
+        const back = await restGet(session, 'people_labor_jobs', `select=${SHEET_COLS}&id=eq.${p.sheet_id}`)
+        const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as SheetRow | null
+        const asPlanned = !!row && Object.entries(patch).every(([k, v]) => (k === 'labor_rate' ? Number((row as unknown as Record<string, unknown>)[k]) === Number(v) : String((row as unknown as Record<string, unknown>)[k] ?? '') === String(v ?? '')))
+        if (!asPlanned) return ok(subLaborAppliedWords(p, label, { ok: false, error: `${noRow}${landed.length ? ` Written before that: ${landed.join(', ')}.` : ''}` }), { target })
+        detail = { sheet_id: p.sheet_id, landed, sheet: { who: row!.assigned_to_name, day: row!.job_date, sheet_rate: row!.labor_rate == null ? null : Number(row!.labor_rate) } }
+      } else {
+        const gone = await restDelete(session, 'people_labor_jobs', `id=eq.${p.sheet_id}`)
+        if (!gone.ok) return errored(restError(gone.status, gone.body), target)
+        if (gone.rows === 0) return ok(subLaborAppliedWords(p, label, { ok: false, error: noRow }), { target })
+        detail = { sheet_id: p.sheet_id, removed: true }
+      }
+      // The note, the span and the stated mark's source where the team reads them: a note on the job's activity, as
+      // plan_activity_note writes one. A note that fails never undoes the sheet; the reply says so.
+      const noteBody = typeof dry.reply.note_on_activity === 'string' ? dry.reply.note_on_activity : null
+      let note: { id: string } | { error: string } | null = null
+      const noteJob = subLaborNoteJobId(p, world)
+      if (noteBody && noteJob) {
+        const made = await restRows(session, 'POST', 'jobs_ledger_thread_notes', 'select=id', { job_id: noteJob, author_user_id: who.userId, body: noteBody })
+        const row = (Array.isArray(made.body) ? made.body[0] : made.body) as { id?: string } | null
+        note = made.ok && row && typeof row.id === 'string' ? { id: row.id } : { error: made.ok ? 'the insert answered with no row' : restError(made.status, made.body) }
+      }
+      return ok(subLaborAppliedWords(p, label, { ok: true, detail, note }), { target })
+    }
+    case 'plan_sub_labor_payment':
+    case 'apply_sub_labor_payment': {
+      // v2.6944: what was paid against a sheet, through the screen's own door as the dev — Make Payment's row under RLS,
+      // or the payment's Remove (remove_labor_job_payment, which keeps the trace). No wrapper RPC: the dry run is this
+      // server's read of the sheet, its lines and payments, and the bank row with every job it is already allocated to
+      // (devMcpSubLabor.ts), hashed with the payload. The bank row is read, never written. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as SubLaborPaymentPayload
+      const reads: SubLaborReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string, target: string | null = built.target): Outcome => ({ log: { status: 'error', target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readSubLaborPaymentWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = subLaborPaymentDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const sheet = world.sheet!
+      const target = sheet.id
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      const sheetOf = (sheet.assigned_to_name ?? '').trim() || 'this sheet'
+      let detail: Record<string, unknown>
+      if (p.action === 'record') {
+        const made = await restRows(session, 'POST', 'people_labor_job_payments', `select=${SHEET_PAY_COLS}`, sheetPaymentInsertRow(p, world))
+        if (!made.ok) return errored(restError(made.status, made.body), target)
+        const row = (Array.isArray(made.body) ? made.body[0] : made.body) as SheetPayRow | null
+        if (!row || typeof row.id !== 'string') return errored('The insert answered with no row — RLS let nothing through. This account cannot record a payment on this sheet.', target)
+        detail = { payment: { id: row.id, amount: Number(row.amount), paid_on: row.payment_date, memo: row.memo, hidden_from_sub: row.hidden_from_sub === true } }
+      } else {
+        const res = await restPost(session, `rpc/${SHEET_PAYMENT_REMOVE_RPC}`, { p_payment_id: p.payment_id, p_reason: p.reason })
+        if (!res.ok) return errored(restError(res.status, res.body), target)
+        detail = { removed_payment_id: p.payment_id, trace_event_id: typeof res.body === 'string' ? res.body : null }
+      }
+      const back = await restGet(session, 'people_labor_job_payments', `select=amount&job_id=eq.${sheet.id}&limit=1000`)
+      const bal = back.ok && Array.isArray(back.body) ? sheetBalance(sheetOwedCents(sheet.labor_rate, world.items), back.body as { amount: number | string }[]) : null
+      return ok(subLaborPaymentAppliedWords(p, sheetOf, { ok: true, detail, after: bal ? { paid: bal.paid / 100, open: bal.open / 100 } : null }), { target })
+    }
+    case 'plan_property_record':
+    case 'apply_property_record': {
+      // v2.6950: a property record's lien facts, as the Property record row, Edit customer's Properties and the Lien
+      // desk's property window save them — one PATCH on customer_addresses under RLS. No wrapper RPC: the dry run is
+      // this server's read of the record, the jobs linked to it and the owner the named job keeps for itself
+      // (devMcpPropertyRecord.ts), hashed with the payload; apply reads again and writes only when the hash still
+      // matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as PropertyRecordPayload
+      const reads: PropertyReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readPropertyWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = propertyRecordDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const record = world.record!
+      const recordId = String(record.id)
+      const address = typeof record.address === 'string' ? record.address : ''
+      const patch = propertyPatch(p.set, record)
+      const body = propertyPatchBody(patch, new Date().toISOString())
+      const res = await restRows(session, 'PATCH', 'customer_addresses', `id=eq.${recordId}`, body)
+      if (!res.ok) return errored(restError(res.status, res.body))
+      // return=minimal says nothing about rows RLS kept: read the record back, whole.
+      const back = await restGet(session, 'customer_addresses', `select=*&id=eq.${recordId}`)
+      const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
+      const landed = !!row && patch.changes.every((c) => row[c.column] === c.after) && patch.stamps.every((stamp) => row[stamp] != null)
+      if (!landed) return ok(propertyRecordAppliedWords(address, [], { ok: false, error: 'This account could not change this property record (RLS let no row through).' }), { target: recordId })
+      const changed = [...patch.changes.map((c) => c.column), ...patch.stamps.filter((stamp) => stamp !== 'updated_at')]
+      const shown: Record<string, unknown> = {}
+      for (const column of changed) shown[column] = row![column]
+      return ok(propertyRecordAppliedWords(address, changed, { ok: true, row: shown, reading: propertyLienReading(row!) }), { target: recordId })
+    }
     case 'plan_job_payment':
     case 'apply_job_payment': {
       // v2.6940: a payment on a job through the screen's own doors as the dev — the remove RPC behind the Job window's
@@ -2280,6 +2623,249 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // #297: the box photos' files follow in Drive, as the Combine tab's finish asks. A failed ask never undoes the combine.
       const photos = combineBoxPhotos(world) > 0 ? refiledForSeat(p.to_job_id, await invokeAsDev(session, 'photo-save', { refile_box_photos: p.to_job_id })) : undefined
       return ok(jobCombineAppliedWords(labels, { ok: true, rpc: body, after, ...(photos ? { photos } : {}) }), { target })
+    }
+    case 'plan_bid_labor':
+    case 'apply_bid_labor': {
+      // v2.6976 (the bid train's PR 4): a bid's Labor tab, under RLS as the dev. No wrapper RPC: the dry run is this
+      // server's read of the bid, its counts, the estimate, its rows and direct cost lines (devMcpBidLabor.ts), hashed
+      // with the payload; apply reads again and writes only when the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as BidLaborPayload
+      const reads: LaborReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readBidLaborWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = bidLaborDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const label = (dry.reply.bid as { label: string }).label
+      const est = dry.reply.estimate as { id: string | null; made: boolean; patch: Record<string, unknown> }
+      const failed: Array<{ what: string; why: string }> = []
+      const done = { estimate_made: false, boxes: 0, rows_minted: 0, rows_changed: 0, direct_added: 0, direct_changed: 0, direct_removed: 0 }
+      const rowsBack = (res: { ok: boolean; status: number; body: unknown }): number | string => (!res.ok ? restError(res.status, res.body) : Array.isArray(res.body) ? res.body.length : 0)
+      // The estimate first, as the tab makes it on a counted bid: the rows below hang on its id.
+      let estimateId = est.id
+      if (!estimateId) {
+        const made = await restRows(session, 'POST', 'cost_estimates', 'select=id', { bid_id: p.bid_id })
+        const row = (Array.isArray(made.body) ? made.body[0] : null) as { id?: string } | null
+        if (!made.ok || !row?.id) return errored(`The estimate could not be made, so nothing was written: ${made.ok ? 'the table let no row back (RLS)' : restError(made.status, made.body)}`)
+        estimateId = row.id
+        done.estimate_made = true
+      }
+      if (Object.keys(est.patch).length) {
+        const got = rowsBack(await restRows(session, 'PATCH', 'cost_estimates', `id=eq.${estimateId}&select=id`, est.patch, 'return=representation'))
+        if (got === 1) done.boxes = Object.keys(est.patch).length
+        else failed.push({ what: `the estimate's boxes (${Object.keys(est.patch).join(', ')})`, why: typeof got === 'string' ? got : 'the estimate let no write through (RLS let no row back)' })
+      }
+      const planRows = dry.reply.rows as PlanLaborRow[]
+      const mints = planRows.filter((r): r is Extract<PlanLaborRow, { status: 'mint' }> => r.status === 'mint')
+      if (mints.length) {
+        const got = rowsBack(await restRows(session, 'POST', 'cost_estimate_labor_rows', 'select=id', mints.map((m) => ({ ...m.row, cost_estimate_id: estimateId }))))
+        if (typeof got === 'string') failed.push({ what: `${mints.length} new labor row${mints.length === 1 ? '' : 's'}`, why: got })
+        else done.rows_minted = got
+      }
+      for (const r of planRows) {
+        if (r.status !== 'change') continue
+        const got = rowsBack(await restRows(session, 'PATCH', 'cost_estimate_labor_rows', `id=eq.${r.id}&select=id`, r.patch, 'return=representation'))
+        if (got === 1) done.rows_changed += 1
+        else failed.push({ what: r.reads, why: typeof got === 'string' ? got : 'the row let no write through (RLS let no row back)' })
+      }
+      for (const d of dry.reply.direct as PlanDirect[]) {
+        if (d.status === 'add') {
+          const got = rowsBack(await restRows(session, 'POST', d.table, 'select=id', { ...d.row, cost_estimate_id: estimateId }))
+          if (got === 1) done.direct_added += 1
+          else failed.push({ what: d.reads, why: typeof got === 'string' ? got : 'the table let no row back (RLS)' })
+        } else if (d.status === 'change') {
+          const got = rowsBack(await restRows(session, 'PATCH', d.table, `id=eq.${d.id}&select=id`, d.patch, 'return=representation'))
+          if (got === 1) done.direct_changed += 1
+          else failed.push({ what: d.reads, why: typeof got === 'string' ? got : 'the line let no write through (RLS let no row back)' })
+        } else if (d.status === 'remove') {
+          const got = rowsBack(await restRows(session, 'DELETE', d.table, `id=eq.${d.id}&select=id`, null, 'return=representation'))
+          if (got === 1) done.direct_removed += 1
+          else failed.push({ what: d.reads, why: typeof got === 'string' ? got : 'the line let no delete through (RLS let no row back)' })
+        }
+      }
+      let costNow: Record<string, unknown> | null = null
+      try {
+        costNow = laborCostFromWorld(await readBidLaborWorld(reads, { ...p, estimate: {}, rows: [], direct: [] }))
+      } catch { /* the rows landed; the cost is a courtesy */ }
+      const counts = dry.reply.counts as { rows_held: number; direct_held: number }
+      return ok(bidLaborAppliedWords(label, done, failed, counts.rows_held + counts.direct_held, costNow), { target: p.bid_id })
+    }
+    case 'plan_bid_takeoff':
+    case 'apply_bid_takeoff': {
+      // v2.6968 (the bid train's PR 3): a bid's takeoff as the Takeoffs tab holds it, under RLS as the dev. No wrapper RPC:
+      // the dry run is this server's read of the bid, the active version's count rows and lines, the parts and their
+      // lowest prices (devMcpBidTakeoff.ts), hashed with the payload; apply reads again and writes only when the hash
+      // still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as BidTakeoffPayload
+      const reads: TakeoffReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readBidTakeoffWorld(reads, p, { userId: who.userId })
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = bidTakeoffDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const planRows = dry.reply.rows as PlanTakeoffRow[]
+      const label = (dry.reply.bid as { label: string }).label
+      const failed: Array<{ n: number; what: string; why: string }> = []
+      const done = { rows: 0, added: 0, changed: 0, removed: 0, costs_set: 0, costs_cleared: 0 }
+      const rowsBack = (res: { ok: boolean; status: number; body: unknown }): number | string => (!res.ok ? restError(res.status, res.body) : Array.isArray(res.body) ? res.body.length : 0)
+      // Row by row, in the tab's order of work: a replace clears the row first, then its lines, then its quoted cost.
+      // A row that fails is named and the next row still goes on.
+      for (const r of planRows) {
+        if (r.status !== 'ready') continue
+        const before = failed.length
+        if (r.remove_line_ids.length) {
+          const got = rowsBack(await restRows(session, 'DELETE', 'bids_takeoff_rough_part_lines', `id=in.(${r.remove_line_ids.join(',')})&select=id`, null, 'return=representation'))
+          if (typeof got === 'string') {
+            failed.push({ n: r.n, what: `${r.reads}: its lines were not removed, so nothing of the row was written`, why: got })
+            continue
+          }
+          done.removed += got
+        }
+        const adds = r.lines.filter((l): l is Extract<PlanLine, { status: 'add' }> => l.status === 'add')
+        if (adds.length) {
+          const got = rowsBack(await restRows(session, 'POST', 'bids_takeoff_rough_part_lines', 'select=id', adds.map((l) => l.row)))
+          if (typeof got === 'string') failed.push({ n: r.n, what: `${r.reads}: ${adds.length} new line${adds.length === 1 ? '' : 's'}`, why: got })
+          else done.added += got
+        }
+        for (const l of r.lines) {
+          if (l.status !== 'change') continue
+          const got = rowsBack(await restRows(session, 'PATCH', 'bids_takeoff_rough_part_lines', `id=eq.${l.id}&select=id`, l.patch, 'return=representation'))
+          if (got === 1) done.changed += 1
+          else failed.push({ n: r.n, what: `${r.reads}: ${l.reads}`, why: typeof got === 'string' ? got : 'the line let no write through (RLS let no row back)' })
+        }
+        if (r.cost?.status === 'set') {
+          const got = rowsBack(await restRows(session, 'POST', 'bid_count_row_custom_costs', 'on_conflict=bid_id,count_row_id&select=id', r.cost.row, 'resolution=merge-duplicates,return=representation'))
+          if (got === 1) done.costs_set += 1
+          else failed.push({ n: r.n, what: `${r.reads}: ${r.cost.reads}`, why: typeof got === 'string' ? got : 'the cost let no write through (RLS let no row back)' })
+        } else if (r.cost?.status === 'clear') {
+          const got = rowsBack(await restRows(session, 'DELETE', 'bid_count_row_custom_costs', `id=eq.${r.cost.id}&select=id`, null, 'return=representation'))
+          if (got === 1) done.costs_cleared += 1
+          else failed.push({ n: r.n, what: `${r.reads}: ${r.cost.reads}`, why: typeof got === 'string' ? got : 'the cost let no delete through (RLS let no row back)' })
+        }
+        if (failed.length === before) done.rows += 1
+      }
+      let materialsNow: string | null = null
+      try {
+        const now = await readBidTakeoffWorld(reads, { ...p, rows: [] }, { userId: who.userId })
+        materialsNow = `$${materialsTotal(now.lines, now.countRows).total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      } catch { /* the lines landed; the total is a courtesy */ }
+      const heldRows = (dry.reply.counts as { rows_held: number }).rows_held
+      return ok(bidTakeoffAppliedWords(label, done, failed, heldRows, materialsNow), { target: p.bid_id })
+    }
+    case 'plan_bid_counts':
+    case 'apply_bid_counts': {
+      // v2.6967 (the bid train's PR 2): a bid's count rows as the Counts tab writes them, under RLS as the dev. No wrapper
+      // RPC: the dry run is this server's read of the bid, its versions and the active version's rows (devMcpBidCounts.ts),
+      // hashed with the payload; apply reads again and writes only when the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as BidCountsPayload
+      const reads: CountsReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readBidCountsWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = bidCountsDryRun(p, world)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const planRows = dry.reply.rows as PlanRow[]
+      const planRemoves = dry.reply.remove as PlanRemove[]
+      const label = (dry.reply.bid as { label: string }).label
+      const failed: Array<{ n: number | null; what: string; why: string }> = []
+      const oneRow = (res: { ok: boolean; status: number; body: unknown }): string | null =>
+        !res.ok ? restError(res.status, res.body) : Array.isArray(res.body) && res.body.length === 1 ? null : 'the row let no write through (RLS let no row back)'
+      // The new rows: one insert, tagged as the sheet's own import so the bid's History reads them as one action.
+      const adds = planRows.filter((r): r is Extract<PlanRow, { status: 'add' }> => r.status === 'add')
+      let added = 0
+      if (adds.length) {
+        const res = await restRows(session, 'POST', 'bids_count_rows', 'select=id', adds.map((a) => a.row), undefined, { 'x-bid-action': COUNTS_INSERT_ACTION })
+        added = res.ok && Array.isArray(res.body) ? res.body.length : 0
+        if (!res.ok) for (const a of adds) failed.push({ n: a.n, what: a.reads, why: restError(res.status, res.body) })
+        else if (added < adds.length) failed.push({ n: null, what: `${adds.length - added} of the new rows`, why: 'the table let them not through (RLS let no row back)' })
+      }
+      // Each changed row is the sheet's inline edit: its own write, so one that fails never stops the next.
+      const changed: Array<{ n: number; reads: string }> = []
+      for (const c of planRows) {
+        if (c.status !== 'change') continue
+        const why = oneRow(await restRows(session, 'PATCH', 'bids_count_rows', `id=eq.${c.id}&select=id`, c.patch, 'return=representation'))
+        if (why) failed.push({ n: c.n, what: c.reads, why })
+        else changed.push({ n: c.n, reads: c.reads })
+      }
+      const removed: Array<{ n: number; reads: string }> = []
+      for (const r of planRemoves) {
+        if (r.status !== 'remove') continue
+        const why = oneRow(await restRows(session, 'DELETE', 'bids_count_rows', `id=eq.${r.id}&select=id`, null, 'return=representation'))
+        if (why) failed.push({ n: r.n, what: r.reads, why })
+        else removed.push({ n: r.n, reads: r.reads })
+      }
+      // The alternates join the bid's last, as the sheet's import and paste_counts write them: after the rows.
+      const alt = dry.reply.alternates as { after: string[]; joined: string[] }
+      let alternates: string[] = []
+      if (alt.joined.length) {
+        const why = oneRow(await restRows(session, 'PATCH', 'bids', `id=eq.${p.bid_id}&select=id`, { alternate_group_tags: alt.after }, 'return=representation'))
+        if (why) failed.push({ n: null, what: `the alternates ${alt.joined.join(', ')}`, why })
+        else alternates = alt.joined
+      }
+      let sheetNow: string | null = null
+      try {
+        const now = await readBidCountsWorld(reads, { ...p, rows: [], remove: [] })
+        sheetNow = sheetSummaryWords(now.rows, now.bid?.alternate_group_tags ?? [])
+      } catch { /* the rows landed; the totals are a courtesy */ }
+      const heldInPlan = (dry.reply.counts as { held: number }).held
+      return ok(bidCountsAppliedWords(label, { added, changed, removed, alternates }, failed, heldInPlan, sheetNow), { target: p.bid_id })
     }
     case 'plan_bid_update':
     case 'apply_bid_update': {

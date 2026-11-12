@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bridge: the five step windows, before and after</title>
+<style>
+  /* Punch list #303. The five windows that open from the pipe (Market, Sales, Build, Bill, Collect), each as it is
+     today and as it could be. The sizes in the table are measured on the page (words, numbers, screens, presses).
+     Every company figure and name is made up: Ridgeway Builders, Oak Hollow HOA, Cedar Bend Dental, Sam, Dana,
+     Jorge, every dollar, hour, job and date. Nothing here is built. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4;
+    --border-red: #fca5a5; --border-amber: #fcd34d;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f;
+    --border-red: #991b1b; --border-amber: #92400e;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap b { color: var(--copper); }
+  .cap .is { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 46ch; }
+  .frame { max-width: 100%; overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  ul.plain { margin: 8px 0 0; padding-left: 20px; max-width: 96ch; }
+  ul.plain li { margin: 0 0 6px; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  table.t td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .tw { overflow-x: auto; }
+
+  /* ---- the app, drawn ---- */
+  .screen { width: 375px; background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; padding: 10px 12px 12px; }
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 12px 10px; }
+  .k { font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .h { margin: 3px 0 2px; font-size: 1.12rem; font-weight: 800; line-height: 1.25; color: var(--text-strong); }
+  .p { margin: 0; font-size: .84rem; color: var(--text-700); }
+  .det { font-size: .76rem; color: var(--text-muted); line-height: 1.35; }
+  .x { float: right; font-size: 1rem; color: var(--text-muted); }
+  .tiles { display: grid; gap: 6px; margin-top: 8px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; background: var(--bg-subtle); }
+  .tile .v { font-size: 1.15rem; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .more { margin-top: 8px; border: 1px dashed var(--border-strong); border-radius: 8px; padding: 7px 9px; font-size: .76rem; color: var(--text-muted); background: repeating-linear-gradient(135deg, transparent 0 8px, var(--bg-subtle) 8px 16px); }
+  .more b { color: var(--text-700); display: block; }
+  .do { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); margin-top: 0; }
+  .do b { font-size: .9rem; color: var(--text-strong); line-height: 1.3; }
+  .do small { display: block; font-size: .76rem; font-weight: 400; color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: .8rem; font-weight: 700; min-height: 44px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .sec { margin-top: 10px; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: .8rem; color: var(--text-link); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .two div { border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-size: .78rem; color: var(--text-muted); }
+  .two b { display: block; font-size: 1rem; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .bar { display: grid; grid-template-columns: 5.6rem 1fr 3rem; gap: 8px; align-items: center; font-size: .78rem; color: var(--text-700); margin-top: 4px; }
+  .bar i { display: block; height: 9px; border-radius: 2px; background: var(--bg-muted); overflow: hidden; }
+  .bar i u { display: block; height: 100%; background: #16a34a; }
+  .bar span:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+  .stack { display: flex; height: 12px; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .stack i { display: block; height: 100%; }
+  .tbl { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .78rem; }
+  .tbl td { padding: 4px 0; border-top: 1px solid var(--border); color: var(--text-700); }
+  .tbl td:last-child { text-align: right; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .newmark { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 10px; }
+  .key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--new); border-radius: 3px; background: var(--new-tint); vertical-align: -1px; margin-right: 6px; }
+  .red { color: var(--text-red-700); } .green { color: var(--text-green-700); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #303 · The Bridge · drawn 2026-11-11 · nothing here is built</p>
+    <h1>The five step windows, before and after</h1>
+    <p>A press on a section of the pipe opens that step's window. Each pair below is the window as it opens today on a phone, then the same window after the change. <span class="key"></span>A violet outline marks the after. The hatched box says what sits below the first screen today. Every company figure and name is made up.</p>
+    <nav class="jump"><a href="#all">What all five share</a><a href="#market">1 · Market</a><a href="#sales">2 · Sales</a><a href="#build">3 · Build</a><a href="#bill">4 · Bill</a><a href="#collect">5 · Collect</a><a href="#best">Is this the best we can do?</a></nav>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+  </div>
+</header>
+
+<!-- ───────────────────────── all ───────────────────────── -->
+<h2 id="all">What all five share <small>measured on the live page, 2026-11-11</small></h2>
+<p class="lede">Each window was opened at desk and phone width and counted. The counts measure the window, not the company.</p>
+<div class="tw"><table class="t">
+  <tr><th>Window</th><th>Words</th><th>Numbers</th><th>Phone screens</th><th>Presses</th><th>Presses under 36 px</th></tr>
+  <tr><td>Market</td><td class="n">769</td><td class="n">86</td><td class="n">4.2</td><td class="n">39</td><td class="n">23</td></tr>
+  <tr><td>Sales</td><td class="n">951</td><td class="n">128</td><td class="n">5.0</td><td class="n">21</td><td class="n">0</td></tr>
+  <tr><td>Build</td><td class="n">1,405</td><td class="n">298</td><td class="n">11.3</td><td class="n">50</td><td class="n">0</td></tr>
+  <tr><td>Bill</td><td class="n">1,094</td><td class="n">116</td><td class="n">6.9</td><td class="n">26</td><td class="n">0</td></tr>
+  <tr><td>Collect</td><td class="n">1,137</td><td class="n">144</td><td class="n">6.7</td><td class="n">23</td><td class="n">15</td></tr>
+  <tr><td>After, each</td><td class="n">under 250 open</td><td class="n">under 30 open</td><td class="n">about 1.5</td><td class="n">up to 8</td><td class="n">0</td></tr>
+</table></div>
+<ul class="plain">
+  <li><b>Each one reads as a report.</b> The move for the week is one sentence near the top. Its press is screens below, or on another page.</li>
+  <li><b>Every list is printed whole.</b> Build prints every open job, six fields to a row. Bill prints every leak. Nobody reads row 30.</li>
+  <li><b>Each ends in a block called <i>How this reads</i>.</b> It runs 190 to 330 words and names database columns. It is always open.</li>
+  <li><b>Market and Sales still count wins their old way.</b> They use one win share for everything, count a bid as won when it became a job, and drop a bid from the pile at 90 days. That is not the rule set on 2026-11-11.</li>
+  <li><b>Words a first reader cannot use.</b> Bids that <i>ride at $0</i>. <i>Evaporating</i>. <i>Dead weight</i>. <i>$280k·days</i>.</li>
+  <li><b>Two of them are the same list.</b> Jobs with hours and no price appear in Build and again in Bill, row by row.</li>
+</ul>
+<div class="note"><b>The one change for all five:</b> the window opens on where the step stands and what to do this week, up to five rows, each with one press. Everything else stays, one press away.</div>
+
+<!-- ───────────────────────── 1 market ───────────────────────── -->
+<h2 id="market">1 · Market <small>what comes in to price</small></h2>
+<p class="lede">Today it leads with every dollar asked and judges it at one win share. After, it leads with what Market is worth at the won rates, and shows the chart of wins by bid size.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · the first phone screen of 4.2</div>
+    <div class="frame"><div class="screen"><div class="win">
+      <span class="x">×</span>
+      <div class="k">Market · demand · read Mon, Nov 9</div>
+      <div class="h">About $180k a week asked, short of the field</div>
+      <p class="p">Call the 14 quiet GCs and put a value on Ridgeway Builders' 2 bids. That is this week's lever.</p>
+      <p class="det" style="margin-top:4px">That is worth about $3.6k a week at the 2% win share. The field builds $33k a week. Feeding it takes about $3.3M a week asked, or a better share.</p>
+      <div class="tiles">
+        <div class="tile"><div class="k">Asked of us, this quarter</div><div class="v">$2.1M <span class="red" style="font-size:.8rem">▼ −88%</span></div><div class="det">Against $17.4M in the 13 weeks before. Less is arriving.</div></div>
+        <div class="tile"><div class="k">Three GCs carry</div><div class="v">64% <span style="font-size:.8rem">▼ from 71%</span></div><div class="det">Ridgeway Builders, Oak Hollow HOA and Pine Fork Homes. The book is widening.</div></div>
+      </div>
+      <div class="more"><b>Below the first screen</b>New names tile · The asks, 26 weeks deep · The book, 8 sources and 37 smaller · Fix the reading · What this desk cannot see · How this reads, 290 words</div>
+    </div></div></div>
+    <p class="say">The headline number is 100 times what the same window says it is worth. No press on this screen does the move it names.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the whole window</div>
+    <div class="frame"><div class="screen"><div class="win newmark">
+      <span class="x">×</span>
+      <div class="k">Market · what comes in to price</div>
+      <div class="h">Market is worth $31k a week. The field builds $37k.</div>
+      <p class="p">That is $6k a week short of keeping the field busy.</p>
+      <div class="two"><div><b>$24k</b>bids, at 7% won</div><div><b>$7k</b>estimates, at 48% won</div></div>
+      <div class="sec">What we win, by the size of the bid</div>
+      <div class="bar"><span>Under $10k</span><i><u style="width:38%"></u></i><span>38%</span></div>
+      <div class="bar"><span>$10k to $50k</span><i><u style="width:24%"></u></i><span>24%</span></div>
+      <div class="bar"><span>$50k to $500k</span><i><u style="width:8%"></u></i><span>8%</span></div>
+      <div class="bar"><span>Over $500k</span><i><u style="width:0%"></u></i><span>0%</span></div>
+      <div class="sec">Do this week</div>
+      <div class="do"><b>Mark 41 old bids won or lost<small>Sent over 180 days ago, no mark. $7.9M.</small></b><span class="btn blue">Open the Bid Board</span></div>
+      <div class="do"><b>Call Ridgeway Builders<small>Quiet 12 weeks. $640k asked this year.</small></b><span class="btn">Open the customer</span></div>
+      <div class="do"><b>Put a value on 9 bids<small>A bid with no value counts for nothing.</small></b><span class="btn">Open the bids</span></div>
+      <div class="links"><span>Every source (45) ›</span><span>The asks by week ›</span><span>How this is counted ›</span></div>
+    </div></div></div>
+    <p class="say">One number, already read through the won rates. Three things to do, each with its press. The chart you liked is here too.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 2 sales ───────────────────────── -->
+<h2 id="sales">2 · Sales <small>bids and estimates that are out</small></h2>
+<p class="lede">Today every figure is "expected dollars" by each asker's own win rate, fading by their own pace. One asker with five wins in five carries nine tenths of the pile. After, it reads the pile at the won rates by size and asks for the marks the rates depend on.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · the first phone screen of 5.0</div>
+    <div class="frame"><div class="screen"><div class="win">
+      <span class="x">×</span>
+      <div class="k">Sales · the work asked for · read Mon, Nov 9</div>
+      <div class="h">$2.9M asked · worth about $190k</div>
+      <p class="p">2 calls this week protect $4.8k of it.</p>
+      <p class="det" style="margin-top:4px">28 bids, $2.8M. 19 estimates, $82k. Sold $21k a week against the field's $33k. Every number below is expected dollars. That is the ask times the asker's own decided win rate. It fades to zero past twice their answer pace.</p>
+      <div class="tiles">
+        <div class="tile"><div class="k">What the pile is worth</div><div class="v">≈ $190k</div><div class="det">Open dollars flatter the pile. Say the $190k, never the $2.9M.</div></div>
+        <div class="tile"><div class="k">At risk, the calls</div><div class="v">$4.8k on 2 calls</div><div class="det">Past the asker's own answer pace. A call re-arms the ask or decides it.</div></div>
+      </div>
+      <div class="more"><b>Below the first screen</b>What thins the reading · What is in the pile, 4 bands · Who to call, 7 rows of 9 fields · The asks already decided · 5 bids with no reason · How this reads, 330 words</div>
+    </div></div></div>
+    <p class="say">Two dollar figures for one pile in the headline. The rule behind the smaller one takes a paragraph to state.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the whole window</div>
+    <div class="frame"><div class="screen"><div class="win newmark">
+      <span class="x">×</span>
+      <div class="k">Sales · bids and estimates that are out</div>
+      <div class="h">$2.9M is out. At our won rates that is about $74k.</div>
+      <p class="p">We sold $21k a week. The field builds $33k.</p>
+      <div class="sec">Do this week</div>
+      <div class="do"><b>Call Oak Hollow HOA<small>$212k bid. 27 days past their usual answer.</small></b><span class="btn blue">Open the bid</span></div>
+      <div class="do"><b>Call Cedar Bend Dental<small>3 estimates out 12 days. $9k.</small></b><span class="btn">Open Estimates</span></div>
+      <div class="do"><b>Mark 41 old bids won or lost<small>The won rates rest on the marks.</small></b><span class="btn">Open the Bid Board</span></div>
+      <div class="sec">Why we lost, last 12 months</div>
+      <table class="tbl">
+        <tr><td>The GC lost the project</td><td>$410k · 3</td></tr>
+        <tr><td>Price too high</td><td>$330k · 3</td></tr>
+        <tr><td>No reason written · <span style="color:var(--text-link)">Name it on 5 bids ›</span></td><td>$290k · 5</td></tr>
+      </table>
+      <div class="links"><span>Every asker (31) ›</span><span>How this is counted ›</span></div>
+    </div></div></div>
+    <p class="say">One figure for the pile. The calls lead. The marks are on the list, because the rate is only as true as they are.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 3 build ───────────────────────── -->
+<h2 id="build">3 · Build <small>the work sold</small></h2>
+<p class="lede">This is the longest window: every open job, row after row, over eleven phone screens. The three groups it names in its tiles are the right ones. After, each group is a short list with one press, and the rest waits behind <i>Show all</i>.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · the first phone screen of 11.3</div>
+    <div class="frame"><div class="screen"><div class="win">
+      <span class="x">×</span>
+      <div class="k">Build · the work sold · last 14 days</div>
+      <div class="h">126h went in. $1.9k of work came out.</div>
+      <p class="p">5 jobs ate 118 hours and moved nothing. 29 jobs hold $98k and saw nobody. That is the week.</p>
+      <p class="det" style="margin-top:4px">by hours the field builds $33k a week. By the percents $20k. These rows are where the missing $13k a week hides. 6.4 weeks to build what is already sold at that pace.</p>
+      <div class="tiles">
+        <div class="tile"><div class="k">Moved</div><div class="v">$1.9k on 1 job</div><div class="det">The hours and the % agree. The pace lives here.</div></div>
+        <div class="tile"><div class="k">Ate hours, moved nothing</div><div class="v">118h on 5 jobs</div><div class="det">A stale % or work going nowhere. One look each says which.</div></div>
+      </div>
+      <div class="more"><b>Below the first screen</b>Stalled tile · Every open job, 40 rows of 6 fields, 8 phone screens · How this reads</div>
+    </div></div></div>
+    <p class="say">It finds the problem and then hands over 40 rows. Each row has six fields and a small arrow.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the whole window</div>
+    <div class="frame"><div class="screen"><div class="win newmark">
+      <span class="x">×</span>
+      <div class="k">Build · the work sold · last 14 days</div>
+      <div class="h">The field put in 126 hours. Only $1.9k of work shows as done.</div>
+      <p class="p">Most of that gap is percents nobody updated.</p>
+      <div class="sec">Hours went in, the percent did not move · 5 jobs</div>
+      <div class="do"><b>2101 · Ridgeway tower<small>96 hours. Still 45%.</small></b><span class="btn blue">Set the percent</span></div>
+      <div class="do"><b>2114 · Pine Fork creekside<small>9 hours. Still 30%.</small></b><span class="btn">Set the percent</span></div>
+      <div class="det" style="padding:4px 0 2px;color:var(--text-link)">Show all 5 ›</div>
+      <div class="sec">Hours on a job with no price · 6 jobs</div>
+      <div class="do"><b>2140 · Walkthrough<small>7 hours earn nothing until it has a price.</small></b><span class="btn">Set a price</span></div>
+      <div class="det" style="padding:4px 0 2px;color:var(--text-link)">Show all 6 ›</div>
+      <div class="sec">Sold, and nobody on it · 29 jobs, $98k</div>
+      <div class="do"><b>2087 · Oak Hollow clubhouse<small>$26k left. 52 days quiet.</small></b><span class="btn">Schedule it</span></div>
+      <div class="det" style="padding:4px 0 2px;color:var(--text-link)">Show all 29 ›</div>
+      <div class="links"><span>How this is counted ›</span></div>
+    </div></div></div>
+    <p class="say">The same three groups, named by what to do. Each row is one job and one press. The other 36 rows are one press away.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 4 bill ───────────────────────── -->
+<h2 id="bill">4 · Bill <small>the work done</small></h2>
+<p class="lede">Today it opens on a five-row table of the whole pipe, then a long list of leaks. Many of those rows are the no-price jobs from Build, each with the same sentence. After, it opens on the dollars with no bill and the bills to finish.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · the first phone screen of 6.9</div>
+    <div class="frame"><div class="screen"><div class="win">
+      <span class="x">×</span>
+      <div class="k">Bill · the work done · read Mon, Nov 9</div>
+      <div class="h">Where billing leaks: $38k will not bill itself.</div>
+      <p class="p">Nothing waits on a send today.</p>
+      <p class="det" style="margin-top:4px">the field finishes $33k a week · the office bills $39k a week · 1.2 weeks to bill what is already finished</p>
+      <div class="sec">The pipe, this window · 8 weeks, by the %s and the reports</div>
+      <table class="tbl">
+        <tr><td>finished by the field</td><td>$268k</td></tr>
+        <tr><td>finished, no bill yet</td><td>$38k</td></tr>
+        <tr><td>billed</td><td>$301k</td></tr>
+        <tr><td>billed, not yet paid</td><td>$240k</td></tr>
+        <tr><td>paid</td><td>$204k</td></tr>
+      </table>
+      <div class="more"><b>Below the first screen</b>The leaks, 12 rows · Marked billed by hand, 7 rows · Billable today · The rule, lately · What a week of sitting costs, "$280k·days" · How this reads</div>
+    </div></div></div>
+    <p class="say">Four of the five table rows belong to other steps. The cost of waiting is given in a unit nobody says out loud.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the whole window</div>
+    <div class="frame"><div class="screen"><div class="win newmark">
+      <span class="x">×</span>
+      <div class="k">Bill · the work done</div>
+      <div class="h">$38k of finished work has no bill.</div>
+      <p class="p">The office bills $39k a week. So this is about one week of work.</p>
+      <div class="sec">Do this week</div>
+      <div class="do"><b>Bill the rest of 2101 · Ridgeway tower<small>$19k left. Part-billed 4 weeks ago.</small></b><span class="btn blue">Open the bill</span></div>
+      <div class="do"><b>Bill the rest of 2122 · Cedar Bend<small>$13k left. Part-billed last week.</small></b><span class="btn">Open the bill</span></div>
+      <div class="do"><b>Price 9 jobs that have hours<small>With no price their work never bills.</small></b><span class="btn">Set prices</span></div>
+      <div class="sec">Did the customer get these?</div>
+      <div class="do"><b>7 bills marked billed by hand<small>$118k. Nothing on record went out.</small></b><span class="btn">See the 7</span></div>
+      <p class="det" style="margin-top:8px">52 of 80 bills went out the day the job finished.</p>
+      <div class="links"><span>Every leak (12) ›</span><span>How this is counted ›</span></div>
+    </div></div></div>
+    <p class="say">The no-price jobs are one row with a count, not a row each. The hand-marked bills become one plain question.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── 5 collect ───────────────────────── -->
+<h2 id="collect">5 · Collect <small>the work billed</small></h2>
+<p class="lede">This is the best of the five. It already names each payer, what to say and the press. But that list sits three phone screens down, under three long tiles, a six-band breakdown and <i>How this reads</i>. After, the payers lead.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap"><b>Before</b> · the first phone screen of 6.7</div>
+    <div class="frame"><div class="screen"><div class="win">
+      <span class="x">×</span>
+      <div class="k">Collect · the work billed · read Mon, Nov 9</div>
+      <div class="h">$240k billed, not yet paid</div>
+      <p class="det" style="margin-top:4px">customers pay $26k a week · 6.6 weeks to collect what is already late · 58 bills, 37 past their expected day</p>
+      <div class="tiles">
+        <div class="tile"><div class="k">Only this part waits on a call</div><div class="v">$176k late</div><div class="det">34 bills past the day their payer usually pays, 4 of them past a promise. 3 more are doubtful, $2.1k. The late part alone clears in 6.5 weeks at today's pace.</div></div>
+        <div class="tile"><div class="k">5 payers hold</div><div class="v">$214k · 90%</div><div class="det">5 moves cover it. The other 28 bills are $24k across 15 payers.</div></div>
+      </div>
+      <div class="more"><b>Below the first screen</b>If half lands in 3 weeks, a guess · What is in the pile, 6 bands · How this reads, 190 words · Who holds it, 5 payers with what to say · Only you can decide these 2</div>
+    </div></div></div>
+    <p class="say">The useful part, who to call and what to say, is the fifth thing in the window.</p>
+  </div>
+  <div class="col">
+    <div class="cap"><span class="is">After</span> · the whole window</div>
+    <div class="frame"><div class="screen"><div class="win newmark">
+      <span class="x">×</span>
+      <div class="k">Collect · the work billed</div>
+      <div class="h">$176k is late. Five customers hold most of it.</div>
+      <div class="stack"><i style="width:25%;background:#16a34a"></i><i style="width:73%;background:#dc2626"></i><i style="width:2%;background:#9ca3af"></i></div>
+      <p class="det" style="margin-top:3px">$61k not yet due · $176k late · $2k doubtful</p>
+      <div class="sec">Call this week</div>
+      <div class="do"><b>Ridgeway Builders · $96k<small>Ask: is the pay application approved, and which pay run is it on?</small></b><span class="btn blue">Record the answer</span></div>
+      <div class="do"><b>Oak Hollow HOA · $64k<small>14 bills, the oldest from June. Send the statement, then call.</small></b><span class="btn">Send the statement</span></div>
+      <div class="det" style="padding:4px 0 2px;color:var(--text-link)">Show all 5 ›</div>
+      <div class="sec">Only you can decide · 2</div>
+      <div class="do"><b>File the Oak Hollow HOA lien<small>By Nov 20. It needs a signature and a notary.</small></b><span class="btn">Open the affidavit</span></div>
+      <div class="det" style="padding:4px 0 2px;color:var(--text-link)">Show all 2 ›</div>
+      <div class="links"><span>What if half of it lands ›</span><span>How this is counted ›</span></div>
+    </div></div></div>
+    <p class="say">Nothing is removed. The order changes: the calls, then your decisions, then the breakdown as one bar.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── best ───────────────────────── -->
+<h2 id="best">Is this the best we can do?</h2>
+<p class="lede">What could still be wrong with the after, window by window.</p>
+<ul class="plain">
+  <li><b>A short list can hide the row that matters.</b> Each list shows its biggest rows first, by dollars. The count is always on the heading, and <i>Show all</i> is one press.</li>
+  <li><b>"Do this week" must not become a sixth list of things to do.</b> The first screen already has the week's call. These rows are the same moves, for this one step, with their doors. Where a move is on the week's call, the row should say so.</li>
+  <li><b>Market and Sales change their numbers, not only their looks.</b> They would read wins by the rules set on 2026-11-11. That is the larger part of the work, and it should ship before the layout.</li>
+  <li><b>Build and Bill share the no-price jobs.</b> After, Build owns the list and Bill shows one row with a count. If that is wrong, both keep it.</li>
+  <li><b>Collect's guess stays a guess.</b> <i>What if half of it lands</i> moves behind a press. It is the only place the page forecasts a change, so it should not lead.</li>
+  <li><b>How this is counted</b> is rewritten in plain words, with no column names, and closed until pressed. A developer can still find the columns in the code.</li>
+</ul>
+<div class="tw"><table class="t">
+  <tr><th>Piece</th><th>What it is</th><th>Size</th></tr>
+  <tr><td>The shared frame</td><td>One component: headline, up to five rows with a press, the folds. All five windows use it.</td><td>M</td></tr>
+  <tr><td>Market and Sales on the new won rates</td><td>The two kernels read the bids and estimates rules. Their old win share goes.</td><td>M</td></tr>
+  <tr><td>Build, Bill, Collect</td><td>Reorder and shorten. Their kernels already hold every row.</td><td>S each</td></tr>
+  <tr><td>How this is counted, five times</td><td>Plain words, held by the plain-words test.</td><td>S</td></tr>
+</table></div>
+<div class="note"><b>My pick:</b> do all five on one frame, Collect first. It needs the least change and shows the frame working. Then Build and Bill, then Market and Sales with the new rates.</div>
+
+</div>
+<script>
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set)
+      document.querySelectorAll('.themes button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false') })
+    })
+  })
+</script>
+</body>
+</html>

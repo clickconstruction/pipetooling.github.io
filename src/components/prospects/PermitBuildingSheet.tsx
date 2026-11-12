@@ -95,7 +95,7 @@ export function PermitBuildingSheet({
         })
       if (row.address) {
         setParcel({ state: 'loading' })
-        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng })
+        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng, id: row.id })
           .then((value) => setParcel({ state: 'done', value }))
           .catch((e) => setParcel({ state: 'failed', message: formatErrorMessage(e) }))
       } else {
