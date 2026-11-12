@@ -430,6 +430,10 @@ export const ENTRIES = {
   'lib/bids/countRowUnit.ts': { values: [], types: [] },
   'lib/bids/parseCountsImportText.ts': { values: [], types: [] },
   'lib/bids/pickActiveVersion.ts': { values: [], types: [] },
+  // The dev seat's plan_bid_takeoff: the bid's materials off its part lines (the Takeoffs strip's and Pricing's number,
+  // with the order rounding) and how a part is sold, so the plan states the tab's own total. Off the index.
+  'lib/bids/bidMaterials.ts': { values: [], types: [] },
+  'lib/materials/orderIncrement.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
