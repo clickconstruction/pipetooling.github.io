@@ -6504,6 +6504,27 @@ button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
 .developmentMoneyCard.isLit {
   background: var(--bg-amber-tint);
 }
+/* The Pay calendar's word press (punch list #323): a line of small words that opens the window. The underline alone
+   marks it, in the colour of the words beside it; dotted at rest, solid on hover, thicker for the keyboard. */
+.payCalendarPress {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.payCalendarPress:hover {
+  text-decoration-style: solid;
+}
+.payCalendarPress:focus-visible {
+  outline: none;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+}
 .developmentMoneyCard.isLit {
   border-color: var(--bg-amber-200);
 }
