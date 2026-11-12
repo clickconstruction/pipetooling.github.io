@@ -134,6 +134,8 @@ export function PersonDeskBody({
           display: 'grid',
           gridTemplateColumns: variant === 'page' ? 'repeat(auto-fit, minmax(340px, 1fr))' : '1fr',
           alignItems: 'start',
+          // v2.7015: the sections stack from the top; a short desk no longer spreads them down the panel.
+          alignContent: 'start',
           gap: '0.6rem',
           padding: '0.7rem 0.75rem 1rem',
         }}

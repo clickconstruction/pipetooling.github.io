@@ -16,6 +16,9 @@ import {
   firstLookExpiry,
   firstLookKindOfMime,
   firstLookObjectPath,
+  firstLookSampleOf,
+  firstLookSamplePayload,
+  FIRST_LOOK_SAMPLE_WORDS,
   firstLookSentLine,
   firstLookSignRefusal,
   firstLookSniff,
@@ -222,6 +225,8 @@ async function lookByCode(admin: Admin, code: string): Promise<LookRow | null> {
 async function openLook(admin: Admin, req: Request, rawCode: unknown): Promise<{ look: LookRow } | { answer: Response }> {
   const code = firstLookCode(typeof rawCode === 'string' ? rawCode : null)
   if (!code) return { answer: json({ error: 'bad_code' }, 400) }
+  // The sample page (What customers see) asks for an upload address like any page: it is told in words that nothing is sent.
+  if (firstLookSampleOf(code)) return { answer: json({ error: FIRST_LOOK_SAMPLE_WORDS, code: 'sample' }, 422) }
   const look = await lookByCode(admin, code)
   if (!look) {
     console.log(JSON.stringify({ event: 'first_look_open', state: 'not_found' }))
@@ -387,6 +392,12 @@ serve(async (req) => {
     // The page opens: who asked, what the link holds and may take, the office's number and hours.
     if (req.method === 'GET') {
       const url = new URL(req.url)
+      // Settings → What customers see: the sample page, with the office's own phone and hours and nothing of a look.
+      const sample = firstLookSampleOf(url.searchParams.get('code'))
+      if (sample) {
+        const [phone, office] = await Promise.all([officePhone(admin), officeNow(admin, new Date().toISOString())])
+        return json(firstLookSamplePayload(sample, { phone, ...office }))
+      }
       const found = await openLook(admin, req, url.searchParams.get('code'))
       if ('answer' in found) return found.answer
       const { look } = found

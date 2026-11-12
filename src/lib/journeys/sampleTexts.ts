@@ -8,6 +8,7 @@ import type { SampleTextId } from '../customerJourneys'
 import { GC_COMPANY } from '../gc/company'
 import { textToSend, type ComposeCompany } from '../messages/textOut'
 import { helpAnswer } from '../quo/events'
+import { firstLookAskLine } from '../firstLook/look'
 import { fillLine } from '../quickReplies/blanks'
 import { nudgeLine } from '../flows/nudgeDispatch'
 import { SEED_FLOWS } from '../flows/seed'
@@ -89,6 +90,19 @@ export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TE
       bubbles: [
         { side: 'ours', text: textToSend({ body, reason: 'first', company }).text, note: 'The office pressed Send both on the Tell the customer sheet. The email went first, and the text carries the same accept link.' },
         { side: 'theirs', text: 'Got it, I will look tonight.', note: null },
+      ],
+    }
+  }
+  if (id === 'text-first-look') {
+    // First look (punch list #319): the ask the office sends from a thread, with a link made for this one person. It is
+    // often the first text to the number, so it names who is writing and carries the opt-out line.
+    const body = firstLookAskLine({ customerFirst: 'Elena', me: 'Rosa', url: 'clicktooling.com/show/k7m2p9xq4d' })
+    return {
+      from,
+      to: 'Elena Marchetti · (210) 555-0188',
+      bubbles: [
+        { side: 'ours', text: textToSend({ body, reason: 'first', company }).text, note: 'Rosa typed /show in Elena’s thread, or pressed Ask for photos over the reply box. The link is made for Elena alone and takes photos and video for 7 days.' },
+        { side: 'theirs', text: 'Sent you 3 photos and a video.', note: 'The send lands on Elena’s thread as a line from Elena. A First look card above it draws the photos and plays the video.' },
       ],
     }
   }

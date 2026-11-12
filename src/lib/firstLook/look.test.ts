@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FIRST_LOOK_SAMPLE_WORDS,
+  firstLookSampleOf,
+  firstLookSamplePayload,
   FIRST_LOOK_ALPHABET,
   FIRST_LOOK_CAPS,
   FIRST_LOOK_CODE_RE,
@@ -322,5 +325,44 @@ describe('first look: the desk', () => {
     expect(canOpenFirstLooks('master_technician')).toBe(true)
     for (const role of ['assistant', 'controller', 'estimator', 'primary', 'superintendent', 'helpers', 'subcontractor'] as const) expect(canOpenFirstLooks(role)).toBe(false)
     expect(canOpenFirstLooks(null)).toBe(false)
+  })
+})
+
+describe('the sample page (Settings → What customers see)', () => {
+  const office = { phone: '(512) 555-0100', open: true, closesWords: '5 PM', opensWords: null }
+
+  it('the two sample words pass as codes and name their sample; a real code names none', () => {
+    expect(firstLookCode('sample')).toBe('sample')
+    expect(firstLookCode('Sample-Done')).toBe('sample-done')
+    expect(firstLookSampleOf('sample')).toBe('open')
+    expect(firstLookSampleOf('sample-done')).toBe('done')
+    expect(firstLookSampleOf('k7m2p9xq4d')).toBeNull()
+    expect(firstLookSampleOf(null)).toBeNull()
+    expect(firstLookCode('samples')).toBeNull()
+  })
+
+  it('the open sample has nothing in and no thank-you, with the office’s own phone and hours', () => {
+    const p = firstLookSamplePayload('open', office)
+    expect(p.look).toEqual({ askedBy: 'Rosa', photos: 0, videos: 0, sentCount: 0 })
+    expect(p.office).toBe(office)
+    expect(p.thanks).toBeNull()
+  })
+
+  it('the done sample opens on the thank-you the office’s hours give', () => {
+    const p = firstLookSamplePayload('done', office)
+    expect(p.look).toEqual({ askedBy: 'Rosa', photos: 3, videos: 1, sentCount: 1 })
+    expect(p.thanks?.got).toBe('Got it. Rosa has your 3 photos and 1 video.')
+    expect(p.thanks?.steps[0]).toBe('Rosa looks at them today, before 5 PM.')
+  })
+
+  it('the page reads the sample’s thank-you from the answer, and a real look’s answer carries none', () => {
+    const done = firstLookPageView(200, firstLookSamplePayload('done', office))
+    expect(done.kind === 'open' && done.payload.thanks?.got).toBe('Got it. Rosa has your 3 photos and 1 video.')
+    const real = firstLookPageView(200, { ok: true, look: { askedBy: 'Rosa', photos: 0, videos: 0, sentCount: 0 }, caps: {}, office: {} })
+    expect(real.kind === 'open' && real.payload.thanks).toBeNull()
+  })
+
+  it('a file on the sample is answered in words that nothing is sent', () => {
+    expect(FIRST_LOOK_SAMPLE_WORDS).toBe('This is a sample of the page. Nothing is sent from it.')
   })
 })

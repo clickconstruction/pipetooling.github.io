@@ -147,14 +147,16 @@ export function DeskRow({
   actions?: ReactNode
   tone?: 'gap' | 'locked'
 }) {
+  // v2.7015: label | (value, presses). The value and its presses share one wrapping line, so a row with
+  // three presses drops them under the value instead of squeezing the value to one word a line.
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(96px, 128px) minmax(0, 1fr) auto',
+        gridTemplateColumns: 'minmax(84px, 128px) minmax(0, 1fr)',
         gap: '0.4rem 0.7rem',
-        alignItems: 'center',
-        padding: '0.4rem 0.7rem',
+        alignItems: 'baseline',
+        padding: '0.45rem 0.7rem',
         borderBottom: '1px solid var(--border)',
         fontSize: '0.8125rem',
         background: tone === 'gap' ? 'var(--bg-amber-tint)' : 'transparent',
@@ -162,14 +164,19 @@ export function DeskRow({
       className="person-desk-row"
     >
       <span style={{ color: tone === 'gap' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: tone === 'gap' ? 600 : 400 }}>{label}</span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', minWidth: 0, color: tone === 'locked' ? 'var(--text-muted)' : 'var(--text-base)' }}>{children}</span>
-      <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</span>
+      <span className="person-desk-row-body">
+        <span className="person-desk-row-value" style={{ color: tone === 'locked' ? 'var(--text-muted)' : 'var(--text-base)' }}>
+          {children}
+        </span>
+        {actions ? <span className="person-desk-row-actions">{actions}</span> : null}
+      </span>
     </div>
   )
 }
 
-export function DeskEmpty({ children }: { children: ReactNode }) {
-  return <div style={{ padding: '0.5rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{children}</div>
+/** `inset`: inside a section body that already pads its sides (the bio card), so the line sits on the same edge. */
+export function DeskEmpty({ children, inset = false }: { children: ReactNode; inset?: boolean }) {
+  return <div style={{ padding: inset ? '0.25rem 0' : '0.5rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{children}</div>
 }
 
 export function fmtDay(ymd: string): string {

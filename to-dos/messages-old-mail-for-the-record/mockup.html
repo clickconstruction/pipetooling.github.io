@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Messages: old mail lands for the record</title>
+<style>
+  /* Punch list #324. Every person, company, address, job, number and date here is made up: Dale Okafor at Ridgeway Builders, Harlan Freight, Marisol Vega, Rosa Delgado, Sam Ortiz, JP1077 at 4 Elm Ct. */
+  [data-theme='light'] { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-blue-tint: #eff6ff; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-blue-700: #1d4ed8; --text-green-700: #15803d; --amber-text: #b45309; --amber-line: #f59e0b; --red-text: #b91c1c; --shadow: 0 1px 3px rgba(0,0,0,.08); }
+  [data-theme='dark'] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-blue-tint: #1e293b; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-600: #c3c8d0; --text-muted: #9ca3af; --text-blue-700: #93c5fd; --text-green-700: #86efac; --amber-text: #fcd34d; --amber-line: #b45309; --red-text: #fca5a5; --shadow: 0 1px 3px rgba(0,0,0,.5); }
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --blue: #2563eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  .ghost { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 6px 14px; cursor: pointer; margin-top: 12px; }
+  .rec { margin: 18px 0 0; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: 10px; padding: 12px 16px; box-shadow: var(--shadow); }
+  .rec b.h { display: block; color: var(--text-strong); font-size: 15px; margin-bottom: 4px; }
+  .rec ol { margin: 0; padding-left: 20px; color: var(--text-700); }
+  .rec li { margin: 2px 0; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  .lede { margin: 0 0 12px; color: var(--text-700); max-width: 110ch; }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 420px; max-width: 600px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap .pick { color: var(--text-green-700); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: .55rem; color: var(--text-base); min-width: 0; }
+  .verdict { margin: 4px 0 0; font-size: 13px; color: var(--text-600); max-width: 70ch; }
+  .sub { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-top: .3rem; }
+
+  /* what is new: one outline, one label */
+  .isnew { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 8px; position: relative; }
+  .newtag { display: inline-block; background: var(--blue); color: #fff; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 0 .4rem; border-radius: 999px; vertical-align: middle; }
+
+  /* shared bits, as the app draws them */
+  .btn { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-base); font: 600 .8rem var(--font); padding: .25rem .65rem; white-space: nowrap; }
+  .btn.quiet { border-color: transparent; background: transparent; color: inherit; padding-left: .2rem; padding-right: .2rem; text-decoration: underline; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .chip { display: inline-block; border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 .5rem; font-size: .72rem; font-weight: 600; color: var(--text-600); white-space: nowrap; }
+  .chip.blue { border-color: var(--blue); color: var(--text-blue-700); }
+  .chip.amber { border-color: var(--amber-line); color: var(--amber-text); }
+  .chip.grey { background: var(--bg-muted); border-color: var(--border); }
+
+  /* a lane, as FollowUpSections draws one */
+  .lane { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .lane .head { display: flex; gap: .5rem; align-items: center; padding: .45rem .7rem; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); flex-wrap: wrap; }
+  .lane .head .bar { width: 4px; height: 1rem; border-radius: 2px; background: #3b82f6; }
+  .lane .head .n { color: var(--text-muted); font-weight: 600; }
+  .lane .head .right { margin-left: auto; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: .2rem .6rem; padding: .5rem .7rem; border-bottom: 1px solid var(--border); font-size: .85rem; align-items: center; }
+  .row:last-child { border-bottom: 0; }
+  .row .who { font-weight: 600; color: var(--text-strong); min-width: 0; overflow-wrap: anywhere; }
+  .row .meta { grid-column: 1 / -1; font-size: .75rem; color: var(--text-muted); overflow-wrap: anywhere; }
+  .row .snip { grid-column: 1 / -1; color: var(--text-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .row .acts { display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .row.stale { background: color-mix(in srgb, var(--amber-line) 12%, var(--surface)); }
+  .gone { font-size: .8rem; color: var(--text-muted); font-style: italic; padding: .5rem .7rem; border-bottom: 1px dashed var(--border-strong); }
+  .foldline { display: flex; gap: .5rem; align-items: center; padding: .45rem .7rem; font-size: .82rem; color: var(--text-600); background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+  .foldline b { color: var(--text-strong); }
+  .strip { display: flex; gap: .3rem; flex-wrap: wrap; }
+  .strip span { font-size: .72rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: .1rem .45rem; color: var(--text-600); background: var(--surface); white-space: nowrap; }
+
+  /* the thread, as ThreadWindow draws it */
+  .thread { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .6rem .7rem; display: grid; gap: .5rem; min-width: 0; }
+  .thread .top { display: flex; gap: .4rem .5rem; align-items: center; flex-wrap: wrap; }
+  .thread .top b { color: var(--text-strong); overflow-wrap: anywhere; min-width: 0; }
+  .thread .top .spacer { flex: 1 1 0; }
+  .court { font-size: .75rem; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: .1rem .55rem; color: var(--text-600); white-space: nowrap; }
+  .court.ours { color: var(--amber-text); border-color: var(--amber-line); }
+  .status { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; font-size: .8rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: .4rem 0; }
+  .day { text-align: center; font-size: .72rem; color: var(--text-muted); font-weight: 600; }
+  .tl { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; padding: .4rem .65rem; font-size: .85rem; max-width: 88%; display: grid; gap: .15rem; min-width: 0; }
+  .tl.ours { margin-left: auto; background: var(--bg-blue-tint); }
+  .tl .m { font-size: .72rem; color: var(--text-muted); display: flex; gap: .2rem .45rem; flex-wrap: wrap; align-items: center; }
+  .tl .subj { font-weight: 600; color: var(--text-strong); }
+  .ev { text-align: center; font-size: .75rem; color: var(--text-muted); max-width: 56ch; margin: 0 auto; }
+  .menu { justify-self: end; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.18); padding: .25rem; font-size: .82rem; display: grid; gap: .1rem; width: min(16rem, 100%); }
+  .menu div { padding: .3rem .5rem; border-radius: 5px; }
+  .menu div.hot { background: var(--bg-muted); font-weight: 600; }
+  .menu small { display: block; color: var(--text-muted); font-weight: 400; }
+
+  /* My email's row after a tag, and the seat's plan */
+  .done { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .5rem .7rem; font-size: .85rem; display: grid; gap: .35rem; }
+  .done .ok { color: var(--text-green-700); font-weight: 600; }
+  .done .acts { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+  pre.plan { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .5rem .7rem; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-base); overflow-x: auto; white-space: pre; }
+  pre.plan .hl { color: var(--text-blue-700); font-weight: 700; }
+
+  /* New's sort card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .55rem .7rem; display: grid; gap: .4rem; font-size: .85rem; }
+  .card .t { font-weight: 700; color: var(--text-strong); overflow-wrap: anywhere; }
+  .card .guess { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .card .foot { display: flex; gap: .4rem .6rem; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--border); padding-top: .4rem; }
+
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  table.calls { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13px; }
+  table.calls th, table.calls td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; color: var(--text-base); }
+  table.calls th { background: var(--bg-subtle); color: var(--text-strong); }
+  .note { font-size: 13px; color: var(--text-600); margin: 6px 0 0; max-width: 110ch; }
+  ul.no { margin: 6px 0 0; padding-left: 20px; color: var(--text-700); max-width: 110ch; }
+  @media (max-width: 480px) {
+    body { padding: 0 12px 48px; }
+    h1 { font-size: 22px; }
+    .row { grid-template-columns: 1fr; }
+    .row .acts { justify-content: flex-start; }
+    .tl { max-width: 96%; }
+    table.calls { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #324 · Messages · mock-up, nothing built · every name here is made up</p>
+    <h1>Old mail lands for the record, and a thread can be closed in plain sight</h1>
+    <p>A batch of old email was tagged onto jobs so anyone could catch up. Messages read each old mail as a message nobody had answered. Five spots below, each as it is <b>now</b> beside <b>my suggestion</b>.</p>
+    <button class="ghost" type="button" id="themeBtn">Show in dark</button>
+    <div class="rec">
+      <b class="h">My recommendation</b>
+      <ol>
+        <li><b>A mail more than 14 days old when it lands is filed for the record.</b> It shows in the thread and on the job. It opens nothing and is nobody's move.</li>
+        <li><b>The age decides. A person overrules in one press.</b> There is no tick before a tag.</li>
+        <li><b>No reply needed sits in plain sight</b> on the thread, on New's card and on the Sort desk. The thread shows its state.</li>
+        <li><b>A fold lists what was done with no reply this week</b>, each row with Reopen. No seventh lane.</li>
+        <li><b>Keep the words the app has</b>: Done for the state, No reply needed for the press. Do not add Closed.</li>
+      </ol>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <h2><span class="num">1</span> New, the top of the lane</h2>
+  <p class="lede">New sorts the oldest first, so mail from last spring leads the lane.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame">
+        <div class="lane">
+          <div class="head"><span class="bar"></span>New <span class="n">(27)</span><span class="right"><span class="btn">Sort all</span></span></div>
+          <div class="row stale">
+            <div class="who">d.okafor@ridgewaybuilders.example</div>
+            <div class="acts"><span class="chip blue">Who is this?</span></div>
+            <div class="meta">Email · from Marisol's mail · on Mar 3 · Nobody has it</div>
+            <div class="snip">Re: JP1077 rough-in dates</div>
+          </div>
+          <div class="row stale">
+            <div class="who">permits@harlanfreight.example</div>
+            <div class="acts"><span class="chip blue">Who is this?</span></div>
+            <div class="meta">Email · from Marisol's mail · on Apr 18 · Nobody has it</div>
+            <div class="snip">Dock 3 floor drain, as-built sketch attached</div>
+          </div>
+          <div class="row">
+            <div class="who">(512) 555-0142</div>
+            <div class="acts"><span class="chip blue">Who is this?</span></div>
+            <div class="meta">Text · the team line · today at 8:44 AM</div>
+            <div class="snip">Hi, do you do tankless installs in Buda?</div>
+          </div>
+        </div>
+      </div>
+      <p class="verdict">Two filed mails ask <i>Who is this?</i> ahead of this morning's text.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span></div>
+      <div class="frame">
+        <div class="lane">
+          <div class="head"><span class="bar"></span>New <span class="n">(25)</span><span class="right"><span class="btn">Sort all</span></span></div>
+          <div class="gone">Old mail never reaches New.</div>
+          <div class="row">
+            <div class="who">(512) 555-0142</div>
+            <div class="acts"><span class="chip blue">Who is this?</span></div>
+            <div class="meta">Text · the team line · today at 8:44 AM</div>
+            <div class="snip">Hi, do you do tankless installs in Buda?</div>
+          </div>
+        </div>
+      </div>
+      <p class="verdict">New holds only what came in. The badge and the longest wait count the same way.</p>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="num">2</span> A thread of old mail</h2>
+  <p class="lede">The thread a filed conversation makes. Every mail stays, at its own date, with its job.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top"><b>d.okafor@ridgewaybuilders.example</b><span class="spacer"></span><span class="chip">Nobody has it · Take it</span><span class="court ours">Our move · 254 d</span></div>
+          <div class="status"><span class="btn primary">Who is this?</span><span class="btn quiet">We owe them…</span><span class="spacer" style="flex:1"></span><span class="btn">⋯</span></div>
+          <div class="day">Sunday, Mar 1</div>
+          <div class="tl ours"><div class="m"><span>Marisol · from Marisol's mail</span><span class="chip">JP1077 · 4 Elm Ct</span></div><div class="subj">JP1077 rough-in dates</div><div>We can start the rough-in on the 9th.</div></div>
+          <div class="day">Tuesday, Mar 3</div>
+          <div class="tl"><div class="m"><span>Dale Okafor · from Marisol's mail</span><span class="chip">JP1077</span></div><div class="subj">Re: JP1077 rough-in dates</div><div>The 9th works. See you then.</div></div>
+          <div class="day">Monday, Nov 9</div>
+          <div class="ev">Sam tagged this conversation from Marisol's mail, through the dev seat. Later mail in it lands here by itself. · 4:12 PM</div>
+        </div>
+      </div>
+      <p class="verdict">The thread says we have owed Dale an answer for 254 days.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span></div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top"><b>d.okafor@ridgewaybuilders.example</b><span class="spacer"></span><span class="court isnew">Nothing waits</span></div>
+          <div class="status"><span class="chip grey isnew">Done · old mail, filed Nov 9</span><span class="btn quiet">Reopen</span><span class="spacer" style="flex:1"></span><span class="btn">⋯</span></div>
+          <div class="day">Sunday, Mar 1</div>
+          <div class="tl ours"><div class="m"><span>Marisol · from Marisol's mail</span><span class="chip">JP1077 · 4 Elm Ct</span><span class="chip blue isnew">filed Nov 9</span></div><div class="subj">JP1077 rough-in dates</div><div>We can start the rough-in on the 9th.</div></div>
+          <div class="day">Tuesday, Mar 3</div>
+          <div class="tl"><div class="m"><span>Dale Okafor · from Marisol's mail</span><span class="chip">JP1077</span><span class="chip blue">filed Nov 9</span></div><div class="subj">Re: JP1077 rough-in dates</div><div>The 9th works. See you then.</div></div>
+          <div class="day">Monday, Nov 9</div>
+          <div class="ev">Sam tagged this conversation from Marisol's mail, through the dev seat. <b>This is old mail, filed for the record. Nothing went on Follow up.</b> Later mail in it lands here by itself. · 4:12 PM</div>
+        </div>
+      </div>
+      <p class="verdict">Each old mail says when it was filed. A new mail from Dale still opens the thread.</p>
+    </div>
+  </div>
+  <p class="note">The chip's hover: <i>This mail is from March 3. It was filed here on November 9. It asked nobody for a reply.</i></p>
+
+  <!-- 3 -->
+  <h2><span class="num">3</span> The tag's choice</h2>
+  <p class="lede">Who decides that a mail is history. Top: a person's press in Messages → My email. Bottom: the dev seat's plan.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame">
+        <div class="sub">My email, after the press</div>
+        <div class="done"><div class="ok">✓ On JP1077 · 4 Elm Ct</div><div class="acts"><span class="btn quiet">Untag</span><span class="btn quiet">Another job</span></div></div>
+        <div class="sub">The seat's plan</div>
+<pre class="plan">plan_mail_tag · 6 mails · JP1077
+Mar 1   write   from marisol@…
+Mar 3   write   from d.okafor@…
+Mar 4   write   from marisol@…
+…
+Mar 12  write   from d.okafor@…</pre>
+      </div>
+      <p class="verdict">Neither says what the mail will do to Follow up. Every mail lands as if it came today.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span></div>
+      <div class="frame">
+        <div class="sub">My email, old mail</div>
+        <div class="done"><div class="ok">✓ On JP1077 · 4 Elm Ct</div><div class="isnew">6 old mails were filed for the record. Nothing went on Follow up.</div><div class="acts"><span class="btn">Put on Follow up</span><span class="btn quiet">Untag</span><span class="btn quiet">Another job</span></div></div>
+        <div class="sub">My email, mail from this week</div>
+        <div class="done"><div class="ok">✓ On JP1077 · 4 Elm Ct</div><div class="isnew">Their last mail is on Follow up.</div><div class="acts"><span class="btn">No reply needed</span><span class="btn quiet">Untag</span><span class="btn quiet">Another job</span></div></div>
+        <div class="sub">The seat's plan</div>
+<pre class="plan">plan_mail_tag · 6 mails · JP1077
+Mar 1   write   <span class="hl">lands: for the record</span>
+Mar 3   write   <span class="hl">lands: for the record</span>
+…
+Nov 11  write   <span class="hl">lands: on Follow up</span>
+
+<span class="hl">for_record: true</span>   files all six</pre>
+      </div>
+      <p class="verdict">The age decides. The line says what it did and offers the one press that undoes it.</p>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <h2><span class="num">4</span> The close press on a thread</h2>
+  <p class="lede">Closing with no reply exists today. It sits inside ⋯, and a row in New does not offer it.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top"><b>Dale Okafor</b><span style="color:var(--text-muted)">Ridgeway Builders</span><span class="spacer"></span><span class="court ours">Our move · 2 d</span></div>
+          <div class="status"><span class="btn quiet">We owe them…</span><span class="spacer" style="flex:1"></span><span class="btn">⋯</span></div>
+          <div class="menu"><div class="hot">No reply needed<small>Takes the row off Follow up. Nothing is owed.</small></div><div>Remind me Monday</div><div>Call first</div><div>Text first</div></div>
+          <div class="tl"><div class="m"><span>Dale Okafor · text</span></div><div>Thanks, got the invoice.</div></div>
+        </div>
+        <div class="sub">New's card for an unnamed sender</div>
+        <div class="card"><div class="t">Who is permits@harlanfreight.example?</div><div class="guess"><span class="btn">A new customer</span><span class="btn">A trade partner</span><span class="btn">Someone else</span></div><div class="foot"><span class="btn quiet">A notice, not a person</span></div></div>
+      </div>
+      <p class="verdict">The press is two presses deep. On New the only exits are a name or a notice.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span></div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top"><b>Dale Okafor</b><span style="color:var(--text-muted)">Ridgeway Builders</span><span class="spacer"></span><span class="court ours">Our move · 2 d</span></div>
+          <div class="status"><span class="btn quiet">We owe them…</span><span class="btn isnew">No reply needed</span><span class="spacer" style="flex:1"></span><span class="btn">⋯</span></div>
+          <div class="tl"><div class="m"><span>Dale Okafor · text</span></div><div>Thanks, got the invoice.</div></div>
+        </div>
+        <div class="sub">After the press</div>
+        <div class="thread">
+          <div class="top"><b>Dale Okafor</b><span style="color:var(--text-muted)">Ridgeway Builders</span><span class="spacer"></span><span class="court">Nothing waits</span></div>
+          <div class="status"><span class="chip grey isnew">Done · no reply needed · Rosa, Nov 12</span><span class="btn quiet">Reopen</span><span class="spacer" style="flex:1"></span><span class="btn">⋯</span></div>
+          <div class="ev isnew">Rosa said on Nov 12 that no reply is needed. · 9:02 AM</div>
+        </div>
+        <div class="sub">New's card for an unnamed sender</div>
+        <div class="card"><div class="t">Who is permits@harlanfreight.example?</div><div class="guess"><span class="btn">A new customer</span><span class="btn">A trade partner</span><span class="btn">Someone else</span></div><div class="foot"><span class="btn quiet">A notice, not a person</span><span class="btn isnew">No reply needed</span></div></div>
+      </div>
+      <p class="verdict">One press, in sight. The thread says it is Done, who said so and when.</p>
+    </div>
+  </div>
+  <p class="note">When our word is last and the row is in Waiting on them, the same spot offers <b>No answer needed</b>, the words Heard back already uses.</p>
+
+  <!-- 5 -->
+  <h2><span class="num">5</span> Where closed threads can be seen</h2>
+  <p class="lede">Under the queue lanes on Messages, above Waiting on them.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame">
+        <div class="strip"><span>New 27</span><span>Needs a reply 2</span><span>We owe them 0</span><span>Waiting on them 8</span><span>Went out 30</span></div>
+        <div class="lane"><div class="head"><span class="bar" style="background:#ea580c"></span>Needs a reply <span class="n">(2)</span></div>
+          <div class="row"><div class="who">Priya Nand</div><div class="acts"><span class="btn">Reply</span><span class="btn">No reply needed</span></div><div class="meta">Text · today at 7:58 AM</div></div>
+        </div>
+        <div class="foldline"><b>Everyone we have talked with</b><span style="margin-left:auto" class="btn">Show everyone</span></div>
+      </div>
+      <p class="verdict">A closed thread leaves every lane. The only way back is to search everyone.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span></div>
+      <div class="frame">
+        <div class="strip"><span>New 25</span><span>Needs a reply 2</span><span>We owe them 0</span><span>Waiting on them 8</span><span>Went out 30</span></div>
+        <div class="lane"><div class="head"><span class="bar" style="background:#ea580c"></span>Needs a reply <span class="n">(2)</span></div>
+          <div class="row"><div class="who">Priya Nand</div><div class="acts"><span class="btn">Reply</span><span class="btn">No reply needed</span></div><div class="meta">Text · today at 7:58 AM</div></div>
+        </div>
+        <div class="lane isnew">
+          <div class="head" style="font-weight:600">▾ 3 done with no reply this week <span class="newtag">new</span></div>
+          <div class="row"><div class="who">Dale Okafor</div><div class="acts"><span class="btn quiet">Reopen</span></div><div class="meta">No reply needed · Rosa, today</div></div>
+          <div class="row"><div class="who">d.okafor@ridgewaybuilders.example</div><div class="acts"><span class="btn quiet">Reopen</span></div><div class="meta">Old mail filed on Monday · 6 mails · JP1077</div></div>
+          <div class="row"><div class="who">permits@harlanfreight.example</div><div class="acts"><span class="btn quiet">Reopen</span></div><div class="meta">Old mail filed on Monday · 2 mails · JP1077</div></div>
+        </div>
+        <div class="foldline"><b>Everyone we have talked with</b><span style="margin-left:auto" class="btn">Show everyone</span></div>
+      </div>
+      <p class="verdict">A fold, shut until pressed. It has no segment on the bar and adds nothing to the badge.</p>
+    </div>
+  </div>
+
+  <h2>The calls that are the dev's</h2>
+  <div class="tablewrap">
+    <table class="calls">
+      <tr><th>#</th><th>Call</th><th>My pick</th></tr>
+      <tr><td>1</td><td>The age a mail is filed at: 7, 14 or 30 days</td><td><b>14</b>. The batch had nothing between 8 and 90 days old, so the data cannot choose.</td></tr>
+      <tr><td>2</td><td>The batch of November 9: stays on its jobs, or comes off</td><td>His alone. The design holds either way.</td></tr>
+      <tr><td>3</td><td>The word: keep Done and No reply needed, or add Closed</td><td><b>Keep</b></td></tr>
+      <tr><td>4</td><td>Where closed threads show: a fold, or a seventh segment on the bar</td><td><b>A fold</b></td></tr>
+      <tr><td>5</td><td>No reply needed on New's card and the Sort desk, leaving the sender unnamed</td><td><b>Yes</b></td></tr>
+      <tr><td>6</td><td>The seat's <code>for_record</code> and the plan's word for each mail</td><td><b>Yes</b>, last</td></tr>
+      <tr><td>7</td><td>The first migration also marks the late mail already there</td><td><b>Yes</b> if the batch stays</td></tr>
+      <tr><td>8</td><td>A filed mail from an unnamed sender asks <i>Who is this?</i> nowhere until they write again</td><td><b>Yes</b></td></tr>
+    </table>
+  </div>
+
+  <h2>The threads there now</h2>
+  <p class="note">Four threads from the batch are open and stale. They are the top rows of New. Open each one, press <b>⋯</b>, press <b>No reply needed</b>. That is eight presses and no code. Two more from the batch hold mail from the last week. Those are live.</p>
+
+  <h2>What I would not build</h2>
+  <ul class="no">
+    <li>A seventh lane. A lane with a count reads as work to do.</li>
+    <li>A third word such as Closed, beside Done and No reply needed.</li>
+    <li>A tick before every tag. Most tags are today's mail.</li>
+    <li>A sweep that closes old open threads by age. Seven open threads are 15 to 30 days old and real.</li>
+    <li>A press that closes many rows at once on New. It would close those seven.</li>
+    <li>A script or a seat verb for four rows.</li>
+  </ul>
+  <p class="note">The card beside this page holds the measurements, the code read and the plan: <code>to-dos/messages-old-mail-for-the-record/README.md</code>.</p>
+</div>
+<script>
+  (function () {
+    var root = document.documentElement, btn = document.getElementById('themeBtn')
+    function set(t) { root.setAttribute('data-theme', t); btn.textContent = t === 'dark' ? 'Show in light' : 'Show in dark' }
+    if (/[?&]theme=dark/.test(location.search)) set('dark')
+    btn.addEventListener('click', function () { set(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark') })
+  })()
+</script>
+</body>
+</html>

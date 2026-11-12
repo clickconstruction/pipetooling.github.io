@@ -256,6 +256,14 @@ export default defineConfig({
     // *.render.test.tsx files opt into jsdom per-file via `// @vitest-environment jsdom`;
     // the global environment stays node for the pure-logic *.test.ts suite.
     include: ['src/**/*.test.ts', 'src/**/*.render.test.tsx'],
+    // A test run holds an address that answers nobody. These win over `.env.local` and the shell, so a
+    // render test whose component makes a call it did not mock can no longer reach the live database
+    // from a dev machine (src/test/testRunNeverReachesProd.test.ts holds it). CI's Test steps pass the
+    // same address; a worktree with no `.env.local` runs the suite too.
+    env: {
+      VITE_SUPABASE_URL: 'https://example.supabase.co',
+      VITE_SUPABASE_ANON_KEY: 'test-dummy-anon-key',
+    },
   },
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },

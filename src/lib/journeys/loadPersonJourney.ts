@@ -36,7 +36,7 @@ import {
   type TestReportRow,
   type GcStatementRow,
   customerRowsForJob,
-  type RatingRow,
+  type FirstLookStepRow, type RatingRow,
 } from './personJourney'
 
 type Q = ReturnType<typeof supabase.from>
@@ -95,6 +95,23 @@ async function loadRatings(customerId: string, jobIds: string[]): Promise<Rating
   }
 }
 
+/**
+ * Punch list #319: the looks asked of them (`first_looks`, by their own contacts), for the First look steps. Read
+ * untyped, as the rating asks are; a refusal reads none.
+ */
+async function loadFirstLooks(customerId: string): Promise<FirstLookStepRow[]> {
+  try {
+    const db = supabase as unknown as { from: (t: string) => { select: (c: string) => { in: (k: string, v: string[]) => PromiseLike<{ data: unknown; error: unknown }>; eq: (k: string, v: string) => PromiseLike<{ data: unknown; error: unknown }> } } }
+    const own = await db.from('contacts').select('id').eq('customer_id', customerId)
+    const contactIds = own.error ? [] : ((own.data ?? []) as { id: string }[]).map((c) => c.id)
+    if (!contactIds.length) return []
+    const looks = await db.from('first_looks').select('id, made_at, opened_at, sent_at').in('contact_id', contactIds)
+    return looks.error ? [] : ((looks.data ?? []) as FirstLookStepRow[])
+  } catch {
+    return []
+  }
+}
+
 export async function loadCustomerRows(customerId: string): Promise<CustomerRows> {
   const [jobs, estimates, portalLinks, slugRows, bidRooms, gcStatements] = await Promise.all([
     rows<JobRow>('journey jobs', () => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status, customer_id, gc_customer_id').or(`customer_id.eq.${customerId},gc_customer_id.eq.${customerId}`)),
@@ -110,7 +127,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
   const bidIds = Array.from(new Set(bidRooms.map((r) => r.bid_id)))
   const activeLink = portalLinks.find((l) => !l.revoked_at && l.token && l.audience === 'all') ?? portalLinks.find((l) => !l.revoked_at && l.token) ?? null
 
-  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens, ratings] = await Promise.all([
+  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens, ratings, firstLooks] = await Promise.all([
     estimateIds.length ? rows<EstimateEventRow>('journey estimate events', () => supabase.from('estimate_customer_events').select('estimate_id, event_type, occurred_at').in('estimate_id', estimateIds)) : Promise.resolve([] as EstimateEventRow[]),
     byJobIds<JobContractRow>('journey contracts', 'job_contracts', 'id, job_id, revision, status, sent_at, last_sent_at, send_count, reminder_count, first_viewed_at, view_count, signed_at, signer_mode, paper_signed_on, voided_at, public_token, sent_channel', jobIds),
     byJobIds<InvoiceRow>('journey invoices', 'jobs_ledger_invoices', 'id, job_id, status, stripe_invoice_id, stripe_invoice_status, sent_to_customer_at, external_send_channel, hosted_invoice_url, amount', jobIds),
@@ -123,6 +140,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     byJobIds<LienReleaseRow>('journey lien releases', 'job_lien_releases', 'job_id, sent_to_customer_at, signed_at, voided_at', jobIds),
     portalOpensForToken(activeLink?.token ?? null),
     loadRatings(customerId, jobIds),
+    loadFirstLooks(customerId),
   ])
   const submittalRoomIds = submittalRooms.map((r) => r.id)
   const contractIds = contracts.map((c) => c.id)
@@ -152,6 +170,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     lienFilings,
     lienReleases,
     ratings,
+    firstLooks,
   }
 }
 
