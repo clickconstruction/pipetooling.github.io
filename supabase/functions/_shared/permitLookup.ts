@@ -120,6 +120,8 @@ export type ParcelFacts = {
   detail_url: string | null
   /** How the parcel was found when not by the street address (`permitParcels.ts`): `point`, the permit's own point, asked when the address has no parcel; `id`, the county's id for the lot the permit carries, which is the exact lot. */
   matched_by?: 'point' | 'id'
+  /** Set when the parcel is in another county than the permit's city is filed under: a city's limits cross county lines, so the lot under the point was found on a neighbouring county's layer. The county's name without the word County. */
+  county?: string
 }
 
 function num(v: unknown): number | null {
@@ -160,6 +162,18 @@ export function parcelFactsFromCounty(body: unknown): ParcelFacts | null {
     acres: num(a.Acres),
     detail_url: bcadDetailUrl(propId),
   }
+}
+
+/**
+ * The facts off Bexar's answer for the parcel under a point: the first parcel with an owner,
+ * marked as read by the point. Asked when the street address finds no parcel (punch list #320),
+ * which in San Antonio is most new buildings and every address the county spells another way.
+ */
+export function parcelFactsFromCountyAtPoint(body: unknown): ParcelFacts | null {
+  const features = (body as { features?: Array<{ attributes?: Record<string, unknown> }> } | null)?.features
+  const owned = Array.isArray(features) ? features.find((f) => str(f.attributes?.Owner) !== null) : undefined
+  const facts = owned ? parcelFactsFromCounty({ features: [owned] }) : null
+  return facts ? { ...facts, matched_by: 'point' } : null
 }
 
 /** The cache key for a parcel lookup. */

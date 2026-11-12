@@ -119,7 +119,7 @@ import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
-import { lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
+import { lienHelpBatchRecordCode, lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
@@ -803,7 +803,7 @@ export default function LienDesk({
   // Fix it from the paper (v2.4719): the window stacked over the paper, and the blanks the row had when it opened.
   const [paperFix, setPaperFix] = useState<{ index: number; window: LienPaperFixWindow; gap: LienPaperGap } | null>(null)
   // The affidavit pane's gate doors open the same window over the desk (v2.4724).
-  const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'legal' } | null>(null)
+  const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'legal' | 'homestead_answer' } | null>(null)
   const [paperFilledFrom, setPaperFilledFrom] = useState<{ key: string; gaps: ReadonlyArray<LienPaperGap> } | null>(null)
   // A fix can move the row (a whole property turns "Fix the property" into "Draft affidavit"): the paper stays on it by key.
   useEffect(() => {
@@ -1667,7 +1667,7 @@ export default function LienDesk({
             ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
           ],
           demandDate(todayYmd),
-          { guideCode: lienHelpGuideCode() },
+          { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode() },
         )
       : null
     const run = lienAffidavitPrintRun(affPrintPapers, helpSheet)

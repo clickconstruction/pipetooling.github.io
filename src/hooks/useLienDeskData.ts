@@ -17,7 +17,7 @@ import {
   type LienDeskQueueJob,
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
-import { buildLienAffidavitQueue, withContractorAddress, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
+import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
@@ -257,8 +257,10 @@ export function useLienDeskData(
         }
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
-        // The property records under the affidavits (punch list #314), read whole and in light mode too, so the Dashboard's
-        // count and the desk agree: an affidavit holds when its owner is a public body. A failed read judges nothing,
+        // The property records under the affidavits (punch lists #305 and #314), read once, whole and in light mode too, so the
+        // Dashboard's count and the desk agree: an affidavit holds when its owner is a public body, and a residential one
+        // while nobody has answered the homestead question. `select('*')` names no column, so the read works before
+        // migration 20261112080000 is pushed, and the rows then carry no answer either way. A failed read judges nothing,
         // never the desk dark.
         const affidavitAddressIdByJob: Record<string, string | null> = {}
         for (const r of affidavitRowsKept) affidavitAddressIdByJob[r.job_id] = jobsById[r.job_id]?.customer_address_id ?? null
@@ -270,8 +272,9 @@ export function useLienDeskData(
         const affidavitPropertiesById: Record<string, CustomerAddressRow> = {}
         for (const a of (affidavitPropertyRows ?? []) as CustomerAddressRow[]) affidavitPropertiesById[a.id] = a
         // The affidavit queue is built once the GCs and those records are read (punch list #305): a job under a GC holds
-        // while that GC's row has no address, and any job holds while its owner is a public body.
-        const affidavitRows: LienAffidavitRow[] = withPublicOwner(withContractorAddress(affidavitRowsKept, gcsById), affidavitAddressIdByJob, affidavitPropertiesById)
+        // while that GC's row has no address, any job holds while its owner is a public body, and a residential property
+        // holds while nobody has answered the homestead question (the gate asks only a residential one).
+        const affidavitRows: LienAffidavitRow[] = withHomesteadAnswer(withPublicOwner(withContractorAddress(affidavitRowsKept, gcsById), affidavitAddressIdByJob, affidavitPropertiesById), affidavitAddressIdByJob, affidavitPropertiesById)
         const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
         // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row —
         // and (v2.6380), on the open desk, its money: what the job's sent bills still owe, by the RPC's own rule, from the

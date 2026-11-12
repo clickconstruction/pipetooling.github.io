@@ -56,6 +56,9 @@ const Roadmap = lazy(() => import('./pages/Roadmap'))
 const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
 const BoxCode = lazy(() => import('./pages/BoxCode'))
+// #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
+const ShowUs = lazy(() => import('./pages/ShowUs'))
+const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
@@ -289,6 +292,15 @@ function AppContent() {
             </Suspense>
           }
         />
+        {/* #319 (v2.6981), the First look spike: a look's link, /show/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the box page is. */}
+        <Route
+          path="/show/:code"
+          element={
+            <Suspense fallback={null}>
+              <ShowUs />
+            </Suspense>
+          }
+        />
         <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
@@ -438,6 +450,7 @@ function AppContent() {
           <Route path="checklist" element={<Checklist />} />
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="punch-list" element={<PunchList />} />
+          <Route path="first-looks" element={<ErrorBoundary><FirstLooks /></ErrorBoundary>} />
           <Route path="tally" element={<JobTally />} />
           <Route path="m/:code" element={<MachineCode />} />
           <Route path="settings" element={<Settings />} />

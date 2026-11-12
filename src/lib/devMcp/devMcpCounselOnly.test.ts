@@ -2,7 +2,8 @@
  * Counsel-only evidence and the dev seat (v2.6554, punch list #269 PR 2): the seat names itself on every PostgREST,
  * storage and function call with X-Dev-Seat, which the restrictive policies read; plan_person_evidence carries
  * counsel_only; an apply of one never asks Drive; get_person_file names the hold from a definer's count; the
- * migration gates the flag the way the doc says.
+ * migration gates the flag the way the doc says. Since v2.6986 the seat's fences ask a switch that stands open
+ * (devMcpCounselOnlyOpen.test.ts).
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -20,7 +21,7 @@ describe('counsel-only and the seat (v2.6554)', () => {
     const named = SERVER.match(/Authorization: `Bearer \$\{jwt\}`, 'X-Dev-Seat': 'dev-mcp'/g)?.length ?? 0
     expect(auth).toBeGreaterThan(5)
     expect(named).toBe(auth)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.75.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.78.0'")
   })
 
   it('plan_person_evidence carries counsel_only only when true, and an apply of one never asks Drive', () => {
@@ -32,12 +33,12 @@ describe('counsel-only and the seat (v2.6554)', () => {
     const off = writeRpcBody('plan_person_evidence', { evidence: { ...base, counsel_only: 'yes' } })
     expect(off.ok && (off.body as { p: Record<string, unknown> }).p.counsel_only).toBeUndefined()
     expect(SERVER).toContain("const counselOnly = (built.body as { p?: { counsel_only?: unknown } }).p?.counsel_only === true")
-    expect(SERVER).toContain('never filed in Drive, never read by the agent or by this seat')
+    expect(SERVER).toContain('never filed in Drive and never read by the HR agent\\\'s key. This seat reads it back, marked counsel_only')
   })
 
   it('get_person_file names the hold from the definer count, the filer skips the record, and the migration gates it the way the doc says', () => {
     expect(PERSON_FILE).toContain("reader.rpc('person_counsel_only_count', { p_person_id: personId })")
-    expect(PERSON_FILE).toContain('counsel-only record')
+    expect(PERSON_FILE).toContain("held.push({ source: 'evidence', reason: counselOnlyHeldReason(n) })")
     expect(FILER).toContain('if (record.counsel_only) return { filed: 0, remaining: 0, failWhy: null, folderUrl: null }')
     expect(FILER).toContain(".eq('counsel_only', false)")
     expect(MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)

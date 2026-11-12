@@ -945,6 +945,9 @@ verify_jwt = false
 # The box page (v2.6797, punch list #294): the label's code is the capability, as the bill's is; a staff session is read in the function to stamp the view.
 [functions.box-read]
 verify_jwt = false
+# First look, the spike (v2.6981, punch list #319): the link's ten-letter code is the capability for the customer's page; the desk's asks carry a JWT the function checks itself.
+[functions.first-look]
+verify_jwt = false
 # The pay offer (v2.4704): apply = the office's JWT checked in the function; expire = pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT.
 [functions.lien-pay-offer]
 verify_jwt = false

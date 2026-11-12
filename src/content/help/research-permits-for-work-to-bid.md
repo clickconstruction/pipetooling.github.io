@@ -23,6 +23,8 @@ Almost every Austin permit names its lot at Travis County. The app reads that lo
 
 A new building often has no parcel under its street address yet. When the permit names no lot the county holds, the app reads the parcel at the permit's point. The card says so.
 
+A city reaches over its county line in places. The app then reads the county the lot is in. The card names that county.
+
 Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
 
 The cities do not all publish the same facts.
