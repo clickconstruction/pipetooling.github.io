@@ -45,3 +45,29 @@ export async function loadTaskPlace(itemId: string): Promise<TaskPlace | null> {
     return null
   }
 }
+
+/**
+ * The places of the tasks on a screen, by task id (PR 3). Its own read, beside the day's read and
+ * never inside it, so a place that cannot be read costs the place line and never the list. Tasks
+ * with no place are simply absent.
+ */
+export async function loadTaskPlacesForItems(itemIds: ReadonlyArray<string>): Promise<Map<string, TaskPlace>> {
+  const out = new Map<string, TaskPlace>()
+  const ids = [...new Set(itemIds.filter(Boolean))]
+  if (ids.length === 0) return out
+  try {
+    const res = (await supabase
+      .from('checklist_items')
+      .select(`id,${TASK_PLACE_SELECT}` as '*')
+      .in('id', ids)
+      .not('place_lat' as 'id', 'is', null)) as unknown as { data: Array<Partial<TaskPlaceColumns> & { id: string }> | null; error: { message: string } | null }
+    if (res.error || !res.data) return out
+    for (const row of res.data) {
+      const place = taskPlaceFromRow(row)
+      if (place) out.set(row.id, place)
+    }
+  } catch {
+    // No places; the list stands.
+  }
+  return out
+}

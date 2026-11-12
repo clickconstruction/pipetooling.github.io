@@ -97,7 +97,7 @@ export function TaskPlaceRow({ value, onChange }: Props) {
         </button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', alignItems: 'baseline', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-        <span>{value ? 'The place is saved with the task.' : 'Where the work is. Leave it out for a task with no place.'}</span>
+        <span>{value ? 'The person sees this place on the task, with directions.' : 'Where the work is. Leave it out for a task with no place.'}</span>
         {value ? (
           <button
             type="button"

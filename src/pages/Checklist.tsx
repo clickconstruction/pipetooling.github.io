@@ -73,6 +73,7 @@ import { useTaskLines } from '../hooks/useTaskLines'
 import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
+import { useTaskPlaces } from '../hooks/useTaskPlaces'
 
 type UserRole =
   | 'dev'
@@ -477,6 +478,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
   )
   // PR 4b: the cards' photos, one read for the day's cards and the outstanding ones.
   const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
+  // Punch list #328: the places of the tasks on this tab, read beside the day and never inside it.
+  const taskPlaces = useTaskPlaces([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -870,6 +873,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   asksForPhoto={cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })}
                   photos={taskPhotos.photosFor(inst.id)}
                   onPhotoAdded={taskPhotos.add}
+                  place={taskPlaces.placeFor(inst.checklist_item_id)}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -961,6 +965,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         }}
         photosFor={(inst) => taskPhotos.photosFor(inst.id)}
         onPhotoAdded={taskPhotos.add}
+        placeFor={(inst) => taskPlaces.placeFor((inst as ChecklistInstance).checklist_item_id)}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)
