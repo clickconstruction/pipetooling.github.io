@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
+import { useOurPermitNames } from '../../hooks/useOurPermitNames'
 import { ROBOT_BID_RE } from '../../lib/bids/bidPursuit'
 import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
 import { bidSiteWords, leadPermit, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
@@ -15,8 +16,9 @@ import { BidNameQuestion } from './BidNameQuestion'
  * in the bid's window. One verdict line, the city's declared value and area beside the bid's
  * own, every permit we can see on the address, and where the records come from. It says when
  * it has no records (a town we do not read, an address that is not a street number) instead of
- * reading as no permits. Shown to the people who read Prospects → Permits; a robot's copy of a
- * bid shows nothing.
+ * reading as no permits. A plumbing permit under one of our own names (Settings → Company)
+ * reads Ours. Shown to the people who read Prospects → Permits; a robot's copy of a bid shows
+ * nothing.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const DOT: Record<string, string> = { found: '#059669', none_seen: 'var(--text-muted)', not_read: '#d97706', unreadable: '#d97706' }
@@ -53,6 +55,7 @@ export function BidSitePermits({
   const [loaded, setLoaded] = useState<Loaded>({ state: 'idle' })
   const [openAll, setOpenAll] = useState(false)
   const recordsStart = usePermitRecordsStart(city ?? RESEARCH_CITIES[0] ?? '')
+  const ourKeys = useOurPermitNames()
   const today = todayYmdInAppTz()
 
   useEffect(() => {
@@ -100,10 +103,10 @@ export function BidSitePermits({
     )
   }
 
-  const words = bidSiteWords(site, projectName, onSite, { todayYmd: today, recordsStartYmd: recordsStart, readCities: RESEARCH_CITIES })
+  const words = bidSiteWords(site, projectName, onSite, { todayYmd: today, recordsStartYmd: recordsStart, readCities: RESEARCH_CITIES, ourKeys })
   const value = bidValue.trim() ? parseFloat(bidValue.replace(/[$,]/g, '')) : NaN
   const tiles = siteTiles(onSite, projectName, Number.isFinite(value) ? value : null)
-  const lines = sitePermitLines(onSite, projectName)
+  const lines = sitePermitLines(onSite, projectName, ourKeys)
   // The one permit the name question rides on: the building permit the verdict speaks of.
   const lead = leadPermit(projectName, onSite)
   const asked = lead && lead.kind === 'building' && customerIds && customerIds.length > 0 && customerName ? lead : null

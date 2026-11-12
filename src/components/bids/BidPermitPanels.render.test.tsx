@@ -7,7 +7,10 @@ import type { GcBid, SitePermitRow } from '../../lib/research/bidSitePanel'
 const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCustomers: vi.fn(), loadNameAnswers: vi.fn(), recordNameAnswer: vi.fn(), loadBuilderKinds: vi.fn(), onNameAnswered: vi.fn(), loadPermitsOfName: vi.fn() }))
 const research = vi.hoisted(() => ({ loadRecordsStart: vi.fn(), loadPermitsOfBuilder: vi.fn(), loadResearchers: vi.fn(), saveBuilder: vi.fn(), loadBuilders: vi.fn() }))
 const mobile = vi.hoisted(() => ({ value: false }))
+// The names that are us on a plumbing permit (Settings → Company): none unless a test says so.
+const names = vi.hoisted(() => ({ loadOurNames: vi.fn(), onOurNamesChanged: vi.fn(), changeOurNames: vi.fn() }))
 vi.mock('../../lib/research/bidSiteIo', () => io)
+vi.mock('../../lib/research/ourNamesIo', () => names)
 vi.mock('../../lib/research/permitResearchIo', () => research)
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => mobile.value }))
 
@@ -44,6 +47,8 @@ beforeEach(() => {
   research.saveBuilder.mockReset().mockResolvedValue(undefined)
   research.loadBuilders.mockReset().mockResolvedValue([])
   io.loadPermitsOfName.mockReset().mockResolvedValue([])
+  names.loadOurNames.mockReset().mockResolvedValue({ names: [], companyName: null })
+  names.onOurNamesChanged.mockReset().mockReturnValue(() => {})
 })
 afterEach(() => cleanup())
 
@@ -60,6 +65,25 @@ describe('BidSitePermits', () => {
     expect(screen.getByText('Looks like this job')).toBeTruthy()
     expect(screen.getByText('the city lists Greenline Irrigation · not a general plumbing permit')).toBeTruthy()
     expect(screen.getByText('Source: City of San Antonio building permits. They run 2 to 3 days behind.')).toBeTruthy()
+  })
+
+  it('reads a general plumbing permit under one of our names as ours, on the verdict and on its row', async () => {
+    const ours = permit({ id: 'p4', kind: 'plumbing', permit_type: 'Plumbing General Permit', work_type: 'Plumbing General', stage: 'issued', issued_on: '2026-06-02', project_name: null, contact: 'BLUE HERON PLUMBING', declared_value: null, area_sf: null })
+    io.loadPermitsByHouseNumber.mockResolvedValue([permit(), irrigation, ours])
+    names.loadOurNames.mockResolvedValue({ names: [], companyName: 'Blue Heron Plumbing, LLC' })
+    renderWithProviders(<BidSitePermits address="4120 Mill Street, San Antonio, TX 78215" projectName="Mill Street Lofts, Building C" bidValue="" />)
+    await waitFor(() => expect(screen.getByText(/A general plumbing permit on this address lists us, as BLUE HERON PLUMBING\. Issued Jun 2\.$/)).toBeTruthy())
+    // One row carries the chip: the irrigation permit lists someone else.
+    expect(screen.getAllByText('Ours')).toHaveLength(1)
+    expect(screen.getByText('the city lists BLUE HERON PLUMBING')).toBeTruthy()
+  })
+
+  it('reads the same permit as the name the city lists while no name is ours', async () => {
+    const theirs = permit({ id: 'p4', kind: 'plumbing', permit_type: 'Plumbing General Permit', work_type: 'Plumbing General', stage: 'issued', issued_on: '2026-06-02', project_name: null, contact: 'BLUE HERON PLUMBING', declared_value: null, area_sf: null })
+    io.loadPermitsByHouseNumber.mockResolvedValue([permit(), theirs])
+    renderWithProviders(<BidSitePermits address="4120 Mill Street, San Antonio, TX 78215" projectName="Mill Street Lofts, Building C" bidValue="" />)
+    await waitFor(() => expect(screen.getByText(/A general plumbing permit is on this address\. The city lists BLUE HERON PLUMBING\.$/)).toBeTruthy())
+    expect(screen.queryByText('Ours')).toBeNull()
   })
 
   it('says none seen, with the day the records start, when nothing is on the address', async () => {
@@ -120,6 +144,20 @@ describe('BidGcPermits', () => {
     expect(screen.getByText('This bid · no general plumbing permit seen')).toBeTruthy()
     expect(screen.getByText('Sent Oct 14 · no permit seen on the address')).toBeTruthy()
     expect(screen.getByText('1 more bid with them is in Kyle. No permit records are read there.')).toBeTruthy()
+  })
+
+  it('draws Ours on a job whose general plumbing permit lists us, and counts it apart from another name', async () => {
+    io.loadBidsOfCustomers.mockResolvedValue(bids)
+    io.loadPermitsByHouseNumber.mockResolvedValue([
+      permit(),
+      permit({ id: 'p5', address: '88 HARBOR ST', kind: 'plumbing', permit_type: 'Plumbing General Permit', work_type: 'Plumbing General', stage: 'issued', issued_on: '2026-06-02', project_name: null, contact: 'Marco Vale', declared_value: null, area_sf: null }),
+    ])
+    names.loadOurNames.mockResolvedValue({ names: ['Marco Vale'], companyName: null })
+    renderWithProviders(<BidGcPermits customerIds={['c1']} customerName="Ridgeway Builders" currentBidId="b1" />)
+    await waitFor(() => expect(screen.getByText('Of the 2 sites we can see, 2 have a permit. No general plumbing permit under another name seen. A general plumbing permit lists us on 1.')).toBeTruthy())
+    expect(screen.getByText('Ours')).toBeTruthy()
+    expect(screen.getByText('Sent Oct 14 · a general plumbing permit, Jun 2, lists us')).toBeTruthy()
+    expect(screen.queryByText('Plumbing permit · another name')).toBeNull()
   })
 
   it('folds the jobs behind a press on a phone', async () => {

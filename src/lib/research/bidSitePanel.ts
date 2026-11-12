@@ -9,6 +9,7 @@
 import { shortDay, shortMoney, sqFtWords } from './permitResearch'
 import { ROBOT_BID_RE } from '../bids/bidPursuit'
 import { leadPermit, looksLikeThisJob, permitsOnSite, plumbingListing, plumbingTypeOf, readBidAddress, seenOutOfWords, type BidSite, type BidSitePermit, type PlumbingType } from './bidSite'
+import { isOurName, NO_OUR_KEYS, type OurNameKeys } from './ourNames'
 
 /** A permit as `bid_site_permits` returns it. */
 export type SitePermitRow = BidSitePermit & {
@@ -36,6 +37,9 @@ export function sitePermitOrder(a: SitePermitRow, b: SitePermitRow): number {
 export type ChipTone = 'green' | 'amber' | 'red' | 'grey' | 'blue'
 export type Chip = { words: string; tone: ChipTone }
 
+/** The chip on a plumbing permit whose listed name is one of ours (`ourNames.ts`). It says whose permit it is, never that a bid was won. */
+export const OURS_CHIP: Chip = { words: 'Ours', tone: 'green' }
+
 const PLUMBING_WORDS: Record<PlumbingType, string> = { general: 'Plumbing, general', gas: 'Plumbing, gas', irrigation: 'Plumbing, irrigation', sewer: 'Plumbing, sewer', other: 'Plumbing' }
 
 const dayOf = (p: Pick<BidSitePermit, 'issued_on' | 'submitted_on'>): string | null => p.issued_on ?? p.submitted_on
@@ -49,13 +53,14 @@ export function stageChip(p: Pick<BidSitePermit, 'stage' | 'issued_on' | 'submit
 
 export type SitePermitLine = { id: string; title: string; chips: Chip[]; detail: string; looksLike: boolean }
 
-/** One permit on the address as a row: what it is, when, and what the feed says of it. */
-export function sitePermitLine(p: SitePermitRow, bidProjectName: string | null | undefined): SitePermitLine {
+/** One permit on the address as a row: what it is, when, and what the feed says of it. A plumbing permit that lists one of our names carries Ours. */
+export function sitePermitLine(p: SitePermitRow, bidProjectName: string | null | undefined, ourKeys: OurNameKeys = NO_OUR_KEYS): SitePermitLine {
   const plumbing = plumbingTypeOf(p.permit_type)
   const title = plumbing ? PLUMBING_WORDS[plumbing] : (p.work_type ?? p.permit_type.replace(/ Permit$/i, ''))
   const looksLike = p.kind === 'building' && looksLikeThisJob(bidProjectName, p.project_name)
   const chips: Chip[] = []
   if (looksLike) chips.push({ words: 'Looks like this job', tone: 'green' })
+  if (plumbing && isOurName(p.contact, ourKeys)) chips.push(OURS_CHIP)
   chips.push(stageChip(p))
   const name = p.project_name && !/^Building No:/i.test(p.project_name) ? p.project_name : null
   const money = shortMoney(p.declared_value)
@@ -65,10 +70,10 @@ export function sitePermitLine(p: SitePermitRow, bidProjectName: string | null |
 }
 
 /** The rows of the site's list: the one that looks like this job first, then the newest. */
-export function sitePermitLines(onSite: readonly SitePermitRow[], bidProjectName: string | null | undefined): SitePermitLine[] {
+export function sitePermitLines(onSite: readonly SitePermitRow[], bidProjectName: string | null | undefined, ourKeys: OurNameKeys = NO_OUR_KEYS): SitePermitLine[] {
   return [...onSite]
     .sort((a, b) => (dayOf(b) ?? '').localeCompare(dayOf(a) ?? ''))
-    .map((p) => sitePermitLine(p, bidProjectName))
+    .map((p) => sitePermitLine(p, bidProjectName, ourKeys))
     .sort((a, b) => Number(b.looksLike) - Number(a.looksLike))
 }
 
@@ -124,7 +129,9 @@ export type GcJobsView = {
   sites: number
   sitesWithPermit: number
   sitesWithGeneralPlumbing: number
-  /** "Of the 5 sites we can see, 4 have a permit. A general plumbing permit lists another name on 1." Null with no site. */
+  /** The sites whose general plumbing permit lists one of our names. */
+  sitesWithOurPlumbing: number
+  /** "Of the 5 sites we can see, 4 have a permit. A general plumbing permit lists another name on 1. A general plumbing permit lists us on 1." Null with no site. */
   verdict: string | null
   /** "5 of your 12 bids with them". */
   coverage: string
@@ -166,12 +173,14 @@ export function numbersToAsk(bids: readonly Pick<GcBid, 'address' | 'project_nam
 /**
  * The jobs we priced for one GC, each with what the city shows on its address. `permitsByCity`
  * is `bid_site_permits`' answer per city. A robot's copy of a bid is not a job we priced.
+ * `ourKeys` are the names that are us on a plumbing permit: a site whose general plumbing permit
+ * lists one reads Ours, and is never counted under another name.
  */
-export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<string, readonly SitePermitRow[]>, readCities: readonly string[], currentBidId: string | null): GcJobsView {
+export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<string, readonly SitePermitRow[]>, readCities: readonly string[], currentBidId: string | null, ourKeys: OurNameKeys = NO_OUR_KEYS): GcJobsView {
   const ours = bids.filter((b) => !ROBOT_BID_RE.test(b.project_name ?? ''))
   const lines: Array<GcJobLine & { day: string }> = []
   const inCities = new Set<string>()
-  const seen = new Map<string, { permit: boolean; plumbing: boolean }>()
+  const seen = new Map<string, { permit: boolean; plumbing: boolean; ours: boolean }>()
   const towns = new Map<string, number>()
   let elsewhereCount = 0
   let unreadableCount = 0
@@ -195,12 +204,14 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
     const lead = leadPermit(bid.project_name, onSite)
     const current = bid.id === currentBidId
     const generalDay = general ? dayOf(general) : null
-    const listing = general ? plumbingListing(general, lead && lead.kind === 'building' ? lead : null) : null
+    const listing = general ? plumbingListing(general, lead && lead.kind === 'building' ? lead : null, ourKeys) : null
+    // Our own permit is read first: it is never another plumber's, whoever the building permit lists.
+    const ours = listing != null && listing.ours
     // Only a plumbing permit that lists someone other than the building permit's own contact names a plumber.
-    const anotherName = listing != null && !listing.same && listing.name != null
-    const chip: Chip = anotherName ? { words: 'Plumbing permit · another name', tone: 'red' } : lead && lead.kind === 'building' ? stageChip(lead) : onSite.length > 0 ? { words: 'No building permit seen', tone: 'grey' } : { words: 'None seen', tone: 'grey' }
+    const anotherName = listing != null && !ours && !listing.same && listing.name != null
+    const chip: Chip = ours ? OURS_CHIP : anotherName ? { words: 'Plumbing permit · another name', tone: 'red' } : lead && lead.kind === 'building' ? stageChip(lead) : onSite.length > 0 ? { words: 'No building permit seen', tone: 'grey' } : { words: 'None seen', tone: 'grey' }
     const plumbingWords = general && listing
-      ? `a general plumbing permit${generalDay ? `, ${shortDay(generalDay)},` : ''} ${listing.same ? 'is under the building permit’s own name' : listing.name ? `lists ${listing.name}` : 'is on the address'}`
+      ? `a general plumbing permit${generalDay ? `, ${shortDay(generalDay)},` : ''} ${ours ? 'lists us' : listing.same ? 'is under the building permit’s own name' : listing.name ? `lists ${listing.name}` : 'is on the address'}`
       : onSite.length > 0
         ? 'no general plumbing permit seen'
         : 'no permit seen on the address'
@@ -213,14 +224,16 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
       day: bid.bid_date_sent ?? '',
     })
     const key = siteKey(site)
-    const was = seen.get(key) ?? { permit: false, plumbing: false }
-    seen.set(key, { permit: was.permit || onSite.length > 0, plumbing: was.plumbing || anotherName })
+    const was = seen.get(key) ?? { permit: false, plumbing: false, ours: false }
+    seen.set(key, { permit: was.permit || onSite.length > 0, plumbing: was.plumbing || anotherName, ours: was.ours || ours })
   }
   lines.sort((a, b) => Number(b.current) - Number(a.current) || b.day.localeCompare(a.day))
   const sites = seen.size
   const sitesWithPermit = [...seen.values()].filter((s) => s.permit).length
   const sitesWithGeneralPlumbing = [...seen.values()].filter((s) => s.plumbing).length
+  const sitesWithOurPlumbing = [...seen.values()].filter((s) => s.ours).length
   const plumbingSentence = sitesWithGeneralPlumbing === 0 ? 'No general plumbing permit under another name seen.' : `A general plumbing permit lists another name on ${sitesWithGeneralPlumbing}.`
+  const oursSentence = sitesWithOurPlumbing === 0 ? '' : ` A general plumbing permit lists us on ${sitesWithOurPlumbing}.`
   const townNames = [...towns].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t)
   const shown = townNames.slice(0, 3)
   const townWords = shown.length === 0 ? 'other towns' : townNames.length > 3 ? `${shown.join(', ')} and other towns` : listWords(shown)
@@ -230,7 +243,8 @@ export function gcJobsView(bids: readonly GcBid[], permitsByCity: ReadonlyMap<st
     sites,
     sitesWithPermit,
     sitesWithGeneralPlumbing,
-    verdict: sites === 0 ? null : `${seenOutOfWords(sitesWithPermit, sites)} ${plumbingSentence}`,
+    sitesWithOurPlumbing,
+    verdict: sites === 0 ? null : `${seenOutOfWords(sitesWithPermit, sites)} ${plumbingSentence}${oursSentence}`,
     coverage: `${lines.length} of your ${ours.length} bid${ours.length === 1 ? '' : 's'} with them`,
     elsewhere: elsewhereCount === 0 ? null : `${elsewhereCount} more bid${elsewhereCount === 1 ? '' : 's'} with them ${elsewhereCount === 1 ? 'is' : 'are'} in ${townWords}. No permit records are read there.`,
     unreadable: unreadableCount === 0 ? null : `${unreadableCount} more ${unreadableCount === 1 ? 'has' : 'have'} no street address we can look up.`,
