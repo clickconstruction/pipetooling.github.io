@@ -131,3 +131,8 @@ Read-only, signed in on a dev server, counts only.
 - **PR 1** (deployed from `main` 2026-11-12): San Antonio, the 16 newest commercial building
   permits with a point, one per address. All 16 name an owner, 11 by the address and 5 read at
   the permit's point. The second open of all 16 came from the kept answers.
+- **PR 2** (deployed from `main` 2026-11-12): the 20 newest building permits with a point in each
+  city, one per address. New Braunfels: all 20 name an owner, 12 of them read at the point in
+  Guadalupe County. San Marcos: 15 of 20 name an owner, 4 at Hays's own point and 5 with no
+  parcel. None of the San Marcos 20 was over the county line. The second open of all 40 came
+  from the kept answers.
