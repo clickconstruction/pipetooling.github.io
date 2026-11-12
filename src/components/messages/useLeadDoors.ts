@@ -26,6 +26,8 @@ export interface LeadDoorTarget {
   words: string | null
   /** The First look the estimate is started from, when the press is on a look's card (#319 PR 5). */
   firstLookId?: string | null
+  /** Told the job Book a visit made, so a look's card ties the look to it (#319 PR 6). */
+  onCreatedJobId?: (jobId: string) => void
 }
 
 export interface LeadDoors {
@@ -70,7 +72,7 @@ export function useLeadDoors(io?: LeadDoorsIo, read?: (contactId: string) => Pro
       setPressing(`book ${target.contactId}`)
       try {
         const { facts } = await convert(target)
-        if (jobForm) jobForm.openNewJob({ prefillCustomer: jobPrefillFrom(facts), onSaved: reread })
+        if (jobForm) jobForm.openNewJob({ prefillCustomer: jobPrefillFrom(facts), onSaved: reread, ...(target.onCreatedJobId ? { onCreatedJobId: target.onCreatedJobId } : {}) })
         else say(LEAD_DOOR_WORDS.noJobForm, 'info')
       } catch (e) {
         say(pressProblem(e), 'error')
