@@ -48,6 +48,8 @@ describe('BridgeFlowStripDown', () => {
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(Array.from(screen.getByTestId('bridge-strip-market-detail').querySelectorAll('li')).map((li) => li.textContent)).toEqual(market.detail)
+    // The bids' lines and the estimates' lines are two blocks.
+    expect(screen.getAllByTestId('bridge-strip-market-detail-block').map((b) => b.querySelectorAll('li').length)).toEqual([1, 1])
   })
 
   it('keeps the dollars bid on Market’s row when its worth cannot be read', () => {

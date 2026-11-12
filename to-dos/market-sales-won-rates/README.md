@@ -2,7 +2,7 @@
 name: "Market and Sales on the won rates"
 number: 318
 group: ready
-status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · PR 4 as v2.6979, one rule on the page · PR 5 as v2.6983, the weekly email on the Market amount, live once `bridge-weekly-sheet` is redeployed · PR 6 as v2.6988, the guide and the docs · all six built; what is left is the redeploy and the owner's calls · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
+status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · PR 4 as v2.6979, one rule on the page · PR 5 as v2.6983, the weekly email on the Market amount · PR 6 as v2.6988, the guide and the docs · all six built, and every function redeployed 2026-11-12 · a visual pass at three widths as v2.6998 · what is left is the owner's calls · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
 mockup: to-dos/market-sales-won-rates/mockup.html
 summary: >
   The Bridge read Market as every dollar asked in a week and judged it at one win share for everything. The owner set new rules in one sitting: estimates and bids each run through their own won
@@ -11,8 +11,8 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board already read this way on a spike
   branch. The page's own Market and Sales cards, the slowest-step reading, the weekly email and the guide do
   not yet. This card holds every rule and what is left, so a session on another computer can finish it.
-next: redeploy `bridge-weekly-sheet` and the functions `check:edge-drift` names before the email's first send on Monday 2026-11-16; then the owner's calls under Where it stands
-size: L as a train of six (M · S · M · M · M · S); left: the redeploy (S) and the owner's calls
+next: the owner's calls under Where it stands; the email's first send is Monday 2026-11-16 and carries the Market amount
+size: L as a train of six (M · S · M · M · M · S); left: the owner's calls
 blocker: None. The spike branch is on GitHub.
 opinion: ship PRs 1 to 3 as built, since the owner walked them. PR 4 is the one that matters most, because until it lands the page tells two stories about Market.
 ---
@@ -222,16 +222,22 @@ Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11
   and the one win share is gone from the code. Sales counts a bid by its mark alone. A marked win with no answer
   day is dated by the day its job was made, and the loader now reads the bids behind the window's jobs. In the
   Sales window an asker with few marked bids is read at the rate for bids the size of each ask, and a bid a job
-  was made from stays in the pile. `loadMarketDesk.ts` no longer reads jobs. Five functions are owed a redeploy:
-  `bridge-weekly-sheet`, `customer-portal`, `drive-link`, `gc-trade-portal`, `photo-save`.
+  was made from stays in the pile. `loadMarketDesk.ts` no longer reads jobs. The five functions that read the kernel copy
+  (`bridge-weekly-sheet`, `customer-portal`, `drive-link`, `gc-trade-portal`, `photo-save`) were redeployed on
+  2026-11-12.
 - **PR 5 shipped as v2.6983.** The weekly email reads every bid and estimate ever sent and hands the Market amount
   to the same kernels as the page. Market on its pipe reads *worth*, with one line for what the bids win and what
   the estimates sell. Built locally on the page's reads before any redeploy and held beside the deployed
-  function's own dry run: every other line of the two mails is the same. **It is not live until
-  `bridge-weekly-sheet` is redeployed from `main`.** The email's first send is Monday 2026-11-16 at 6 AM Central.
+  function's own dry run: every other line of the two mails is the same. `bridge-weekly-sheet` was redeployed
+  from `main` on 2026-11-12 and its dry run reads Market as *worth*, so the first send, Monday 2026-11-16 at
+  6 AM Central, carries it.
 - **PR 6 shipped as v2.6988.** The guide has one section for the rule, *What Market is worth*. The Glossary and
   `PROJECT_DOCUMENTATION.md` follow. The fixtures in `marketDesk.test.ts` and `salesDesk.test.ts` carry made-up
   names.
+- **A visual pass shipped as v2.6998**, after the train was live. The pipe, both windows and the Bid Board's chart
+  were read at 375, 768 and 1400 px in light and dark. Nothing spilled or was cut. Four things were tidied: the
+  pipe's five names fall at even steps, Market's working reads as two blocks, the chart's empty track shows in
+  light, and in the Sales window a reason's dollars stay on its own line on a phone.
 
 Still open, not the builder's to answer:
 

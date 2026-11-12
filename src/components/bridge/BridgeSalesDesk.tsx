@@ -123,10 +123,11 @@ function WhyLost({ reasons }: { reasons: SalesLostReason[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', fontVariantNumeric: 'tabular-nums' }}>
         <tbody>
           {reasons.map((r) => (
+            // Both cells sit on the reason's own line, so the dollars stay beside it when the door wraps under it on a phone.
             <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }} data-testid="bridge-sales-why-row">
-              <td style={{ padding: r.door ? 0 : '0.45rem 0', color: 'var(--text-strong)' }}>
-                <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 0.8rem' }}>
-                  <span>{r.label}</span>
+              <td style={{ padding: r.door ? 0 : '0.45rem 0', color: 'var(--text-strong)', verticalAlign: 'baseline' }}>
+                <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 0.8rem' }}>
+                  <span style={r.door ? { paddingTop: '0.45rem' } : undefined}>{r.label}</span>
                   {r.door ? (
                     <Link to={r.door.to} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }} data-testid="bridge-sales-name-it">
                       {r.door.label} ›
@@ -134,7 +135,7 @@ function WhyLost({ reasons }: { reasons: SalesLostReason[] }) {
                   ) : null}
                 </span>
               </td>
-              <td style={{ padding: '0.45rem 0 0.45rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text-strong)' }}>
+              <td style={{ padding: '0.45rem 0 0.45rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text-strong)', verticalAlign: 'baseline' }}>
                 {stageUsd(r.usd)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {r.count}</span>
               </td>
             </tr>

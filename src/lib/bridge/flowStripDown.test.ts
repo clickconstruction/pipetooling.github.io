@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { STRIP_MIN_THICK, buildFlowStrip } from './flowStrip'
-import { STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, layoutFlowStripDown, stripDownLines, stripDownWords, withMarketWorth } from './flowStripDown'
+import { buildBidWins, buildMarketWorth } from './bidWins'
+import { buildEstimateWins } from './estimateWins'
+import { STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, layoutFlowStripDown, marketDetailBlocks, stripDownLines, stripDownWords, withMarketWorth } from './flowStripDown'
 import type { StageFlow, StageId, StageReading } from './stageFlow'
 
 // Made-up paces and piles.
@@ -97,5 +99,29 @@ describe('the standing pipe’s words', () => {
 
   it('keeps the legend to plain words', () => {
     expect(plainWordsFailures(STRIP_DOWN_LEGEND)).toEqual([])
+  })
+})
+
+describe('marketDetailBlocks', () => {
+  it('draws the bids’ lines and the estimates’ lines as two blocks, with no line lost or reworded', () => {
+    const detail = ['Bids: $150k went out a week over the last 8 weeks.', 'A bid counts as won or lost only when it is marked.', 'Estimates: won by dollars is 60%.', '3 estimates were approved, for $9k.']
+    expect(marketDetailBlocks(detail)).toEqual([detail.slice(0, 2), detail.slice(2)])
+    expect(marketDetailBlocks(detail).flat()).toEqual(detail)
+  })
+
+  it('keeps one block when only one part reads, and none when there is no working', () => {
+    expect(marketDetailBlocks(['Bids: $150k went out a week over the last 8 weeks.'])).toEqual([['Bids: $150k went out a week over the last 8 weeks.']])
+    expect(marketDetailBlocks(['Estimates: won by dollars is 60%.', '3 estimates were approved, for $9k.'])).toEqual([['Estimates: won by dollars is 60%.', '3 estimates were approved, for $9k.']])
+    expect(marketDetailBlocks([])).toEqual([])
+  })
+
+  it('splits the working the page’s own builders write, so a change to their opening words fails here', () => {
+    // Made-up bids and estimates.
+    const bids = buildBidWins({ todayYmd: '2026-03-02', windowStart: '2026-01-05', bids: [{ sentYmd: '2026-02-02', outcome: 'won', usd: 8_000, hasJob: false, jobUsd: null }, { sentYmd: '2026-02-09', outcome: 'lost', usd: 40_000, hasJob: false, jobUsd: null }] })
+    const estimates = buildEstimateWins({ todayYmd: '2026-03-02', windowStart: '2026-01-05', estimates: [{ sentYmd: '2026-02-03', status: 'customer_accepted', usd: 2_000, answeredYmd: '2026-02-05' }, { sentYmd: '2026-02-10', status: 'declined', usd: 1_000 }] })
+    const blocks = marketDetailBlocks(buildMarketWorth(bids, estimates).detail)
+    expect(blocks.map((b) => b[0]?.split(':')[0])).toEqual(['Bids', 'Estimates'])
+    expect(blocks[0]).toEqual(bids.detail)
+    expect(blocks[1]).toEqual(estimates.detail)
   })
 })
