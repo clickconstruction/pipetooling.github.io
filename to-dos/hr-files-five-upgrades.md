@@ -1,8 +1,8 @@
 ---
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
-group: gated
-status: mapped 2026-11-11 (#7707) · PR 0, the access fix found while mapping, built the same day on the owner's yes as v2.6966 on claude/person-matter-document-fence · none of the five started · waiting on the owner's go for the train
+group: ready
+status: mapped 2026-11-11 (#7707) · the access fix found while mapping live the same day (v2.6966, #7711, migration pushed 22:42 UTC) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 (the links table, the write's keys, the kernel) built as v2.6969 on claude/hr-amendments-db · the rest in order below
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,11 +11,11 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966
-next: The owner's go on the order below. Then PR 1a, the corrections link in the database with its kernel, which changes no screen and needs no seat deploy.
+ver: v2.6966, v2.6969
+next: Upgrade 1 PR 2, the Timeline's chips and Correct this entry in the composer, once PR 1's migration is pushed. Then the seat's reads, then upgrade 2.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
-blocker: The owner's go. He asked that the read-only reconciliation of the large file finish first.
-opinion: build in the order given — each first PR is additive (a nullable column, a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
+blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
+opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
 mockup: not required — each screen change before upgrade 3 is a chip or a door on a view that exists; the approvals list (upgrade 3) and the Case view (upgrade 2b) get a mock-up beside this card before their screen PRs
 ---
 
@@ -26,6 +26,15 @@ mockup: not required — each screen change before upgrade 3 is a chip or a door
 2026-11-11, the owner, after a view of the HR files system as a whole: *"I think your five suggestions
 are pretty good, Can you please help me make the changes? Do the reconciliation first, since it changes
 nothing. Ship the upgrades one small PR at a time."*
+
+2026-11-11, after the map: *"Build it all and let me know when it is live. Asking yourself along the way is this
+the best we can do."* So each upgrade gets that question before it is built, and where the answer changed the plan
+the section says so.
+
+**What "build it all" does not decide.** Some calls change what rows on a real file mean (linking old
+corrections, numbering old exhibits, marking old hours). The train builds each of those as a function with a dry
+run and never runs it on a real file. Where a rule had to be picked to build at all, it takes the stricter
+default and names it under *His calls*.
 
 No name, amount or word from any person's file belongs in this card, a test, a commit or a PR. Fixtures
 are made up. Live checks run on a sample or a `ZZ Test` person.
@@ -58,21 +67,26 @@ and did not get one. Migration `20261112030000` adds the two fences, held by
 
 ## 1. Corrections as links
 
+**Is this the best we can do?** The map planned a nullable reference on `person_file_entries`. A small table does
+more and touches less, so the train builds that: no existing row or table changes, one correction can name several
+things, evidence records are covered by the same rule, and the corrections already written in prose can be linked
+by adding rows where a column would have meant stamping old entries.
+
 | | |
 |---|---|
-| Tables and RPCs | `person_file_entries` gains `amends_entry_id` (nullable, the same table) and `amends_kind` (`corrects` · `completes`), an index, and a before-insert trigger that holds the pair to one person. `hr_agent_write` learns `corrects_entry_id` / `completes_entry_id` on an entry; `dev_hr_entry_write`'s reply names the older entry. `dev_case_search` stays as it is. |
-| Screens | Timeline (`renderLine` in `PersonFilePanel.tsx`): the older line reads *Corrected ›* with a door to the newer, the newer *Corrects the entry of …*. A line's **Correct this entry…** opens the composer with the link set. The narrative's *Jump to* flags a section cited by a corrected entry. The By theme item window shows the same. |
-| Seat | `plan_hr_entry` (pass-through), `get_person_file` (each line's pair), `get_case_brief` (newest ten), `search_case` (a hit returns the pair, joined in `devMcpCaseSearch.ts` as the transcript pair is). |
-| Kernel | `supabase/functions/_shared/personEntryAmends.ts` with the app's door: pairs, chains (a correction of a correction), the words, the flagged sections. |
+| Tables and RPCs | `person_file_amendments` (v2.6969, migration `20261112050000`): from the newer thing to the older, kinds `hr_entry` · `hr_evidence`, how `corrects` · `completes`, withdrawn with a reason and never deleted, a guard that holds both ends to one person. `hr_agent_write` learns `entries[].corrects` / `entries[].completes`, `amendments[]` and `withdraw_amendments[]`; `dev_hr_entry_write` names each link by its two ends. `dev_case_search` stays as it is. |
+| Screens | Timeline (`renderLine` in `PersonFilePanel.tsx`): the older line reads *Corrected Nov 3, 2026 ›* with a door to the newer, the newer *Corrects the entry of …*. A line's **Correct this entry…** opens the composer with the link set. The narrative's *Jump to* flags a section cited by a corrected entry. The By theme item window shows the same. |
+| Seat | `plan_hr_entry` (pass-through, live with the migration), `get_person_file` (each line's links), `get_case_brief` (newest ten), `search_case` (a hit carries its links, joined in `devMcpCaseSearch.ts` as the transcript pair is). No new verb. |
+| Kernel | `supabase/functions/_shared/personAmendments.ts` with the app's door: the live links, both ends indexed, corrected before completed, the latest word along a chain, the words either line wears. |
 
-- **PR 1a (first, S):** the migration, the two functions, the kernel with its tests, `HR_FILES.md`, the
-  migration page. No screen reads the column and the seat is not redeployed. After the push an agent
-  links a correction through `plan_hr_entry` at once.
-- **1b:** the types PR. **1c:** the Timeline, the composer and the help guide. **1d:** the seat's reads
-  and the search pair. **1e:** the flags on documents and themes.
-- **His call, later:** linking the corrections already written in prose means stamping an existing
-  entry once, through a dev-gated function that refuses a row already linked. That changes existing
-  rows, so it runs per person on his word, or not at all.
+- **PR 1 (v2.6969, built):** the table, the two functions, the kernel with its tests, the bed
+  (`npm run test:pg:person-file-amendments`), the docs. No screen reads the table and the seat is not
+  redeployed. After the push an agent links a correction through `plan_hr_entry` at once.
+- **PR 2:** the Timeline, the composer, the flags on the narrative and the help guide. The links are a source of
+  their own, read fail-soft, so the entries never disappear with them.
+- **PR 3:** the seat's reads and the search's pair.
+- **His call:** linking the corrections already written in prose. It adds rows and changes no entry, and it is
+  still a write on a real file, so it runs per person on his word through `plan_hr_entry { amendments }`.
 
 ## 2. Rows the system numbers
 
