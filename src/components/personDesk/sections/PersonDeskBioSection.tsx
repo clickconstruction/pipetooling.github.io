@@ -150,10 +150,10 @@ export function PersonDeskBioSection({
 
   return (
     <DeskSection id="bio" title={bioTitle(first)} who="the office">
-      <div data-testid="desk-bio">
+      <div data-testid="desk-bio" style={{ padding: '0.5rem 0.7rem 0.65rem' }}>
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{BIO_WORDS.deskHint(first)}</p>
         {live.length === 0 ? (
-          <DeskEmpty>{BIO_WORDS.deskEmpty(first)}</DeskEmpty>
+          <DeskEmpty inset>{BIO_WORDS.deskEmpty(first)}</DeskEmpty>
         ) : (
           <>
             <div style={previewLabel}>
