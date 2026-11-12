@@ -2,7 +2,7 @@
 name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a due day, and the forecast keeps its honest guess"
 number: 323
 group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · a second pass the same day changed the design (the contract's day is a due date, not a forecast) · nothing built · waits on Grace's go on the revised train
+status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · PR 1 (the setting, v2.7024 #7784) and PR 2 (Due on billed rows) built and open · the migration is not pushed · PRs 3 to 7 next
 summary: >
   Some commercial payers pay on a calendar, not at a pace: a pay application in by the end of the
   month, or by an earlier day, is paid on a set day of the next month. A bill sent on the 1st and
@@ -12,9 +12,9 @@ summary: >
   exception a job can carry. It gives each billed row the day the bill is due under the contract,
   keeps the expected day as the payer's real record measured against that due day, and puts the
   cutoff in front of whoever is about to bill: send by Nov 30 to be due Dec 10, after that Jan 10.
-next: Grace's go on the revised train, then PR 1 (the setting, with the payer's record replayed against it).
+next: merge PR 1 and push its migration right after, then PR 2; then PR 3, the cutoff on Ready to Bill.
 size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
-blocker: Grace's go on the revised train.
+blocker: PR 1's migration push, which holds the deploy until it is done, so PR 1 is armed only with someone at hand to push.
 opinion: build — the cutoff and the due day are facts the app has never had, and the second pass took the wishful part out of the forecast
 ---
 
@@ -400,6 +400,15 @@ What still holds, and what is still weak:
    behavior, which is what a forecast wants, and it is thin.
 6. **Better still would be the payer's real check run,** read from remittance emails and the bank
    feed. That is a bigger build. Lateness gets most of it.
+
+## Where it stands
+
+2026-11-12, after Grace's *Build the train*:
+
+- **PR 1, the setting** (#7784): the kernel, the table and its save, the window with the record replayed against what is typed, the line under *Pays in*. Changes no date. Its migration `20261112150000_payer_pay_calendars.sql` is proven by the SQL bed `pay-calendar` and **not pushed**.
+- **PR 2, Due on billed rows**, stacked on PR 1: `billedPayModel` wraps the pace guess, so the edge copies are untouched. The dates block, the Payment forecast, the phone rows and the Lien desk's runway read it. Walked on real rows with a made-up calendar.
+- What the live walk taught: on a real payer set to *in by month end, paid the 10th*, six open bills read *Due Oct 10 · 33d past* with money usually landing about eight weeks after. Typed as *in by the 25th, paid the 30th of the next month* the same payer's last 12 payments read *usually about 5 days after, 6 of 12 on time*. The window is doing the job the second pass asked of it: it shows which terms a payer's money actually follows.
+- Calls 2 to 7 below were not answered. The build follows the first pick on each.
 
 ## Grace's calls
 

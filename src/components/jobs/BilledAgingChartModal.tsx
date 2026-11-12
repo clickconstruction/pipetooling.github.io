@@ -14,6 +14,7 @@ import {
   buildBilledAgingChart,
   type BilledAgingPoint,
 } from '../../lib/jobs/billedAgingChart'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * 📊 on the Billed Awaiting Payment header (v2.1871, dev/controller): every
@@ -111,14 +112,7 @@ export default function BilledAgingChartModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Billed Awaiting Payment — aging</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-          >
-            ×
-          </button>
+          <WindowCloseButton onClose={onClose} />
         </div>
 
         {loading ? (

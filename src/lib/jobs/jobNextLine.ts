@@ -38,6 +38,13 @@ export type JobNextLine = {
   today: boolean
 }
 
+/**
+ * What the line reads of a bill's pay model: whether it is late, by how much, and why. The pace guess
+ * (`ExpectedPayModel`) and the Pay calendar's model (`BilledPayModel`, punch list #323) both fit; the second also
+ * carries `daysPastDue`.
+ */
+export type JobNextExpectedPay = Pick<ExpectedPayModel, 'state' | 'daysLate' | 'title'> & Partial<Omit<ExpectedPayModel, 'source'>> & { source?: string; daysPastDue?: number }
+
 export type JobNextLineInput = {
   stage: JobNextStage
   view: ProgressPaymentView
@@ -45,8 +52,8 @@ export type JobNextLineInput = {
   billSentAlert: StagesBillSentPctAlert | null
   /** Days quiet from the follow-up queue; null = not in the queue. */
   quietDays: number | null
-  /** Billed / Collections rows only. */
-  expectedPay: ExpectedPayModel | null
+  /** Billed / Collections rows only. `daysPastDue` is a payer's Pay calendar speaking (punch list #323): the bill is past the day its contract makes it due. */
+  expectedPay: JobNextExpectedPay | null
   /** A deposit the bank returned that this job still counts as paid (v2.3806); null / undefined = none. */
   bankReturned?: BankReturnedOnJob | null
   /** Billed / Collections rows (v2.4051): does the money land before the lien dies? null / undefined = no reading. */
@@ -113,6 +120,10 @@ export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
   }
   if (expectedPay && expectedPay.state === 'late') {
     return { label: `${expectedPay.daysLate} d past expected`, tone: 'amber', action: 'bill-row', title: expectedPay.title }
+  }
+  // Past due under the payer's Pay calendar, though their money is not expected yet: a reason to call that the contract gives.
+  if (expectedPay && (expectedPay.daysPastDue ?? 0) > 0) {
+    return { label: `${expectedPay.daysPastDue} d past due`, tone: 'amber', action: 'bill-row', title: expectedPay.title }
   }
   if (contractAsk) {
     return { label: contractAsk.label, tone: 'amber', action: 'contract', title: `${contractAsk.title} Tap to open the Contract window.` }

@@ -53,6 +53,14 @@ describe('buildReliabilityLine', () => {
     expect(line.title).toMatch(/last 2 measurable payments/)
     expect(line.title).toMatch(/3 kept, 2 late, 2 broken, 1 open/)
   })
+  it("says a payer's Pay calendar where Pays in stood, since the spread is the calendar's doing (punch list #323)", () => {
+    const line = buildReliabilityLine([receipt(12), receipt(68)], null, null, 'In by month end, paid the 10th')
+    expect(line.paysIn).toBe('In by month end, paid the 10th')
+    expect(line.text).toBe('In by month end, paid the 10th')
+    expect(line.title).toBe('They pay on a calendar, so days from bill to money swing with the day of the month a bill went in.')
+    // With no calendar the same payments read as the range, as before.
+    expect(buildReliabilityLine([receipt(12), receipt(68)], null, null, null).paysIn).toBe('Pays in 12–68d')
+  })
   it('spread only for a viewer who may not see the record, and empty when nothing is known', () => {
     expect(buildReliabilityLine([receipt(9), receipt(41)], null).text).toBe('Pays in 9–41d')
     const nothing = buildReliabilityLine([], null)

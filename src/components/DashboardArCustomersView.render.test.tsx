@@ -27,8 +27,8 @@ const ITEMS: FinancialItem[] = [
   item({ key: '412 · Quiet job', jobId: 'j412', customerId: 'c2', customerName: 'Quiet Builders', amount: 5000 }),
 ]
 
-const RED: LienArChip = { tone: 'red', state: 'due', paper: 'notice', words: 'Waiting on Robert · by Oct 15 · 2d', sentence: 'August’s § 53.056 notice · Waiting on Robert · since Oct 7', title: 'Open it on the Lien desk', door: { to: 'desk', jobId: 'j273', kind: 'notice', pile: 'awaiting' }, dueOn: '2026-10-15', daysLeft: 2 }
-const GREEN: LienArChip = { tone: 'green', state: 'out', paper: 'notice', words: 'Delivered Sep 16 · day 5', sentence: '§ 53.056 notice sent Sep 12 by certified mail', title: 'Open the job’s Lien window', door: { to: 'window', jobId: 'j858', tab: 'notice' }, dueOn: null, daysLeft: null }
+const RED: LienArChip = { tone: 'red', state: 'due', paper: 'notice', words: 'Waiting on Robert · by Oct 15 · 2d', lead: 'Waiting on Robert · by Oct 15 · 2d', action: 'approve', sentence: 'August’s § 53.056 notice · Waiting on Robert · since Oct 7', title: 'Open it on the Lien desk', door: { to: 'desk', jobId: 'j273', kind: 'notice', pile: 'awaiting' }, dueOn: '2026-10-15', daysLeft: 2 }
+const GREEN: LienArChip = { tone: 'green', state: 'out', paper: 'notice', words: 'Delivered Sep 16 · day 5', lead: 'Delivered Sep 16 · day 5', action: null, sentence: '§ 53.056 notice sent Sep 12 by certified mail', title: 'Open the job’s Lien window', door: { to: 'window', jobId: 'j858', tab: 'notice' }, dueOn: null, daysLeft: null }
 
 const CHIPS = new Map<string, LienArChip | null>([
   ['j273', RED],
