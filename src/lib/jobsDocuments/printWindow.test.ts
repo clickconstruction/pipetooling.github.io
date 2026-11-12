@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { openHtmlWindowWhenReady } from './printWindow'
+import { openHtmlPrintWindow, openHtmlWindowWhenReady, PRINT_PICTURE_WAIT_MS } from './printWindow'
 
 function fakeWindow() {
   const writes: string[] = []
@@ -43,5 +43,62 @@ describe('openHtmlWindowWhenReady (v2.4335)', () => {
   it('a blocked popup is reported', async () => {
     vi.spyOn(window, 'open').mockReturnValue(null)
     expect(await openHtmlWindowWhenReady(async () => 'x')).toBe(false)
+  })
+})
+
+/** A picture as the new window holds it: not loaded until `land` is called. */
+function fakePicture() {
+  const heard: Record<string, Array<() => void>> = {}
+  const img = { complete: false, addEventListener: (type: string, fn: () => void) => void (heard[type] ??= []).push(fn) }
+  const land = (type: 'load' | 'error') => {
+    img.complete = type === 'load'
+    for (const fn of heard[type] ?? []) fn()
+  }
+  return { img: img as unknown as HTMLImageElement, land }
+}
+
+describe('openHtmlPrintWindow waits for the page’s pictures (v2.7011)', () => {
+  it('a page with no picture prints at once', () => {
+    const { win, writes } = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window)
+    expect(openHtmlPrintWindow('<html>words only</html>')).toBe(true)
+    expect(writes).toEqual(['<html>words only</html>'])
+    expect(win.print).toHaveBeenCalledTimes(1)
+  })
+  it('a page whose pictures are still loading prints once each has loaded or failed, never before', async () => {
+    const { win } = fakeWindow()
+    const a = fakePicture()
+    const b = fakePicture()
+    win.document.images = [a.img, b.img]
+    vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window)
+    expect(openHtmlPrintWindow('<html>a code and a code</html>')).toBe(true)
+    expect(win.print).not.toHaveBeenCalled()
+    a.land('load')
+    await Promise.resolve()
+    expect(win.print).not.toHaveBeenCalled()
+    // A picture that fails still lets the page print: the words are the paper.
+    b.land('error')
+    await vi.waitFor(() => expect(win.print).toHaveBeenCalledTimes(1))
+    win.onafterprint?.()
+    expect(win.close).toHaveBeenCalled()
+  })
+  it('a picture that never arrives does not lose the print', async () => {
+    vi.useFakeTimers()
+    try {
+      const { win } = fakeWindow()
+      win.document.images = [fakePicture().img]
+      vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window)
+      openHtmlPrintWindow('<html>x</html>')
+      await vi.advanceTimersByTimeAsync(PRINT_PICTURE_WAIT_MS - 1)
+      expect(win.print).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(win.print).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('a blocked popup is reported', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    expect(openHtmlPrintWindow('x')).toBe(false)
   })
 })
