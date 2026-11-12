@@ -66,10 +66,12 @@ beforeEach(() => {
   openPrintMock.mockClear()
   fileCopyMock.mockClear()
   window.localStorage.removeItem('pt.lienHelpSheet.v1')
+  window.localStorage.removeItem('pt.lienNoticeRecord.v1')
 })
 afterEach(() => {
   cleanup()
   window.localStorage.removeItem('pt.lienHelpSheet.v1')
+  window.localStorage.removeItem('pt.lienNoticeRecord.v1')
 })
 
 describe('LienFilingTabs · the affidavit prints behind its help sheet (punch list #314)', () => {
@@ -127,10 +129,12 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     expect(html).toContain('COUNTY OF, at the top.')
   })
 
-  it('with the box unticked the paper prints alone, as before, and the choice is kept on this computer', () => {
+  it('with both boxes unticked the paper prints alone, as before, and each choice is kept on this computer', () => {
     renderWithProviders(<LienFilingTabs {...props()} />)
     fireEvent.click(document.querySelector('[data-lien-window-help-sheet] input') as HTMLInputElement)
     expect(window.localStorage.getItem('pt.lienHelpSheet.v1')).toBe('off')
+    fireEvent.click(document.querySelector('[data-lien-window-notice-record] input') as HTMLInputElement)
+    expect(window.localStorage.getItem('pt.lienNoticeRecord.v1')).toBe('off')
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-help')
     expect(fileCopyMock).toHaveBeenCalledTimes(1)
@@ -161,5 +165,89 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     expect(screen.queryByRole('button', { name: 'Print a guide copy' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-help')
+  })
+})
+
+describe('LienFilingTabs · the notice record and the copies of the notices print with the affidavit (punch list #322)', () => {
+  // Two notices on the job: an early one to the owner alone, entered after the fact, and a later one to both with one number missing.
+  const words = (noticeDate: string, claimAmount: string) => ({ noticeDate, projectDescription: '18 Sample Ln, Marlow, TX 75001', claimantName: 'Sample Plumbing LLC', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Ridgeway Builders', contractedWithIfDifferent: '', claimAmount, contactPerson: 'Pat Sample, Master Plumber', claimantAddress: '100 Made Up Rd, Marlow, TX 75001' })
+  const row = { job_id: 'job-412', kind: 'notice_53_056', filed_at: null, serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, document_url: '', document_note: '' }
+  const early = { ...row, id: 'f-1', by_hand: true, amount: 1900, months_covered: ['2026-08'], fields: words('2026-12-01', '1900.00'), created_at: '2026-12-02T15:00:00Z', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0000 0000 0000 0000 01', sent_on: '2026-12-01' }] }
+  const later = { ...row, id: 'f-2', amount: 2650, months_covered: ['2026-08'], document_url: 'https://drive.example/notice', fields: words('2026-12-09', '2650.00'), created_at: '2026-12-09T15:00:00Z', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0000 0000 0000 0000 02', sent_on: '2026-12-09' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '', sent_on: '2026-12-09' }] }
+  const voided = { ...row, id: 'f-0', amount: 1900, months_covered: ['2026-08'], fields: words('2026-11-20', '1900.00'), created_at: '2026-11-20T15:00:00Z', voided_at: '2026-11-21T10:00:00Z', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0000 0000 0000 0000 00', sent_on: '2026-11-20' }] }
+  const filings = [later, early, voided] as never[]
+
+  it('prints the help sheet, the record, a copy of each notice, then the paper, and files the paper alone', () => {
+    renderWithProviders(<LienFilingTabs {...props({ filings })} />)
+    expect(document.querySelector('[data-lien-window-notice-record]')?.textContent).toBe('Print the notice record')
+    expect((document.querySelector('[data-lien-window-notice-record] input') as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    const html = openPrintMock.mock.calls[0]![0]
+    const at = (needle: string) => html.indexOf(needle)
+    expect(at('data-lien-help="cover"')).toBeGreaterThan(0)
+    expect(at('data-lien-help="cover"')).toBeLessThan(at('data-lien-help="record"'))
+    expect(at('data-lien-help="record"')).toBeLessThan(at('data-lien-record-copy-of="1"'))
+    expect(at('data-lien-record-copy-of="1"')).toBeLessThan(at('data-lien-record-copy-of="2"'))
+    expect(at('data-lien-record-copy-of="2"')).toBeLessThan(at('BEFORE ME'))
+    // The record: both notices in the order they were mailed, each copy's number, and the copy the record lacks.
+    expect(html).toContain('Notice 1 · Names August 2026 · Claim $1,900.00 · Entered after the fact Dec 2, 2026 · No saved copy')
+    expect(html).toContain('9407 0000 0000 0000 0000 01')
+    expect(html).toContain('No copy on record')
+    expect(html).toContain('<strong>No number on record</strong>')
+    // The paper's sentence 6 and the record agree, and the page says so.
+    expect(html).toContain('6. Notice of the claim was sent to the owner by certified mail on December 1, 2026 and December 9, 2026.')
+    expect(html).toContain('The paper says certified mail on December 1, 2026 and December 9, 2026. The owner’s copies on record say the same.')
+    // Both went after August's last day to mail on this commercial property, so the page asks first; no table of the months is drawn.
+    expect(html).toContain('data-lien-record-verdict="ask"')
+    expect(html).not.toContain('Each month the paper swears')
+    // The voided notice is counted in a line and drawn nowhere.
+    expect(html).toContain('1 voided notice on this job is not counted and is not shown.')
+    expect(html).not.toContain('9407 0000 0000 0000 0000 00')
+    // Each copy is the notice's own form with the words its row keeps.
+    expect(html.match(/Notice of Claim for Unpaid Labor or Materials/g)).toHaveLength(2)
+    expect(html).toContain('Copies of the notices are next, then the paper to sign')
+    // The cover sheet points at the record and keeps its own mark.
+    expect(html).toContain('The notice record is next, then the paper to sign')
+    // A print counts as a send, and the copy filed on the job is the paper alone.
+    expect(fileCopyMock).toHaveBeenCalledTimes(1)
+    expect(fileCopyMock.mock.calls[0]![1].html).not.toContain('lien-help')
+    expect(fileCopyMock.mock.calls[0]![1].html).not.toContain('lien-record')
+    expect(fileCopyMock.mock.calls[0]![1].html).not.toContain('Notice of Claim for Unpaid Labor')
+    expect(fileCopyMock.mock.calls[0]![1].html).toContain('BEFORE ME')
+  })
+
+  it('with the help sheet off the record and the copies still print, and with the record off the help sheet prints as it did', () => {
+    renderWithProviders(<LienFilingTabs {...props({ filings })} />)
+    fireEvent.click(document.querySelector('[data-lien-window-help-sheet] input') as HTMLInputElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    let html = openPrintMock.mock.calls[0]![0]
+    expect(html).not.toContain('data-lien-help="cover"')
+    expect(html).toContain('data-lien-help="record"')
+    expect(html.match(/data-lien-help="notice-copy"/g)).toHaveLength(2)
+    fireEvent.click(document.querySelector('[data-lien-window-help-sheet] input') as HTMLInputElement)
+    fireEvent.click(document.querySelector('[data-lien-window-notice-record] input') as HTMLInputElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    html = openPrintMock.mock.calls[1]![0]
+    expect(html).toContain('data-lien-help="cover"')
+    expect(html).not.toContain('data-lien-help="record"')
+    expect(html).not.toContain('data-lien-help="notice-copy"')
+    expect(html).toContain('The paper to sign is the next page')
+    expect(fileCopyMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('a job contracted with the owner owes no notice: no box, no record, no copy', () => {
+    renderWithProviders(<LienFilingTabs {...props({ isSub: false, filings: [] })} />)
+    expect(document.querySelector('[data-lien-window-notice-record]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    const html = openPrintMock.mock.calls[0]![0]
+    expect(html).toContain('data-lien-help="cover"')
+    expect(html).not.toContain('data-lien-help="record"')
+  })
+
+  it('a paper on the earlier form has no notice record: it is written for the short form’s two sentences', () => {
+    renderWithProviders(<LienFilingTabs {...props({ filings, affidavitForm: 'long' })} />)
+    expect(document.querySelector('[data-lien-window-notice-record]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
+    expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-record')
   })
 })
