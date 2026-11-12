@@ -5,6 +5,7 @@
  * city's own permit search and its county clerk. The cities are `_shared/permitCities.ts`. No React, no Supabase.
  */
 import { permitCity } from '../../../supabase/functions/_shared/permitCities'
+import { sameStreetAddress } from '../../../supabase/functions/_shared/permitParcels'
 import { haversineMeters, TRAVEL_ROAD_WINDING_FACTOR, type LatLng } from '../jobTravelEstimate'
 import { txCountyCadSearchUrl } from '../txCountyLookup'
 
@@ -61,14 +62,20 @@ export function lotWords(facts: LotFacts): string {
 }
 
 /**
- * The sheets' line when the parcel was found under the permit's point, not its street address.
- * A parcel found on a neighbouring county's layer names that county: the city's limits cross
- * the county line. A parcel found there by the permit's own id or its address says only which
- * county it is in. Null when the city's own county matched the address or the id.
+ * The sheets' line on how the parcel relates to the permit, or null when there is nothing to say:
+ * the city's own county matched the street address, or named a lot whose address is the permit's.
+ * - Found under the permit's point, not its street address: it says so, and whose county it is
+ *   when the point is over the county line.
+ * - Found by the permit's own id or its address on a neighbouring county's layer: which county.
+ * - Found by the permit's own id on a lot the county files under another address (a centre's lot,
+ *   a campus), when the permit's `address` is given: the county's address for it.
  */
-export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by' | 'county'>): string | null {
-  // Found by the permit's own id or its address on a neighbouring county's layer: the card still says whose county it is.
-  if (facts.matched_by !== 'point') return facts.county ? `This lot is in ${facts.county} County.` : null
+export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by' | 'county'>, address?: string | null): string | null {
+  if (facts.matched_by !== 'point') {
+    const inCounty = facts.county ? `This lot is in ${facts.county} County.` : null
+    const called = facts.matched_by === 'id' && address && facts.situs && !sameStreetAddress(address, facts.situs) ? `The county calls this lot ${facts.situs}.` : null
+    return inCounty || called ? [inCounty, called].filter(Boolean).join(' ') : null
+  }
   const where = facts.situs ? ` The county calls it ${facts.situs}.` : ''
   if (facts.county) return `The permit’s point is in ${facts.county} County, so this is that county’s parcel there.${where}`
   return `The county has no parcel under this street address, so this is the parcel at the permit’s point.${where}`

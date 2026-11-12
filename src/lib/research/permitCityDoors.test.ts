@@ -38,6 +38,14 @@ describe('what a card says for the city it is in (punch list #292, revision 4)',
     expect(parcelPointWords({ situs: null, matched_by: 'point' })).toBe('The county has no parcel under this street address, so this is the parcel at the permit’s point.')
     expect(parcelPointWords({ situs: '210 W COURT ST' })).toBeNull()
     expect(parcelPointWords({ situs: '210 W COURT ST', matched_by: 'id' })).toBeNull()
+    // By the id, on a lot the county files under another address: the county's address, when the permit's is given.
+    expect(parcelPointWords({ situs: '9500 SAMPLE BLVD 78700', matched_by: 'id' }, '9600 SAMPLE BLVD STE 100')).toBe('The county calls this lot 9500 SAMPLE BLVD 78700.')
+    expect(parcelPointWords({ situs: '2700 E 5 ST 78702', matched_by: 'id' }, '2700 E 5TH ST')).toBeNull()
+    expect(parcelPointWords({ situs: null, matched_by: 'id' }, '2700 E 5TH ST')).toBeNull()
+    expect(parcelPointWords({ situs: '9500 SAMPLE BLVD 78700', matched_by: 'id' })).toBeNull()
+    // The street address matched: nothing to add, even without the same spelling.
+    expect(parcelPointWords({ situs: '100 SAMPLE LANE' }, '100 SAMPLE LN')).toBeNull()
+    expect(parcelPointWords({ situs: '9500 SAMPLE BLVD, AUSTIN, TX 78700', matched_by: 'id', county: 'Williamson' }, '9600 SAMPLE BLVD')).toBe('This lot is in Williamson County. The county calls this lot 9500 SAMPLE BLVD, AUSTIN, TX 78700.')
     // Over the county line: the card names the county whose parcel it is.
     expect(parcelPointWords({ situs: '1500 N SAMPLE BLVD', matched_by: 'id', county: 'Williamson' })).toBe('This lot is in Williamson County.')
     expect(parcelPointWords({ situs: '1500 N SAMPLE BLVD', county: 'Williamson' })).toBe('This lot is in Williamson County.')

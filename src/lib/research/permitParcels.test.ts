@@ -26,6 +26,7 @@ import {
   pointQuery,
   pointQueryOf,
   pointQuestion,
+  sameStreetAddress,
   sourceForId,
   streetParts,
   TRAVIS_PARCELS,
@@ -389,5 +390,37 @@ describe('Williamson County, for Austin over the county line', () => {
     })
     // Asked for an Austin permit, the card names the county the lot is in.
     expect(facts ? factsInCounty(TRAVIS_PARCELS, WILLIAMSON_PARCELS, facts).county : null).toBe('Williamson')
+  })
+})
+
+describe("the county's address for a lot, against the permit's", () => {
+  it('reads the same number and street as the same, however each county writes it', () => {
+    // Travis: the bare number for a numbered street, the zip behind it.
+    expect(sameStreetAddress('2700 E 5TH ST', '2700 E 5 ST 78702')).toBe(true)
+    // Travis also writes the city between the suffix and the zip, with no comma.
+    expect(sameStreetAddress('100 E SAMPLE LN', '100 E SAMPLE LN AUSTIN 78701')).toBe(true)
+    expect(sameStreetAddress('2700 SAMPLE CREEK DR UNIT 110', '2700 SAMPLE CREEK DR LAGO VISTA 78645')).toBe(true)
+    expect(sameStreetAddress('2700 E 5TH ST', '2700 E 5 ST AUSTIN 78702')).toBe(true)
+    // The other counties: the city and the zip after a comma. Bexar: on the next line.
+    expect(sameStreetAddress('625 E Hopkins St, San Marcos', '625 E HOPKINS ST, SAN MARCOS 78666')).toBe(true)
+    expect(sameStreetAddress('100 SAMPLE LN', '100 SAMPLE LN \nSAN ANTONIO, TX 78201')).toBe(true)
+    expect(sameStreetAddress('1500 N SAMPLE BLVD STE 200', '1500 N SAMPLE BLVD, AUSTIN, TX 78700')).toBe(true)
+    // A suffix spelled out, a direction on one side only, an interstate written two ways.
+    expect(sameStreetAddress('100 SAMPLE LANE', '100 SAMPLE LN')).toBe(true)
+    expect(sameStreetAddress('100 S SAMPLE RD', '100 SAMPLE RD')).toBe(true)
+    expect(sameStreetAddress('22110 IH 10 W', '22110 I H 10 W, SEGUIN 78155')).toBe(true)
+  })
+  it('reads another number or another street as another address', () => {
+    expect(sameStreetAddress('9600 SAMPLE BLVD STE 100', '9500 SAMPLE BLVD 78700')).toBe(false)
+    expect(sameStreetAddress('100 SAMPLE LN', '100 OTHER LN 78700')).toBe(false)
+    expect(sameStreetAddress('100 MAIN ST', '100 MAINE ST')).toBe(false)
+    expect(sameStreetAddress('100 SAMPLE LN', '100 SAMPLER LN AUSTIN 78701')).toBe(false)
+    expect(sameStreetAddress('9600 SAMPLE BLVD', '9500 SAMPLE BLVD AUSTIN 78700')).toBe(false)
+  })
+  it('never calls a blank or numberless address the same', () => {
+    expect(sameStreetAddress('100 SAMPLE LN', null)).toBe(false)
+    expect(sameStreetAddress('100 SAMPLE LN', '   ')).toBe(false)
+    expect(sameStreetAddress('100 SAMPLE LN', 'SAMPLE LN 78700')).toBe(false)
+    expect(sameStreetAddress(null, '100 SAMPLE LN')).toBe(false)
   })
 })

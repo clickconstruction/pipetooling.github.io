@@ -294,6 +294,22 @@ export function neighbourSources(source: ParcelSource): ParcelSource[] {
   return (NEIGHBOURS[source.county] ?? []).map((county) => parcelSourceFor(county)).filter((s): s is ParcelSource => s !== null)
 }
 
+/**
+ * Whether a county's address for a parcel is the permit's street address: the same house number
+ * and the same street name in any spelling. A county writes the suffix, the city and the zip
+ * behind the name, with or without a comma or a line break ("100 SAMPLE LN AUSTIN 78701"), so
+ * the names match when one starts the other on a whole word. False when either has no house
+ * number, so a blank county address is never "the same".
+ */
+export function sameStreetAddress(permitAddress: string | null | undefined, countyAddress: string | null | undefined): boolean {
+  const ours = streetParts(permitAddress)
+  const firstLine = ((countyAddress ?? '').split(/[\n,]/)[0] ?? '').replace(/\s+\d{5}(-\d{4})?\s*$/, '')
+  const theirs = streetParts(firstLine)
+  if (!ours || !theirs || ours.num !== theirs.num) return false
+  const starts = (long: string, short: string) => long === short || long.startsWith(`${short} `)
+  return nameSpellings(ours.name).some((a) => nameSpellings(theirs.name).some((b) => starts(b, a) || starts(a, b)))
+}
+
 /** How many rows to ask for: a number and a name can match a few streets ("MAIN", "MAIN PLAZA"). */
 export const PARCEL_ROWS_ASKED = 12
 

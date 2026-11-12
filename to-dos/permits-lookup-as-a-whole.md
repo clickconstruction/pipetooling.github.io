@@ -2,17 +2,17 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) PR 3b (the pull's point for those rows, v2.6985) and PR 6 (how long an answer is kept, v2.6987) built, the rest not started
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) PR 3b (the pull's point for those rows, v2.6985) PR 6 (how long an answer is kept, v2.6987) and PR 5 (the county's address for the lot, v2.6989) built · PR 4 looked at and dropped · PR 7 and the measure of PR 8 not started
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: PR 4, a lot the county's map holds with no owner. After PR 3b is deployed, read Austin's window again once so the rows already held take their point.
+next: PR 7, San Antonio's address question spelled the county's way, then the measure of PR 8. After PR 3b is deployed, read Austin's window again once so the rows already held take their point.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -96,10 +96,13 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
 3. **Williamson County as a fifth source**, asked by the R id (S). Built: of the 113 R-id
    addresses none named an owner before and 112 do through the new kernel. Then the pull's map
    point for the R rows (S, `permit-pull`). Built: 68 of the 70 rows with no point take one.
-4. **A lot the county's map holds with no owner** (S). Say so and open that lot's own page at the
-   appraisal district. First open one of those pages and see that it names the owner.
-5. **The county's address for the lot when it is not the permit's** (XS). One line on the sheets,
-   as the point line has.
+4. **A lot the county's map holds with no owner**. Looked at 2026-11-11 and not built. The
+   appraisal district's page was opened for three such Travis polygons and is empty for each, while
+   a parcel with an owner opens fine: the district does not publish those parcel numbers. Hays has
+   3,825 polygons with no owner and none carries a parcel number or an address. There is nothing
+   to open, so the card keeps saying the county has no parcel.
+5. **The county's address for the lot when it is not the permit's** (XS). Built. One line on the
+   two sheets. It shows on about 4 Austin commercial cards in 10.
 6. **How long an answer is kept** (XS). Built. A failure for an hour, a "no parcel" for a week, a
    found owner for thirty days. Prod held 42 kept parcel rows and no kept failure on 2026-11-11.
 7. **San Antonio's address question, spelled the county's way** (S). The number and the street

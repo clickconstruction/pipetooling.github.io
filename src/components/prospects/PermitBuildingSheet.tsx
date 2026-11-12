@@ -172,7 +172,7 @@ export function PermitBuildingSheet({
         ['Lot', parcelFacts.acres ? `${parcelFacts.acres} acres` : 'not given'],
       ]
     : []
-  const pointWords = parcelFacts ? parcelPointWords(parcelFacts) : null
+  const pointWords = parcelFacts ? parcelPointWords(parcelFacts, row.address) : null
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>

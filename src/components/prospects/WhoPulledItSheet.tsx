@@ -212,7 +212,7 @@ export function WhoPulledItSheet({
                 {parcelFacts.dba ? <span style={muted}> · DBA {parcelFacts.dba}</span> : null}
               </div>
               {parcelFacts.owner_address && <div style={line}>Mailing address: {parcelFacts.owner_address}</div>}
-              {parcelPointWords(parcelFacts) && <div style={muted}>{parcelPointWords(parcelFacts)}</div>}
+              {parcelPointWords(parcelFacts, row.address) && <div style={muted}>{parcelPointWords(parcelFacts, row.address)}</div>}
               <div style={muted}>
                 {[
                   parcelFacts.total_value ? `appraised ${shortMoney(parcelFacts.total_value)}` : null,
