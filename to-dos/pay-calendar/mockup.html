@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay calendar: a cutoff and a pay day for a payer who pays on a set day</title>
+<style>
+  /* Punch list #323. A payer who pays on a set day of the month gets a Pay calendar: the day bills must be in by,
+     and the day they pay. Drawn 2026-11-12, with that day as today. Nothing here is built. Every name, job, number,
+     amount, clause and count is made up: Larkfield Construction, Sable Ridge Builders, Dana Whitfield, Maya Okafor,
+     jobs J1398 to J1434, section 5.2. No live row and no real contract's words are on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 6px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* drawn app pieces */
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 14px; }
+  .bar .x { margin-left: auto; color: var(--text-muted); font-size: 16px; line-height: 1; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .card + .card { margin-top: 8px; }
+  .jobline { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .jobline b { color: var(--text-strong); }
+  .jobline .amt { margin-left: auto; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .who { font-size: 12px; color: var(--text-muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); white-space: nowrap; }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .chip.plain { background: var(--bg-muted); color: var(--text-700); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 32px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+  /* the dates block on a billed row */
+  .ledger { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; display: grid; gap: 3px; }
+  .lr { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .lr i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); transform: translateY(-1px); }
+  .lr i.ring { background: transparent; border: 1.5px solid var(--text-muted); }
+  .lr .lead { flex: 1 1 12px; border-bottom: 1px dotted var(--border-strong); transform: translateY(-3px); min-width: 12px; }
+  .lr .far { flex: none; font-variant-numeric: tabular-nums; }
+  .lr.green { color: var(--text-green-700); } .lr.green i { background: var(--text-green-700); }
+  .lr.amber { color: var(--text-amber-800); font-weight: 700; } .lr.amber i { background: var(--text-amber-800); }
+  .sub { margin: 0 0 0 14px; font-size: 12px; color: var(--text-muted); }
+  .sub u { text-decoration: underline dotted; text-underline-offset: 2px; }
+
+  /* the forecast window */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+  .tile { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+  .tile small { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile b { font-size: 15px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile.red { background: var(--bg-red-tint); border-color: transparent; } .tile.red b, .tile.red small { color: var(--text-red-700); }
+  .tile.blue { background: var(--bg-blue-tint); border-color: transparent; } .tile.blue b, .tile.blue small { color: var(--text-blue-800); }
+  .bk { margin: 12px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 8px; }
+  .bk span { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .fr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 0; }
+  .fr + .fr { margin-top: 4px; }
+  .fr.new + .fr.new { margin-top: 9px; }
+  .fr b { color: var(--text-strong); }
+  .fr .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; }
+  .fr .when { grid-column: 1 / -1; font-size: 12px; color: var(--text-blue-800); }
+  .fr .when.late { color: var(--text-amber-800); font-weight: 700; }
+  .fr .when.quiet { color: var(--text-muted); }
+  .strip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .strip h4 { margin: 0 0 6px; font-size: 12px; color: var(--text-strong); }
+  .cut { display: grid; grid-template-columns: 1fr; gap: 1px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .cut b { color: var(--text-strong); }
+  .cut span { font-size: 12px; color: var(--text-muted); }
+
+  /* the setting */
+  .field { display: grid; gap: 3px; margin-top: 10px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--text-700); }
+  .inrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+  .sel { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 6px 26px 6px 10px; font-size: 13px; color: var(--text-base); position: relative; min-height: 34px; display: inline-flex; align-items: center; }
+  .sel::after { content: "▾"; position: absolute; right: 9px; color: var(--text-muted); font-size: 11px; }
+  .inp { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 6px 10px; font-size: 13px; color: var(--text-base); min-height: 34px; }
+  .inp.grow { flex: 1 1 200px; min-width: 0; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin-top: 10px; }
+  .check i { flex: none; width: 16px; height: 16px; border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface); margin-top: 2px; }
+  .box { margin-top: 12px; border-radius: 9px; padding: 8px 10px; font-size: 13px; background: var(--bg-blue-tint); color: var(--text-blue-800); border: 1px solid var(--border-blue); }
+  .box.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .box p { margin: 0; } .box p + p { margin-top: 2px; }
+  .stat { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+  .stat div { min-width: 0; } .stat small { display: block; font-size: 11px; color: var(--text-muted); }
+  .stat b { color: var(--text-strong); }
+
+  /* tables */
+  .tw { overflow-x: auto; max-width: 100%; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  ol.calls { margin: 12px 0 0; padding-left: 22px; max-width: 96ch; }
+  ol.calls li { margin: 0 0 8px; }
+  ol.calls b { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #323 · a plan to decide on · nothing is built</p>
+    <h1>Pay calendar</h1>
+    <p>Some payers pay on a set day of the month. A bill in by the cutoff is paid on that day. One day late waits a whole extra month. This page shows one setting that teaches the app both dates. Today on this page is Thursday, Nov 12. Every name and number is made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a>
+  <a href="#setting">1 · The setting</a>
+  <a href="#row">2 · A billed row</a>
+  <a href="#forecast">3 · The forecast</a>
+  <a href="#cutoff">4 · The cutoff</a>
+  <a href="#shape">What it covers</a>
+  <a href="#calls">Grace's calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<p class="lede"><b>My recommendation: build it, and build the cutoff first.</b> Put a Pay calendar on the payer. A job can carry its own. A payer with none reads exactly as today.</p>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>Every pay date is the bill date plus the payer's usual days.</li>
+      <li>A calendar payer's usual days swing from 12 to 68. The guess lands in the middle.</li>
+      <li>Nothing tells the office the last day to send a bill.</li>
+    </ul>
+    <p>A bill can be past its contract pay day while the row says in 25 days.</p>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>The payer holds a cutoff and a pay day. Set once, every job of theirs reads it.</li>
+      <li>A billed row shows the contract's pay day, with their real record under it.</li>
+      <li>A bill not yet sent shows its cutoff, and what one day late costs.</li>
+    </ul>
+    <p>Send by Nov 30 to be paid Dec 10. After that, Jan 10.</p>
+  </div>
+</div>
+<p class="note"><b>One honest finding.</b> I tested this on the payments on record. A calendar was the better guess for 3 of 11 commercial payers. For those few it was far better. For a payer who simply pays fast it was worse. So a person turns it on for a payer. The app never sets it alone.</p>
+
+<!-- 1 -->
+<h2 id="setting">1 · The setting <small>on the payer's profile</small></h2>
+<p class="lede">The payer is the right home. The app already decides who pays each bill, and already keeps pay speed by payer.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>Larkfield Construction</b> <span class="chip">Comm</span><span class="x">×</span></div>
+      <div class="pad">
+        <div class="card">
+          <div class="stat">
+            <div><small>Open</small><b>$50,750</b></div>
+            <div><small>Pays in</small><b>~41 days</b></div>
+            <div><small>Terms</small><b>Standard</b></div>
+          </div>
+        </div>
+        <div class="card"><span class="who">Their payments on record</span>
+          <p class="sub" style="margin-left:0">Waits of 12, 33, 49 and 68 days.</p>
+        </div>
+      </div>
+    </div>
+    <p class="say">The profile knows one number, about 41 days. It has no place for the day they pay.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="bar"><b>Pay calendar</b> Larkfield Construction <span class="tag">New</span><span class="x">×</span></div>
+      <div class="pad">
+        <div class="field"><label>Bills must be in by</label>
+          <div class="inrow"><span class="sel">The last day of the month</span></div>
+        </div>
+        <div class="field"><label>They pay on the</label>
+          <div class="inrow"><span class="sel">10th</span> of <span class="sel">the next month</span></div>
+        </div>
+        <div class="check"><i></i><span>They pay when the owner pays them</span></div>
+        <div class="field"><label>Where the contract says it</label>
+          <div class="inrow"><span class="inp">§ 5.2</span><span class="inp grow">Paid the 10th of the month after it is received.</span></div>
+        </div>
+        <div class="box">
+          <p><b>A bill in by Nov 30 is paid Dec 10.</b></p>
+          <p>A bill in on Dec 1 is paid Jan 10.</p>
+        </div>
+        <div class="box amber">
+          <p><b>Their record.</b> Their last 4 payments landed 0 to 14 days after the 10th.</p>
+        </div>
+        <div class="btnrow"><span class="btn blue">Save pay calendar</span><span class="btn">Cancel</span></div>
+        <p class="sub" style="margin:8px 0 0">This applies to their 9 open jobs. A job can carry its own.</p>
+      </div>
+    </div>
+    <p class="say">Three choices and a note. The blue box says it back in plain dates before you save. The amber box checks it against what they really did.</p>
+  </div>
+</div>
+
+<!-- 2 -->
+<h2 id="row">2 · A billed row <small>Jobs → Stages → Billed Awaiting Payment</small></h2>
+<p class="lede">Two bills for the same payer. One went out Oct 27, one Nov 3. Under their contract the first was due two days ago.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1406 · Larkfield clinic, rough-in</b><span class="amt">$22,750</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 27</span><span class="lead"></span><span class="far">16d ago</span></div>
+          <div class="lr green"><i></i><span>Expected Dec 7</span><span class="lead"></span><span class="far">in 25d</span></div>
+          <p class="sub"><u>Pays in 12–68d</u></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="jobline"><b>J1412 · Larkfield retail shell, underground</b><span class="amt">$9,600</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Nov 3</span><span class="lead"></span><span class="far">9d ago</span></div>
+          <div class="lr green"><i></i><span>Expected Dec 14</span><span class="lead"></span><span class="far">in 32d</span></div>
+          <p class="sub"><u>Pays in 12–68d</u></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">Both read green. Each date is the bill date plus 41 days. The range under it makes a steady payer look erratic.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1406 · Larkfield clinic, rough-in</b><span class="amt">$22,750</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 27</span><span class="lead"></span><span class="far">16d ago</span></div>
+          <div class="lr amber new"><i></i><span>Expected Nov 10</span><span class="lead"></span><span class="far">2d past</span></div>
+          <p class="sub">Their contract says the 10th. <span class="tag">New</span></p>
+          <p class="sub"><u>Lands about 6d after their pay day</u></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="jobline"><b>J1412 · Larkfield retail shell, underground</b><span class="amt">$9,600</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Nov 3</span><span class="lead"></span><span class="far">9d ago</span></div>
+          <div class="lr green new"><i></i><span>Expected Dec 10</span><span class="lead"></span><span class="far">in 28d</span></div>
+          <p class="sub">Pays the 10th after the month it is received.</p>
+          <p class="sub"><u>Lands about 6d after their pay day</u></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The date is their contract's pay day, and the row says why. The line under it is their real record, measured against that day. A date the customer names still wins over both.</p>
+  </div>
+</div>
+<p class="note"><b>The clock.</b> The contract counts from the day they accept the bill. The app has no such day yet. So the row counts from the day the bill went out, and says so on hover. A later step adds one press, <b>They accepted it on…</b>, for a bill that was sent back.</p>
+
+<!-- 3 -->
+<h2 id="forecast">3 · The forecast <small>Payment forecast, on the Billed Awaiting Payment header</small></h2>
+<p class="lede">The same three Larkfield bills, and one homeowner with no calendar. Her row does not change.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>Payment forecast</b> $52,590 open<span class="x">×</span></div>
+      <div class="pad">
+        <div class="tiles">
+          <div class="tile"><small>Past expected</small><b>$0</b></div>
+          <div class="tile blue"><small>This week</small><b>$1,840</b></div>
+          <div class="tile"><small>Next week</small><b>$18,400</b></div>
+          <div class="tile"><small>Later</small><b>$32,350</b></div>
+        </div>
+        <div class="bk">This week <span>$1,840</span></div>
+        <div class="fr"><span><b>J1419 · Whitfield water heater</b> <span class="chip blue">Res</span></span><span class="amt">$1,840</span><span class="when">~Nov 13</span></div>
+        <div class="bk">Next week <span>$18,400</span></div>
+        <div class="fr"><span><b>J1398 · Larkfield clinic, underground</b> <span class="chip">Comm</span></span><span class="amt">$18,400</span><span class="when">~Nov 16</span></div>
+        <div class="bk">Later <span>$32,350</span></div>
+        <div class="fr"><span><b>J1406 · Larkfield clinic, rough-in</b> <span class="chip">Comm</span></span><span class="amt">$22,750</span><span class="when">~Dec 7</span></div>
+        <div class="fr"><span><b>J1412 · Larkfield retail shell, underground</b> <span class="chip">Comm</span></span><span class="amt">$9,600</span><span class="when">~Dec 14</span></div>
+      </div>
+    </div>
+    <p class="say">Three bills from one payer land on three dates. Nothing is past expected, so nobody calls.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="bar"><b>Payment forecast</b> $52,590 open<span class="x">×</span></div>
+      <div class="pad">
+        <div class="strip new">
+          <h4>Cutoffs coming <span class="tag">New</span></h4>
+          <div class="cut"><b>Sable Ridge Builders · in by Nov 25, paid Dec 30</b><span>1 bill ready, $8,900. 2 jobs still working.</span></div>
+          <div class="cut"><b>Larkfield Construction · in by Nov 30, paid Dec 10</b><span>1 bill ready, $14,200. 3 jobs still working.</span></div>
+        </div>
+        <div class="tiles" style="margin-top:10px">
+          <div class="tile"><small>Past expected</small><b>$0</b></div>
+          <div class="tile blue"><small>This week</small><b>$1,840</b></div>
+          <div class="tile"><small>Next week</small><b>$41,150</b></div>
+          <div class="tile"><small>Later</small><b>$9,600</b></div>
+        </div>
+        <div class="bk">This week <span>$1,840</span></div>
+        <div class="fr"><span><b>J1419 · Whitfield water heater</b> <span class="chip blue">Res</span></span><span class="amt">$1,840</span><span class="when">~Nov 13</span></div>
+        <div class="bk">Next week <span>$41,150</span></div>
+        <div class="fr new"><span><b>J1398 · Larkfield clinic, underground</b> <span class="chip">Comm</span></span><span class="amt">$18,400</span><span class="when late">Pay day Nov 10 · 2d past</span><span class="when quiet">Usually lands about Nov 16.</span></div>
+        <div class="fr new"><span><b>J1406 · Larkfield clinic, rough-in</b> <span class="chip">Comm</span></span><span class="amt">$22,750</span><span class="when late">Pay day Nov 10 · 2d past</span><span class="when quiet">Usually lands about Nov 16.</span></div>
+        <div class="bk">Later <span>$9,600</span></div>
+        <div class="fr new"><span><b>J1412 · Larkfield retail shell, underground</b> <span class="chip">Comm</span></span><span class="amt">$9,600</span><span class="when">Pay day Dec 10</span><span class="when quiet">Usually lands about Dec 16.</span></div>
+      </div>
+    </div>
+    <p class="say">The two October bills share one pay day, and it has passed. Each row says so. The week it sits in is when their money usually lands. The strip on top is the calendar of cutoffs.</p>
+  </div>
+</div>
+<p class="note"><b>Why $22,750 moved.</b> Today the app expects it Dec 7. Under their contract it was due Nov 10, with the other October bill. A promise is forecast the same way now: by the date they gave, plus how late they usually run.</p>
+
+<!-- 4 -->
+<h2 id="cutoff">4 · The cutoff <small>before a bill goes out</small></h2>
+<p class="lede">This is the part that moves money. A bill sent Nov 30 and one sent Dec 1 are paid a month apart.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>Ready to Bill</b> 3 · $24,940</div>
+      <div class="pad">
+        <div class="card">
+          <div class="jobline"><b>J1431 · Larkfield retail shell, rough-in</b><span class="amt">$14,200</span></div>
+          <div class="who">Larkfield Construction · ready 2d</div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+        <div class="card">
+          <div class="jobline"><b>J1427 · Sable Ridge townhomes, top-out</b><span class="amt">$8,900</span></div>
+          <div class="who">Sable Ridge Builders · ready 5d</div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+        <div class="card">
+          <div class="jobline"><b>J1434 · Okafor drain line</b><span class="amt">$1,840</span></div>
+          <div class="who">Maya Okafor · ready today</div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Every row looks equally urgent. The one that loses a month on Nov 26 is not marked.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="bar"><b>Ready to Bill</b> 3 · $24,940 <span class="chip plain new">Next cutoff Nov 25 · 1 bill</span></div>
+      <div class="pad">
+        <div class="card">
+          <div class="jobline"><b>J1427 · Sable Ridge townhomes, top-out</b><span class="amt">$8,900</span></div>
+          <div class="who">Sable Ridge Builders · ready 5d</div>
+          <div class="box new"><p><b>Send by Nov 25 to be paid Dec 30.</b> After that, Jan 30.</p></div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+        <div class="card">
+          <div class="jobline"><b>J1431 · Larkfield retail shell, rough-in</b><span class="amt">$14,200</span></div>
+          <div class="who">Larkfield Construction · ready 2d</div>
+          <div class="box new"><p><b>Send by Nov 30 to be paid Dec 10.</b> After that, Jan 10.</p></div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+        <div class="card">
+          <div class="jobline"><b>J1434 · Okafor drain line</b><span class="amt">$1,840</span></div>
+          <div class="who">Maya Okafor · ready today</div>
+          <div class="btnrow"><span class="btn blue">Send bill</span><span class="btn">Send back</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">A row with a cutoff says its two dates. The line turns amber in the last 7 days. A payer with no calendar has no line.</p>
+  </div>
+</div>
+<div class="tw">
+<table class="t">
+  <tr><th>The cutoff also shows</th><th>What it says</th></tr>
+  <tr><td>Needs you, from 7 days out</td><td>1 bill for Sable Ridge Builders goes by Nov 25.</td></tr>
+  <tr><td>The send window</td><td>Sent today, this is paid Dec 10. Past the cutoff it reads: This one will be paid Jan 10.</td></tr>
+  <tr><td>A Working row, in the last 10 days</td><td>Bill by Nov 30 for Dec 10.</td></tr>
+  <tr><td>A pay application, under Period to</td><td>Their cutoff is the last day of the month.</td></tr>
+  <tr><td>The Lien desk</td><td>Their pay day is Jan 10. The notice's last day is Dec 15.</td></tr>
+</table>
+</div>
+
+<h2 id="shape">What three numbers cover</h2>
+<p class="lede">A cutoff, a pay day and how many months later. That reads most contracts. It is not a rule language.</p>
+<div class="tw">
+<table class="t">
+  <tr><th>The contract says</th><th>In by</th><th>Paid the</th><th>Of</th></tr>
+  <tr><td>Paid the 10th of the month after it is received</td><td>the last day</td><td>10th</td><td>the next month</td></tr>
+  <tr><td>In by the 25th, paid the 30th of the next month</td><td>the 25th</td><td>30th</td><td>the next month</td></tr>
+  <tr><td>In by the 20th, paid by the 10th</td><td>the 20th</td><td>10th</td><td>the next month</td></tr>
+  <tr><td>Net 30 after the month closes</td><td>the last day</td><td>last day</td><td>the next month</td></tr>
+  <tr><td>Pay when paid</td><td>as written</td><td>as written</td><td>The box is ticked. The pay day reads as no sooner than.</td></tr>
+</table>
+</div>
+<p class="note"><b>What I would not build.</b> Business days and holidays. Two check runs a month. Net 30 as a setting, since the measured pace already answers it. A calendar the app sets by itself. A separate calendar page. Retainage, which waits on final acceptance and not on a month.</p>
+
+<h2 id="calls">Grace's calls <small>my pick first on each</small></h2>
+<ol class="calls">
+  <li><b>Build it?</b> The setting, the pay day and the cutoff first, three small steps. Then look at what the cutoff did. Or the whole train of eight. Or not yet.</li>
+  <li><b>Where it lives.</b> On the payer, and a job can carry its own. Or on each contract only, which misses every job with no paper stored.</li>
+  <li><b>Which date leads when their record disagrees.</b> The contract's pay day leads and the record sits under it. Or the measured guess leads.</li>
+  <li><b>Who may set it.</b> The same people who record a date a customer names. Or the owner and developers only.</li>
+  <li><b>How early the cutoff asks.</b> Needs you from 7 days out and a Working row from 10. Or other numbers. Or no Needs you line.</li>
+  <li><b>A calendar for a whole development.</b> No. One press sets the other jobs there. Or yes, a development holds its own.</li>
+  <li><b>The name.</b> Pay calendar, with cutoff and pay day. Or your own words for it.</li>
+</ol>
+<p class="note"><b>One thing only you have.</b> Which payers to set first, and what each contract says.</p>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+  })();
+</script>
+</body>
+</html>
