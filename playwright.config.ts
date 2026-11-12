@@ -35,7 +35,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    // No trace for the sign-in: it records the typed password, and this public repo's run artifacts are open to anyone.
+    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { trace: 'off' } },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/user.json' },

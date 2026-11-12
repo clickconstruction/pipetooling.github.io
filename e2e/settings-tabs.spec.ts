@@ -121,8 +121,10 @@ test('the finder\'s rows read at phone width: no one-word lines, the trail never
     for (const query of ['merge', 'e']) {
       await box.fill('')
       await box.fill(query)
-      await expect(page.getByRole('option').first()).toBeVisible()
-      const rows = await page.getByRole('option').evaluateAll((els) =>
+      // The finder's own list: a <select> elsewhere on Settings draws native <option>s too, which carry no title.
+      const options = page.getByRole('listbox', { name: 'Matching settings' }).getByRole('option')
+      await expect(options.first()).toBeVisible()
+      const rows = await options.evaluateAll((els) =>
         els.map((el) => {
           const title = el.querySelector('[data-settings-search-title]') as HTMLElement
           const trail = el.querySelector('[data-settings-search-trail]') as HTMLElement
