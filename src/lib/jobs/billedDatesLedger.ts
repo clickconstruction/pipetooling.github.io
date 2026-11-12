@@ -28,7 +28,7 @@
  * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
  * arranges them.
  */
-import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
 import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
