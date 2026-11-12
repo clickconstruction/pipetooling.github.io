@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · read against main the same day · the card and the mock-up drawn · nothing built · waits on the owner's ten calls
+status: asked 2026-11-11 · read against main the same day · the card and the mock-up drawn · the owner read the mock-up the same day and asked for one change, a line under the tips on the customer's page, now drawn · nothing built · waits on the owner's ten calls
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -138,7 +138,7 @@ takes, stores or plays one, and a big file has stopped the app's functions twice
 Drawn in [`mockup.html`](./mockup.html), nine frames, every name and number made up.
 
 - **A · the text.** The office presses `/show` in the thread's reply box. The line goes in with the link made for this thread: *Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: my.clickplumbing.com/show/k7m2p9xq4d*. A first text carries the opt-out line and is held if the opening is trimmed.
-- **B · the page.** *Show us the problem*, who asked, two presses (**Take a photo or a video**, **Choose from your phone**), four lines on what helps, and the foot: only Click Plumbing sees what is sent, and what to do if water is running now. No name, no address, no price.
+- **B · the page.** *Show us the problem*, who asked, two presses (**Take a photo or a video**, **Choose from your phone**), four lines on what helps, the owner's line under them on why it is worth the customer's while, and the foot: only Click Plumbing sees what is sent, and what to do if water is running now. No name, no address, no price. The owner's line, in his words of 2026-11-11 after reading the mock-up, the one change he asked for: *The more information you give us, and the higher the quality of the photos and videos, the more accurate we can be, allowing us to get you the best service and fewer trips means a better price.*
 - **C · adding.** Each file goes up as it is picked. A photo is shrunk first. A video goes in pieces with a bar and its megabytes, and picks up after a drop. *Where is it?* as chips and *What is going on?* as a box, both optional. The press is dead and says why until every file is in, then reads **Send 3 photos and 1 video**.
 - **D · the thank-you.** *Got it. Rosa has your 3 photos and 1 video.* What happens next reads the office hours the app holds (`messages_office_hours_v1`), so after hours it says tomorrow morning. Opened again later the page shows the count, never the pictures.
 - **E · F · the office.** The ask in the reply box, and what came in: one card on the person's thread with the pictures drawn, the video with its length, their words, and **Start an estimate**, **Book a visit**, **Ask a tech…** and **Ask for more**. The send lands as a line from the customer, so Needs a reply, the header's badge and the push to whoever has the thread all fire with no new code.
