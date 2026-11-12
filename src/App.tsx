@@ -57,7 +57,7 @@ const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
 const BoxCode = lazy(() => import('./pages/BoxCode'))
 // #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
-const ShowUs = lazy(() => import('./pages/ShowUs'))
+const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))

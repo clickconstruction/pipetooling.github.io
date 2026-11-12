@@ -325,4 +325,10 @@ export default defineConfig({
       : []),
   ],
   base: '/',
+  build: {
+    // Punch list #319 PR 4: a First look's page is an entry of its own (`show.html` over `src/showEntry.tsx`), so a
+    // customer's phone on a weak signal loads React and the page, never the app. `index.html`'s first script sends a
+    // `/show/<code>` address there, and the service worker leaves `/show.html` to the network (`src/sw.ts`).
+    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), show: resolve(__dirname, 'show.html') } },
+  },
 })
