@@ -12,6 +12,7 @@ import { cardChargeCostUsd, EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusi
 import { customerDaysToPay, customerEstimateOutcomes, customerMoneyStats, profileJobRowMoney, type ProfileJob } from './customerProfileStats.ts'
 import { jobCardChargesCountedFromLines, jobCardLineStatus, mercuryCardTotalFromLines, mercuryLinesFromRows, supplyInvoiceTotalFromRows, supplyLinesFromRows, tallyLinesFromRows, tallyPartsTotalFromLines, jobAccountSplitFromLines, type JobMercuryAllocLine } from './jobMaterialsCostLines.ts'
 import { buildJobProfitSummary } from './jobProfitSummary.ts'
+import { bidPricedTotal, type BidForPricing } from './devMcpBidPricing.ts'
 import { DRIVE_SETTING_KEYS, jobSubLaborInputsFromRows, type SubLaborItemRow, type SubLaborSheetRow } from './jobSubLaborInputs.ts'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from './ledgerDisplayPrefixes.ts'
 import { overheadPartsAccountingBucketFromDefaultKey } from './gcKernels/lib/overheadPartsAccountingBuckets.ts'
@@ -390,7 +391,7 @@ export async function getBid(reader: Reader, ref: string) {
   const bid = bidRows[0]
   if (!bid) return { refused: `No bid ${id} — it does not exist, or RLS hides it from you.` }
 
-  const [header, countRows, assignments, versions, sends, ledger, strip, prefixes] = await Promise.all([
+  const [header, countRows, assignments, versions, sends, ledger, strip, prefixes, priced] = await Promise.all([
     part(() => reader.rpc('get_bids_by_ids', { p_bid_ids: [id] })),
     part(() => reader.rows('bids_count_rows', { filters: by('bid_id'), order: [{ column: 'sequence_order' }], limit: 200 })),
     part(() => reader.rows('bid_pricing_assignments', { filters: by('bid_id'), limit: 200 })),
@@ -399,12 +400,14 @@ export async function getBid(reader: Reader, ref: string) {
     part(() => reader.rows('bids_submission_entries', { filters: by('bid_id'), order: [{ column: 'occurred_at', ascending: false }], limit: THREAD_LIMIT })),
     part(() => reader.rpc('list_bid_job_account_strip', { p_bid_ids: [id] })),
     part(() => prefixMap(reader)),
+    // v2.6990: the Pricing grid's revenue total through the tab's own kernel (devMcpBidPricing.ts).
+    part(() => bidPricedTotal(reader, bid as unknown as BidForPricing)),
   ])
 
   return {
     bid: { label: bidLabel(bid, failed(prefixes) ? {} : prefixes), ...bid },
     header,
-    totals: 'rows as stored — the priced total on Bids → Pricing is computed in the useBidPricingEngine hook, not a shared kernel, so this server does not restate it. bid_value / agreed_value on the bid row are what the office entered.',
+    totals: priced,
     count_rows: countRows,
     pricing_assignments: assignments,
     versions,

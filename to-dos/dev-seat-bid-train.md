@@ -2,7 +2,7 @@
 name: "The dev seat's bid train, to pick up: counts, takeoff and labor shipped, pricing and the submission pair are briefed"
 number: 317
 group: ready
-status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) is live on `dev-mcp` 0.74.0 (2026-11-12) · PR 4 (`plan_bid_labor`, v2.6976) shipped at `dev-mcp` 0.75.0 (deploy and a dry run on b398 follow its merge) · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
+status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) is live on `dev-mcp` 0.74.0 (2026-11-12) · PR 4 (`plan_bid_labor`, v2.6976, PR #7728) is live on `dev-mcp` 0.75.0 (2026-11-12) · PR 5a (`get_bid` states the Pricing grid's revenue total, v2.6990) shipped at `dev-mcp` 0.76.0 · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
 summary: >
   The owner asked on 2026-11-11 for dev seat verbs that change a bid and fill in its counts, takeoff,
   labor and pricing, so an agent can enter a bid from a paper proposal. He gave the go on the map's
@@ -10,7 +10,7 @@ summary: >
   on which branch, what each still needs, and the recipe that gets a seat PR past the version
   collisions every other seat PR causes. The map and a build brief per pair stay in
   to-dos/mcp-servers.md under "The bid train"; this card is only the state.
-next: If `whoami` does not list `plan_bid_labor` yet, deploy `dev-mcp` from `origin/main` and dry-run it on b398. Then PR 5, pricing (notes below), in two PRs.
+next: If `whoami` does not answer 0.76.0 yet, deploy `dev-mcp` from `origin/main` and read `get_bid` on b398. Then PR 5b, the `plan_bid_pricing` pair (notes below).
 size: L as a train (takeoff XS to finish · labor M · pricing L in two PRs · the submission pair M)
 blocker: none.
 opinion: build in order — counts, takeoff, labor and pricing each hang on the one before, and a paper proposal is entered in that order.
@@ -30,8 +30,8 @@ what is on which branch, and what each piece still needs.
 | 1 · `plan_bid_update` | Merged (v2.6945, PR #7680). Live since `dev-mcp` 0.70.0. | A live apply was never walked: the building session's permission layer refused a write on prod. Read the first real apply's reply closely. |
 | 2 · `plan_bid_counts` | Merged (v2.6967, PR #7714). Live on `dev-mcp` 0.72.0. | The same: dry runs on b398 only. |
 | 3 · `plan_bid_takeoff` | Merged (v2.6968, PR #7717). Live on `dev-mcp` 0.74.0. | The same: dry runs on b398 only. |
-| 4 · `plan_bid_labor` | Shipped (v2.6976) at `dev-mcp` 0.75.0, ninety-five write verbs. | Its deploy, `whoami` and a dry run on b398, if the building session did not get to them after the merge. |
-| 5 · `plan_bid_pricing` | Not started. | Two PRs: the pricing kernels into the kernel copy, then the pair. Brief in `mcp-servers.md`; notes below. |
+| 4 · `plan_bid_labor` | Merged (v2.6976, PR #7728). Live on `dev-mcp` 0.75.0. | The same: dry runs on b398 only. |
+| 5 · `plan_bid_pricing` | Half shipped: v2.6990 put the pricing kernels and the tab's picks in the kernel copy, and `get_bid.totals` states the grid's revenue total (`_shared/devMcpBidPricing.ts`). | The pair itself: notes below. |
 | 6 · `plan_bid_submission` | Not started. | Brief in `mcp-servers.md`. The proposals work needs it to file a paper from Drive onto its bid. |
 
 ## Get the kit
@@ -57,6 +57,21 @@ hand-resolve. The kit's README has the steps. Each PR of the train keeps its scr
 kit's (`wire-<pair>.mjs`, `docs-<pair>.mjs`): copy the latest pair's as the pattern for the next.
 
 ## Notes for PR 5 (pricing)
+
+- **Built in v2.6990, reuse it**: `openPricing` (the tab's pick of the open pricing, and where a write lands:
+  own copy, shared book, robots' book) and `bidPricedTotal`'s reads in `_shared/devMcpBidPricing.ts`;
+  `pricingWriteTarget` is in the kernel copy; add `lib/bids/resolvePricingEntry.ts` (no value imports) with the pair.
+- **A custom price is ignored when a book entry of the row's fixture name exists**: the kernel prefers the
+  entry. That is why the tab's write inserts an assignment with an override whenever an entry matches.
+- **The sent-bid lock is the browser's alone** (`pricingLock.ts`, a Revise press kept in sessionStorage);
+  no database guard reads `bid_date_sent`. Make the pair refuse a sent bid unless the ask says `revise: true`.
+- **On a shared book the tab writes first and clones after** (`freezeSharedPricingAfterWrite`), leaving
+  inert rows on the template. Cloning first (`clone_price_book_version_to_bid`, SECURITY INVOKER, as the
+  dev) then writing onto the copy ends the same with nothing left behind; then set the copy's
+  `bid_version_id` when the bid is split and save the ★ (`bids.selected_price_book_version_id`, and the
+  version's `starred_price_book_version_id`). Say the difference in the docs.
+- **A robots' book is never cloned** (the twin fence lives on it): refuse a price write that would land there.
+- **`is_fixed_price`**: nothing on screen sets it. Leave it out of the ask.
 
 - The priced total is `computeBidPricingRows` through `scenarioPricingRows`, both pure. The hook
   only loads rows. Copy them to the edge first, as their own PR, so the plan can state the
