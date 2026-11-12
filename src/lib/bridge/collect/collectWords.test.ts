@@ -79,7 +79,7 @@ describe('collectWords (v2.5853)', () => {
 
   it('says where each payer stands, in plain words, with the lien chip after', () => {
     const sp = cut.cut.find((p) => p.payerName === 'Southern Post Construction')!
-    const words = collectStandsWords(sp, { tone: 'green', state: 'out', paper: 'notice', words: 'Notice sent Oct 14', lead: 'Notice sent Oct 14', action: null, sentence: 'July to September, to the owner and the GC.', title: '', door: { kind: 'desk' } as never, dueOn: null, daysLeft: null }, TODAY)
+    const words = collectStandsWords(sp, { tone: 'green', state: 'out', paper: 'notice', words: 'Notice sent Oct 14', lead: 'Notice sent Oct 14', action: null, act: null, sentence: 'July to September, to the owner and the GC.', title: '', door: { kind: 'desk' } as never, dueOn: null, daysLeft: null }, TODAY)
     expect(words[0]).toBe('Promised for Oct 16, recorded by Taunya. 9 days past.')
     expect(words).toContain('Marked billed by hand, never sent from here.')
     // The chip's own words ride on the move's paper link; the row reads its sentence (v2.5873).
