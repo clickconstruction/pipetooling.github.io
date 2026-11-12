@@ -439,6 +439,12 @@ export const ENTRIES = {
   // tables it reads) and the load sync's fixture key, so the plan states the tab's own numbers. Off the index.
   'lib/bids/bidTotalCostBreakdown.ts': { values: [], types: [] },
   'lib/bids/laborSyncPlan.ts': { values: [], types: [] },
+  // The dev seat's priced total (get_bid, v2.6990): the Pricing grid's own projection, the tab's pick of the open
+  // pricing and where a write would land. Off the index.
+  'lib/bids/scenarioPricingRows.ts': { values: [], types: [] },
+  'lib/bids/legacyTemplatePricing.ts': { values: [], types: [] },
+  'lib/bids/pickDefaultPriceBookTemplateId.ts': { values: [], types: [] },
+  'lib/bids/pricingWriteTarget.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

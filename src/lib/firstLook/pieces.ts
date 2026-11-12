@@ -8,6 +8,15 @@
  * transport is `browserPieceTransport` in `showUsIo.ts`.
  */
 
+/**
+ * Storage's address for an upload in pieces made with a link's one-file key. It is not the plain resumable address:
+ * that one reads the key as nobody's and refuses the upload as a row the caller may not write (found on the live
+ * walk of 2026-11-12, where the page fell back to one request). A base address that ends in a slash is taken as it is.
+ */
+export function signedPiecesEndpoint(supabaseUrl: string): string {
+  return `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/upload/resumable/sign`
+}
+
 /** Storage takes pieces of exactly this size, the last one smaller. */
 export const PIECE_BYTES = 6 * 1024 * 1024
 

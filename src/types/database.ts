@@ -8468,6 +8468,7 @@ export type Database = {
           created_at: string | null
           customer_id: string
           homestead: boolean
+          homestead_answered_at: string | null
           id: string
           is_primary: boolean
           jp_precinct: string
@@ -8499,6 +8500,7 @@ export type Database = {
           created_at?: string | null
           customer_id: string
           homestead?: boolean
+          homestead_answered_at?: string | null
           id?: string
           is_primary?: boolean
           jp_precinct?: string
@@ -8530,6 +8532,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string
           homestead?: boolean
+          homestead_answered_at?: string | null
           id?: string
           is_primary?: boolean
           jp_precinct?: string
@@ -11702,6 +11705,160 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "file_index"
             referencedColumns: ["drive_file_id"]
+          },
+        ]
+      }
+      first_look_files: {
+        Row: {
+          bytes: number | null
+          client: string | null
+          declared_bytes: number
+          finished_at: string | null
+          id: string
+          kind: string
+          look_id: string
+          mime: string
+          name: string
+          removed_at: string | null
+          resumed: number
+          road: string | null
+          seconds: number | null
+          signed_at: string
+          storage_path: string
+          took_ms: number | null
+        }
+        Insert: {
+          bytes?: number | null
+          client?: string | null
+          declared_bytes: number
+          finished_at?: string | null
+          id?: string
+          kind: string
+          look_id: string
+          mime: string
+          name?: string
+          removed_at?: string | null
+          resumed?: number
+          road?: string | null
+          seconds?: number | null
+          signed_at?: string
+          storage_path: string
+          took_ms?: number | null
+        }
+        Update: {
+          bytes?: number | null
+          client?: string | null
+          declared_bytes?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          look_id?: string
+          mime?: string
+          name?: string
+          removed_at?: string | null
+          resumed?: number
+          road?: string | null
+          seconds?: number | null
+          signed_at?: string
+          storage_path?: string
+          took_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "first_look_files_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "first_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      first_looks: {
+        Row: {
+          asked_by: string | null
+          asked_by_name: string
+          closed_at: string | null
+          closed_by: string | null
+          code_hash: string
+          contact_id: string | null
+          expires_at: string
+          id: string
+          label: string
+          looked_at: string | null
+          looked_by: string | null
+          made_at: string
+          opened_at: string | null
+          place: string | null
+          sent_at: string | null
+          sent_count: number
+          words: string | null
+        }
+        Insert: {
+          asked_by?: string | null
+          asked_by_name?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          code_hash: string
+          contact_id?: string | null
+          expires_at: string
+          id?: string
+          label?: string
+          looked_at?: string | null
+          looked_by?: string | null
+          made_at?: string
+          opened_at?: string | null
+          place?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          words?: string | null
+        }
+        Update: {
+          asked_by?: string | null
+          asked_by_name?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          code_hash?: string
+          contact_id?: string | null
+          expires_at?: string
+          id?: string
+          label?: string
+          looked_at?: string | null
+          looked_by?: string | null
+          made_at?: string
+          opened_at?: string | null
+          place?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          words?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "first_looks_asked_by_fkey"
+            columns: ["asked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_looked_by_fkey"
+            columns: ["looked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -30130,6 +30287,76 @@ export type Database = {
           },
         ]
       }
+      person_file_amendments: {
+        Row: {
+          author_label: string | null
+          created_at: string
+          created_by: string | null
+          from_id: string
+          from_kind: string
+          how: string
+          id: string
+          person_id: string
+          to_id: string
+          to_kind: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_why: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_id: string
+          from_kind: string
+          how: string
+          id?: string
+          person_id: string
+          to_id: string
+          to_kind: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_why?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_id?: string
+          from_kind?: string
+          how?: string
+          id?: string
+          person_id?: string
+          to_id?: string
+          to_kind?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_file_amendments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_amendments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_amendments_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_attachments: {
         Row: {
           author_label: string | null
@@ -45084,6 +45311,13 @@ export type Database = {
         Args: { p_person_id: string }
         Returns: number
       }
+      person_file_amendment_targets: {
+        Args: { p: Json; p_label: string }
+        Returns: {
+          id: string
+          kind: string
+        }[]
+      }
       person_file_summary_counts: {
         Args: { p_person_id: string }
         Returns: {
@@ -45091,6 +45325,10 @@ export type Database = {
           has_summary: boolean
           updated_at: string
         }[]
+      }
+      person_file_thing: {
+        Args: { p_id: string; p_kind: string }
+        Returns: Json
       }
       pipeline_customer_lines: {
         Args: { p_job_ids: string[]; p_per_job?: number }

@@ -75,6 +75,19 @@ export type BillStageInput = PileStageInput & { guessUsd?: number; guessJobs?: n
 /** Collect (v2.5856): the pile is the bills past their day; `notDueUsd` is what is billed and not yet due, drawn grey but never a guess. */
 export type CollectStageInput = PileStageInput & { lateCount: number; notDueUsd?: number }
 
+/**
+ * What Market is worth a week (punch list #318): the bids at the won rate for bids their size, plus the estimates at
+ * their own won rate (`bidWins.ts`, `estimateWins.ts`, the owner's rules of 2026-11-11). One amount on the same scale
+ * as the other four steps.
+ */
+export type MarketWorthInput = {
+  perWeekUsd: number
+  /** What the bids win a week; null when the bids have no won rate yet. */
+  bidsPerWeekUsd: number | null
+  /** What the estimates sell a week; null when the estimates have no won rate yet. */
+  estimatesPerWeekUsd: number | null
+}
+
 /** Market (link PR 4): the asks that came in over the window, by value. */
 export type MarketStageInput = {
   bidsInvited: number
@@ -82,11 +95,22 @@ export type MarketStageInput = {
   estimatesRequested: number
   estimatesRequestedUsd: number
   weeks: number
+  /**
+   * What those asks are worth a week at the won rates. Market reads against the field on this. Absent or null until
+   * both won rates are read: the card then says so and judges nothing.
+   */
+  worth?: MarketWorthInput | null
 }
 
-/** Sales (link PR 4): what went out and what came back, bids and estimates apart. */
+/** The Market amount when it reads: a positive number of dollars a week. */
+export function marketWorthPerWeek(market: Pick<MarketStageInput, 'worth'> | null | undefined): number | null {
+  const usd = market?.worth?.perWeekUsd
+  return typeof usd === 'number' && Number.isFinite(usd) && usd > 0 ? usd : null
+}
+
+/** Sales (link PR 4): what went out and what came back, bids and estimates apart. A bid is won or lost only by its mark. */
 export type SalesStageInput = {
-  bids: { sentUsd: number; wonUsd: number; startedUsd: number; lostUsd: number }
+  bids: { sentUsd: number; wonUsd: number; lostUsd: number }
   estimates: { sentUsd: number; wonUsd: number; lostUsd: number }
   awaiting: { bids: number; bidsUsd: number; estimates: number; estimatesUsd: number }
   /** Dollars a week sold to the field, by the contract on jobs created; null until Build reads. */
@@ -222,16 +246,12 @@ function feederBadge(perWeekUsd: number | null, fieldPerWeekUsd: number | null, 
   return perWeekUsd >= fieldPerWeekUsd ? { badge: ahead, tone: 'green' } : { badge: behind, tone: 'pair' }
 }
 
-/**
- * The window's win share by value — what went out against what came back, bids and estimates together.
- * Market reads against the field through it: asks are not demand that converts, and on raw asks one
- * large invited bid keeps Market "not short" forever. Null until something was sent.
- */
-export function marketWinShare(sales: Pick<SalesStageInput, 'bids' | 'estimates'> | null): number | null {
-  if (!sales) return null
-  const sentUsd = sales.bids.sentUsd + sales.estimates.sentUsd
-  if (!(sentUsd > 0)) return null
-  return (sales.bids.wonUsd + sales.bids.startedUsd + sales.estimates.wonUsd) / sentUsd
+/** Market's second line: what each kind of ask brings, said only for the kinds that read. */
+function marketWorthParts(worth: MarketWorthInput): string | undefined {
+  const parts: string[] = []
+  if (worth.bidsPerWeekUsd != null) parts.push(`bids win ${stageUsd(worth.bidsPerWeekUsd)}`)
+  if (worth.estimatesPerWeekUsd != null) parts.push(`estimates sell ${stageUsd(worth.estimatesPerWeekUsd)}`)
+  return parts.length ? parts.join(', ') : undefined
 }
 
 export function buildStageFlow(input: StageFlowInput): StageFlow {
@@ -242,10 +262,11 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const asks = m.bidsInvited + m.estimatesRequested
     const perWeek = (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
     const meta = STAGE_META.market
-    // Market reads against the field on asks × the window's win share, not raw asks, and the card says which.
-    const winShare = marketWinShare(input.sales)
-    const convertsPerWeek = winShare != null ? perWeek * winShare : null
-    const { badge, tone } = feederBadge(convertsPerWeek ?? perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
+    // Market reads against the field on what the asks are worth at the won rates (punch list #318), never on the raw
+    // dollars that came in. Until the worth is read the card says so and judges nothing: one win share for bids and
+    // estimates together was tried and dropped, since it made Market look far bigger than it was worth.
+    const worthUsd = marketWorthPerWeek(m)
+    const { badge, tone } = worthUsd != null ? feederBadge(worthUsd, input.fieldPerWeekUsd, 'not short', 'short of the field') : { badge: 'wait', tone: 'plain' as StageTone }
     byId.set('market', {
       id: 'market',
       name: meta.name,
@@ -258,8 +279,8 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
         { who: 'estimates', usd: stageUsd(m.estimatesRequestedUsd), tail: 'from customers' },
       ],
       weeks: null,
-      weeksText: `about ${stageUsd(perWeek)} a week asked`,
-      weeksText2: convertsPerWeek != null ? `≈ ${stageUsd(convertsPerWeek)} a week at the window’s ${Math.round((winShare as number) * 100)}% win share` : 'win share not readable: compared on the asks alone',
+      weeksText: worthUsd != null ? `worth ${stageUsd(worthUsd)} a week` : `about ${stageUsd(perWeek)} a week bid`,
+      weeksText2: worthUsd != null && m.worth ? marketWorthParts(m.worth) : 'what it is worth is not read yet',
       badge,
       tone,
       isLink: false,
@@ -282,7 +303,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       table: {
         head: ['sent', 'won', 'lost'],
         rows: [
-          { label: 'bids', cells: [stageUsd(sl.bids.sentUsd), stageUsd(sl.bids.wonUsd + sl.bids.startedUsd), stageUsd(sl.bids.lostUsd)], note: sl.bids.startedUsd > 0 ? `won counts ${stageUsd(sl.bids.startedUsd)} of bids that became jobs` : undefined },
+          { label: 'bids', cells: [stageUsd(sl.bids.sentUsd), stageUsd(sl.bids.wonUsd), stageUsd(sl.bids.lostUsd)] },
           { label: 'estimates', cells: [stageUsd(sl.estimates.sentUsd), stageUsd(sl.estimates.wonUsd), stageUsd(sl.estimates.lostUsd)] },
         ],
       },
