@@ -4953,6 +4953,17 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .stagesBandTotal {
   font-weight: 600;
 }
+/* The Pipeline's search box (v2.7014): beside the New Job, Follow-ups, Forecast and Projects presses it takes what
+   their line leaves, but never less than its own chips and ⋯, so the row wraps it onto a line of its own instead of
+   pushing the page sideways. On a phone a line is all it has, so it fits the line as before. */
+.stagesSearchBox {
+  min-width: min-content;
+}
+@media (max-width: 640px) {
+  .stagesSearchBox {
+    min-width: 0;
+  }
+}
 /* Put a GC on notice (v2.4540): the row the "N look wrong" list jumped to stays lit for a moment. */
 @keyframes gcNoticeRowFlash {
   0%, 100% { background: var(--bg-amber-tint); }
