@@ -160,7 +160,7 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    homestead, and no property on the desk was marked on 2026-11-10.
 3. **The homestead hold** (S, with a migration). Shipped as v2.6937
    (`docs/recent-features/v2.6937.md`): `customer_addresses.homestead_answered_at` (migration
-   `20261111160000`) records that a person answered, the property record asks *Is this the owner's
+   `20261112080000`) records that a person answered, the property record asks *Is this the owner's
    homestead?* with **Yes** and **No**, and `homesteadGate` in `affidavitGates`
    (`src/lib/jobs/lienDeskAffidavits.ts`) holds a residential property with no answer, with
    **Answer it ›** opening the property record on the question. Read again on 2026-11-11 the

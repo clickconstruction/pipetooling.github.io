@@ -43,7 +43,7 @@ export type LienAffidavitRow = {
   has_contractor_address?: boolean | null
   /**
    * Whether a person answered the homestead question on the job's property record (punch list #305, migration
-   * 20261111160000). Not from the RPC: the desk fills it from the property rows it reads (`withHomesteadAnswer`).
+   * 20261112080000). Not from the RPC: the desk fills it from the property rows it reads (`withHomesteadAnswer`).
    * Absent, nobody read the answer and the gate does not judge, as before the migration is pushed.
    */
   homestead_answered?: boolean | null

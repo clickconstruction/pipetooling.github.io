@@ -33,7 +33,7 @@ export type PropertyRecordDraft = PropertyRecordFields & {
   /** The owner's email and phone (v2.6497): where the courtesy notice before a lien reaches the owner. Absent on a row read before migration 20261104163131, so the draft writes neither back. */
   owner_email?: string
   owner_phone?: string
-  /** When a person answered the homestead question (punch list #305): '' while nobody has. Absent on a row read before migration 20261111160000; a yes or no pressed here sets it either way. */
+  /** When a person answered the homestead question (punch list #305): '' while nobody has. Absent on a row read before migration 20261112080000; a yes or no pressed here sets it either way. */
   homestead_answered_at?: string
 }
 

@@ -16,7 +16,7 @@ export async function savePropertyKind(customerAddressId: string, kind: Property
 
 /**
  * The Homestead tick beside a residential kind. A tick or an untick is a person's answer, so it stamps
- * `homestead_answered_at` (punch list #305). The column lands with migration 20261111160000: when the stamped
+ * `homestead_answered_at` (punch list #305). The column lands with migration 20261112080000: when the stamped
  * write is refused, the tick is saved without the stamp, as it was before the column.
  */
 export async function savePropertyHomestead(customerAddressId: string, homestead: boolean): Promise<void> {

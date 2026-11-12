@@ -1,4 +1,4 @@
-# 20261111160000_homestead_answered.sql (2026-11-11, v2.6937)
+# 20261112080000_homestead_answered.sql (2026-11-11, v2.6937)
 
 The homestead question gets a record of its answer (punch list #305, item 3). `customer_addresses.homestead` is `boolean NOT NULL DEFAULT false`, so a property nobody asked about read the same as one answered no.
 

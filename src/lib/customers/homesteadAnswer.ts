@@ -4,7 +4,7 @@
  * `customer_addresses.homestead` is `boolean NOT NULL DEFAULT false`, so a property nobody asked about read the same
  * as one answered no, and the Lien desk passed it as *Not a homestead*. A lien on a homestead needs a pre-work
  * contract signed by both spouses and recorded (Tex. Prop. Code § 53.254, the app's reading), so *nobody asked* must
- * not read as *no*. `homestead_answered_at` (migration 20261111160000) is NULL until a person answers yes or no on
+ * not read as *no*. `homestead_answered_at` (migration 20261112080000) is NULL until a person answers yes or no on
  * the record. The desk and the Lien window hold a residential property's affidavit while it is NULL.
  *
  * The column is read softly: a row that does not carry it (read before the migration is pushed, or through a narrow

@@ -29,7 +29,7 @@ export type PropertyDraftPayload = {
   /** Present only when the draft carries the owner's contact (v2.6497): a row read after migration 20261104163131, or a typed value. An older row writes neither, so a save never fails on a column that is not there yet. */
   owner_email?: string
   owner_phone?: string
-  /** Present only when the draft carries the homestead answer (punch list #305): a row read after migration 20261111160000, or a yes or no pressed on the record. NULL while nobody has answered. */
+  /** Present only when the draft carries the homestead answer (punch list #305): a row read after migration 20261112080000, or a yes or no pressed on the record. NULL while nobody has answered. */
   homestead_answered_at?: string | null
 }
 
@@ -130,7 +130,7 @@ export function draftFromRow(a: CustomerAddressRow): PropertyDraft {
   }
 }
 
-/** When the homestead question was answered, off a row that carries the column (migration 20261111160000): '' while nobody has. Nothing off an older row, so the draft writes nothing back. */
+/** When the homestead question was answered, off a row that carries the column (migration 20261112080000): '' while nobody has. Nothing off an older row, so the draft writes nothing back. */
 function homesteadAnswerFromRow(a: CustomerAddressRow): Pick<PropertyDraft, 'homestead_answered_at'> | Record<string, never> {
   if (!('homestead_answered_at' in a)) return {}
   return { homestead_answered_at: ((a as { homestead_answered_at?: string | null }).homestead_answered_at ?? '').trim() }

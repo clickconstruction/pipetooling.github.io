@@ -56,7 +56,7 @@ describe('the owner’s email and phone on the draft (v2.6497)', () => {
     expect(payloadFromDraft({ ...d, owner_email: '' })).toMatchObject({ owner_email: '', owner_phone: '(512) 555-0142' })
   })
   it('the homestead answer rides the draft only off a row that carries its column, and an empty one writes NULL (punch list #305)', () => {
-    // Before migration 20261111160000: no column on the row, nothing on the draft, nothing written.
+    // Before migration 20261112080000: no column on the row, nothing on the draft, nothing written.
     expect(draftFromRow(row)).not.toHaveProperty('homestead_answered_at')
     expect(payloadFromDraft(draftFromRow(row))).not.toHaveProperty('homestead_answered_at')
     expect(payloadFromDraft(emptyPropertyDraft('1 Main St'))).not.toHaveProperty('homestead_answered_at')

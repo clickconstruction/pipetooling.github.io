@@ -260,7 +260,7 @@ export function useLienDeskData(
         // The property records under the affidavits (punch lists #305 and #314), read once, whole and in light mode too, so the
         // Dashboard's count and the desk agree: an affidavit holds when its owner is a public body, and a residential one
         // while nobody has answered the homestead question. `select('*')` names no column, so the read works before
-        // migration 20261111160000 is pushed, and the rows then carry no answer either way. A failed read judges nothing,
+        // migration 20261112080000 is pushed, and the rows then carry no answer either way. A failed read judges nothing,
         // never the desk dark.
         const affidavitAddressIdByJob: Record<string, string | null> = {}
         for (const r of affidavitRowsKept) affidavitAddressIdByJob[r.job_id] = jobsById[r.job_id]?.customer_address_id ?? null
