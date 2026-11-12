@@ -5,7 +5,7 @@
 import { supabase } from '../supabase'
 import type { FirstLookDeskRow } from './look'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export type DeskAnswer<T> = { ok: true; value: T } | { ok: false; error: { message: string; status: number } }

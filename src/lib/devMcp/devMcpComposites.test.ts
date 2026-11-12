@@ -93,7 +93,7 @@ describe('dev-mcp composites', () => {
     const bid = (await getBid(reader, BID)) as Record<string, unknown>
     expect(noErrors(bid)).toEqual([])
     expect((bid.bid as Row).label).toBe('B482')
-    expect(String(bid.totals)).toContain('useBidPricingEngine')
+    expect(bid.totals).toMatchObject({ priced_revenue_usd: null, words: expect.stringContaining('No pricing') })
   })
 })
 

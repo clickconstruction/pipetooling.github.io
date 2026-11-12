@@ -23,7 +23,7 @@ The page opens on three numbers.
 
 Under the three numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the three numbers. In a week cash comes first, a phone shows it under the card.
 
-Market's row reads what the asks are worth a week. A bid counts at the won rate for bids its size. An estimate counts at the estimates' own won rate. A bid counts as won or lost only when it is marked. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days. An estimate with no answer counts as lost after 90 days. Press **How Market's figure is counted** under the pipe to read the working. The Market and Sales cards behind **The flow** still count the old way.
+Market's row reads what the asks are worth a week. A bid counts at the won rate for bids its size. An estimate counts at the estimates' own won rate. A bid counts as won or lost only when it is marked. A bid with no mark counts as half lost after 90 days. It counts as 95% lost after 180 days. An estimate with no answer counts as lost after 90 days. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
 An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
@@ -81,7 +81,9 @@ Behind **Money**, the eight week chart has a card for every bar. Hover over any 
 
 Under that line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace. Collect's weeks count only the bills past their day. The grey part of its bar is billed and not yet due.
 
-The Market card counts the asks that came in: bids invited and estimates requested, by value. The Sales card shows what went out and what came back, bids and estimates on their own lines. Won counts the bids marked won and the bids that became jobs. Both cards read by pace against the field, not by weeks of pile.
+The Market card counts the asks that came in: bids invited and estimates requested, by value. Its last two lines say what those asks are worth a week. One line gives the amount. The next splits it into what the bids win and what the estimates sell. The badge reads **short of the field** when that amount is under what the field builds. Until the amount is read, the card says so and judges nothing.
+
+The Sales card shows what went out and what came back, bids and estimates on their own lines. Won counts the bids marked won, and the bids marked started or complete. A job made from a bid does not make it won. A bid with no mark is still awaiting an answer. Both cards read by pace against the field, not by weeks of pile.
 
 The Build card reads the jobs' percent complete. Built per week is each job's change in percent times its contract. Sold per week is the contract on the jobs created. The pile is the contract left to build on open jobs. A job with no percent is read as half done and drawn grey. Set its percent to make the reading true.
 
@@ -138,6 +140,8 @@ Press the Collect card. Under Today's reading, press **Break it down**. A window
 Under the cards sits a slider for the pressed stage. It reads that stage's pace in dollars a week. Drag it and the cards above move with it. Marks on the track show today and where the pile stops growing. Other marks show where the link moves to another stage and where exploiting ends. The blue part of the track is what we can do with what we have. The amber part means spending.
 
 The number beside the slider has a plain unit under it, such as jobs a week. The small chart shows the pile over the next twelve weeks at the chosen pace. The dotted line is today's pace. Three boxes read the pile, the link and the money. Press {{button:outline|back to today}} to put the slider back.
+
+Market's slider reads what Market is worth a week, the same amount as its card. Drag it up and the Market card reads **not short** once the amount meets the field. Until the amount is read, Market has no slider.
 
 ## The three resources
 

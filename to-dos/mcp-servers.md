@@ -201,7 +201,7 @@ door reaches them instead of re-writing them.
 | `find_job` · `find_bid` · `find_customer` · `find_person` | 4b | Resolvers from "J1032" / "b482" / a name to the uuid: `search_jobs_ledger`, `search_bids_for_clock` (+ `bids.bid_number`), `customers.name ilike`, `users` by the active-roster rules. The J / b label rules come from `ledgerDisplayPrefixes.ts`. |
 | `get_job(job)` | 4b | The Job window: the `jobs_ledger` row, `list_job_account_strip`, `get_stages_enrichment`, `list_job_stage_progress`, `get_man_hours_by_job`, the thread (`jobs_ledger_thread_notes`, `list_reports_for_job_ledger`, `job_status_events`), and the money from `buildJobProfitSummary` + `billTruth`. |
 | `get_customer(customer)` | 4b | The hub: profile, invoices and payments, the feed's sources, and LCV / open balance / pays-in-N-days from `customerProfileStats` + `billTruth`. |
-| `get_bid(bid)` | 4b | Header (`get_bids_by_ids`), count rows with their assignments, versions and sends, the submission ledger, `list_bid_job_account_strip`. **Totals are rows-as-stored**: the priced total lives in the `useBidPricingEngine` hook, not a kernel — lifting it is its own PR if the log shows it is wanted. |
+| `get_bid(bid)` | 4b | Header (`get_bids_by_ids`), count rows with their assignments, versions and sends, the submission ledger, `list_bid_job_account_strip`. **Totals** since v2.6990: the Pricing grid's revenue total through the tab's own kernel (`scenarioPricingRows`), with the margin the tab last stamped; cost and margin stay the tab's. |
 | `view_as(role \| person, verb, args)` | 4b | Any read above as a sample account (`users.is_sample`, v2.3606) or a named person — the session minted the same way. Answers "what does a helper see here" with no browser. Dev keys only; logged with both identities. |
 | `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
 | `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 — shipped | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
@@ -322,9 +322,10 @@ the rows it touches; an apply that plans again and writes only on a match; never
 5. **`plan_bid_pricing` / `apply_bid_pricing`** — a price per count row through the tab's one write
    rule (`writeUnitPriceOverrideRow`: the assignment's override, else a new assignment on the
    matching book entry, else a custom price), on the bid's active scenario; a shared book is
-   cloned to the bid first, as the tab does. Before it, as its own PR, the pricing kernels join
-   the edge copy (a generated copy, no rewrite), so the plan states the total the screen would
-   show and `get_bid.totals` becomes a figure. The margin stamp only where the screen would stamp.
+   cloned to the bid first, as the tab does. The margin stamp only where the screen would stamp.
+   **Its first half shipped as v2.6990** (`_shared/devMcpBidPricing.ts`): the pricing kernels and
+   the tab's picks are in the kernel copy, and `get_bid.totals` states the grid's revenue total, so
+   the pair's plan can state it before and after with `bidPricedTotal`'s reads and `openPricing`.
 6. **`plan_bid_submission` / `apply_bid_submission`** — the paper that was sent, filed on its bid. The owner,
    2026-11-11, on old proposal files to be copied into company Drive, a folder a bid: "connected to
    their bids where a user links the submissions" and "if we don't have dev verbs to support this,

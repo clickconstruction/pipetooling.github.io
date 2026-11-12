@@ -121,9 +121,15 @@ export type SalesDeskInput = {
   /** Asker id → name: `customers` for a bid's customer, `bids_gc_builders` for a GC builder. */
   gcNames: ReadonlyMap<string, string>
   openEstimates: SalesOpenEstimate[]
-  /** The window's win share by value (`marketWinShare`), the rate for an asker with few decided bids; null when nothing was sent. */
+  /** The won rate of all bids together (`bidWins.ts`, `coefficient`): the rate for an asker with few marked bids when no rate by size is given, and the words' figure. Null when no bid is won or lost yet. */
   fallbackRate: number | null
-  /** The window's estimate win share by value; null when no estimate was sent. */
+  /**
+   * The won rate for each size of bid (`bidWins.ts`, `BID_SIZES` with each size's `usedRate`), smallest first. Given
+   * these, an asker with few marked bids has each ask read at the rate for bids its size (punch list #318), and
+   * `fallbackRate` stands in only for an ask no size covers.
+   */
+  bidSizeRates?: ReadonlyArray<{ underUsd: number; rate: number | null }> | null
+  /** The estimates' won rate by dollars (`estimateWins.ts`, `coefficient`); null when no estimate is won or lost yet. */
   estimateShare: number | null
   /** The estimates of the decided span; absent reads as none on record. */
   estimateHistory?: ReadonlyArray<SalesEstimateHistory>
@@ -151,7 +157,8 @@ export type SalesAsker = {
   expectedUsd: number
   decided: { count: number; won: number; wonUsd: number; lostUsd: number }
   rate: number
-  rateSource: 'own' | 'window' | 'none'
+  /** `own`: the asker's marked bids. `size`: the rate for bids the size of each ask. `window`: all bids together. `none`: no rate to read. */
+  rateSource: 'own' | 'size' | 'window' | 'none'
   paceDays: number
   paceSource: 'own' | 'assumed'
   deadWeight: boolean
@@ -349,7 +356,7 @@ export function readEstimateHistory(history: ReadonlyArray<SalesEstimateHistory>
 
 type AskerFacts = Pick<SalesAsker, 'decided' | 'rate' | 'rateSource' | 'paceDays' | 'paceSource' | 'deadWeight'>
 
-function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null): AskerFacts {
+function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null, bySize: boolean): AskerFacts {
   let won = 0
   let wonUsd = 0
   let lostUsd = 0
@@ -371,7 +378,7 @@ function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null): As
   const enough = count >= SALES_RATE_MIN_DECIDED
   const own = wonUsd + lostUsd > 0 ? wonUsd / (wonUsd + lostUsd) : 0
   const rate = enough ? own : (fallbackRate ?? 0)
-  const rateSource: AskerFacts['rateSource'] = enough ? 'own' : fallbackRate != null ? 'window' : 'none'
+  const rateSource: AskerFacts['rateSource'] = enough ? 'own' : bySize ? 'size' : fallbackRate != null ? 'window' : 'none'
   const pace = median(paces)
   return {
     decided: { count, won, wonUsd, lostUsd },
@@ -395,7 +402,7 @@ function askerRow(a: SalesAsker, opts: { leaderByExpected: SalesAsker | null; bi
   const biggest = bids[0] ?? null
   let say: string | null = null
   if (a.deadWeight) say = 'Not a bid call, a relationship call. Are we ever in the running, or are we pricing their paperwork?'
-  else if (opts.biggestOpen === a && opts.leaderByExpected && opts.leaderByExpected !== a) say = `Biggest open dollars in the list. At ${pct(a.rate)} won they are worth less than ${opts.leaderByExpected.name}.`
+  else if (opts.biggestOpen === a && opts.leaderByExpected && opts.leaderByExpected !== a) say = a.rateSource === 'size' ? `Biggest open dollars in the list. At the won rate for bids this size they are worth less than ${opts.leaderByExpected.name}.` : `Biggest open dollars in the list. At ${pct(a.rate)} won they are worth less than ${opts.leaderByExpected.name}.`
   else if (a.state === 'past' && n > 1 && biggestExpected && biggestExpected.expectedUsd > 0) say = `Deciding ${biggestExpected.name} alone settles ${stageUsd(biggestExpected.expectedUsd)} of what the pile is worth.`
   else if (a.state === 'past' && opts.bestRate === a) say = 'Best won rate in the list, and the ask is getting old.'
   else if (a.state === 'inside' && a.paceSource === 'own') say = `An answer takes about ${a.paceDays} days here, as recorded. Calling early spends goodwill.`
@@ -406,8 +413,10 @@ function askerRow(a: SalesAsker, opts: { leaderByExpected: SalesAsker | null; bi
     ? `0 of ${a.decided.count} · never answered`
     : a.rateSource === 'own'
       ? `${a.decided.won} of ${a.decided.count} · ${pct(a.rate)}`
-      : a.rateSource === 'window'
-        ? `${a.decided.count === 0 ? 'no decided bids' : `${a.decided.won} of ${a.decided.count}`} · all bids together, ${pct(a.rate)}`
+      : a.rateSource === 'size'
+        ? `${a.decided.count === 0 ? 'no decided bids' : `${a.decided.won} of ${a.decided.count}`} · read at the rate for bids this size`
+        : a.rateSource === 'window'
+          ? `${a.decided.count === 0 ? 'no decided bids' : `${a.decided.won} of ${a.decided.count}`} · all bids together, ${pct(a.rate)}`
         : `${a.decided.won} of ${a.decided.count} · no won rate yet`
   const paceLabel = a.deadWeight ? '' : a.paceSource === 'own' ? `answers in about ${a.paceDays} d, as recorded` : `no answers on record, ${SALES_NO_PACE_DAYS} d assumed`
   const state: SalesRowState = a.deadWeight ? { kind: 'dead', label: 'never answered' } : a.state === 'past' ? { kind: 'past', label: `${a.pastDays} ${plural(a.pastDays, 'day', 'days')} late` } : { kind: 'inside', label: 'on time' }
@@ -420,7 +429,8 @@ function askerRow(a: SalesAsker, opts: { leaderByExpected: SalesAsker | null; bi
     winsLabel,
     paceLabel,
     expectedUsd: a.expectedUsd,
-    rate: a.rate,
+    // An asker read by the size of each ask has no one rate to print.
+    rate: a.rateSource === 'size' ? null : a.rate,
     state,
     story,
     say,
@@ -549,6 +559,12 @@ function buildFunnel(decided: SalesDecidedBid[]): SalesFunnel {
 
 export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const { todayYmd, fallbackRate } = input
+  const sizeRates = input.bidSizeRates && input.bidSizeRates.length > 0 ? input.bidSizeRates : null
+  /** The rate an ask is read at: the asker's own, or for an asker with few marked bids the rate for bids its size. */
+  const rateFor = (a: Pick<SalesAsker, 'rate' | 'rateSource'>, usd: number): number => {
+    if (a.rateSource !== 'size' || !sizeRates) return a.rate
+    return sizeRates.find((r) => usd < r.underUsd)?.rate ?? a.rate
+  }
   // Decided is marked: a bid with a job and no mark is in no record, neither won nor lost.
   const decidedBids = input.decidedBids.filter(isMarked)
   const decidedByAsker = new Map<string, SalesDecidedBid[]>()
@@ -562,7 +578,7 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const factsFor = (key: string): AskerFacts => {
     let f = factsByAsker.get(key)
     if (!f) {
-      f = askerFacts(decidedByAsker.get(key) ?? [], fallbackRate)
+      f = askerFacts(decidedByAsker.get(key) ?? [], fallbackRate, sizeRates != null)
       factsByAsker.set(key, f)
     }
     return f
@@ -591,7 +607,7 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     }
     const pastDays = Math.max(0, age - a.paceDays)
     const aging = a.deadWeight ? 0 : salesAging(age, a.paceDays)
-    const expectedUsd = a.deadWeight ? 0 : b.usd * a.rate * aging
+    const expectedUsd = a.deadWeight ? 0 : b.usd * rateFor(a, b.usd) * aging
     a.bids.push({ ...b, name: bidName(b), ageDays: age, pastDays, aging, expectedUsd })
     a.openUsd += b.usd
     a.expectedUsd += expectedUsd
@@ -601,7 +617,7 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   for (const a of askers) {
     a.bids.sort((x, y) => y.usd - x.usd)
     a.state = a.deadWeight ? 'dead' : a.pastDays > 0 ? 'past' : 'inside'
-    if (a.state === 'past') a.callBid = a.bids.filter((b) => b.pastDays > 0).sort((x, y) => y.usd * a.rate - x.usd * a.rate || y.usd - x.usd)[0] ?? null
+    if (a.state === 'past') a.callBid = a.bids.filter((b) => b.pastDays > 0).sort((x, y) => y.usd * rateFor(a, y.usd) - x.usd * rateFor(a, x.usd) || y.usd - x.usd)[0] ?? null
   }
   askers.sort((x, y) => y.expectedUsd - x.expectedUsd || y.openUsd - x.openUsd)
 
@@ -715,14 +731,17 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     'The usual answer is the middle number of days from sent to answered.',
     'That is the day the office wrote the answer down, not the day the GC spoke.',
     'A marked bid with no answer day reads the day its job was made.',
-    fallbackRate != null ? `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the won rate of all bids together, ${pct(fallbackRate)}.` : `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the rate of all bids together, which nothing sent gives yet.`,
+    sizeRates
+      ? `An asker with fewer than ${SALES_RATE_MIN_DECIDED} marked bids has each ask read at the won rate for bids its size.`
+      : fallbackRate != null
+        ? `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the won rate of all bids together, ${pct(fallbackRate)}.`
+        : `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the rate of all bids together, which nothing sent gives yet.`,
     'What an ask is worth is the bid value times that rate.',
     `It fades to nothing by ${SALES_AGING_PACE_MULTIPLE} times the asker's usual answer.`,
     `An asker with no answer on record is read at ${SALES_NO_PACE_DAYS} days.`,
     'The fading rule is an owner call.',
     `An ask's age counts from the day it was sent. After ${AWAITING_DAYS} days it leaves this pile.`,
-    'A bid that became a job leaves the pile too, marked or not.',
-    'So the list and the pile do not add up to the headline.',
+    'A bid a job was made from stays in the pile until it is marked.',
     'Estimates read the day asked, the day sent, the day accepted and the total.',
     ...estimatePaceWords,
     `The line about speed reads once ${SALES_ESTIMATE_SPEED_MIN} answered estimates went out the same day and ${SALES_ESTIMATE_SPEED_MIN} later.`,
