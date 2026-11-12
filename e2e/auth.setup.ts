@@ -22,8 +22,15 @@ setup('authenticate', async ({ page }) => {
   await page.locator('#password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
 
-  // Signed-in shell: the main nav renders a Jobs link.
-  await expect(page.getByRole('link', { name: 'Jobs' })).toBeVisible({ timeout: 30_000 })
+  // Signed-in shell: the main nav renders a Jobs link. When it never comes, empty the password box before failing:
+  // the failure's page snapshot prints a textbox's value, and the report is a public artifact. The sign-in page's
+  // own words ("User is banned", "Invalid login credentials") stay in that snapshot to say why.
+  try {
+    await expect(page.getByRole('link', { name: 'Jobs' })).toBeVisible({ timeout: 30_000 })
+  } catch (error) {
+    await page.locator('#password').fill('').catch(() => {})
+    throw error
+  }
 
   await page.context().storageState({ path: AUTH_FILE })
 })
