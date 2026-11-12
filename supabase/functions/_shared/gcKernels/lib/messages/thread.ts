@@ -171,10 +171,19 @@ const newest = (messages: readonly ThreadMessage[], keep: (m: ThreadMessage) => 
 }
 
 /**
- * Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them. A mail filed
- * for the record (`history`, v2.7027) asked nobody for a reply, so it is not their word here.
+ * Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them, a mail filed
+ * for the record included. When they last wrote is a fact, and the stamps sentence says it (v2.7029: v2.7027 left
+ * filed mail out here, and a thread of old mail read *They have not written yet*).
  */
 export function lastIn(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
+  return newest(messages, (m) => m.contactId === contactId && m.direction === 'in')
+}
+
+/**
+ * Their last word that asks for something: `lastIn` without the mail filed for the record (`history`, v2.7027), which
+ * asked nobody for a reply. The move line counts from this one, never from `lastIn`.
+ */
+export function lastAsk(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
   return newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && !m.history)
 }
 
@@ -370,7 +379,7 @@ export function courtOf(messages: readonly ThreadMessage[], contactId: string, n
     const by = opts.owed.by ? ` · by ${opts.owed.by}` : ''
     return { side: 'ours', word: `Our move · we owe ${opts.owed.what}${by}`, owed: true }
   }
-  const i = lastIn(messages, contactId)
+  const i = lastAsk(messages, contactId)
   const o = lastOut(messages, contactId)
   if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) {
     if (opts.closed) return { side: 'none', word: NOTHING_WAITS }
