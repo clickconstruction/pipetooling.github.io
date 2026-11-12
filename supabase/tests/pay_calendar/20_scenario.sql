@@ -1,7 +1,7 @@
 -- Pay calendar (punch list #323 PR 1, migration *_payer_pay_calendars): the office sets a payer's calendar through
 -- set_payer_pay_calendar and the row stamps who set it; setting it again replaces the one row; a job carries its own
 -- row, or an off switch, beside the payer's; clearing removes one row and leaves the other; the billed-money roles
--- read the table and a helper reads nothing; a helper, a primary and a read-only office account cannot set one (the
+-- read the table and a subcontractor reads nothing; a subcontractor, a primary and a read-only office account cannot set one (the
 -- controller is assistant-like and can, as with a promised pay date); a pay
 -- day, a cutoff and a month count out of range, an off switch with no job, an unknown payer and an unknown job are
 -- refused in words; below the function the shape and the one-row-a-payer rules hold under a direct write. Everything
@@ -10,7 +10,7 @@
 \set ON_ERROR_STOP 1
 BEGIN;
 
--- Rosa (assistant), Mo (master), Pat (primary), Cora (controller), Hank (helper), Tia (assistant, read only).
+-- Rosa (assistant), Mo (master), Pat (primary), Cora (controller), Hank (subcontractor), Tia (assistant, read only).
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000ca101', 'rosa@paycal.test'),
   ('00000000-0000-0000-0000-0000000ca102', 'mo@paycal.test'),
@@ -23,7 +23,7 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ('00000000-0000-0000-0000-0000000ca102', 'mo@paycal.test', 'Paycal Mo', 'master_technician', false, false),
   ('00000000-0000-0000-0000-0000000ca103', 'pat@paycal.test', 'Paycal Pat', 'primary', false, false),
   ('00000000-0000-0000-0000-0000000ca104', 'cora@paycal.test', 'Paycal Cora', 'controller', false, false),
-  ('00000000-0000-0000-0000-0000000ca105', 'hank@paycal.test', 'Paycal Hank', 'helper', false, false),
+  ('00000000-0000-0000-0000-0000000ca105', 'hank@paycal.test', 'Paycal Hank', 'subcontractor', false, false),
   ('00000000-0000-0000-0000-0000000ca106', 'tia@paycal.test', 'Paycal Tia', 'assistant', true, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
@@ -102,13 +102,13 @@ SELECT pcal.same('leaves the other two', pcal.reads(), 'payer in by 25 paid 30 +
 SELECT pcal.same('clearing the payer''s', (public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, NULL))->>'cleared', 'true');
 SELECT pcal.same('leaves the job''s', pcal.reads(), 'job 1412 in by 20 paid 10 +2');
 
--- 4 · Who reads: the billed-money roles. A helper reads nothing though the row is there.
+-- 4 · Who reads: the billed-money roles. A subcontractor reads nothing though the row is there.
 SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca103');
 SELECT pcal.same('Pat, a primary, reads', pcal.reads(), 'job 1412 in by 20 paid 10 +2');
 SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca104');
 SELECT pcal.same('Cora, the controller, reads', pcal.reads(), 'job 1412 in by 20 paid 10 +2');
 SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca105');
-SELECT pcal.same('Hank, a helper, reads nothing', pcal.reads(), 'nothing');
+SELECT pcal.same('Hank, a subcontractor, reads nothing', pcal.reads(), 'nothing');
 SELECT pcal.same('though one row is there', pcal.rows(), '1');
 
 -- 5 · Who cannot set one.
