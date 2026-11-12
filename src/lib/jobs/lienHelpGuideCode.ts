@@ -71,3 +71,26 @@ export function lienHelpBatchRecordUrl(): string {
 export function lienHelpBatchRecordCode(): string {
   return codeFor(lienHelpBatchRecordUrl(), LIEN_HELP_RECORD_CODE_QUIET)
 }
+
+/** Where a notice's help sheet lands: the job's Lien window on the § 53.056 notice tab, where **Save & record sends…** is. */
+export function lienHelpNoticeRecordUrl(jobId: string): string {
+  return `${APP_ORIGIN}${lienWindowHref(jobId, 'notice')}`
+}
+
+/** The notice sheet's code for one job; '' with no job, or when the address cannot be drawn. */
+export function lienHelpNoticeRecordCode(jobId: string): string {
+  return jobId.trim() ? codeFor(lienHelpNoticeRecordUrl(jobId.trim()), LIEN_HELP_RECORD_CODE_QUIET) : ''
+}
+
+/** The guide the run's first page points at. `lienHelpGuideCode.test.ts` holds it to a guide that exists. */
+export const LIEN_RUN_GUIDE_SLUG = 'send-lien-notices-from-the-lien-desk'
+
+/** The run guide's public address. */
+export function lienRunGuideUrl(): string {
+  return helpShareUrl(APP_ORIGIN, LIEN_RUN_GUIDE_SLUG)
+}
+
+/** The code on *Today's mail*, the run's first page; '' when the address cannot be drawn. */
+export function lienRunGuideCode(): string {
+  return codeFor(lienRunGuideUrl())
+}

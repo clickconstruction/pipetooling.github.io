@@ -10,12 +10,16 @@
  * - `lienHelpBatchSheetHtml` — one page in front of a batch, a row for each paper with boxes to tick (the Affidavits
  *   list's **Print N for notarization**);
  * - `lienHelpGuideCopyHtml` — the paper itself with numbered marks beside its blanks and the notes down the side, a
- *   copy to learn from that is never signed or filed.
+ *   copy to learn from that is never signed or filed;
+ * - `lienHelpNoticeSheetHtml` — one page in front of a § 53.056 notice printed from the Lien window: no notary and no
+ *   blanks, so it says what the app checked, the two envelopes, and the steps to the mail and back to the app. A notice
+ *   sent on the Lien desk's run needs none: the run prints its own first page, *Today's mail* (`lienRunPaper.ts`).
  *
  * A help sheet is never the paper: it carries no sworn word, it is not filed as a sent copy, and every page says so.
  * The words follow `src/lib/plainWords.ts` and name each press as the screen writes it.
  */
 
+import { noticeDeadlineForMonth } from './lienDeadlines'
 import { signingCountyWords } from './lienSigningCounty'
 
 export type LienHelpPaper = {
@@ -236,6 +240,7 @@ export function lienHelpBatchAfterSteps(hasCode = false): string[] {
 export const LIEN_HELP_RECORD_CODE_WORDS = {
   lead: 'Scan to record',
   batch: 'Opens the Affidavits list',
+  notice: 'Opens the notice tab',
 } as const
 
 /** The page's own styles. Every rule sits under `.lien-help`, so the paper beside it keeps its look. */
@@ -358,9 +363,9 @@ export function lienHelpPictureHtml(printedCounty: string): string {
 const MARK: Record<LienHelpCheck['state'], string> = { ok: '✓', ask: '!' }
 
 /** The block of checks the app answered, then what is left to the reader; an *ask first* band between them when any check wants an answer. */
-const checksBlock = (title: string, checks: ReadonlyArray<LienHelpCheck>, ask = ''): string =>
+const checksBlock = (title: string, checks: ReadonlyArray<LienHelpCheck>, ask = '', askFirst: string = LIEN_HELP_ASK_FIRST): string =>
   `<div class="lien-help-checks" data-lien-help-checks><h3>${esc(title)}</h3><ul>${checks.map((c) => `<li data-state="${c.state}"><span class="lien-help-mark">${MARK[c.state]}</span><span><strong>${esc(c.lead)}</strong> ${esc(c.words)}</span></li>`).join('')}</ul></div>` +
-  (checks.some((c) => c.state === 'ask') ? `<div class="lien-help-ask" data-lien-help-ask><strong class="lien-help-ask-tag">ASK FIRST</strong> ${esc(LIEN_HELP_ASK_FIRST)}</div>` : '') +
+  (checks.some((c) => c.state === 'ask') ? `<div class="lien-help-ask" data-lien-help-ask><strong class="lien-help-ask-tag">ASK FIRST</strong> ${esc(askFirst)}</div>` : '') +
   `<div class="lien-help-ask lien-help-yours"><strong class="lien-help-ask-tag">YOUR CHECK</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${ask ? ` <strong data-lien-help-ask-who>${esc(ask)}</strong>` : ''}</div>`
 
 const party = (name: string, address: string): string => [name.trim(), address.trim()].filter(Boolean).map(esc).join('<br/>')
@@ -391,6 +396,112 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
       : blanksBox('The blanks. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS, '', lienHelpPictureHtml(''))) +
     `<div class="lien-help-box" style="overflow:hidden"><h3>After it is signed</h3><ol>${after.map((s, i) => `<li>${i === after.length - 1 ? recordCodeBlock(recordCode, '') : ''}<span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
     foot(`Help sheet for ${p.jobLabel}${ask && !(p.checks && p.checks.length > 0) ? ` · ${ask}` : ''}`, 'The paper to sign is the next page') +
+    `</section>`
+  )
+}
+
+/** The facts a notice's help sheet reads off the notice's own fields, so the sheet and the notice cannot disagree. */
+export type LienHelpNotice = {
+  jobLabel: string
+  propertyAddress: string
+  /** `$2,650.00`. */
+  claim: string
+  /** The last day to mail, in words; '' when the app has none for this job. */
+  mailBy: string
+  /** The mail-by day has gone by. */
+  mailByPassed: boolean
+  /** Who signs, as the notice names them. */
+  signer: string
+  ownerName: string
+  ownerAddress: string
+  contractorName: string
+  contractorAddress: string
+  /** How many invoices print behind the notice. */
+  invoices: number
+  /** Who to ask (`lienHelpAskWords`); '' when the app has neither. */
+  ask?: string
+}
+
+/**
+ * What the app checked on one notice. A notice has no notary and no blank, so the things that go wrong are the ones the
+ * app can see: an owner with no mailing address, a day to mail that has gone by, and whether an invoice rides behind it.
+ */
+export function lienHelpNoticeChecks(n: Pick<LienHelpNotice, 'ownerName' | 'ownerAddress' | 'contractorName' | 'contractorAddress' | 'mailBy' | 'mailByPassed' | 'invoices'>): LienHelpCheck[] {
+  const checks: LienHelpCheck[] = []
+  const owner = n.ownerName.trim()
+  if (owner && n.ownerAddress.trim()) checks.push({ state: 'ok', lead: 'Owner.', words: `${owner}, with a mailing address.` })
+  else checks.push({ state: 'ask', lead: 'Owner.', words: owner ? `${owner} has no mailing address in the app.` : 'The app has no owner for this property.' })
+  const contractor = n.contractorName.trim()
+  if (contractor && n.contractorAddress.trim()) checks.push({ state: 'ok', lead: 'Original contractor.', words: `${contractor}, with a mailing address.` })
+  else checks.push({ state: 'ask', lead: 'Original contractor.', words: contractor ? `${contractor} has no mailing address in the app.` : 'The notice names no original contractor.' })
+  const day = n.mailBy.trim()
+  if (!day) checks.push({ state: 'ask', lead: 'Mail by.', words: 'The app has no last day to mail for this job.' })
+  else if (n.mailByPassed) checks.push({ state: 'ask', lead: 'Mail by.', words: `The last day to mail was ${day}. It has passed.` })
+  else checks.push({ state: 'ok', lead: 'Mail by.', words: `The last day to mail is ${day}.` })
+  checks.push({ state: 'ok', lead: 'Invoices.', words: n.invoices === 0 ? 'No invoice prints behind this notice.' : n.invoices === 1 ? '1 invoice prints behind this notice.' : `${n.invoices} invoices print behind this notice.` })
+  return checks
+}
+
+/**
+ * The last day to mail a notice that names these months (`2026-09`): the earliest of their days, since a notice mailed
+ * after it is late for that month. `passed` once today is past it. '' with no month the clock can read.
+ */
+export function lienHelpNoticeMailBy(months: ReadonlyArray<string>, propertyKind: string | null | undefined, todayYmd: string): { ymd: string; passed: boolean } {
+  const days = months
+    .map((m) => noticeDeadlineForMonth(`${m.trim()}-01`, propertyKind ?? ''))
+    .filter(Boolean)
+    .sort()
+  const ymd = days[0] ?? ''
+  return { ymd, passed: Boolean(ymd) && todayYmd > ymd }
+}
+
+/** Above the reader's check when the app has a question about this notice. */
+export const LIEN_HELP_NOTICE_ASK_FIRST = 'Do not mail this one yet. Ask about the line marked with an exclamation mark.'
+
+/**
+ * The steps from the printer to the mail and back to the app. The Lien window prints one notice, so the sheet says to
+ * make the second set. The numbers from the two green slips have a line each, since the app asks for both.
+ */
+export function lienHelpNoticeSteps(n: Pick<LienHelpNotice, 'signer' | 'mailBy' | 'mailByPassed'>, hasCode = false): string[] {
+  const signer = n.signer.trim()
+  const day = n.mailBy.trim()
+  return [
+    'Copy every page behind this sheet. One set is for the owner. One set is for the original contractor.',
+    `${signer ? esc(signer) : 'The signer'} signs the notice in each set, in ink.`,
+    'Put each set in its own envelope. The two addresses are on this sheet.',
+    `Send both by certified mail with a return receipt. ${day && !n.mailByPassed ? `Mail by <strong>${esc(day)}</strong>.` : 'The app shows the last day to mail.'}`,
+    `Write the number from each green slip. Owner ${WRITE} Contractor ${WRITE}`,
+    hasCode
+      ? 'The same day, scan the code with a phone. On a computer, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.'
+      : 'The same day, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.',
+    'Press <strong>Save &amp; record sends…</strong> and type both numbers. Then press <strong>Record both sends</strong>.',
+    'Keep the green slips and the return receipts with the job.',
+  ]
+}
+
+/**
+ * One page in front of a § 53.056 notice printed from the Lien window: the job's facts, what the app checked, the two
+ * envelopes, and the steps. The record code hangs in the steps box's corner, where the batch sheet's does.
+ */
+export function lienHelpNoticeSheetHtml(n: LienHelpNotice, printedOn: string, extras?: LienHelpExtras): string {
+  const recordCode = extras?.recordCode
+  const ask = (n.ask ?? '').trim()
+  const steps = lienHelpNoticeSteps(n, Boolean(recordCode))
+  const envelope = (who: string, name: string, address: string): string => `<div class="lien-help-box" style="margin-bottom:0"><h3>${esc(who)}</h3><p>${party(name, address) || 'not in the app'}</p></div>`
+  return (
+    `<section class="lien-help" data-lien-help="notice">` +
+    STRIPE +
+    band('Help sheet · do not mail this page', '§ 53.056 notice: before you mail', [printedOn ? `Printed ${printedOn}` : '', 'Stays with the job'], extras) +
+    `<div class="lien-help-facts">` +
+    `<div><div class="lien-help-k">Job</div><div class="lien-help-v">${esc(n.jobLabel)}</div></div>` +
+    `<div><div class="lien-help-k">Property</div><div class="lien-help-v">${esc(n.propertyAddress)}</div></div>` +
+    `<div><div class="lien-help-k">Claim</div><div class="lien-help-v">${esc(n.claim)}</div></div>` +
+    `<div><div class="lien-help-k">Mail by</div><div class="lien-help-v">${esc(n.mailBy.trim() || 'see the Lien desk')}</div></div>` +
+    `</div>` +
+    checksBlock('What the app checked on this notice', lienHelpNoticeChecks(n), ask, LIEN_HELP_NOTICE_ASK_FIRST) +
+    `<div class="lien-help-two" style="margin-bottom:5pt" data-lien-help-envelopes>${envelope('Envelope 1 · the owner', n.ownerName, n.ownerAddress)}${envelope('Envelope 2 · the original contractor', n.contractorName, n.contractorAddress)}</div>` +
+    `<div class="lien-help-box" style="overflow:hidden">${recordCodeBlock(recordCode, LIEN_HELP_RECORD_CODE_WORDS.notice)}<h3>From the printer to the mail</h3><ol>${steps.map((s) => `<li><span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol></div>` +
+    foot(`Help sheet for ${n.jobLabel}`, 'The notice is the next page') +
     `</section>`
   )
 }

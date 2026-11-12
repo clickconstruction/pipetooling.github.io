@@ -296,11 +296,18 @@ export function firstLookSentLine(input: { lookId: string; sentCount: number; ph
   }
 }
 
-/** The text the office sends with the link. Named by who is writing, since it is often a first text. */
-export function firstLookAskLine(input: { customerFirst: string | null; me: string; url: string }): string {
-  const hi = input.customerFirst?.trim() ? `Hi ${input.customerFirst.trim()}, this` : 'Hi, this'
-  const me = firstNameOf(input.me)
-  return `${hi} is ${me || 'the office'} with ${FIRST_LOOK_COMPANY}. So we can price this before we come out, send us a few photos or a short video here: ${input.url}`
+/**
+ * The text the office sends with the link. Named by who is writing, since it is often a first text, and it ends with
+ * the way round the page: a reply to the text with the photos reaches the same thread. In Spanish for a person who
+ * reads Spanish. `me` and `url` may be a blank the reply box fills (`{me}`, `{show}`).
+ */
+export function firstLookAskLine(input: { customerFirst: string | null; me: string; url: string; lang?: 'en' | 'es' }): string {
+  const first = input.customerFirst?.trim()
+  const me = input.me.startsWith('{') ? input.me : firstNameOf(input.me)
+  if (input.lang === 'es') {
+    return `${first ? `Hola ${first}, habla` : 'Hola, habla'} ${me || 'la oficina'} de ${FIRST_LOOK_COMPANY}. Para darle un precio antes de ir, envíenos unas fotos o un video corto aquí: ${input.url} O responda a este mensaje con las fotos.`
+  }
+  return `${first ? `Hi ${first}, this` : 'Hi, this'} is ${me || 'the office'} with ${FIRST_LOOK_COMPANY}. So we can price this before we come out, send us a few photos or a short video here: ${input.url} Or reply to this text with the photos.`
 }
 
 /** A size in words: *24.1 MB*, *612 KB*. */

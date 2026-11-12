@@ -26,11 +26,12 @@ const DANA: BlankFills = {
   rate: 'https://clicktooling.com/rate?t=9mB7',
   // Customer reviews (v2.5943, punch list #185).
   portal: 'https://my.clickplumbing.com/dana-whitfield',
+  show: 'https://clicktooling.com/show/k7m2p9xq4d',
 }
 
 describe('the fill table', () => {
-  it('lists the sixteen blanks the app fills, in the chip order', () => {
-    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'tech', 'link', 'amount', 'bill', 'number', 'estimate', 'warranty', 'rate', 'portal'])
+  it('lists the blanks the app fills, in the chip order', () => {
+    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'tech', 'link', 'amount', 'bill', 'number', 'estimate', 'warranty', 'rate', 'portal', 'show'])
   })
 
   it('keeps the person’s blanks off the table', () => {
@@ -57,7 +58,7 @@ describe('fillLine', () => {
     const all = BLANKS.map((b) => `{${b.key}}`).join(' ')
     const r = fillLine(all, DANA)
     expect(r.left).toEqual([])
-    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu Mateo click.co/e/8Kp4 $4,850 https://clicktooling.com/pay/8f3k2q 1312 https://clicktooling.com/estimate/accept?t=4kQ2 https://clicktooling.com/contract/sign?t=w7Xq https://clicktooling.com/rate?t=9mB7 https://my.clickplumbing.com/dana-whitfield')
+    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu Mateo click.co/e/8Kp4 $4,850 https://clicktooling.com/pay/8f3k2q 1312 https://clicktooling.com/estimate/accept?t=4kQ2 https://clicktooling.com/contract/sign?t=w7Xq https://clicktooling.com/rate?t=9mB7 https://my.clickplumbing.com/dana-whitfield https://clicktooling.com/show/k7m2p9xq4d')
     expect(blanksIn(r.text)).toEqual([])
   })
 

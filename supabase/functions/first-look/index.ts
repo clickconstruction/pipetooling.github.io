@@ -486,7 +486,9 @@ serve(async (req) => {
         const line = firstLookSentLine({ lookId: look.id, sentCount, photos: counts.photos, videos: counts.videos })
         const { error: lineErr } = await admin
           .from('messages')
-          .upsert({ contact_id: look.contact_id, channel: 'event', direction: 'team', who_text: 'The app', body: words ? `${line.body} They wrote: ${words}` : line.body, quo_id: line.key }, { onConflict: 'quo_id', ignoreDuplicates: true })
+          // Their own line, as a word from their portal page is (`gcPortalThread.ts`): it is the customer's move, so the
+          // thread goes to Needs a reply, the header's badge counts it and the reply push's sweep reaches whoever has it.
+          .upsert({ contact_id: look.contact_id, channel: 'portal', direction: 'in', body: words ? `${line.body} They wrote: ${words}` : line.body, quo_id: line.key }, { onConflict: 'quo_id', ignoreDuplicates: true })
         if (lineErr) console.error('first-look: the thread line did not write', JSON.stringify(lineErr))
       }
       const office = await officeNow(admin, nowIso)

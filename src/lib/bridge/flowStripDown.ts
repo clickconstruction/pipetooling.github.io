@@ -128,6 +128,20 @@ export function withMarketWorth(strip: FlowStrip, marketPerWeekUsd: number | nul
 /** The press under the pipe that opens the working behind Market's amount. */
 export const STRIP_DOWN_MARKET_PRESS = "How Market's figure is counted"
 
+/** The word the estimates' working opens on (`estimateWins.ts`), after the bids' lines. */
+const ESTIMATES_LEAD = 'Estimates:'
+
+/**
+ * Market's working as blocks to draw with air between them: the bids' lines, then the estimates' lines. The lines
+ * come as one list (`buildMarketWorth`), bids first, and the estimates' part opens on its own word. With no such
+ * line the working is one block, as written. No line is dropped or reworded.
+ */
+export function marketDetailBlocks(detail: ReadonlyArray<string>): string[][] {
+  const at = detail.findIndex((d) => d.startsWith(ESTIMATES_LEAD))
+  if (at <= 0) return detail.length > 0 ? [[...detail]] : []
+  return [detail.slice(0, at), detail.slice(at)]
+}
+
 /**
  * Every word the standing pipe prints while its working is closed: the legend, each step's name, pace and weeks,
  * Market's amount with its two parts once that is read, and the press under the pipe. It prints more than the pipe

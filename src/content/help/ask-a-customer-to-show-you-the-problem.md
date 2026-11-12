@@ -1,0 +1,71 @@
+---
+title: ask a customer to show you the problem before you go out
+category: Office
+roles: dev, master_technician, assistant, controller, estimator
+keywords: first look, show us the problem, photos, photo, video, picture, link, text, ask for photos, /show, price before a visit, estimate, book a visit, thread, messages, customer, lead, caller
+where: /messages
+order: 120
+---
+A caller can show you the problem before a truck rolls. You text them a link, and their photos and video show on their thread.
+
+The record is called a First look. It sits above the person's messages until you close it.
+
+## Ask for photos
+
+1. Open the person's thread in [Messages](/messages).
+2. Press into the reply box and choose **Text**.
+3. Type `/show`. The list opens with the ask at the top.
+4. Press **Enter**. The line goes in with your name and a link made for this person.
+5. Read the line. Change any words you like.
+6. Press {{button:blue|Send text}}.
+
+The send waits a moment while the link is made. The link takes photos and video for 7 days.
+
+`/photo` and `/video` open the same ask.
+
+## What the customer sees
+
+The link opens a page named *Show us the problem*. It needs no sign-in.
+
+The page has **Take a photo**, **Take a video** and **Choose from your phone**. It says what helps most, and then they press **Send**.
+
+They can also reply to your text with the photos. Those show on the same card.
+
+## Read what came in
+
+The First look card sits above the person's messages.
+
+:::example The card above a thread
+
+**First look** Asked Nov 12 by Rosa
+
+3 photos and 1 video in.
+
+Kitchen. They wrote: It drips at night
+
+{{button:outline|Start an estimate}} {{button:outline|Book a visit}} {{button:outline|Ask for more}} {{button:outline|Close the look}}
+
+:::
+
+- A photo shows as a small picture. Press it to open it full size.
+- A video plays in the card.
+- The line under the name says where the look stands. It says when they opened the link and what is in.
+- Their own words show under the pictures.
+
+When they press **Send**, the thread moves to Needs a reply.
+
+## Price it or book it
+
+Press {{button:outline|Start an estimate}} to open a new estimate on them. [Send an estimate and turn it into a job](/help/send-an-estimate-and-turn-it-into-a-job) shows the rest.
+
+Press {{button:outline|Book a visit}} to open Add Job with their name and their words filled in.
+
+A lead becomes a customer on either press. The thread comes with them.
+
+A number nobody has named has neither press. Name them first, as [Name a number nobody knows](/help/find-every-message-with-a-person-in-one-place#name-a-number-nobody-knows) shows.
+
+## Ask again or close the look
+
+Press {{button:outline|Ask for more}} to put the ask in the reply box again. It makes a new link.
+
+Press {{button:outline|Close the look}} when you are done. The card leaves the thread and the link stops taking photos.
