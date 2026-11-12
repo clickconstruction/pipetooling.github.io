@@ -269,6 +269,11 @@ function monthDay(ymd: string, nowYmd: string): string {
   return `${month(m)} ${d}${String(y) === nowYmd.slice(0, 4) ? '' : `, ${y}`}`
 }
 
+/** A day, short, for a chip: "Nov 9", with the year when it is not this year's. */
+export function shortDay(atIso: string, nowIso: string): string {
+  return monthDay(chicagoDay(atIso), chicagoDay(nowIso))
+}
+
 /** A thread's day divider: "Today, Fri Oct 2", "Thursday, Oct 1". */
 export function dayLabel(atIso: string, nowIso: string): string {
   const ymd = chicagoDay(atIso)
@@ -346,6 +351,12 @@ export interface CourtOptions {
   owed?: { what: string; by?: string | null } | null
   /** Their running promise's line, which their move runs until (cut 2's `runningPromise(...).until`): "until Wed Oct 7 · quote". */
   promisedUntil?: string | null
+  /**
+   * The conversation is Done (`contacts.state`, v2.7029): a word of theirs with nothing of ours after it was closed by a
+   * person, with No reply needed or a team note, so it waits on nobody and the line says *Nothing waits*. Unset on a
+   * read that does not know the state, which reads the lines alone as before.
+   */
+  closed?: boolean
 }
 
 /**
@@ -361,7 +372,10 @@ export function courtOf(messages: readonly ThreadMessage[], contactId: string, n
   }
   const i = lastIn(messages, contactId)
   const o = lastOut(messages, contactId)
-  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
+  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) {
+    if (opts.closed) return { side: 'none', word: NOTHING_WAITS }
+    return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
+  }
   // Nothing of theirs waits on us. A filed mail starts no clock either way: with no word of ours, with a filed mail of
   // ours as the last word, or with a filed mail of theirs after our last word, nobody owes anybody.
   const filedIn = newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && m.history === true)
