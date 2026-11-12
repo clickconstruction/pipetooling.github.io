@@ -26,8 +26,10 @@ function Row({ size }: { size: BidSizeWins }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(6.5rem, 9rem) minmax(0, 1fr) minmax(4.5rem, auto)', gap: '0.2rem 0.75rem', alignItems: 'center', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }} data-testid="bid-size-wins-row">
       <b style={{ fontSize: '0.9rem', color: 'var(--text-strong)' }}>{size.label}</b>
-      {/* The whole track is every dollar decided in this size; the green is the share won. */}
-      <div aria-hidden style={{ height: 14, borderRadius: 3, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+      {/* The whole track is every dollar decided in this size; the green is the share won. The board's ground in
+          light is nearly the track's own grey, so the track carries a hairline and an empty one still shows. In
+          dark the hairline is the track's colour and nothing changes. */}
+      <div aria-hidden style={{ height: 14, borderRadius: 3, background: 'var(--bg-muted)', boxShadow: 'inset 0 0 0 1px var(--border)', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${rate != null ? Math.max(rate > 0 ? 1 : 0, Math.min(100, rate * 100)) : 0}%`, background: '#16a34a', borderRadius: 3 }} />
       </div>
       <span style={{ fontSize: '0.95rem', fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: rate == null ? 'var(--text-muted)' : 'var(--text-strong)' }}>{rate != null ? `${pct(rate)} won` : 'no read'}</span>
