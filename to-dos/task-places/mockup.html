@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A place on a task, and a map of my tasks at the top of Task Mode</title>
+<style>
+  /* Punch list #328. A task can carry a place, and Today opens on a map of the tasks that have one. Drawn 2026-11-12,
+     with that day as today. Nothing here is built. Every name, place and task is made up: Rosa Delgado gives the
+     tasks, Theo Banks, Imani Cole and Wes Harlan do them, and the land is a made-up property called Cedar Hollow with
+     a pump house, a north gate, a shop, a hay barn and a creek crossing. The view from above is a drawing, not a
+     real aerial picture. No live task, person or address is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe; --border-green: #bbf7d0; --border-red: #fecaca;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a; --border-green: #166534; --border-red: #7f1d1d;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 400px; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* drawn app pieces */
+  .hdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .hdr a { color: var(--text-link); font-weight: 700; text-decoration: underline; }
+  .hdr .plus { margin-left: auto; width: 30px; height: 30px; border-radius: 6px; background: #2563eb; color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .hdr .gear { color: var(--text-strong); font-size: 17px; line-height: 1; }
+  .modebar { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 12px; background: var(--bg-green-tint); border-bottom: 1px solid var(--border-green); color: var(--text-green-800); font-size: 13px; font-weight: 700; }
+  .modebar .exit { background: var(--surface); border: 1px solid var(--border-green); border-radius: 999px; padding: 1px 11px; font-size: 12.5px; }
+  .tabs { display: flex; gap: 4px; align-items: center; border-bottom: 1px solid var(--border); padding: 8px 12px 0; }
+  .tabs span { padding: 6px 14px; font-size: 13px; color: var(--text-muted); }
+  .tabs span.on { background: #2563eb; color: #fff; font-weight: 700; }
+  .tabs b { margin-left: auto; font-size: 16px; color: var(--text-strong); }
+  .h3 { margin: 12px 0 8px; font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .task { display: grid; grid-template-columns: auto 1fr; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .task + .task { margin-top: 8px; }
+  .tick { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--text-700); margin-top: 1px; }
+  .task .t { font-size: 14px; color: var(--text-strong); line-height: 1.3; }
+  .due { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .due.late { color: var(--text-red-700); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--bg-muted); color: var(--text-700); white-space: nowrap; }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .chip.on { background: #2563eb; color: #fff; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 34px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.big { min-height: 44px; font-size: 14px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .muted { color: var(--text-muted); font-size: 12px; }
+  .where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 13px; color: var(--text-700); }
+  .where b { color: var(--text-strong); font-weight: 600; }
+  .where u { color: var(--text-link); text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
+  .num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 11px; font-weight: 800; flex: none; }
+  .num.red { background: #dc2626; }
+  .num.none { background: transparent; border: 1.5px dashed var(--border-strong); color: var(--text-muted); }
+
+  /* the map */
+  .mapcard { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .maphead { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 13px; }
+  .maphead b { color: var(--text-strong); }
+  .maphead u { margin-left: auto; color: var(--text-link); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+  .map { position: relative; background: #5f7a45; line-height: 0; }
+  .map svg { display: block; width: 100%; }
+  .map .lay { position: absolute; right: 6px; top: 6px; display: flex; border-radius: 7px; overflow: hidden; border: 1px solid rgba(0,0,0,.35); font: 700 11px/1 var(--font); }
+  .map .lay span { padding: 5px 7px; background: rgba(255,255,255,.92); color: #111827; }
+  .map .lay span.on { background: #111827; color: #fff; }
+  .map .me { position: absolute; left: 6px; bottom: 6px; padding: 6px 9px; border-radius: 999px; background: rgba(255,255,255,.95); color: #111827; border: 1px solid rgba(0,0,0,.3); font: 700 11.5px/1 var(--font); }
+  .map .hint { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; justify-content: center; }
+  .map .hint span { background: rgba(17,24,39,.82); color: #fff; font: 600 12px/1.2 var(--font); padding: 6px 10px; border-radius: 999px; text-align: center; }
+  .mapfoot { padding: 7px 10px; font-size: 12.5px; color: var(--text-700); border-top: 1px solid var(--border); }
+  .sel { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--border); background: var(--bg-blue-tint); font-size: 13px; }
+  .sel .t { color: var(--text-strong); font-weight: 600; min-width: 0; }
+  .sel .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* the open card */
+  .open { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .pair > div { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); position: relative; line-height: 0; }
+  .pair svg { display: block; width: 100%; height: 132px; }
+  .pair small { position: absolute; left: 5px; top: 5px; background: rgba(17,24,39,.78); color: #fff; font: 600 10.5px/1 var(--font); padding: 4px 6px; border-radius: 5px; }
+  .far { margin-top: 8px; padding: 7px 10px; border-radius: 8px; background: var(--bg-blue-tint); color: var(--text-blue-800); font-size: 13px; }
+  .far b { color: inherit; }
+  .box { margin-top: 10px; border-radius: 9px; padding: 8px 10px; font-size: 13px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .box.grey { background: var(--bg-muted); color: var(--text-700); border-color: var(--border); }
+  .notebtn { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; font-size: 13px; color: var(--text-700); background: var(--bg-subtle); }
+
+  /* the Add window */
+  .win { background: var(--surface); }
+  .winhead { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); font-size: 15px; }
+  .winhead span { margin-left: auto; color: var(--text-muted); font-size: 18px; line-height: 1; }
+  .field { display: grid; gap: 4px; margin-top: 12px; }
+  .field:first-child { margin-top: 0; }
+  .field label { font-size: 12px; font-weight: 700; color: var(--text-700); }
+  .inp { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 8px 10px; font-size: 14px; color: var(--text-base); min-height: 38px; }
+  .inp.ph { color: var(--text-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pchip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 5px 11px; font-size: 13px; color: var(--text-strong); font-weight: 600; min-height: 32px; }
+  .pchip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .pchip.add { border-style: dashed; color: var(--text-link); }
+  .pchip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .75; }
+  .tile { display: grid; place-items: center; text-align: center; border: 1.5px dashed var(--border-strong); border-radius: 8px; min-height: 64px; font-size: 12.5px; color: var(--text-muted); padding: 6px; }
+  .sheethead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); }
+  .sheethead span { margin-left: auto; color: var(--text-muted); font-weight: 500; font-size: 13px; }
+  .ok { font-size: 12.5px; color: var(--text-green-700); margin-top: 8px; }
+
+  /* people */
+  .who { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; background: var(--surface); }
+  .who i { width: 10px; height: 10px; border-radius: 50%; }
+  .who.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+
+  table.plan { border-collapse: collapse; width: 100%; max-width: 980px; margin-top: 12px; font-size: 13px; background: var(--surface); border-radius: 10px; overflow: hidden; }
+  table.plan th, table.plan td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  table.plan th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  table.plan td:first-child { white-space: nowrap; font-weight: 700; color: var(--text-strong); }
+  .scroll { overflow-x: auto; }
+  footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--border-strong); font-size: 12.5px; color: var(--text-muted); max-width: 96ch; }
+</style>
+</head>
+<body>
+
+<!-- The land, drawn once and used by every map on the page. 720 by 440 units. A drawing, not an aerial picture. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="land" viewBox="0 0 720 440" preserveAspectRatio="none">
+      <rect width="720" height="440" fill="#5f7a45"/>
+      <polygon points="0,0 300,0 280,150 0,170" fill="#6b8a4a"/>
+      <polygon points="300,0 720,0 720,120 420,160 280,150" fill="#75894f"/>
+      <polygon points="0,170 280,150 330,300 0,330" fill="#58733f"/>
+      <polygon points="420,160 720,120 720,330 480,340 330,300 280,150" fill="#6c8447"/>
+      <polygon points="0,330 330,300 480,340 720,330 720,440 0,440" fill="#4f6b3a"/>
+      <polygon points="540,170 690,152 700,270 556,292" fill="#8a7250"/>
+      <g stroke="#7a6444" stroke-width="2" opacity=".7"><path d="M552 190 L694 170 M554 210 L696 190 M556 230 L697 210 M557 250 L698 230 M558 270 L699 250"/></g>
+      <g stroke="rgba(255,255,255,.28)" stroke-width="1.5" stroke-dasharray="5 5" fill="none"><path d="M300 0 L280 150 L0 170"/><path d="M280 150 L420 160 L720 120"/><path d="M280 150 L330 300 L0 330"/><path d="M330 300 L480 340 L720 330"/></g>
+      <path d="M-10 384 C 110 340, 210 424, 330 372 S 520 296, 730 392" fill="none" stroke="#3a565c" stroke-width="16" stroke-linecap="round"/>
+      <path d="M-10 384 C 110 340, 210 424, 330 372 S 520 296, 730 392" fill="none" stroke="#52757c" stroke-width="7" stroke-linecap="round"/>
+      <g fill="#2f4a2a"><circle cx="40" cy="352" r="13"/><circle cx="88" cy="344" r="10"/><circle cx="150" cy="372" r="12"/><circle cx="212" cy="404" r="11"/><circle cx="270" cy="408" r="13"/><circle cx="352" cy="386" r="10"/><circle cx="410" cy="350" r="12"/><circle cx="455" cy="318" r="9"/><circle cx="570" cy="318" r="12"/><circle cx="628" cy="338" r="10"/><circle cx="688" cy="366" r="13"/><circle cx="118" cy="400" r="9"/><circle cx="596" cy="356" r="9"/></g>
+      <g fill="#36552f"><circle cx="150" cy="60" r="11"/><circle cx="168" cy="72" r="9"/><circle cx="420" cy="52" r="12"/><circle cx="440" cy="66" r="9"/><circle cx="36" cy="250" r="12"/><circle cx="56" cy="268" r="9"/><circle cx="640" cy="60" r="8"/></g>
+      <ellipse cx="596" cy="92" rx="46" ry="27" fill="#3c5a60"/><ellipse cx="596" cy="92" rx="38" ry="20" fill="#4d7078"/>
+      <path d="M62 -10 L92 120 L200 190 L360 212 L470 250 L562 450" fill="none" stroke="#b9a77f" stroke-width="11" stroke-linejoin="round"/>
+      <path d="M62 -10 L92 120 L200 190 L360 212 L470 250 L562 450" fill="none" stroke="#d8c9a3" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M250 196 L250 172" stroke="#d8c9a3" stroke-width="6"/>
+      <rect x="126" y="198" width="38" height="28" fill="#b7a58c" stroke="#8d7c64"/><path d="M126 212 L164 212" stroke="#8d7c64"/>
+      <rect x="212" y="142" width="76" height="34" fill="#a5aeb8" stroke="#6b7280"/><path d="M212 159 L288 159" stroke="#7b8490"/><path d="M237 142 L237 176 M262 142 L262 176" stroke="#8a93a0" stroke-width=".8"/>
+      <rect x="300" y="226" width="56" height="34" fill="#a34a3a" stroke="#7a3327"/><path d="M300 243 L356 243" stroke="#7a3327"/>
+      <rect x="238" y="210" width="26" height="9" fill="#b45f3c"/><rect x="268" y="212" width="26" height="9" fill="#3e6a8a"/>
+      <rect x="455" y="224" width="18" height="16" fill="#d6dae0" stroke="#6b7280"/>
+      <rect x="72" y="88" width="26" height="5" fill="#e5e7eb" stroke="#6b7280" stroke-width=".8" transform="rotate(-14 85 90)"/>
+    </symbol>
+    <!-- A place: a numbered disc, the same disc the app's maps already draw. -->
+    <symbol id="photo" viewBox="0 0 200 132" preserveAspectRatio="xMidYMid slice">
+      <rect width="200" height="80" fill="#bcd3e6"/><rect y="76" width="200" height="56" fill="#74895a"/>
+      <path d="M0 78 Q 60 64 110 74 T 200 70 L200 84 L0 84Z" fill="#5d7449"/>
+      <rect x="62" y="40" width="74" height="54" fill="#d9dde3" stroke="#6b7280"/><path d="M56 42 L99 18 L142 42Z" fill="#8a4a3c" stroke="#6a3529"/>
+      <rect x="88" y="60" width="20" height="34" fill="#7a5a3a" stroke="#5a4028"/><circle cx="104" cy="78" r="1.6" fill="#e5e7eb"/>
+      <path d="M136 82 L170 82 L170 104" fill="none" stroke="#4b5563" stroke-width="5"/><circle cx="153" cy="82" r="6" fill="#dc2626" stroke="#7f1d1d"/>
+      <rect x="20" y="70" width="26" height="30" rx="4" fill="#3e6a8a" stroke="#27475f"/>
+      <path d="M150 54 L164 68" stroke="#facc15" stroke-width="4" stroke-linecap="round"/><path d="M166 70 L156 68 L164 60Z" fill="#facc15"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #328 · design only · nothing built</p>
+    <h1>A place on a task, and a map of my tasks</h1>
+    <p><b>My recommendation:</b> let a task carry one <b>place</b>, a named dot on the map. The giver picks it from the places already used, or presses <b>Use where I am</b> while standing there. The doer sees the dot, the giver's photo and <b>Directions</b> on the task. Today opens on a map of the tasks that have a place. A task with no place is made and done exactly as today.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#top-of-task-mode">1 · The top of Task Mode</a>
+  <a href="#doing">2 · The task as the doer sees it</a>
+  <a href="#giving">3 · Giving a task</a>
+  <a href="#no-place">4 · A task with no place</a>
+  <a href="#honest">5 · When the phone cannot help</a>
+  <a href="#leader">6 · What a leader sees</a>
+  <a href="#plan">7 · The plan</a>
+</nav>
+
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>A task is words, a day and people. It has no place and no job of its own.</li>
+      <li>Only the doer can add a photo. The giver cannot show the spot.</li>
+      <li>Task Mode is a list. Nothing says where anything is.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>One optional row in the Add window: <b>Place</b>. One press picks a place used before.</li>
+      <li>The giver's photo of the spot sits beside the dot on the task.</li>
+      <li>Today opens on <b>Where my tasks are</b>, and the list wears the same numbers.</li>
+    </ul>
+    <p>The app asks a phone where it is only on a press, and never saves where a doer is.</p>
+  </div>
+</div>
+
+<p class="note"><b>Why it has to be nearly free.</b> The app already has three things like this that a person may skip, and they are skipped. <i>Attach this location</i> is on 2 of 211 Task Dispatch requests. No box has a spot on a site map, out of 102. No task has a photo yet. So the design rests on one press: a place used before, or <i>Use where I am</i>.</p>
+
+<!-- 1 -->
+<h2 id="top-of-task-mode">1 · The top of Task Mode <small>the one spot to judge</small></h2>
+<p class="lede">Theo has five tasks today at Cedar Hollow. Three have a place. The map is the Today tab's first block, so it shows in Task Mode and out of it.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><a>Checklist</a><span class="plus">✓</span><span class="gear">⚙</span></div>
+      <div class="modebar">☑ Task Mode · <span class="exit">Exit</span></div>
+      <div class="tabs"><span class="on">Today</span><span>History</span><b>Checklist</b></div>
+      <div class="pad">
+        <div class="h3">Today</div>
+        <div class="task"><div class="tick"></div><div><div class="t">Fix the latch on the north gate</div><div class="due late">due Tue, Nov 10 · 2 days ago</div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Grease the pump bearings</div><div class="due">due today</div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Clear brush at the creek crossing</div><div class="due">due today</div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Order hose clamps</div><div class="due">due today</div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Call the feed store about Friday</div><div class="due">due today</div></div></div>
+      </div>
+    </div>
+    <p class="say">Five lines of words. Theo has to know the property to know where to walk first.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><a>Checklist</a><span class="plus">✓</span><span class="gear">⚙</span></div>
+      <div class="modebar">☑ Task Mode · <span class="exit">Exit</span></div>
+      <div class="tabs"><span class="on">Today</span><span>History</span><b>Checklist</b></div>
+      <div class="pad">
+        <div class="mapcard new">
+          <div class="maphead"><b>Where my tasks are</b><span class="tag">new</span><u>Hide map</u></div>
+          <div class="map">
+            <svg viewBox="0 0 720 440" preserveAspectRatio="xMidYMid slice" style="height:220px" role="img" aria-label="A view from above of Cedar Hollow with three numbered places: the north gate, the pump house and the creek crossing">
+              <use href="#land" width="720" height="440"/>
+              <g font-family="-apple-system, Segoe UI, Roboto, Arial, sans-serif" font-weight="800" font-size="26" text-anchor="middle">
+                <circle cx="86" cy="92" r="22" fill="#dc2626" stroke="#fff" stroke-width="5"/><text x="86" y="101" fill="#fff">1</text>
+                <circle cx="464" cy="232" r="30" fill="none" stroke="#1d4ed8" stroke-width="6"/>
+                <circle cx="464" cy="232" r="22" fill="#2563eb" stroke="#fff" stroke-width="5"/><text x="464" y="241" fill="#fff">2</text>
+                <circle cx="512" cy="338" r="22" fill="#2563eb" stroke="#fff" stroke-width="5"/><text x="512" y="347" fill="#fff">3</text>
+              </g>
+            </svg>
+            <div class="lay"><span class="on">Satellite</span><span>Streets</span></div>
+            <div class="me">◎ Show where I am</div>
+          </div>
+          <div class="sel">
+            <span class="num">2</span><span class="t">Grease the pump bearings · Pump house</span>
+            <div class="acts"><span class="btn blue">Directions</span><span class="btn">Show the task</span></div>
+          </div>
+          <div class="mapfoot">2 more tasks have no place. They are in the list below.</div>
+        </div>
+        <div class="h3">Today</div>
+        <div class="task"><div class="tick"></div><div><div class="t">Fix the latch on the north gate</div><div class="due late">due Tue, Nov 10 · 2 days ago</div><div class="where"><span class="num red">1</span><b>North gate</b></div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Grease the pump bearings</div><div class="due">due today</div><div class="where"><span class="num">2</span><b>Pump house</b></div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Clear brush at the creek crossing</div><div class="due">due today</div><div class="where"><span class="num">3</span><b>Creek crossing</b></div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Order hose clamps</div><div class="due">due today</div></div></div>
+        <div class="task"><div class="tick"></div><div><div class="t">Call the feed store about Friday</div><div class="due">due today</div></div></div>
+      </div>
+    </div>
+    <p class="say">The map is 220 tall on a phone, the height the Pipeline's map already has, and <u>Hide map</u> folds it for good on that device. A dot's number is the task's number in the list. Red is overdue. Pressing a dot draws the bar under the map, as the app's other maps do on a phone. Tasks with no place are counted and stay in the list. With no place on any task, there is no map at all.</p>
+  </div>
+</div>
+
+<!-- 2 -->
+<h2 id="doing">2 · The task as the doer sees it <small>the dot and the photo, no other words needed</small></h2>
+<p class="lede">Theo presses <i>Grease the pump bearings</i>. The card opens in place, as it does today.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="task" style="border:0;padding:0"><div class="tick"></div><div><div class="t"><b>Grease the pump bearings</b></div><div class="due">due today</div></div></div>
+        <div class="notebtn">＋ Add a note</div>
+        <div class="btnrow"><span class="btn blue big">✓ Complete</span></div>
+      </div>
+    </div></div>
+    <p class="say">Which pump? Theo calls Rosa, or walks until he finds it.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="task" style="border:0;padding:0"><div class="tick"></div><div><div class="t"><b>Grease the pump bearings</b></div><div class="due">due today</div><div class="where"><span class="num">2</span><b>Pump house</b></div></div></div>
+        <div class="pair new">
+          <div><svg viewBox="0 0 200 132" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Rosa's photo of the pump house, with a yellow arrow drawn at the valve"><use href="#photo" width="200" height="132"/></svg><small>Rosa's photo</small></div>
+          <div><svg viewBox="374 166 180 132" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The pump house from above, with the place's dot on it and a blue dot where Theo is"><use href="#land" width="720" height="440"/>
+            <circle cx="464" cy="232" r="13" fill="rgba(37,99,235,.28)" stroke="#fff" stroke-width="3"/><circle cx="464" cy="232" r="5" fill="#2563eb" stroke="#fff" stroke-width="2"/>
+            <circle cx="406" cy="278" r="11" fill="rgba(37,99,235,.25)"/><circle cx="406" cy="278" r="5.5" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+          </svg><small>The place</small></div>
+        </div>
+        <div class="far new"><b>250 ft north-east of you.</b> Your phone is sure within 30 ft.</div>
+        <div class="btnrow"><span class="btn blue big">Directions</span><span class="btn big">How far am I?</span></div>
+        <div class="muted" style="margin-top:6px">Placed by Rosa on Nov 3. Your location stays on this phone.</div>
+        <div class="notebtn">＋ Add a note</div>
+        <div class="btnrow"><span class="btn blue big">✓ Complete</span></div>
+      </div>
+    </div></div>
+    <p class="say">The photo says what it looks like. The dot says where. <b>Directions</b> opens the phone's maps app at the dot. <b>How far am I?</b> is the one press that asks the phone where it is, and the answer is worked out on the phone and thrown away. The line under it says who placed the dot and when, so a place that has gone stale can be seen.</p>
+  </div>
+</div>
+
+<!-- 3 -->
+<h2 id="giving">3 · Giving a task <small>one new row, and one sheet the first time a place is used</small></h2>
+<p class="lede">Rosa presses <b>＋ Task</b>. The window is today's window with one row added under <i>Assign to</i>.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="win">
+      <div class="winhead">New task<span>×</span></div>
+      <div class="pad">
+        <div class="field"><label>Task</label><div class="inp">Grease the pump bearings</div></div>
+        <div class="field"><label>Assign to</label><div class="chips"><span class="pchip on">Theo Banks</span><span class="pchip">Imani Cole</span><span class="pchip">Wes Harlan</span></div></div>
+        <div class="field"><label>Links</label><div class="inp ph">Paste a link</div></div>
+        <div class="field"><label>Done when…</label><div class="inp ph">Add a line</div></div>
+        <div class="field"><label>When</label><div class="chips"><span class="pchip on">Today</span><span class="pchip">On a date</span><span class="pchip">Repeats</span></div></div>
+        <div class="btnrow"><span class="btn blue big">Add task</span></div>
+      </div>
+    </div></div>
+    <p class="say">Where it is has to go in the title, in words.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the window</div>
+    <div class="frame"><div class="win">
+      <div class="winhead">New task<span>×</span></div>
+      <div class="pad">
+        <div class="field"><label>Task</label><div class="inp">Grease the pump bearings</div></div>
+        <div class="field"><label>Assign to</label><div class="chips"><span class="pchip on">Theo Banks</span><span class="pchip">Imani Cole</span><span class="pchip">Wes Harlan</span></div></div>
+        <div class="field new"><label>Place <span class="tag">new</span></label>
+          <div class="chips"><span class="pchip on"><i></i>Pump house</span><span class="pchip"><i></i>North gate</span><span class="pchip"><i></i>Shop bay 2</span><span class="pchip"><i></i>Hay barn</span><span class="pchip add">＋ New place</span></div>
+          <div class="muted">Where the work is. Leave it out for a task with no place.</div>
+        </div>
+        <div class="field new"><label>Photo of the spot <span class="tag">new · PR 6</span></label>
+          <div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:stretch"><svg viewBox="0 0 200 132" preserveAspectRatio="xMidYMid slice" style="width:96px;height:64px;border-radius:8px;display:block" role="img" aria-label="A photo of the pump house"><use href="#photo" width="200" height="132"/></svg><div class="tile">＋ Add a photo</div></div>
+        </div>
+        <div class="field"><label>Links</label><div class="inp ph">Paste a link</div></div>
+        <div class="field"><label>When</label><div class="chips"><span class="pchip on">Today</span><span class="pchip">On a date</span><span class="pchip">Repeats</span></div></div>
+        <div class="btnrow"><span class="btn blue big">Add task</span></div>
+      </div>
+    </div></div>
+    <p class="say">The chips are the places the company has used, newest first. One press and the task has a place. Nothing is pressed by default, so a task with no place takes the same presses as today.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · ＋ New place</div>
+    <div class="frame">
+      <div class="sheethead">Where is it?<span>Cancel</span></div>
+      <div class="map new" style="border-radius:0">
+        <svg viewBox="344 143 240 180" preserveAspectRatio="xMidYMid slice" style="height:230px" role="img" aria-label="A close view from above with a ring in the middle of the map, on the pump house"><use href="#land" width="720" height="440"/>
+          <circle cx="464" cy="233" r="15" fill="rgba(37,99,235,.3)" stroke="#fff" stroke-width="3.5"/><circle cx="464" cy="233" r="18.5" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+        </svg>
+        <div class="hint"><span>Drag the map until the ring is on the spot</span></div>
+        <div class="lay" style="top:auto;bottom:6px"><span class="on">Satellite</span><span>Streets</span></div>
+      </div>
+      <div class="pad">
+        <div class="btnrow" style="margin-top:0"><span class="btn blue big" style="flex:1">◎ Use where I am</span></div>
+        <div class="ok">Found you. Your phone is sure within 20 ft.</div>
+        <div class="field"><label>Name it, to pick it next time</label><div class="inp">Pump house</div></div>
+        <div class="btnrow"><span class="btn blue big" style="flex:1">Use this place</span></div>
+      </div>
+    </div>
+    <p class="say">Standing on it: one press on <b>Use where I am</b>, then the name. At a desk: drag the map. The map opens where the last place was set, since only 2 of 151 tasks are tied to a job. The ring and its words are the ones the box map already uses.</p>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2 id="no-place">4 · A task with no place <small>most tasks, and they must not feel unfinished</small></h2>
+<p class="lede">About four tasks in five name no spot. <i>Order hose clamps</i> is one. It looks and works as it does today.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="task" style="border:0;padding:0"><div class="tick"></div><div><div class="t"><b>Order hose clamps</b></div><div class="due">due today</div></div></div>
+        <div class="notebtn">＋ Add a note</div>
+        <div class="btnrow"><span class="btn blue big">✓ Complete</span></div>
+      </div>
+    </div></div>
+    <p class="say">Words, a day, a tick.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="task" style="border:0;padding:0"><div class="tick"></div><div><div class="t"><b>Order hose clamps</b></div><div class="due">due today</div></div></div>
+        <div class="notebtn">＋ Add a note</div>
+        <div class="btnrow"><span class="btn blue big">✓ Complete</span></div>
+      </div>
+      <div class="box grey" style="margin-top:12px">The same card. No empty map, no <i>No place</i> line, no nudge. The only sign is the count under the map: <i>2 more tasks have no place.</i></div>
+    </div></div>
+    <p class="say">The card is unchanged. A later step, if you want it, lets the doer add a missing place while standing on it. That is call 5 in the card.</p>
+  </div>
+</div>
+
+<!-- 5 -->
+<h2 id="honest">5 · When the phone cannot help <small>it says so, and the task still works</small></h2>
+<p class="lede">The app asks for location on a press and at no other time. Three cases, each with its own words.</p>
+<div class="three">
+  <div class="col sug">
+    <div class="cap">No signal for the map</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="where" style="margin-top:0"><span class="num">2</span><b>Pump house</b></div>
+        <div class="box grey">The map did not load. There is no signal here.</div>
+        <div class="far"><b>250 ft north-east of you.</b> Your phone is sure within 30 ft.</div>
+        <div class="btnrow"><span class="btn blue big">Directions</span><span class="btn big">How far am I?</span></div>
+      </div>
+    </div></div>
+    <p class="say">A phone finds itself without a signal. So the distance and the direction still answer, and the photo is already on the phone.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">Location refused</div>
+    <div class="frame"><div class="pad">
+      <div class="open">
+        <div class="where" style="margin-top:0"><span class="num">2</span><b>Pump house</b></div>
+        <div class="box">Location is off for this app. The map and Directions still work. To see how far you are, allow location in the phone's settings.</div>
+        <div class="btnrow"><span class="btn blue big">Directions</span></div>
+      </div>
+    </div></div>
+    <p class="say">A refusal costs one answer, the distance. Nothing else stops.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">A poor fix while giving</div>
+    <div class="frame">
+      <div class="sheethead">Where is it?<span>Cancel</span></div>
+      <div class="map" style="border-radius:0">
+        <svg viewBox="344 163 240 140" preserveAspectRatio="xMidYMid slice" style="height:150px" role="img" aria-label="The ring on the map, with a wide pale circle around it showing the phone is unsure"><use href="#land" width="720" height="440"/>
+          <circle cx="464" cy="233" r="62" fill="rgba(245,158,11,.22)" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 5"/>
+          <circle cx="464" cy="233" r="15" fill="rgba(37,99,235,.3)" stroke="#fff" stroke-width="3.5"/><circle cx="464" cy="233" r="18.5" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <div class="pad">
+        <div class="box" style="margin-top:0">Your phone is only sure within 400 ft. Drag the map until the ring is on the spot.</div>
+        <div class="btnrow"><span class="btn big" style="flex:1">◎ Try again</span><span class="btn blue big" style="flex:1">Use this place</span></div>
+      </div>
+    </div>
+    <p class="say">Indoors or under trees a phone guesses. The sheet shows how wide the guess is and asks for the ring. A bad fix is never saved without a look.</p>
+  </div>
+</div>
+
+<!-- 6 -->
+<h2 id="leader">6 · What a leader sees <small>everyone's open tasks, by person, on the Review tab</small></h2>
+<p class="lede">Task Mode hides Review, so this is the office's view. It answers "who is where today" before the tasks are handed out.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="h3" style="margin-top:0">Outstanding by person</div>
+      <div class="task" style="grid-template-columns:1fr auto"><div class="t">Theo Banks</div><span class="chip">5 open</span></div>
+      <div class="task" style="grid-template-columns:1fr auto"><div class="t">Imani Cole</div><span class="chip">3 open</span></div>
+      <div class="task" style="grid-template-columns:1fr auto"><div class="t">Wes Harlan</div><span class="chip">2 open</span></div>
+    </div></div>
+    <p class="say">Counts by person. Two people can be sent to the same corner on the same morning and nobody sees it.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="mapcard new">
+        <div class="maphead"><b>Where the open tasks are</b><span class="tag">new · PR 7</span><u>Hide map</u></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 8px"><span class="who on">Everyone · 6</span><span class="who"><i style="background:#2563eb"></i>Theo · 3</span><span class="who"><i style="background:#d97706"></i>Imani · 2</span><span class="who"><i style="background:#7c3aed"></i>Wes · 1</span></div>
+        <div class="map">
+          <svg viewBox="0 0 720 440" preserveAspectRatio="xMidYMid slice" style="height:220px" role="img" aria-label="The property from above with six dots in three colours, one colour for each person"><use href="#land" width="720" height="440"/>
+            <g stroke="#fff" stroke-width="5">
+              <circle cx="86" cy="92" r="18" fill="#2563eb"/><circle cx="464" cy="232" r="18" fill="#2563eb"/><circle cx="512" cy="338" r="18" fill="#2563eb"/>
+              <circle cx="250" cy="160" r="18" fill="#d97706"/><circle cx="328" cy="243" r="18" fill="#d97706"/>
+              <circle cx="596" cy="92" r="18" fill="#7c3aed"/>
+            </g>
+          </svg>
+          <div class="lay"><span class="on">Satellite</span><span>Streets</span></div>
+        </div>
+        <div class="mapfoot">4 more open tasks have no place.</div>
+      </div>
+      <div class="h3">Outstanding by person</div>
+      <div class="task" style="grid-template-columns:1fr auto"><div class="t">Theo Banks</div><span class="chip">5 open</span></div>
+      <div class="task" style="grid-template-columns:1fr auto"><div class="t">Imani Cole</div><span class="chip">3 open</span></div>
+    </div></div>
+    <p class="say">One colour a person, and a press on a name shows that person alone. It shows where the <i>tasks</i> are. It never shows where a person is.</p>
+  </div>
+</div>
+
+<!-- 7 -->
+<h2 id="plan">7 · The plan <small>eight small PRs, and a stop after the fourth</small></h2>
+<p class="lede">The first four make the whole loop work: set a place, see it, get there, see them all. Then stop and count how many tasks got a place before building the rest.</p>
+<div class="scroll">
+<table class="plan">
+  <tr><th>PR</th><th>What it adds</th><th>Size</th></tr>
+  <tr><td>1</td><td>The place itself: a name, a point, how sure the phone was, who set it and when. The words for distance, direction and accuracy. One migration, no screen.</td><td>S</td></tr>
+  <tr><td>2</td><td>Giving: the <b>Place</b> row in the Add and Edit windows, the chips of places used before, the <i>Where is it?</i> sheet.</td><td>M</td></tr>
+  <tr><td>3</td><td>Doing: the place on the card, the small map, <b>Directions</b>, <b>How far am I?</b>, and the three honest cases.</td><td>M</td></tr>
+  <tr><td>4</td><td><b>Where my tasks are</b> at the top of Today, in Task Mode and out of it.</td><td>M</td></tr>
+  <tr><td colspan="3" style="font-weight:600;color:var(--new);white-space:normal">Stop here. Two weeks later, count the tasks that have a place.</td></tr>
+  <tr><td>5</td><td>A roadmap task carries a place too. A third of new tasks come from a roadmap.</td><td>S</td></tr>
+  <tr><td>6</td><td>The giver's photo of the spot, on the task as written, shown on every day's card.</td><td>M</td></tr>
+  <tr><td>7</td><td>The leader's map on Review, by person.</td><td>M</td></tr>
+  <tr><td>8</td><td>A doer standing on a task with no place can add one.</td><td>S</td></tr>
+</table>
+</div>
+
+<footer>
+  Every person, place and task on this page is made up, and the views from above are drawings. The counts in the amber note are real and were read without writing anything: 151 tasks, 2 tied to a job, 211 Task Dispatch requests with 2 locations, 102 boxes with no spot, no task photo yet. The card beside this page, <a href="README.md" style="color:var(--text-link)">README.md</a>, has the reading, the plan and the calls that are Grace's.
+</footer>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+  })();
+</script>
+</body>
+</html>
