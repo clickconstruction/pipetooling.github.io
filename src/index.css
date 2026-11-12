@@ -5393,6 +5393,60 @@ button.gcStep:hover > em { text-decoration: underline; }
   text-underline-offset: 2px;
 }
 
+/* "Pays in 3–67d" under a Billed row's Expected date (v2.7013): a press that opens Pay speeds on that payer.
+   The owner's call (2026-11-12): the underline alone says press. The words keep the grey of the line they sit in,
+   with no ring around them: dotted at rest, as the row's crew names are, solid under the pointer, and solid and
+   thicker under the keyboard's focus. */
+.billedPaysInPress {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.billedPaysInPress:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.billedPaysInPress:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* The Pay speeds window opened on one payer (v2.7013): the press that opens the whole window under their card. */
+.paySpeedsAllPress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.paySpeedsAllPress:hover {
+  background: var(--bg-muted);
+  border-color: var(--border-strong);
+}
+.paySpeedsAllPress:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+
 /* Procurement log date boxes: a text box as narrow as a month and a day ("09/23"); the panel sets the width from what it holds.
    A click opens the browser's calendar, which belongs to a date input lying unseen under the text box. On a touch screen
    that input lies on top instead, so a tap opens the phone's own date picker and no keyboard comes up. */
