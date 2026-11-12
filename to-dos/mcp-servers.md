@@ -239,6 +239,8 @@ are shared code dev-mcp imports rather than copies.
 
 ## The bid train: the seat changes a bid and fills in its working contents (mapped 2026-11-11)
 
+**Where it stands and how to pick it up**: [`dev-seat-bid-train.md`](./dev-seat-bid-train.md) (punch list #317) holds the state of each pair, the branches and the recipe; this section stays the plan.
+
 The owner, 2026-11-11, preparing to enter bids for proposals that went out months ago: "I would
 like to add verbs to not only do those things you mentioned it cannot do, but fill out all of the
 line items for counts, takeoffs, labor, pricing." Today the seat makes a bid (`plan_bid`), reads
