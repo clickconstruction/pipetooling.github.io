@@ -11,11 +11,14 @@ import {
   askedWithoutId,
   askedWithoutNeighbours,
   askedWithoutPoint,
+  bexarAddressQuery,
+  bexarAddressWhere,
   factsInCounty,
   idQuery,
   neighbourPointQuestion,
   neighbourSources,
   parcelFactsByAddress,
+  parcelFactsFromBexarAddress,
   parcelFactsById,
   parcelFactsByPoint,
   parcelSourceFor,
@@ -48,8 +51,9 @@ import {
  * `company`: the contact's company (or the person) on Google Places Text Search, with the
  * server-side GOOGLE_MAPS_API_KEY the address autocomplete uses, leaning toward the permit's
  * city. `parcel`: the permit's street address on its county's parcel layer (owner of record,
- * mailing address, values; the DBA in Bexar). Bexar's layer takes the address as one string;
- * Travis, Hays, Comal and Guadalupe take its number and street name (`_shared/permitParcels.ts`).
+ * mailing address, values; the DBA in Bexar). Every county is asked for the house number and the
+ * street name (`_shared/permitParcels.ts`); Bexar keeps the address as one string, so its
+ * question reads inside that string (punch list #320).
  * Every county is asked for the parcel under the permit's own point when the street address has
  * no parcel (Bexar since punch list #320). A city's limits cross county lines, so when its own
  * county holds nothing at the point the neighbouring counties' layers are asked there, and the
@@ -148,8 +152,10 @@ serve(async (req) => {
   // The id as that layer keeps it. A row kept before the id was asked, found or not, is asked again once.
   const parcelId = countySource !== null ? askableParcelId(countySource, permitParcelId) : null
   const askedBeforeId = countySource !== null && cached != null && askedWithoutId(countySource, cached.query as string | null | undefined, parcelId)
-  // Bexar was asked by the street address alone until it could be asked by the point: a kept "no parcel" from then is asked again once. A kept failure is left alone.
-  const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
+  // Bexar was asked by the street address alone until it could be asked by the point, and by the whole street string until it was asked by the number and the name: a kept "no parcel" from then is asked again once. A kept failure is left alone.
+  const bexarParts = kind === 'parcel' && countySource === null ? streetParts(typeof body.address === 'string' ? body.address : null) : null
+  const askedBexarOldWay = bexarParts !== null && ((cached?.query as string | null | undefined) ?? '').split(QUESTION_JOIN)[0] !== bexarAddressWhere(bexarParts)
+  const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && (askedBexarOldWay || askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng)))
   // The neighbouring counties were not asked until they could be: a kept "no parcel" from then is asked again once. A kept failure is left alone.
   const askedBeforeNeighbours = countySource !== null && cached?.found === false && !cached.error && askedWithoutNeighbours(countySource, cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
   if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && !askedBeforeNeighbours && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now(), keptDays({ kind, found: cached.found === true, error: cached.error as string | null }))) {
@@ -237,8 +243,9 @@ serve(async (req) => {
         }
       }
     } else {
-      // Bexar: the street address as one string, then the permit's point when the address has no parcel.
-      const where = situsWhere(typeof body.address === 'string' ? body.address : null)
+      // Bexar: the house number and the street name, then the permit's point when the address has no parcel. An address with no house number is asked as one string, as before.
+      const parts = streetParts(typeof body.address === 'string' ? body.address : null)
+      const where = parts ? bexarAddressWhere(parts) : situsWhere(typeof body.address === 'string' ? body.address : null)
       const point = askablePoint(body.lat, body.lng)
       const ask = async (params: URLSearchParams): Promise<unknown> => {
         const res = await fetch(`${BEXAR_PARCELS_QUERY}?${params.toString()}`, { headers: { Accept: 'application/json' } })
@@ -251,7 +258,9 @@ serve(async (req) => {
         let f = null
         if (where) {
           query = where
-          f = parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
+          f = parts
+            ? parcelFactsFromBexarAddress(await ask(bexarAddressQuery(parts)), parts)
+            : parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
         }
         if (!f && point) {
           query = [query, pointQuestion(point)].filter(Boolean).join(QUESTION_JOIN)

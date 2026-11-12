@@ -11,7 +11,7 @@
  *
  * Pure: `permit-lookup` runs these, `src/lib/research/permitParcels.test.ts` holds them.
  */
-import type { ParcelFacts } from './permitLookup.ts'
+import { BEXAR_PARCEL_FIELDS, parcelFactsFromCounty, type ParcelFacts } from './permitLookup.ts'
 
 /** A street address in the parts a county's layer keeps apart. */
 export type StreetParts = {
@@ -481,6 +481,67 @@ export function askedWithoutId(source: ParcelSource, keptQuery: string | null | 
   const where = idWhere(source, id)
   if (where === null) return false
   return !(keptQuery ?? '').split(QUESTION_JOIN).includes(where)
+}
+
+/** A numbered road's number, however it is written: "1604", "LOOP 1604", "FM 78", "HWY 90"; null for any other street. San Antonio writes "N 1604 W" where the county writes "N LOOP 1604 W". */
+export function routeOf(name: string): number | null {
+  const m = /^(?:(?:LOOP|FM|RM|HWY|HIGHWAY|SH|US|STATE HWY)\s+)?(\d{2,4})$/.exec(name)
+  return m ? Number(m[1]) : null
+}
+
+/** Whether two street names, each without its direction and its suffix, are one street: the same name in any spelling, or the same numbered road. */
+function sameStreetName(a: string, b: string): boolean {
+  const routeA = routeOf(a)
+  if (routeA !== null && routeA === routeOf(b) && ordinalOf(a) === null && ordinalOf(b) === null) return true
+  const theirs = new Set(nameSpellings(b))
+  return nameSpellings(a).some((n) => theirs.has(n))
+}
+
+/** The street line of Bexar's `Situs`, which carries the city, the state and the zip on a second line. */
+function bexarStreetLine(situs: unknown): string {
+  return (typeof situs === 'string' ? situs : '').split(/[\n,]/)[0] ?? ''
+}
+
+/**
+ * Bexar's address question, asked the way the other counties are (punch list #320): the house
+ * number and the street's name, not the whole street string. Bexar keeps the address as one
+ * string, and a prefix match on it missed a suffix spelled out ("LANE" for "LN"), a direction
+ * on one side only and a loop the county names ("N LOOP 1604 W" for "N 1604 W").
+ */
+export function bexarAddressWhere(parts: StreetParts): string {
+  const route = ordinalOf(parts.name) === null ? routeOf(parts.name) : null
+  const names = route !== null ? [String(route)] : nameSpellings(parts.name)
+  const asked = names.map((n) => `UPPER(Situs) LIKE ${quoted(`%${n}%`)}`)
+  return `UPPER(Situs) LIKE ${quoted(`${parts.num} %`)} AND ${asked.length === 1 ? asked[0] : `(${asked.join(' OR ')})`}`
+}
+
+/** The query string for Bexar's address question. */
+export function bexarAddressQuery(parts: StreetParts): URLSearchParams {
+  return new URLSearchParams({ where: bexarAddressWhere(parts), outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: String(PARCEL_ROWS_ASKED), f: 'json' })
+}
+
+/**
+ * The facts off Bexar's answer to the address question: the row at the asked number on the asked
+ * street, the asked side of town before the other, a row with an owner before a blank one. Null
+ * when no row is that street, so "MAIN" never answers with "MAINE".
+ */
+export function parcelFactsFromBexarAddress(body: unknown, parts: StreetParts): ParcelFacts | null {
+  let best: Attributes | null = null
+  let bestScore = -1
+  for (const a of featuresOf(body)) {
+    const theirs = streetParts(bexarStreetLine(a.Situs))
+    if (!theirs || theirs.num !== parts.num || !sameStreetName(parts.name, theirs.name)) continue
+    let score = 0
+    if (parts.prefix && theirs.prefix === parts.prefix) score += 4
+    if (!parts.prefix && !theirs.prefix) score += 2
+    if (parts.prefix && theirs.prefix && theirs.prefix !== parts.prefix) score -= 4
+    if (str(a.Owner)) score += 1
+    if (score > bestScore) {
+      best = a
+      bestScore = score
+    }
+  }
+  return best ? parcelFactsFromCounty({ features: [{ attributes: best }] }) : null
 }
 
 /** The words a kept `query` holds for the point question: `point <lng>,<lat>`. */
