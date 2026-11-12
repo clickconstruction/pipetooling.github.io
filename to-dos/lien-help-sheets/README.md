@@ -2,7 +2,7 @@
 name: "Help sheets printed with every lien paper"
 number: 314
 group: close
-status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names · the owner the same day, *build it all I like it all* · built the same day as four PRs · then *is this the best we can do?*: a before and after page with eleven changes · the owner the same day, *do 1-3, and then show me mockups for 5-11* · 1 to 3 built on PR 7697 · 5 to 11 drawn one at a time · the owner, *I like them all, please make those changes*, and of who to call, *the leader or the dev* · all of it live by 2026-11-11 23:15 UTC: v2.6953, v2.6954, v2.6955, v2.6957 and v2.6961 · change 5 turned into a scan-to-record idea, thought through and not built
+status: asked 2026-11-11 after the office's first signed batch of lien affidavits came back with mistakes · the batch read against the record the same day · three mock-ups drawn and checked as real prints, with made-up names · the owner the same day, *build it all I like it all* · built the same day as four PRs · then *is this the best we can do?*: a before and after page with eleven changes · the owner the same day, *do 1-3, and then show me mockups for 5-11* · 1 to 3 built on PR 7697 · 5 to 11 drawn one at a time · the owner, *I like them all, please make those changes*, and of who to call, *the leader or the dev* · all of it live by 2026-11-11 23:15 UTC: v2.6953, v2.6954, v2.6955, v2.6957 and v2.6961 · change 5 turned into a scan-to-record idea · its form half built 2026-11-11 as v2.6982: **Record service…** takes each copy's certified mail number and a receipt photo, **Record filing…** a photo of the stamped page, and a filed paper keeps the press while a hold is closed · the code on the sheets is not built
 summary: >
   The office signed and notarized its first batch of short-form lien affidavits on 2026-11-11.
   Read against the record, none could be filed as it stood: the county blank at the top was
@@ -10,10 +10,10 @@ summary: >
   should have been stopped before they were printed. The owner asked for help sheets that print
   with every paper. Three shapes are drawn: a cover sheet for each paper, one sheet for the whole
   batch, and a marked guide copy of the paper itself.
-next: Two things wait on the owner. Change 5 became a different idea: a code on the cover sheet that opens the job's **Record service…** step on a phone, with a tracking number and a photo of the certified mail receipt filed to the job's Drive folder; the step takes only the day served today, so the form is most of the build (see *Change 5, as the owner turned it*). Change 4, a place marked for the seal, was neither asked for nor drawn. The help sheets for the § 53.056 and retainage notices are not built.
-size: M as a train of three (S the form's label · M the sheet on the batch print and the Lien window · S the same sheet for the two notices)
-blocker: The owner's word on the scan-to-record form. Printing the signing county changes the paper's face, so counsel should see a signed one.
-opinion: your call — 1 to 3 and 6 to 11 are live; build the scan-to-record form first, then put the code on the sheet
+next: Put the code on the sheets, the second half of change 5: each cover sheet prints a code that opens its own job's affidavit tab on a phone, where **Record service…** now takes the number and the photo, and the batch sheet prints one that opens the Affidavits list. Then the help sheets for the § 53.056 and retainage notices. Change 4, a place marked for the seal, was neither asked for nor drawn.
+size: M as a train of three (S the form's label · M the sheet on the batch print and the Lien window · S the same sheet for the two notices); left: the code on the sheets (S) and the two notices' sheets (S)
+blocker: None for the code. Printing the signing county changes the paper's face, so counsel should see a signed one.
+opinion: build — the form is live, and the code on the sheet is small and finishes change 5
 ---
 
 # Help sheets printed with every lien paper (#314)
@@ -118,6 +118,8 @@ Read again as a first-week employee would read them, the built sheets fall short
 ### Change 5, as the owner turned it
 
 The owner, 2026-11-11: *it might make sense to offer the user a QR code where if they scan it brings them to that part of the app to enter a number and upload their receipt of the certified mail.* What exists: `lienWindowHref(jobId, 'affidavit')` opens one job's Lien window on the affidavit tab, which has a phone layout; `putJobFolderFile(jobId, 'sent', file)` puts a file in the job's Drive folder under *Sent by us*, and `shrinkPhoto` and `PhotoPress` already take a camera shot. What is missing: **Record service…** writes `served_at` alone, with no tracking number and no photo (a notice's sends hold a tracking number, an affidavit's do not). The build, in two pieces: first the form gains a tracking number and a **Take a photo** press for each copy, the photo filed to Drive and its link kept on the filing, never blocking the day; then each cover sheet prints a code to its own job's step. The picks: one code for a batch that opens the Affidavits list, the number typed (a browser cannot read the USPS barcode reliably), and the same photo press on **Record filing…** for the clerk's stamped page.
+
+**The form half shipped 2026-11-11 as v2.6982** (`docs/recent-features/v2.6982.md`): the number and the photo for each copy, kept in the filing's `sends` with no migration, the day never held by either, a door on the served paper's row to add them later, and the stamped page's photo as the filing's saved copy. Building it found that a filed affidavit lost **Record service…** whenever a hold was closed, which the homestead hold of #305 would have done to 11 of the 12 papers filed on 2026-11-16; the press now sits in front of the gate list too. Left: the code on the sheets.
 
 **The pick before that answer: 1 to 4 first, in that order.** 1 is a promise the mock-up made and the build did not keep. 2 is the largest gain: a warning that prints on every paper is one people stop reading, and the app already knows four of the six answers. 3 removes the mistake all eleven sheets made, where the label only explains it. 4 answers the other mistake all eleven made. The rest is tidying and can ride with them.
 

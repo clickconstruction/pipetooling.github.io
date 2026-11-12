@@ -2,7 +2,7 @@
 name: "The dev seat's bid train, to pick up: counts, takeoff, labor and prices shipped, the submission pair is briefed"
 number: 317
 group: ready
-status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) is live on `dev-mcp` 0.74.0 (2026-11-12) · PR 4 (`plan_bid_labor`, v2.6976, PR #7728) is live on `dev-mcp` 0.75.0 (2026-11-12) · PR 5a (`get_bid` states the Pricing grid's revenue total, v2.6990) is live on `dev-mcp` 0.76.0 · PR 5b (`plan_bid_pricing`, v2.6992) shipped at `dev-mcp` 0.77.0 (deploy and a dry run on b398 follow its merge) · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
+status: PR 1 (`plan_bid_update`, v2.6945) and PR 2 (`plan_bid_counts`, v2.6967) are merged, deployed and answering on `dev-mcp` 0.72.0 (2026-11-12) · PR 3 (`plan_bid_takeoff`, v2.6968, PR #7717) is live on `dev-mcp` 0.74.0 (2026-11-12) · PR 4 (`plan_bid_labor`, v2.6976, PR #7728) is live on `dev-mcp` 0.75.0 (2026-11-12) · PR 5a (`get_bid` states the Pricing grid's revenue total, v2.6990) is live on `dev-mcp` 0.77.0 · PR 5b (`plan_bid_pricing`, v2.6992) shipped at `dev-mcp` 0.78.0 (deploy and a dry run on b398 follow its merge) · PR 5 (pricing) and pair 6 (the submission paper) are briefed in `to-dos/mcp-servers.md` and not started · the splice scripts and the merge-up recipe are on the branch `claude/bid-train-handoff`
 summary: >
   The owner asked on 2026-11-11 for dev seat verbs that change a bid and fill in its counts, takeoff,
   labor and pricing, so an agent can enter a bid from a paper proposal. He gave the go on the map's
@@ -31,7 +31,7 @@ what is on which branch, and what each piece still needs.
 | 2 · `plan_bid_counts` | Merged (v2.6967, PR #7714). Live on `dev-mcp` 0.72.0. | The same: dry runs on b398 only. |
 | 3 · `plan_bid_takeoff` | Merged (v2.6968, PR #7717). Live on `dev-mcp` 0.74.0. | The same: dry runs on b398 only. |
 | 4 · `plan_bid_labor` | Merged (v2.6976, PR #7728). Live on `dev-mcp` 0.75.0. | The same: dry runs on b398 only. |
-| 5 · `plan_bid_pricing` | Shipped: v2.6990 (`get_bid` states the grid's revenue total) and v2.6992 (the pair) at `dev-mcp` 0.77.0, ninety-seven write verbs. | Its deploy, `whoami` and a dry run on b398, if the building session did not get to them after the merge. |
+| 5 · `plan_bid_pricing` | Shipped: v2.6990 (`get_bid` states the grid's revenue total) and v2.6992 (the pair) at `dev-mcp` 0.78.0, ninety-seven write verbs. | Its deploy, `whoami` and a dry run on b398, if the building session did not get to them after the merge. |
 | 6 · `plan_bid_submission` | Not started. | Brief in `mcp-servers.md`. The proposals work needs it to file a paper from Drive onto its bid. |
 
 ## Get the kit

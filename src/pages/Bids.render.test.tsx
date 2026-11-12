@@ -688,7 +688,8 @@ describe('Bids page render smoke — an empty list names the next press (punch l
     renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
     await pageAtRest()
     await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
-    expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.'])
+    // The last line is the Health section's chart of wins by bid size (punch list #318): no sent bid is marked yet.
+    expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.', 'No sent bid on this board is marked won or lost yet. Mark a bid won or lost and its size fills in here.'])
   })
 
   it('Submission follow-up: each empty pile says its good state, and a search with no bid offers Clear the search', async () => {

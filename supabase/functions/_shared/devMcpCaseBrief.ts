@@ -15,6 +15,7 @@ import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, typ
 import type { RowFilter } from './devMcpDoor.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
+import { counselOnlyStillHeld } from './devMcpCounselOnly.ts'
 
 export type CaseBriefAsk = { person: string }
 export type CaseBriefReader = { role: string; todayYmd: string }
@@ -40,7 +41,7 @@ type FileIndexRow = { kind: string; chars: number; sections: number; headings: H
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null; evidence_id?: string | null }
 type MatterRow = { id: string; stage: string | null; narrative_md: string | null; narrative_updated_at: string | null; closed_at: string | null }
 type MatterEntryRow = { id: string; kind: string; occurred_on: string | null; body: string | null; meta: { done_at?: string | null } | null; voided_at: string | null }
-type MatterDocRow = { id: string; title: string; state: string | null; dated_on: string | null; voided_at: string | null; mime: string | null }
+type MatterDocRow = { id: string; title: string; state: string | null; dated_on: string | null; voided_at: string | null; mime: string | null; counsel_only?: boolean | null }
 type MarkRow = { theme_id: string; proposed: boolean | null; removed_at: string | null }
 type ThemeRow = { id: string; name: string }
 type HistoryLine = { at: string; body: string; kind?: string; by?: string | null }
@@ -145,11 +146,11 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // The matter: its steps and documents, when one stands on the person.
   const matter = matters.find((m) => !m.closed_at) ?? matters[0] ?? null
-  const counselOnlyHeld = matter ? await reader.rpc('matter_counsel_only_count', { p_matter_id: matter.id }).then((n) => (typeof n === 'number' ? n : 0)).catch(() => 0) : 0
+  const counselOnlyCount = matter ? await reader.rpc('matter_counsel_only_count', { p_matter_id: matter.id }).catch(() => 0) : 0
   const [matterEntries, matterDocs] = matter
     ? await Promise.all([
         read<MatterEntryRow>('matter steps', async () => newestFirst(await every('matter steps', 'legal_matter_entries', 'id,kind,occurred_on,body,meta,voided_at', eq('matter_id', matter.id))(), 'occurred_on').reverse()),
-        read<MatterDocRow>('matter documents', every('matter documents', 'legal_matter_documents', 'id,title,state,dated_on,voided_at,mime', eq('matter_id', matter.id), 'dated_on')),
+        read<MatterDocRow>('matter documents', every('matter documents', 'legal_matter_documents', 'id,title,state,dated_on,voided_at,mime,counsel_only', eq('matter_id', matter.id), 'dated_on')),
       ])
     : [[], []]
 
@@ -215,7 +216,9 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     .filter((e) => e.kind === 'plan' && !e.voided_at)
     .sort((a, b) => ((a.occurred_on ?? '') < (b.occurred_on ?? '') ? -1 : (a.occurred_on ?? '') > (b.occurred_on ?? '') ? 1 : 0))
     .map((e) => ({ id: e.id, on: e.occurred_on, body: firstLine(e.body ?? '', 160), done: Boolean(e.meta?.done_at) }))
-  const matterDocuments = matterDocs.filter((d) => !d.voided_at).map((d) => ({ id: d.id, title: d.title, state: d.state, dated_on: d.dated_on, text: Boolean(d.mime && /^text\//.test(d.mime)) }))
+  const matterDocuments = matterDocs.filter((d) => !d.voided_at).map((d) => ({ id: d.id, title: d.title, state: d.state, dated_on: d.dated_on, text: Boolean(d.mime && /^text\//.test(d.mime)), ...(d.counsel_only ? { counsel_only: true } : {}) }))
+  // v2.6986: counsel-only papers come back to the seat while the switch stands open; held names only the ones that did not.
+  const counselOnlyHeld = counselOnlyStillHeld(counselOnlyCount, matterDocs.filter((d) => !d.voided_at && d.counsel_only === true).length)
 
   // The small blocks first, the long lists last: what a cut would take is the part another verb reads anyway.
   const whole = {
@@ -249,6 +252,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
           events: matterEntries.filter((e) => e.kind !== 'plan' && !e.voided_at).length,
           documents: matterDocuments,
           // v2.6720 (punch list #288): how many of the matter's documents are for counsel alone and refused to the seat; a count, never a row.
+          // v2.6986: 0 while the switch stands open, since those papers are listed above, marked counsel_only.
           counsel_only_held: counselOnlyHeld,
         }
       : null,

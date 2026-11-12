@@ -1151,7 +1151,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       files.push({ name, mime, size_bytes: sizeBytes, sha256 })
     }
     const p: Json = { person_id: personId, dated_on: datedOn, title, memo, files }
-    // v2.6554: counsel-only — kept here only, never filed in Drive, never read back by this seat or the agent.
+    // v2.6554: counsel-only — kept here only, never filed in Drive, never read by the HR agent's key. This seat reads it back since v2.6986.
     if (evidence.counsel_only === true) p.counsel_only = true
     const entryId = str('entry_id')
     if (entryId) {
