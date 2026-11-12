@@ -120,3 +120,11 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
 - Each PR runs its own before and after against the live layers from a `vite-node` script that
   prints counts only, and writes the counts in its fragment.
 - After each deploy: Prospects → Permits, the city the PR is about, a few cards, the Property line.
+
+## Walked after each deploy
+
+Read-only, signed in on a dev server, counts only.
+
+- **PR 1** (deployed from `main` 2026-11-12): San Antonio, the 16 newest commercial building
+  permits with a point, one per address. All 16 name an owner, 11 by the address and 5 read at
+  the permit's point. The second open of all 16 came from the kept answers.

@@ -9,7 +9,7 @@ import { buildEstimateWins, type EstimateSent } from '../../lib/bridge/estimateW
 
 const md = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 let seq = 0
-const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: createdYmd, usd, outcome: null, outcomeYmd: null, jobCreatedYmd: null, gcId, projectName: null, ...over })
+const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: createdYmd, usd, outcome: null, outcomeYmd: null, gcId, projectName: null, ...over })
 const est = (createdYmd: string, usd: number): MarketDeskEstimate => ({ id: `e${++seq}`, createdYmd, sentYmd: createdYmd, status: 'sent', usd, acceptedYmd: null, updatedYmd: createdYmd })
 
 // Made-up sources, every one of them.

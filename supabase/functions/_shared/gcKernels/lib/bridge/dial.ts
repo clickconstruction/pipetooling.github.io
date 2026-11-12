@@ -9,7 +9,7 @@
  * exploiting ends and elevating begins) and the pile over the next twelve
  * weeks. Pure.
  */
-import { STAGE_META, STAGE_ORDER, buildStageFlow, marketWinShare, stageUsd, type StageFlow, type StageFlowInput, type StageId } from './stageFlow.ts'
+import { STAGE_META, STAGE_ORDER, buildStageFlow, marketWorthPerWeek, stageUsd, type StageFlow, type StageFlowInput, type StageId } from './stageFlow.ts'
 
 /** Past this many times today's pace the dial reads as elevating, not exploiting. */
 export const DIAL_ELEVATE_AT = 1.5
@@ -18,7 +18,7 @@ export const DIAL_WEEKS_AHEAD = 12
 export type DialWords = { label: string; outWho: string; inWho: string | null; exploit: string; elevate: string; unitWord: string }
 
 export const DIAL_WORDS: Record<StageId, DialWords> = {
-  market: { label: 'asked a week', outWho: 'asks come in at', inWho: null, exploit: 'the GCs who invite us', elevate: 'ads and new GCs', unitWord: 'asks' },
+  market: { label: 'worth a week', outWho: 'the asks are worth', inWho: null, exploit: 'the GCs who invite us', elevate: 'ads and new GCs', unitWord: 'asks' },
   sales: { label: 'sold a week', outWho: 'sales sells', inWho: null, exploit: 'the follow-up we do now', elevate: 'more bids out', unitWord: 'jobs' },
   build: { label: 'built a week', outWho: 'the field builds', inWho: 'sales sells', exploit: 'the crews we have', elevate: 'another crew', unitWord: 'field hours' },
   bill: { label: 'billed a week', outWho: 'the office bills', inWho: 'the field finishes', exploit: 'the biller we have', elevate: 'a second biller', unitWord: 'jobs' },
@@ -36,17 +36,30 @@ export type DialSpec = {
   elevateAtUsd: number
 }
 
-/** Today's pace for a stage, in dollars a week; null when the stage does not read. */
+/**
+ * Today's pace for a stage, in dollars a week; null when the stage does not read. Market's is what the asks are worth
+ * at the won rates (punch list #318). Until that is read it is the dollars that came in, so the pipe still draws a
+ * Market section: `marketPaceIsWorth` says which, for the word beside the number.
+ */
 export function todayPace(input: StageFlowInput, stage: StageId): number | null {
   if (stage === 'bill') return input.bill ? input.bill.outPerWeekUsd : null
   if (stage === 'collect') return input.collect ? input.collect.outPerWeekUsd : null
   if (stage === 'build') return input.build ? input.build.outPerWeekUsd : null
   if (stage === 'sales') return input.sales?.soldPerWeekUsd ?? null
   const m = input.market
-  return m ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks) : null
+  return m ? (marketWorthPerWeek(m) ?? marketAskedPerWeek(m)) : null
+}
+
+const marketAskedPerWeek = (m: NonNullable<StageFlowInput['market']>): number => (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
+
+/** True when Market's pace is what the asks are worth, false while it is still the dollars that came in. */
+export function marketPaceIsWorth(input: Pick<StageFlowInput, 'market'>): boolean {
+  return marketWorthPerWeek(input.market) != null
 }
 
 export function dialSpec(input: StageFlowInput, stage: StageId, units: { perUnitUsd: number | null }): DialSpec | null {
+  // Market's dial is in dollars of worth. Until the worth is read there is no dial to move.
+  if (stage === 'market' && !marketPaceIsWorth(input)) return null
   const today = todayPace(input, stage)
   if (today == null || !(today > 0)) return null
   const step = today >= 100_000 ? 5000 : 1000
@@ -70,10 +83,12 @@ export function applyDial(input: StageFlowInput, stage: StageId, usd: number): S
     out.sales = { ...input.sales, soldPerWeekUsd: usd }
     if (input.build) out.build = { ...input.build, inPerWeekUsd: usd }
   } else if (stage === 'market' && input.market) {
+    // More worth is read as more of the same asks at the same won rates: the asks and each part scale with it.
     const m = input.market
-    const today = (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
+    const today = todayPace(input, 'market') ?? 0
     const k = today > 0 ? usd / today : 1
-    out.market = { ...m, bidsInvitedUsd: m.bidsInvitedUsd * k, estimatesRequestedUsd: m.estimatesRequestedUsd * k }
+    const scaled = (v: number | null): number | null => (v == null ? null : v * k)
+    out.market = { ...m, bidsInvitedUsd: m.bidsInvitedUsd * k, estimatesRequestedUsd: m.estimatesRequestedUsd * k, worth: m.worth && marketPaceIsWorth(input) ? { perWeekUsd: usd, bidsPerWeekUsd: scaled(m.worth.bidsPerWeekUsd), estimatesPerWeekUsd: scaled(m.worth.estimatesPerWeekUsd) } : m.worth }
   }
   return out
 }
@@ -181,22 +196,12 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
     spark = { pileWord: 'Build’s pile', newSeries, oldSeries, endText: stageUsd(end), tone: slopeNew > 0 ? 'red' : slopeNew === 0 ? 'amber' : 'green' }
     if (fieldPace == null) lines.push({ head: 'the pile', text: 'The field’s pace is not readable yet, so the pile cannot be read against it.', tone: 'grey' })
     else if (stage === 'market') {
-      // Asks are not demand that converts: read them through the window's win share when it is readable, and say which basis the verdict stands on.
-      const winShare = marketWinShare(input.sales)
-      const converts = winShare != null ? usd * winShare : null
-      lines.push(
-        converts != null
-          ? {
-              head: 'the pile',
-              text: `The window wins ${Math.round((winShare as number) * 100)}% of what goes out, so ${stageUsd(usd)} a week of asks ≈ ${stageUsd(converts)} of work. The field builds ${stageUsd(fieldPace)} a week. Demand is ${converts >= fieldPace ? 'not ' : ''}short of the field, by the win share.`,
-              tone: converts >= fieldPace ? 'green' : 'red',
-            }
-          : {
-              head: 'the pile',
-              text: `${stageUsd(usd)} a week of asks against the ${stageUsd(fieldPace)} the field builds. No win share is readable yet, so this compares the asks alone. Demand is ${usd >= fieldPace ? 'not ' : ''}short of the field.`,
-              tone: usd >= fieldPace ? 'green' : 'red',
-            },
-      )
+      // The dial is in dollars of worth: the asks already read through the won rates, so it compares with the field as it stands.
+      lines.push({
+        head: 'the pile',
+        text: `Market is worth ${stageUsd(usd)} a week at the won rates. The field builds ${stageUsd(fieldPace)} a week. Demand is ${usd >= fieldPace ? 'not ' : ''}short of the field.`,
+        tone: usd >= fieldPace ? 'green' : 'red',
+      })
     }
     else if (fed > fieldPace) lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work and builds ${stageUsd(fieldPace)}. Build’s pile grows ${stageUsd(fed - fieldPace)} a week.`, tone: 'amber' })
     else if (fed === fieldPace) lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work, its pace exactly. Build’s pile holds at ${stageUsd(buildPile)}.`, tone: 'amber' })
@@ -227,11 +232,8 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
   } else if (stage === 'sales') {
     lines.push({ head: 'the money', text: `Each ${stageUsd(10_000)} more sold a week is ${stageUsd(10_000)} more for the field to build and the office to bill.`, tone: 'grey' })
   } else {
-    const m = input.market
     const sold = input.sales?.soldPerWeekUsd ?? null
-    const asked = m ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks) : null
-    const share = sold != null && asked != null && asked > 0 ? sold / asked : null
-    lines.push({ head: 'the money', text: share != null ? `By this window’s record, each ${stageUsd(100_000)} asked a week became about ${stageUsd(100_000 * share)} a week of work for the field.` : 'What a dollar asked becomes is not readable until Sales and Build read.', tone: 'grey' })
+    lines.push({ head: 'the money', text: sold != null ? `Market is worth ${stageUsd(spec.todayUsd)} a week today. Sales sold ${stageUsd(sold)} a week over the same weeks.` : 'What Market becomes is not readable until Sales and Build read.', tone: 'grey' })
   }
 
   const valueText = `${stageUsd(usd)}/wk`
