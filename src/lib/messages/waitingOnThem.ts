@@ -45,6 +45,11 @@ export interface WaitLine {
   delivery?: QuoDeliveryWord | null
   /** An event line's key (`messages.quo_id`): the estimate's `estimate:<id>:opened|accepted|declined`. */
   key?: string | null
+  /**
+   * The mail was filed for the record (`messages.history`, v2.7027). A filed mail of ours makes nobody quiet, so the
+   * lane skips it. A filed mail of theirs is still their answer to what we wrote before it.
+   */
+  history?: boolean
 }
 
 export interface WaitingRow {
@@ -89,6 +94,7 @@ export function theirWord(line: Pick<WaitLine, 'direction' | 'channel' | 'body' 
 export function waitingOnThem(lines: readonly WaitLine[], pill: KindPill, now: Date = new Date()): WaitingRow[] {
   const newest = new Map<string, { line: WaitLine; theirs: boolean }>()
   for (const l of lines) {
+    if (l.history && l.direction === 'out') continue
     const theirs = theirWord(l)
     if (theirs === null) continue
     const have = newest.get(l.contactId)

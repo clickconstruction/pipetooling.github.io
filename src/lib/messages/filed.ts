@@ -1,0 +1,21 @@
+/**
+ * When a mail is old enough to be filed for the record (v2.7027, punch list #324). Every line keeps when it was
+ * written (`messages.at`) and when it landed (`messages.created_at`). A mail tagged from a person's own box more than
+ * `FILED_AFTER_DAYS` days after it was written is history: the person saw it in their own mail when it came, so it
+ * lands in the thread and on the job and asks nobody for a reply (`messages.history`). The company boxes' readers never
+ * file: mail in the team box was seen by nobody until the app read it.
+ *
+ * A file of its own with no imports, so the tag's planner (`myMail/tagPlan.ts`) takes it to the edge without the
+ * thread kernel. `messages/thread.ts` re-exports both.
+ */
+
+/** A mail older than this many days when it lands is filed for the record (the dev's call 1, 2026-11-12). */
+export const FILED_AFTER_DAYS = 14
+
+/** Whether a mail written at `atIso` is old enough, at `nowIso`, to be filed for the record. */
+export function filedByAge(atIso: string | null | undefined, nowIso: string | null | undefined): boolean {
+  if (!atIso || !nowIso) return false
+  const at = Date.parse(atIso)
+  const now = Date.parse(nowIso)
+  return Number.isFinite(at) && Number.isFinite(now) && now - at > FILED_AFTER_DAYS * 86_400_000
+}

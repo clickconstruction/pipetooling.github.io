@@ -30,7 +30,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
   const fromIso = new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000).toISOString()
   const result = await db
     .from('messages')
-    .select('id, contact_id, direction, body, at, channel, delivery, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
+    .select('id, contact_id, direction, body, at, channel, delivery, history, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
     .in('direction', ['in', 'out'])
     .in('channel', ['text', 'email', 'call', 'voicemail', 'missed'])
     .eq('auto', false)
@@ -46,6 +46,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
     at: string
     channel: string | null
     delivery: string | null
+    history: boolean | null
     number: { value: string | null } | null
     contact: { name: string | null; kind: string | null; customer: { name: string | null } | null } | null
   }>
@@ -63,6 +64,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
       number: r.number?.value ?? null,
       channel: (r.channel ?? null) as MessageChannel | null,
       delivery: deliveryOf(r.delivery),
+      ...(r.history === true ? { history: true } : {}),
     }))
   // Their answers that are not a line in (v2.6500): the kernel reads each key and body and keeps the ones that count.
   const events = await db.from('messages').select('id, contact_id, body, at, quo_id').eq('channel', 'event').eq('direction', 'team').or(ANSWER_EVENTS_FILTER).gte('at', fromIso).order('at', { ascending: false }).limit(500)

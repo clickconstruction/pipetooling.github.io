@@ -1270,10 +1270,59 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     fireEvent.click(box)
     expect(box.checked).toBe(false)
     expect(window.localStorage.getItem('pt.lienHelpSheet.v1')).toBe('off')
+    // The notice records have a box of their own (punch list #322): with both unticked the papers print alone.
+    fireEvent.click(within(bar.querySelector('[data-lien-affidavit-notice-record]') as HTMLElement).getByRole('checkbox'))
+    expect(window.localStorage.getItem('pt.lienNoticeRecord.v1')).toBe('off')
     fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
     expect(openPrintMock.mock.calls[0]![0]).not.toContain('lien-help')
     expect(fileCopyMock).toHaveBeenCalledTimes(2)
     window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    window.localStorage.removeItem('pt.lienNoticeRecord.v1')
+  })
+
+  it('the batch prints a notice record block for each paper behind the help sheet, and copies of the notices when their box is ticked (punch list #322)', async () => {
+    openPrintMock.mockClear()
+    fileCopyMock.mockClear()
+    for (const key of ['pt.lienHelpSheet.v1', 'pt.lienNoticeRecord.v1', 'pt.lienNoticeCopiesBatch.v1']) window.localStorage.removeItem(key)
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    const d = three([ready('aff1', 'j650'), ready('aff2', 'j651')])
+    // j650 has a notice on record with both copies and its own words; j651 has none.
+    const words = { noticeDate: '2026-07-10', projectDescription: '650 Sample Way, Marlow, TX 75001', claimantName: 'Sample Plumbing LLC', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Ridgeway Builders', contractedWithIfDifferent: '', claimAmount: '2650.00', contactPerson: 'Pat Sample', claimantAddress: '100 Made Up Rd, Marlow, TX 75001' }
+    const sends = [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0000 0000 0000 0000 11', sent_on: '2026-07-10' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '', sent_on: '2026-07-10' }]
+    d.filingsByJob = { j650: [{ id: 'f-n', job_id: 'j650', kind: 'notice_53_056', months_covered: ['2026-06'], sends, fields: words, amount: 2650, created_at: '2026-07-10T15:00:00Z', voided_at: null, document_url: '', document_note: '' }] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    const recordBox = within(bar.querySelector('[data-lien-affidavit-notice-record]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(bar.querySelector('[data-lien-affidavit-notice-record]')?.textContent).toBe('Print the notice record')
+    expect(recordBox.checked).toBe(true)
+    // The copies are the one box that starts unticked, and it says what it costs.
+    const copiesBox = within(bar.querySelector('[data-lien-affidavit-notice-copies]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(bar.querySelector('[data-lien-affidavit-notice-copies]')?.textContent).toBe('Add a copy of each notice (1 more page)')
+    expect(copiesBox.checked).toBe(false)
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    let html = openPrintMock.mock.calls[0]![0]
+    expect(html.indexOf('data-lien-help="batch"')).toBeLessThan(html.indexOf('data-lien-help="records"'))
+    expect(html.indexOf('data-lien-help="records"')).toBeLessThan(html.indexOf('<div class="filing-paper'))
+    expect(html.match(/data-lien-record-paper="/g)).toHaveLength(2)
+    expect(html).toContain('9407 0000 0000 0000 0000 11')
+    expect(html).toContain('<strong>No number on record</strong>')
+    expect(html).toContain('data-lien-record-no-notice')
+    expect(html).toContain('The notice records are next, then 2 papers')
+    expect(html).not.toContain('data-lien-help="notice-copy"')
+    // No job's filed copy carries a word of the record.
+    expect(fileCopyMock.mock.calls.every(([, body]) => !body.html.includes('lien-help') && !body.html.includes('lien-record'))).toBe(true)
+    // Ticked, a copy of the notice prints behind the records, named by its paper's row, and still in front of every paper.
+    fireEvent.click(copiesBox)
+    expect(window.localStorage.getItem('pt.lienNoticeCopiesBatch.v1')).toBe('on')
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
+    html = openPrintMock.mock.calls[1]![0]
+    expect(html.match(/data-lien-help="notice-copy"/g)).toHaveLength(1)
+    expect(html).toContain('Copy of notice 1 · do not mail or file this page')
+    expect(html).toContain('Notice of Claim for Unpaid Labor or Materials')
+    expect(html.lastIndexOf('</section>')).toBeLessThan(html.indexOf('<div class="filing-paper'))
+    expect(fileCopyMock.mock.calls.every(([, body]) => !body.html.includes('lien-help'))).toBe(true)
+    for (const key of ['pt.lienHelpSheet.v1', 'pt.lienNoticeRecord.v1', 'pt.lienNoticeCopiesBatch.v1']) window.localStorage.removeItem(key)
   })
 
   it('a ready paper a gate has closed is not printed, the sheet says what the app checked, and the typed county prints on both county lines (punch list #314)', async () => {

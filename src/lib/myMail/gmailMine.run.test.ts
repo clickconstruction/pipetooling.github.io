@@ -44,6 +44,16 @@ const FUNCTION_FILE = '../../../supabase/functions/gmail-mine/index.ts'
 const realFetch = globalThis.fetch
 const logged: string[] = []
 
+// The tag files a mail more than 14 days old (v2.7027, punch list #324), so the run's clock is held on the day of the
+// fixtures' mail. Only Date is faked: every await and timer runs as it would.
+const RUN_NOW = '2026-11-02T18:00:00.000Z'
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date(RUN_NOW) })
+})
+afterAll(() => {
+  vi.useRealTimers()
+})
+
 beforeAll(async () => {
   ENV.GOOGLE_SERVICE_ACCOUNT_JSON = await fakeServiceAccountJson()
   ;(globalThis as unknown as { Deno: unknown }).Deno = { env: { get: (k: string) => ENV[k] } }
@@ -172,6 +182,13 @@ async function post(bearer: string | null, body: unknown): Promise<{ status: num
   if (bearer) headers.Authorization = `Bearer ${bearer}`
   const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
   return { status: res.status, body: (await res.json()) as Record<string, unknown>, headers: res.headers }
+}
+
+/** A post as the dev seat makes it: the dev's own session and the seat header. */
+async function seat(body: unknown, bearer = 'dev-jwt'): Promise<{ status: number; body: Record<string, unknown> }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, 'X-Dev-Seat': 'dev-mcp' }
+  const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
+  return { status: res.status, body: (await res.json()) as Record<string, unknown> }
 }
 
 /** A post as the cron makes it: its secret in `X-Cron-Secret` and no session. */
@@ -506,7 +523,7 @@ describe('gmail-mine: tag and untag', () => {
     const res = await post('marisol-jwt', tagElm)
     expect(res.status).toBe(200)
     const newContact = db.rows('contacts').find((c) => c.name === 'Ana Ruiz')
-    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 2, tied: 1, files: 1, contactId: 'c-dale', unknownSender: { contactId: newContact?.id, address: 'ana@ridgeway.example', name: 'Ana Ruiz' } })
+    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 2, tied: 1, files: 1, contactId: 'c-dale', unknownSender: { contactId: newContact?.id, address: 'ana@ridgeway.example', name: 'Ana Ruiz' }, filed: 0 })
     expect(newContact).toMatchObject({ kind: 'unknown' })
 
     // The line bids@ held is tied as the caller, who is stamped; the job joins Dale's jobs.
@@ -561,7 +578,7 @@ describe('gmail-mine: tag and untag', () => {
     await post('marisol-jwt', tagElm)
     const before = { lines: lines().length, files: Object.keys(db.files).length, writes: rpcs('email_write_line').length, places: rpcs('email_place_address').length, ties: rpcs('tie_message').length }
     const again = await post('marisol-jwt', tagElm)
-    expect(again.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 0, tied: 0, files: 0, contactId: 'c-dale', unknownSender: null })
+    expect(again.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 0, tied: 0, files: 0, contactId: 'c-dale', unknownSender: null, filed: 0 })
     expect({ lines: lines().length, files: Object.keys(db.files).length, writes: rpcs('email_write_line').length, places: rpcs('email_place_address').length, ties: rpcs('tie_message').length }).toEqual(before)
     expect(db.calls.filter((c) => c.includes('storage upload'))).toHaveLength(3)
     expect(db.rows('email_tag_threads')).toHaveLength(1)
@@ -625,6 +642,26 @@ describe('gmail-mine: tag and untag', () => {
   })
 
   const events = () => lines().filter((l) => l.channel === 'event')
+
+  it('files a conversation that is all old mail for the record: each line marked, the grey line saying so (v2.7027, punch list #324)', async () => {
+    // The same conversation, tagged three weeks on.
+    vi.setSystemTime(new Date('2026-11-23T18:00:00.000Z'))
+    try {
+      const res = await post('marisol-jwt', tagElm)
+      expect(res.body).toMatchObject({ ok: true, lines: 2, filed: 2 })
+      const written = lines().filter((l) => l.mailbox === 'mine')
+      expect(written.length).toBe(2)
+      expect(written.every((l) => l.history === true)).toBe(true)
+      expect(events().map((e) => e.body)).toEqual(['Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.'])
+    } finally {
+      vi.setSystemTime(new Date(RUN_NOW))
+    }
+  })
+
+  it('writes no mark on mail from this week', async () => {
+    await post('marisol-jwt', tagElm)
+    expect(lines().filter((l) => l.mailbox === 'mine').some((l) => l.history === true)).toBe(false)
+  })
 
   it('writes one grey line in the other party’s thread, tied to the job, and the untag takes it off', async () => {
     await post('marisol-jwt', tagElm)
@@ -751,7 +788,7 @@ describe('gmail-mine: tag and untag', () => {
     google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'personal' })
     google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-ana-1')!.labelIds.push('Label_7')
     const res = await post('marisol-jwt', tagElm)
-    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 1, tied: 1, files: 0, contactId: 'c-dale', unknownSender: null })
+    expect(res.body).toEqual({ ok: true, jobKey: `pipeline:${ELM}`, lines: 1, tied: 1, files: 0, contactId: 'c-dale', unknownSender: null, filed: 0 })
     expect(lines().some((l) => l.gmail_id === 'g-ana-1')).toBe(false)
     expect(db.rows('contacts').some((c) => c.name === 'Ana Ruiz')).toBe(false)
     expect(Object.keys(db.files).some((k) => k.includes('g-ana-1'))).toBe(false)
@@ -1190,15 +1227,100 @@ describe('gmail-mine: follow, the cron’s', () => {
   })
 })
 
+describe('gmail-mine: a tag onto a job through the dev seat names the dev, never the person', () => {
+  const seatTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL }
+  const ownTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }
+  const SEAT_WORDS = "Robert tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself."
+  const OWN_WORDS = 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.'
+  const events = () => lines().filter((l) => l.channel === 'event')
+  const tagRows = () => db.rows('email_tag_threads')
+  const boxLine = () => lines().find((l) => l.id === 'm-box-1')
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = elmThread()
+    db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+  })
+
+  it('keeps the box as the person’s and stamps the dev as the tagger, on the row, the tie and the grey line', async () => {
+    const res = await seat(seatTag)
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, lines: 2, tied: 1 })
+    // The row: whose box, and who tagged. The lines still come from Marisol's mail.
+    expect(tagRows()).toEqual([expect.objectContaining({ user_id: 'u-marisol', gmail_thread_id: 't-elm', jobs_ledger_id: ELM, tagged_by: 'u-dev', placed_by_app: false })])
+    expect(lines().filter((l) => l.mailbox === 'mine').map((l) => l.mail_user_id)).toEqual(['u-marisol', 'u-marisol'])
+    // The box's line is tied as the dev, whose press it was.
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+    // The thread says who really tagged, and how.
+    expect(events().map((e) => e.body)).toEqual([SEAT_WORDS])
+    expect(logged.filter((l) => l.includes('"event":"gmail_mine_tag"') && l.includes('"dev":"u-dev"'))).toHaveLength(1)
+  })
+
+  it('writes nothing and names nobody on the seat’s plan', async () => {
+    const res = await seat({ ...seatTag, plan: true })
+    expect(res.body).toMatchObject({ ok: true, plan: true })
+    expect(tagRows()).toEqual([])
+    expect(events()).toEqual([])
+  })
+
+  it('lets the person untag what the seat tagged: the line the seat tied comes off the job with the rest', async () => {
+    await seat(seatTag)
+    expect(tagRows()[0]).toMatchObject({ tied_line_ids: ['m-box-1'] })
+    const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(res.status).toBe(200)
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: null })
+    expect(tagRows()).toEqual([])
+    expect(events()).toEqual([])
+  })
+
+  it('keeps the first tagger on a second tag onto the same job, whoever makes it, on the row and on the line', async () => {
+    await seat(seatTag)
+    await post('marisol-jwt', ownTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ tagged_by: 'u-dev' })])
+    expect(events().map((e) => e.body)).toEqual([SEAT_WORDS])
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    // The other way round: the person pressed it first, and the seat's second tag changes neither.
+    await post('marisol-jwt', ownTag)
+    await seat(seatTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ tagged_by: 'u-marisol' })])
+    expect(events().map((e) => e.body)).toEqual([OWN_WORDS])
+  })
+
+  it('names whoever moves the conversation onto another job: the person after the seat, the seat after the person', async () => {
+    await seat(seatTag)
+    await post('marisol-jwt', { ...ownTag, job: { kind: 'pipeline', id: HARBOR } })
+    expect(tagRows()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, tagged_by: 'u-marisol' })])
+    expect(events()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, body: OWN_WORDS })])
+    // The line the seat tied moved with her tag, and is hers now.
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: HARBOR, tied_by: 'u-marisol' })
+    await seat(seatTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ jobs_ledger_id: ELM, tagged_by: 'u-dev' })])
+    expect(events()).toEqual([expect.objectContaining({ jobs_ledger_id: ELM, body: SEAT_WORDS })])
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+  })
+
+  it('ties what the follow brings later as the dev who tagged, so the untag still takes it off', async () => {
+    // The seat tags before bids@ has Dale's mail; the box takes its copy afterwards, on no job.
+    db.tables.messages = []
+    await seat(seatTag)
+    db.rows('messages').push({ id: 'm-box-late', contact_id: 'c-dale', gmail_id: 'bx-late', gmail_thread_id: 'bx-t-9', rfc_message_id: '<late-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null })
+    google.boxes[MARISOL]!.mails.push(mail('g-late', 't-elm', '2026-11-02T10:00:00.000Z', { From: DALE, Cc: 'bids@clickplumbing.example', Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<late-1@ridgeway.example>' }, 'One more thing.'))
+    expect((await cron({ action: 'follow' })).status).toBe(200)
+    expect(lines().find((l) => l.id === 'm-box-late')).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(lines().find((l) => l.id === 'm-box-late')).toMatchObject({ jobs_ledger_id: null })
+  })
+
+  it('reads a person’s own press as before: the row and the line name the person', async () => {
+    await post('marisol-jwt', ownTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ user_id: 'u-marisol', tagged_by: 'u-marisol' })])
+    expect(boxLine()).toMatchObject({ tied_by: 'u-marisol' })
+    expect(events().map((e) => e.body)).toEqual([OWN_WORDS])
+  })
+})
+
 describe('gmail-mine: a conversation onto a person’s HR file (punch list #289)', () => {
   const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
   const ask = (over: Row = {}): Row => ({ action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL, ...over })
-  /** A post as the dev seat makes it: the dev's own session and the seat header. */
-  async function seat(body: unknown, bearer = 'dev-jwt'): Promise<{ status: number; body: Record<string, unknown> }> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, 'X-Dev-Seat': 'dev-mcp' }
-    const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
-    return { status: res.status, body: (await res.json()) as Record<string, unknown> }
-  }
   const entries = () => db.rows('person_file_entries')
   const tagRows = () => db.rows('email_tag_threads')
 

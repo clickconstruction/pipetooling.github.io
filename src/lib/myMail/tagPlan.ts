@@ -17,6 +17,7 @@
 import { emailParty, fileKeep, rfcMessageId, type EmailParty, type OurAddresses } from '../emailIn/emailLine'
 import { fileLinks, type FileHost } from '../emailIn/fileLinks'
 import type { EmailAddress, EmailIn } from '../emailIn/gmailMessage'
+import { filedByAge } from '../messages/filed'
 import { jobKey } from '../messages/jobKeys'
 import { MY_MAIL_GMAIL_LABEL, type MyMailJobChip } from './contract'
 
@@ -67,6 +68,11 @@ export interface MyMailKnown {
   boxes?: readonly string[]
   /** Gmail's ids of the labels the person leaves out (`users.my_mail_hidden_labels`, by name): a mail under one is never written or tied. */
   hidden?: readonly string[]
+  /**
+   * The moment the plan is made, ISO (v2.7027, punch list #324). A mail more than `FILED_AFTER_DAYS` days older is
+   * filed for the record: its line is written with `history`, so it asks nobody for a reply. Absent: nothing is filed.
+   */
+  nowIso?: string
 }
 
 /** A file on a written line: copied into the bucket up to 25 MB, else left in Gmail and named (`fileKeep`). */
@@ -130,10 +136,15 @@ export type MyMailTagStep =
       links: MyMailTagLink[]
       /** The raw mail's name beside the files (`format=raw`), so Evidence gets it as received. */
       emlName: string
+      /** Filed for the record (v2.7027): the mail was more than `FILED_AFTER_DAYS` days old when the plan was made. */
+      history: boolean
     }
   | { kind: 'skip'; gmailId: string; why: MyMailTagSkip }
 
-/** The `email_tag_threads` row the tag upserts, on `(user_id, gmail_thread_id)`. */
+/**
+ * The `email_tag_threads` row the tag upserts, on `(user_id, gmail_thread_id)`. `tagged_by` is the person here;
+ * `gmail-mine` writes the tagger over it (`myMailTaggedBy`: the dev when the tag came through the dev seat).
+ */
 export interface MyMailThreadRow {
   user_id: string
   gmail_thread_id: string
@@ -157,8 +168,8 @@ export interface MyMailTagPlan {
   threadRow: MyMailThreadRow
   /** The label put on each mail in the person's Gmail once its line is written or tied. */
   label: typeof MY_MAIL_GMAIL_LABEL
-  /** Lines to write, lines to tie, files on the written lines, mails not written. */
-  counts: { lines: number; tied: number; files: number; skipped: number }
+  /** Lines to write, lines to tie, files on the written lines, mails not written, and how many of the lines to write are filed for the record. */
+  counts: { lines: number; tied: number; files: number; skipped: number; filed: number }
 }
 
 const clean = (address: string | null | undefined): string => (address ?? '').trim().toLowerCase()
@@ -277,6 +288,7 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
       }),
       links: fileLinks(email.links).map((l) => ({ name: l.name, url: l.url, host: l.host })),
       emlName: `${email.gmailId}.eml`,
+      history: filedByAge(email.at, known.nowIso),
     })
   }
 
@@ -297,6 +309,7 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
       tied: steps.filter((s) => s.kind === 'tie' && s.tie).length,
       files: writes.reduce((n, s) => n + s.files.length, 0),
       skipped: steps.filter((s) => s.kind === 'skip').length,
+      filed: writes.filter((s) => s.history).length,
     },
   }
 }
