@@ -5,6 +5,7 @@ import {
   askedBexarLayer,
   askedOtherQuestion,
   askedWithoutId,
+  askedWithoutNeighbours,
   askedWithoutPoint,
   COMAL_PARCELS,
   GUADALUPE_PARCELS,
@@ -13,7 +14,10 @@ import {
   idWhere,
   interstateOf,
   nameSpellings,
+  neighbourPointQuestion,
+  neighbourSources,
   ordinalOf,
+  parcelFactsAtNeighbour,
   parcelFactsByAddress,
   parcelFactsById,
   parcelFactsByPoint,
@@ -291,5 +295,44 @@ describe('the point, for a layer asked by its columns', () => {
     expect(askedWithoutPoint(pointQuestion(at), at)).toBe(false)
     // The permit has no point: nothing more to ask.
     expect(askedWithoutPoint(address, null)).toBe(false)
+  })
+})
+
+describe('the county the lot is in, when the city reaches over the county line', () => {
+  const at = { lat: 29.7, lng: -98.1 }
+  it('names the neighbours whose layers are read here', () => {
+    expect(neighbourSources(COMAL_PARCELS).map((s) => s.county)).toEqual(['Guadalupe'])
+    expect(neighbourSources(HAYS_PARCELS).map((s) => s.county)).toEqual(['Guadalupe', 'Comal'])
+    expect(neighbourSources(GUADALUPE_PARCELS).map((s) => s.county)).toEqual(['Comal'])
+    expect(neighbourSources(TRAVIS_PARCELS).map((s) => s.county)).toContain('Hays')
+    // No county is its own neighbour.
+    for (const source of [TRAVIS_PARCELS, HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS]) expect(neighbourSources(source)).not.toContain(source)
+  })
+  it("reads the neighbour's parcel at the point and names its county", () => {
+    const body = rows({ prop_id: 0, file_as_name: null }, { prop_id: 28000, file_as_name: 'SAMPLE TRACT LLC', situs_num: '210', situs_street_prefx: 'W', situs_street: 'COURT ST' })
+    const facts = parcelFactsAtNeighbour(GUADALUPE_PARCELS, body)
+    expect(facts).toMatchObject({ prop_id: '28000', owner: 'SAMPLE TRACT LLC', matched_by: 'point', county: 'Guadalupe' })
+    expect(facts?.detail_url).toBe('https://esearch.guadalupead.org/Property/View/28000')
+    expect(parcelFactsAtNeighbour(GUADALUPE_PARCELS, rows())).toBeNull()
+    // The city's own county never names itself.
+    expect(parcelFactsByPoint(GUADALUPE_PARCELS, body)?.county).toBeUndefined()
+  })
+  it('writes the question so that it is never read as the address question', () => {
+    const question = neighbourPointQuestion(GUADALUPE_PARCELS, at)
+    expect(question).toBe('point -98.1,29.7 in Guadalupe')
+    const address = COMAL_PARCELS.where({ num: '550', prefix: null, name: 'LANDA' })
+    expect(askedOtherQuestion(COMAL_PARCELS, `${address} | point -98.1,29.7 | ${question}`, '550 LANDA ST')).toBe(false)
+    expect(askedOtherQuestion(COMAL_PARCELS, `point -98.1,29.7 | ${question}`, '550 LANDA ST')).toBe(true)
+  })
+  it('asks a kept "no parcel" again once when a neighbour was never asked', () => {
+    const address = COMAL_PARCELS.where({ num: '550', prefix: null, name: 'LANDA' })
+    expect(askedWithoutNeighbours(COMAL_PARCELS, `${address} | point -98.1,29.7`, at)).toBe(true)
+    expect(askedWithoutNeighbours(COMAL_PARCELS, null, at)).toBe(true)
+    expect(askedWithoutNeighbours(COMAL_PARCELS, `${address} | point -98.1,29.7 | ${neighbourPointQuestion(GUADALUPE_PARCELS, at)}`, at)).toBe(false)
+    // Hays has two neighbours: both must have been asked.
+    expect(askedWithoutNeighbours(HAYS_PARCELS, `point -98.1,29.7 | ${neighbourPointQuestion(GUADALUPE_PARCELS, at)}`, at)).toBe(true)
+    expect(askedWithoutNeighbours(HAYS_PARCELS, `point -98.1,29.7 | ${neighbourPointQuestion(GUADALUPE_PARCELS, at)} | ${neighbourPointQuestion(COMAL_PARCELS, at)}`, at)).toBe(false)
+    // No point on the permit: a neighbour cannot be asked.
+    expect(askedWithoutNeighbours(COMAL_PARCELS, address, null)).toBe(false)
   })
 })

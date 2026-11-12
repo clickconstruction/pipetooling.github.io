@@ -39,7 +39,7 @@ export function countyGivesBuildingFacts(city: string | null | undefined): boole
 }
 
 /** The parcel's facts the cards read. */
-type LotFacts = { building_sf: number | null; year_built: string | null; improvement_value: number | null; acres: number | null; situs?: string | null; matched_by?: 'point' | 'id' }
+type LotFacts = { building_sf: number | null; year_built: string | null; improvement_value: number | null; acres: number | null; situs?: string | null; matched_by?: 'point' | 'id'; county?: string | null }
 
 function shortDollars(value: number): string {
   if (value >= 1_000_000) {
@@ -57,13 +57,18 @@ export function lotWords(facts: LotFacts): string {
     : facts.improvement_value
       ? `buildings on the roll at ${shortDollars(facts.improvement_value)}${facts.year_built ? `, built ${facts.year_built}` : ''}`
       : 'nothing built on the roll'
-  return [built, facts.acres ? `${facts.acres} acres` : null, facts.matched_by === 'point' ? 'read at the permit’s point' : null].filter(Boolean).join(', ')
+  return [built, facts.acres ? `${facts.acres} acres` : null, facts.matched_by === 'point' ? `read at the permit’s point${facts.county ? ` in ${facts.county} County` : ''}` : null].filter(Boolean).join(', ')
 }
 
-/** The sheets' line when the parcel was found under the permit's point, not its street address. Null when the address matched. */
-export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by'>): string | null {
+/**
+ * The sheets' line when the parcel was found under the permit's point, not its street address.
+ * A parcel found on a neighbouring county's layer names that county: the city's limits cross
+ * the county line. Null when the address or the permit's own id matched.
+ */
+export function parcelPointWords(facts: Pick<LotFacts, 'situs' | 'matched_by' | 'county'>): string | null {
   if (facts.matched_by !== 'point') return null
   const where = facts.situs ? ` The county calls it ${facts.situs}.` : ''
+  if (facts.county) return `The permit’s point is in ${facts.county} County, so this is that county’s parcel there.${where}`
   return `The county has no parcel under this street address, so this is the parcel at the permit’s point.${where}`
 }
 
