@@ -33,7 +33,8 @@ COMMENT ON COLUMN public.checklist_tech_tree_group_tasks.place_set_at IS 'Task p
 ALTER TABLE public.checklist_tech_tree_group_tasks DROP CONSTRAINT IF EXISTS checklist_tech_tree_group_tasks_place_point_check;
 ALTER TABLE public.checklist_tech_tree_group_tasks ADD CONSTRAINT checklist_tech_tree_group_tasks_place_point_check CHECK (
   (place_lat IS NULL AND place_lng IS NULL)
-  OR (place_lat BETWEEN -90 AND 90 AND place_lng BETWEEN -180 AND 180)
+  -- Both numbers by name: a check passes on an unknown answer, and a range test on a null is unknown.
+  OR (place_lat IS NOT NULL AND place_lng IS NOT NULL AND place_lat BETWEEN -90 AND 90 AND place_lng BETWEEN -180 AND 180)
 );
 
 ALTER TABLE public.checklist_tech_tree_group_tasks DROP CONSTRAINT IF EXISTS checklist_tech_tree_group_tasks_place_whole_check;
