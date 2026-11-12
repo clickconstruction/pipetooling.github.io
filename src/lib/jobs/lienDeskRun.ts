@@ -110,6 +110,8 @@ export type RunNotice = {
   leader?: { userId: string | null; name: string } | null
   /** The desk item's `fields` as stored (v2.5086): what a signature made from the run binds to. */
   rowFields?: unknown
+  /** The last day this notice can be mailed (`YYYY-MM-DD`), as the desk counts it: the earliest open month's day, or the retainage notice's. *Today's mail* prints it (punch list #314). Absent or null = the desk has none. */
+  mailBy?: string | null
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -221,6 +223,7 @@ export function buildLienDeskRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'notice_53_056',
+      mailBy: e.earliestDeadline,
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
@@ -301,6 +304,7 @@ export function buildLienRetainageRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'retainage_53_057',
+      mailBy: e.deadline,
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,
@@ -493,13 +497,15 @@ export function runPacketHtml(
   issuer: PhysicalInvoiceIssuer | null,
   invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>,
   payPagesByJob?: RunPayPages,
+  /** The code on the first page that opens the run's guide (punch list #314), as the caller draws it; absent, the page prints none. */
+  guideCode?: string,
 ): string {
   // The run on paper (v2.4971): the checklist sheet, then for each envelope that goes out its divider and
   // its copies, every page with its foot. A held envelope — no mailing address, nothing to claim — prints
   // nothing; the sheet lists it in red with the reason.
   const mailing = runMailing(runEnvelopes(notices))
   const copyPages = (env: RunEnvelope) => env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((pg) => ({ n, r, pg })))
-  const pages: string[] = [runSheetHtml({ mailing, todayYmd, issuer, docsFor: (env) => copyPages(env).map((x) => x.pg.label) })]
+  const pages: string[] = [runSheetHtml({ mailing, todayYmd, issuer, docsFor: (env) => copyPages(env).map((x) => x.pg.label), ...(guideCode ? { guideCode } : {}) })]
   for (const env of mailing.mailed) {
     const inside = copyPages(env)
     pages.push(runDividerHtml(env, mailing.mailed.length, issuer, inside.map((x) => x.pg.label)))

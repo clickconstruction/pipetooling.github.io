@@ -73,8 +73,11 @@ export function combineNoticesByProperty(notices: ReadonlyArray<RunNotice>, opts
     const months = [...new Set(sorted.flatMap((n) => n.months))].sort()
     const amount = Math.round(sorted.reduce((s, n) => s + n.amount, 0) * 100) / 100
     const jobNumber = combinedJobNumbers(parts)
+    // One envelope for several jobs must be out by the first of their days, not the lead job's.
+    const mailBy = sorted.map((n) => (n.mailBy ?? '').trim()).filter(Boolean).sort()[0] ?? null
     out.push({
       ...lead,
+      mailBy,
       label: `${lead.label.split(' · ').slice(1).join(' · ') || lead.label} · ${jobNumber}`,
       jobNumber,
       months,

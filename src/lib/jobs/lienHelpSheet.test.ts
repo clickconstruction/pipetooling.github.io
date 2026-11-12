@@ -30,6 +30,12 @@ import {
   lienHelpPaperFromFields,
   lienHelpPrintHtml,
   lienHelpSameProperty,
+  LIEN_HELP_NOTICE_ASK_FIRST,
+  lienHelpNoticeChecks,
+  lienHelpNoticeMailBy,
+  lienHelpNoticeSheetHtml,
+  lienHelpNoticeSteps,
+  type LienHelpNotice,
   type LienHelpPaper,
 } from './lienHelpSheet'
 import { plainWordsFailures } from '../plainWords'
@@ -397,5 +403,96 @@ describe('changes 6 to 11 · the picture, the clerks, who to ask, lines to write
     expect(textOf(lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026' }))).not.toContain('scan the code')
     // The guide copy is a page to learn from: nothing is recorded off it.
     expect(lienHelpGuideCopyHtml(filingDocHtml(buildLienAffidavitBlocks(fields())), full(), { guideCode: CODE, recordCode: RECORD })).not.toContain('data-lien-help-record-code')
+  })
+})
+
+describe('the § 53.056 notice’s help sheet (punch list #314, the notices)', () => {
+  // Made-up names and addresses throughout.
+  const noticeOf = (over: Partial<LienHelpNotice> = {}): LienHelpNotice => ({
+    jobLabel: '412 · Ridgeway Builders',
+    propertyAddress: '18 Larkspur Lane, Alder, TX 70001',
+    claim: '$2,650.00',
+    mailBy: 'December 15, 2026',
+    mailByPassed: false,
+    signer: 'Dana Okafor',
+    ownerName: 'Larkspur Holdings LLC',
+    ownerAddress: '4 Quarry Road, Alder, TX 70001',
+    contractorName: 'Ridgeway Builders',
+    contractorAddress: '77 Mill Street, Alder, TX 70002',
+    invoices: 2,
+    ...over,
+  })
+  const read = (step: string) => textOf(step).replace(/ ([.,])/g, '$1')
+
+  it('the last day to mail is the earliest of the months’ days, and passes the day after', () => {
+    // A house: the 15th of the second month after the work. A commercial property: the third.
+    expect(lienHelpNoticeMailBy(['2026-10', '2026-09'], 'residential', '2026-11-12')).toEqual({ ymd: '2026-11-16', passed: false })
+    expect(lienHelpNoticeMailBy(['2026-09'], 'non_residential', '2026-11-12')).toEqual({ ymd: '2026-12-15', passed: false })
+    expect(lienHelpNoticeMailBy(['2026-09'], 'residential', '2026-11-17')).toEqual({ ymd: '2026-11-16', passed: true })
+    expect(lienHelpNoticeMailBy([], 'residential', '2026-11-12')).toEqual({ ymd: '', passed: false })
+  })
+
+  it('checks the two mailing addresses, the day and the invoices, and asks first on what is missing or late', () => {
+    expect(lienHelpNoticeChecks(noticeOf()).map((c) => [c.state, c.lead])).toEqual([['ok', 'Owner.'], ['ok', 'Original contractor.'], ['ok', 'Mail by.'], ['ok', 'Invoices.']])
+    const bad = lienHelpNoticeChecks(noticeOf({ ownerAddress: '', contractorName: '', mailByPassed: true, invoices: 0 }))
+    expect(bad.map((c) => c.state)).toEqual(['ask', 'ask', 'ask', 'ok'])
+    expect(bad[0]?.words).toBe('Larkspur Holdings LLC has no mailing address in the app.')
+    expect(bad[2]?.words).toBe('The last day to mail was December 15, 2026. It has passed.')
+    expect(bad[3]?.words).toBe('No invoice prints behind this notice.')
+    expect(lienHelpNoticeChecks(noticeOf({ mailBy: '', invoices: 1 })).slice(2).map((c) => c.words)).toEqual(['The app has no last day to mail for this job.', '1 invoice prints behind this notice.'])
+  })
+
+  it('the words follow the plain-words rules, and name the Lien window’s presses by their own words', () => {
+    const sentences = [
+      LIEN_HELP_NOTICE_ASK_FIRST,
+      ...lienHelpNoticeChecks(noticeOf()).map((c) => c.words),
+      ...lienHelpNoticeChecks(noticeOf({ ownerAddress: '', contractorAddress: '', mailByPassed: true })).map((c) => c.words),
+      ...lienHelpNoticeChecks(noticeOf({ ownerName: '', contractorName: '', mailBy: '' })).map((c) => c.words),
+      ...lienHelpNoticeSteps(noticeOf(), true).map(textOf),
+      ...lienHelpNoticeSteps(noticeOf({ signer: '', mailBy: '' })).map(textOf),
+    ]
+    for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
+    const steps = lienHelpNoticeSteps(noticeOf(), true).map(read)
+    expect(steps[1]).toBe('Dana Okafor signs the notice in each set, in ink.')
+    expect(steps[3]).toBe('Send both by certified mail with a return receipt. Mail by December 15, 2026.')
+    expect(steps[5]).toContain('scan the code with a phone')
+    expect(steps[6]).toBe('Press Save & record sends… and type both numbers. Then press Record both sends.')
+    // A day that has passed is not printed as a day to mail by.
+    expect(read(lienHelpNoticeSteps(noticeOf({ mailByPassed: true }))[3] ?? '')).toBe('Send both by certified mail with a return receipt. The app shows the last day to mail.')
+    expect(read(lienHelpNoticeSteps(noticeOf())[5] ?? '')).not.toContain('scan')
+  })
+
+  it('the sheet says it is not the notice, and carries the facts, the checks, the two envelopes and the steps', () => {
+    const html = lienHelpNoticeSheetHtml(noticeOf({ ask: 'Not sure? Ask Dana Okafor.' }), 'November 12, 2026', { guideCode: '<img alt="" src="data:guide"/>', recordCode: '<img alt="" src="data:record"/>' })
+    const text = textOf(html)
+    expect(html).toContain('data-lien-help="notice"')
+    expect(html).toContain('class="lien-help-stripe"')
+    expect(text).toContain('Help sheet · do not mail this page')
+    expect(text).toContain('§ 53.056 notice: before you mail')
+    expect(text).toContain('Mail by December 15, 2026')
+    expect(text).toContain('What the app checked on this notice')
+    expect(text).toContain('Envelope 1 · the owner Larkspur Holdings LLC 4 Quarry Road, Alder, TX 70001')
+    expect(text).toContain('Envelope 2 · the original contractor Ridgeway Builders 77 Mill Street, Alder, TX 70002')
+    expect(text).toContain('Not sure? Ask Dana Okafor.')
+    expect(text).toContain('The notice is the next page')
+    expect((html.match(/class="lien-help-tick"/g) ?? []).length).toBe(8)
+    // Both codes: the guide's in the band, the one to record in the steps box with what it opens.
+    expect(html).toContain('<span data-lien-help-code><img alt="" src="data:guide"/></span>')
+    expect(html).toMatch(/data-lien-help-record-code><img alt="" src="data:record"\/><strong>Scan to record<\/strong><br\/>Opens the notice tab<\/div><h3>From the printer to the mail<\/h3>/)
+    expect(html).not.toContain('data-lien-help-ask>')
+    // A question puts ASK FIRST above the reader's check, in the notice's own words; no code, no code block.
+    const asked = lienHelpNoticeSheetHtml(noticeOf({ ownerAddress: '<none>' , mailByPassed: true }), '')
+    expect(asked).toContain(`<strong class="lien-help-ask-tag">ASK FIRST</strong> ${LIEN_HELP_NOTICE_ASK_FIRST}`)
+    expect(asked).toContain('&lt;none&gt;')
+    expect(asked).not.toContain('data-lien-help-record-code')
+    expect(textOf(lienHelpNoticeSheetHtml(noticeOf({ mailBy: '', ownerName: '', ownerAddress: '' }), ''))).toContain('Mail by see the Lien desk')
+  })
+
+  it('goes first in the notice’s print sheet, and the notice’s own HTML is untouched after it', () => {
+    const paperHtml = filingDocPrintHtml(buildLienAffidavitBlocks(fields()), 'A paper', filingDocFooter('notice_53_056'))
+    const printed = prependToFilingPrintHtml(paperHtml, lienHelpNoticeSheetHtml(noticeOf(), 'November 12, 2026'), LIEN_HELP_STYLES)
+    expect(printed.indexOf('data-lien-help="notice"')).toBeGreaterThan(-1)
+    expect(printed.indexOf('data-lien-help="notice"')).toBeLessThan(printed.indexOf('</section>'))
+    expect(printed.replace(/<section class="lien-help"[\s\S]*?<\/section>/, '').replace(LIEN_HELP_STYLES, '')).toBe(paperHtml)
   })
 })

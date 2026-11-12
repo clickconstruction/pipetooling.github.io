@@ -115,6 +115,35 @@ export type RunSheetInput = {
   issuer: PhysicalInvoiceIssuer | null
   /** The labels of the documents inside an envelope, in print order. */
   docsFor: (env: RunEnvelope) => string[]
+  /** A code that opens the run's guide, as the caller draws it (an image); absent, the page prints none. */
+  guideCode?: string
+}
+
+/** The last day an envelope can be mailed: the earliest of its notices' days; '' when none of them has one. */
+export function runEnvelopeMailBy(env: Pick<RunEnvelope, 'contents'>): string {
+  return (
+    env.contents
+      .map((c) => (c.notice.mailBy ?? '').trim())
+      .filter(Boolean)
+      .sort()[0] ?? ''
+  )
+}
+
+/**
+ * What *Today's mail* says of the last day to mail (punch list #314): the page told the desk what to stuff and where to
+ * write the number, and never by when. One day for the whole run reads once at the top. Days that differ read under
+ * each row, and the top names the first. A day that has gone by is said plainly, with the count, so nobody mails a late
+ * notice as if it were on time.
+ */
+export function runMailByWords(mailed: ReadonlyArray<Pick<RunEnvelope, 'contents'>>, todayYmd: string): { intro: string; perRow: boolean } {
+  const days = mailed.map(runEnvelopeMailBy)
+  const known = [...new Set(days.filter(Boolean))].sort()
+  if (known.length === 0) return { intro: '', perRow: false }
+  const late = days.filter((d) => d && d < todayYmd).length
+  const lateWords = late ? ` <b>The last day has passed for ${late} ${late === 1 ? 'envelope' : 'envelopes'}.</b> Ask before you mail ${late === 1 ? 'it' : 'them'}.` : ''
+  const open = known.filter((d) => d >= todayYmd)
+  if (known.length === 1 && days.every(Boolean)) return { intro: late ? lateWords.trim() : `<b>Mail every envelope by ${esc(demandDate(known[0]!))}.</b>`, perRow: false }
+  return { intro: `${open.length ? `<b>Mail the first envelopes by ${esc(demandDate(open[0]!))}.</b> Each row shows its own day.` : 'Each row shows its last day to mail.'}${lateWords}`, perRow: true }
 }
 
 /**
@@ -127,8 +156,10 @@ export function runSheetHtml(i: RunSheetInput): string {
   const ret = retLines(issuer)
   const docsCount = mailing.mailed.reduce((s, env) => s + i.docsFor(env).length, 0)
   const certified = mailing.mailed.every((e) => e.method === 'certified_mail')
+  const mailBy = runMailByWords(mailing.mailed, todayYmd)
   const intro = [
     '<b>Work down the list. Tick each box as you go.</b>',
+    mailBy.intro,
     certified ? 'Every envelope goes certified mail with a return receipt.' : 'The method is under each name.',
     'Each envelope has a divider page in front of it with the same number as this list.',
     'Write the number from the certified slip in the box under its row.',
@@ -141,12 +172,15 @@ export function runSheetHtml(i: RunSheetInput): string {
     const lines = runAddressLines(env.address)
     const docs = why ? null : runDocumentWords(i.docsFor(env))
     const inside = env.contents.map((c) => noticeLine(c.notice)).join(' · ')
+    const by = !why && mailBy.perRow ? runEnvelopeMailBy(env) : ''
+    const byWords = by ? `<small class="by${by < todayYmd ? ' late' : ''}" data-run-mail-by>${by < todayYmd ? 'The last day to mail was' : 'Mail by'} ${esc(demandDate(by))}</small>` : ''
     return (
       `<tr class="runrow${why ? ' held' : ''}" data-run-sheet-envelope="${env.n}"${why ? ' data-run-held="yes"' : ''}>` +
       `<td class="n">${env.n}</td>` +
       `<td class="to"><strong>${esc(env.name || '—')}${why && !env.address.trim() && env.method !== 'email' && env.method !== 'hand' ? ' · no mailing address' : ''}</strong>` +
       (lines.length ? `<small>${lines.map(esc).join('<br>')}</small>` : '') +
       (why ? `<small class="why">${esc(why)}</small>` : env.method !== 'certified_mail' ? `<small>${esc(methodWords(env.method))}</small>` : '') +
+      byWords +
       `</td>` +
       `<td class="in">${why ? `<b>Held</b><br>${esc(inside)}` : `<b>${esc(docs!.words.replace(/ · .*$/, ''))}</b> · ${esc(docs!.words.replace(/^[^·]*· /, ''))}<br>${env.contents.length > 1 ? `<b>${env.contents.length} notices</b> · ` : ''}${esc(inside)}`}</td>` +
       `<td class="done">${why ? '—' : '<span>☐ stuffed</span><span>☐ slip on</span><span>☐ mailed</span>'}</td>` +
@@ -158,7 +192,7 @@ export function runSheetHtml(i: RunSheetInput): string {
     `<div class="runsheet" data-run-sheet>` +
     `<div class="hdr"><div class="co">${esc(ret[0] ?? '')}</div><div class="r">${ret.slice(1).map(esc).join('<br>')}${issuer?.phone ? `<br>${esc(issuer.phone)}` : ''}</div></div>` +
     `<h1>Today’s mail <span>· ${mailing.mailed.length} ${mailing.mailed.length === 1 ? 'envelope' : 'envelopes'} · ${docsCount} ${docsCount === 1 ? 'document' : 'documents'} · ${esc(demandDate(todayYmd))}</span></h1>` +
-    `<div class="toyou">${intro}</div>` +
+    `<div class="toyou">${i.guideCode ? `<span class="runcode" data-run-guide-code>${i.guideCode}<small>Scan for the full guide</small></span>` : ''}${intro}</div>` +
     `<table><thead><tr><th class="n">#</th><th>Make the envelope out to</th><th>Inside</th><th class="done">Done</th></tr></thead><tbody>` +
     mailing.mailed.map((env) => row(env, null)).join('') +
     mailing.held.map(({ env, why }) => row(env, why)).join('') +
@@ -233,6 +267,12 @@ export const RUN_PAPER_CSS = `
   .runsheet td.to strong { display: block; font-size: 0.84rem; }
   .runsheet td.to small { display: block; color: #444; font-size: 0.72rem; line-height: 1.3; }
   .runsheet td.to small.why { color: #b91c1c; margin-top: 2px; }
+  .runsheet td.to small.by { color: #1a1a1a; font-weight: 700; margin-top: 2px; }
+  .runsheet td.to small.by.late { color: #b91c1c; }
+  .runsheet .toyou { overflow: hidden; }
+  .runsheet .runcode { float: right; width: 62px; margin: 0 0 2px 10px; text-align: center; line-height: 1.15; }
+  .runsheet .runcode img { width: 52px; height: 52px; display: block; margin: 0 auto 1px; image-rendering: pixelated; }
+  .runsheet .runcode small { font-size: 0.55rem; color: #555; display: block; }
   .runsheet td.in { color: #555; }
   .runsheet td.in b { color: #1a1a1a; }
   .runsheet td.done { width: 4.2rem; white-space: nowrap; line-height: 1.5; }

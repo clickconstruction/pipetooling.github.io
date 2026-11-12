@@ -20,13 +20,13 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
-import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpPaperFromFields, lienHelpPrintHtml } from '../../lib/jobs/lienHelpSheet'
+import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
-import { lienHelpGuideCode, lienHelpRecordCode } from '../../lib/jobs/lienHelpGuideCode'
+import { lienHelpGuideCode, lienHelpNoticeRecordCode, lienHelpRecordCode } from '../../lib/jobs/lienHelpGuideCode'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -430,6 +430,25 @@ export default function LienFilingTabs({
     [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, issuer?.countyClerksText, askFor],
   )
 
+  // The notice's help sheet (punch list #314): the notice's own facts, the two addresses its copies go to, and the last day to mail.
+  const helpNotice = useMemo((): LienHelpNotice => {
+    const mailBy = lienHelpNoticeMailBy(noticeMonthKeys, property.propertyKind, todayYmd())
+    return {
+      jobLabel: [jobNumber, job.job_name?.trim()].filter(Boolean).join(' · '),
+      propertyAddress: affidavitFields.propertyAddress.trim(),
+      claim: demandMoney(noticeFields.claimAmount),
+      mailBy: mailBy.ymd ? demandDate(mailBy.ymd) : '',
+      mailByPassed: mailBy.passed,
+      signer: noticeFields.contactPerson.trim(),
+      ownerName: ownerName.trim(),
+      ownerAddress: (property.owner.mailingAddress ?? '').trim(),
+      contractorName: originalContractorName.trim(),
+      contractorAddress: affidavitFields.originalContractorAddress.trim(),
+      invoices: enclosedDocs.length,
+      ask: askFor(job.master_user_id ?? null),
+    }
+  }, [noticeMonthKeys, property.propertyKind, property.owner.mailingAddress, jobNumber, job.job_name, job.master_user_id, affidavitFields.propertyAddress, affidavitFields.originalContractorAddress, noticeFields.claimAmount, noticeFields.contactPerson, ownerName, originalContractorName, enclosedDocs.length, askFor])
+
   const printDoc = useCallback(() => {
     if (!currentDoc) return
     const paperHtml = noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions))
@@ -443,10 +462,19 @@ export default function LienFilingTabs({
       void fileSentCopy({ ...filing, how: 'print' }, { html: paperHtml })
       return
     }
+    // A § 53.056 notice prints behind its own help sheet, by the same rule: the copy filed on the job is the notice and what is enclosed, never the sheet.
+    if (currentDoc.kind === 'notice_53_056' && helpSheetOn) {
+      if (!openHtmlPrintWindow(prependToFilingPrintHtml(paperHtml, lienHelpNoticeSheetHtml(helpNotice, demandDate(todayYmd()), { guideCode: lienHelpGuideCode(), recordCode: lienHelpNoticeRecordCode(job.id) }), LIEN_HELP_STYLES))) {
+        showToast('Popup blocked — allow popups to print.', 'error')
+        return
+      }
+      void fileSentCopy({ ...filing, how: 'print' }, { html: paperHtml })
+      return
+    }
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
     const ok = printAndFile(paperHtml, filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions, affidavitFields.form, helpSheetOn, helpPaper])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, printOptions, affidavitFields.form, helpSheetOn, helpPaper, helpNotice])
 
   // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
   const printGuideCopy = useCallback(() => {
@@ -1030,6 +1058,11 @@ export default function LienFilingTabs({
                   <button type="button" onClick={() => setRecordStep('notice_by_hand')} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer' }} title="The paper was printed here and already went out by hand — record when, how, what it claimed, and which jobs at the property it covered" data-testid="notice-by-hand-door">
                     Already sent — record it…
                   </button>
+                  {/* The help sheet (punch list #314): the same choice as the affidavit's, kept on this computer. */}
+                  <label data-lien-window-help-sheet="notice" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={helpSheetOn} onChange={(e) => setHelpSheetOn(e.target.checked)} />
+                    {LIEN_HELP_SHEET_BOX}
+                  </label>
                 </div>
               )}
             </>

@@ -28,6 +28,10 @@ describe('one notice per property (#35 PR 3)', () => {
     expect(one.amount).toBe(28_987)
     expect(one.fields.claimAmount).toBe('28987.00')
     expect(one.extras.refItems).toEqual(['Jobs #273, #858, #866', 'Sep 23, 2026'])
+    // One envelope for several jobs is out by the first of their days, whichever job leads (punch list #314).
+    const dated = combineNoticesByProperty([{ ...lenox[0]!, mailBy: '2026-11-16' }, { ...lenox[1]!, mailBy: '2026-10-15' }, { ...lenox[2]!, mailBy: null }], { combine: true })
+    expect(dated[0]!.mailBy).toBe('2026-10-15')
+    expect(one.mailBy).toBeNull()
     expect(one.parts!.map((p) => [p.jobNumber, p.amount])).toEqual([['273', 17_585], ['858', 7_902], ['866', 3_500]])
     expect(one.itemId).toBe('it273')
     expect(out[1]!.jobNumber).toBe('790')
