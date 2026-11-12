@@ -10,8 +10,8 @@ import { OFFICE_HOURS_KEY, nextOpening, officeOpen, parseOfficeHours } from '../
 import {
   FIRST_LOOK_BUCKET,
   FIRST_LOOK_CAPS,
-  clockWords,
   firstLookClientWords,
+  firstLookClosesWords,
   firstLookCode,
   firstLookExpiry,
   firstLookKindOfMime,
@@ -160,7 +160,7 @@ async function officeNow(admin: Admin, nowIso: string): Promise<{ open: boolean;
     const { data } = await admin.from('app_settings').select('value_text').eq('key', OFFICE_HOURS_KEY).maybeSingle()
     const hours = parseOfficeHours((data as { value_text: string | null } | null)?.value_text)
     const open = officeOpen(nowIso, hours)
-    if (open) return { open, closesWords: hours.always ? null : clockWords(hours.closes) || null, opensWords: null }
+    if (open) return { open, closesWords: firstLookClosesWords(hours), opensWords: null }
     const next = nextOpening(nowIso, hours)
     if (!next) return { open: false, closesWords: null, opensWords: null }
     const today = calendarYmdInAppTzFromIso(nowIso)
