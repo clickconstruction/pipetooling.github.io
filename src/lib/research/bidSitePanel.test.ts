@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gcJobsView, numbersToAsk, siteCountWords, sitePermitLine, sitePermitLines, sitePermitOrder, siteTiles, stageChip, type GcBid, type SitePermitRow } from './bidSitePanel'
+import { ourNameKeys } from './ourNames'
 
 // Every name, address and number here is made up.
 const READ = ['San Antonio']
@@ -39,6 +40,17 @@ describe('the site’s list', () => {
   it('names the plumbing type, and says when it is not a general plumbing permit', () => {
     expect(sitePermitLine(irrigation, 'Mill Street Lofts')).toMatchObject({ title: 'Plumbing, irrigation', detail: 'the city lists Greenline Irrigation · not a general plumbing permit', looksLike: false })
     expect(sitePermitLine(general, 'Mill Street Lofts')).toMatchObject({ title: 'Plumbing, general', detail: 'the city lists Lone Oak Plumbing' })
+  })
+
+  it('marks a plumbing permit under one of our names Ours, of any plumbing type, and no other permit', () => {
+    const ourKeys = ourNameKeys({ names: ['Lone Oak Plumbing', 'Greenline Irrigation', 'Dana Whitlow'], companyName: null })
+    expect(sitePermitLine(general, 'Mill Street Lofts', ourKeys)).toMatchObject({ chips: [{ words: 'Ours', tone: 'green' }, { words: 'Issued Nov 5', tone: 'grey' }], detail: 'the city lists Lone Oak Plumbing' })
+    expect(sitePermitLine(irrigation, 'Mill Street Lofts', ourKeys)).toMatchObject({ chips: [{ words: 'Ours', tone: 'green' }, { words: 'Issued Oct 2', tone: 'grey' }], detail: 'the city lists Greenline Irrigation · not a general plumbing permit' })
+    // A building permit is not a plumbing permit, whoever it lists.
+    expect(sitePermitLine(permit(), 'Mill Street Lofts, Building C', ourKeys).chips).toEqual([{ words: 'Looks like this job', tone: 'green' }, { words: 'Applied Sep 11', tone: 'amber' }])
+    // With no name that is us, no row carries the chip.
+    expect(sitePermitLines([general, irrigation], 'Mill Street Lofts').flatMap((l) => l.chips.map((c) => c.words))).toEqual(['Issued Nov 5', 'Issued Oct 2'])
+    expect(sitePermitLines([general, irrigation], 'Mill Street Lofts', ourKeys).flatMap((l) => l.chips.map((c) => c.words))).toEqual(['Ours', 'Issued Nov 5', 'Ours', 'Issued Oct 2'])
   })
 
   it('puts the permit that looks like this job first, then the newest', () => {
@@ -121,6 +133,26 @@ describe('the jobs we priced for a GC', () => {
     const view = gcJobsView([bid()], own, READ, null)
     expect(view.lines[0]).toMatchObject({ chip: { words: 'Applied Sep 11', tone: 'amber' }, detail: 'Unsent · a general plumbing permit, Nov 5, is under the building permit’s own name' })
     expect(view.verdict).toBe('Of the 1 site we can see, 1 has a permit. No general plumbing permit under another name seen.')
+  })
+
+  it('reads a job whose general plumbing permit lists us as Ours, and counts it apart from another name', () => {
+    const ourKeys = ourNameKeys({ names: [], companyName: 'Blue Heron Plumbing, LLC' })
+    const withOurs = new Map([['San Antonio', [...(permits.get('San Antonio') ?? []), permit({ ...general, id: 'p8', address: '310 ALDER ROW', issued_on: '2026-06-02', contact: 'BLUE HERON PLUMBING' })]]])
+    const view = gcJobsView(bids, withOurs, READ, 'b1', ourKeys)
+    expect(view.lines.find((l) => l.bidId === 'b3')).toEqual({ bidId: 'b3', title: '488 · Harbor Street Offices', chip: { words: 'Ours', tone: 'green' }, detail: 'Sent Sep 30 · a general plumbing permit, Jun 2, lists us', current: false })
+    // Another plumber's permit on another job still reads as another name.
+    expect(view.lines.find((l) => l.bidId === 'b2')?.chip).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+    expect(view.sitesWithOurPlumbing).toBe(1)
+    expect(view.sitesWithGeneralPlumbing).toBe(1)
+    expect(view.verdict).toBe('Of the 4 sites we can see, 3 have a permit. A general plumbing permit lists another name on 1. A general plumbing permit lists us on 1.')
+    // The same rows with no name that is us: our permit reads as another name, as it did before the list.
+    const before = gcJobsView(bids, withOurs, READ, 'b1')
+    expect(before.lines.find((l) => l.bidId === 'b3')).toMatchObject({ chip: { words: 'Plumbing permit · another name', tone: 'red' }, detail: 'Sent Sep 30 · a general plumbing permit, Jun 2, lists BLUE HERON PLUMBING' })
+    expect(before.sitesWithOurPlumbing).toBe(0)
+    expect(before.verdict).toBe('Of the 4 sites we can see, 3 have a permit. A general plumbing permit lists another name on 2.')
+    // Our name on the lone plumbing permit of a site: no other name is counted.
+    const alone = gcJobsView([bids[2]!], withOurs, READ, null, ourKeys)
+    expect(alone.verdict).toBe('Of the 1 site we can see, 1 has a permit. No general plumbing permit under another name seen. A general plumbing permit lists us on 1.')
   })
 
   it('says so when none of the bids can be seen', () => {

@@ -202,6 +202,57 @@
     LOOKS[id] = { footer: 'footer@' + id, back: 'back@' + id, front: 'front@' + id };
   });
 
+  /* ── Card sizes: candidates, none approved ─────────────────────────────────────────────────
+     The card is 3.5 x 2 in, and a photo and its words share the width: about 3.15 in between the
+     safe margins. So a size is a trade. `photo` gives the ring the most room. `text` gives the
+     words the most room, by moving the seam left. Both are larger than `standard` on both counts.
+     Unlike a look, a size moves things, so each one carries its own numbers. The words are
+     centred on the card's middle, so a person with fewer lines still sits right. sizes.html
+     draws them. */
+  function sized(change) {
+    return function (L) {
+      var w = L.words, rowOf = {};
+      w.rows.forEach(function (r) { rowOf[r.fact] = r; });
+      delete w.start;
+      w.centre = 337.5;
+      change(L, w, rowOf);
+      rowOf.title.x = w.x + 3;
+      ['email', 'mobile', 'office'].forEach(function (f) { rowOf[f].size = w.lineSize; rowOf[f].fit = 1050 - w.icons.textX; });
+      rowOf.name.fit = 1050 - w.x;
+      rowOf.title.fit = 1050 - w.x - 10;
+    };
+  }
+  var SIZES = {
+    standard: { name: 'Standard', says: 'The card as it is today.' },
+    photo: {
+      name: 'Larger photo', says: 'The ring grows by a third. The words grow a little.',
+      change: sized(function (L, w, row) {
+        L.panels[0].points = [[0, 0], [300, 0], [300, 675], [0, 675]];
+        L.ring = { cx: 300, cy: 337.5, photo: 172, ring: 186 };
+        w.x = 520; w.firstLine = { afterName: 84, afterTitle: 60 }; w.lineSteps = [62]; w.lineSize = 42;
+        w.icons = { x: 520, size: 54, rise: 37, textX: 590 };
+        row.name.size = 62; row.title.size = 34; row.title.advance = 44;
+      }),
+    },
+    text: {
+      name: 'Larger text', says: 'The words grow by a quarter. The ring grows a little, and the seam moves left to make room.',
+      change: sized(function (L, w, row) {
+        L.panels[0].points = [[0, 0], [230, 0], [230, 675], [0, 675]];
+        L.ring = { cx: 230, cy: 337.5, photo: 150, ring: 163 };
+        w.x = 420; w.firstLine = { afterName: 88, afterTitle: 62 }; w.lineSteps = [64]; w.lineSize = 44;
+        w.icons = { x: 420, size: 56, rise: 38, textX: 492 };
+        row.name.size = 66; row.title.size = 34; row.title.advance = 46;
+      }),
+    },
+  };
+  /* every size in every look: 'back/<size>@<look>' */
+  Object.keys(SIZES).forEach(function (sid) {
+    Object.keys(THEMES).forEach(function (lid) {
+      var base = LOOKS[lid].back;
+      LAYOUTS['back/' + sid + '@' + lid] = SIZES[sid].change ? reworked(base, SIZES[sid].change) : LAYOUTS[base];
+    });
+  });
+
   /* print: 300 units to the inch. The card is 3.5 x 2 in with an eighth-inch bleed all round,
      and nothing that matters goes within an eighth of an inch of the cut. */
   var CARD = { w: 1125, h: 675, bleed: 37.5, safe: 37.5 };
@@ -466,7 +517,7 @@
   ];
 
   window.ClickKit = {
-    BRAND: BRAND, LAYOUTS: LAYOUTS, LOOKS: LOOKS, THEMES: THEMES, CHOSEN: CHOSEN, CARD: CARD, FONT: BRAND.font, PEOPLE: PEOPLE,
+    BRAND: BRAND, LAYOUTS: LAYOUTS, LOOKS: LOOKS, THEMES: THEMES, SIZES: SIZES, CHOSEN: CHOSEN, CARD: CARD, FONT: BRAND.font, PEOPLE: PEOPLE,
     draw: draw, footer: footer, cardBack: cardBack, cardFront: cardFront,
     printPage: printPage, sheetOfTen: sheetOfTen, htmlFooter: htmlFooter, bust: bust, guides: guides,
   };

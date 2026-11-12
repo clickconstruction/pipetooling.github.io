@@ -6,7 +6,8 @@
  * client on purpose: the three columns (`card_name`, `photo_path`, `photo_crop`,
  * `20261111200000_person_card_facts.sql`) are newer than the generated types, and before that
  * migration is pushed the read falls back to the columns that were always there and says the
- * card is not on yet (`columnsOn: false`).
+ * card is not on yet (`columnsOn: false`). The look (`card_look`) and the card's size
+ * (`card_size`) came in later migrations of their own, and each is read the same fail-soft way.
  *
  * Who may write is the database's call: a person their own row and folder, the office anyone's.
  */
@@ -15,6 +16,7 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { CARD_LOOKS_SETTING_KEY, DEFAULT_CARD_LOOKS, parseCardLooks, serializeCardLooks, type CardLooksSetting, type KitLookId } from './looks'
 import { readCrop, type KitCrop, type KitUserFacts } from './person'
+import { CARD_SIZES_SETTING_KEY, DEFAULT_CARD_SIZES, parseCardSizes, serializeCardSizes, type CardSizesSetting, type KitSizeId } from './sizes'
 import type { TeamCardRow } from './team'
 
 export const PERSON_PHOTOS_BUCKET = 'person-photos'
@@ -29,6 +31,10 @@ export type CardLoad = {
   look: string | null
   /** False until the look's own migration is pushed: the card then offers no pick. */
   lookOn: boolean
+  /** The card size the person picked (`users.card_size`), or null for the company's default. */
+  size: string | null
+  /** False until the size's own migration is pushed: the card then offers no pick. */
+  sizeOn: boolean
 }
 
 export type CardPhoto = { href: string; w: number; h: number }
@@ -44,6 +50,9 @@ export interface CardIo {
   /** Which looks the owner offers, and the default. With nothing on file, the look in use alone. */
   looks(): Promise<CardLooksSetting>
   saveLook(userId: string, look: KitLookId): Promise<void>
+  /** Which card sizes the owner offers, and the default. With nothing on file, the standard card alone. */
+  sizes(): Promise<CardSizesSetting>
+  saveSize(userId: string, size: KitSizeId): Promise<void>
 }
 
 /** The team window's reads: everyone a card can be made for, and one person's photo. */
@@ -51,14 +60,17 @@ export interface TeamCardIo {
   team(): Promise<TeamCardRow[]>
   photo(path: string): Promise<CardPhoto>
   looks(): Promise<CardLooksSetting>
+  sizes(): Promise<CardSizesSetting>
 }
 
-/** The owner's card: which looks are on, the default, and everyone's pick for the counts. */
+/** The owner's card: which looks and which card sizes are on, the defaults, and everyone's picks for the counts. */
 export interface LooksAdminIo {
   looks(): Promise<CardLooksSetting>
   saveLooks(setting: CardLooksSetting): Promise<void>
-  /** Each person's pick, null for the default. */
-  picks(): Promise<(string | null)[]>
+  sizes(): Promise<CardSizesSetting>
+  saveSizes(setting: CardSizesSetting): Promise<void>
+  /** Each person's two picks, null for the default. */
+  picks(): Promise<{ look: string | null; size: string | null }[]>
 }
 
 /** A picture's data and size, read in the browser. */
@@ -84,7 +96,7 @@ export function photoPathFor(userId: string, now: number, type: string): string 
 }
 
 /** Typed as plain strings on purpose: the client cannot parse columns its generated types do not know yet. */
-const SELECTS: string[] = ['name, email, phone, title, card_name, photo_path, photo_crop, card_look', 'name, email, phone, title, card_name, photo_path, photo_crop', 'name, email, phone, title']
+const SELECTS: string[] = ['name, email, phone, title, card_name, photo_path, photo_crop, card_look, card_size', 'name, email, phone, title, card_name, photo_path, photo_crop, card_look', 'name, email, phone, title, card_name, photo_path, photo_crop', 'name, email, phone, title']
 
 export function supabaseCardIo(client: unknown = supabase): CardIo {
   const db = client as SupabaseClient
@@ -100,9 +112,11 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
           facts: { name: text(row.name), card_name: text(row.card_name), title: text(row.title), email: text(row.email), phone: text(row.phone) },
           photoPath: text(row.photo_path),
           crop: readCrop(row.photo_crop),
-          columnsOn: i <= 1,
+          columnsOn: i <= 2,
           look: text(row.card_look),
-          lookOn: i === 0,
+          lookOn: i <= 1,
+          size: text(row.card_size),
+          sizeOn: i === 0,
         }
       }
       throw new Error('The card could not be read.')
@@ -137,6 +151,12 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
       checkSupabaseError(saved, 'save the look')
       if (!saved.data?.length) throw new Error('The look was not saved. You may not have leave to change this account.')
     },
+    sizes: () => readSizes(db),
+    async saveSize(userId, size) {
+      const saved = await db.from('users').update({ card_size: size }).eq('id', userId).select('id')
+      checkSupabaseError(saved, 'save the card size')
+      if (!saved.data?.length) throw new Error('The card size was not saved. You may not have leave to change this account.')
+    },
     async saveFacts(userId, facts) {
       const saved = await db.from('users').update({ card_name: facts.card_name.trim() || null, title: facts.title.trim() || null }).eq('id', userId).select('id')
       checkSupabaseError(saved, 'save the card')
@@ -146,14 +166,21 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
 }
 
 const TEAM_BASE: string = 'id, name, email, phone, title, card_name, photo_path, photo_crop, role, archived_at, is_sample, is_digital_twin, is_walk_tester'
-/** With the look first; without it until the look's migration is pushed. */
-const TEAM_SELECTS: string[] = [`${TEAM_BASE}, card_look`, TEAM_BASE]
+/** With the look and the size first; without each until its own migration is pushed. */
+const TEAM_SELECTS: string[] = [`${TEAM_BASE}, card_look, card_size`, `${TEAM_BASE}, card_look`, TEAM_BASE]
 
 /** The company's looks setting. A missing row or a failed read is the look in use alone: nobody is offered a look by accident. */
 async function readLooks(db: SupabaseClient): Promise<CardLooksSetting> {
   const read = await db.from('app_settings').select('value_text').eq('key', CARD_LOOKS_SETTING_KEY).maybeSingle()
   if (read.error) return { ...DEFAULT_CARD_LOOKS, approved: [...DEFAULT_CARD_LOOKS.approved] }
   return parseCardLooks((read.data as { value_text?: string | null } | null)?.value_text ?? null)
+}
+
+/** The company's card sizes setting. A missing row or a failed read is the standard card alone. */
+async function readSizes(db: SupabaseClient): Promise<CardSizesSetting> {
+  const read = await db.from('app_settings').select('value_text').eq('key', CARD_SIZES_SETTING_KEY).maybeSingle()
+  if (read.error) return { approved: [...DEFAULT_CARD_SIZES.approved], default: DEFAULT_CARD_SIZES.default }
+  return parseCardSizes((read.data as { value_text?: string | null } | null)?.value_text ?? null)
 }
 
 async function readTeam(db: SupabaseClient): Promise<Record<string, unknown>[]> {
@@ -181,14 +208,16 @@ export function supabaseTeamCardIo(client: unknown = supabase): TeamCardIo {
           photoPath: text(r.photo_path),
           crop: readCrop(r.photo_crop),
           look: text(r.card_look),
+          size: text(r.card_size),
         }))
     },
     photo: one.photo,
     looks: () => readLooks(db),
+    sizes: () => readSizes(db),
   }
 }
 
-/** The owner's reads and the one write. Only a dev may write the setting; the database refuses anyone else. */
+/** The owner's reads and the two writes. Only a dev may write a setting; the database refuses anyone else. */
 export function supabaseLooksAdminIo(client: unknown = supabase): LooksAdminIo {
   const db = client as SupabaseClient
   return {
@@ -198,8 +227,15 @@ export function supabaseLooksAdminIo(client: unknown = supabase): LooksAdminIo {
       checkSupabaseError(saved, 'save the looks')
       if (!saved.data?.length) throw new Error('The looks were not saved. Only a dev may change them.')
     },
+    sizes: () => readSizes(db),
+    async saveSizes(setting) {
+      const saved = await db.from('app_settings').upsert({ key: CARD_SIZES_SETTING_KEY, value_text: serializeCardSizes(setting) }, { onConflict: 'key' }).select('key')
+      checkSupabaseError(saved, 'save the card sizes')
+      if (!saved.data?.length) throw new Error('The card sizes were not saved. Only a dev may change them.')
+    },
     async picks() {
-      return (await readTeam(db)).map((r) => (typeof r.card_look === 'string' ? r.card_look : null))
+      const text = (v: unknown) => (typeof v === 'string' ? v : null)
+      return (await readTeam(db)).map((r) => ({ look: text(r.card_look), size: text(r.card_size) }))
     },
   }
 }

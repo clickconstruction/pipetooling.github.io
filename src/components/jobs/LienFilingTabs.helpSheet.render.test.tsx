@@ -102,7 +102,9 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     expect(county.value).toBe('Alder')
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     let html = openPrintMock.mock.calls[0]![0]
-    expect(html.match(/COUNTY OF ALDER/g)).toHaveLength(2)
+    // On the paper itself, behind the help sheet (whose small picture of the paper names the county too).
+    const paperOf = (print: string) => print.slice(print.lastIndexOf('</section>'))
+    expect(paperOf(html).match(/COUNTY OF ALDER/g)).toHaveLength(2)
     expect(html).not.toContain('where signed')
     expect(html).toContain('What the app checked on this paper')
     expect(html).toContain('Four things to write. Nothing else is written on the paper.')
@@ -113,7 +115,7 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     fireEvent.change(county, { target: { value: 'Cedar' } })
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     html = openPrintMock.mock.calls[1]![0]
-    expect(html.match(/COUNTY OF CEDAR/g)).toHaveLength(2)
+    expect(paperOf(html).match(/COUNTY OF CEDAR/g)).toHaveLength(2)
     expect(html).toContain('signed in Cedar County')
     expect(issuer.signingCounty).toBe('Alder')
     // Cleared, the notary writes both lines by hand and the sheet lists six blanks again.

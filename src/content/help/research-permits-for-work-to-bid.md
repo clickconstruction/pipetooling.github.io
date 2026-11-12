@@ -21,6 +21,8 @@ Every city's Property line reads its own county for the owner of record. Austin 
 
 A new building often has no parcel under its street address yet. The app then reads the parcel at the permit's point, and the card says so.
 
+Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
+
 The cities do not all publish the same facts.
 
 | City | Who pulled it | Declared value | Shows applications |
@@ -104,6 +106,8 @@ Press **Builders**. The list shows every name on a commercial permit we can see.
 Press **3 or more permits and never bid** to see who to get to know.
 
 Press **Looks like a customer** to see names that may be one of our customers. Each row says why. Press **Same company** or **Not them**. Nothing is tied until you press.
+
+The Dashboard's **Needs you** card says how many names wait on that answer. The line adds up the number on the chip in every city. Press **Answer them** there to open this list. That line goes away once every name is answered.
 
 Press a builder's name. Pick **Good** or **Avoid** and say why in a line. The mark shows on every skim card of that builder. A Good builder's permits come first. An Avoid builder's permits come last.
 

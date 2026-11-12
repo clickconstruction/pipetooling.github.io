@@ -9,6 +9,7 @@ import {
   savePhysicalInvoiceIssuerDraft,
   type PhysicalInvoiceIssuer,
 } from '../../lib/physicalInvoiceIssuer'
+import { COUNTY_CLERKS_EXAMPLE, COUNTY_CLERKS_HINT } from '../../lib/jobs/lienCountyClerks'
 
 export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = null }: { /** A field to open on and ring for a moment (v2.3697): 'companyName' | 'addressText' — the Lien desk's door; 'signerName' — the lien waiver guide's (v2.4290). */ focusField?: string | null } = {}) {
   const { role: authRole } = useAuth()
@@ -108,6 +109,17 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             The county you are in when you sign in front of the notary. A lien affidavit prints it on both county lines. It is not the property’s county. Leave it empty to write the county by hand.
           </p>
+          <label htmlFor="issuer-county-clerks" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>County clerks, for the lien help sheets</label>
+          <textarea
+            id="issuer-county-clerks"
+            style={{ ...inputStyle, marginBottom: '0.25rem', minHeight: 72, fontFamily: 'inherit', ...ringStyle('countyClerksText') }}
+            ref={ring === 'countyClerksText' ? (ringRef as React.RefObject<HTMLTextAreaElement>) : undefined}
+            data-settings-focus="issuer.countyClerksText"
+            placeholder={COUNTY_CLERKS_EXAMPLE}
+            value={draft.countyClerksText ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, countyClerksText: e.target.value }))}
+          />
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{COUNTY_CLERKS_HINT}</p>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Phone</label>
           <input
             style={{ ...inputStyle, marginBottom: '0.75rem' }}

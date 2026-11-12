@@ -18,6 +18,7 @@ import { supabaseTeamCardIo, type TeamCardIo } from '../../lib/brandKit/cardIo'
 import { drawKit, printPage, type KitDrawOptions } from '../../lib/brandKit/draw'
 import { DEFAULT_CARD_LOOKS, lookLayouts, resolveLook, type CardLooksSetting } from '../../lib/brandKit/looks'
 import { kitFileSlug } from '../../lib/brandKit/person'
+import { DEFAULT_CARD_SIZES, cardBackFor, resolveSize, type CardSizesSetting } from '../../lib/brandKit/sizes'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
 import { defaultTicks, teamCards, teamPressWords, type TeamCard } from '../../lib/brandKit/team'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -58,6 +59,7 @@ export function TeamCardsWindow({
   // undefined while reading, null when the read failed
   const [cards, setCards] = useState<TeamCard[] | null | undefined>(undefined)
   const [setting, setSetting] = useState<CardLooksSetting>(DEFAULT_CARD_LOOKS)
+  const [sizes, setSizes] = useState<CardSizesSetting>(DEFAULT_CARD_SIZES)
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [making, setMaking] = useState<'cards' | 'footers' | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -73,10 +75,11 @@ export function TeamCardsWindow({
     setProblem(null)
     void (async () => {
       try {
-        const [team, looks] = await Promise.all([io.team(), io.looks()])
+        const [team, looks, offeredSizes] = await Promise.all([io.team(), io.looks(), io.sizes()])
         const rows = teamCards(team, PORTAL_COMPANY.phone)
         if (!on) return
         setSetting(looks)
+        setSizes(offeredSizes)
         setCards(rows)
         setTicked(defaultTicks(rows))
       } catch (e) {
@@ -95,19 +98,20 @@ export function TeamCardsWindow({
 
   /** Each ready person with their photo fetched and their drawings made; a person whose photo will not load fails by name. */
   const gather = async (kit: Required<Pick<KitDrawOptions, 'assets' | 'measure'>>) => {
-    // each person in the look they picked, or the company's default
+    // each person in the look and the card size they picked, or the company's defaults
     const done: { card: TeamCard; footer: string; front: string; back: string; footerSize: [number, number] }[] = []
     const failures: Failed[] = []
     for (const c of words.ready) {
       try {
         const photo = await io.photo(c.photoPath ?? '')
         const person = { ...c.person, photo: { ...photo, ...c.crop } }
-        const look = lookLayouts(resolveLook(c.look, setting))
+        const lookId = resolveLook(c.look, setting)
+        const look = lookLayouts(lookId)
         done.push({
           card: c,
           footer: drawKit(look.footer, person, { ...kit, id: `team-f-${c.id}` }),
           front: drawKit(look.front, null, kit),
-          back: drawKit(look.back, person, { ...kit, id: `team-b-${c.id}` }),
+          back: drawKit(cardBackFor(lookId, resolveSize(c.size, sizes)), person, { ...kit, id: `team-b-${c.id}` }),
           footerSize: look.footer.size,
         })
       } catch (e) {

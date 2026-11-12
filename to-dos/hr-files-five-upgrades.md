@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: gated
-status: mapped 2026-11-11 on claude/hr-files-upgrades-map · nothing built · waiting on the owner's go for the train and his yes on one small access fix that goes ahead of it
+status: mapped 2026-11-11 (#7707) · PR 0, the access fix found while mapping, built the same day on the owner's yes as v2.6966 on claude/person-matter-document-fence · none of the five started · waiting on the owner's go for the train
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,7 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-next: The owner's go on the order below, and his yes or no on PR 0. Then PR 1a, the corrections link in the database with its kernel, which changes no screen and needs no seat deploy.
+ver: v2.6966
+next: The owner's go on the order below. Then PR 1a, the corrections link in the database with its kernel, which changes no screen and needs no seat deploy.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: The owner's go. He asked that the read-only reconciliation of the large file finish first.
 opinion: build in the order given — each first PR is additive (a nullable column, a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -48,11 +49,12 @@ Read in the code and the live schema on 2026-11-11.
 - Three seat PRs are open (#7686, #7680, #7679). Each moves the server version and the verb count, so
   a seat PR of this train rebases onto them and takes the next number.
 
-## PR 0, ahead of the train (the owner's yes)
+## PR 0, ahead of the train: done (v2.6966)
 
-One small access fix on the tables behind a matter's documents, found while mapping. It is outside the
-five, so it waits for his yes; its detail is with him and in the sessions' shared notes, and goes on its
-migration page when it merges. Upgrade 5b does not ship before it.
+Found while mapping, built on the owner's yes the same day. `documents` and `document_revisions` took in a
+matter's text documents three days after the five legal tables got their `*_person_dev_only` policies,
+and did not get one. Migration `20261112030000` adds the two fences, held by
+`npm run test:pg:person-matter-document-fence`. Only test rows sat behind the gap. Upgrade 5b builds on it.
 
 ## 1. Corrections as links
 
@@ -134,14 +136,14 @@ right to apply in the session on his word, as today.
 
 - **PR 5a (first, S):** kernel `sectionFreshness` with tests and the chips. No migration, so it can
   ship at any point in the train.
-- **5b:** the reference, after PR 0. **5c:** the Drive chip and a report, by hash alone, of the copies
+- **5b:** the reference, on PR 0's fence. **5c:** the Drive chip and a report, by hash alone, of the copies
   that no longer match.
 - **His calls:** whether the firm reads the document live or as it stood when released; that a
   counsel-only document makes a counsel-only row and nothing else is allowed.
 
 ## The order proposed
 
-PR 0 on his yes. Then 1 → 2 → 3 → 4 → 5 as he accepted them, one PR merged, pushed and deployed before
+1 → 2 → 3 → 4 → 5 as he accepted them, one PR merged, pushed and deployed before
 the next starts on the same files. 5a touches no file the others touch and can go whenever a session is
 free.
 
