@@ -6,7 +6,7 @@
  * other links' levers, kept behind a "?". Pure.
  */
 import type { CallLink } from './calls'
-import type { DialReading } from './dial'
+import { marketPaceIsWorth, todayPace, type DialReading } from './dial'
 import { STAGE_META, stageUsd, type StageFlow, type StageFlowInput, type StageId } from './stageFlow'
 
 export type ReflexId = 'plumber' | 'bids' | 'fieldday' | 'overhead'
@@ -38,8 +38,8 @@ export function buildReflexes(input: ReflexInput): Reflex[] {
   const buildToday = build ? build.outPerWeekUsd : null
   const plumberAdd = perHour != null ? perHour * PLUMBER_HOURS : buildToday != null ? buildToday * 0.12 : 0
   const dayAdd = perHour != null ? perHour * DAY_HOURS * Math.max(1, input.fieldPeople) : buildToday != null ? buildToday * 0.2 : 0
-  const m = input.stageInput.market
-  const marketToday = m ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks) : null
+  // Market's dial is in dollars of worth (punch list #318): the fix has a number once the worth is read.
+  const marketToday = marketPaceIsWorth(input.stageInput) ? todayPace(input.stageInput, 'market') : null
   const bidsAdd = marketToday != null ? marketToday / 3 : 0
   const round = (n: number) => Math.round(n / 1000) * 1000
   return [
@@ -74,7 +74,7 @@ export function reflexLine(input: { reflex: Reflex; before: StageFlow; reading: 
   }
   if (reflex.stage === 'market') {
     const field = input.stageInput.fieldPerWeekUsd
-    return { text: `${reflex.label}: ${stageUsd(reflex.addUsd)} more asked a week.${field != null ? ` The field still builds ${stageUsd(field)}. More sold only adds to the piles.` : ''} ${linkWord(reading.flow)}`, tone: 'amber' }
+    return { text: `${reflex.label}: Market is worth ${stageUsd(reflex.addUsd)} more a week.${field != null ? ` The field still builds ${stageUsd(field)}. More sold only adds to the piles.` : ''} ${linkWord(reading.flow)}`, tone: 'amber' }
   }
   return { text: `${reflex.label}: ${linkWord(reading.flow)}`, tone: 'grey' }
 }

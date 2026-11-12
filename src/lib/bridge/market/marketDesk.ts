@@ -44,8 +44,6 @@ export type MarketDeskBid = {
   usd: number
   outcome: string | null
   outcomeYmd: string | null
-  /** The day a job was created from the bid, if one was. Kept from the read: it no longer decides a win. */
-  jobCreatedYmd: string | null
   /**
    * The asker's id: the bid's customer_id when the bid has a customer, else its gc_builder_id, else null.
    * The bid form stores the GC as the bid's customer and leaves gc_builder_id null (`bidFormPayload.ts`),
@@ -80,7 +78,7 @@ export type MarketDeskInput = {
   firstBidYmdByGc: ReadonlyMap<string, string>
   /** Every GC's bids on record by the bid's own outcome, the "never answered" read. Absent, a dead-weight GC's words stay with the span. */
   lifetimeByGc?: ReadonlyMap<string, MarketLifetime>
-  /** The window's win share by value (`marketWinShare`); null until something was sent. */
+  /** One share to judge every ask by. The page hands null since punch list #318: the window reads the won rates (`marketStepWindow.ts`), and this stays only for the header's older words. */
   winShare: number | null
   /** Dollars a week the field builds; null until Build reads. */
   fieldPerWeekUsd: number | null
@@ -254,7 +252,7 @@ export function marketHeader(args: { askedPerWeekUsd: number; winShare: number |
   if (converts != null && fieldPerWeekUsd != null) headline += converts >= fieldPerWeekUsd ? ', enough for the field' : ', short of the field'
   const parts: string[] = []
   if (converts != null) parts.push(`That is worth about ${stageUsd(converts)} a week at the ${pct(winShare as number)} win share.`)
-  else parts.push('The win share is not readable yet. Nothing was sent in the window.')
+  else parts.push('What that is worth is not read yet.')
   if (fieldPerWeekUsd != null) parts.push(`The field builds ${stageUsd(fieldPerWeekUsd)} a week.`)
   else parts.push('The field’s pace is not readable yet.')
   if (feedUsd != null) parts.push(`Feeding it takes about ${stageUsd(feedUsd)} a week asked, or a better share.`)
@@ -307,7 +305,7 @@ export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
   for (const e of input.estimates) if (e.createdYmd >= windowStart && e.createdYmd <= todayYmd) windowUsd += e.usd
   const askedPerWeekUsd = windowUsd / windowWeeks
   const header = marketHeader({ askedPerWeekUsd, winShare, fieldPerWeekUsd })
-  const feedMissing = header.feedUsd != null ? null : winShare == null || !(winShare > 0) ? 'The feed line needs the win share. Nothing was won in the window yet.' : 'The feed line needs the field’s pace. Build has not read yet.'
+  const feedMissing = header.feedUsd != null ? null : winShare == null || !(winShare > 0) ? 'The feed line needs the won rates. They are not read yet.' : 'The feed line needs the field’s pace. Build has not read yet.'
 
   const emptyWeeks = cells.filter((c) => !c.isCurrent && c.totalUsd === 0).length
   const emptyWeeksNote = emptyWeeks > 0 ? `${emptyWeeks} empty ${plural(emptyWeeks, 'week', 'weeks')} since ${monthLabel(spanStart)}.` : null

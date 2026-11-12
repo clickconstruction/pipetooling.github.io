@@ -4,10 +4,12 @@ import type { Database } from '../../../types/database'
  * The Market desk (punch list #192, v2.5931): the reads behind the intake
  * strip and the relationship book, wider than the Bridge's 8-week demand
  * read. The bids opened since 90 days before the span (with their asker and
- * project), the jobs those bids became, every asker's first-ever bid and its
- * bids on record by outcome (the new-name and never-answered reads), the
- * askers' names, and the estimates over the same span. Read only; nothing
- * new on the server. `marketDesk.ts` shapes them.
+ * project), every asker's first-ever bid and its bids on record by outcome
+ * (the new-name and never-answered reads), the askers' names, and the
+ * estimates over the same span. Read only; nothing new on the server.
+ * `marketDesk.ts` shapes them. The jobs those bids became are not read since
+ * punch list #318: a job made from a bid decides nothing, so the window had
+ * no use for them.
  *
  * The asker is the bid's customer: the bid form stores the GC as the bid's
  * customer and leaves gc_builder_id null (`bidFormPayload.ts`), so every bids
@@ -15,16 +17,14 @@ import type { Database } from '../../../types/database'
  * gc_builder_id). Names come from `customers` for the customer ids seen and
  * from `bids_gc_builders` for the rest, merged into the one map.
  *
- * A ZZ test job is no job a bid became (v2.6813): the caller passes the ZZ
- * ids, or null to keep them, and the job rows carry their names
- * (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no bid
- * on the strip or in the book either, and makes no asker's first bid, for the same viewer. The estimates are not
- * touched: they have no ZZ rule.
+ * A ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no bid on the strip or in the book, and makes
+ * no asker's first bid (v2.6823), for the viewer who leaves ZZ test jobs out: the caller passes the ZZ ids, or null
+ * to keep them (`../zzTestJobs.ts`). The estimates are not touched: they have no ZZ rule.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
-import { withoutZzBridgeBids, withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
+import { withoutZzBridgeBids, type BridgeZzTestJobIds } from '../zzTestJobs'
 import { MARKET_DESK_WEEKS, foldMarketRecord, marketAskerId, type MarketDeskBid, type MarketDeskEstimate, type MarketLifetime } from './marketDesk'
 
 /** The read starts this many days before the span: the answered bids behind each GC's answer pace, the way the demand read widens for the awaiting window. */
@@ -42,7 +42,6 @@ export type MarketDeskReads = {
 }
 
 type BidRow = { id: string; created_at: string | null; bid_date_sent: string | null; bid_value: number | null; agreed_value: number | null; outcome: string | null; outcome_at: string | null; customer_id: string | null; gc_builder_id: string | null; project_name: string | null }
-type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
 type FirstBidRow = { project_name: string | null; customer_id: string | null; gc_builder_id: string | null; created_at: string | null; outcome: string | null }
 type GcRow = { id: string; name: string }
 type CustomerRow = { id: string; name: string }
@@ -86,17 +85,6 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
   ])
   const bidRows = withoutZzBridgeBids(bidRead, opts.zzTestJobIds)
   const firstRows = withoutZzBridgeBids(firstRead, opts.zzTestJobIds)
-  const ids = bidRows.map((r) => r.id)
-  const jobRead = ids.length
-    ? await fetchAllRowsChunkedIn<JobRow, string>(
-        ids,
-        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, job_name, customer_name, bid_id, created_at, revenue, billing_only').in('bid_id', chunk).order('id').range(from, to), 'market desk jobs from bids')) as JobRow[] | null, error: null }),
-        'market desk jobs from bids',
-      )
-    : []
-  const jobs = withoutZzBridgeJobs(jobRead, opts.zzTestJobIds)
-  const jobByBid = new Map<string, JobRow>()
-  for (const j of jobs) if (j.bid_id && !j.billing_only && !jobByBid.has(j.bid_id)) jobByBid.set(j.bid_id, j)
   // The customers' names, for every customer id a bid names: the bid form stores the GC there.
   const customerIds = new Set<string>()
   for (const r of bidRows) if (r.customer_id) customerIds.add(r.customer_id)
@@ -116,7 +104,6 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
     usd: Number(r.agreed_value ?? r.bid_value ?? 0),
     outcome: r.outcome,
     outcomeYmd: ymdOf(r.outcome_at),
-    jobCreatedYmd: jobByBid.has(r.id) ? ymdOf((jobByBid.get(r.id) as JobRow).created_at) : null,
     gcId: marketAskerId({ customerId: r.customer_id, gcBuilderId: r.gc_builder_id }),
     projectName: r.project_name,
   }))

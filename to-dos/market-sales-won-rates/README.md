@@ -2,7 +2,7 @@
 name: "Market and Sales on the won rates"
 number: 318
 group: ready
-status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · the Bridge's own Market and Sales readings, the weekly email and most of the guide still count the old way · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
+status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · PR 4 as v2.6979, one rule on the page · the weekly email and parts of the guide still count the old way · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
 mockup: to-dos/market-sales-won-rates/mockup.html
 summary: >
   The Bridge read Market as every dollar asked in a week and judged it at one win share for everything. The owner set new rules in one sitting: estimates and bids each run through their own won
@@ -11,8 +11,8 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board already read this way on a spike
   branch. The page's own Market and Sales cards, the slowest-step reading, the weekly email and the guide do
   not yet. This card holds every rule and what is left, so a session on another computer can finish it.
-next: PR 4, one rule on the page: the Market card, the slowest-step reading, Sales' sold a week and the Sales window's inputs; then the weekly email
-size: L as a train of six (M · S · M · M · M · S); left: PRs 4 to 6 (M · M · S)
+next: redeploy the five functions PR 4 put behind, then PR 5, the weekly email on the Market amount, before its first send on Monday 2026-11-16
+size: L as a train of six (M · S · M · M · M · S); left: PRs 5 and 6 (M · S)
 blocker: None. The spike branch is on GitHub.
 opinion: ship PRs 1 to 3 as built, since the owner walked them. PR 4 is the one that matters most, because until it lands the page tells two stories about Market.
 ---
@@ -130,6 +130,8 @@ on the dev server at desk and phone width with no page error. No press that reco
 
 ### Not built: the rest
 
+Items 1 to 4 shipped with PR 4 (v2.6979). They are kept here for the record of what was asked.
+
 1. **The Bridge's own Market reading.** `stageFlow.ts` still reads Market as dollars asked a week and judges it
    through `marketWinShare`, one share for bids and estimates over the eight weeks. That decides the Market
    card's two lines behind The flow, its *short of the field* badge, and `todayPace('market')` in `dial.ts`,
@@ -168,7 +170,7 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 | 1 | **Shipped, v2.6973.** **The pipe stands up, with Market worth on it.** The standing pipe is the spike's candidate 2 and carries the Market row, so it goes first: `flowStripDown.ts`, `BridgeFlowStripDown.tsx`, `stripSide` on `BridgeWeek.tsx`, then the two won-rate kernels, their loaders and tests, and `withMarketWorth`. Until the left-out list ships, the loaders take an empty list. | M |
 | 2 | **Shipped, v2.6975.** **Won by bid size on the Bid Board.** `BidBoardWonBySizeSection.tsx` and its place in Health. Add a render test. | S |
 | 3 | **Shipped, v2.6977.** **The frame, with the Market and Sales windows.** `BridgeStepWindow.tsx`, the two windows, their new kernels and the two changed kernels. The other three windows can ride here or in their own PR. | M |
-| 4 | **One rule on the page.** Items 1 to 4 above: the Market card, the badge, the pace the across pipe reads, Sales' sold a week, the Sales window's inputs. `stageFlow.ts`, `dial.ts` and `demandPace.ts` are copied to the edge functions, so regenerate the copy in this PR. | M |
+| 4 | **Shipped, v2.6979.** **One rule on the page.** Items 1 to 4 above: the Market card, the badge, the pace the across pipe reads, Sales' sold a week, the Sales window's inputs. `stageFlow.ts`, `dial.ts` and `demandPace.ts` are copied to the edge functions, so regenerate the copy in this PR. | M |
 | 5 | **The weekly email.** Item 5. Dry-run the function and read its Market line before the redeploy. | M |
 | 6 | **The guide and the docs.** Item 6, and item 7 if not done on the way. | S |
 
@@ -203,7 +205,7 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 
 ## Where it stands
 
-Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11. PRs 4 and 5 are new work.
+Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11. PR 5 is new work.
 
 - **PR 1 shipped as v2.6973.** The pipe stands up, beside the call's card at a desk. Market's row reads what the
   asks are worth, with the working one press under the pipe. The loaders take an empty left-out list, and
@@ -216,6 +218,17 @@ Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11
   plain words in `marketDesk.ts` and `salesDesk.ts`. Each window opens at about one phone screen with every
   press 44 px tall. The Build, Bill and Collect windows were rebuilt on the frame on the spike too; they are not
   on this card and did not ride along. The frame has a render test now.
+- **PR 4 shipped as v2.6979.** The Market card, its badge, the dial and the usual fixes read the Market amount,
+  and the one win share is gone from the code. Sales counts a bid by its mark alone. A marked win with no answer
+  day is dated by the day its job was made, and the loader now reads the bids behind the window's jobs. In the
+  Sales window an asker with few marked bids is read at the rate for bids the size of each ask, and a bid a job
+  was made from stays in the pile. `loadMarketDesk.ts` no longer reads jobs. Five functions are owed a redeploy:
+  `bridge-weekly-sheet`, `customer-portal`, `drive-link`, `gc-trade-portal`, `photo-save`.
+
+One thing PR 4 left for the owner:
+
+- **Sales' line *sold $X of work a week*** is still the contract on the jobs made in the window. It is work
+  handed to the field, not a count of bids won, so the mark-only rule was not applied to it. Say so if it should be.
 
 Two things PR 1 turned up, for the owner:
 

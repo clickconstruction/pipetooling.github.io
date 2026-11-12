@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { applyDial, buildDialReading, dialSpec, farDayLabel, todayPace } from './dial'
+import { DIAL_WORDS, applyDial, buildDialReading, dialSpec, farDayLabel, marketPaceIsWorth, todayPace } from './dial'
 import type { StageFlowInput } from './stageFlow'
 
 const input: StageFlowInput = {
-  market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 },
-  sales: { bids: { sentUsd: 2_400_000, wonUsd: 0, startedUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
+  market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8, worth: { perWeekUsd: 29_000, bidsPerWeekUsd: 22_000, estimatesPerWeekUsd: 7_000 } },
+  sales: { bids: { sentUsd: 2_400_000, wonUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 49_000 },
   fieldPerWeekUsd: 35_000,
   build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
   bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
@@ -18,7 +18,8 @@ const todayYmd = '2026-10-10'
 describe('the dial', () => {
   it('reads today’s pace and a range around it', () => {
     expect(todayPace(input, 'bill')).toBe(22_000)
-    expect(todayPace(input, 'market')).toBe(308_000)
+    // Market's pace is what the asks are worth at the won rates, not the $308k a week that came in.
+    expect(todayPace(input, 'market')).toBe(29_000)
     const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
     expect(spec).toMatchObject({ stage: 'bill', todayUsd: 22_000, minUsd: 6000, maxUsd: 66_000, stepUsd: 1000, elevateAtUsd: 33_000 })
     expect(dialSpec({ ...input, bill: null }, 'bill', { perUnitUsd: null })).toBeNull()
@@ -32,8 +33,30 @@ describe('the dial', () => {
     expect(b.build!.outPerWeekUsd).toBe(50_000)
     expect(b.fieldPerWeekUsd).toBe(50_000)
     expect(b.bill!.inPerWeekUsd).toBe(50_000)
-    const m = applyDial(input, 'market', 616_000)
+    // Twice the worth is read as twice the same asks at the same won rates.
+    const m = applyDial(input, 'market', 58_000)
+    expect(m.market!.worth).toEqual({ perWeekUsd: 58_000, bidsPerWeekUsd: 44_000, estimatesPerWeekUsd: 14_000 })
     expect(m.market!.bidsInvitedUsd).toBe(4_800_000)
+    expect(todayPace(m, 'market')).toBe(58_000)
+  })
+
+  it('reads Market in dollars of worth, and has no dial to move until the worth is read', () => {
+    expect(marketPaceIsWorth(input)).toBe(true)
+    expect(DIAL_WORDS.market.label).toBe('worth a week')
+    const spec = dialSpec(input, 'market', { perUnitUsd: null })!
+    expect(spec.todayUsd).toBe(29_000)
+    const short = buildDialReading(input, 'market', 29_000, { spec, todayYmd, dayLabel })
+    expect(short.lines[0]).toEqual({ head: 'the pile', text: 'Market is worth $29k a week at the won rates. The field builds $35k a week. Demand is short of the field.', tone: 'red' })
+    expect(short.lines[2]!.text).toBe('Market is worth $29k a week today. Sales sold $49k a week over the same weeks.')
+    const fed = buildDialReading(input, 'market', 40_000, { spec, todayYmd, dayLabel })
+    expect(fed.lines[0]).toMatchObject({ text: 'Market is worth $40k a week at the won rates. The field builds $35k a week. Demand is not short of the field.', tone: 'green' })
+    // The moved dial re-reads the Market card on the same amount.
+    expect(fed.flow.stages.find((s) => s.id === 'market')!.badge).toBe('not short')
+    // Without the worth the pipe still has a pace to draw, the dollars that came in, and the dial waits.
+    const unread: StageFlowInput = { ...input, market: { ...input.market!, worth: null } }
+    expect(marketPaceIsWorth(unread)).toBe(false)
+    expect(todayPace(unread, 'market')).toBe(308_000)
+    expect(dialSpec(unread, 'market', { perUnitUsd: null })).toBeNull()
   })
 
   it('at today’s pace Bill is the link, the pile grows and the money line splits the field’s week', () => {
