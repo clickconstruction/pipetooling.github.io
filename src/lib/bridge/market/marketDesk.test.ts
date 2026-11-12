@@ -9,7 +9,7 @@ const plain = (s: string) => expect(plainWordsFailures(s), s).toEqual([])
 const addDays = (ymd: string, n: number): string => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 
 let seq = 0
-const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: addDays(createdYmd, 3), usd, outcome: null, outcomeYmd: null, jobCreatedYmd: null, gcId, projectName: null, ...over })
+const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial<MarketDeskBid> = {}): MarketDeskBid => ({ id: `b${++seq}`, createdYmd, sentYmd: addDays(createdYmd, 3), usd, outcome: null, outcomeYmd: null, gcId, projectName: null, ...over })
 /** A bid answered `days` after it was sent. */
 const answered = (gcId: string, createdYmd: string, usd: number, outcome: 'won' | 'lost', days: number): MarketDeskBid => bid(gcId, createdYmd, usd, { outcome, outcomeYmd: addDays(addDays(createdYmd, 3), days) })
 const est = (createdYmd: string, usd: number, status = 'sent'): MarketDeskEstimate => ({ id: `e${++seq}`, createdYmd, sentYmd: addDays(createdYmd, 1), status, usd, acceptedYmd: status === 'customer_accepted' ? addDays(createdYmd, 5) : null, updatedYmd: addDays(createdYmd, 5) })
@@ -115,7 +115,7 @@ describe('marketDesk (v2.5931)', () => {
     expect(d.legend.customers).toBe('Customer requests $30k.')
   })
 
-  it('reads the headline from the card’s 8-week pace, the feed line from the field over the win share', () => {
+  it('reads the older header from the card’s 8-week pace, and says the worth is not read when no share is handed over', () => {
     const d = buildMarketDesk(fixture())
     // The window from Aug 31: Burd 7 × 58k, ATI 2 × 80k, Summit 3 × 70k, Hargrove 85k, Knight 40k, 4 estimates: $913k over 8 weeks.
     expect(Math.round(d.askedPerWeekUsd)).toBe(114_125)
@@ -127,8 +127,12 @@ describe('marketDesk (v2.5931)', () => {
     expect(enough.headline).toBe('About $500k a week asked, enough for the field')
     const noShare = marketHeader({ askedPerWeekUsd: 100_000, winShare: null, fieldPerWeekUsd: 50_000 })
     expect(noShare.headline).toBe('About $100k a week asked')
-    expect(noShare.subLine).toContain('The win share is not readable yet.')
+    // The page hands no share since punch list #318: the header then judges nothing and names no share.
+    expect(noShare.subLine).toBe('What that is worth is not read yet. The field builds $50k a week.')
     expect(noShare.feedUsd).toBeNull()
+    const noShareDesk = buildMarketDesk({ ...fixture(), winShare: null })
+    expect(noShareDesk.feedMissing).toBe('The feed line needs the won rates. They are not read yet.')
+    plain(noShareDesk.feedMissing as string)
     const noField = buildMarketDesk({ ...fixture(), fieldPerWeekUsd: null })
     expect(noField.feedUsd).toBeNull()
     expect(noField.feedMissing).toBe('The feed line needs the field’s pace. Build has not read yet.')
@@ -266,18 +270,19 @@ describe('marketDesk (v2.5931)', () => {
     expect(bidAnswered({ outcome: 'lost' })).toBe(true)
     expect(bidWon({ outcome: null })).toBe(false)
     expect(bidAnswered({ outcome: null })).toBe(false)
-    // A bid a job was made from, with no mark: not won, not answered, and it pays nothing in the book (the owner, 2026-11-11).
-    const withJob = bid('gc-pell', '2026-10-01', 12_000, { jobCreatedYmd: '2026-10-08' })
-    expect(bidWon(withJob)).toBe(false)
-    expect(bidAnswered(withJob)).toBe(false)
+    // A bid with no mark is not won and not answered, and it pays nothing in the book (the owner, 2026-11-11). The
+    // read carries no job since punch list #318, so a job made from a bid has no way to count as a win.
+    const noMark = bid('gc-pell', '2026-10-01', 12_000)
+    expect(bidWon(noMark)).toBe(false)
+    expect(bidAnswered(noMark)).toBe(false)
     const jobbed = fixture()
-    jobbed.bids.push(withJob)
+    jobbed.bids.push(noMark)
     const pell = buildMarketDesk(jobbed).rows.find((r) => r.key === 'gc:gc-pell')!
     expect(pell).toMatchObject({ askedWords: '$24k in 2 bids', paysWords: '—', wonCount: 0, answered: 0 })
     expect(pell.detLine).toContain('Nothing answered yet.')
     // Marked won, the same bid pays.
     const marked = fixture()
-    marked.bids.push({ ...withJob, outcome: 'won' })
+    marked.bids.push({ ...noMark, outcome: 'won' })
     expect(buildMarketDesk(marked).rows.find((r) => r.key === 'gc:gc-pell')!).toMatchObject({ paysWords: '$12k', wonCount: 1, answered: 1 })
     // Hargrove's second bid is marked started with no outcome day: won and answered, no answer pace.
     const f = fixture()

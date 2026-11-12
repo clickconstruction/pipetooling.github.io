@@ -521,6 +521,54 @@ describe('a win is a mark (the owner’s rule, 2026-11-11)', () => {
   })
 })
 
+describe('an asker with few marked bids is read at the won rate for bids the size of each ask (punch list #318)', () => {
+  // The won rate for each size of bid, smallest first, as `bidWins.ts` hands them over. Made-up rates.
+  const bidSizeRates = [
+    { underUsd: 10_000, rate: 0.4 },
+    { underUsd: 50_000, rate: 0.2 },
+    { underUsd: 500_000, rate: 0.05 },
+    { underUsd: Infinity, rate: null },
+  ]
+  // Alder has no marked bid. Birch has five, one won of five equal bids: its own 20%.
+  const birchRecord = [decided('birch', 'won', 50_000, 20), ...[1, 2, 3, 4].map(() => decided('birch', 'lost', 50_000, 20, 'price'))]
+  const fresh = [open('a1', 'alder', 'Small ask', 8_000, 3), open('a2', 'alder', 'Mid ask', 30_000, 3), open('a3', 'alder', 'Large ask', 200_000, 3), open('a4', 'alder', 'Giant ask', 900_000, 3), open('b1', 'birch', 'Their ask', 200_000, 3)]
+  const names = new Map([
+    ['alder', 'Alder Build'],
+    ['birch', 'Birch Homes'],
+  ])
+  const sized = buildSalesDesk({ todayYmd: TODAY, openBids: fresh, decidedBids: birchRecord, gcNames: names, openEstimates: [], fallbackRate: 0.1, bidSizeRates, estimateShare: null })
+  const rowOf = (d: typeof sized, key: string) => d.rows.find((r) => r.key === key)!
+
+  it('reads each ask at its own size’s rate, and an ask no size has a rate for at all bids together', () => {
+    // 8k at 40%, 30k at 20%, 200k at 5%, and 900k at the 10% of all bids together. Every ask is three days out, so none has faded.
+    expect(rowOf(sized, 'alder').expectedUsd).toBeCloseTo(8_000 * 0.4 + 30_000 * 0.2 + 200_000 * 0.05 + 900_000 * 0.1, 6)
+    expect(rowOf(sized, 'alder').winsLabel).toBe('no decided bids · read at the rate for bids this size')
+    // An asker read by size has no one rate to print.
+    expect(rowOf(sized, 'alder').rate).toBeNull()
+  })
+
+  it('leaves an asker with enough marked bids on their own record', () => {
+    expect(rowOf(sized, 'birch').expectedUsd).toBeCloseTo(200_000 * 0.2, 6)
+    expect(rowOf(sized, 'birch').winsLabel).toBe('1 of 5 · 20%')
+    expect(rowOf(sized, 'birch').rate).toBe(0.2)
+  })
+
+  it('falls back to all bids together when no rate by size is handed over, as before', () => {
+    const flat = buildSalesDesk({ todayYmd: TODAY, openBids: fresh, decidedBids: birchRecord, gcNames: names, openEstimates: [], fallbackRate: 0.1, estimateShare: null })
+    expect(rowOf(flat, 'alder').expectedUsd).toBeCloseTo((8_000 + 30_000 + 200_000 + 900_000) * 0.1, 6)
+    expect(rowOf(flat, 'alder').winsLabel).toBe('no decided bids · all bids together, 10%')
+  })
+
+  it('says the rule in the footnote, in plain words', () => {
+    const line = 'An asker with fewer than 5 marked bids has each ask read at the won rate for bids its size.'
+    expect(sized.howItReads).toContain(line)
+    expect(sized.howItReads).toContain('A bid a job was made from stays in the pile until it is marked.')
+    expect(sized.howItReads).not.toContain('all bids together')
+    plain(sized.howItReads)
+    plain(rowOf(sized, 'alder').say)
+  })
+})
+
 describe('the words on the page', () => {
   // Every string a typical desk prints, with the estimates' history and the flip both ways.
   const typical = buildSalesDesk({ ...input, estimateHistory: [...speedHistory('ratio'), ...accepts] })

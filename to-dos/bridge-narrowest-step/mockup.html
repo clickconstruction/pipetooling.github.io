@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bridge: which step does the page light?</title>
+<style>
+  /* Punch list #321. One spot of the Bridge's first screen, the step tile and the pipe, as it reads today and as it
+     could read. Every figure is made up: every dollar, week and count. The shape is the one the page showed the day
+     this was drawn (2026-11-12): the step with the most work waiting was also the one step ahead of what feeds it.
+     Nothing here is built. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-red-tint: #fef2f2; --border-red: #fca5a5;
+    --pipe: #c9cfd7; --pipe-edge: #aab2bd;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-red-tint: #3b1a1a; --border-red: #991b1b;
+    --pipe: #4b5563; --pipe-edge: #6b7280;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 420px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  h2 { font-size: 19px; margin: 40px 0 4px; color: var(--text-strong); }
+  p { margin: 8px 0 0; max-width: 88ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .pick { margin: 18px 0 0; padding: 12px 14px; border-left: 4px solid var(--new); background: var(--surface); border-radius: 0 10px 10px 0; max-width: 88ch; }
+  .pick b { color: var(--text-strong); }
+  .pick p { margin: 6px 0 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; margin-top: 18px; }
+  .col { display: grid; gap: 8px; min-width: 0; max-width: 375px; flex: 1 1 320px; }
+  .cap { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap .is { color: var(--new); }
+  .say { margin: 0; font-size: 13.5px; max-width: 44ch; }
+  .frame { max-width: 100%; border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.18); overflow: hidden; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 88ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  ul.plain { margin: 8px 0 0; padding-left: 20px; max-width: 88ch; }
+  ul.plain li { margin: 0 0 6px; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  table.t td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tw { overflow-x: auto; max-width: 100%; }
+  blockquote { margin: 10px 0 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--border-strong); color: var(--text-700); max-width: 80ch; }
+
+  /* ---- the app, drawn ---- */
+  .screen { background: var(--bg-page); color: var(--text-base); font-size: 15px; line-height: 1.4; padding: 10px 10px 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+  .tile.red { background: var(--bg-red-tint); border-color: var(--border-red); }
+  .k { font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .tile .v { font-size: 1.35rem; font-weight: 800; line-height: 1.15; color: var(--text-red-700); }
+  .tile .s { font-size: .8rem; color: var(--text-700); margin-top: 2px; }
+  .tile .s + .s { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border); }
+  .tile .s b { color: var(--text-strong); }
+  .strip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px 9px; margin-top: 8px; }
+  .legend { font-size: .66rem; color: var(--text-muted); margin-bottom: 6px; }
+  .step { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+  .step .pipe { display: flex; justify-content: center; }
+  .step .pipe i { display: block; background: var(--pipe); border-left: 1px solid var(--pipe-edge); border-right: 1px solid var(--pipe-edge); }
+  .step.lit .pipe i { background: #dc2626; border-color: #dc2626; }
+  .step .w { padding: 7px 0 8px; min-width: 0; }
+  .step b { display: block; font-size: .86rem; color: var(--text-strong); line-height: 1.2; }
+  .step.lit b, .step.lit .pace { color: var(--text-red-700); }
+  .step .pace { display: block; font-size: .76rem; color: var(--text-700); font-variant-numeric: tabular-nums; }
+  .step .wk { display: block; font-size: .72rem; color: var(--text-muted); }
+  .step.lit .wk { color: var(--text-red-700); font-weight: 700; }
+  .step .bar { display: block; height: 4px; border-radius: 2px; margin-top: 3px; background: var(--text-muted); opacity: .55; }
+  .step.lit .bar { background: #dc2626; opacity: 1; }
+  .step .dir { display: block; font-size: .74rem; line-height: 1.3; margin-top: 1px; }
+  .dir.up { color: var(--text-red-700); font-weight: 700; }
+  .dir.down { color: var(--text-green-700); }
+  .dir.flat { color: var(--text-muted); }
+  .dir.short { color: var(--text-amber-800); }
+  .frame.is-new { border: 2px solid var(--new); }
+  .key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--new); border-radius: 3px; background: var(--new-tint); vertical-align: -1px; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #321 · The Bridge · drawn 2026-11-12 · nothing here is built</p>
+    <h1>Which step does the page light?</h1>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+  </div>
+</header>
+
+<div class="pick">
+  <b>My pick: light the narrowest step, and say on each row whether its pile grows or shrinks.</b>
+  <p>Today the page lights the step with the most weeks of work waiting. On the numbers below that is Build. But Build is building more than Sales sells, so its pile is shrinking. It is the one step that is ahead. The steps holding the company back are Sales, which sells the least a week, and Collect, whose pile grows every week.</p>
+</div>
+
+<h2>One spot: the step tile and the pipe, on a phone</h2>
+<p><span class="key"></span>The violet outline is the suggestion. The tile and the line under each step change. The pipe and its dollars a week do not. Every figure is made up.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="screen">
+      <div class="tile red">
+        <div class="k">Slowest step</div>
+        <div class="v">Build</div>
+        <div class="s">8 weeks to build what is already sold.</div>
+      </div>
+      <div class="strip">
+        <div class="legend">Dollars a week. A bar is work waiting in front of a step.</div>
+        <div class="step"><div class="pipe"><i style="width:68px"></i></div><div class="w"><b>Market</b><span class="pace">worth $34k a week</span></div></div>
+        <div class="step"><div class="pipe"><i style="width:66px"></i></div><div class="w"><b>Sales</b><span class="pace">sold $30k a week</span></div></div>
+        <div class="step lit"><div class="pipe"><i style="width:75px"></i></div><div class="w"><b>Build, the slowest step</b><span class="pace">built $44k a week</span><span class="wk">8 weeks wait</span><span class="bar" style="width:150px"></span></div></div>
+        <div class="step"><div class="pipe"><i style="width:76px"></i></div><div class="w"><b>Bill</b><span class="pace">billed $46k a week</span><span class="wk">1 week waits</span><span class="bar" style="width:19px"></span></div></div>
+        <div class="step"><div class="pipe"><i style="width:66px"></i></div><div class="w"><b>Collect</b><span class="pace">paid $31k a week</span><span class="wk">7 weeks wait</span><span class="bar" style="width:131px"></span></div></div>
+      </div>
+    </div></div>
+    <p class="say">The red goes to the biggest pile. The reader has to compare the rows himself to see that Build is ahead and Collect is falling behind.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><span class="is">My suggestion</span></div>
+    <div class="frame is-new"><div class="screen">
+      <div class="tile red">
+        <div class="k">Narrowest step</div>
+        <div class="v">Sales</div>
+        <div class="s"><b>Growth waits on Sales.</b> It sold $30k a week. The field built $44k.</div>
+        <div class="s"><b>Cash waits on Collect.</b> Customers paid $31k of the $46k billed a week.</div>
+      </div>
+      <div class="strip">
+        <div class="legend">Dollars a week. Each row says where its pile is heading.</div>
+        <div class="step"><div class="pipe"><i style="width:68px"></i></div><div class="w"><b>Market</b><span class="pace">worth $34k a week</span><span class="dir short">$10k a week short of the field</span></div></div>
+        <div class="step lit"><div class="pipe"><i style="width:66px"></i></div><div class="w"><b>Sales, the narrowest step</b><span class="pace">sold $30k a week</span><span class="dir up">$14k a week short of the field</span></div></div>
+        <div class="step"><div class="pipe"><i style="width:75px"></i></div><div class="w"><b>Build</b><span class="pace">built $44k a week</span><span class="dir down">8 weeks sold. Shrinks $14k a week.</span></div></div>
+        <div class="step"><div class="pipe"><i style="width:76px"></i></div><div class="w"><b>Bill</b><span class="pace">billed $46k a week</span><span class="dir flat">1 week waits. Keeps up.</span></div></div>
+        <div class="step"><div class="pipe"><i style="width:66px"></i></div><div class="w"><b>Collect</b><span class="pace">paid $31k a week</span><span class="dir up">7 weeks late. Grows $15k a week.</span></div></div>
+      </div>
+    </div></div>
+    <p class="say">The red goes to the step that moves the fewest dollars. Each row says in words whether it is ahead or falling behind, so nobody has to subtract.</p>
+  </div>
+</div>
+
+<h2>The question this is really asking</h2>
+<p>The owner said what he wants the Bridge for, on 2026-11-11:</p>
+<blockquote>"the goal of my recent changes were to get the Bridge more useful so I can narrow in on the scaling function as it is the limiting factor"</blockquote>
+<p>He has not said what <i>the scaling function</i> is. My reading: a company moves only as many dollars a week as its narrowest step. To grow, widen that step. Widening any other step only makes a pile. If that is what he means, the suggestion is the page saying it. If he means something else, this drawing is the place to say so.</p>
+
+<h2>Why the two rules disagree</h2>
+<div class="tw"><table class="t">
+  <tr><th>Step</th><th>Comes in a week</th><th>Goes out a week</th><th>So its pile</th><th>Today's rule</th><th>The suggestion</th></tr>
+  <tr><td>Market</td><td class="n">not counted</td><td class="n">$34k worth</td><td>has none</td><td>never lit</td><td>short of the field</td></tr>
+  <tr><td>Sales</td><td class="n">$34k worth</td><td class="n">$30k sold</td><td>has none</td><td>never lit</td><td><b>narrowest: lit</b></td></tr>
+  <tr><td>Build</td><td class="n">$30k sold</td><td class="n">$44k built</td><td>shrinks $14k</td><td><b>most weeks: lit</b></td><td>ahead</td></tr>
+  <tr><td>Bill</td><td class="n">$44k built</td><td class="n">$46k billed</td><td>shrinks $2k</td><td>moves with Build</td><td>keeps up</td></tr>
+  <tr><td>Collect</td><td class="n">$46k billed</td><td class="n">$31k paid</td><td>grows $15k</td><td>a close second</td><td>a close second, and named for cash</td></tr>
+</table></div>
+<ul class="plain">
+  <li><b>A pile is not a jam.</b> Eight weeks of sold work in front of the field is a backlog. It is a jam only if it is growing.</li>
+  <li><b>Market and Sales can never be lit today.</b> They hold no pile, so the weeks rule skips them. When too little is sold, the page cannot say so in red.</li>
+  <li><b>This only became possible this week.</b> Until punch list #318, Market read every dollar that came in and was far the widest step. Now all five are on one scale, so the narrowest one means something.</li>
+</ul>
+
+<h2>What could be wrong with it</h2>
+<ul class="plain">
+  <li><b>A pace is what happened, not what a step could do.</b> Build built $44k a week because it had the work. Starve it and it will read narrow too. That is why each row also says which way its pile is going: a narrow step with a shrinking pile is starved, not slow.</li>
+  <li><b>Two steps can be close.</b> Here Sales and Collect are $1k apart. The tile names both, one for growth and one for cash, and the page keeps its rule of a close second.</li>
+  <li><b>The week's call changes with it.</b> The card would propose Sales' moves: call the askers past their usual answer, mark the old bids. In a week cash is under the floor, cash still comes first, as today.</li>
+  <li><b>Friday's question and the weekly email follow the rule.</b> Both read the same kernels, so they would light the same step.</li>
+</ul>
+
+<h2>What it would take</h2>
+<div class="tw"><table class="t">
+  <tr><th>Piece</th><th>What it is</th><th>Size</th></tr>
+  <tr><td>Each row's direction</td><td>What comes in less what goes out, for Build, Bill and Collect. What the field builds less the pace, for Market and Sales. The cards already hold every number.</td><td>S</td></tr>
+  <tr><td>The rule</td><td>Light the narrowest step. Keep the held call, the close second and the thin-reading guard. The kernel is copied to the edge functions, so the weekly email moves with it.</td><td>M</td></tr>
+  <tr><td>The tile and the call</td><td>Two lines on the tile, growth and cash. The call proposes the lit step's moves.</td><td>S</td></tr>
+  <tr><td>The guide</td><td>The rule's section, in plain words.</td><td>S</td></tr>
+</table></div>
+<div class="note"><b>The smallest useful step:</b> ship the row directions alone and leave the red where it is. That adds no new rule, and the owner can watch the two readings side by side on his own numbers before deciding which one gets the red.</div>
+
+</div>
+<script>
+  var asked = new URLSearchParams(location.search).get('theme')
+  if (asked === 'light' || asked === 'dark') document.documentElement.setAttribute('data-theme', asked)
+  function mark() {
+    var now = document.documentElement.getAttribute('data-theme')
+    document.querySelectorAll('.themes button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.set === now ? 'true' : 'false') })
+  }
+  mark()
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set)
+      mark()
+    })
+  })
+</script>
+</body>
+</html>

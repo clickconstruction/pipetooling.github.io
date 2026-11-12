@@ -12,7 +12,6 @@ const rows = {
   bids_gc_builders: [],
   customers: [{ id: 'gc1', name: 'Acme GC' }],
   estimates: [],
-  jobs_ledger: [],
 }
 
 describe('loadMarketDeskReads', () => {
@@ -28,5 +27,10 @@ describe('loadMarketDeskReads', () => {
     const reads = await loadMarketDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: null })
     expect(reads.bids.map((b) => b.id)).toEqual(['zzFirst', 'b1'])
     expect(reads.firstBidYmdByGc.get('gc1')).toBe('2026-08-01')
+  })
+  it('does not read the jobs made from bids: a job decides nothing (punch list #318)', async () => {
+    const { db, reads } = makeProxyFakeSupabase(rows)
+    await loadMarketDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: new Set() })
+    expect(reads.some((r) => r.table === 'jobs_ledger')).toBe(false)
   })
 })

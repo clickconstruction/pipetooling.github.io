@@ -8,6 +8,10 @@ import type { Database } from '../../types/database'
  * passes the ZZ ids, or null to keep them, and the job rows carry their names
  * (`zzTestJobs.ts`). Since v2.6823 a ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no ask, no bid
  * sent, won, lost or awaiting either, for the same viewer. The estimates are not touched: they have no ZZ rule.
+ *
+ * Since punch list #318 a win is the bid's mark, dated by its answer day or, when it has none, by the day its job was
+ * made. Most won bids carry no answer day, and such a bid can be older than the three reads above. So the bids behind
+ * the jobs made inside the window are read too. The job dates the win; it never makes one.
  */
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
@@ -39,6 +43,20 @@ export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { win
   ])
   const bidById = new Map<string, BidRow>()
   for (const r of withoutZzBridgeBids([...created, ...sent, ...answered], opts.zzTestJobIds)) bidById.set(r.id, r)
+  // The bids behind the jobs made inside the window, for a marked win with no answer day.
+  const windowJobs = await fetchAllRows(
+    async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, bid_id').not('bid_id', 'is', null).gte('created_at', `${opts.windowStart}T00:00:00Z`).order('id').range(from, to), 'bridge demand jobs of the window')) as Array<{ id: string; bid_id: string | null }> | null, error: null }),
+    'bridge demand jobs of the window',
+  )
+  const behindIds = [...new Set(windowJobs.map((j) => j.bid_id).filter((id): id is string => !!id && !bidById.has(id)))]
+  const behind = behindIds.length
+    ? await fetchAllRowsChunkedIn<BidRow, string>(
+        behindIds,
+        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(select).in('id', chunk).order('id').range(from, to), 'bridge demand bids behind the window jobs')) as BidRow[] | null, error: null }),
+        'bridge demand bids behind the window jobs',
+      )
+    : []
+  for (const r of withoutZzBridgeBids(behind, opts.zzTestJobIds)) bidById.set(r.id, r)
   const ids = [...bidById.keys()]
   const jobRead = ids.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(

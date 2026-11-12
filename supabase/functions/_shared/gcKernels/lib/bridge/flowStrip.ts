@@ -23,6 +23,11 @@ import { STAGE_ORDER, stageUsd, type StageFlow, type StageId } from './stageFlow
  * far the widest; the word under each number says which kind of dollar it is.
  */
 export const STRIP_PACE_VERB: Record<StageId, string> = { market: 'asked', sales: 'sold', build: 'built', bill: 'billed', collect: 'paid' }
+/**
+ * Market's word once its pace is what the asks are worth at the won rates (punch list #318, `todayPace` and
+ * `marketPaceIsWorth` in `dial.ts`): the section is then on the same scale as the other four.
+ */
+export const STRIP_MARKET_WORTH_VERB = 'worth'
 
 /** The line over the drawing: the unit, and at a desk what the block is. */
 export const STRIP_LEGEND = { short: 'Dollars a week.', long: 'Dollars a week. A block is work waiting in front of a step.' } as const
@@ -54,7 +59,7 @@ export type StripSection = {
 
 export type FlowStrip = { sections: StripSection[]; litId: StageId | null; label: string }
 
-export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, number | null>>): FlowStrip {
+export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, number | null>>, opts: { /** Market's pace is its worth, not the dollars that came in. */ marketIsWorth?: boolean } = {}): FlowStrip {
   const byId = new Map(flow.stages.map((s) => [s.id, s]))
   const pace = (id: StageId): number | null => {
     const p = paces[id]
@@ -74,7 +79,8 @@ export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, n
     const whole = w != null ? Math.round(w) : 0
     const weeksText = whole >= 1 ? `${whole} ${whole === 1 ? 'week waits' : 'weeks wait'}` : ''
     const lit = flow.linkId === id
-    const verb = STRIP_PACE_VERB[id]
+    const worth = id === 'market' && opts.marketIsWorth === true
+    const verb = worth ? STRIP_MARKET_WORTH_VERB : STRIP_PACE_VERB[id]
     const paceText = p != null ? `${stageUsd(p)} ${verb}` : 'not read'
     return {
       id,
@@ -86,7 +92,7 @@ export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, n
       weeksText,
       pile: w != null && maxWeeks > 0 ? Math.min(w, STRIP_PILE_WEEKS_CAP) / maxWeeks : 0,
       lit,
-      label: [`${name}.`, p != null ? `${stageUsd(p)} ${verb} a week.` : 'Not read yet.', weeksText ? `${whole} ${whole === 1 ? 'week of work waits' : 'weeks of work wait'} in front of it.` : '', lit ? 'The slowest step.' : ''].filter(Boolean).join(' '),
+      label: [`${name}.`, p != null ? (worth ? `Worth ${stageUsd(p)} a week.` : `${stageUsd(p)} ${verb} a week.`) : 'Not read yet.', weeksText ? `${whole} ${whole === 1 ? 'week of work waits' : 'weeks of work wait'} in front of it.` : '', lit ? 'The slowest step.' : ''].filter(Boolean).join(' '),
     }
   })
   const lit = sections.find((s) => s.lit) ?? null

@@ -20,13 +20,14 @@ describe('buildDemand', () => {
     expect(d.bidsNoValue).toBe(0)
   })
 
-  it('reads won, started as a job, lost and awaiting', () => {
+  it('reads won, lost and awaiting by the mark alone', () => {
     const d = buildDemand({
       windowStart: start,
       todayYmd: end,
       bids: [
         bid({ id: 'won', sentYmd: '2026-08-20', usd: 40_000, outcome: 'won', outcomeYmd: '2026-09-01' }),
-        bid({ id: 'started', sentYmd: '2026-08-22', usd: 60_000, jobCreatedYmd: '2026-09-10', jobUsd: 58_000 }),
+        // A job was made from this one and nobody marked it: it is still out, and no win.
+        bid({ id: 'job-no-mark', sentYmd: '2026-08-22', usd: 60_000, jobCreatedYmd: '2026-09-10', jobUsd: 58_000 }),
         bid({ id: 'lost', sentYmd: '2026-08-25', usd: 200_000, outcome: 'lost', outcomeYmd: '2026-09-15' }),
         bid({ id: 'old-lost', sentYmd: '2026-06-01', usd: 500_000, outcome: 'lost', outcomeYmd: '2026-07-01' }),
         bid({ id: 'open', sentYmd: '2026-09-20', usd: 300_000 }),
@@ -39,9 +40,38 @@ describe('buildDemand', () => {
         est({ id: 'wait', createdYmd: '2026-09-01', sentYmd: '2026-09-02', status: 'sent', usd: 7_000 }),
       ],
     })
-    expect(d.sales.bids).toEqual({ sentUsd: 600_000, wonUsd: 40_000, startedUsd: 58_000, lostUsd: 200_000 })
+    expect(d.sales.bids).toEqual({ sentUsd: 600_000, wonUsd: 40_000, lostUsd: 200_000 })
     expect(d.sales.estimates).toEqual({ sentUsd: 15_000, wonUsd: 5_000, lostUsd: 3_000 })
-    expect(d.sales.awaiting).toEqual({ bids: 2, bidsUsd: 300_000, estimates: 1, estimatesUsd: 7_000 })
+    expect(d.sales.awaiting).toEqual({ bids: 3, bidsUsd: 360_000, estimates: 1, estimatesUsd: 7_000 })
     expect(d.bidsNoValue).toBe(1)
+  })
+
+  it('counts a bid marked started or complete as won, like one marked won', () => {
+    const d = buildDemand({ windowStart: start, todayYmd: end, bids: [bid({ id: 's', sentYmd: '2026-08-20', usd: 30_000, outcome: 'started_or_complete', outcomeYmd: '2026-09-03' })], estimates: [] })
+    expect(d.sales.bids.wonUsd).toBe(30_000)
+    expect(d.sales.awaiting.bids).toBe(0)
+  })
+
+  it('dates a marked win with no answer day by the day its job was made, and counts no win it cannot date', () => {
+    const d = buildDemand({
+      windowStart: start,
+      todayYmd: end,
+      bids: [
+        // Marked won, no answer day, a job made inside the window: the win lands in the window.
+        bid({ id: 'job-day', sentYmd: '2026-08-20', usd: 25_000, outcome: 'won', jobCreatedYmd: '2026-09-04' }),
+        // Marked won, no answer day, a job made before the window: the win is not this window's.
+        bid({ id: 'old-job', sentYmd: '2026-05-01', usd: 70_000, outcome: 'won', jobCreatedYmd: '2026-06-01' }),
+        // Marked won with no day at all: no week can hold it.
+        bid({ id: 'no-day', sentYmd: '2026-08-20', usd: 90_000, outcome: 'won' }),
+      ],
+      estimates: [],
+    })
+    expect(d.sales.bids.wonUsd).toBe(25_000)
+    expect(d.sales.awaiting.bids).toBe(0)
+  })
+
+  it('reads a won bid with no value of its own at its job’s revenue', () => {
+    const d = buildDemand({ windowStart: start, todayYmd: end, bids: [bid({ id: 'v', sentYmd: '2026-08-20', usd: 0, outcome: 'won', outcomeYmd: '2026-09-01', jobCreatedYmd: '2026-09-02', jobUsd: 12_000 })], estimates: [] })
+    expect(d.sales.bids.wonUsd).toBe(12_000)
   })
 })
