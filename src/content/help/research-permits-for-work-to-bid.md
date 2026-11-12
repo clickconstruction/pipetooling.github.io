@@ -27,7 +27,7 @@ A city reaches over its county line in places. The app then reads the county the
 
 Part of Austin is in Williamson County. A permit there reads Williamson County for its owner.
 
-Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
+Austin sends many permits with no map point. The app then takes the point from the lot's parcel at Travis County. Over the county line it takes it at Williamson County. A permit whose parcel the county does not hold yet shows *No point on this permit*.
 
 The cities do not all publish the same facts.
 

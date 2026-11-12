@@ -2,17 +2,17 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) and PR 3 (Williamson County by the R id, v2.6984) built, the rest not started
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) and PR 3b (the pull's point for those rows, v2.6985) built, the rest not started
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: The pull's map point for the R rows the city sends without one (permit-pull), then PR 4, a lot the county's map holds with no owner.
+next: PR 4, a lot the county's map holds with no owner. After PR 3b is deployed, read Austin's window again once so the rows already held take their point.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -95,7 +95,7 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
    Through the new kernel New Braunfels goes from 119 owners in 200 to 199, San Marcos 145 to 166.
 3. **Williamson County as a fifth source**, asked by the R id (S). Built: of the 113 R-id
    addresses none named an owner before and 112 do through the new kernel. Then the pull's map
-   point for the R rows (S, `permit-pull`), not built.
+   point for the R rows (S, `permit-pull`). Built: 68 of the 70 rows with no point take one.
 4. **A lot the county's map holds with no owner** (S). Say so and open that lot's own page at the
    appraisal district. First open one of those pages and see that it names the owner.
 5. **The county's address for the lot when it is not the permit's** (XS). One line on the sheets,
@@ -128,3 +128,8 @@ Read-only, signed in on a dev server, counts only.
 - **PR 1** (deployed from `main` 2026-11-12): San Antonio, the 16 newest commercial building
   permits with a point, one per address. All 16 name an owner, 11 by the address and 5 read at
   the permit's point. The second open of all 16 came from the kept answers.
+- **PR 2** (deployed from `main` 2026-11-12): the 20 newest building permits with a point in each
+  city, one per address. New Braunfels: all 20 name an owner, 12 of them read at the point in
+  Guadalupe County. San Marcos: 15 of 20 name an owner, 4 at Hays's own point and 5 with no
+  parcel. None of the San Marcos 20 was over the county line. The second open of all 40 came
+  from the kept answers.
