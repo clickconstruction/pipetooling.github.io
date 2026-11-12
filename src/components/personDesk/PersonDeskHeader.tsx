@@ -245,7 +245,7 @@ export function PersonDeskHeader({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: '0.6rem 0.85rem', padding: '0.85rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: '0.7rem 0.85rem', padding: '0.85rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
       <div
         aria-hidden
         style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: '0.9375rem', border: '1px solid #93c5fd' }}
@@ -284,47 +284,58 @@ export function PersonDeskHeader({
             </IdDot>
           </div>
         ) : null}
+      </div>
+      {/* v2.7015: the bands, chips and presses span under the avatar too, so a phone gives them the panel's whole width. */}
+      <div style={{ gridColumn: '1 / -1', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         {personKey && personKey.gaps.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.45rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {personKey.gaps.map((gap) => {
               const d = describePersonGap(gap, personKey, { canInvite: viewer.isDev })
               const actionable = !viewer.readOnly && (gap === 'unlinked_email_match' || gap === 'pay_name_mismatch' || gap === 'no_roster_row')
               return (
-                <div key={gap} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', background: 'var(--bg-amber-tint)', border: '1px solid #f59e0b', borderRadius: 4, padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{d.label}</span>
-                  <span style={{ color: 'var(--text-muted)', flex: '1 1 12rem', minWidth: 0 }}>{d.detail}</span>
-                  {gap === 'no_roster_row' && actionable ? (
-                    <select value={kindPick || ROLE_TO_KIND[personKey.role ?? ''] || ''} onChange={(e) => setKindPick(e.target.value)} style={{ fontSize: '0.75rem', padding: '0.1rem 0.3rem' }} aria-label="Roster kind">
-                      <option value="">Kind…</option>
-                      {KINDS.map((k) => (
-                        <option key={k.value} value={k.value}>
-                          {k.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <button type="button" style={deskBtn(actionable ? BTN_AMBER : BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => void runGap(gap)}>
-                    {busy === gap ? 'Working…' : d.action}
-                  </button>
+                // v2.7015: the words on the left (what is missing, then why it matters), the presses together on the right;
+                // on a narrow panel the presses drop under the words as one group.
+                <div key={gap} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem 0.75rem', flexWrap: 'wrap', background: 'var(--bg-amber-tint)', border: '1px solid #f59e0b', borderRadius: 6, padding: '0.45rem 0.65rem', fontSize: '0.75rem' }}>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: '1 1 14rem', minWidth: 0 }}>
+                    <span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>{d.label}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{d.detail}</span>
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: '0 0 auto' }}>
+                    {gap === 'no_roster_row' && actionable ? (
+                      <select value={kindPick || ROLE_TO_KIND[personKey.role ?? ''] || ''} onChange={(e) => setKindPick(e.target.value)} style={{ fontSize: '0.75rem', padding: '0.1rem 0.3rem' }} aria-label="Roster kind">
+                        <option value="">Kind…</option>
+                        {KINDS.map((k) => (
+                          <option key={k.value} value={k.value}>
+                            {k.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    <button type="button" style={deskBtn(actionable ? BTN_AMBER : BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => void runGap(gap)}>
+                      {busy === gap ? 'Working…' : d.action}
+                    </button>
+                  </span>
                 </div>
               )
             })}
           </div>
         ) : null}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.45rem' }}>
-          {openSession ? (
-            <Chip tone="green" title={`Since ${formatDenverTimeOnly(new Date(openSession.clocked_in_at).getTime())}`}>
-              On the clock{openSession.label ? ` · ${openSession.label.replace(/\n/g, ' ')}` : ''}
-            </Chip>
-          ) : null}
-          {pending && pending.count > 0 ? (
-            <Chip tone="amber">
-              {pending.count} session{pending.count === 1 ? '' : 's'} waiting · {formatHoursShort(pending.hours)}
-            </Chip>
-          ) : null}
-          {personKey?.archived ? <Chip tone="gray" title={awayNoteOn ? 'Archived, with an Away note on: their sign-in opens to the note and nothing else.' : undefined}>{awayNoteOn ? 'Away' : 'Archived'}</Chip> : null}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem' }}>
+        {openSession || (pending && pending.count > 0) || personKey?.archived ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+            {openSession ? (
+              <Chip tone="green" title={`Since ${formatDenverTimeOnly(new Date(openSession.clocked_in_at).getTime())}`}>
+                On the clock{openSession.label ? ` · ${openSession.label.replace(/\n/g, ' ')}` : ''}
+              </Chip>
+            ) : null}
+            {pending && pending.count > 0 ? (
+              <Chip tone="amber">
+                {pending.count} session{pending.count === 1 ? '' : 's'} waiting · {formatHoursShort(pending.hours)}
+              </Chip>
+            ) : null}
+            {personKey?.archived ? <Chip tone="gray" title={awayNoteOn ? 'Archived, with an Away note on: their sign-in opens to the note and nothing else.' : undefined}>{awayNoteOn ? 'Away' : 'Archived'}</Chip> : null}
+          </div>
+        ) : null}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
           {personKey?.userId ? (
             <button type="button" style={BTN} onClick={() => userReview?.open({ userId: personKey.userId!, displayName: name })}>
               Day · week · month
