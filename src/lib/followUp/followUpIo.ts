@@ -18,6 +18,7 @@ import { supabase } from '../supabase'
 import { checkSupabaseError, DatabaseError, formatErrorMessage } from '../../utils/errorHandling'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { noReplyBody } from './noReply'
+import { loadDoneFold, type DoneFoldRows } from './doneFoldIo'
 import type { ContactOwedRow, FollowUpContactRow, FollowUpMessageRow, FollowUpRows, MessageHighlightRow, MessagePromiseRow } from './followUpRows'
 import { SET_ASIDE_DAYS, type SetAsideRow } from './setAsideFold'
 import type { ContactState } from './queue'
@@ -43,6 +44,8 @@ export interface FollowUpIo {
    * the line cannot be written.
    */
   noReplyNeeded(contactId: string, byName: string): Promise<void>
+  /** What was done with no reply this week (v2.7030, `doneFold.ts`): the fold under the lanes reads it. */
+  loadDoneFold(): Promise<DoneFoldRows>
   markOwed(contactId: string, what: string, day: DayKept): Promise<string>
   /** Returns the note that marked it done. */
   owedDone(contactId: string, note: string, job: JobRef | null): Promise<string>
@@ -287,6 +290,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     async setState(contactId, state) {
       return (await call<string | null>('set_state', { p_contact_id: contactId, p_state: state }, 'change a conversation')) ?? null
     },
+    loadDoneFold: () => loadDoneFold(new Date(), db),
     async noReplyNeeded(contactId, byName) {
       await call('set_state', { p_contact_id: contactId, p_state: 'done' }, 'close a conversation')
       const line = await db.rpc('follow_up_event', { p_contact_id: contactId, p_body: noReplyBody(byName, formatDenverCalendarDayShort(Date.now())) })
