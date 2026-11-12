@@ -174,6 +174,13 @@ async function post(bearer: string | null, body: unknown): Promise<{ status: num
   return { status: res.status, body: (await res.json()) as Record<string, unknown>, headers: res.headers }
 }
 
+/** A post as the dev seat makes it: the dev's own session and the seat header. */
+async function seat(body: unknown, bearer = 'dev-jwt'): Promise<{ status: number; body: Record<string, unknown> }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, 'X-Dev-Seat': 'dev-mcp' }
+  const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
+  return { status: res.status, body: (await res.json()) as Record<string, unknown> }
+}
+
 /** A post as the cron makes it: its secret in `X-Cron-Secret` and no session. */
 async function cron(body: unknown, secret: string = ENV.CRON_SECRET!, bearer: string | null = null): Promise<{ status: number; body: Record<string, unknown> }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Cron-Secret': secret }
@@ -1190,15 +1197,100 @@ describe('gmail-mine: follow, the cron’s', () => {
   })
 })
 
+describe('gmail-mine: a tag onto a job through the dev seat names the dev, never the person', () => {
+  const seatTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL }
+  const ownTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }
+  const SEAT_WORDS = "Robert tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself."
+  const OWN_WORDS = 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.'
+  const events = () => lines().filter((l) => l.channel === 'event')
+  const tagRows = () => db.rows('email_tag_threads')
+  const boxLine = () => lines().find((l) => l.id === 'm-box-1')
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = elmThread()
+    db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+  })
+
+  it('keeps the box as the person’s and stamps the dev as the tagger, on the row, the tie and the grey line', async () => {
+    const res = await seat(seatTag)
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, lines: 2, tied: 1 })
+    // The row: whose box, and who tagged. The lines still come from Marisol's mail.
+    expect(tagRows()).toEqual([expect.objectContaining({ user_id: 'u-marisol', gmail_thread_id: 't-elm', jobs_ledger_id: ELM, tagged_by: 'u-dev', placed_by_app: false })])
+    expect(lines().filter((l) => l.mailbox === 'mine').map((l) => l.mail_user_id)).toEqual(['u-marisol', 'u-marisol'])
+    // The box's line is tied as the dev, whose press it was.
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+    // The thread says who really tagged, and how.
+    expect(events().map((e) => e.body)).toEqual([SEAT_WORDS])
+    expect(logged.filter((l) => l.includes('"event":"gmail_mine_tag"') && l.includes('"dev":"u-dev"'))).toHaveLength(1)
+  })
+
+  it('writes nothing and names nobody on the seat’s plan', async () => {
+    const res = await seat({ ...seatTag, plan: true })
+    expect(res.body).toMatchObject({ ok: true, plan: true })
+    expect(tagRows()).toEqual([])
+    expect(events()).toEqual([])
+  })
+
+  it('lets the person untag what the seat tagged: the line the seat tied comes off the job with the rest', async () => {
+    await seat(seatTag)
+    expect(tagRows()[0]).toMatchObject({ tied_line_ids: ['m-box-1'] })
+    const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(res.status).toBe(200)
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: null })
+    expect(tagRows()).toEqual([])
+    expect(events()).toEqual([])
+  })
+
+  it('keeps the first tagger on a second tag onto the same job, whoever makes it, on the row and on the line', async () => {
+    await seat(seatTag)
+    await post('marisol-jwt', ownTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ tagged_by: 'u-dev' })])
+    expect(events().map((e) => e.body)).toEqual([SEAT_WORDS])
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    // The other way round: the person pressed it first, and the seat's second tag changes neither.
+    await post('marisol-jwt', ownTag)
+    await seat(seatTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ tagged_by: 'u-marisol' })])
+    expect(events().map((e) => e.body)).toEqual([OWN_WORDS])
+  })
+
+  it('names whoever moves the conversation onto another job: the person after the seat, the seat after the person', async () => {
+    await seat(seatTag)
+    await post('marisol-jwt', { ...ownTag, job: { kind: 'pipeline', id: HARBOR } })
+    expect(tagRows()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, tagged_by: 'u-marisol' })])
+    expect(events()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, body: OWN_WORDS })])
+    // The line the seat tied moved with her tag, and is hers now.
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: HARBOR, tied_by: 'u-marisol' })
+    await seat(seatTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ jobs_ledger_id: ELM, tagged_by: 'u-dev' })])
+    expect(events()).toEqual([expect.objectContaining({ jobs_ledger_id: ELM, body: SEAT_WORDS })])
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+  })
+
+  it('ties what the follow brings later as the dev who tagged, so the untag still takes it off', async () => {
+    // The seat tags before bids@ has Dale's mail; the box takes its copy afterwards, on no job.
+    db.tables.messages = []
+    await seat(seatTag)
+    db.rows('messages').push({ id: 'm-box-late', contact_id: 'c-dale', gmail_id: 'bx-late', gmail_thread_id: 'bx-t-9', rfc_message_id: '<late-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null })
+    google.boxes[MARISOL]!.mails.push(mail('g-late', 't-elm', '2026-11-02T10:00:00.000Z', { From: DALE, Cc: 'bids@clickplumbing.example', Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<late-1@ridgeway.example>' }, 'One more thing.'))
+    expect((await cron({ action: 'follow' })).status).toBe(200)
+    expect(lines().find((l) => l.id === 'm-box-late')).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(lines().find((l) => l.id === 'm-box-late')).toMatchObject({ jobs_ledger_id: null })
+  })
+
+  it('reads a person’s own press as before: the row and the line name the person', async () => {
+    await post('marisol-jwt', ownTag)
+    expect(tagRows()).toEqual([expect.objectContaining({ user_id: 'u-marisol', tagged_by: 'u-marisol' })])
+    expect(boxLine()).toMatchObject({ tied_by: 'u-marisol' })
+    expect(events().map((e) => e.body)).toEqual([OWN_WORDS])
+  })
+})
+
 describe('gmail-mine: a conversation onto a person’s HR file (punch list #289)', () => {
   const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
   const ask = (over: Row = {}): Row => ({ action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL, ...over })
-  /** A post as the dev seat makes it: the dev's own session and the seat header. */
-  async function seat(body: unknown, bearer = 'dev-jwt'): Promise<{ status: number; body: Record<string, unknown> }> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, 'X-Dev-Seat': 'dev-mcp' }
-    const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
-    return { status: res.status, body: (await res.json()) as Record<string, unknown> }
-  }
   const entries = () => db.rows('person_file_entries')
   const tagRows = () => db.rows('email_tag_threads')
 

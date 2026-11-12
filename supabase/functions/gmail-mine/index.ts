@@ -29,7 +29,8 @@
  *   someone else leaves the copies no line names removed), its person put on the job's people (`contact_jobs`, as
  *   `tie_message` puts them) and its raw mail kept as `mine/<line id>.eml`. Then the grey line in the other party's
  *   thread (the app's own event, keyed `mytag:<row id>`, moved with a tag onto another job), and the Gmail label
- *   *Tagged in ClickTooling* on its mail. A step the database refuses stops the tag with its words; what was written
+ *   *Tagged in ClickTooling* on its mail. Through the dev seat's door the row's `tagged_by` is the dev, its `user_id`
+ *   still the box, and the grey line says the dev tagged it from the person's mail, through the dev seat. A step the database refuses stops the tag with its words; what was written
  *   stays, the row with it, and the follow or a second tag finishes it.
  * - `untag` ({ threadId }): the row is marked `untagging_at` first, so the follow passes it by and lands nothing back,
  *   and an untag that stops leaves it for the next to find. The person's own lines of the conversation go, with their
@@ -171,6 +172,7 @@ import {
   myMailTagEventKey,
   myMailTagEventRow,
   myMailTagRecord,
+  myMailTaggedBy,
   myMailTeam,
   neverRead,
   newestMailAt,
@@ -199,6 +201,7 @@ import {
   type MyMailFollowUserRow,
   type MyMailHeldLine,
   type MyMailLine,
+  type MyMailNamed,
   type MyMailPageFacts,
   type MyMailPipelineRow,
   type MyMailProjectRow,
@@ -247,10 +250,15 @@ interface AsPerson {
   me: Pick<Me, 'id' | 'name' | 'email'>
 }
 
-/** A signed-in call: the person as `AsPerson`, with their own client for what runs as them (`tie_message`). */
+/**
+ * A signed-in call: the person as `AsPerson`, with the caller's own client for what runs as them (`tie_message`).
+ * Through the dev seat's door the caller is the dev (`seat`) and `me` is the login whose box it is: the tag's row and
+ * its grey line name the dev, never the person, as the one who tagged.
+ */
 interface Ctx extends AsPerson {
   caller: Admin
   me: Me
+  seat?: (MyMailNamed & { id: string }) | null
 }
 
 interface Box {
@@ -841,12 +849,13 @@ async function landMail(as: AsPerson, email: EmailIn, step: WriteStep, plan: Pic
 
 /**
  * The tag's grey line in the other party's thread (`myMailTagEventRow`): written once, `ignoreDuplicates` on its key as
- * `_shared/estimateThreadLine.ts` writes one, and moved onto the new job when a second tag moved the conversation. Best
- * effort: a miss is logged and the tag stands.
+ * `_shared/estimateThreadLine.ts` writes one, and moved onto the new job when a second tag moved the conversation, in
+ * the words of whoever moved it. A tag through the dev seat (`seat`) names the dev and the seat, never the person as
+ * the one who tagged. Best effort: a miss is logged and the tag stands.
  */
-async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean; words?: string }): Promise<boolean> {
+async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean; words?: string; seat?: MyMailNamed | null }): Promise<boolean> {
   try {
-    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns, words: input.words })
+    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns, words: input.words, seat: input.seat })
     const { error } = await ctx.admin.from('messages').upsert(row, { onConflict: 'quo_id', ignoreDuplicates: !input.moved })
     if (error) throw new Error(error.message)
     return true
@@ -909,11 +918,15 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   // earlier tag or the follow tied (`tied_line_ids`), so an untag unties those and no line placed by hand.
   const ties = plan.steps.flatMap((s) => (s.kind === 'tie' && s.tie && heldById.get(s.messageId)?.mail_user_id !== me.id ? [s.messageId] : []))
   const taggedAt = nowIso()
+  // Who tagged: the caller, the dev when the tag came through the seat, with the box staying the row's `user_id`
+  // (`myMailTaggedBy`: a second tag onto the same job keeps the first tagger, as the grey line keeps its words).
+  const actorId = ctx.seat?.id ?? me.id
+  const taggedBy = myMailTaggedBy(actorId, plan.jobKey, { record, placedByApp: (before.data as { placed_by_app?: boolean | null } | null)?.placed_by_app === true })
   const saved = await admin
     .from('email_tag_threads')
     .upsert(
       // A tag by hand is the person's (`placed_by_app` false), whatever the app placed before (punch list #263 PR B).
-      { ...plan.threadRow, tagged_at: taggedAt, last_mail_at: newestMailAt(emails) ?? taggedAt, last_read_at: null, last_error: null, untagging_at: null, placed_by_app: false, tied_line_ids: withTies(record?.tied, ties) },
+      { ...plan.threadRow, tagged_by: taggedBy, tagged_at: taggedAt, last_mail_at: newestMailAt(emails) ?? taggedAt, last_read_at: null, last_error: null, untagging_at: null, placed_by_app: false, tied_line_ids: withTies(record?.tied, ties) },
       { onConflict: 'user_id,gmail_thread_id' },
     )
     .select('id')
@@ -931,7 +944,7 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     }
     if (step.kind === 'tie') {
       if (step.tie) {
-        await tieLine(ctx, step.messageId, chip, me.id, { tie: 'The tag stopped partway. A line could not be tied to the job.', stamp: 'The tag stopped partway. A tied line could not name who tagged it.' })
+        await tieLine(ctx, step.messageId, chip, actorId, { tie: 'The tag stopped partway. A line could not be tied to the job.', stamp: 'The tag stopped partway. A tied line could not name who tagged it.' })
         done.tied++
       }
       const line = heldById.get(step.messageId)
@@ -947,10 +960,10 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   }
 
   const moved = wasOn !== null && wasOn !== plan.jobKey
-  const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved }) : false
+  const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat }) : false
   const label = await labelMails(ctx, unique(plan.steps.filter((s) => s.kind !== 'skip').map((s) => s.gmailId)))
   const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender }
-  log({ event: 'gmail_mine_tag', user: me.id, job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved, ...label })
+  log({ event: 'gmail_mine_tag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved, ...label })
   return json(answer)
 }
 
@@ -1729,7 +1742,9 @@ serve(async (req) => {
     // The dev seat's door (server 0.30.0, `plan_mail_tag` → `apply_mail_tag`): a dev's own key, naming itself with
     // X-Dev-Seat, tags a conversation out of another login's box onto a job — the plan first, written nowhere, then
     // the tag — as that person, under the same delegation and the same planner, so the lines land as their own press
-    // would land them. Only a tag comes through here: the seat reads mail with its own verbs, and never untags.
+    // would land them. The tag itself is the dev's: the row's `tagged_by` and the grey line on the thread name the dev
+    // and the seat (`ctx.seat`), never the person as the one who tagged. Only a tag comes through here: the seat reads
+    // mail with its own verbs, and never untags.
     if (ask.action === 'tag' && typeof ask.as === 'string') {
       if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(myMailRefusal('badRequest', 'A tag as another login is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
       if (who.read_only === true) return refuse(myMailRefusal('readOnly'), MY_MAIL_REFUSAL_STATUS.readOnly, action)
@@ -1747,9 +1762,10 @@ serve(async (req) => {
         return refuse(tokenRefusal(words(e)), undefined, action)
       }
       const theirHidden = Array.isArray(them.my_mail_hidden_labels) ? (them.my_mail_hidden_labels as unknown[]).filter((l): l is string => typeof l === 'string') : []
-      const ctx: Ctx = { admin, caller, token, me: { id: String(them.id), name: String(them.name ?? '').trim(), email: theirEmail, readOnly: false, hiddenLabels: theirHidden } }
-      log({ event: 'gmail_mine_seat_tag', dev: String(who.id), as: String(them.id), plan: ask.plan === true, on_file: onFile })
-      if ('person' in ask) return await tagPerson(ctx, ask, { id: String(who.id), name: String(who.name ?? '').trim() || String(who.email ?? '').trim() })
+      const dev = { id: String(who.id), name: String(who.name ?? '').trim(), email: String(who.email ?? '').trim() }
+      const ctx: Ctx = { admin, caller, token, me: { id: String(them.id), name: String(them.name ?? '').trim(), email: theirEmail, readOnly: false, hiddenLabels: theirHidden }, seat: dev }
+      log({ event: 'gmail_mine_seat_tag', dev: dev.id, as: String(them.id), plan: ask.plan === true, on_file: onFile })
+      if ('person' in ask) return await tagPerson(ctx, ask, { id: dev.id, name: dev.name || dev.email })
       return await tag(ctx, ask)
     }
     if (ask.action === 'tag' && ask.plan === true) return refuse(myMailRefusal('badRequest', 'The plan of a tag is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
