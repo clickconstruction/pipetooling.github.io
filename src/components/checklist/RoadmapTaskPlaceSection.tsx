@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { loadRoadmapTaskPlace, saveRoadmapTaskPlace } from '../../lib/tasks/taskPlaceIo'
 import { taskPlaceDraft, type TaskPlace, type TaskPlaceDraft } from '../../lib/tasks/taskPlace'
-import { TaskPlaceBlock } from './TaskPlaceBlock'
+import { loadTaskSpotPhotoPath, putTaskSpotPhoto, removeTaskSpotPhotoFile, saveTaskSpotPhotoPath, taskSpotPhotoUrls } from '../../lib/tasks/taskSpotPhotoIo'
+import { TaskPlaceBlock, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceRow } from './TaskPlaceRow'
+import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './TaskSpotPhotoField'
 
 type Props = {
   taskId: string
@@ -25,30 +27,82 @@ export function RoadmapTaskPlaceSection({ taskId, canEdit, userId, nameOf }: Pro
   const [place, setPlace] = useState<TaskPlace | null>(null)
   const [draft, setDraft] = useState<TaskPlaceDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // PR 6: the planner's photo of the spot. Its path as saved, and what the field shows.
+  const [photo, setPhoto] = useState<TaskSpotPhotoDraft | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setPlace(null)
     setDraft(null)
     setError(null)
+    setPhoto(null)
     void loadRoadmapTaskPlace(taskId).then((p) => {
       if (cancelled) return
       setPlace(p)
       setDraft(taskPlaceDraft(p))
+    })
+    void loadTaskSpotPhotoPath({ kind: 'roadmap', id: taskId }).then(async (path) => {
+      if (cancelled || !path) return
+      const url = (await taskSpotPhotoUrls([path])).get(path) ?? null
+      if (!cancelled) setPhoto({ kind: 'saved', path, previewUrl: url })
     })
     return () => {
       cancelled = true
     }
   }, [taskId])
 
+  const photoUrl = photo?.previewUrl ?? null
   if (!canEdit) {
-    if (!place) return null
+    if (!place && !photoUrl) return null
     return (
       <div data-roadmap-task-place style={{ padding: '2px 16px 12px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{place.name}</div>
-        <TaskPlaceBlock place={place} placedByName={place.setBy ? nameOf(place.setBy) : null} />
+        {place ? (
+          <>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{place.name}</div>
+            <TaskPlaceBlock place={place} placedByName={place.setBy ? nameOf(place.setBy) : null} photoUrl={photoUrl} />
+          </>
+        ) : photoUrl ? (
+          <TaskSpotPhotoView url={photoUrl} />
+        ) : null}
       </div>
     )
+  }
+
+  // The card window saves each edit by itself, and so does a picture: it goes up on the pick.
+  const changePhoto = (next: TaskSpotPhotoDraft | null) => {
+    const before = photo
+    setError(null)
+    if (next?.kind === 'new') {
+      setPhoto(next)
+      setPhotoBusy(true)
+      void putTaskSpotPhoto({ kind: 'roadmap', id: taskId }, next.id, next.blob).then((put) => {
+        setPhotoBusy(false)
+        if ('error' in put) {
+          setPhoto(before)
+          setError(put.error)
+          return
+        }
+        setPhoto({ kind: 'saved', path: put.path, previewUrl: next.previewUrl })
+        if (before?.kind === 'saved') void removeTaskSpotPhotoFile(before.path)
+      })
+      return
+    }
+    if (next === null && before?.kind === 'saved') {
+      setPhoto(null)
+      setPhotoBusy(true)
+      void saveTaskSpotPhotoPath({ kind: 'roadmap', id: taskId }, null).then((why) => {
+        setPhotoBusy(false)
+        if (why) {
+          setPhoto(before)
+          setError(why)
+          return
+        }
+        void removeTaskSpotPhotoFile(before.path)
+      })
+      return
+    }
+    setPhoto(next)
   }
 
   const change = (next: TaskPlaceDraft | null) => {
@@ -65,6 +119,7 @@ export function RoadmapTaskPlaceSection({ taskId, canEdit, userId, nameOf }: Pro
   return (
     <div data-roadmap-task-place style={{ padding: '2px 16px 12px', borderBottom: '1px solid var(--border)' }}>
       <TaskPlaceRow value={draft} onChange={change} />
+      <TaskSpotPhotoField value={photo} onChange={changePhoto} busy={photoBusy} />
       {error ? (
         <p role="alert" style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
           {error}
