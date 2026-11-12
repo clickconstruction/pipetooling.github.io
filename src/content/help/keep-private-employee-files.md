@@ -70,7 +70,7 @@ A file over 10 MB, or one already in Drive, is linked instead. Put the file in t
 
 Evidence is never edited or deleted. A mistake is corrected by a new record that says so.
 
-Tick **Counsel-only** for a record the firm alone should hold. The record stays in the app only. The record is never filed in Drive. The agent and the dev seat cannot read the record. A dev signed in still can. The record wears a lock chip, and the Evidence tab gains a Counsel-only filter.
+Tick **Counsel-only** for a record the firm alone should hold. The record stays in the app only. The record is never filed in Drive. Devs can read it, and so can the dev seat their agents use. The HR agent's key cannot read it. The record wears a lock chip, and the Evidence tab gains a Counsel-only filter.
 
 ## Name a theme to look for
 

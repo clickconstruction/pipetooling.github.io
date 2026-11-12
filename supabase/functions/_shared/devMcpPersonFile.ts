@@ -46,6 +46,7 @@ import {
   ymdShift,
 } from './personTimeline.ts'
 import { evidenceDriveWords, sortEvidenceNewestFirst, type PersonEvidenceFile } from './personEvidence.ts'
+import { counselOnlyHeldReason, counselOnlyStillHeld } from './devMcpCounselOnly.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -127,7 +128,7 @@ type AttachmentRow = PersonEvidenceFile & { entry_id: string | null }
 type DocRow = { kind: string; content: string; updated_at: string; covered_through: string | null; author_label: string | null }
 /** One row of person_document_index (v2.6613): a named document without its text. */
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; created_at: string; updated_at: string; archived_at: string | null; chars: number; sections: number }
-type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
+type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null; counsel_only?: boolean | null }
 type WriteupRow = { id: string; template_id: string; status: string; disclosure: string | null; submitted_at: string | null; created_at: string; filled_by_user_id: string | null }
 type ExcuseRow = { id: string; work_date: string; note: string; created_at: string; author: unknown }
 type StatementRow = Omit<PersonTimelineStatement, 'job_label'>
@@ -234,7 +235,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     read<PersonTimelineEntry>('file', isDev, devOnly, every('person_file_entries', 'id,entry_date,content,source,created_by,created_at,author_label', eq('person_id', personId))),
     read<AttachmentRow>('file', isDev, devOnly, every('person_file_attachments', 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', eq('person_id', personId), 'created_at')),
     read<DocRow>('file', isDev, devOnly, () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
-    read<EvidenceRow>('evidence', isDev, devOnly, every('person_file_evidence', 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why', eq('person_id', personId), 'dated_on')),
+    read<EvidenceRow>('evidence', isDev, devOnly, every('person_file_evidence', 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why,counsel_only', eq('person_id', personId), 'dated_on')),
     read<PersonTimelineReport>('report', isDev, devOnly, every('person_reports', 'id,status,occurred_date,created_at,author_name,content,resolution_note,resolved_at,filed_entry_id', eq('subject_person_id', personId), 'occurred_date')),
     read<PersonTimelineContract>('contract', true, '', every('person_contract_documents', CONTRACT_SELECT, eq('person_id', personId))),
     read<PersonTimelineContract>('contract', name !== '', 'needs a name on the roster', every('person_contract_documents', CONTRACT_SELECT, eq('person_name', name))),
@@ -345,12 +346,14 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const { ahead, past } = splitPersonTimeline(lines, who.todayYmd)
   const monthsWhole = groupPersonTimelineByMonth(past)
 
-  // v2.6554: counsel-only records are refused to this seat by RLS (the X-Dev-Seat header); the count is a definer's answer, never a row.
+  // v2.6554: counsel-only records were refused to this seat by RLS (the X-Dev-Seat header). Since v2.6986 the fence asks a
+  // switch that stands open, so they come back with the rest; a hold is named only for the ones the count names that the
+  // read did not hand back (the switch shut again).
   if (isDev) {
     try {
       const raw = await reader.rpc('person_counsel_only_count', { p_person_id: personId })
-      const n = Number(Array.isArray(raw) ? raw[0] : raw)
-      if (Number.isFinite(n) && n > 0) held.push({ source: 'evidence', reason: `${n} counsel-only record${n === 1 ? '' : 's'}, kept from the seat; a dev reads them on People → HR` })
+      const n = counselOnlyStillHeld(raw, evidenceRows.filter((r) => r.counsel_only === true).length)
+      if (n > 0) held.push({ source: 'evidence', reason: counselOnlyHeldReason(n) })
     } catch {
       // Before the migration is pushed the function is not there: nothing to name.
     }
@@ -393,11 +396,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const evidenceDrive = (r: EvidenceRow) => evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] })
   const evidenceWhole = (r: EvidenceRow) => {
     const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files }
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files }
   }
   const evidenceShort = (r: EvidenceRow, max: number) => {
     const memo = cutText(r.memo, max)
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length }
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length }
   }
   const evidenceBlock = () => (evidenceNewest == null ? evidenceSorted : evidenceSorted.slice(0, evidenceNewest)).map((r) => (evidenceChars == null ? evidenceWhole(r) : evidenceShort(r, evidenceChars)))
 

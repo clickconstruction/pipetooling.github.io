@@ -47,7 +47,7 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  *
  * Since v2.6720 (punch list #288 PR 2) a paper can be **counsel-only**: the Add form's tick, the row's lock chip and the
  * menu's *Counsel-only* / *Not counsel-only after all*. The firm still reads it on its portal (with a lock); the printed
- * packet leaves it out; the dev seat and the agent never read the row or its words (`COUNSEL_ONLY_DOCUMENT_WORDS`).
+ * packet leaves it out; since v2.6986 the dev seat reads it as the dev it reads as (`COUNSEL_ONLY_DOCUMENT_WORDS`).
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }

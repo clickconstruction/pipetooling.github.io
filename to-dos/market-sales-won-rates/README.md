@@ -2,7 +2,7 @@
 name: "Market and Sales on the won rates"
 number: 318
 group: ready
-status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · the Bridge's own Market and Sales readings, the weekly email and most of the guide still count the old way · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
+status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · the Bridge's own Market and Sales readings, the weekly email and most of the guide still count the old way · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
 mockup: to-dos/market-sales-won-rates/mockup.html
 summary: >
   The Bridge read Market as every dollar asked in a week and judged it at one win share for everything. The owner set new rules in one sitting: estimates and bids each run through their own won
@@ -11,8 +11,8 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board already read this way on a spike
   branch. The page's own Market and Sales cards, the slowest-step reading, the weekly email and the guide do
   not yet. This card holds every rule and what is left, so a session on another computer can finish it.
-next: PR 2, the chart of wins by bid size on the Bid Board, then PR 3, the Market and Sales windows; after them the Bridge's own readings and the weekly email move to the same rules
-size: L as a train of six (M · S · M · M · M · S); left: PRs 2 to 6 (S · M · M · M · S)
+next: PR 4, one rule on the page: the Market card, the slowest-step reading, Sales' sold a week and the Sales window's inputs; then the weekly email
+size: L as a train of six (M · S · M · M · M · S); left: PRs 4 to 6 (M · M · S)
 blocker: None. The spike branch is on GitHub.
 opinion: ship PRs 1 to 3 as built, since the owner walked them. PR 4 is the one that matters most, because until it lands the page tells two stories about Market.
 ---
@@ -166,8 +166,8 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 | PR | What | Size |
 |---|---|---|
 | 1 | **Shipped, v2.6973.** **The pipe stands up, with Market worth on it.** The standing pipe is the spike's candidate 2 and carries the Market row, so it goes first: `flowStripDown.ts`, `BridgeFlowStripDown.tsx`, `stripSide` on `BridgeWeek.tsx`, then the two won-rate kernels, their loaders and tests, and `withMarketWorth`. Until the left-out list ships, the loaders take an empty list. | M |
-| 2 | **Won by bid size on the Bid Board.** `BidBoardWonBySizeSection.tsx` and its place in Health. Add a render test. | S |
-| 3 | **The frame, with the Market and Sales windows.** `BridgeStepWindow.tsx`, the two windows, their new kernels and the two changed kernels. The other three windows can ride here or in their own PR. | M |
+| 2 | **Shipped, v2.6975.** **Won by bid size on the Bid Board.** `BidBoardWonBySizeSection.tsx` and its place in Health. Add a render test. | S |
+| 3 | **Shipped, v2.6977.** **The frame, with the Market and Sales windows.** `BridgeStepWindow.tsx`, the two windows, their new kernels and the two changed kernels. The other three windows can ride here or in their own PR. | M |
 | 4 | **One rule on the page.** Items 1 to 4 above: the Market card, the badge, the pace the across pipe reads, Sales' sold a week, the Sales window's inputs. `stageFlow.ts`, `dial.ts` and `demandPace.ts` are copied to the edge functions, so regenerate the copy in this PR. | M |
 | 5 | **The weekly email.** Item 5. Dry-run the function and read its Market line before the redeploy. | M |
 | 6 | **The guide and the docs.** Item 6, and item 7 if not done on the way. | S |
@@ -203,13 +203,19 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 
 ## Where it stands
 
-Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11. PRs 2 and 3 are a matter of
-cutting the files across with their docs. PRs 4 and 5 are new work.
+Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11. PRs 4 and 5 are new work.
 
 - **PR 1 shipped as v2.6973.** The pipe stands up, beside the call's card at a desk. Market's row reads what the
   asks are worth, with the working one press under the pipe. The loaders take an empty left-out list, and
   `leftOut.ts` holds the rule alone. *How the week runs* left the first screen with it, as the owner said on the
   walk. Walked at desk and phone width with every count held beside a separate read of the rows.
+- **PR 2 shipped as v2.6975.** The chart sits in the Bid Board's Health section under the Pulse and follows the
+  trade. The spike read a bid's send day as an instant, which lands a day early; the chart reads the date as
+  written. It has a render test now.
+- **PR 3 shipped as v2.6977.** The frame, and the Market and Sales windows on it, with the mark-only rule and the
+  plain words in `marketDesk.ts` and `salesDesk.ts`. Each window opens at about one phone screen with every
+  press 44 px tall. The Build, Bill and Collect windows were rebuilt on the frame on the spike too; they are not
+  on this card and did not ride along. The frame has a render test now.
 
 Two things PR 1 turned up, for the owner:
 

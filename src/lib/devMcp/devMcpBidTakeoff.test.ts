@@ -217,7 +217,7 @@ describe('bidTakeoffDryRun — parts on a count row', () => {
       expect.stringContaining('no part named "no such part"'), expect.stringContaining('above zero'), expect.stringContaining('0 or more'),
     ])
     expect(r.rows[1]?.lines[0]).toMatchObject({ status: 'held', why: expect.stringContaining('2 lines on this row already carry that part') })
-    expect(r.rows.map((x) => x.status)).toEqual(['ready', 'unchanged'])
+    expect(r.rows.map((x) => x.status)).toEqual(['ready', 'held'])
     // The same part twice in the ask, two parts of one name, a part of another trade.
     expect(plan({ rows: [{ fixture: 'Lavatory', lines: [{ part_id: PIPE, quantity: 1 }, { part_id: PIPE, quantity: 2 }, { part_id: VALVE, quantity: 1 }] }] }).rows[0]?.lines[0]).toMatchObject({ status: 'held', why: expect.stringContaining('lines 1 and 2 name the same part') })
     const twins = { parts: [part(ELBOW, 'ZZ elbow'), part('aaaaaaaa-0004-4111-8111-111111111111', 'zz elbow', { manufacturer: 'ZZ Brass' }), part(VALVE, 'ZZ stop valve', { service_type_id: 'another-trade' })] }
@@ -235,6 +235,15 @@ describe('bidTakeoffDryRun — parts on a count row', () => {
       ['ready', ''],
     ])
     expect(r.rows[5]).toMatchObject({ count_row_id: 'wc-alt', reads: '1 × Water closet (Break room)' })
+  })
+})
+
+describe('bidTakeoffDryRun — a row whose only asks are held (found live on a ZZ bid, 2026-11-12)', () => {
+  it('reads as held with each reason, and its held lines are counted', () => {
+    const r = plan({ rows: [{ fixture: 'Lavatory', materials_each: 10 }, { fixture: 'Water closet', lines: [{ part: 'no such part', quantity: 1 }] }, { fixture: 'Water closet', group: null, materials_each: -1 }].slice(0, 2) })
+    expect(r.rows[1]).toMatchObject({ status: 'held', why: expect.stringContaining('line 1 — no part named "no such part"'), count_row_id: WC, lines: [{ status: 'held' }] })
+    expect(r.counts).toMatchObject({ rows_ready: 1, rows_unchanged: 0, rows_held: 1, lines_held: 1 })
+    expect(refusal({ rows: [{ fixture: 'Water closet', materials_each: -1 }] })).toContain('materials_each is dollars for one counted unit')
   })
 })
 

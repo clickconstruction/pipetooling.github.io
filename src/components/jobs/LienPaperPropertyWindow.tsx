@@ -40,6 +40,8 @@ const FOCUS_LABEL: Partial<Record<LienPaperGap['key'], string>> = {
   legal: 'Property legal description',
   owner: 'Owner of record name',
   owner_address: 'Owner mailing address',
+  // The homestead question's first answer (punch list #305).
+  homestead_answer: 'Homestead: yes',
 }
 
 const btn: CSSProperties = { padding: '0.35rem 0.9rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer' }
