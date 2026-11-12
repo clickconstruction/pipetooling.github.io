@@ -84,7 +84,8 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
  * v2.6713 (punch list #287): for the document hits, the record each transcribes — `person_documents.evidence_id` read
  * from the index view, the record's day and title from `person_file_evidence` — joined here so `dev_case_search`'s
  * body stays as it is. Fail-soft: a catalog that does not know the column yet, or a refused read, leaves the hits as
- * they were. A counsel-only record's title stays out, as the seat's other reads keep it.
+ * they were. A counsel-only record's title rides with the rest since v2.6986, when the seat began to read those records;
+ * the hit's own counsel_only mark says what it is.
  */
 async function transcribedRecords(reader: Reader, personId: string, hits: ReadonlyArray<CaseSearchHit>): Promise<Map<string, CaseSearchEvidence>> {
   const out = new Map<string, CaseSearchEvidence>()
@@ -99,7 +100,7 @@ async function transcribedRecords(reader: Reader, personId: string, hits: Readon
     const byId = new Map(records.map((r) => [r.id, r]))
     for (const d of tied) {
       const r = byId.get(d.evidence_id as string)
-      out.set(d.id, { evidence_id: d.evidence_id as string, evidence_day: r?.dated_on ?? null, evidence_title: r && !r.counsel_only ? r.title : null })
+      out.set(d.id, { evidence_id: d.evidence_id as string, evidence_day: r?.dated_on ?? null, evidence_title: r ? r.title : null })
     }
   } catch {
     // Left as the search answered: the hit still names the document.
