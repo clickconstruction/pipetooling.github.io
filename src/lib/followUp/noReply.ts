@@ -10,7 +10,7 @@
  * chip for a thread that only old mail filed for the record ever touched. Pure; the write is `followUpIo.ts`'s
  * `noReplyNeeded`, the row `useFollowUpThreadSlots.tsx`, the sort card's press `NewLaneSlot.tsx`.
  */
-import { courtOf, lastIn, lastOut, NOTHING_WAITS, shortDay, type ThreadMessage } from '../messages/thread'
+import { courtOf, lastAsk, lastOut, NOTHING_WAITS, shortDay, type ThreadMessage } from '../messages/thread'
 import type { ContactState } from './queue'
 
 /** The press, as `stateMenu` already names it. */
@@ -58,7 +58,7 @@ export function threadClose(input: { state: ContactState; lines: readonly Thread
   if (state === 'waiting') return { kind: 'press', label: NO_REPLY_PRESS, tip: NO_REPLY_TIP }
   if (state !== 'done') return null
   const mine = lines.filter((m) => m.contactId === contactId)
-  const lastWord = Math.max(at(lastIn(mine, contactId)), at(lastOut(mine, contactId)))
+  const lastWord = Math.max(at(lastAsk(mine, contactId)), at(lastOut(mine, contactId)))
   const said = mine
     .filter((m) => m.channel === 'event' && noReplyOf(m.body) !== null && Date.parse(m.at) > lastWord)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]
@@ -67,7 +67,7 @@ export function threadClose(input: { state: ContactState; lines: readonly Thread
     return { kind: 'done', how: 'noReply', words: `Done · no reply needed · ${who}, ${shortDay(said.at, nowIso)}`, tip: `${who} closed it with No reply needed. Reopen puts it back on Follow up.` }
   }
   const filed = mine.filter((m) => m.history)
-  if (filed.length > 0 && courtOf(mine, contactId, nowIso).word === NOTHING_WAITS && !lastIn(mine, contactId)) {
+  if (filed.length > 0 && courtOf(mine, contactId, nowIso).word === NOTHING_WAITS && !lastAsk(mine, contactId)) {
     const landed = filed.map((m) => m.landedAt).filter((d): d is string => !!d).sort()
     const newest = landed[landed.length - 1]
     return {
