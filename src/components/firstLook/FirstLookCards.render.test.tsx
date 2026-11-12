@@ -44,6 +44,8 @@ const VIDEO: ThreadLookFile = { id: 'F2', look_id: 'L1', kind: 'video', mime: 'v
 
 const fakeIo = (over: Partial<FirstLookThreadIo> = {}): FirstLookThreadIo => ({
   looks: vi.fn(async () => ({ looks: [], files: [] })),
+  lookById: vi.fn(async () => null),
+  lookOfEstimate: vi.fn(async () => null),
   signLookFiles: vi.fn(async (paths: readonly string[]) => Object.fromEntries(paths.map((p) => [p, `https://files.test/${p}`]))),
   signTexted: vi.fn(async (ids: readonly string[]) => Object.fromEntries(ids.map((id) => [id, `https://texted.test/${id}`]))),
   mint: vi.fn(async () => ({ id: 'L9', link: 'https://clicktooling.com/show/k7m2p9xq4d' })),
@@ -121,7 +123,8 @@ describe('the First look card on a thread (punch list #319 PR 1)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Start an estimate' }))
     await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/estimates/42', { state: { freshEstimateDraft: true } }))
     expect(doors.convert).not.toHaveBeenCalled()
-    expect(doors.startEstimate).toHaveBeenCalledWith('cust-dana', expect.objectContaining({ role: 'assistant' }))
+    // The estimate remembers the look it was started from (PR 5).
+    expect(doors.startEstimate).toHaveBeenCalledWith('cust-dana', expect.objectContaining({ role: 'assistant' }), { firstLookId: 'L1' })
     expect(win.closeThread).toHaveBeenCalled()
   })
 

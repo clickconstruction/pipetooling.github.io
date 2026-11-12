@@ -11713,6 +11713,12 @@ export type Database = {
           bytes: number | null
           client: string | null
           declared_bytes: number
+          drive_file_id: string | null
+          drive_tried_at: string | null
+          drive_upload_offset: number | null
+          drive_upload_uri: string | null
+          fail_why: string | null
+          filed_at: string | null
           finished_at: string | null
           id: string
           kind: string
@@ -11731,6 +11737,12 @@ export type Database = {
           bytes?: number | null
           client?: string | null
           declared_bytes: number
+          drive_file_id?: string | null
+          drive_tried_at?: string | null
+          drive_upload_offset?: number | null
+          drive_upload_uri?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           finished_at?: string | null
           id?: string
           kind: string
@@ -11749,6 +11761,12 @@ export type Database = {
           bytes?: number | null
           client?: string | null
           declared_bytes?: number
+          drive_file_id?: string | null
+          drive_tried_at?: string | null
+          drive_upload_offset?: number | null
+          drive_upload_uri?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           finished_at?: string | null
           id?: string
           kind?: string
@@ -11781,6 +11799,7 @@ export type Database = {
           closed_by: string | null
           code_hash: string
           contact_id: string | null
+          drive_folder_id: string | null
           expires_at: string
           id: string
           label: string
@@ -11800,6 +11819,7 @@ export type Database = {
           closed_by?: string | null
           code_hash: string
           contact_id?: string | null
+          drive_folder_id?: string | null
           expires_at: string
           id?: string
           label?: string
@@ -11819,6 +11839,7 @@ export type Database = {
           closed_by?: string | null
           code_hash?: string
           contact_id?: string | null
+          drive_folder_id?: string | null
           expires_at?: string
           id?: string
           label?: string

@@ -87,6 +87,10 @@ Pictures they text back go to the same folder.
 
 Press {{button:outline|Start an estimate}} to open a new estimate on them. [Send an estimate and turn it into a job](/help/send-an-estimate-and-turn-it-into-a-job) shows the rest.
 
+The estimate remembers the look. Their photos, their video and their words show on the estimate while you price it.
+
+The customer does not see the photos on their estimate. They read one line: *Priced from your photos. The tech confirms the price at your home before any work starts.*
+
 Press {{button:outline|Book a visit}} to open Add Job with their name and their words filled in.
 
 A lead becomes a customer on either press. The thread comes with them.
