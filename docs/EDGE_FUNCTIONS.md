@@ -248,6 +248,7 @@ when_to_read:
    - [refresh-stripe-invoice-links](#refresh-stripe-invoice-links)
    - [pay-link](#pay-link)
    - [box-read](#box-read)
+   - [first-look](#first-look)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [ar-returned-checks](#ar-returned-checks)
@@ -5859,6 +5860,24 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the staff stamp), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional), `GOOGLE_SERVICE_ACCOUNT_JSON` (the photo's bytes from Drive; without it a filed photo falls back to the bucket copy, which the sweep has usually deleted, so the page shows no photo).
 
 **Implementation**: [`supabase/functions/box-read/index.ts`](../supabase/functions/box-read/index.ts); the pure part — the code check, the payload and its client read — in [`_shared/boxPage.ts`](../supabase/functions/_shared/boxPage.ts), re-exported by [`src/lib/materials/boxPage.ts`](../src/lib/materials/boxPage.ts) and tested from `src/lib/materials/boxPage.test.ts`. **Deploy**: `supabase functions deploy box-read` right after the merge; until then a signed-out scan reads the gateway's refusal on the page.
+
+### first-look
+
+**Purpose** (punch list #319, the spike, **v2.6981**): the only thing that reads or writes a First look. A caller is sent a link and adds photos and a short video of the problem on the page with no sign-in ([`src/pages/ShowUs.tsx`](../src/pages/ShowUs.tsx)); the owner and the developers make the link and see what came in on the desk ([`src/pages/FirstLooks.tsx`](../src/pages/FirstLooks.tsx)). `verify_jwt = false`: the page's asks carry the link's ten-letter code, which is the capability, and the desk's asks carry a JWT the function checks itself.
+
+**The page's asks** (no sign-in):
+- `GET ?code=<ten letters>` → `{ ok, look: { askedBy, photos, videos, sentCount }, caps: { photos, videos, photoBytes, videoBytes }, office: { phone, open, closesWords, opensWords } }`. Who asked, how many files the link holds, what it may take, the office's number and hours. Never a name, an address, a price or a file. The first open stamps `opened_at` (not with `&preview=1`). **404** for a code that opens nothing, counted as a miss through the estimate link's guard (`recordEstimateLinkMiss`), **429** `locked` past 20 in the hour; **410** `closed` or `expired` with the office's number.
+- `POST { code, action: "sign", mime, bytes, name?, fileId? }` → `{ fileId, bucket, path, token, signedUrl }` after the caps (`firstLookSignRefusal`: 20 photos and 3 videos arrived, 30 and 6 upload addresses ever handed out, 8 MB a photo, 52,428,800 bytes a video, pictures and video only; **422** with the words and a `code`). A one-file upload address into the private bucket `first-look-files` (`createSignedUploadUrl`, upsert). The bytes go from the phone to storage: `signedUrl` for one request, `token` as `x-signature` on the resumable endpoint for an upload in pieces. With `fileId` the same file is signed again, for an upload that picks up after the two hours an address lasts.
+- `POST { code, action: "done", fileId, road, resumed, tookMs, seconds? }` → `{ ok, photos, videos }`. The object's size is read from the bucket's listing and its first 32 bytes through a one-minute signed link with a `Range` header, never the whole file; anything whose first bytes are not a picture or a video of the declared kind (`firstLookSniff`) is deleted and refused **422**. **409** `not_there` while the object has not landed.
+- `POST { code, action: "send", place?, words? }` → `{ ok, thanks: { got, steps } }`. Stamps `sent_at`, adds one to `sent_count`, keeps the two fields, and when the look is tied to a contact writes one event line on their thread (`channel 'event'`, `direction 'team'`, `who_text 'The app'`, keyed `look:<id>:sent:<n>` on `quo_id`, duplicates ignored). The thank-you's first step is the office's own hours (`messages_office_hours_v1` through `officeOpen` and `nextOpening`).
+
+**The desk's asks** (a signed-in caller for whom `is_master_or_dev()` is true; anyone else **403**): `desk.list` (the newest fifty looks with their files, each finished file with a signed link good for an hour), `desk.mint { contactId?, label? }` → `{ code, lookId }` (ten letters from `23456789abcdefghjkmnpqrstuvwxyz`, no letter likelier than another, only the SHA-256 kept, good for 7 days, five tries on a clash), `desk.close { lookId }`, `desk.looked { lookId }`, `desk.remove { lookId }` (the bucket's objects, then the row and its files).
+
+**Rate limit**: 240 calls a minute per client address and 1,200 across the isolate, in memory, best effort. A page sending 23 files makes about fifty calls.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the desk caller's own client), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional).
+
+**Implementation**: [`supabase/functions/first-look/index.ts`](../supabase/functions/first-look/index.ts); the pure part — the code, the caps, the first-bytes check, a look's state, every word — in [`_shared/firstLook.ts`](../supabase/functions/_shared/firstLook.ts), re-exported by [`src/lib/firstLook/look.ts`](../src/lib/firstLook/look.ts) and tested from `src/lib/firstLook/look.test.ts`. The tables and the bucket are `docs/migrations/20261112060000_first_looks.md`. **Deploy**: `supabase functions deploy first-look` after the migration is pushed.
 
 ### sync-mercury-transactions
 
