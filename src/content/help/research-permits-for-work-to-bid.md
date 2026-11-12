@@ -179,6 +179,8 @@ The type, the number, the work, the day and the declared value. A press under th
 
 The owner of record, their mailing address, the land and building values and the lot. Bexar County also gives the year built and the built area. Travis County gives the year built.
 
+A big lot holds many addresses. When the county files the lot under another address, the sheet says what the county calls it.
+
 :::
 
 :::card Every permit on this address
