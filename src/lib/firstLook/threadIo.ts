@@ -18,6 +18,10 @@ export const LOOK_FILE_SIGNED_SECONDS = 3600
 export interface FirstLookThreadIo {
   /** The looks asked on this thread that are not closed, and their finished files. */
   looks(contactId: string): Promise<{ looks: ThreadLook[]; files: ThreadLookFile[] }>
+  /** One look and its finished files, by the look's id: for an estimate or a job that remembers it. Null when it is gone. */
+  lookById(lookId: string): Promise<{ look: ThreadLook; files: ThreadLookFile[] } | null>
+  /** The look an estimate was started from, or null. Null too from a database that has no such column yet. */
+  lookOfEstimate(estimateId: string): Promise<string | null>
   /** A signed address for each of a look's files, by its place in the bucket. A file that will not sign is left out. */
   signLookFiles(paths: readonly string[]): Promise<Record<string, string>>
   /** A signed address for each file that came on a line, by its `message_attachments` id. */
@@ -61,6 +65,24 @@ export function supabaseFirstLookThreadIo(client: unknown = supabase): FirstLook
       if (isMissingColumn(files.error)) files = await readFiles(FILE_BASE)
       checkSupabaseError(files, 'read what came in')
       return { looks: rows, files: (files.data ?? []) as unknown as ThreadLookFile[] }
+    },
+    async lookById(lookId) {
+      const readLook = (columns: string) => db.from('first_looks').select(columns).eq('id', lookId).maybeSingle()
+      let look = await readLook(LOOK_COLUMNS)
+      if (isMissingColumn(look.error)) look = await readLook(LOOK_BASE)
+      checkSupabaseError(look, 'read the look')
+      if (!look.data) return null
+      const readFiles = (columns: string) => db.from('first_look_files').select(columns).eq('look_id', lookId).not('finished_at', 'is', null).is('removed_at', null).order('finished_at', { ascending: true })
+      let files = await readFiles(FILE_COLUMNS)
+      if (isMissingColumn(files.error)) files = await readFiles(FILE_BASE)
+      checkSupabaseError(files, 'read what came in')
+      return { look: look.data as unknown as ThreadLook, files: (files.data ?? []) as unknown as ThreadLookFile[] }
+    },
+    async lookOfEstimate(estimateId) {
+      const row = await db.from('estimates').select('first_look_id').eq('id', estimateId).maybeSingle()
+      if (row.error) return null
+      const id = (row.data as { first_look_id?: string | null } | null)?.first_look_id
+      return typeof id === 'string' && id ? id : null
     },
     async signLookFiles(paths) {
       if (!paths.length) return {}
