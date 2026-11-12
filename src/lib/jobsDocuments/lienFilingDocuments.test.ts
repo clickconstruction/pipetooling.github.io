@@ -134,8 +134,8 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     expect(text(short)).toBe(
       [
         "MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT",
-        // The top blank says which county it wants (punch list #314); the notary's own blank below stays plain.
-        'STATE OF TEXAS\nCOUNTY OF ___________ (where signed)',
+        // The top blank prints plain, as the notary's own blank below does: the help sheet says which county it wants.
+        'STATE OF TEXAS\nCOUNTY OF ___________',
         'BEFORE ME, the undersigned authority, on this day personally appeared Malachi Whites, who being by me duly sworn, upon oath states the following:',
         '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
         '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
@@ -201,10 +201,11 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     const blocks = buildLienAffidavitBlocks(short)
     expect(filingDocHtml(blocks)).toContain('Printed name: ______________________________')
     expect(filingDocHtml(blocks)).not.toContain('My commission expires')
-    // The county blank's note sits on the county's own line, in the paper's HTML and once only: the notary's blank has none.
-    expect(filingDocHtml(blocks)).toContain('<strong>COUNTY OF ___________</strong> <span data-county-note style="font-size:0.85em">(where signed)</span>')
-    expect(filingDocHtml(blocks).match(/where signed/g)).toHaveLength(1)
-    // The county the company signs in (punch list #314): both county lines print it, and the note beside the blank is gone with the blank.
+    // The county blank prints with nothing beside it. A paper drafted while the form carried a note prints none either.
+    expect(filingDocHtml(blocks)).toContain('<strong>COUNTY OF ___________</strong></p>')
+    expect(filingDocHtml(blocks)).not.toContain('where signed')
+    expect(filingDocHtml([{ kind: 'jurisdiction', county: '', note: 'where signed' } as FilingDocBlock])).not.toContain('where signed')
+    // The county the company signs in (punch list #314): both county lines print it, with no blank.
     const signed = filingDocHtml(buildLienAffidavitBlocks({ ...short, signingCounty: 'Travis County' }))
     expect(signed).toContain('<strong>COUNTY OF TRAVIS</strong></p>')
     expect(signed).toContain('COUNTY OF TRAVIS</p><p')

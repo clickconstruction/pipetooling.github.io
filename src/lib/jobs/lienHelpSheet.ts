@@ -624,8 +624,8 @@ export function lienHelpMarkPaper(paperHtml: string): { html: string; marks: num
     html = html.replace(find, (m) => put(m))
     if (!marks.includes(n)) marks.push(n)
   }
-  // 1: the top venue's blank (the note the form prints beside it is the anchor); 3: the notary's own venue blank.
-  mark(1, /<span data-county-note[^>]*>[^<]*<\/span>/, (m) => `${m}${num(1)}`)
+  // 1: the top venue's blank, the bold county line; 3: the notary's own venue blank, which is not bold.
+  mark(1, /<strong>COUNTY OF _+<\/strong>/, (m) => `${m}${num(1)}`)
   mark(2, /<div style="border-bottom:1px solid currentColor;height:1\.6em"><\/div>/, (m) => `${m}${num(2)}`)
   mark(3, /STATE OF TEXAS<br\/>COUNTY OF _+<\/p>/, (m) => m.replace('</p>', `${num(3)}</p>`))
   mark(4, /SWORN TO AND SUBSCRIBED BEFORE ME on this[^<]*<\/p>/, (m) => m.replace('</p>', `${num(4)}</p>`))
