@@ -394,6 +394,19 @@ export function clockWords(hm: string | null | undefined): string {
   return `${h12}${min === '00' ? '' : `:${min}`} ${h < 12 ? 'AM' : 'PM'}`
 }
 
+/**
+ * The closing time the thank-you names while the office is open: *5 PM*. Nothing when the office is set to answer
+ * around the clock, or when its day runs to the last half hour before midnight, which is the same thing said in
+ * hours: *before 11:59 PM* is no promise (seen on the live walk at 2 AM, 2026-11-12).
+ */
+export function firstLookClosesWords(hours: { closes: string; always: boolean }): string | null {
+  if (hours.always) return null
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hours.closes.trim())
+  if (!m) return null
+  if (Number(m[1]) * 60 + Number(m[2]) >= 23 * 60 + 30) return null
+  return clockWords(hours.closes) || null
+}
+
 /** The desk's row, as the function hands it. */
 export type FirstLookDeskFile = {
   id: string
