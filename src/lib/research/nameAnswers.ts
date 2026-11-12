@@ -5,10 +5,12 @@
  * `builder_customer_answers` (append-only). This file folds those rows into what is known about
  * each name, decides whether the question is still open for the person looking, and writes the
  * words. An answer shows what it would tie before it ties it: one person can file for more than
- * one builder. No React, no Supabase.
+ * one builder. A name that begins the GC's own, or is begun by it, is the likely grade: the
+ * question reads *Same company?*, and the answer writes the same rows. No React, no Supabase.
  */
 import { builderKeyOf, contactParts, nameKey } from '../../../supabase/functions/_shared/permitLookup'
 import { shortDay } from './permitResearch'
+import { nameLikeness, nameWords } from './nameLikeness'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { Chip } from './bidSitePanel'
 
@@ -89,9 +91,27 @@ export function listedName(contact: string | null | undefined): string | null {
   return company ?? person
 }
 
+/**
+ * How strong the reason to ask is. Likely: one name begins the other, a branch or a longer legal
+ * name, so the question is *Same company?*. Possible: the name is only on a site we bid to the GC.
+ */
+export type NameGrade = 'likely' | 'possible'
+
+/**
+ * The grade of a name on a permit against a GC's name. Word for word, as `nameLikeness` reads
+ * "begins", so Burd does not begin Burdette; two names a legal word apart (LP, Limited) count too.
+ * The exact same key is not graded here: it is joined without a person.
+ */
+export function nameGrade(name: string, customerName: string): NameGrade {
+  if (nameLikeness(customerName, name)?.reason === 'begins') return 'likely'
+  const ours = nameWords(customerName)
+  const theirs = nameWords(name)
+  return ours.telling.length > 0 && ours.all.join(' ') === theirs.all.join(' ') ? 'likely' : 'possible'
+}
+
 export type NameStanding =
   /** The question is open for this person. */
-  | { kind: 'ask'; key: string; name: string }
+  | { kind: 'ask'; key: string; name: string; grade: NameGrade }
   /** The name is the GC's own. Nothing to ask. */
   | { kind: 'own_name'; key: string; name: string }
   | { kind: 'tied'; key: string; name: string; scope: AnswerScope; by: string | null; at: string | null }
@@ -121,7 +141,7 @@ export function nameStanding(
   if (s?.someoneElse) return { kind: 'someone_else', key, name, by: s.by, at: s.at }
   if (kinds.get(key) === 'files_for_others') return { kind: 'files_for_others', key, name }
   if (me != null && s?.notSureBy.includes(me)) return { kind: 'not_sure', key, name }
-  return { kind: 'ask', key, name }
+  return { kind: 'ask', key, name, grade: nameGrade(name, customerName) }
 }
 
 /** "your word, Nov 10" or "Sam’s word, Nov 10". Empty when nobody is on record. */
@@ -133,7 +153,7 @@ export function wordOfWords(by: string | null, at: string | null, me: string | n
 
 /** The chip beside the name once the question is settled. Null while it is open. */
 export function standingChip(standing: NameStanding, customerName: string): Chip | null {
-  if (standing.kind === 'tied') return { words: `Works for ${customerName}`, tone: 'blue' }
+  if (standing.kind === 'tied') return { words: `${nameGrade(standing.name, customerName) === 'likely' ? 'Same company as' : 'Works for'} ${customerName}`, tone: 'blue' }
   if (standing.kind === 'own_name') return { words: 'Their own name', tone: 'blue' }
   if (standing.kind === 'someone_else') return { words: 'Not theirs', tone: 'grey' }
   if (standing.kind === 'files_for_others') return { words: 'Files for others', tone: 'grey' }
@@ -152,12 +172,25 @@ export const SOMEONE_ELSE_KINDS: ReadonlyArray<{ kind: 'owner' | 'architect' | '
 /** A name that ends a sentence. "Burd & Assoc." brings its own full stop, so the sentence adds none. */
 const ending = (name: string): string => (/\.$/.test(name.trim()) ? name.trim() : `${name.trim()}.`)
 
-/** The question as it is asked. */
-export function questionWords(name: string, customerName: string): { lead: string; ask: string; worksFor: string; why: string } {
+/**
+ * The question as it is asked, with its three presses. The likely grade asks *Same company?*
+ * beside the GC's own name; the possible grade asks who the name is.
+ */
+export function questionWords(name: string, customerName: string, grade: NameGrade = 'possible'): { lead: string; ask: string; worksFor: string; someoneElse: string; why: string } {
+  if (grade === 'likely') {
+    return {
+      lead: `The city lists ${name} on this permit. Your customer is ${ending(customerName)}`,
+      ask: 'Same company?',
+      worksFor: 'Same company',
+      someoneElse: 'Not them…',
+      why: 'Asked because one name begins the other. Asked once.',
+    }
+  }
   return {
     lead: `The city lists ${name} on this permit.`,
     ask: 'Do you know who that is?',
     worksFor: `Works for ${customerName}`,
+    someoneElse: 'Someone else…',
     why: `Asked because you are bidding this address to ${ending(customerName)} Asked once.`,
   }
 }
@@ -166,26 +199,29 @@ export function questionWords(name: string, customerName: string): { lead: strin
  * What "works for" would do, shown before it does it: how many other permits the name is on,
  * and the two presses. With none there is nothing to choose between.
  */
-export function tiePreviewWords(name: string, customerName: string, otherPermits: number): { lead: string; all: string; one: string | null; why: string } {
+export function tiePreviewWords(name: string, customerName: string, otherPermits: number, grade: NameGrade = 'possible'): { lead: string; all: string; one: string | null; why: string } {
+  const tie = grade === 'likely' ? `${name} is the same company as ${ending(customerName)}` : `${name} works for ${ending(customerName)}`
   if (otherPermits <= 0) {
-    return { lead: `${name} works for ${ending(customerName)} The city lists ${name} on no other permit we can see.`, all: `Tie ${name} to ${customerName}`, one: null, why: 'Later permits under this name will show under them too.' }
+    return { lead: `${tie} The city lists ${name} on no other permit we can see.`, all: `Tie ${name} to ${customerName}`, one: null, why: 'Later permits under this name will show under them too.' }
   }
   return {
-    lead: `${name} works for ${ending(customerName)} The city lists ${name} on ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} we can see.`,
+    lead: `${tie} The city lists ${name} on ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} we can see.`,
     all: `Show all ${otherPermits} under ${customerName}`,
     one: 'This permit only',
-    why: 'Look at them first. One person can file for more than one builder.',
+    why: grade === 'likely' ? 'Look at them first. Two companies can share the start of a name.' : 'Look at them first. One person can file for more than one builder.',
   }
 }
 
 /** The line after an answer, beside Undo. */
 export function answeredWords(standing: NameStanding, customerName: string, otherPermits: number, word: string): string | null {
   const head = word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}.` : ''
+  // A name that begins the GC's own was asked as the same company, so the answer reads that way.
+  const same = standing.kind === 'tied' || standing.kind === 'someone_else' ? nameGrade(standing.name, customerName) === 'likely' : false
   if (standing.kind === 'tied') {
     const tail = standing.scope === 'all' ? (otherPermits > 0 ? ` ${otherPermits} other permit${otherPermits === 1 ? '' : 's'} now show${otherPermits === 1 ? 's' : ''} under ${ending(customerName)}` : '') : ' This permit only.'
-    return `${word ? `Tied on ${word}. ` : 'Tied. '}${standing.name} works for ${ending(customerName)}${tail}`
+    return `${word ? `Tied on ${word}. ` : 'Tied. '}${standing.name} ${same ? 'is the same company as' : 'works for'} ${ending(customerName)}${tail}`
   }
-  if (standing.kind === 'someone_else') return `${head ? `${head} ` : ''}${standing.name} does not work for ${ending(customerName)}`
+  if (standing.kind === 'someone_else') return `${head ? `${head} ` : ''}${standing.name} ${same ? 'is not' : 'does not work for'} ${ending(customerName)}`
   if (standing.kind === 'not_sure') return `You said you are not sure who ${standing.name} is. The question stays open for the rest of the team.`
   return null
 }
