@@ -31,6 +31,8 @@ import type { LedgerTone } from './billedDatesLedger'
 import { workMonthLabel } from './forecastWorkMonths'
 import { filingMailTail, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { lienActFor, type LienAct } from './lienActWords'
+import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 
 export type LienArTone = 'red' | 'amber' | 'green' | 'blue' | 'muted'
 
@@ -50,13 +52,15 @@ export type LienArChip = {
   /** The chip: "Notice by Oct 15 · 2d", "Delivered Sep 16 · day 12 · letter two", "Lien filed Oct 2 · served Oct 6". */
   words: string
   /**
-   * The same words with no last day and no count after them (v2.7042, punch list #325): "Waiting on Robert". A reader
-   * that already prints the paper's day beside the chip draws these, so the day and the count are said once. Equal to
-   * `words` when the chip carries no day.
+   * The same words less what a reader that already prints the paper's day would say twice (v2.7042, punch list
+   * #325): "Waiting on Robert" with no last day and no count after it, "served Oct 6" with no filing day before it.
+   * Equal to `words` when the chip has nothing such a reader repeats.
    */
   lead: string
   /** The Do now move the chip stands for; null when it reads paper that is out or a closed window. */
   action: LienNextUpAction | null
+  /** That move as the next act on the lien path (v2.7043, `lienActFor`): "Draft the affidavit"; null when the move is a reminder, or there is none. */
+  act: LienAct | null
   /** The plain words after the chip: the paper, who holds it, what came of the mailing. */
   sentence: string
   /** The chip's hover: where the door goes. */
@@ -207,7 +211,7 @@ function missedWords(entry: LienDeskEntry | null, fmt: (ymd: string) => string):
 }
 
 /** A chip before `lienArChipFor` fills what every chip carries: `lead` falls to `words`, `action` to none. */
-type ChipDraft = Omit<LienArChip, 'lead' | 'action'> & { lead?: string }
+type ChipDraft = Omit<LienArChip, 'lead' | 'action' | 'act'> & { lead?: string }
 
 function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => string): ChipDraft {
   const { entry, letterTwo } = input
@@ -262,7 +266,7 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
     case 'approve': {
       // The desk's row already names the leader and the day: "Waiting on Robert · since Oct 7". An affidavit's or a
       // retainage notice's row leads with its paper ("Affidavit · waiting on Robert"), and the name is read past it (v2.7042).
-      const who = /^(?:(?:Affidavit|Retainage) · )?waiting on (.+?)(?: · |$)/i.exec(row.sub)?.[1] ?? 'the leader'
+      const who = waitingOnOf(row.sub)
       const lead = /your approval/i.test(row.sub) ? (row.kind === 'affidavit' ? 'Approve the affidavit' : `${prefix}Approve the notice`) : `${prefix}Waiting on ${who}`
       return { tone: red ? 'red' : 'amber', state: 'due', paper, words: `${lead}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
     }
@@ -357,7 +361,8 @@ function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): Chip
     const serveDue = dayOf(affidavit.serve_due)
     const words = served ? `Lien filed ${fmt(filed)} · served ${fmt(served)}` : `Lien filed ${fmt(filed)}${serveDue ? ` · serve by ${fmt(serveDue)}` : ' · serve it'}`
     const rec = affidavit.recording_number?.trim() ? `, recording no. ${affidavit.recording_number.trim()}` : ''
-    return { tone: served ? 'green' : 'amber', state: 'out', paper: 'affidavit', words, sentence: `Lien affidavit filed ${fmt(filed)}${rec}${served ? `, a copy served ${fmt(served)}` : ' · a copy to the owner and the GC within five days'} · paid: file the release of record · unpaid: counsel on the suit`, title: 'Open the job’s Lien window', door: { to: 'window', jobId: input.jobId, tab: 'affidavit' }, dueOn: served ? null : serveDue || null, daysLeft: null }
+    const lead = served ? `served ${fmt(served)}` : serveDue ? `serve by ${fmt(serveDue)}` : 'serve it'
+    return { tone: served ? 'green' : 'amber', state: 'out', paper: 'affidavit', words, lead, sentence: `Lien affidavit filed ${fmt(filed)}${rec}${served ? `, a copy served ${fmt(served)}` : ' · a copy to the owner and the GC within five days'} · paid: file the release of record · unpaid: counsel on the suit`, title: 'Open the job’s Lien window', door: { to: 'window', jobId: input.jobId, tab: 'affidavit' }, dueOn: served ? null : serveDue || null, daysLeft: null }
   }
   const sent = sentNotice(input)
   if (!sent) return null
@@ -411,13 +416,35 @@ function fromMissed(input: LienArJobInput, fmt: (ymd: string) => string): ChipDr
   return null
 }
 
+/** The leader a row waits on, read off the desk's own words: "Waiting on Robert · since Oct 7", or the same behind a paper's lead-in. */
+function waitingOnOf(sub: string): string {
+  return /^(?:(?:Affidavit|Retainage) · )?waiting on (.+?)(?: · |$)/i.exec(sub)?.[1] ?? 'the leader'
+}
+
+/**
+ * The row's move as the next act on the lien path (v2.7043): the affidavit's closed gates name the fact that holds
+ * it, and a hold carries its reason as the act's second line.
+ */
+function actOf(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string) => string): LienAct | null {
+  const gates = row.kind === 'affidavit' ? (input.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => g.key) : []
+  // With no affidavit entry in hand the desk's row still says which of two holds it is.
+  const missing: LienAffidavitGateKey[] = gates.length > 0 ? gates : /public property/i.test(row.sub) ? ['public_owner'] : /general contractor has no address/i.test(row.sub) ? ['contractor'] : []
+  const yours = /your approval/i.test(row.sub)
+  const act = lienActFor({ paper: row.kind, action: row.action, yours, waitingOn: row.action === 'approve' && !yours ? waitingOnOf(row.sub) : null, missing })
+  if (act && row.action === 'review_hold') {
+    const until = dayOf(input.entry?.item?.hold_until)
+    return { ...act, under: `Held · ${heldWhy(input.entry)}${until ? ` · asks again ${fmt(until)}` : ''}` }
+  }
+  return act
+}
+
 /** One job's chip, or null when the row shows none. */
 export function lienArChipFor(input: LienArJobInput): LienArChip | null {
   const fmt = input.formatDay ?? formatYmdMonthDay
   const rows = rowsForJob(input.nextUp, input.jobId, input.entry)
   const first = rows[0] ?? null
   const draft = first ? fromNextUp(first, input, fmt) : fromPaperOut(input, fmt) ?? fromMissed(input, fmt)
-  return draft ? { ...draft, lead: draft.lead ?? draft.words, action: first?.action ?? null } : null
+  return draft ? { ...draft, lead: draft.lead ?? draft.words, action: first?.action ?? null, act: first ? actOf(first, input, fmt) : null } : null
 }
 
 export type LienArCustomerChip = { tone: LienArTone; state: LienArState; words: string; title: string }
