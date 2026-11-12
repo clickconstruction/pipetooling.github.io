@@ -11027,6 +11027,7 @@ export type Database = {
           doc_kind: string
           estimate_number: number
           field_write_up: Json | null
+          first_look_id: string | null
           for_address: string | null
           id: string
           internal_notes: string | null
@@ -11071,6 +11072,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11115,6 +11117,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11161,6 +11164,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_first_look_id_fkey"
+            columns: ["first_look_id"]
+            isOneToOne: false
+            referencedRelation: "first_looks"
             referencedColumns: ["id"]
           },
           {
