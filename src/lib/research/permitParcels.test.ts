@@ -8,6 +8,7 @@ import {
   askedWithoutNeighbours,
   askedWithoutPoint,
   COMAL_PARCELS,
+  factsInCounty,
   GUADALUPE_PARCELS,
   HAYS_PARCELS,
   idQuery,
@@ -17,7 +18,6 @@ import {
   neighbourPointQuestion,
   neighbourSources,
   ordinalOf,
-  parcelFactsAtNeighbour,
   parcelFactsByAddress,
   parcelFactsById,
   parcelFactsByPoint,
@@ -26,8 +26,10 @@ import {
   pointQuery,
   pointQueryOf,
   pointQuestion,
+  sourceForId,
   streetParts,
   TRAVIS_PARCELS,
+  WILLIAMSON_PARCELS,
 } from '../../../supabase/functions/_shared/permitParcels'
 
 // Every name, address and number here is made up.
@@ -304,18 +306,20 @@ describe('the county the lot is in, when the city reaches over the county line',
     expect(neighbourSources(COMAL_PARCELS).map((s) => s.county)).toEqual(['Guadalupe'])
     expect(neighbourSources(HAYS_PARCELS).map((s) => s.county)).toEqual(['Guadalupe', 'Comal'])
     expect(neighbourSources(GUADALUPE_PARCELS).map((s) => s.county)).toEqual(['Comal'])
-    expect(neighbourSources(TRAVIS_PARCELS).map((s) => s.county)).toContain('Hays')
+    expect(neighbourSources(TRAVIS_PARCELS).map((s) => s.county)).toEqual(['Williamson', 'Hays'])
+    expect(neighbourSources(WILLIAMSON_PARCELS).map((s) => s.county)).toEqual(['Travis'])
     // No county is its own neighbour.
-    for (const source of [TRAVIS_PARCELS, HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS]) expect(neighbourSources(source)).not.toContain(source)
+    for (const source of [TRAVIS_PARCELS, HAYS_PARCELS, COMAL_PARCELS, GUADALUPE_PARCELS, WILLIAMSON_PARCELS]) expect(neighbourSources(source)).not.toContain(source)
   })
   it("reads the neighbour's parcel at the point and names its county", () => {
     const body = rows({ prop_id: 0, file_as_name: null }, { prop_id: 28000, file_as_name: 'SAMPLE TRACT LLC', situs_num: '210', situs_street_prefx: 'W', situs_street: 'COURT ST' })
-    const facts = parcelFactsAtNeighbour(GUADALUPE_PARCELS, body)
+    const read = parcelFactsByPoint(GUADALUPE_PARCELS, body)
+    const facts = read ? factsInCounty(COMAL_PARCELS, GUADALUPE_PARCELS, read) : null
     expect(facts).toMatchObject({ prop_id: '28000', owner: 'SAMPLE TRACT LLC', matched_by: 'point', county: 'Guadalupe' })
     expect(facts?.detail_url).toBe('https://esearch.guadalupead.org/Property/View/28000')
-    expect(parcelFactsAtNeighbour(GUADALUPE_PARCELS, rows())).toBeNull()
-    // The city's own county never names itself.
-    expect(parcelFactsByPoint(GUADALUPE_PARCELS, body)?.county).toBeUndefined()
+    // The city's own county never names itself, even when it answers as the neighbour of the layer asked first.
+    expect(read ? factsInCounty(GUADALUPE_PARCELS, GUADALUPE_PARCELS, read).county : null).toBeUndefined()
+    expect(read?.county).toBeUndefined()
   })
   it('writes the question so that it is never read as the address question', () => {
     const question = neighbourPointQuestion(GUADALUPE_PARCELS, at)
@@ -334,5 +338,56 @@ describe('the county the lot is in, when the city reaches over the county line',
     expect(askedWithoutNeighbours(HAYS_PARCELS, `point -98.1,29.7 | ${neighbourPointQuestion(GUADALUPE_PARCELS, at)} | ${neighbourPointQuestion(COMAL_PARCELS, at)}`, at)).toBe(false)
     // No point on the permit: a neighbour cannot be asked.
     expect(askedWithoutNeighbours(COMAL_PARCELS, address, null)).toBe(false)
+  })
+})
+
+describe('Williamson County, for Austin over the county line', () => {
+  it('takes the R id an Austin permit carries, and leaves Travis its own', () => {
+    expect(idWhere(WILLIAMSON_PARCELS, 'R000001')).toBe("QuickRefID = 'R000001'")
+    expect(idWhere(WILLIAMSON_PARCELS, ' r000001 ')).toBe("QuickRefID = 'R000001'")
+    expect(idWhere(WILLIAMSON_PARCELS, '0000000001')).toBeNull()
+    expect(idWhere(WILLIAMSON_PARCELS, 'R00001X')).toBeNull()
+    expect(idQuery(WILLIAMSON_PARCELS, 'R000001')?.get('outFields')).toBe(WILLIAMSON_PARCELS.outFields)
+    expect(idWhere(TRAVIS_PARCELS, 'R000001')).toBeNull()
+  })
+  it('picks the county by the id the permit carries', () => {
+    expect(sourceForId(TRAVIS_PARCELS, 'R000001')).toBe(WILLIAMSON_PARCELS)
+    expect(sourceForId(TRAVIS_PARCELS, '0000000001')).toBe(TRAVIS_PARCELS)
+    expect(sourceForId(TRAVIS_PARCELS, null)).toBe(TRAVIS_PARCELS)
+    expect(sourceForId(TRAVIS_PARCELS, '')).toBe(TRAVIS_PARCELS)
+    // A county with no id column, and a neighbour with none, stay themselves.
+    expect(sourceForId(HAYS_PARCELS, 'R000001')).toBe(HAYS_PARCELS)
+    expect(sourceForId(COMAL_PARCELS, '0000000001')).toBe(COMAL_PARCELS)
+    expect(parcelSourceFor('Williamson')).toBe(WILLIAMSON_PARCELS)
+  })
+  it('asks for the number and the street name, every way the name is spelled', () => {
+    expect(WILLIAMSON_PARCELS.where({ num: '1500', prefix: 'N', name: 'SAMPLE' })).toBe("SStreetNumber = '1500' AND (UPPER(SStreetName) LIKE 'SAMPLE%')")
+    expect(WILLIAMSON_PARCELS.where({ num: '900', prefix: null, name: '5TH' })).toBe("SStreetNumber = '900' AND (UPPER(SStreetName) LIKE '5TH%' OR UPPER(SStreetName) LIKE 'FIFTH%')")
+    const body = rows({ QuickRefID: 'R000002', SStreetNumber: '1500', SStreetDirectional: 'S', SStreetName: 'Sample', FullName: 'SOUTH SAMPLE LLC' }, { QuickRefID: 'R000003', SStreetNumber: '1500', SStreetDirectional: 'N', SStreetName: 'Sample', FullName: 'NORTH SAMPLE LLC' })
+    expect(pickParcel(WILLIAMSON_PARCELS, body, { num: '1500', prefix: 'N', name: 'SAMPLE' })?.QuickRefID).toBe('R000003')
+  })
+  it("reads its row: the mailing address off its two lines, the district's own page, no year built", () => {
+    const facts = parcelFactsById(
+      WILLIAMSON_PARCELS,
+      rows({ QuickRefID: 'R000001', FullName: 'SAMPLE HOLDINGS LLC', MailingAddress: 'PO BOX 1 \nSAMPLE CITY, TX 78600', SitusAddress: '1500 N SAMPLE BLVD, AUSTIN, TX 78700', SStreetNumber: '1500', SStreetDirectional: 'N', SStreetName: 'SAMPLE', DBA: 'SAMPLE SHOP', TotalLandMktValue: 1000.5, TotalImpMktValue: 2000, TotalPropMktValue: 3000.5, TotalSqFtLivingArea: 4200, Acres: '1.2345', USECD: 'C4' }),
+    )
+    expect(facts).toEqual({
+      prop_id: 'R000001',
+      situs: '1500 N SAMPLE BLVD, AUSTIN, TX 78700',
+      owner: 'SAMPLE HOLDINGS LLC',
+      owner_address: 'PO BOX 1, SAMPLE CITY, TX 78600',
+      dba: 'SAMPLE SHOP',
+      land_value: 1000.5,
+      improvement_value: 2000,
+      total_value: 3000.5,
+      use_code: 'C4',
+      year_built: null,
+      building_sf: 4200,
+      acres: 1.23,
+      detail_url: 'https://search.wcad.org/Property-Detail/PropertyQuickRefID/R000001',
+      matched_by: 'id',
+    })
+    // Asked for an Austin permit, the card names the county the lot is in.
+    expect(facts ? factsInCounty(TRAVIS_PARCELS, WILLIAMSON_PARCELS, facts).county : null).toBe('Williamson')
   })
 })

@@ -8,6 +8,7 @@ import {
   firstLookAskedWords,
   firstLookBytesWords,
   firstLookClientWords,
+  firstLookClosesWords,
   firstLookCode,
   firstLookCountWords,
   firstLookDeskName,
@@ -210,6 +211,16 @@ describe('first look: the words', () => {
     expect(nobody.got).toBe('Got it. We have your 1 video.')
     expect(nobody.steps[0]).toBe('The office looks at them today.')
     expect(open.steps).toHaveLength(3)
+  })
+
+  it('names the closing time only when it is a real one', () => {
+    expect(firstLookClosesWords({ closes: '17:00', always: false })).toBe('5 PM')
+    expect(firstLookClosesWords({ closes: '23:29', always: false })).toBe('11:29 PM')
+    // A day that runs to midnight is around the clock said in hours: no *before 11:59 PM*.
+    expect(firstLookClosesWords({ closes: '23:59', always: false })).toBeNull()
+    expect(firstLookClosesWords({ closes: '23:30', always: false })).toBeNull()
+    expect(firstLookClosesWords({ closes: '17:00', always: true })).toBeNull()
+    expect(firstLookClosesWords({ closes: 'late', always: false })).toBeNull()
   })
 
   it('the thread line is keyed by the send, so a second send is a second line', () => {
