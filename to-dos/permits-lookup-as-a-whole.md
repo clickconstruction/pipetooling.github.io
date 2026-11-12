@@ -2,14 +2,14 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) PR 3b (the pull's point for those rows, v2.6985) PR 6 (how long an answer is kept, v2.6987) PR 5 (the county's address for the lot, v2.6989) and PR 7 (San Antonio's address spelled the county's way, v2.6991) built · PR 4 looked at and dropped · PR 8 measured and not built
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PRs 1, 2, 3, 3b, 6 and 5 merged, deployed and checked 2026-11-12 (v2.6978 to v2.6989) · PR 7 (San Antonio's address spelled the county's way, v2.6991) built · PR 4 looked at and dropped · PR 8 measured and not built
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: Merge and deploy the train in order, walking each city after its deploy. After PR 3b is deployed, read Austin's window again once so the rows already held take their point.
+next: Deploy PR 7 after its merge and walk San Antonio. Then read Austin's window again once so the 71 rows already held take their point. That reading waits on a yes.
 size: M, a train of six small PRs and one measure
 blocker: None.
 ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line) · v2.6991 (San Antonio's address spelled the county's way)
@@ -149,3 +149,9 @@ Read-only, signed in on a dev server, counts only.
   wrote nothing and ran clean. It read 4,199 rows, asked 930 lot ids and would put a point on
   1,381 rows. The table held 148 Austin rows with a Williamson County id, 71 of them with no
   point. They take one when Austin's window is read again, which is the owner's call.
+- **PR 6** (deployed from `main` 2026-11-12): the San Antonio 16 and the San Marcos 20 opened
+  again and all 36 came from the kept answers. The shorter keep itself is not walked. Seeing it
+  takes a week to pass on a "no parcel", or a county that fails.
+- **PR 5** (deployed from `main` 2026-11-12): Austin, the 30 newest commercial building permits
+  with a lot id, one per address. 26 name an owner, 25 by the id and 1 at the permit's point.
+  The line with the county's own address shows on 5 of the 26, 4 of them answered by the id.
