@@ -241,18 +241,23 @@ export function addressQuery(source: ParcelSource, parts: StreetParts): URLSearc
   return new URLSearchParams({ where: source.where(parts), outFields: source.outFields, returnGeometry: 'false', resultRecordCount: String(PARCEL_ROWS_ASKED), f: 'json' })
 }
 
-/** The query string for the parcel under a point. */
-export function pointQuery(source: ParcelSource, point: { lat: number; lng: number }): URLSearchParams {
+/** The query string for the parcel under a point, for a layer by the columns it is asked for. */
+export function pointQueryOf(outFields: string, point: { lat: number; lng: number }): URLSearchParams {
   return new URLSearchParams({
     geometry: `${point.lng},${point.lat}`,
     geometryType: 'esriGeometryPoint',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    outFields: source.outFields,
+    outFields,
     returnGeometry: 'false',
     resultRecordCount: '3',
     f: 'json',
   })
+}
+
+/** The query string for the parcel under a point. */
+export function pointQuery(source: ParcelSource, point: { lat: number; lng: number }): URLSearchParams {
+  return pointQueryOf(source.outFields, point)
 }
 
 /** A permit's parcel id as text, or null: blank, or one this layer cannot hold. */
@@ -385,6 +390,21 @@ export function askedWithoutId(source: ParcelSource, keptQuery: string | null | 
   const where = idWhere(source, id)
   if (where === null) return false
   return !(keptQuery ?? '').split(QUESTION_JOIN).includes(where)
+}
+
+/** The words a kept `query` holds for the point question: `point <lng>,<lat>`. */
+export function pointQuestion(point: { lat: number; lng: number }): string {
+  return `point ${point.lng},${point.lat}`
+}
+
+/**
+ * Whether a kept "no parcel" was asked before the permit's point could be: its `query` holds no
+ * point question and the permit has a point. Bexar's layer was asked by the street address alone
+ * until punch list #320, so such a row is asked again once instead of waiting out its month.
+ */
+export function askedWithoutPoint(keptQuery: string | null | undefined, point: { lat: number; lng: number } | null): boolean {
+  if (point === null) return false
+  return !(keptQuery ?? '').split(QUESTION_JOIN).some((q) => q.startsWith('point '))
 }
 
 /** A point the layer can be asked about: both numbers, inside Texas. */

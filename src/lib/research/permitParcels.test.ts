@@ -5,6 +5,7 @@ import {
   askedBexarLayer,
   askedOtherQuestion,
   askedWithoutId,
+  askedWithoutPoint,
   COMAL_PARCELS,
   GUADALUPE_PARCELS,
   HAYS_PARCELS,
@@ -19,6 +20,8 @@ import {
   parcelSourceFor,
   pickParcel,
   pointQuery,
+  pointQueryOf,
+  pointQuestion,
   streetParts,
   TRAVIS_PARCELS,
 } from '../../../supabase/functions/_shared/permitParcels'
@@ -262,5 +265,31 @@ describe('the facts off a row', () => {
     expect(parcelFactsByPoint(GUADALUPE_PARCELS, body)).toMatchObject({ prop_id: '28000', owner: 'SAMPLE COUNTY', situs: '210 W COURT ST', matched_by: 'point' })
     expect(parcelFactsByPoint(GUADALUPE_PARCELS, rows({ prop_id: 0, file_as_name: null }))).toBeNull()
     expect(parcelFactsByPoint(GUADALUPE_PARCELS, {})).toBeNull()
+  })
+})
+
+describe('the point, for a layer asked by its columns', () => {
+  const at = { lat: 29.5, lng: -98.5 }
+  it('asks for the parcel under the point with the columns it is given', () => {
+    const q = pointQueryOf('PropID,Situs,Owner', at)
+    expect(q.get('geometry')).toBe('-98.5,29.5')
+    expect(q.get('geometryType')).toBe('esriGeometryPoint')
+    expect(q.get('inSR')).toBe('4326')
+    expect(q.get('spatialRel')).toBe('esriSpatialRelIntersects')
+    expect(q.get('outFields')).toBe('PropID,Situs,Owner')
+    expect(q.get('returnGeometry')).toBe('false')
+    expect(q.has('where')).toBe(false)
+    expect(pointQuery(HAYS_PARCELS, at).toString()).toBe(pointQueryOf(HAYS_PARCELS.outFields, at).toString())
+  })
+  it('asks a kept "no parcel" again once when the permit has a point that was never asked', () => {
+    const address = "UPPER(Situs) LIKE '100 SAMPLE LN%'"
+    expect(pointQuestion(at)).toBe('point -98.5,29.5')
+    expect(askedWithoutPoint(address, at)).toBe(true)
+    expect(askedWithoutPoint(null, at)).toBe(true)
+    // Asked at the point since: kept like any other row.
+    expect(askedWithoutPoint(`${address} | ${pointQuestion(at)}`, at)).toBe(false)
+    expect(askedWithoutPoint(pointQuestion(at), at)).toBe(false)
+    // The permit has no point: nothing more to ask.
+    expect(askedWithoutPoint(address, null)).toBe(false)
   })
 })

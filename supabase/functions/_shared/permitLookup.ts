@@ -162,6 +162,18 @@ export function parcelFactsFromCounty(body: unknown): ParcelFacts | null {
   }
 }
 
+/**
+ * The facts off Bexar's answer for the parcel under a point: the first parcel with an owner,
+ * marked as read by the point. Asked when the street address finds no parcel (punch list #320),
+ * which in San Antonio is most new buildings and every address the county spells another way.
+ */
+export function parcelFactsFromCountyAtPoint(body: unknown): ParcelFacts | null {
+  const features = (body as { features?: Array<{ attributes?: Record<string, unknown> }> } | null)?.features
+  const owned = Array.isArray(features) ? features.find((f) => str(f.attributes?.Owner) !== null) : undefined
+  const facts = owned ? parcelFactsFromCounty({ features: [owned] }) : null
+  return facts ? { ...facts, matched_by: 'point' } : null
+}
+
 /** The cache key for a parcel lookup. */
 export function parcelLookupKey(city: string, address: string | null | undefined): string | null {
   const street = (address ?? '').split(',')[0]?.replace(/\s+/g, ' ').trim().toLowerCase() ?? ''
