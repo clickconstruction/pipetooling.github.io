@@ -11,6 +11,8 @@ import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildWorkMonthsByJob, type WorkSessionInput } from '../../lib/jobs/forecastWorkMonths'
+import { indexPayCalendars, PAY_CALENDAR_DEFAULT } from '../../lib/jobs/payCalendar'
+import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 
 // jsdom has no matchMedia; useIsMobile (mobile restack, v2.2252) needs a stub.
 beforeAll(() => {
@@ -344,5 +346,53 @@ describe('BilledPaymentForecastModal work months', () => {
     )
     expect(container.textContent).not.toContain('loading the months worked')
     expect(screen.queryByRole('button', { name: /work months for/ })).toBeNull()
+  })
+})
+
+describe('BilledPaymentForecastModal with Pay calendars (punch list #323)', () => {
+  const calendars = indexPayCalendars([{ payerCustomerId: 'knight', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null }])
+
+  it('shows a calendar payer’s due day on its row, amber once it has passed', () => {
+    const { rerender } = render(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-08-20" onClose={vi.fn()} onOpenInvoice={vi.fn()} payCalendars={calendars} />)
+    // Billed Aug 4, in by Aug 31, due Sep 10. No payment of theirs is measured, so the due day is the expected day.
+    expect(screen.getByTestId('forecast-due').textContent?.replace(/\s+/g, ' ').trim()).toBe('· due Sep 10')
+    expect(screen.getByText('~Sep 10')).toBeTruthy()
+    rerender(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-09-12" onClose={vi.fn()} onOpenInvoice={vi.fn()} payCalendars={calendars} />)
+    expect(screen.getByTestId('forecast-due').textContent?.replace(/\s+/g, ' ').trim()).toBe('· due Sep 10 · 2d past')
+  })
+
+  it('counts the cutoff from the day they accepted the bill', () => {
+    render(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-08-20" onClose={vi.fn()} onOpenInvoice={vi.fn()} payCalendars={calendars} acceptedByInvoice={new Map([['inv1', '2026-09-02']])} />)
+    expect(screen.getByTestId('forecast-due').textContent?.replace(/\s+/g, ' ').trim()).toBe('· due Oct 10')
+  })
+
+  it('draws no due day and no strip for a payer with no calendar', () => {
+    render(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-08-20" onClose={vi.fn()} onOpenInvoice={vi.fn()} cutoffsComing={[]} />)
+    expect(screen.queryByTestId('forecast-due')).toBeNull()
+    expect(screen.queryByTestId('cutoffs-coming')).toBeNull()
+  })
+
+  it('lists the cutoffs coming above the weeks, the nearest first, amber inside its last week', () => {
+    const cutoffsComing = buildCutoffsComing({
+      todayYmd: '2026-11-20',
+      calendars: indexPayCalendars([
+        { payerCustomerId: 'lark', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null },
+        { payerCustomerId: 'sable', jobId: null, off: false, calendar: { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 }, setByName: null, setAt: null },
+      ]),
+      ready: [
+        { payerId: 'lark', payerName: 'Larkfield Construction', jobId: 'j1431', dollars: 14200 },
+        { payerId: 'sable', payerName: 'Sable Ridge Builders', jobId: 'j1427', dollars: 8900 },
+      ],
+      working: [{ payerId: 'lark', payerName: 'Larkfield Construction', jobId: 'j1440', dollars: 38000 }],
+    })
+    render(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-11-20" onClose={vi.fn()} onOpenInvoice={vi.fn()} cutoffsComing={cutoffsComing} />)
+    expect(screen.getByRole('region', { name: 'Cutoffs coming' })).toBeTruthy()
+    const lines = screen.getAllByTestId('cutoff-coming')
+    expect(lines.map((l) => l.textContent)).toEqual([
+      'Sable Ridge Builders · in by Nov 25, due Dec 30 · in 5d1 bill ready, $8,900.',
+      'Larkfield Construction · in by Nov 30, due Dec 101 bill ready, $14,200. 1 job working, $38,000 still to bill.',
+    ])
+    expect(lines.map((l) => l.getAttribute('data-soon'))).toEqual(['true', 'false'])
+    expect(lines[0]!.getAttribute('title')).toBe('In by the 25th, paid the 30th. A bill in one day past the cutoff is due Jan 30.')
   })
 })

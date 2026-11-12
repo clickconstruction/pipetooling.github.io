@@ -115,11 +115,13 @@ The line under the row then reads *Accepted Dec 2*. Press it again to change the
 
 ## The cutoff, before a bill goes out
 
-A bill that has not gone out yet shows its cutoff. You see the line in three places.
+A bill that has not gone out yet shows its cutoff. You see it in five places.
 
 - A row in **Ready to Bill** on the Pipeline reads *Send by Nov 30 to be due Dec 10. After that, Jan 10.*
 - The **Ready to Bill** header shows the nearest cutoff, like *Next cutoff Nov 25 · 1 bill*.
 - The Bill Customer window says what sending today makes the bill.
+- A row in **Working** reads *Bill by Nov 30 to be due Dec 10. After that, Jan 10.* in the cutoff's last 10 days.
+- The payment forecast opens with **Cutoffs coming**. See [read the payment forecast](/help/read-the-payment-forecast#cutoffs-coming).
 
 The line is blue while the cutoff is far. It turns amber in the last 7 days. Press the first sentence on a row to open the calendar.
 

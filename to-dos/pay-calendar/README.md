@@ -2,7 +2,7 @@
 name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a due day, and the forecast keeps its honest guess"
 number: 323
 group: gated
-status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791) and PR 4 (a job's own calendar and the accepted day, v2.7036) built and open as a stack · neither migration is pushed · PRs 5 to 7 next
+status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791), PR 4 (a job's own calendar and the accepted day, v2.7036 #7798) and PR 5 (Cutoffs coming and the Working row's line, v2.7037) built and open as a stack · PR 1 is in the merge queue · neither migration is pushed · PRs 6 and 7 next
 summary: >
   Some commercial payers pay on a calendar, not at a pace: a pay application in by the end of the
   month, or by an earlier day, is paid on a set day of the next month. A bill sent on the 1st and
@@ -12,7 +12,7 @@ summary: >
   exception a job can carry. It gives each billed row the day the bill is due under the contract,
   keeps the expected day as the payer's real record measured against that due day, and puts the
   cutoff in front of whoever is about to bill: send by Nov 30 to be due Dec 10, after that Jan 10.
-next: merge PR 1 and push its migration right after, then PRs 2 to 4 in turn (PR 4 has a migration of its own to push); then PR 5, Cutoffs coming and the Needs you line.
+next: merge PR 1 and push its migration right after, then PRs 2 to 4 in turn (PR 4 has a migration of its own to push); then PR 6, the readers with their own code, with the Needs you line and the pay application's line that PR 5 left for it.
 size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
 blocker: PR 1's migration push, which holds the deploy until it is done, so PR 1 is armed only with someone at hand to push.
 opinion: build — the cutoff and the due day are facts the app has never had, and the second pass took the wishful part out of the forecast
@@ -409,6 +409,7 @@ What still holds, and what is still weak:
 - **PR 2, Due on billed rows**, stacked on PR 1: `billedPayModel` wraps the pace guess, so the edge copies are untouched. The dates block, the Payment forecast, the phone rows and the Lien desk's runway read it. Walked on real rows with a made-up calendar.
 - **PR 3, the cutoff**, stacked on PR 2: *Send by Nov 30 to be due Dec 10. After that, Jan 10.* on a Ready to Bill row, the nearest cutoff on the header, and the same in Bill Customer. The header's chip is plain words, not a filter as first planned: Ready to Bill held one row on the day it was built. The phone's two-line rows do not carry it yet; that goes with PR 5.
 - **PR 4, a job's own calendar and the accepted day**, stacked on PR 3: the window opened from a job's row has *This calendar is for*, with *Only <job>*, *No pay calendar on this job* and *Also set on the other N jobs in <development>*. *Counted from Nov 24* under a billed row's dates opens *They accepted it on…*, which shows what each day makes the bill. Migration `20261112190000_invoice_payer_acceptances.sql`, **not pushed**. Neither screen has been walked live: both need the two tables on prod.
+- **PR 5, Cutoffs coming**, stacked on PR 4: the Payment forecast opens with each calendar payer's next cutoff, the dollars ready and the dollars still to bill on working jobs; a Working row says *Bill by Nov 30 to be due Dec 10.* in the cutoff's last 10 days. **Left out of PR 5 and moved to PR 6**: the Needs you line (a new item touches the rank, the actor, the door and the inputs, each with its own matrix test), the pay application's line, and the phone's two-line rows.
 - What the live walk taught: on a real payer set to *in by month end, paid the 10th*, six open bills read *Due Oct 10 · 33d past* with money usually landing about eight weeks after. Typed as *in by the 25th, paid the 30th of the next month* the same payer's last 12 payments read *usually about 5 days after, 6 of 12 on time*. The window is doing the job the second pass asked of it: it shows which terms a payer's money actually follows.
 - Calls 2 to 7 below were not answered. The build follows the first pick on each.
 
