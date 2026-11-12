@@ -5,10 +5,11 @@
  */
 import { publicFunctionHeaders } from '../customerSampleMode'
 import { firstLookPageView, type FirstLookPageView, type FirstLookThanks } from './look'
-import { pieceMetadata, type PiecePlan, type PieceTransport } from './pieces'
+import { pieceMetadata, signedPiecesEndpoint, type PiecePlan, type PieceTransport } from './pieces'
 import type { DoneAnswer, SignAnswer, WholeAnswer } from './sendFile'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+// The deployed build's address ends in a slash, the local one does not: both read the same here.
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 const FUNCTION_URL = `${supabaseUrl}/functions/v1/first-look`
 const TUS = '1.0.0'
@@ -130,6 +131,6 @@ export const showUsIo: ShowUsIo = {
   },
   pieces: browserPieceTransport,
   piecePlan(signed, mime) {
-    return { endpoint: `${supabaseUrl}/storage/v1/upload/resumable`, bucket: signed.bucket, path: signed.path, mime, headers: { apikey: anonKey, 'x-signature': signed.token } }
+    return { endpoint: signedPiecesEndpoint(supabaseUrl), bucket: signed.bucket, path: signed.path, mime, headers: { apikey: anonKey, 'x-signature': signed.token } }
   },
 }
