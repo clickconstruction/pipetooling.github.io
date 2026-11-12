@@ -41,7 +41,7 @@ export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'inkind' | 'notice' | 
 
 export type LedgerRow = {
   key: LedgerRowKey
-  /** "Billed" · "Expected" · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the affidavit" · "Lien filed" · "Lien window closed" · "Notice window closed". */
+  /** "Billed" · "Expected" · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
   label: string
   /** The words between the label and the date: '' · 'by'. */
   joiner: string
