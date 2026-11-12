@@ -520,21 +520,56 @@ export function bexarAddressQuery(parts: StreetParts): URLSearchParams {
   return new URLSearchParams({ where: bexarAddressWhere(parts), outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: String(PARCEL_ROWS_ASKED), f: 'json' })
 }
 
-/**
- * The facts off Bexar's answer to the address question: the row at the asked number on the asked
- * street, the asked side of town before the other, a row with an owner before a blank one. Null
- * when no row is that street, so "MAIN" never answers with "MAINE".
- */
-export function parcelFactsFromBexarAddress(body: unknown, parts: StreetParts): ParcelFacts | null {
-  let best: Attributes | null = null
-  let bestScore = -1
+/** Bexar's id for a parcel as text, however the layer sends it; null when the row carries none. */
+function bexarPropId(a: Attributes): string | null {
+  return typeof a.PropID === 'number' ? String(Math.round(a.PropID)) : str(a.PropID)
+}
+
+/** The rows of Bexar's answer that are at the asked number on the asked street, so "MAIN" never answers with "MAINE". */
+function bexarRowsAtAddress(body: unknown, parts: StreetParts): Array<{ row: Attributes; prefix: string | null }> {
+  const rows: Array<{ row: Attributes; prefix: string | null }> = []
   for (const a of featuresOf(body)) {
     const theirs = streetParts(bexarStreetLine(a.Situs))
-    if (!theirs || theirs.num !== parts.num || !sameStreetName(parts.name, theirs.name)) continue
+    if (theirs && theirs.num === parts.num && sameStreetName(parts.name, theirs.name)) rows.push({ row: a, prefix: theirs.prefix })
+  }
+  return rows
+}
+
+/**
+ * How many lots Bexar holds at the asked number on the asked street. A centre on a loop or a
+ * campus is several parcels under one address, and then the address alone cannot say which lot
+ * the permit is on: the lookup asks the permit's point (`bexarLotIdsOf`) and takes the lot under it.
+ */
+export function bexarLotsAtAddress(body: unknown, parts: StreetParts): number {
+  return new Set(bexarRowsAtAddress(body, parts).map(({ row }) => bexarPropId(row) ?? '')).size
+}
+
+/** The ids of the lots in one of Bexar's answers: the lots under the permit's point, for `parcelFactsFromBexarAddress`. */
+export function bexarLotIdsOf(body: unknown): Set<string> {
+  const ids = new Set<string>()
+  for (const a of featuresOf(body)) {
+    const id = bexarPropId(a)
+    if (id) ids.add(id)
+  }
+  return ids
+}
+
+/**
+ * The facts off Bexar's answer to the address question: the row at the asked number on the asked
+ * street. Where several lots share the address and one of them is under the permit's point
+ * (`underPoint`, the ids of the lots there), that lot. Otherwise the asked side of town before the
+ * other, a row with an owner before a blank one. Null when no row is that street.
+ */
+export function parcelFactsFromBexarAddress(body: unknown, parts: StreetParts, underPoint: ReadonlySet<string> | null = null): ParcelFacts | null {
+  let best: Attributes | null = null
+  let bestScore = Number.NEGATIVE_INFINITY
+  for (const { row: a, prefix } of bexarRowsAtAddress(body, parts)) {
     let score = 0
-    if (parts.prefix && theirs.prefix === parts.prefix) score += 4
-    if (!parts.prefix && !theirs.prefix) score += 2
-    if (parts.prefix && theirs.prefix && theirs.prefix !== parts.prefix) score -= 4
+    const id = bexarPropId(a)
+    if (underPoint && id !== null && underPoint.has(id)) score += 16
+    if (parts.prefix && prefix === parts.prefix) score += 4
+    if (!parts.prefix && !prefix) score += 2
+    if (parts.prefix && prefix && prefix !== parts.prefix) score -= 4
     if (str(a.Owner)) score += 1
     if (score > bestScore) {
       best = a

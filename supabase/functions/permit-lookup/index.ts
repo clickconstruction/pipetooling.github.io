@@ -13,6 +13,8 @@ import {
   askedWithoutPoint,
   bexarAddressQuery,
   bexarAddressWhere,
+  bexarLotIdsOf,
+  bexarLotsAtAddress,
   factsInCounty,
   idQuery,
   neighbourPointQuestion,
@@ -258,9 +260,18 @@ serve(async (req) => {
         let f = null
         if (where) {
           query = where
-          f = parts
-            ? parcelFactsFromBexarAddress(await ask(bexarAddressQuery(parts)), parts)
-            : parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
+          if (parts) {
+            const answered = await ask(bexarAddressQuery(parts))
+            // Several lots under one address (a centre on a loop, a campus): the address cannot say which, so the lot under the permit's point is the one.
+            let underPoint: Set<string> | null = null
+            if (point && bexarLotsAtAddress(answered, parts) > 1) {
+              query = [query, pointQuestion(point)].join(QUESTION_JOIN)
+              underPoint = bexarLotIdsOf(await ask(pointQueryOf('PropID', point)))
+            }
+            f = parcelFactsFromBexarAddress(answered, parts, underPoint)
+          } else {
+            f = parcelFactsFromCounty(await ask(new URLSearchParams({ where, outFields: BEXAR_PARCEL_FIELDS, returnGeometry: 'false', resultRecordCount: '3', f: 'json' })))
+          }
         }
         if (!f && point) {
           query = [query, pointQuestion(point)].filter(Boolean).join(QUESTION_JOIN)

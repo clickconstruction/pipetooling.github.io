@@ -2,17 +2,17 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PRs 1, 2, 3, 3b, 6 and 5 merged, deployed and checked 2026-11-12 (v2.6978 to v2.6989) · PR 7 (San Antonio's address spelled the county's way, v2.6991) built · PR 4 looked at and dropped · PR 8 measured and not built
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PRs 1, 2, 3, 3b, 6, 5 and 7 merged, deployed and checked 2026-11-12 (v2.6978 to v2.6991) · Austin's window read again the same day on the owner's yes · PR 9 (a San Antonio centre with several lots, v2.6997) built after PR 7's walk · PR 4 looked at and dropped · PR 8 measured and not built
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
   Antonio never asks the permit's point, so about 6 commercial cards in 10 name no owner. Four
   New Braunfels addresses in 10 are in Guadalupe County, which the lookup never asks. Austin's
   permits over the Williamson County line have a county layer nobody reads. A train of small PRs.
-next: Deploy PR 7 after its merge and walk San Antonio. Then read Austin's window again once so the 71 rows already held take their point. That reading waits on a yes.
+next: Deploy PR 9 after its merge and open the same San Antonio addresses again. The four whose lot changes are looked up again by hand, since a kept answer stays its thirty days.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line) · v2.6991 (San Antonio's address spelled the county's way)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days) · v2.6989 (the county's address line) · v2.6991 (San Antonio's address spelled the county's way) · v2.6997 (several lots at one San Antonio address)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -115,6 +115,10 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
    The owner differs on 2 of 125. In Austin the address was the odd one 34 times of 716 and the
    id now settles those. So neither is clearly the wrong one outside Austin, and asking the point
    first would change the card's words for a gain of about one owner in a hundred.
+9. **A San Antonio address with several lots takes the lot under the permit's point** (XS).
+   Built after PR 7's walk. A centre on a loop is one address and a parcel per pad, each with its
+   own owner, and the pick took the first. On 39 addresses 9 have several lots and the owner
+   shown changes on 4. One lot at the address asks nothing more, and the card's words stay.
 
 ## What #316 and #310 learned that this needs
 
@@ -155,3 +159,13 @@ Read-only, signed in on a dev server, counts only.
 - **PR 5** (deployed from `main` 2026-11-12): Austin, the 30 newest commercial building permits
   with a lot id, one per address. 26 name an owner, 25 by the id and 1 at the permit's point.
   The line with the county's own address shows on 5 of the 26, 4 of them answered by the id.
+- **PR 7** (deployed from `main` 2026-11-12): San Antonio, the 60 newest commercial building
+  permits with a point, one per address, none opened before. 58 name an owner, 39 by the address
+  and 19 at the permit's point. 11 of the 39 are lots the old question missed. Against the lot
+  under the point, 32 of the 39 are that lot and 7 are another, 6 with another owner. On 5 of
+  the 7 the county holds several lots at the address. That is PR 9.
+- **Austin's window read again** (2026-11-12, on the owner's yes): the morning's own pull had
+  already taken the 71 rows with no point down to 50. A dry run read the 4,319 rows held and
+  nothing older. The reading then wrote all 4,319, with no error, in 8 seconds. Of the 148 rows
+  with a Williamson County id, 146 now have a point, each inside the county, and 2 rows on one
+  lot the county does not hold have none. Austin rows with no point went from 401 to 353.

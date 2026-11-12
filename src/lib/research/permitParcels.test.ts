@@ -9,6 +9,8 @@ import {
   askedWithoutPoint,
   bexarAddressQuery,
   bexarAddressWhere,
+  bexarLotIdsOf,
+  bexarLotsAtAddress,
   COMAL_PARCELS,
   factsInCounty,
   GUADALUPE_PARCELS,
@@ -471,5 +473,30 @@ describe("Bexar County, asked by the house number and the street's name", () => 
     const blank = body({ id: 3, street: '600 SAMPLE ST', owner: null }, { id: 4, street: '600 SAMPLE ST' })
     expect(parcelFactsFromBexarAddress(blank, streetParts('600 SAMPLE ST')!)).toMatchObject({ prop_id: '4', owner: 'SAMPLE LLC' })
     expect(parcelFactsFromBexarAddress(blank, streetParts('600 SAMPLE ST')!)?.matched_by).toBeUndefined()
+  })
+  it('takes the lot under the permit\'s point where several lots share the address', () => {
+    const centre = body({ id: 1, street: '8000 NW LOOP 410' }, { id: 2, street: '8000 NW LOOP 410' }, { id: 3, street: '8000 NW LOOP 410', owner: null })
+    const parts = streetParts('8000 NW 410')!
+    expect(bexarLotsAtAddress(centre, parts)).toBe(3)
+    expect(parcelFactsFromBexarAddress(centre, parts)?.prop_id).toBe('1')
+    expect(parcelFactsFromBexarAddress(centre, parts, bexarLotIdsOf(rows({ PropID: 2 })))).toMatchObject({ prop_id: '2', owner: 'SAMPLE LLC' })
+    // The lot under the point wins over a row with an owner and over the other side of town.
+    expect(parcelFactsFromBexarAddress(centre, parts, new Set(['3']))?.prop_id).toBe('3')
+    const sides = body({ id: 4, street: '700 N SAMPLE ST' }, { id: 5, street: '700 S SAMPLE ST' })
+    expect(parcelFactsFromBexarAddress(sides, streetParts('700 N SAMPLE ST')!, new Set(['5']))?.prop_id).toBe('5')
+    // The answer is still by the address: no mark for the point.
+    expect(parcelFactsFromBexarAddress(centre, parts, new Set(['2']))?.matched_by).toBeUndefined()
+  })
+  it('keeps the address\'s own pick when the point is on none of its lots, and counts a lot once', () => {
+    const centre = body({ id: 1, street: '8000 NW LOOP 410' }, { id: 2, street: '8000 NW LOOP 410' })
+    const parts = streetParts('8000 NW 410')!
+    expect(parcelFactsFromBexarAddress(centre, parts, new Set(['9']))?.prop_id).toBe('1')
+    expect(parcelFactsFromBexarAddress(centre, parts, new Set())?.prop_id).toBe('1')
+    expect(bexarLotsAtAddress(body({ id: 1, street: '100 SAMPLE LN' }, { id: 1, street: '100 SAMPLE LANE' }), streetParts('100 SAMPLE LN')!)).toBe(1)
+    // Another street or another number in the same answer is not a lot at this address.
+    expect(bexarLotsAtAddress(body({ id: 1, street: '100 SAMPLE LN' }, { id: 2, street: '100 SAMPLER AVE' }, { id: 3, street: '1000 SAMPLE LN' }), streetParts('100 SAMPLE LN')!)).toBe(1)
+    expect(bexarLotsAtAddress({}, streetParts('100 SAMPLE LN')!)).toBe(0)
+    expect([...bexarLotIdsOf(rows({ PropID: 7 }, { PropID: '8' }, { Situs: 'x' }))]).toEqual(['7', '8'])
+    expect(bexarLotIdsOf(null).size).toBe(0)
   })
 })
