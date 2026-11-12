@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -1109,6 +1109,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ (hidden since PR #275 (2026-07-13); restored v2.2181 now that rows are scoped to Account-Man jobs) | ✅ |
 | **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Bills sent** (`/bills-sent`, v2.7049 — punch list #327: every bill that left, read from `sent_documents`; `BillsSent.tsx` waits for the role, then sends any role outside `canOpenBillsSent` to `/dashboard`; the set is the table's own readers, `is_office_staff()`, so the controller opens it too) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **In kind** (`/in-kind`, v2.6836 — punch list #301; `InKind.tsx` waits for the role, then sends any role outside `isOfficeRole` to `/dashboard`; its press is in Accounts Receivable's header; tables under *`in_kind_arrangements`* above) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Legal desk** (`/legal-desk`, v2.5894 — punch list #182: the desk as a page; `LegalDeskPage.tsx` waits for the role, then sends any role outside `canManageCollections` to `/dashboard`; `/jobs?tab=stages&legal=…` redirects here) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Lien desk** (`/lien-desk`, v2.6777 — punch list #182: the desk as a page; `LienDeskPage.tsx` waits for the role, then sends any role outside `isStagesOfficeRole` to `/dashboard`; `/jobs?tab=stages&liendesk=…` and `?ownerrecords=` redirect here) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |

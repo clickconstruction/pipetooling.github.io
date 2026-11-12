@@ -59,6 +59,7 @@ const BoxCode = lazy(() => import('./pages/BoxCode'))
 // #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
 const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
+const BillsSent = lazy(() => import('./pages/BillsSent'))
 const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
@@ -422,6 +423,8 @@ function AppContent() {
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
+          {/* Bills sent (punch list #327): every bill that left, to whom and the minute it went, read from the sent copies. */}
+          <Route path="bills-sent" element={<ErrorBoundary><BillsSent /></ErrorBoundary>} />
           <Route path="in-kind" element={<ErrorBoundary><InKind /></ErrorBoundary>} />
           <Route path="legal-desk" element={<LegalDeskPage />} />
           <Route path="lien-desk" element={<LienDeskPage />} />
