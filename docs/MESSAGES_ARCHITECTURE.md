@@ -137,6 +137,8 @@ a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in
 
 **No reply needed, in plain sight** (`followUp/noReply.ts`, punch list #324): the press closes a conversation through `set_state` and then writes one grey line through `follow_up_event`, *Rosa said on Nov 12 that no reply is needed.* (`FollowUpIo.noReplyNeeded`; every door uses it: a row in Needs a reply, the Answer all desk, the thread's ⋯, the thread's status row and the press under the card on the Sort all desk, `NewLaneSlot.tsx`). `threadClose` gives the status row its piece: the press while the conversation is Open, a grey chip with who and when once it is Done by the press, a chip for a thread only filed mail touched, each with **Reopen**. The move line reads the state through `CourtOptions.closed`: a Done conversation whose last word is theirs says *Nothing waits*.
 
+**Done with no reply this week** (`followUp/doneFold.ts`, `doneFoldIo.ts`, `components/followUp/DoneFold.tsx`, punch list #324): a fold under the lanes, built like New's *notices set aside this week*. One row a person whose conversation is Done today: the grey line a No reply needed press wrote in the last seven days, or mail of theirs filed for the record in that time, the newer fact winning. **Reopen** is `set_state`. `FollowUpIo.loadDoneFold` reads it when the panel mounts and whenever the queue reads again. Not a lane: no segment on the bar, nothing on the badge.
+
 
 `src/lib/followUp/queue.ts` is the queue: one row per person, Open · Snoozed · Done, who has it (`has_user_id`,
 `has_how`), the move line, and the lanes the screens group by — **New** (R7, what came in and still needs sorting:

@@ -35,8 +35,8 @@ export function noReplyOf(body: string): { who: string; day: string } | null {
   return m ? { who: m[1]!, day: m[2]! } : null
 }
 
-/** The PostgREST filter for those grey lines, for a read of what was closed (`doneFold.ts`). */
-export const NO_REPLY_EVENTS_FILTER = '* said on * that no reply is needed.'
+/** The LIKE pattern for those grey lines, for a read of what was closed (`doneFoldIo.ts`). */
+export const NO_REPLY_LIKE = '% said on % that no reply is needed.'
 
 /** What the thread's status row shows of the conversation's state, beside *We owe them…*. */
 export type ThreadClose =

@@ -147,6 +147,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}, rows: FollowUpRows = ROWS):
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
     noReplyNeeded: vi.fn(async () => undefined),
+    loadDoneFold: vi.fn(async () => ({ said: [], filed: [] })),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: vi.fn(async () => undefined),
@@ -365,6 +366,32 @@ describe('FollowUpPanel', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: /^Nobody/ }))
     await waitFor(() => expect(say).toHaveBeenLastCalledWith('Nobody has it.', 'success'))
     expect(io.handTo).toHaveBeenCalledWith('priya', null)
+  })
+
+  it('folds what was done with no reply this week under the lanes, each with Reopen (v2.7030)', async () => {
+    const io = fakeIo({
+      loadDoneFold: vi.fn(async () => ({
+        said: [{ contactId: 'dale', name: 'Dale Okafor', body: 'Rosa said on Nov 10 that no reply is needed.', at: new Date(Date.now() - 2 * 86_400_000).toISOString() }],
+        filed: [{ contactId: 'harlan', name: 'permits@harlanfreight.example', landedAt: new Date(Date.now() - 3 * 86_400_000).toISOString() }],
+      })),
+    })
+    const { say, onOpenThread } = renderPanel({}, io)
+    await loaded()
+    const fold = (await screen.findByText('2 done with no reply this week')).closest('details') as HTMLElement
+    expect(fold.querySelectorAll('[data-done-row]').length).toBe(2)
+    expect(within(fold).getByText(/No reply needed · Rosa, /)).toBeTruthy()
+    expect(within(fold).getByText(/Old mail filed .* · 1 mail$/)).toBeTruthy()
+    fireEvent.click(within(fold).getByRole('button', { name: 'Dale Okafor' }))
+    expect(onOpenThread).toHaveBeenCalledWith('dale')
+    fireEvent.click(within(fold).getAllByRole('button', { name: 'Reopen' })[0]!)
+    await waitFor(() => expect(io.setState).toHaveBeenCalledWith('dale', 'waiting'))
+    await waitFor(() => expect(say).toHaveBeenCalledWith('Dale Okafor is back in Follow up.', 'success'))
+  })
+
+  it('draws no fold when nothing was done with no reply', async () => {
+    renderPanel()
+    await loaded()
+    expect(document.querySelector('[data-done-fold]')).toBeNull()
   })
 
   it('a refused press keeps its own reason, and says nothing went', async () => {

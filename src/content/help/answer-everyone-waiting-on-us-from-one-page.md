@@ -108,6 +108,19 @@ Press {{button:outline|Reopen}} beside the chip to put the conversation back on 
 
 A new message from them opens the conversation again by itself.
 
+## See what was closed this week
+
+Under the lists sits a fold, *3 done with no reply this week*. Press it to open it. It shows only when a conversation was closed with no reply in the last seven days.
+
+Each row names a person and says how the conversation was done.
+
+- *No reply needed · Rosa, on Tuesday* means a teammate closed it.
+- *Old mail filed on Monday · 6 mails* means old mail was filed for the record and asked nobody.
+
+Press the name to open the thread. Press {{button:outline|Reopen}} to put the conversation back on Follow up.
+
+The fold is not a list of work. It has no place on the bar and adds nothing to the badge.
+
 ## Supply houses and candidates
 
 Supply houses and people we may hire never count on Follow up. Press {{button:outline|Supply houses and candidates}} to see them.

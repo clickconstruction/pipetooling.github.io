@@ -126,6 +126,7 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
     noReplyNeeded: vi.fn(async () => undefined),
+    loadDoneFold: vi.fn(async () => ({ said: [], filed: [] })),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: vi.fn(async () => undefined),
