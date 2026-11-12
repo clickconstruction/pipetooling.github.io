@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
-import { MARKET_BOOK_ROWS, MARKET_DEAD_WEIGHT_BIDS, MARKET_DESK_WEEKS, MARKET_FADING_SHARE, MARKET_NEW_NAME_DAYS, bidAnswered, bidWon, buildMarketDesk, foldMarketRecord, marketAskerId, marketHeader, marketVerdict, type MarketDeskBid, type MarketDeskEstimate, type MarketDeskInput } from './marketDesk'
+import { MARKET_BOOK_ROWS, MARKET_DEAD_WEIGHT_BIDS, MARKET_DESK_WEEKS, MARKET_FADING_SHARE, MARKET_NEW_NAME_DAYS, MARKET_QUIET_WEEKS, bidAnswered, bidWon, buildMarketDesk, foldMarketRecord, marketAskerId, marketHeader, marketVerdict, type MarketDeskBid, type MarketDeskEstimate, type MarketDeskInput } from './marketDesk'
 
 const TODAY = '2026-10-26'
 const WINDOW_START = '2026-08-31'
@@ -14,7 +14,7 @@ const bid = (gcId: string | null, createdYmd: string, usd: number, over: Partial
 const answered = (gcId: string, createdYmd: string, usd: number, outcome: 'won' | 'lost', days: number): MarketDeskBid => bid(gcId, createdYmd, usd, { outcome, outcomeYmd: addDays(addDays(createdYmd, 3), days) })
 const est = (createdYmd: string, usd: number, status = 'sent'): MarketDeskEstimate => ({ id: `e${++seq}`, createdYmd, sentYmd: addDays(createdYmd, 1), status, usd, acceptedYmd: status === 'customer_accepted' ? addDays(createdYmd, 5) : null, updatedYmd: addDays(createdYmd, 5) })
 
-/** The mock-up's book: Burd feeding, ATI feeding, Summit feeding with 3 $0 bids, MK fading, Pell fading, Hargrove a new name, Knight dead weight, the customers' estimates. */
+/** The mock-up's book: Burd feeding, ATI feeding, Summit feeding with 3 $0 bids, MK fading, Pell fading, Hargrove a new name, Knight with no answers, the customers' estimates. */
 function fixture(): MarketDeskInput {
   seq = 0
   const bids: MarketDeskBid[] = [
@@ -95,6 +95,7 @@ describe('marketDesk (v2.5931)', () => {
     expect(MARKET_FADING_SHARE).toBe(0.5)
     expect(MARKET_DEAD_WEIGHT_BIDS).toBe(6)
     expect(MARKET_NEW_NAME_DAYS).toBe(91)
+    expect(MARKET_QUIET_WEEKS).toBe(4)
   })
 
   it('draws the strip: 26 pay weeks ending with the current one, each cell summed by source with its label', () => {
@@ -103,7 +104,7 @@ describe('marketDesk (v2.5931)', () => {
     expect(d.weeks).toHaveLength(26)
     expect(d.weeks[0]!.start).toBe('2026-05-03')
     expect(d.weeks[25]!).toMatchObject({ start: '2026-10-25', end: '2026-10-31', isCurrent: true })
-    // The week of Oct 18: Burd Oct 20 and 22, ATI Oct 20, Summit Oct 19 and a $0 bid Oct 21, an estimate Oct 24.
+    // The week of Oct 18: Burd Oct 20 and 22, ATI Oct 20, Summit Oct 19 and a bid with no value Oct 21, an estimate Oct 24.
     expect(d.weeks[24]!).toMatchObject({ start: '2026-10-18', gcUsd: 266_000, customerUsd: 3_000, totalUsd: 269_000, asks: 6 })
     expect(d.weeks[24]!.ariaLabel).toBe('Week of Oct 18: $269k asked, $266k from GCs, $3k from customers')
     expect(d.weeks[25]!.ariaLabel).toBe('Week of Oct 25: $0 asked so far, $0 from GCs, $0 from customers')
@@ -143,14 +144,14 @@ describe('marketDesk (v2.5931)', () => {
       ['Burd & Assoc.', 'feeding'],
       ['ATI', 'feeding'],
       ['Summit GC', 'feeding'],
-      ['Customers (estimates)', 'feeding'],
+      ['Customers’ estimates', 'feeding'],
       ['Hargrove Construction', 'new name'],
       ['MK Builders', 'fading'],
       ['Pell Homes', 'fading'],
-      ['Knight Contracting', 'dead weight'],
+      ['Knight Contracting', 'no answers'],
     ])
     const [burd, ati, summit, customers, hargrove, mk, pell, knight] = d.rows
-    expect(burd!).toMatchObject({ askedWords: '$1.1M · 19 bids', paysWords: '$116k', wonCount: 2, answered: 8, desc: 'GC · last ask Oct 22' })
+    expect(burd!).toMatchObject({ askedWords: '$1.1M in 19 bids', paysWords: '$116k', wonCount: 2, answered: 8, desc: 'GC. Last ask Oct 22.', quietWeeks: null })
     expect(burd!.detLine).toBe('Won 2 of 8 answered. 11% by value. Answers in about 24 days, as recorded. Last ask Oct 22.')
     expect(burd!.quarters.map((q) => [q.label, q.askedUsd, q.wonWords])).toEqual([
       ['Last quarter', 522_000, '$116k'],
@@ -158,17 +159,18 @@ describe('marketDesk (v2.5931)', () => {
     ])
     expect(burd!.door).toEqual({ href: '/bids?tab=bid-board', label: 'Open their bids' })
     expect(ati!.detLine).toBe('Won 1 of 2 answered. 17% by value. Answers in about 35 days, as recorded. Last ask Oct 20.')
-    expect(summit!).toMatchObject({ askedWords: '$400k · 9 bids', paysWords: '$60k', zeroBids: 3, pricedBids: 6, desc: 'GC · last ask Oct 21 · 3 bids ride at $0' })
+    expect(summit!).toMatchObject({ askedWords: '$400k in 9 bids', paysWords: '$60k', zeroBids: 3, pricedBids: 6, desc: 'GC. Last ask Oct 21. 3 bids have no value.' })
     expect(summit!.detLine).toBe('Won 1 of 1 answered. 15% by value. Answers in about 19 days, as recorded. 3 bids have no value yet. They hide what Summit GC asks. Last ask Oct 21.')
-    expect(customers!).toMatchObject({ kind: 'customers', askedWords: '$30k · 10 requests', paysWords: '$6k', door: { href: '/estimates', label: 'Open Estimates' } })
+    expect(customers!).toMatchObject({ kind: 'customers', desc: 'Estimates. Last ask Oct 24.', askedWords: '$30k in 10 requests', paysWords: '$6k', door: { href: '/estimates', label: 'Open Estimates' } })
     expect(customers!.detLine).toBe('Small and many. Worked from the Estimates page, not from this book. Won 2 of 3 answered. 20% by value. Last ask Oct 24.')
     expect(hargrove!.detLine).toBe('Nothing answered yet. First bid ever on Oct 9. First answers say what the relationship is. Last ask Oct 9.')
-    expect(mk!).toMatchObject({ askedWords: '$230k · 4 bids', paysWords: '$70k', desc: 'GC · 10 weeks quiet' })
+    expect(mk!).toMatchObject({ askedWords: '$230k in 4 bids', paysWords: '$70k', desc: 'GC. Quiet 10 weeks.', quietWeeks: 10 })
     expect(mk!.detLine).toBe('Won 1 of 2 answered. 30% by value. Answers in about 31 days, as recorded. Quiet for 10 weeks.')
     expect(pell!.detLine).toBe('Nothing answered yet. Quiet for 19 weeks.')
-    expect(knight!).toMatchObject({ askedWords: '$240k · 6 bids', paysWords: '—', pricedBids: 6, answered: 0, neverAnswered: false, desc: 'GC · 8 weeks quiet' })
+    expect(knight!).toMatchObject({ askedWords: '$240k in 6 bids', paysWords: '—', pricedBids: 6, answered: 0, neverAnswered: false, desc: 'GC. Quiet 8 weeks.', quietWeeks: 8 })
     expect(knight!.detLine).toBe('Nothing answered yet. 6 priced bids in 26 weeks, nothing won, nothing answered. Pricing them costs days the live GCs wait on. Last ask Aug 31.')
     expect(d.restLine).toBeNull()
+    expect(d.restCount).toBe(0)
   })
 
   it('reads the three tiles: asked this quarter, the top three’s share, the new names', () => {
@@ -179,11 +181,11 @@ describe('marketDesk (v2.5931)', () => {
     expect(names).toEqual({ head: 'New names', value: '1', delta: null, deltaTone: 'plain', words: '1 this quarter. Last quarter had 1. Hargrove Construction, first invite Oct 9. A new name is the only courting result the app can see.' })
   })
 
-  it('writes the verdict from the quiet GCs and the GC with the most $0 bids, the pricing spend, and the $0 count', () => {
+  it('writes the verdict from the quiet GCs and the GC with the most bids with no value, the pricing spend, and that count', () => {
     const d = buildMarketDesk(fixture())
     expect(d.verdict).toBe('Call the 2 quiet GCs and put a value on Summit GC’s 3 bids. That is this week’s lever.')
     expect(d.pricingSpend).toEqual(['Knight Contracting has taken 6 priced bids for $0 won and no answer in 26 weeks. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.'])
-    expect(d.zeroBids).toEqual({ count: 3, words: '3 bids ride at $0. They hide what their GCs ask and thin the win share. Put the number on each.' })
+    expect(d.zeroBids).toEqual({ count: 3, words: '3 bids have no value. They hide what their GCs ask. Put the number on each.' })
     expect(marketVerdict([{ kind: 'gc', name: 'MK Builders', state: 'fading', zeroBids: 0 }])).toBe('Call MK Builders. That is this week’s lever.')
     expect(marketVerdict([{ kind: 'gc', name: 'Summit GC', state: 'feeding', zeroBids: 1 }])).toBe('Put a value on Summit GC’s bid. That is this week’s lever.')
     expect(marketVerdict([{ kind: 'gc', name: 'ATI', state: 'feeding', zeroBids: 0 }])).toBe('The asks are steady. Keep the book warm.')
@@ -200,22 +202,22 @@ describe('marketDesk (v2.5931)', () => {
     }
     // The whole record shows no answer: the words say ever.
     const never = knightOf(new Map([['gc-knight', { bids: 11, answered: 0, won: 0 }]]))
-    expect(never.knight).toMatchObject({ state: 'dead weight', neverAnswered: true, desc: 'GC · 8 weeks quiet · has never answered a bid' })
+    expect(never.knight).toMatchObject({ state: 'no answers', neverAnswered: true, desc: 'GC. Quiet 8 weeks. Has never answered a bid.' })
     expect(never.knight.detLine).toBe('Nothing answered yet. 6 priced bids in 26 weeks and no answer, ever. Pricing them costs days the live GCs wait on. Last ask Aug 31.')
     expect(never.d.pricingSpend).toEqual(['Knight Contracting has taken 6 priced bids for $0 won and no answer, ever. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.'])
     plain(never.knight.detLine)
     for (const p of never.d.pricingSpend) plain(p)
-    // One answer years back: dead weight still, but the words stay with the span.
+    // One answer years back: no answers in the span still, but the words stay with the span.
     const once = knightOf(new Map([['gc-knight', { bids: 11, answered: 1, won: 0 }]]))
-    expect(once.knight).toMatchObject({ state: 'dead weight', neverAnswered: false, desc: 'GC · 8 weeks quiet' })
+    expect(once.knight).toMatchObject({ state: 'no answers', neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
     expect(once.knight.detLine).toBe('Nothing answered yet. 6 priced bids in 26 weeks, nothing won, nothing answered. Pricing them costs days the live GCs wait on. Last ask Aug 31.')
     expect(once.d.pricingSpend).toEqual(['Knight Contracting has taken 6 priced bids for $0 won and no answer in 26 weeks. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.'])
     // The read is in but Knight is not in it, or the read is absent: the span's words.
-    expect(knightOf(new Map([['gc-burd', { bids: 40, answered: 0, won: 0 }]])).knight).toMatchObject({ neverAnswered: false, desc: 'GC · 8 weeks quiet' })
-    expect(knightOf(undefined).knight).toMatchObject({ neverAnswered: false, desc: 'GC · 8 weeks quiet' })
-    // A GC that is not dead weight never carries the claim, whatever its record says.
+    expect(knightOf(new Map([['gc-burd', { bids: 40, answered: 0, won: 0 }]])).knight).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
+    expect(knightOf(undefined).knight).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
+    // A GC that answers in the span never carries the claim, whatever its record says.
     const burd = buildMarketDesk({ ...base, lifetimeByGc: new Map([['gc-burd', { bids: 40, answered: 0, won: 0 }]]) }).rows.find((r) => r.key === 'gc:gc-burd')!
-    expect(burd).toMatchObject({ state: 'feeding', neverAnswered: false, desc: 'GC · last ask Oct 22' })
+    expect(burd).toMatchObject({ state: 'feeding', neverAnswered: false, desc: 'GC. Last ask Oct 22.' })
   })
 
   it('keys the book by the bid’s customer, named from the customer list, with the GC list as the fallback', () => {
@@ -249,27 +251,39 @@ describe('marketDesk (v2.5931)', () => {
       ['gc:gc-old', 'Old Line Builders', 'gc', 'feeding'],
       ['no-gc', 'No GC on the bid', 'no-gc', 'feeding'],
     ])
-    expect(d.rows[0]!).toMatchObject({ askedWords: '$180k · 2 bids', paysWords: '$90k', wonCount: 1, answered: 1 })
+    expect(d.rows[0]!).toMatchObject({ askedWords: '$180k in 2 bids', paysWords: '$90k', wonCount: 1, answered: 1 })
     expect(d.rows[0]!.detLine).toBe('Won 1 of 1 answered. 50% by value. Answers in about 20 days, as recorded. Last ask Oct 5.')
     expect(d.tiles[1]).toMatchObject({ head: 'Three GCs carry', value: '100%', words: 'Burd & Assoc., ATI and Old Line Builders. No last quarter to read against.' })
     for (const r of d.rows) plain(r.detLine)
     for (const tile of d.tiles) plain(tile.words)
   })
 
-  it('counts a bid marked started or complete as won and answered, the Sales card’s rule', () => {
-    expect(bidWon({ outcome: 'started_or_complete', jobCreatedYmd: null })).toBe(true)
-    expect(bidAnswered({ outcome: 'started_or_complete', jobCreatedYmd: null })).toBe(true)
-    expect(bidWon({ outcome: 'won', jobCreatedYmd: null })).toBe(true)
-    expect(bidWon({ outcome: null, jobCreatedYmd: '2026-10-01' })).toBe(true)
-    expect(bidWon({ outcome: 'lost', jobCreatedYmd: null })).toBe(false)
-    expect(bidAnswered({ outcome: 'lost', jobCreatedYmd: null })).toBe(true)
-    expect(bidWon({ outcome: null, jobCreatedYmd: null })).toBe(false)
-    expect(bidAnswered({ outcome: null, jobCreatedYmd: null })).toBe(false)
+  it('counts a bid as won only when it is marked won, or marked started or complete: a job made from it decides nothing', () => {
+    expect(bidWon({ outcome: 'started_or_complete' })).toBe(true)
+    expect(bidAnswered({ outcome: 'started_or_complete' })).toBe(true)
+    expect(bidWon({ outcome: 'won' })).toBe(true)
+    expect(bidWon({ outcome: 'lost' })).toBe(false)
+    expect(bidAnswered({ outcome: 'lost' })).toBe(true)
+    expect(bidWon({ outcome: null })).toBe(false)
+    expect(bidAnswered({ outcome: null })).toBe(false)
+    // A bid a job was made from, with no mark: not won, not answered, and it pays nothing in the book (the owner, 2026-11-11).
+    const withJob = bid('gc-pell', '2026-10-01', 12_000, { jobCreatedYmd: '2026-10-08' })
+    expect(bidWon(withJob)).toBe(false)
+    expect(bidAnswered(withJob)).toBe(false)
+    const jobbed = fixture()
+    jobbed.bids.push(withJob)
+    const pell = buildMarketDesk(jobbed).rows.find((r) => r.key === 'gc:gc-pell')!
+    expect(pell).toMatchObject({ askedWords: '$24k in 2 bids', paysWords: '—', wonCount: 0, answered: 0 })
+    expect(pell.detLine).toContain('Nothing answered yet.')
+    // Marked won, the same bid pays.
+    const marked = fixture()
+    marked.bids.push({ ...withJob, outcome: 'won' })
+    expect(buildMarketDesk(marked).rows.find((r) => r.key === 'gc:gc-pell')!).toMatchObject({ paysWords: '$12k', wonCount: 1, answered: 1 })
     // Hargrove's second bid is marked started with no outcome day: won and answered, no answer pace.
     const f = fixture()
     f.bids.push(bid('gc-hargrove', '2026-10-15', 40_000, { outcome: 'started_or_complete' }))
     const hargrove = buildMarketDesk(f).rows.find((r) => r.key === 'gc:gc-hargrove')!
-    expect(hargrove).toMatchObject({ state: 'new name', askedWords: '$125k · 2 bids', paysWords: '$40k', wonCount: 1, answered: 1 })
+    expect(hargrove).toMatchObject({ state: 'new name', askedWords: '$125k in 2 bids', paysWords: '$40k', wonCount: 1, answered: 1 })
     expect(hargrove.detLine).toBe('Won 1 of 1 answered. 32% by value. First bid ever on Oct 9. First answers say what the relationship is. Last ask Oct 15.')
     expect(hargrove.quarters.map((q) => q.wonWords)).toEqual(['—', '$40k'])
     plain(hargrove.detLine)
@@ -309,6 +323,7 @@ describe('marketDesk (v2.5931)', () => {
     expect(d.rows.map((r) => r.name)).toContain('Knight Contracting')
     expect(d.rows.map((r) => r.name)).not.toContain('Zed Builders')
     expect(d.restLine).toBe('1 smaller GC holds the rest. $5k asked, $0 won. Steady, none quiet.')
+    expect(d.restCount).toBe(1)
     // Zed at $15k now outgrows Pell: the quiet $12k row folds instead, and the line says so.
     f.bids.push(bid('gc-zed', '2026-06-01', 10_000))
     const quiet = buildMarketDesk(f)
@@ -322,7 +337,7 @@ describe('marketDesk (v2.5931)', () => {
     f.bids.push(bid(null, '2026-10-02', 20_000))
     const d = buildMarketDesk(f)
     const row = d.rows.find((r) => r.kind === 'no-gc')
-    expect(row).toMatchObject({ name: 'No GC on the bid', desc: 'bids · last ask Oct 2', askedWords: '$20k · 1 bid' })
+    expect(row).toMatchObject({ name: 'No GC on the bid', desc: 'Bids. Last ask Oct 2.', quietWeeks: null, askedWords: '$20k in 1 bid' })
   })
 
   it('holds every sentence to plain words', () => {
@@ -341,15 +356,44 @@ describe('marketDesk (v2.5931)', () => {
     plain(d.cannotSee)
     plain(d.howItReads)
     plain(d.recordedLine)
-    expect(d.howItReads).toContain('created_at')
-    expect(d.howItReads).toContain('bid_date_sent')
-    expect(d.howItReads).toContain('agreed_value or else bid_value')
-    expect(d.howItReads).toContain('outcome and outcome_at')
-    expect(d.howItReads).toContain('A bid is won when its outcome is won or started or complete, or when it became a job. A win counts at the bid’s value.')
-    expect(d.howItReads).toContain('A GC is the bid’s customer, by customer_id, named from the customer list. A bid with no customer falls back to its gc_builder_id, named from the GC list.')
-    expect(d.howItReads).toContain('total_cents')
+  })
+
+  it('holds every string a typical desk prints to plain words, with no trade talk and no column names', () => {
+    // A typical desk and its edges: the fixture, one with a source that never answered and two smaller sources folded, one with no field pace.
+    const base = fixture()
+    const wide: MarketDeskInput = { ...base, bids: [...base.bids, bid('gc-zed', '2026-09-01', 5_000), bid(null, '2026-10-02', 20_000)], gcNames: new Map([...base.gcNames, ['gc-zed', 'Zed Builders']]), lifetimeByGc: new Map([['gc-knight', { bids: 11, answered: 0, won: 0 }]]) }
+    const desks = [buildMarketDesk(base), buildMarketDesk(wide), buildMarketDesk({ ...base, fieldPerWeekUsd: null }), buildMarketDesk({ ...base, winShare: null })]
+    const words: string[] = []
+    for (const d of desks) {
+      words.push(d.headline, d.verdict, d.subLine, d.legend.gc, d.legend.customers, d.cannotSee, d.howItReads, d.recordedLine)
+      for (const x of [d.feedMissing, d.emptyWeeksNote, d.restLine, d.zeroBids?.words]) if (x) words.push(x)
+      words.push(...d.pricingSpend)
+      for (const w of d.weeks) words.push(w.label, w.ariaLabel)
+      for (const t of d.tiles) words.push(t.head, t.value, t.words)
+      for (const r of d.rows) {
+        words.push(r.name, r.desc, r.state, r.askedWords, r.detLine, r.door.label)
+        // "—" alone is an empty cell, not glue (`plainWords.ts`).
+        if (r.paysWords !== '—') words.push(r.paysWords)
+        for (const q of r.quarters) words.push(q.label, ...(q.wonWords === '—' ? [] : [q.wonWords]))
+      }
+    }
+    expect(desks[1]!.rows.some((r) => r.neverAnswered)).toBe(true)
+    expect(desks[1]!.restCount).toBe(2)
+    expect(words.flatMap((w) => plainWordsFailures(w))).toEqual([])
+    const all = words.join(' ')
+    expect(all).not.toMatch(/dead weight|rides? at \$0|[a-z]_[a-z]/i)
+    expect(all).toContain('3 bids have no value.')
+    expect(all).toContain('no answers')
+  })
+
+  it('says how the list reads in under 80 plain words: the span, a source, quiet, and the three states', () => {
+    const d = buildMarketDesk(fixture())
+    expect(d.howItReads).toBe(
+      'The list covers the last 26 pay weeks, this week included. A source is the customer on a bid. A bid with no customer takes its GC. Quiet means no ask for 4 weeks or more. Fading means asks this quarter under 50% of the source’s usual. No answers means 6 or more priced bids with nothing marked won or lost. New name means a first bid in the last 91 days.',
+    )
+    expect(d.howItReads.split(/\s+/).length).toBeLessThan(80)
     expect(d.howItReads).toContain(`${MARKET_DEAD_WEIGHT_BIDS} or more priced bids`)
-    expect(d.howItReads).toContain('Never answered reads every bid on record for the GC, by the bid’s own outcome.')
     expect(d.howItReads).toContain(`${MARKET_NEW_NAME_DAYS} days`)
+    expect(d.howItReads).not.toMatch(/[a-z]_[a-z]|became a job|win share/)
   })
 })

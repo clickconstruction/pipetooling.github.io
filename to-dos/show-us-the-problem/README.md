@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · read against main the same day · the card and the mock-up drawn · nothing built · waits on the owner's ten calls
+status: asked 2026-11-11 · read against main the same day · the card and the mock-up drawn · the owner's side read the mock-up the same day, liked the proposal, asked for one line on the customer's page (drawn) and for a build plan with the files in Google Drive, an upload that works with no signal and a Customer supplied photos folder on jobs and customers · the plan below is that answer · nothing built
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -14,11 +14,13 @@ summary: >
   takes files from someone who is not signed in, video (nothing in the app takes, stores or plays
   one, and the app's own functions cannot carry one), and the record itself, with a way for a
   tech to see it before a job exists. The word case already means four other things in the app,
-  so the card calls the record a First look and the customer's page Show us the problem.
-next: the owner's read of the mock-up and his ten calls, each with a default; before any code, five real calls where the office asks the caller to text a photo to the company number, which works today
-size: L as a train of six (M · M · S · S · S · M)
-blocker: The owner's calls, first the name, who sends the link and how much video. The storage size limit on the live project is not in the repo and is read off the dashboard before PR 1.
-opinion: build — most of the road is paved, the first three PRs prove it on one real call, and the tech's part can wait until the office has used it
+  so the card calls the record a First look and the customer's page Show us the problem. The
+  files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
+  under each job, and what is picked on the phone is kept there until it has signal to send.
+next: the owner's go on the plan; then the hand trial on five real calls and the one-day spike on two real phones, which settle the upload's road before PR 1
+size: L as a train of seven (M · S · M · M · S · S · M), after a spike that never merges
+blocker: The owner's go. The spike's answers (an upload in pieces with a link's key, a kept video surviving a reload on an iPhone, an iPhone's video playing on the office's machines, the live project's storage size limit).
+opinion: build — the first PR needs no public page at all, so the office is using it on real calls before the hard part is written
 mockup: to-dos/show-us-the-problem/mockup.html
 ---
 
@@ -42,10 +44,11 @@ The owner's side, 2026-11-11, as dictated:
 ## The answer, in short
 
 Build it, as a train of small PRs, and try it by hand first. Nearly every piece is already in the
-app, so the first three PRs put a real customer's photos and video in front of the office on a
-real call. The tech's part, which is the novel part, is the last PR and not the first: it needs a
-new way for a tech to see one record of a thread he cannot open, and it is only worth building
-once the office has shown it prices from what comes in.
+app, so the first PR puts a customer's photos in front of the office as a First look with no
+public page at all, fed by the pictures a text already brings in. The page, the video and the
+Drive folders follow. The tech's part, which is the novel part, is the last PR and not the first:
+it needs a new way for a tech to see one record of a thread he cannot open, and it is only worth
+building once the office has shown it prices from what comes in.
 
 Two things to be plain about. A customer can already text a photo to the company number, and it
 lands in their thread. So the page has to earn its place with what a text cannot do: a video that
@@ -98,10 +101,10 @@ takes, stores or plays one, and a big file has stopped the app's functions twice
 
 | Piece | Today | Verdict |
 |---|---|---|
-| The shrink on the phone | `lib/photos/shrink.ts` and its worker: 1600 px on the long edge by default, about 300 KB. A file that is not a picture passes through unshrunk. | Reuse for photos |
-| The waiting copy and the sweep | `photo-save` runs every five minutes over eleven sources and files each waiting photo into Drive. It reads the whole file into memory and sends it in one request, about twice the file's size at the peak. | Widen for photos: the look's photos ride as attachments on a thread line, which the Messages source already sweeps. Never for video |
-| Where a photo lands | The job's Customer Pictures folder under the customer's folder (`photoFolderOrWhy`, `FolderTree.placeJob`). The customer has a folder (`customers.google_drive_link`), but nothing files into it before a job exists. | Reuse once a job exists; until then the files stay in the app (call 9) |
-| One list of every photo | The `uploaded_photos` view unions six sources, one of them `message_attachments` that are images, with `contact_id` on the row. | Reuse: a look's photos show on Documents → Photos with no new branch |
+| The shrink on the phone | `lib/photos/shrink.ts` and its worker: 1600 px on the long edge by default, about 300 KB; Large is 2400 px, about 700 KB. A file that is not a picture passes through unshrunk. | Reuse, at the Large size |
+| The waiting copy and the sweep | `photo-save` runs every five minutes over eleven sources and files each waiting photo into Drive. It reads the whole file into memory and sends it in one request, about twice the file's size at the peak. | Widen: a twelfth source for a look's files. A photo goes as every photo does. A video is copied to Drive in pieces, never whole |
+| Where a photo lands | The job's Customer Pictures folder under the customer's folder (`photoFolderOrWhy`, `FolderTree.placeJob`). The customer has a folder (`customers.google_drive_link`), but nothing files into it before a job exists. | Widen, on the owner's ask of 2026-11-11: a **Customer supplied photos** folder under the customer and under each job (*Where the files live* below) |
+| One list of every photo | The `uploaded_photos` view unions six sources, one of them `message_attachments` that are images, with `contact_id` on the row. | Widen: a branch for a look's photos, so they show on Documents → Photos and the job window names them *a photo the customer sent* |
 | Buckets | Every photo bucket is 2 MB and images only. `counter-tickets` is 10 MB. `message-attachments` is 25 MB and takes any type. `supabase/config.toml` sets 50 MiB for the local stack; the live project's limit is not in the repo. No storage policy lets a visitor who is not signed in write. | Missing: a private bucket for looks that takes pictures and video |
 | Video | Nothing. No `<video>` in `src/`. The bid photo window refuses one in words (*A video. Photos only for now.*). A video sent as a text under 25 MB is kept as a file and skipped by the sweep and the view. | Missing: the upload, the player, the keeping rule |
 | The functions' memory | A worker has 256 MB for everything it is doing. A 25 MB plan set ended one (v2.6408, which left the 12 MB cap), and one large mail ended `gmail-sync` 190 times in a row (v2.6667). | The rule this card takes: a video never passes through a function |
@@ -135,22 +138,65 @@ takes, stores or plays one, and a big file has stopped the app's functions twice
 
 ## The design
 
-Drawn in [`mockup.html`](./mockup.html), nine frames, every name and number made up.
+Drawn in [`mockup.html`](./mockup.html), ten frames and the Drive tree, every name and number made up.
 
 - **A · the text.** The office presses `/show` in the thread's reply box. The line goes in with the link made for this thread: *Hi Dana, this is Rosa with Click Plumbing. So we can price this before we come out, send us a few photos or a short video here: my.clickplumbing.com/show/k7m2p9xq4d*. A first text carries the opt-out line and is held if the opening is trimmed.
-- **B · the page.** *Show us the problem*, who asked, two presses (**Take a photo or a video**, **Choose from your phone**), four lines on what helps, and the foot: only Click Plumbing sees what is sent, and what to do if water is running now. No name, no address, no price.
+- **B · the page.** *Show us the problem*, who asked, two presses (**Take a photo or a video**, **Choose from your phone**), four lines on what helps, the owner's line under them on why it is worth the customer's while, and the foot: only Click Plumbing sees what is sent, and what to do if water is running now. No name, no address, no price. The owner's line, in his words of 2026-11-11 after reading the mock-up, the one change he asked for: *The more information you give us, and the higher the quality of the photos and videos, the more accurate we can be, allowing us to get you the best service and fewer trips means a better price.*
 - **C · adding.** Each file goes up as it is picked. A photo is shrunk first. A video goes in pieces with a bar and its megabytes, and picks up after a drop. *Where is it?* as chips and *What is going on?* as a box, both optional. The press is dead and says why until every file is in, then reads **Send 3 photos and 1 video**.
+- **C2 · no signal.** *Saved on this phone. No signal right now.* The count of what is kept, **Try now**, and the way round: reply to the text with the photos. Opened again later with files still kept, the page offers **Send them now**.
 - **D · the thank-you.** *Got it. Rosa has your 3 photos and 1 video.* What happens next reads the office hours the app holds (`messages_office_hours_v1`), so after hours it says tomorrow morning. Opened again later the page shows the count, never the pictures.
 - **E · F · the office.** The ask in the reply box, and what came in: one card on the person's thread with the pictures drawn, the video with its length, their words, and **Start an estimate**, **Book a visit**, **Ask a tech…** and **Ask for more**. The send lands as a line from the customer, so Needs a reply, the header's badge and the push to whoever has the thread all fire with no new code.
 - **G · the estimate.** It remembers the look it came from and shows its pictures to the office. It carries one price, as every estimate does, and the customer reads *Priced from your photos. The tech confirms the price at your home before any work starts.*
 - **H · the tech, before it is booked.** The office asks one tech. He gets a push, sees that one look and nothing else of the thread, and answers with *I can price it from this* or *Needs a visit to price* and a note. His answer lands on the thread as a team note.
 - **I · the tech, before the visit.** Once a job exists the look is a strip on its Job Mode card: what they sent, what they said, the tech's read and the estimate.
 
+## Where the files live
+
+The owner's questions of 2026-11-11: *where are these going to be stored? In Google Drive?* and *can we add a customer supplied photos subfolder to jobs and customers?* Yes to both.
+
+**Google Drive is where they are kept.** The tree today is the jobs root, then the customer, then the job, then five folders with fixed names (`JOB_FOLDER_TREE` in `_shared/whereFilesGo.ts`): Customer Pictures, Plans, and Team only with Photos and Sent by us inside it. Crew photos land in Customer Pictures. Nothing files into the customer's own folder before a job exists.
+
+**Two new folders, one name: Customer supplied photos.**
+
+- **Under the customer**, for a look that has no job yet. Each look gets a folder of its own inside it, named by its day and place, *2026-11-11 · Kitchen*, so a customer's second look a year later does not mix with the first.
+- **Under each job**, beside Customer Pictures. When a job is made from a look, the look's folder moves there (`moveFile`, which keeps every link working, as a job's folder keeps its links through a move today).
+- Video goes in the same folder. The name says photos because that is what the office will look for.
+- The folder is made when something first lands in it, on every job, whatever the *made up front* setting says. A hundred old jobs do not each get an empty folder.
+- Documents → Where files go shows the new folder in the tree, and the job window's Documents tab lists what is in it, as it does for the other five.
+
+**The road a file takes.**
+
+1. From the phone to the app's own storage, a private bucket that takes pictures and video only and refuses anything over the cap. Nothing passes through a function.
+2. The photo sweep, every five minutes, files it to Drive. A photo goes as every photo does. A video is copied in pieces of a few megabytes, with its place kept on the row, so a function never holds more than one piece and a copy that is cut off picks up on the next run.
+3. Drive holds the keeping copy. The app keeps its own copy to draw the picture and play the video on the thread, the estimate and the Job Mode card, because a tech has no Drive access of his own. A photo's copy is small and stays. A video's copy is dropped after a year (call 9), and the card then offers *Open in Drive*.
+
+**A caller who is not a customer yet** has no folder to file into. The files wait in the app and the card says *Files to Drive once this number has a customer*. The moment the office names them, the next sweep files them.
+
+**A picture a customer texts in** is kept by the app today and saved to Drive by hand into the job's photos. From PR 2 a texted picture saved from a look goes to Customer supplied photos too (call 12).
+
+**Considered and not picked: straight from the phone into Drive.** Drive can hand out a one-file upload address that a browser sends to in pieces. That is one hop and one home. Against it: nothing checks the file's type or size before it is in the company's Drive, the app would have to pass every play of a video through a function, and a caller with no customer has no folder. The spike tries it as the fallback if the first road fails.
+
+## With no signal
+
+The owner's question of 2026-11-11: *can we offer an offline upload?* Yes, with two honest limits.
+
+**What the page does.**
+
+- **Kept on the phone the moment it is picked.** Each photo and video is saved in the browser's own store on that phone before anything is sent, the way a crew photo is kept in the outbox today (`lib/offline/keptPhotos.ts` is the model; the public page gets its own small store, since the crew's is tied to a sign-in).
+- **Sends by itself when the signal is back.** With no signal the page says *Saved on this phone. No signal right now. It sends when the signal is back.* and tries again without a press. A video that was cut off halfway picks up at the piece it stopped on.
+- **Still there if the page is closed.** Opening the link again finds what was kept and offers **Send them now**.
+- **A way round the page.** The ask says it and the page says it: *No luck? Reply to Rosa's text with the photos.* A picture texted in while a look is open shows on the same card.
+
+**The two limits.**
+
+1. **The link needs a signal once, to open.** A page cannot load with none. A customer about to go under the house opens the link first, then takes the pictures.
+2. **An iPhone will not send while the page is closed or the phone is locked.** No web page can. The page says *Keep this page open*, and what was kept waits. A browser may also clear what a page kept after about a week unused, so the page says how long it will hold them.
+
 ## The smallest first slice
 
 **Before any code: five real calls by hand.** The office asks each caller to text a photo of the problem to the company number. It lands in their thread today. That shows, for nothing, whether callers will do it, whether the office looks in time, and whether a price can be made from it.
 
-**Then PRs 1 to 3** below: the ground, the customer's page, and the ask with what came in. That is the whole loop on one real call: Rosa presses `/show`, Dana adds photos and a video, Rosa sees them in the thread. The estimate, the job and the tech follow, each alone.
+**Then PR 1**, which has no public page. Rosa presses *Ask for photos*, the ask goes as a text, and whatever Dana texts back shows on one First look card with the pictures drawn and the two presses under them. The record, the card and the player are all things the page needs later, so nothing in it is thrown away.
 
 ## The risks
 
@@ -160,8 +206,10 @@ Drawn in [`mockup.html`](./mockup.html), nine frames, every name and number made
 | What the page shows about the customer | Nothing by default (call 3). The box page's rule. | A first name would be friendlier and is the owner's call |
 | A guessed code | Ten letters and the estimate link's guard, counted by the caller's address. | The guard counts misses per address, so a slow guesser from many addresses is not stopped; ten letters from 31 is about 800 trillion codes |
 | Video size | Asked for 10 to 20 seconds, taken up to 2 minutes, capped per file and per link. A phone's own video is roughly 1 to 2 MB a second, so 20 seconds is 20 to 40 MB and 2 minutes is past 100 MB. | The live project's size limit must allow it, and storage is paid by the gigabyte (call 9 sets how long a video is kept) |
-| A weak signal | Photos are shrunk to about 300 KB. A video goes in pieces and picks up where it stopped while the page is open. | A page closed mid-upload starts that file again unless the phone kept its place; the page says *Keep this page open* |
-| Upload in pieces with a link's key | Supabase Storage has an upload that resumes and a signed upload address. PR 1 proves the two work together from a phone browser before anything is built on them. | If they do not, the fallback is one request per file with a lower video cap |
+| A weak signal, or none | A photo is shrunk first. Every file is kept on the phone when it is picked, sends by itself when the signal is back, and a video picks up at the piece it stopped on. A reply to the text with the photos is the way round. | The link needs a signal once to open. An iPhone sends nothing while the page is closed. A browser may clear what it kept after about a week |
+| An iPhone's video on the office's desk | The spike plays one real iPhone clip and one real Android clip on the office's own machines before anything is built. | If one does not play, the card offers the file to open in Drive, which plays most kinds |
+| The page is heavy on a weak signal | The page is its own small piece of the app, outside the sign-in and the shell, as the box page is. The spike measures its first load on a slow connection. | The app's own shell still loads first; if it is too heavy the page becomes a page of its own |
+| Upload in pieces with a link's key | Supabase Storage has an upload that resumes and a signed upload address. The spike proves the two work together from a phone browser before anything is built on them. | If they do not, the fallback is Drive's own one-file address, and after that one request per file with a lower video cap |
 | A caller who is not a customer | The look hangs on the contact. It makes no customer and files nothing to Drive until the office names them. | A look on an unnamed number is still an open row somebody must close |
 | Consent and the texting rules | A person presses the ask. A first text names the sender and carries the opt-out line. A number that sent STOP gets no text. A prospect is texted only when they said yes. | The missed-call line carrying the link with no press is call 2, and my answer is no for now: a link sent by itself to a number that never asked reads as spam to a carrier |
 | What a customer sends | Pictures and video only, checked by the file's first bytes. Nothing is run. The page tells them to send the problem, and the foot says who sees it. | A photo may show a person, a child or a room. The files are the office's and the asked tech's to see, and never go on a customer page |
@@ -171,7 +219,7 @@ Drawn in [`mockup.html`](./mockup.html), nine frames, every name and number made
 
 ## The owner's calls
 
-Each with my pick first.
+Each with my pick first. On 2026-11-11 the owner's side read the mock-up and said *I like your proposal*. No call was answered one by one, so the picks stand as the plan's basis until he changes one. Call 9 he answered himself.
 
 1. **The name.** *First look* for the record and *Show us the problem* on the page. Or: Problem report, Look-ahead, his own word. Not *case*.
 2. **Who sends the link.** A person's press only. Or: the missed-call text back carries it too.
@@ -181,8 +229,11 @@ Each with my pick first.
 6. **What we promise back.** A look within office hours, said in the hours the app holds. Or: a clock, such as within an hour.
 7. **The price from photos.** One price, with the line that the tech confirms it at the home before work starts. Or: two options to pick between, which an estimate already has, or never a price without a visit.
 8. **The tech's part.** The office asks one tech by name. Or: every tech sees a shared list and whoever is free answers.
-9. **Where the files live.** In the app until a job exists, then the photos to the customer's Drive folder and the video kept in the app for a year. Or: everything to Drive, or the video dropped once the job is paid.
+9. **Where the files live.** Answered 2026-11-11: Google Drive, in a Customer supplied photos folder under the customer and under the job. Left of it: how long the app keeps its own copy of a video for playing. A year. Or: until the job is paid, or for good.
 10. **A caller who is not a customer yet.** The look hangs on their number's thread and makes no customer until the office names them. Or: make the customer when the link goes.
+11. **The folder's name.** *Customer supplied photos*, his words, holding video too. Or: Customer supplied files.
+12. **A picture a customer texts in.** Saved from a look, it goes to Customer supplied photos. Saved any other way it goes where it goes today. Or: every texted picture saved to a job goes there from now on.
+13. **When the new folder is made.** When something first lands in it. Or: on every new job up front, with the other five.
 
 ## Where it plugs in
 
@@ -203,25 +254,54 @@ Exists, to reuse:
 
 New:
 
-- Tables `first_looks` (the contact, who asked, the code's hash, the days it is good, opened, sent, closed, where and their words, the estimate and the job it led to, the tech asked and his read) and `first_look_files` (the look, the kind, the path, the bytes, the length of a video, when it finished); a private bucket for both kinds; RLS for the office team; the migration opening with the lock timeout and closing with the four fence calls.
+- Tables `first_looks` (the contact, who asked, the code's hash, the days it is good, asked, opened, sent, looked at, closed, where and their words, the estimate and the job it led to, the tech asked and his read) and `first_look_files` (the look, the kind, the path, the bytes, the length of a video, when it finished, its Drive id, how far a copy in pieces has got); a private bucket for both kinds; RLS for the office team; the migration opening with the lock timeout and closing with the four fence calls.
 - `mint_first_look(p_contact_id)` for the office team, on `share_estimate_link`'s mint.
 - An edge function `first-look` with `verify_jwt = false`: read by code (who asked, the count, open or closed, the office hours), sign one upload (after the caps and the type), and finish (writes the customer's line on the thread and calls the push). The miss guard on every lookup.
-- `src/lib/firstLook/`: `look.ts` (the states and their words), `caps.ts` (what a link may take and the words for each refusal), `thanks.ts` (the promise from the office hours), `card.ts` (the thread card's facts), each with tests.
-- The page `src/pages/ShowUs.tsx` at `/show/:code`, the upload in pieces, a player, the thread's card, the estimate's line, the Job Mode strip, the tech's read.
-- A guide, *ask a customer to show you the problem before you go out*, and a section in the Messages guides.
+- In Drive: `customerSupplied: 'Customer supplied photos'` beside the five names in `whereFilesGo.ts`, a `FolderTree` door for the customer's own, `photo-save`'s twelfth source, and a copy in pieces in `_shared/driveUpload.ts` beside `uploadBytes`.
+- `src/lib/firstLook/`: `look.ts` (the states and their words), `caps.ts` (what a link may take and the words for each refusal), `thanks.ts` (the promise from the office hours), `card.ts` (the thread card's facts, from the look's own files and the pictures texted in since the ask), `kept.ts` (what the phone holds and what is left to send), each with tests.
+- The page `src/pages/ShowUs.tsx` at `/show/:code`, its store on the phone, the upload in pieces, a player, the thread's card, the estimate's line, the Job Mode strip, the tech's read.
+- A guide, *ask a customer to show you the problem before you go out*, and a section in the Messages guides and in *set where a job's files go*.
+
+## Is this the best we can do?
+
+Asked of the first plan on 2026-11-11, at the owner's prompt. Eight things changed.
+
+1. **The first PR has no public page.** The first plan needed three PRs before the office saw anything. Now PR 1 is the look, its card and its player, fed by the pictures a text already brings in. The office uses it on real calls while the hard part is written, and the page later feeds the same card.
+2. **A spike before the ground.** The first plan put the proof inside PR 1. Five things can only be learned on real phones, so they are a day's spike that never merges, and the plan forks on its answers.
+3. **Drive is the home.** The first plan kept a video in the app. Now every file is kept in Drive, in the folders the owner asked for, and the app's copy is only for showing and playing.
+4. **A video reaches Drive in pieces.** The sweep reads a whole file into memory today. A copy in pieces with its place kept on the row is what makes Drive possible for video at all.
+5. **Offline is three layers, not one.** Kept on the phone, sent in pieces, and a reply to the text as the way round.
+6. **The tech's ask rides a task card.** The first plan built a new list and a new push. A task already reaches a tech with a push, sits on his Checklist and takes a note when it is done (`messages/threadTask.ts` sends a thread as a task today). The look is the task's link, behind a gate that lets the asked tech read that one look.
+7. **A photo is shrunk less.** The owner's line on the page asks for quality, and a water heater's label is small print. A look's photo uses the Large size, 2400 pixels on the long edge, as a counter ticket does.
+8. **Measured from the first day, and in Spanish.** The row stamps asked, opened, sent, looked at, priced, accepted and booked, so the owner can later read how many looks became jobs and how far a photo price was from the bill. The page reads in English or Spanish by the customer's own setting, as the rating page does.
+
+Looked at and left out for now: the app reading a photo by itself (a model and a serial off a label), which the bill reader could do for about a cent and which waits on the owner's word; a text back to the customer when the files arrive, which would be a text nobody pressed; showing the customer their own pictures again, which a forwarded link would show to a stranger.
 
 ## The plan
 
-1. **PR 1, the ground** (M). The migration, the bucket, the mint, the `first-look` function with its three asks and the guard, the kernels and their tests, a SQL bed. It opens with the proof that an upload in pieces works from a phone browser with a signed address, and with the live project's size limit read off the dashboard. No screen. Push the migration and deploy the function after the merge.
-2. **PR 2, the customer's page** (M). `/show/:code` outside the sign-in, light, at 375 first: the two presses, the shrink, the pieces with the bar, the chips and the box, the press that names its count, the thank-you from the office hours, the closed and the not-found words. The Worker's `/show/` line in both copies, the surface registry row, `APP_DIRECTORY.md`, `ACCESS_CONTROL.md`, *What customers see*.
-3. **PR 3, the ask and what came in** (S). `{show}` and `/show` in the reply box, the first-text hold on that line, *Ask for photos…* in the thread's menu; the look's card on the thread with the pictures and the player; *opened* and *sent* as lines. The guide. **The first real call is here.**
-4. **PR 4, the estimate** (S). Start an estimate and Book a visit on the card for any thread; `estimates.first_look_id`; the office's editor draws the look's pictures; the line the customer reads on a price from photos; Close the look.
-5. **PR 5, the job** (S). The look follows the job, whether the accept made it or the office pressed Create job: the strip on the Job Mode card and the job window, the photos filed to Customer Pictures by the sweep's Messages source, the video kept by call 9's rule.
-6. **PR 6, the tech before it is booked** (M). Ask a tech…, the one-look read for a field role with its own gate, the push, his read written back as a team note, the list of looks asked of him.
+**Step 0, no code: the hand trial.** Five real calls where the office asks for a photo by text. Write down for each: did they send one, how long before the office looked, could it be priced.
 
-Cards this touches: #306 (`bid-photos-and-links`, whose call 8 held video back for bids; the upload and the player built here are what it would use), #125 (`pipeline-customer-conversation`, where a look's line would show on the job's activity), #189 (`phone-first`, the tech's screens), #115 (`tell-the-customer`, the rule the ask follows), #281 and #290 (the short links whose code and guard this reuses).
+**Step 1, a spike that never merges** (a day, on a real iPhone and a real Android phone). Five answers, written back onto this card:
 
-Apart, each on the owner's word: the missed-call line carrying the link (call 2); a door with no call first, such as a QR on a truck or the website, which needs a number typed and checked; a video copied to Drive in pieces; the photo price set beside the final bill.
+1. Does an upload in pieces work from a phone's browser with a one-file address the function hands out? If not, does Drive's own one-file address?
+2. Does a 40 MB video kept in the browser's store survive a reload and airplane mode on an iPhone?
+3. How big is a 20 second clip from each phone, picked from the library and taken in the page?
+4. Does each clip play on the office's own machines?
+5. How heavy is the page's first load on a slow connection, and what is the live project's storage size limit?
+
+Then seven PRs, each cut from main alone and merged before the next.
+
+1. **PR 1, the look, fed by a text** (M). The migration for `first_looks`; *Ask for photos* in the thread's menu and `/show` in the reply box, sending the ask with no link yet; the First look card on the thread, gathering the pictures texted in since the ask and drawing them, with a player for a texted video; **Start an estimate** and **Book a visit** on the card for any thread; Close the look; the stamps. The guide. Push the migration. **The first real call is here.**
+2. **PR 2, Customer supplied photos in Drive** (S). The new name in the tree, under the customer and under the job, made when first needed; a folder per look; the card's **Save to Drive** filing a texted picture there; Where files go and the job window's Documents tab showing it. Deploy `photo-save`, `job-photos` and `drive-link`.
+3. **PR 3, the ground for the page** (M). `first_look_files` and the bucket; the ten-letter mint; the `first-look` function with its three asks, the caps and the guard; the sweep's twelfth source with the copy in pieces; the kernels and a SQL bed. No screen. Push and deploy.
+4. **PR 4, the customer's page** (M). `/show/:code` outside the sign-in, light, at 375 first, in English and Spanish: the two presses, the four tips and the owner's line, the Large shrink, the store on the phone, the pieces with the bar, the no-signal and the send-them-now states, the press that names its count, the thank-you from the office hours, the closed and the not-found words. The ask gains the link (`{show}`), with the reply-by-text way round. The Worker's `/show/` line in both copies, the surface registry row, `APP_DIRECTORY.md`, `ACCESS_CONTROL.md`, *What customers see*. `npm run build` before the merge.
+5. **PR 5, the estimate** (S). `estimates.first_look_id`; the office's editor draws the look's pictures; the line the customer reads on a price from photos.
+6. **PR 6, the job** (S). The look follows the job, whether the accept made it or the office pressed Create job: its Drive folder moves under the job, the strip on the Job Mode card and the job window, the photos on the job's Photos as *a photo the customer sent*.
+7. **PR 7, the tech before it is booked** (M). **Ask a tech…** makes a task for one tech with the look as its link; a gate that lets the asked tech read that one look and its files; his read written back to the thread as a team note when he finishes the task.
+
+Cards this touches: #306 (`bid-photos-and-links`, whose call 8 held video back for bids; the upload and the player built here are what it would use), #125 (`pipeline-customer-conversation`, where a look's line would show on the job's activity), #189 (`phone-first`, the tech's screens), #115 (`tell-the-customer`, the rule the ask follows), #281 and #290 (the short links whose code and guard this reuses), and the Where files go tree of #236.
+
+Apart, each on the owner's word: the missed-call line carrying the link (call 2); a door with no call first, such as a QR on a truck or the website, which needs a number typed and checked; the app reading a label off a photo; the photo price set beside the final bill on the Bridge.
 
 Each PR: claim its version, the tests on the files it touches, `check:edge-bundles` when a function changes, lint, the narrow typecheck, `npm run build` when a route or the Worker's mirror changes, `gh pr merge N --auto`.
 
@@ -229,17 +309,20 @@ Each PR: claim its version, the tests on the files it touches, `check:edge-bundl
 
 On the dev server or the deployed app as the dev login, on a **ZZ Test** customer whose mobile is the owner's test number:
 
-1. In the ZZ Test thread type `/show`. The line goes in with a link ending in ten letters. Preview shows the opt-out line on a first text. Send it to the test number only.
+0. PR 1 alone: press *Ask for photos* in the ZZ Test thread, send the ask to the test number, text two pictures back from that phone. The card draws both, and Start an estimate opens a draft for the ZZ Test customer.
+1. PR 4 on: in the ZZ Test thread type `/show`. The line goes in with a link ending in ten letters. Preview shows the opt-out line on a first text. Send it to the test number only.
 2. Open the link on a real phone with no session. The page names who asked and nothing else. Add three photos and one video of about 20 seconds. Switch to airplane mode halfway through the video and back: it picks up. The press reads its count, then the thank-you reads the office hours.
 3. In the thread the card shows the pictures, the video plays, and the thread is in Needs a reply.
 4. A wrong code reads not found; twenty-one wrong codes from one address read locked. A closed look reads closed with the phone number.
 5. A twenty-first photo and a fourth video are refused in words. A PDF is refused in words.
 6. PR 4 on: Start an estimate from the card, send it to the test number, read the line about photos on the accept page.
 7. PR 6 on: View as a sample field account, ask that tech, read his one look, answer, and see the note on the thread. The same account cannot open `/messages`.
-8. Delete the ZZ Test rows and the bucket's files, and name any sent text in the report.
+8. With no signal: open the link, switch to airplane mode, add two photos and a video. The page reads *Saved on this phone*. Close the page, switch the signal back, open the link: **Send them now** sends all three.
+9. In Drive: the look's folder sits under the ZZ Test customer's Customer supplied photos within ten minutes, the video whole and playing. Make a ZZ Test job from the look: the folder is under the job, and the old links still open.
+10. Delete the ZZ Test rows, the bucket's files and the Drive folders, and name any sent text in the report.
 
 No text goes to any number but the test number from a ZZ Test row.
 
 ## Where it stands
 
-Asked 2026-11-11 and read against `main` the same day. The card and the mock-up are the whole of it. Nothing is built, nothing was sent, and nothing was made on prod.
+Asked 2026-11-11 and read against `main` the same day. The owner's side read the mock-up that day, liked the proposal, asked for one line on the customer's page, and asked for a build plan with the files in Google Drive, an upload with no signal and a Customer supplied photos folder on jobs and customers. The plan, *Where the files live*, *With no signal* and *Is this the best we can do?* are that answer, and the mock-up gained a no-signal frame and the Drive tree. Nothing is built, nothing was sent, and nothing was made on prod. The next thing is the owner's go.

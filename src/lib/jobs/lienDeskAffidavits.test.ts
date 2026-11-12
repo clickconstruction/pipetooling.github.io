@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
+import { affidavitGateMissingWord, affidavitGates, buildLienAffidavitQueue, contractorAddressGate, homesteadGate, lienOwnerIsPublic, ownerGate, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from './lienDeskAffidavits'
 
 const TODAY = '2026-09-14'
 
@@ -103,6 +103,54 @@ describe("the general contractor's address (punch list #305)", () => {
   it('the list row’s missing words name the address, and keep the other gates’ keys', () => {
     expect(affidavitGateMissingWord('contractor')).toBe("the GC's address")
     expect(affidavitGateMissingWord('owner')).toBe('owner')
+  })
+})
+
+describe('the homestead question (punch list #305)', () => {
+  const QUESTION = "Nobody has answered whether this home is the owner's homestead. Answer yes or no on the property record"
+
+  it('one line, three answers: marked homestead, nobody answered, not a homestead', () => {
+    expect(homesteadGate({ homestead: true, propertyKind: 'residential', answered: true })).toMatchObject({ key: 'homestead', ok: false })
+    expect(homesteadGate({ homestead: false, propertyKind: 'residential', answered: false })).toEqual({ key: 'homestead_answer', ok: false, label: QUESTION })
+    expect(homesteadGate({ homestead: false, propertyKind: 'residential', answered: true })).toEqual({ key: 'homestead', ok: true, label: 'Not a homestead' })
+    // Marked homestead with no answer on record (the roll's suggestion): the attorney's hold, the stricter one.
+    expect(homesteadGate({ homestead: true, propertyKind: 'residential', answered: false }).key).toBe('homestead')
+  })
+
+  it('only a residential property is asked, and a row nobody read the answer for is not judged', () => {
+    expect(homesteadGate({ homestead: false, propertyKind: 'non_residential', answered: false }).ok).toBe(true)
+    expect(homesteadGate({ homestead: false, propertyKind: '', answered: false }).ok).toBe(true)
+    expect(homesteadGate({ homestead: false, propertyKind: 'residential', answered: undefined }).ok).toBe(true)
+    expect(homesteadGate({ homestead: false, propertyKind: 'residential', answered: null }).ok).toBe(true)
+    // The RPC's row as it comes, before the desk fills the answer: the four older gates and the contractor's, nothing held for the question.
+    expect(affidavitGates(row({ job_id: 'a', property_kind: 'residential' })).every((g) => g.ok)).toBe(true)
+  })
+
+  it('the desk fills the answer from the job’s linked property record; rows without the column, and jobs with no record, are left alone', () => {
+    const rows = [row({ job_id: 'unasked' }), row({ job_id: 'no' }), row({ job_id: 'old' }), row({ job_id: 'unlinked' }), row({ job_id: 'unread' })]
+    const filled = withHomesteadAnswer(
+      rows,
+      { unasked: 'p1', no: 'p2', old: 'p3', unlinked: null, unread: 'p9' },
+      { p1: { id: 'p1', homestead: false, homestead_answered_at: null }, p2: { id: 'p2', homestead: false, homestead_answered_at: '2026-11-17T15:00:00Z' }, p3: { id: 'p3', homestead: false } },
+    )
+    expect(filled.map((r) => [r.job_id, r.homestead_answered])).toEqual([['unasked', false], ['no', true], ['old', undefined], ['unlinked', undefined], ['unread', undefined]])
+  })
+
+  it('the hold changes the pile of a paper not yet sent, leaves an approved one where its item put it, and an answer clears it', () => {
+    const rows = [
+      row({ job_id: 'new', property_kind: 'residential', homestead_answered: false }),
+      row({ job_id: 'approved', property_kind: 'residential', homestead_answered: false }),
+      row({ job_id: 'answered', property_kind: 'residential', homestead_answered: true }),
+      row({ job_id: 'shop', property_kind: 'non_residential', homestead_answered: false }),
+    ]
+    const q = buildLienAffidavitQueue(rows, [item({ job_id: 'approved', status: 'approved', approval_mode: 'rule' })], TODAY)
+    const of = (id: string) => q.entries.find((e) => e.jobId === id)!
+    expect([of('new').pile, of('new').ready]).toEqual(['needs_property', false])
+    expect(of('new').gates.filter((g) => !g.ok).map((g) => g.key)).toEqual(['homestead_answer'])
+    expect([of('approved').pile, of('approved').ready]).toEqual(['ready', false])
+    expect([of('answered').pile, of('answered').ready]).toEqual(['to_draft', true])
+    expect([of('shop').pile, of('shop').ready]).toEqual(['to_draft', true])
+    expect(affidavitGateMissingWord('homestead_answer')).toBe('the homestead answer')
   })
 })
 

@@ -21,7 +21,7 @@ import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow,
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withPublicOwner, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
@@ -995,6 +995,44 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(top.textContent).toBe('NOTICE: THIS IS NOT A LIEN. THIS IS ONLY AN AFFIDAVIT CLAIMING A LIEN.')
     expect(paper().textContent!.indexOf('THIS IS NOT A LIEN')).toBeLessThan(paper().textContent!.indexOf('Lien Affidavit'))
     expect(document.body.textContent).toContain('Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney')
+  })
+
+  it('a home nobody answered the homestead question for holds the affidavit, and the gate’s door opens the property record on the question', async () => {
+    const d = data([], [], true, { property_kind: 'residential', homestead_answered_at: null })
+    const rows = withHomesteadAnswer([{ ...affRow, property_kind: 'residential' }], { j650: 'addr1' }, d.addressesById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(d.affidavits.entries[0]!.pile).toBe('needs_property')
+    expect(document.body.textContent).toContain("Nobody has answered whether this home is the owner's homestead. Answer yes or no on the property record")
+    expect(document.body.textContent).toContain('missing the homestead answer')
+    expect(document.body.textContent).toContain('Blocked until every gate above is clear.')
+    // The hold changes the pile, never the words: the paper is the same short form, with no homestead notice on it.
+    expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
+    expect(paper().querySelector('[data-top-notice]')).toBeNull()
+    const door = document.querySelector('[data-lien-affidavit-homestead-door]') as HTMLElement
+    expect(door.textContent).toBe('Answer it ›')
+    fireEvent.click(door)
+    await settle()
+    const question = document.querySelector('[data-homestead-question]') as HTMLElement
+    expect(question.getAttribute('data-homestead-question')).toBe('unanswered')
+    expect(question.textContent).toContain("Is this the owner's homestead?")
+  })
+
+  it('a home with a no on record passes the homestead gate, and a property record read before the column holds nothing', async () => {
+    const d = data([], [], true, { property_kind: 'residential', homestead_answered_at: '2026-11-17T15:00:00Z' })
+    const rows = withHomesteadAnswer([{ ...affRow, property_kind: 'residential' }], { j650: 'addr1' }, d.addressesById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    expect(d.affidavits.entries[0]!.pile).toBe('to_draft')
+    const older = data([], [], true, { property_kind: 'residential' })
+    expect(buildLienAffidavitQueue(withHomesteadAnswer([{ ...affRow, property_kind: 'residential' }], { j650: 'addr1' }, older.addressesById), [], TODAY).entries[0]!.pile).toBe('to_draft')
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(document.body.textContent).toContain('Not a homestead')
+    expect(document.querySelector('[data-lien-affidavit-homestead-door]')).toBeNull()
   })
 
   it('a public owner holds the affidavit: the gate says no lien attaches, and offers no record to fill in (punch list #314)', async () => {

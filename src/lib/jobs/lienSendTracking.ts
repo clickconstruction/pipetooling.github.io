@@ -7,7 +7,7 @@
  */
 
 /** A send; `via` and `piece_id` ride on a send a mail provider carries (the Docsmit train, PR 1), so its number is the provider's to fill. */
-export type LienSendLike = { recipient: string; method: string; tracking: string; sent_on?: string; via?: string; piece_id?: string }
+export type LienSendLike = { recipient: string; method: string; tracking: string; sent_on?: string; via?: string; piece_id?: string; /** A photo of the mail receipt in the job's Drive folder (punch list #314): a filed affidavit's copies carry one. */ receipt_url?: string }
 
 function trackedMethod(method: string): boolean {
   return method === 'certified_mail' || method === 'traceable_courier'
@@ -33,6 +33,7 @@ export function parseLienSends(raw: unknown): LienSendLike[] {
     const send: LienSendLike = { recipient: r.recipient, method: r.method, tracking: typeof r.tracking === 'string' ? r.tracking : '', sent_on: typeof r.sent_on === 'string' ? r.sent_on : undefined }
     if (typeof r.via === 'string' && r.via.trim()) send.via = r.via
     if (typeof r.piece_id === 'string' && r.piece_id.trim()) send.piece_id = r.piece_id
+    if (typeof r.receipt_url === 'string' && r.receipt_url.trim()) send.receipt_url = r.receipt_url
     out.push(send)
   }
   return out
