@@ -6,7 +6,7 @@ import { buildFlowStrip } from './flowStrip'
 import type { Headline, HeadlineWeek } from './headline'
 import type { StageFlow, StageReading } from './stageFlow'
 import { buildWeekCall, type WeekCallInput } from './weekCall'
-import { WEEK_MAIL_HALF_PX, WEEK_MAIL_TILE_PX, WEEK_MAIL_WORDS, weekMailGapsLine, weekMailHtml, weekMailLine, weekMailMoves, weekMailSubject, weekMailText, type WeekMail } from './weekMail'
+import { WEEK_MAIL_HALF_PX, WEEK_MAIL_TILE_PX, WEEK_MAIL_WORDS, weekMailGapsLine, weekMailHtml, weekMailLine, weekMailMarketLine, weekMailMoves, weekMailSubject, weekMailText, type WeekMail } from './weekMail'
 
 // Made-up numbers throughout: a company whose finished work waits on the bill.
 
@@ -139,6 +139,28 @@ describe('the Monday email as the first screen', () => {
     const text = weekMailText(mailOf(), URL)
     expect(text).toContain('  Bill: $19k billed, 8 weeks wait, the slowest step')
     expect(text).toContain('  Market: $210k asked')
+  })
+
+  it('Market reads at what it is worth, with what the amount is made of in one line under the pipe (#318)', () => {
+    const worth = buildFlowStrip(flow, { market: 29_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 41_000 }, { marketIsWorth: true })
+    const mail: WeekMail = { ...mailOf(), strip: worth, marketParts: ['bids $22k at 7% won', 'estimates $7k at 48% won'] }
+    const line = 'What Market is worth: bids $22k at 7% won. Estimates $7k at 48% won.'
+    expect(weekMailMarketLine(mail)).toBe(line)
+    const html = weekMailHtml(mail, URL)
+    expect(html).toContain('$29k worth')
+    expect(html).not.toContain('asked')
+    expect(html).toContain(line)
+    const text = weekMailText(mail, URL)
+    expect(text).toContain('  Market: $29k worth')
+    expect(text).toContain(`  ${line}`)
+    // The line sits right under the five steps, before the call.
+    expect(text.indexOf(line)).toBeGreaterThan(text.indexOf('  Collect:'))
+    expect(text.indexOf(line)).toBeLessThan(text.indexOf(mail.model.card.label))
+    expect(plainWordsFailures(line), line).toEqual([])
+    // While Market still reads the dollars that came in, the mail says asked and prints no such line.
+    expect(weekMailMarketLine(mailOf())).toBe('')
+    expect(weekMailHtml(mailOf(), URL)).not.toContain(WEEK_MAIL_WORDS.marketWorth)
+    expect(weekMailText(mailOf(), URL)).not.toContain(WEEK_MAIL_WORDS.marketWorth)
   })
 
   it('in a week cash leads its tile takes the row, the other two share the next, and the strip goes under the call', () => {

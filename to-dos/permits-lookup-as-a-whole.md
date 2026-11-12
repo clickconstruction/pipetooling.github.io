@@ -142,3 +142,6 @@ Read-only, signed in on a dev server, counts only.
   Guadalupe County. San Marcos: 15 of 20 name an owner, 4 at Hays's own point and 5 with no
   parcel. None of the San Marcos 20 was over the county line. The second open of all 40 came
   from the kept answers.
+- **PR 3** (deployed from `main` 2026-11-12): Austin, the 16 newest permits whose lot id is
+  Williamson County's, one per address. All 16 name an owner and the card names Williamson
+  County on each, 15 by the id and 1 by the address. The second open came from the kept answers.

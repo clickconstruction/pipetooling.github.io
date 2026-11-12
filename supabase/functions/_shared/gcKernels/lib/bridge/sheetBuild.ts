@@ -33,7 +33,9 @@ import { buildHeadline, type Headline } from './headline.ts'
 import { buildVectorGrid, vectorRangeFor } from './vectorDays.ts'
 import { fieldPaceByHours } from './fieldPace.ts'
 import { buildStageFlow, withFieldPaces, type StageFlowInput, type StageId } from './stageFlow.ts'
-import { todayPace } from './dial.ts'
+import { marketPaceIsWorth, todayPace } from './dial.ts'
+import { buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from './bidWins.ts'
+import { buildEstimateWins, type EstimateSent } from './estimateWins.ts'
 import { buildFlowStrip } from './flowStrip.ts'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall, topPerson, topPersonId } from './weekCall.ts'
 import type { WeekMail } from './weekMail.ts'
@@ -50,6 +52,10 @@ export type MondaySheetReads = {
   demandInputs: DemandInput | null
   calls: BridgeCall[] | null
   collectReads: CollectDeskReads | null
+  /** Every bid ever sent, for the bids' won rates (`loadBidWins.ts`, punch list #318); absent or null when not read. */
+  bidsSent?: BidSent[] | null
+  /** Every estimate ever sent, for the estimates' won rate (`loadEstimateWins.ts`); absent or null when not read. */
+  estimatesSent?: EstimateSent[] | null
   /** What could not be read, in plain words for the mail's last line; empty when everything came back. */
   gaps: string[]
 }
@@ -185,6 +191,11 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
   const buildPace = reads.buildInputs ? buildBuildPace(reads.buildInputs) : null
   const billPile = reads.billJobs ? buildBillPile({ jobs: reads.billJobs, points: reads.buildInputs?.points ?? [], todayYmd }) : null
   const demand = reads.demandInputs ? buildDemand(reads.demandInputs) : null
+  // What Market is worth (punch list #318): the bids and the estimates sent, each through its own won rate, as the
+  // page reads it. It waits for both reads, as the page does; with either missing Market reads the dollars that came in.
+  const bidWins = reads.bidsSent ? buildBidWins({ todayYmd, windowStart: data.windowStart, bids: reads.bidsSent }) : null
+  const estimateWins = reads.estimatesSent ? buildEstimateWins({ todayYmd, windowStart: data.windowStart, estimates: reads.estimatesSent }) : null
+  const marketWorth = bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null
   const thisWeek = payWeekContaining(todayYmd)
   const calls: ReadonlyArray<BridgeCall> = reads.calls ?? []
   const thisWeekCall = callForWeek(calls, thisWeek.start)
@@ -212,7 +223,7 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
   const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
   const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
   const stageInput: StageFlowInput = {
-    market: demand?.market ?? null,
+    market: demand ? { ...demand.market, worth: marketWorthInput(marketWorth, bidWins, estimateWins) } : null,
     sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
     fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
     bill: billPile ? billStageInput(billPile, finishedPerWeek, billedPerWeek) : null,
@@ -266,6 +277,7 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
     now: nowReading,
     dayLabel: md,
   })
-  const strip = buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') })
-  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, gaps: reads.gaps }
+  const marketIsWorth = marketPaceIsWorth(stageInput)
+  const strip = buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth })
+  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], gaps: reads.gaps }
 }
