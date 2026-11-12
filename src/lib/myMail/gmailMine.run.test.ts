@@ -1624,7 +1624,7 @@ describe('gmail-mine: the dev seat untags a conversation the seat tagged, and no
       held: [
         { id: out!.id, why: 'promise' },
         { id: in2!.id, why: 'owed' },
-      ].sort((a, b) => a.id.localeCompare(b.id)),
+      ].sort((a, b) => String(a.id).localeCompare(String(b.id))),
       // Both keep a line on the job, so neither tie goes and Ana stays.
       sweep: { ties: [], tiesLeft: 0, contacts: [], contactsLeftEmpty: 0 },
     })
