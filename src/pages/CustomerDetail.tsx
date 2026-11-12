@@ -30,6 +30,7 @@ import InKindChip from '../components/inKind/InKindChip'
 import { useInKindStandings } from '../hooks/useInKindStandings'
 import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInKindWords } from '../lib/inKind/customerInKindStrip'
 import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
+import PayCalendarLine from '../components/customers/PayCalendarLine'
 import CustomerAgreementsCard from '../components/customers/CustomerAgreementsCard'
 import {
   buildCustomerActivityFeed,
@@ -535,7 +536,16 @@ export default function CustomerDetail() {
             </MoneyCell>
             <MoneyCell
               cap="Pays in"
-              sub={daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : (paysInInKindWords(false, stats) ?? 'no billed→paid history yet')}
+              sub={
+                <>
+                  {daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : (paysInInKindWords(false, stats) ?? 'no billed→paid history yet')}
+                  {customerId ? (
+                    <span style={{ display: 'block' }}>
+                      <PayCalendarLine payerId={customerId} payerName={(data.customer.name ?? '').trim() || 'this customer'} />
+                    </span>
+                  ) : null}
+                </>
+              }
             >
               {daysToPay ? `~${daysToPay.medianDays} day${daysToPay.medianDays === 1 ? '' : 's'}` : '—'}
             </MoneyCell>
