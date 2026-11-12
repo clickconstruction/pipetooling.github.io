@@ -105,6 +105,7 @@ export default function BilledPaymentForecastModal({
   onOpenLienNotice,
   pace,
   payCalendars,
+  acceptedByInvoice,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -142,10 +143,12 @@ export default function BilledPaymentForecastModal({
   pace?: PaceContext | null
   /** The stored Pay calendars (punch list #323): a payer on one shows its due day, and buckets by that day plus its usual lateness. */
   payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }) {
   const forecast = useMemo(
-    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars),
-    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars],
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars, acceptedByInvoice),
+    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars, acceptedByInvoice],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its

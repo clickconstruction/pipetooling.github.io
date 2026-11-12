@@ -76,6 +76,43 @@ Leave the calendar unset for a customer who pays some days after each bill. The 
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
+## One job on a different calendar
+
+Most of a customer's jobs follow one calendar. One job may have a contract of its own, or none.
+
+:::steps
+1. Find the job on **Jobs → Pipeline**.
+2. Press the calendar's words under the row's dates. On a Ready to Bill row, press the *Send by* line.
+3. Under **This calendar is for**, pick the choice that names the job.
+4. Change the days, or tick **No pay calendar on this job**.
+5. Press {{button:blue|Save for this job}}.
+:::
+
+A job in a development offers one more tick, like *Also set on the other 12 jobs in Larkfield Commons*. Tick it to set them all at once. The button then names the count, like {{button:blue|Save for 13 jobs}}. A job that fails is named with its reason, and the rest are still saved.
+
+To undo it, open the same window on the job and press {{button:outline|Follow Larkfield Construction again}}. The button carries the customer's own name.
+
+## When they accepted a bill later
+
+A calendar counts from the day the customer accepts a bill. The app only knows the day the bill went in. Most of the time that is the same month, and nothing needs doing.
+
+A bill sent back and accepted the next month is due a whole month later. You tell the app the day they accepted it.
+
+:::steps
+1. Find the bill on **Billed Awaiting Payment**.
+2. Press *Counted from Nov 24* under the row's dates.
+3. Pick **The day they accepted it**.
+4. Read the box. It says what each day makes the bill.
+5. Press {{button:blue|Save the accepted day}}.
+:::
+
+:::example What the box says
+In on Nov 24, it is due Dec 10.
+**Accepted Dec 2, it is due Jan 10.**
+:::
+
+The line under the row then reads *Accepted Dec 2*. Press it again to change the day, or to clear it.
+
 ## The cutoff, before a bill goes out
 
 A bill that has not gone out yet shows its cutoff. You see the line in three places.
@@ -101,7 +138,7 @@ Every bill that customer pays reads the calendar.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
 
-A customer with no calendar reads exactly as before.
+A customer with no calendar reads exactly as before. So does a job with **No pay calendar on this job** ticked.
 
 ## Who can set one
 
