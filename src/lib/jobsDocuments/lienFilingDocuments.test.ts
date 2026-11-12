@@ -13,6 +13,7 @@ import {
   filingDocText,
   filingLetterheadFromIssuer,
   filingPdfFilename,
+  type FilingDocBlock,
   type LienAffidavitFields,
   HOMESTEAD_AFFIDAVIT_NOTICE,
   HOMESTEAD_NOTICE_STATEMENT,
