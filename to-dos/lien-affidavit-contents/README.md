@@ -165,7 +165,7 @@ wording sits in one function (`buildShortLienAffidavitBlocks`), so counsel's cha
    (`src/lib/jobs/lienDeskAffidavits.ts`) holds a residential property with no answer, with
    **Answer it ›** opening the property record on the question. Read again on 2026-11-11 the
    day-one count was the same: 11 of the 12 papers ready for 2026-11-16, on 6 property records, and
-   the one to draft on a 7th. The migration is pushed right after the merge.
+   the one to draft on a 7th. The owner first set 2026-11-17 (2026-11-11, so this month's papers were filed on the 16th first), then on 2026-11-12 asked for it in main at once. The migration, renumbered `20261112080000` past main's newest, is pushed right after the merge.
 4. **A hold while an address is missing** (S), the hiring party's or the original contractor's.
    Shipped as v2.6932 (`docs/recent-features/v2.6932.md`): a fifth gate on a job under a GC, the
    GC's address on its customer record, with **Add the address ›** on the Affidavits pane and the
