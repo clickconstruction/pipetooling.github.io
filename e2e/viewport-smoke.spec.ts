@@ -230,8 +230,9 @@ test('sticky modal header: ✕ stays reachable at max scroll (v2.990 pin)', asyn
   // only route) — depth that made this spec fail for reasons unrelated to the
   // invariant. Prefer the shallowest consumer.
   await page.goto('/jobs?tab=inspections')
-  // exact: true — "Add inspection type" would otherwise match as a substring.
-  await page.getByRole('button', { name: 'Add Inspection', exact: true }).click({ timeout: 30000 })
+  // exact: true — "Add inspection type" would otherwise match as a substring. first(): an empty list offers the
+  // same press inside its sentence, and both open the one window.
+  await page.getByRole('button', { name: 'Add Inspection', exact: true }).first().click({ timeout: 30000 })
   const heading = page.getByRole('heading', { name: 'Add inspection' })
   await expect(heading).toBeVisible()
   // Scroll the modal panel to its bottom; the sticky title bar (and its ✕)
