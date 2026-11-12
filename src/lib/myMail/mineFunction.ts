@@ -613,8 +613,9 @@ export interface MyMailHeldLine extends MyMailLine {
 
 /**
  * What a conversation's `email_tag_threads` row records of the lines its tag and its follow tied (`tied_line_ids`), the
- * job it put them on, and who it stamped as tying them (the row's `tagged_by`). An untag unties these and no others,
- * and a tag onto another job moves them; a line someone placed by hand since is left where they put it.
+ * job it put them on, and who it stamped as tying them (the row's `tagged_by`: the person whose press it was, or the
+ * dev when the tag came through the dev seat, `myMailTaggedBy`). An untag unties these and no others, and a tag onto
+ * another job moves them; a line someone placed by hand since is left where they put it.
  */
 export interface MyMailTagRecord {
   tied: readonly string[]
@@ -635,12 +636,26 @@ export function withTies(record: readonly string[] | null | undefined, more: rea
 
 /**
  * Whether a line is still the tag's own tie: recorded on its row, not the person's own, still on the job the tag put it
- * on, and last tied by whom the tag stamped (`tied_by`). A line someone moved, untied or tied again by hand is theirs.
+ * on, and last tied by whom the tag stamped (`tied_by`): the row's tagger, or the person whose box it is, since a
+ * conversation the dev seat tagged for them (`tagged_by` the dev) may hold ties of their own press as well. A line
+ * anyone else moved, untied or tied again by hand is theirs.
  */
 export function isTagTie(line: Pick<MyMailLine, 'id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'mail_user_id' | 'tied_by'>, record: MyMailTagRecord | null, userId: string): boolean {
   if (!record || record.jobKey === null || !record.tied.includes(line.id)) return false
   if (line.mail_user_id === userId) return false
-  return jobKeyOfRow(line) === record.jobKey && (line.tied_by ?? null) === (record.taggedBy ?? userId)
+  const tiedBy = line.tied_by ?? null
+  return jobKeyOfRow(line) === record.jobKey && (tiedBy === userId || (record.taggedBy !== null && tiedBy === record.taggedBy))
+}
+
+/**
+ * Who a tag's row names as its tagger (`email_tag_threads.tagged_by`): whoever made this tag, the person on their own
+ * press and the dev when it came through the dev seat (`actorId`), with the box staying the row's `user_id`. A second
+ * tag onto the job the conversation is already on by a tag keeps the first tagger, as its grey line keeps its words; a
+ * tag onto another job, or over a row the app placed by itself, is the new tagger's.
+ */
+export function myMailTaggedBy(actorId: string, jobKey: string, before: { record: MyMailTagRecord | null; placedByApp: boolean }): string {
+  const first = before.record
+  return first && !before.placedByApp && first.jobKey === jobKey && first.taggedBy ? first.taggedBy : actorId
 }
 
 /**
@@ -749,10 +764,25 @@ export function myMailFileRow(f: EmailFileRow, kept?: { path: string } | { left:
 /** The key a tag's grey line stands on (`messages.quo_id`): one line per tagged conversation, by its `email_tag_threads` row. */
 export const myMailTagEventKey = (tagRowId: string): string => `mytag:${tagRowId}`
 
-/** The grey line's words: who tagged the conversation, and that later mail in it lands by itself. The name, else the address. */
-export function myMailTagEventWords(who: { name: string; email: string }): string {
-  const name = who.name.trim() || who.email.trim()
-  return `${name} tagged this conversation from their mail. Later mail in it lands here by itself.`
+/** A login as the grey line names one: the name, else the address. */
+export interface MyMailNamed {
+  name: string
+  email: string
+}
+
+const namedAs = (who: MyMailNamed): string => who.name.trim() || who.email.trim()
+
+/**
+ * The grey line's words: who tagged the conversation, and that later mail in it lands by itself. The name, else the
+ * address. `who` is the person whose box the conversation is in. `seat` is the dev when the tag came through the dev
+ * seat (`plan_mail_tag` → `apply_mail_tag`): the line then names the dev as the one who tagged, the person as the
+ * mail's owner, and the seat as the way, so nobody reads the seat's work as the person's own press.
+ */
+export function myMailTagEventWords(who: MyMailNamed, seat?: MyMailNamed | null): string {
+  const later = 'Later mail in it lands here by itself.'
+  if (!seat) return `${namedAs(who)} tagged this conversation from their mail. ${later}`
+  const own = seat.email.trim() !== '' && seat.email.trim().toLowerCase() === who.email.trim().toLowerCase()
+  return `${namedAs(seat)} tagged this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
 }
 
 /**
@@ -762,18 +792,20 @@ export function myMailTagEventWords(who: { name: string; email: string }): strin
  */
 export function myMailTagEventRow(input: {
   tagRowId: string
-  who: { name: string; email: string }
+  who: MyMailNamed
   contactId: string
   jobColumns: MyMailTagPlan['jobColumns']
   /** The app's own words when it placed the conversation from the person's Sent (punch list #263 PR B, `placedByAppWords`). */
   words?: string
+  /** The dev whose seat the tag came through, when it did (`myMailTagEventWords`). */
+  seat?: MyMailNamed | null
 }): Record<string, unknown> {
   return {
     contact_id: input.contactId,
     channel: 'event',
     direction: 'team',
     who_text: 'The app',
-    body: input.words?.trim() || myMailTagEventWords(input.who),
+    body: input.words?.trim() || myMailTagEventWords(input.who, input.seat),
     quo_id: myMailTagEventKey(input.tagRowId),
     ...input.jobColumns,
   }
