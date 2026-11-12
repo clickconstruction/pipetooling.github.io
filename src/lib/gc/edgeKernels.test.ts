@@ -84,8 +84,30 @@ describe('the copy of the kernels', () => {
 })
 
 describe('what the index does not carry', () => {
+  /** The weekly email's kernels: bridge-weekly-sheet reads them by path (your-week-email takes the send's switch the same way). */
+  const SHEET_ENTRIES = [
+    'lib/bridge/sheetReads.ts',
+    'lib/bridge/sheetBuild.ts',
+    'lib/bridge/weekMail.ts',
+    'lib/bridge/cashAccounts.ts',
+    'lib/bridge/callPeople.ts',
+    'lib/bridge/mercuryCash.ts',
+    'lib/jobs/zzTestJobReads.ts',
+    'lib/bridge/weeklySend.ts',
+  ]
+
+  it('reaches no Bridge kernel: the weekly email reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send a second time, punch list #318)', () => {
+    expect(offIndexEntries().filter((entry) => SHEET_ENTRIES.includes(entry))).toEqual(SHEET_ENTRIES)
+    const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
+    expect(fromIndex.filter((f) => f.includes('/lib/bridge/'))).toEqual([])
+    // And the email still reaches every one of them by its own import.
+    const sheet = walk(ROOT, 'supabase/functions/bridge-weekly-sheet/index.ts', disk).files
+    for (const entry of SHEET_ENTRIES) expect(sheet).toContain(`${g.OUT_DIR}/${entry}`)
+    expect(sheet).not.toContain(`${g.OUT_DIR}/index.ts`)
+  })
+
   it('reaches no submittal kernel: the dev seat reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send)', () => {
-    const offIndex = offIndexEntries()
+    const offIndex = offIndexEntries().filter((entry) => !SHEET_ENTRIES.includes(entry))
     expect(offIndex).toEqual([
       'lib/submittals/standingRows.ts',
       'lib/submittals/procurementItemSources.ts',
