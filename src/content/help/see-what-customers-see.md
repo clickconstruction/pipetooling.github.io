@@ -11,7 +11,7 @@ What customers see shows every email and page anyone outside the company gets. E
 
 ## Five audiences, and a count at the top
 
-The strips are **Homeowner**, **General contractor**, **Subcontractor**, **Supply house** and **Collections law firm**. That is every audience the app writes to. Under the toolbar a count says how much of it renders today:
+The strips are **Homeowner**, **General contractor**, **Lien letters**, **Subcontractor**, **Supply house** and **Collections law firm**. That is every audience the app writes to. Lien letters is a group of its own, for the owner of a property and their builder. Under the toolbar a count says how much of it renders today:
 
 :::example The count line
 {{chip:blue|39 steps across 5 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
@@ -30,7 +30,7 @@ Each strip is one audience. Each step names what sends it, for example *Estimate
 - A step with a small picture is **live**. It is the real page, or the real email, at phone width.
 - **Sent by another system** means it is not built by this app. Staff type it themselves. That is the sub's portal link, or a quote link pasted into your own email.
 - **Next release** means the surface is real and named here. It renders with a later release.
-- A step that **opens as the PDF** shows a preview in the frame. Those are the bill by email, the hazmat notice and the demand letter. They also include the notice to a property owner and the lien release. A lien release is the paper that gives up a claim on the property. {{button:outline|Open the PDF ↗}} builds the document the customer would receive, from the sample.
+- A step that **opens as the PDF** shows a preview in the frame. Those are the bill by email, the hazmat notice and the demand letter. They also include the lien release and the papers of the Lien letters group. A lien release is the paper that gives up a claim on the property. {{button:outline|Open the PDF ↗}} builds the document the customer would receive, from the sample.
 
 :::example The homeowner's agreement is its own lane
 {{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement PDF}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Signed copy}} → {{chip:gray|Bill email}}
@@ -43,6 +43,24 @@ The **Agreement to sign** step is the customer's service agreement from the Cont
 :::
 
 The **Contract email** is the one People → Contracts → **Send for signature** sends. It is built by the same code. It shows the default opening line, **you** as the sender, and the sample sub's portal address. The real send lets you type your own opening message and subject.
+
+## The lien letters, in order
+
+The **Lien letters** strip shows every letter that goes out on an unpaid job under a builder. The sample is one made-up job, so every letter names the same month, claim and days. A row of boxes over the cards says the order.
+
+:::example The order
+{{chip:gray|Step 1 · Notice of claim}} → {{chip:gray|Step 2 · Courtesy notice}} → {{chip:gray|Step 3 · Attorney’s letter}} → {{chip:gray|Step 4 · Lien affidavit}} → {{chip:gray|Step 5 · Release}}
+:::
+
+- **Step 1** is the notice of claim, by certified mail to the owner and the builder. Its cover letter is the first page in the owner's envelope.
+- **Step 2** is the courtesy notice, a reminder by email and by text. The owner's copy and the builder's copy read differently, so each has a card.
+- **Step 3** is the attorney's letter, a second letter to the owner. It comes in two kinds, and each has a card.
+- **Step 4** is the lien affidavit. It is filed with the county clerk, then mailed to the owner and the builder.
+- **Step 5** is the release of record, filed once the claim is paid.
+
+Two letters sit beside that order. The **Final demand letter** is optional and goes before an affidavit. The **Retainage notice** is only for money the builder holds back.
+
+Each card says its step under the picture. Press a card to read the letter large. A paper has {{button:outline|Open the PDF ↗}}. To send the real ones, read [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).
 
 ## See a real person's journey
 
