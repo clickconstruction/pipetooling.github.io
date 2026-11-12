@@ -56,6 +56,10 @@ export type MessageRow = Pick<
   mail_user_id?: string | null
   /** Gmail's id of the line's conversation. Optional: a read may leave it out. */
   gmail_thread_id?: string | null
+  /** The mail was filed for the record (v2.7027, punch list #324). Optional until the types regenerate; absent reads false. */
+  history?: boolean | null
+  /** When the line landed, for the filed mark's day. Optional: a read may leave it out. */
+  created_at?: string | null
 }
 
 export interface MessageLoadContext {
@@ -107,6 +111,8 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     placedByApp: row.placed_by_app === true,
     mailUserId: row.mail_user_id ?? null,
     gmailThreadId: row.gmail_thread_id ?? null,
+    history: row.history === true,
+    landedAt: row.created_at ?? null,
   }
 }
 
