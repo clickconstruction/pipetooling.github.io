@@ -4,6 +4,9 @@ import type { FinancialItem } from '../dashboardFinancials'
 import type { BridgeCall } from './calls'
 import type { BridgeData } from './loadBridgeData'
 import { buildWeekMailFromReads, type MondaySheetReads } from './sheetBuild'
+import type { BidSent } from './bidWins'
+import type { EstimateSent } from './estimateWins'
+import type { DemandInput } from './demandPace'
 import { weekMailHtml, weekMailLine, weekMailSubject, weekMailText } from './weekMail'
 
 /** A Monday. The pay week runs Sunday to Saturday, so this one is Oct 25–31. */
@@ -152,5 +155,50 @@ describe('buildWeekMailFromReads', () => {
     // The typed figure is not the bank's word, so it never leads.
     const typed = buildWeekMailFromReads(reads({ data: data({ ...flows(), floorUsd: 60_000, cashSetting: { usd: 40_000, asOfYmd: '2026-10-26' } }), fin: fin([item('a', 10_000, '2026-09-01')]) }))
     expect(typed.model.cashLeads).toBe(false)
+  })
+})
+
+describe('buildWeekMailFromReads: Market on the won rates (punch list #318)', () => {
+  // Made-up asks: one bid opened and sent in the window, and the record behind the rates.
+  const demandInputs: DemandInput = {
+    windowStart: '2026-08-31',
+    todayYmd: TODAY,
+    bids: [{ id: 'b1', createdYmd: '2026-10-01', sentYmd: '2026-10-02', usd: 400_000, outcome: null, outcomeYmd: null, jobCreatedYmd: null, jobUsd: null }],
+    estimates: [],
+  }
+  const bid = (sentYmd: string, usd: number, outcome: string | null): BidSent => ({ sentYmd, usd, outcome, hasJob: false, jobUsd: null })
+  // $20k to $50k bids: one won and three lost at $40k each, a quarter by dollars. $160k of that size went out in the 8 weeks.
+  const bidsSent: BidSent[] = [bid('2026-09-10', 40_000, 'won'), bid('2026-09-11', 40_000, 'lost'), bid('2026-09-12', 40_000, 'lost'), bid('2026-09-13', 40_000, 'lost')]
+  const est = (sentYmd: string, usd: number, status: string): EstimateSent => ({ sentYmd, usd, status, customerKey: null, addressKey: '', answeredYmd: null })
+  // Estimates: $8k approved and $8k declined, half by dollars. $16k went out in the 8 weeks.
+  const estimatesSent: EstimateSent[] = [est('2026-09-20', 8_000, 'customer_accepted'), est('2026-09-21', 8_000, 'declined')]
+  const market = (mail: ReturnType<typeof buildWeekMailFromReads>) => mail.strip?.sections.find((s) => s.id === 'market')
+
+  it('draws Market at what the asks are worth, and says what the amount is made of', () => {
+    const mail = buildWeekMailFromReads(reads({ demandInputs, bidsSent, estimatesSent }))
+    // Bids: $160k over 8 weeks is $20k a week, a quarter of it won: $5k. Estimates: $2k a week, half sold: $1k.
+    expect(market(mail)?.paceUsd).toBeCloseTo(6_000, 6)
+    expect(market(mail)?.paceText).toBe('$6k worth')
+    expect(market(mail)?.label).toBe('Market. Worth $6k a week.')
+    expect(mail.marketParts).toEqual(['bids $5k at 25% won, a thin count', 'estimates $1k at 50% won, a thin count'])
+    const text = weekMailText(mail, 'https://app.example/bridge')
+    expect(text).toContain('  Market: $6k worth')
+    expect(text).toContain('  What Market is worth: bids $5k at 25% won, a thin count. Estimates $1k at 50% won, a thin count.')
+    expect(weekMailHtml(mail, 'https://app.example/bridge')).toContain('$6k worth')
+  })
+
+  it('reads the dollars that came in, under asked, when the won rates were not read', () => {
+    const mail = buildWeekMailFromReads(reads({ demandInputs }))
+    expect(market(mail)?.paceText).toBe('$50k asked')
+    expect(mail.marketParts).toEqual([])
+    expect(weekMailText(mail, 'https://app.example/bridge')).not.toContain('What Market is worth')
+  })
+
+  it('waits for both reads, as the page does: with one missing Market still reads asked', () => {
+    for (const over of [{ bidsSent, estimatesSent: null }, { bidsSent: null, estimatesSent }]) {
+      const mail = buildWeekMailFromReads(reads({ demandInputs, ...over }))
+      expect(market(mail)?.paceText).toBe('$50k asked')
+      expect(mail.marketParts).toEqual([])
+    }
   })
 })

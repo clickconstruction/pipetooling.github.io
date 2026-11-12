@@ -8,6 +8,10 @@
  * of cash on hand on the page (`bridge_cash_accounts_out_v1`) are left out here; ZZ test jobs stay out, as they do
  * for a dev who has not chosen to show them. The mail records nothing: its press opens the Bridge.
  *
+ * Since v2.6983 (punch list #318, PR 5) Market on the pipe reads what the asks are worth: the reads take every bid and
+ * every estimate ever sent (`loadBidWins.ts`, `loadEstimateWins.ts`), each through its own won rate, as the page
+ * reads them. If either read fails it is named in what was not read and Market reads the dollars that came in.
+ *
  * Modes on the POST:
  * - the cron (no body, or `{}`): X-Cron-Secret. The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while
  *   the switch `app_settings` `bridge_weekly_sheet_on_v1` reads 'true'; the function checks the switch again, runs only
