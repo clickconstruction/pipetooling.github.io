@@ -14,7 +14,7 @@ The record is called a First look. It sits above the person's messages until you
 
 1. Open the person's thread in [Messages](/messages).
 2. Press into the reply box and choose **Text**.
-3. Press {{button:outline|Ask for photos}} over the box. The line goes in with your name and a link made for this person.
+3. Press {{button:outline|Ask for photos}} at the right of the Text row. The line goes in with your name and a link made for this person.
 4. Read the line. Change any words you like.
 5. Press {{button:blue|Send text}}.
 
@@ -24,9 +24,9 @@ You can type it too. `/show`, `/photo` and `/video` open the same ask.
 
 ## The three presses over the box
 
-On a text to a customer, a lead or a new number, three presses sit over the reply box.
+Three presses sit at the right of the Text, Email, Note and Call row. They show on a text to a customer, a lead or a new number.
 
-:::example Over the reply box
+:::example At the right of the Text row
 
 Send Dana {{button:outline|Ask for photos}} {{button:outline|An estimate}} {{button:outline|A bill}}
 
