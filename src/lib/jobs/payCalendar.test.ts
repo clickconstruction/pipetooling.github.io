@@ -15,6 +15,7 @@ import {
   payCalendarPreview,
   payCalendarShort,
   payCalendarWords,
+  usuallyLandsShort,
   usuallyLandsWords,
   type PayCalendar,
 } from './payCalendar'
@@ -242,5 +243,9 @@ describe('the record against the calendar', () => {
     expect(usuallyLandsWords('2026-12-10', latenessAgainst(receipts, TENTH))).toBe('Usually lands about 6d after. About Dec 16.')
     expect(usuallyLandsWords('2026-12-10', latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('Usually lands by the due day.')
     expect(usuallyLandsWords('2026-12-10', null)).toBeNull()
+    // The fewest words, the day first, for a row that cuts the tail.
+    expect(usuallyLandsShort('2026-12-10', latenessAgainst(receipts, TENTH))).toBe('Usually lands about Dec 16')
+    expect(usuallyLandsShort('2026-12-10', latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('Usually lands by the due day')
+    expect(usuallyLandsShort('2026-12-10', null)).toBeNull()
   })
 })

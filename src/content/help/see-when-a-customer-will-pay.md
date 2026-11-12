@@ -45,6 +45,28 @@ Statistics stop mattering the moment someone gives you an actual answer. Say a G
 
 Anyone who can see the board sees promises. Marking them is for dev, leaders and assistant-type roles.
 
+## When the payer pays on a calendar
+
+Some payers pay on a set day of the month. Their contract names the day a bill must be in by, and the day they pay. A payer like that can hold a **pay calendar**. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
+
+On their bills the money row reads **Due**, not Expected.
+
+- *Due Dec 10 · in 28d* is the day the contract makes the bill due.
+- *Due Nov 10 · 2d past* in amber means the bill is past due under their own contract. That is a reason to call you can say out loud.
+- The line under the row reads like *Usually lands about Nov 16*. That is the due day plus how late they usually run.
+- The next line is the calendar in a few words, like *In by month end, paid the 10th*. Press the line to open the calendar.
+
+:::example Two dates on one bill
+● Billed Oct 27 · 16d ago
+● Due Nov 10 · 2d past
+Usually lands about Nov 16
+In by month end, paid the 10th
+:::
+
+The contract says when a bill is due. The record says when the money lands. The app shows both and counts on the second. The forecast and the lien dates still read when the money is expected.
+
+A date the customer names still wins. The row reads *They said Nov 20*, and the due day sits under it.
+
 ## The pay history under it
 
 Under the Expected row, a small line reads how this customer actually pays. The line reads like *Pays in 9–41d · keeps 3 of 7 · slips ~9d*. With four or more payments, the range is the middle half of their payments. With fewer, it runs from their quickest to their slowest. One payment reads *Pays in ~9d*. The promise part appears once they have named dates. See *know whether a customer keeps their word*. The forecast uses the same record. A promise from a customer who usually slips nine days is filed nine days later than the date they gave.

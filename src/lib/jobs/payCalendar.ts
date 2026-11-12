@@ -335,7 +335,14 @@ export function latenessWords(lateness: PayCalendarLateness | null | undefined):
   return `Their last ${count} payments landed ${range} after the due day.${usual}${kept}`
 }
 
-/** The record in a few words for the line under a dates row: "Usually lands about 6d after. About Dec 16." */
+/** The record in the fewest words, for a dates row with little room: "Usually lands about Dec 16". The day leads, since a narrow row cuts the tail. */
+export function usuallyLandsShort(dueYmd: string, lateness: PayCalendarLateness | null | undefined): string | null {
+  if (!lateness) return null
+  if (lateness.medianDays <= 0) return 'Usually lands by the due day'
+  return `Usually lands about ${payCalendarMonthDay(expectedFromDue(dueYmd, lateness))}`
+}
+
+/** The record in a few words, with the math: "Usually lands about 6d after. About Dec 16." */
 export function usuallyLandsWords(dueYmd: string, lateness: PayCalendarLateness | null | undefined): string | null {
   if (!lateness) return null
   if (lateness.medianDays <= 0) return 'Usually lands by the due day.'
