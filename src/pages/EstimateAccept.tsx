@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { LOOK_STRIP_WORDS } from '../lib/firstLook/card'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { useParams, useSearchParams } from 'react-router-dom'
@@ -94,6 +95,8 @@ export default function EstimateAccept() {
   const [declined, setDeclined] = useState(false)
   const [declining, setDeclining] = useState(false)
   const [headerBrand, setHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
+  // Punch list #319 PR 5: the estimate was started from the customer's own photos (a First look).
+  const [pricedFromPhotos, setPricedFromPhotos] = useState(false)
   // Estimate Options (v2.2460): 2+ options render the picker; the selection rides the accept POST.
   // v2.3555: a set — the choice plus any ticked add-ons (the ★ choice to start, no add-ons).
   const [options, setOptions] = useState<EstimateOption[]>([])
@@ -157,6 +160,7 @@ export default function EstimateAccept() {
           setExperience(cx)
           const fl = json.for_line
           setHeaderBrand(parseAcceptHeaderBrand((json as { accept_header_brand?: unknown }).accept_header_brand))
+          setPricedFromPhotos((json as { priced_from_photos?: unknown }).priced_from_photos === true)
           const att = json.customer_attachment
           const customer_attachment: CustomerAttachmentPayload | null =
             att &&
@@ -351,6 +355,11 @@ export default function EstimateAccept() {
   return (
     <PublicEstimateShell>
       {sample ? <SampleModeBanner /> : null}
+      {pricedFromPhotos ? (
+        <p data-priced-from-photos style={{ margin: '0 0 0.75rem', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-blue-tint)', fontSize: '0.9rem' }}>
+          {LOOK_STRIP_WORDS.pricedFromPhotos}
+        </p>
+      ) : null}
       <EstimateAcceptBody
         variant="interactive"
         estimate={{

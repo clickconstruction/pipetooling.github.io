@@ -133,7 +133,10 @@ export type MyMailTagStep =
     }
   | { kind: 'skip'; gmailId: string; why: MyMailTagSkip }
 
-/** The `email_tag_threads` row the tag upserts, on `(user_id, gmail_thread_id)`. */
+/**
+ * The `email_tag_threads` row the tag upserts, on `(user_id, gmail_thread_id)`. `tagged_by` is the person here;
+ * `gmail-mine` writes the tagger over it (`myMailTaggedBy`: the dev when the tag came through the dev seat).
+ */
 export interface MyMailThreadRow {
   user_id: string
   gmail_thread_id: string

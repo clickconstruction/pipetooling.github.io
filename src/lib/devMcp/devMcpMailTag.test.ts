@@ -102,7 +102,7 @@ describe('plan_mail_tag · the kernel', () => {
     expect(tagReading({ ...preview, counts: { lines: 0, tied: 0, files: 0, skipped: 3 }, movingFrom: 'bid:x' })).toContain('moves off bid:x. Nothing would land')
     const reply = tagPlanReply(c, preview, 'abcdef0123456789')
     expect(reply.plan_hash).toBe('abcdef0123456789')
-    expect(reply.lands).toBe("2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test.")
+    expect(reply.lands).toBe("2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat.")
     expect(String(reply.next)).toContain('apply_mail_tag')
     const done = tagApplyReply(c, preview, { ok: true, jobKey: `pipeline:${JOB}`, lines: 1, tied: 1, files: 1, contactId: 'c1', unknownSender: null })
     expect(done.tagged).toBe('1 line written and 1 line tied onto 912 Limitless Renovations, 1 file kept; later mail in the conversation follows by itself.')

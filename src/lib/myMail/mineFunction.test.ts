@@ -57,6 +57,7 @@ import {
   myMailTagEventKey,
   myMailTagEventRow,
   myMailTagEventWords,
+  myMailTaggedBy,
   myMailTagRecord,
   myMailTeam,
   neverRead,
@@ -674,6 +675,17 @@ describe('planUntag: what an untag removes', () => {
     expect(isTagTie(byHand, { tied: ['m-box-by-hand'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, MARISOL)).toBe(true)
   })
 
+  it('unties what the dev seat tied for the person and what the person tied since, and never a line a third person placed', () => {
+    // The dev tagged the conversation from Marisol's box through the seat: the row names the dev, the box stays hers.
+    const record = { tied: ['m-seat', 'm-hers', 'm-rosa'], jobKey: `pipeline:${ELM}`, taggedBy: 'u-dev' }
+    const lines = [boxLine('m-seat', { tied_by: 'u-dev' }), boxLine('m-hers'), boxLine('m-rosa', { tied_by: 'u-rosa' })]
+    expect(lines.map((l) => isTagTie(l, record, MARISOL))).toEqual([true, true, false])
+    expect(planUntag({ userId: MARISOL, record, own: [], tied: lines }).untie).toEqual(['m-seat', 'm-hers'])
+    // A row whose tagger is gone falls back on the box's person alone.
+    expect(isTagTie(boxLine('m-seat', { tied_by: 'u-dev' }), { ...record, taggedBy: null }, MARISOL)).toBe(false)
+    expect(isTagTie(boxLine('m-hers'), { ...record, taggedBy: null }, MARISOL)).toBe(true)
+  })
+
   it('keeps a line the office keeps something on, a promise or a highlight, and removes the rest', () => {
     const plan = planUntag({ userId: MARISOL, record: null, own: [{ id: 'm-mine-1' }, { id: 'm-promised' }, { id: 'm-highlighted' }], kept: ['m-promised', 'm-highlighted', 'm-not-mine'] })
     expect(plan).toEqual({ remove: ['m-mine-1'], keep: ['m-promised', 'm-highlighted'], untie: [] })
@@ -722,6 +734,40 @@ describe('the tag’s grey line on the thread', () => {
       project_id: null,
       jobs_ledger_id: ELM,
     })
+  })
+
+  it('names the dev and the dev seat when the tag came through the seat, never the person as the one who tagged', () => {
+    const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
+    const dev = { name: ' Nadia Reyes ', email: 'nadia@clickplumbing.example' }
+    const words = myMailTagEventWords(marisol, dev)
+    expect(words).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
+    expect(plainWordsFailures(words)).toEqual([])
+    // No names: the addresses. The dev's own box through the seat: their mail, and still the seat.
+    expect(myMailTagEventWords({ name: '', email: marisol.email }, { name: '', email: dev.email })).toBe(
+      "nadia@clickplumbing.example tagged this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
+    )
+    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes tagged this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
+    // A person's own press reads as it always has, with no seat or a null one.
+    expect(myMailTagEventWords(marisol, null)).toBe(myMailTagEventWords(marisol))
+    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.')
+    // The row carries the seat's words, and the app's own words still win when it placed the conversation itself.
+    const row = { tagRowId: 'tag-1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: ELM } }
+    expect(myMailTagEventRow({ ...row, seat: dev }).body).toBe(words)
+    expect(myMailTagEventRow({ ...row, seat: dev, words: 'The app put it here.' }).body).toBe('The app put it here.')
+  })
+
+  it('stamps whoever made the tag, and keeps the first tagger on a second tag onto the same job', () => {
+    const onElm = { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }
+    // A first tag: the person on their own press, the dev through the seat.
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: null, placedByApp: false })).toBe(MARISOL)
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: null, placedByApp: false })).toBe('u-dev')
+    // The same job again, by either: the first tagger stays, as the grey line keeps its words.
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: onElm, placedByApp: false })).toBe(MARISOL)
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: { ...onElm, taggedBy: 'u-dev' }, placedByApp: false })).toBe('u-dev')
+    // Another job, a row the app placed by itself, or a row whose tagger is gone: the new tagger.
+    expect(myMailTaggedBy('u-dev', `pipeline:${HARBOR}`, { record: onElm, placedByApp: false })).toBe('u-dev')
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: onElm, placedByApp: true })).toBe('u-dev')
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: { ...onElm, taggedBy: null }, placedByApp: false })).toBe(MARISOL)
   })
 
   it('names the address when the person has no name, and says it in plain words', () => {

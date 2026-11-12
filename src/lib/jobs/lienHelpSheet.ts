@@ -147,7 +147,7 @@ export function lienHelpPrintedCountyLine(signingCounty: string): string {
 /** A paper the batch left out, with the reason in the desk's words. */
 export type LienHelpLeftOut = { jobLabel: string; reason: string }
 
-const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /** The six blanks on a short-form affidavit, in the order the pen meets them. `[bold lead, the rest]`. */
 export const LIEN_HELP_BLANKS: ReadonlyArray<readonly [string, string]> = [
@@ -243,9 +243,16 @@ export const LIEN_HELP_RECORD_CODE_WORDS = {
   notice: 'Opens the notice tab',
 } as const
 
-/** The page's own styles. Every rule sits under `.lien-help`, so the paper beside it keeps its look. */
+/**
+ * The page's own styles. Every rule sits under `.lien-help`, so the paper beside it keeps its look.
+ *
+ * The leading and the gaps between the boxes are a point tighter than they first were (punch list #322). Printed for
+ * real jobs with the county left blank, a cover sheet ran onto a second sheet: its box *After it is signed* moved
+ * whole to page 2, with or without an **Ask first** band. Measured on those prints, this spacing puts the sheet back
+ * on one page with the type size as it was.
+ */
 export const LIEN_HELP_STYLES = `
-  .lien-help { font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.3; color: #111418; break-after: page; page-break-after: always; margin-bottom: 4rem; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .lien-help { font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.26; color: #111418; break-after: page; page-break-after: always; margin-bottom: 4rem; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .lien-help-stripe { height: 6pt; margin-bottom: 5pt; border: 1pt solid #111418; background: repeating-linear-gradient(135deg, #111418 0 6pt, #fff 6pt 12pt); }
   .lien-help-picture { border: 1pt solid #111418; padding: 4pt 6pt; font-family: Georgia, 'Times New Roman', serif; font-size: 6.5pt; line-height: 1.3; background: #fff; }
   .lien-help-picture .lien-help-num { width: 10pt; height: 10pt; font-size: 6.5pt; margin: 0 1pt; }
@@ -265,24 +272,24 @@ export const LIEN_HELP_STYLES = `
   .lien-help h3 { font-size: 10.5pt; margin: 0 0 3pt; text-transform: uppercase; letter-spacing: 0.05em; }
   .lien-help p { margin: 0 0 4pt; }
   .lien-help ol, .lien-help ul { margin: 0; padding-left: 15pt; }
-  .lien-help li { margin: 0 0 2.5pt; }
-  .lien-help-band { display: flex; justify-content: space-between; gap: 10pt; align-items: flex-start; border: 2pt solid #111418; padding: 5pt 8pt; margin-bottom: 5pt; }
+  .lien-help li { margin: 0 0 1.5pt; }
+  .lien-help-band { display: flex; justify-content: space-between; gap: 10pt; align-items: flex-start; border: 2pt solid #111418; padding: 4pt 8pt; margin-bottom: 4pt; }
   .lien-help-tag { font-weight: 800; font-size: 9pt; letter-spacing: 0.08em; text-transform: uppercase; }
-  .lien-help-facts { display: grid; grid-template-columns: repeat(4, 1fr); border: 1pt solid #111418; margin-bottom: 5pt; }
+  .lien-help-facts { display: grid; grid-template-columns: repeat(4, 1fr); border: 1pt solid #111418; margin-bottom: 4pt; }
   .lien-help-facts > div { padding: 4pt 6pt; border-right: 1pt solid #111418; }
   .lien-help-facts > div:last-child { border-right: none; }
   .lien-help-k { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #444; }
   .lien-help-v { font-weight: 700; }
-  .lien-help-box { border: 1pt solid #111418; padding: 5pt 8pt; margin-bottom: 5pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-box { border: 1pt solid #111418; padding: 4pt 8pt; margin-bottom: 4pt; break-inside: avoid; page-break-inside: avoid; }
   .lien-help-stop { border: 2.5pt solid #111418; background: #f1f1f1; }
   .lien-help-stop h3::before { content: 'STOP'; background: #111418; color: #fff; padding: 0 4pt; margin-right: 6pt; }
   .lien-help-two { display: grid; grid-template-columns: 1fr 1fr; gap: 5pt; }
-  .lien-help-checks { border: 1pt solid #111418; margin-bottom: 5pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-checks { border: 1pt solid #111418; margin-bottom: 4pt; break-inside: avoid; page-break-inside: avoid; }
   .lien-help-checks h3 { padding: 3pt 8pt; margin: 0; border-bottom: 1pt solid #111418; background: #ececec; }
   .lien-help-checks ul { list-style: none; padding: 3pt 8pt; margin: 0; }
   .lien-help-checks li { display: grid; grid-template-columns: 13pt 1fr; gap: 3pt; margin: 0 0 2pt; }
   .lien-help-mark { font-weight: 800; }
-  .lien-help-ask { border: 2.5pt solid #111418; background: #f1f1f1; padding: 4pt 8pt; margin-bottom: 5pt; break-inside: avoid; page-break-inside: avoid; }
+  .lien-help-ask { border: 2.5pt solid #111418; background: #f1f1f1; padding: 3pt 8pt; margin-bottom: 4pt; break-inside: avoid; page-break-inside: avoid; }
   .lien-help-yours { border-width: 1pt; background: #fff; }
   .lien-help-ask-tag { background: #111418; color: #fff; padding: 0 4pt; margin-right: 5pt; letter-spacing: 0.05em; }
   .lien-help-tick { display: inline-block; width: 9pt; height: 9pt; border: 1pt solid #111418; vertical-align: -1pt; }
@@ -305,7 +312,14 @@ export const LIEN_HELP_STYLES = `
  * sits beside the steps after the notary, where the reader is when it is wanted (change 5, the code half). The guide
  * copy takes none: it is a page to learn from, and nothing is recorded off it.
  */
-export type LienHelpExtras = { guideCode?: string; recordCode?: string }
+export type LienHelpExtras = { guideCode?: string; recordCode?: string; /** The notice record prints behind this sheet (punch list #322): the sheet points at it and leaves it the detail. */ recordFollows?: boolean }
+
+/** The cover sheet's notices line when the notice record is the next page: the record lays out each notice and each month, so the sheet only points. */
+export const LIEN_HELP_NOTICES_SEE_RECORD = 'A month has a late or missing notice. The notice record on the next page shows each one.'
+
+/** The foot's right side when a notice record sits between a help sheet and the paper. */
+export const LIEN_HELP_FOOT_RECORD_NEXT = 'The notice record is next, then the paper to sign'
+export const LIEN_HELP_FOOT_PAPER_NEXT = 'The paper to sign is the next page'
 
 /**
  * The code to record, floated in a box of steps, so only the lines beside it run short. The batch sheet has room, and
@@ -323,9 +337,9 @@ const band = (tag: string, title: string, right: string[], extras?: LienHelpExtr
   `<div class="lien-help-code"><div class="lien-help-small" style="text-align:right">${[...right.filter(Boolean), extras?.guideCode ? 'Scan for the full guide' : ''].filter(Boolean).map(esc).join('<br/>')}</div>${extras?.guideCode ? `<span data-lien-help-code>${extras.guideCode}</span>` : ''}</div></div>`
 
 /** A striped top edge (change 11): a help sheet is easy to pull from a stack before the stack goes to the clerk. */
-const STRIPE = '<div class="lien-help-stripe"></div>'
+export const STRIPE = '<div class="lien-help-stripe"></div>'
 
-const foot = (left: string, right: string): string => `<div class="lien-help-foot"><span>${esc(left)}</span><span>${esc(right)}</span></div>`
+export const foot = (left: string, right: string): string => `<div class="lien-help-foot"><span>${esc(left)}</span><span>${esc(right)}</span></div>`
 
 const stopBox = (title: string, items: ReadonlyArray<string>): string =>
   `<div class="lien-help-box lien-help-stop"><h3>${esc(title)}</h3><ul>${items.map((s) => `<li>${esc(s)}</li>`).join('')}</ul><p class="lien-help-small" style="margin-top:3pt">${esc(LIEN_HELP_NEVER_FIX)}</p></div>`
@@ -376,6 +390,8 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
   const after = lienHelpAfterSteps(p.propertyCounty, Boolean(p.contractorName.trim()), lienHelpClerkLine(p.clerk), Boolean(recordCode))
   const ask = (p.ask ?? '').trim()
   const printedCounty = p.signingCounty?.trim() ?? ''
+  // With the notice record behind it, the sheet keeps the mark and points at the record, which says each month in full.
+  const checks = extras?.recordFollows ? (p.checks ?? []).map((c) => (c.lead === 'Notices.' && c.state === 'ask' ? { ...c, words: LIEN_HELP_NOTICES_SEE_RECORD } : c)) : p.checks
   const copies = [
     `<div class="lien-help-small"><strong>Owner</strong><br/>${party(p.ownerName, p.ownerAddress) || 'not on the paper'}</div>`,
     p.contractorName.trim() ? `<div class="lien-help-small"><strong>Original contractor</strong><br/>${party(p.contractorName, p.contractorAddress)}</div>` : '<div></div>',
@@ -390,12 +406,12 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
     `<div><div class="lien-help-k">Claim</div><div class="lien-help-v">${esc(p.claim)}</div></div>` +
     `<div><div class="lien-help-k">File by</div><div class="lien-help-v">${esc(p.fileBy || 'see the Lien desk')}</div></div>` +
     `</div>` +
-    (p.checks && p.checks.length > 0 ? checksBlock('What the app checked on this paper', p.checks, ask) : stopBox('Do not sign. Call the office first if any of these is true.', LIEN_HELP_STOPS)) +
+    (checks && checks.length > 0 ? checksBlock('What the app checked on this paper', checks, ask) : stopBox('Do not sign. Call the office first if any of these is true.', LIEN_HELP_STOPS)) +
     (printedCounty
       ? blanksBox('Four things to write. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS_PRINTED_COUNTY, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty))
       : blanksBox('The blanks. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS, '', lienHelpPictureHtml(''))) +
     `<div class="lien-help-box" style="overflow:hidden"><h3>After it is signed</h3><ol>${after.map((s, i) => `<li>${i === after.length - 1 ? recordCodeBlock(recordCode, '') : ''}<span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
-    foot(`Help sheet for ${p.jobLabel}${ask && !(p.checks && p.checks.length > 0) ? ` · ${ask}` : ''}`, 'The paper to sign is the next page') +
+    foot(`Help sheet for ${p.jobLabel}${ask && !(p.checks && p.checks.length > 0) ? ` · ${ask}` : ''}`, extras?.recordFollows ? LIEN_HELP_FOOT_RECORD_NEXT : LIEN_HELP_FOOT_PAPER_NEXT) +
     `</section>`
   )
 }
@@ -598,7 +614,10 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
     `</div>` +
     `<div class="lien-help-box" style="overflow:hidden">${recordCodeBlock(input.extras?.recordCode, LIEN_HELP_RECORD_CODE_WORDS.batch)}<h3>After the notary, one trip for each clerk</h3><ol>${lienHelpBatchAfterSteps(Boolean(input.extras?.recordCode)).map((s) => `<li>${s}</li>`).join('')}</ol></div>` +
     `<table class="lien-help-rows"><colgroup><col style="width:3%"/><col style="width:26%"/><col style="width:9%"/><col style="width:17%"/><col style="width:13%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/><col style="width:6.4%"/></colgroup><tr><th>#</th><th>Job · property</th><th>Claim</th><th>Mail a copy to</th><th>Recording no. · day filed</th><th>Signed</th><th>Sealed</th><th>Filed</th><th>In app</th><th>Mailed</th></tr>${rows}${left}</table>` +
-    foot(`Help sheet for the batch${input.printedOn ? ` printed ${input.printedOn}` : ''}${oneAsk && !checked ? ` · ${oneAsk}` : ''}`, count === 1 ? '1 paper follows this page' : `${count} papers follow this page`) +
+    foot(
+      `Help sheet for the batch${input.printedOn ? ` printed ${input.printedOn}` : ''}${oneAsk && !checked ? ` · ${oneAsk}` : ''}`,
+      input.extras?.recordFollows ? (count === 1 ? 'The notice record is next, then 1 paper' : `The notice records are next, then ${count} papers`) : count === 1 ? '1 paper follows this page' : `${count} papers follow this page`,
+    ) +
     `</section>`
   )
 }

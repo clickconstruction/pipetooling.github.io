@@ -632,5 +632,57 @@ SELECT mfu.same('the claims table carries the read-only and twin blocks', (
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'missed_call_replies'),
   'archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,missed_call_replies_office_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 
+-- 18 · Old mail filed for the record (v2.7026, *_messages_history, punch list #324). A sender nobody has named, whose
+-- old mail a tag files: a filed mail of theirs opens nothing; a new mail in the same conversation opens the thread;
+-- No reply needed closes it; a filed mail landing after that leaves it Done; a filed mail of ours still answers an
+-- open thread, past a filed mail of theirs; Reopen takes the mark off the thread's mail; a close ends a tech's hold.
+RESET ROLE;
+INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006196', 'unknown');
+INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006196', 'email', 'dale@ridgeway.example');
+CREATE TEMP TABLE filed AS SELECT '00000000-0000-0000-0000-000000006196'::uuid AS dale;
+GRANT SELECT ON filed TO anon, authenticated, service_role;
+SELECT mfu.same('a line starts unmarked', (SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'messages' AND column_name = 'history'), 'false');
+SELECT public.email_write_line('g-filed-1', jsonb_build_object('contact_id', dale, 'direction', 'in', 'who_text', 'Dale Okafor', 'at', now() - interval '200 days',
+  'subject', 'Rough-in dates', 'body', 'The 9th works.', 'mailbox', 'mine', 'mail_user_id', '00000000-0000-0000-0000-0000000006d3', 'history', true)) FROM filed;
+SELECT mfu.same('a filed mail of theirs opens nothing', (SELECT mfu.state(dale) FROM filed), 'done|-|-|-');
+SELECT mfu.same('the writer keeps the mark', (SELECT history::text FROM public.messages WHERE gmail_id = 'g-filed-1'), 'true');
+SELECT public.email_write_line('g-filed-2', jsonb_build_object('contact_id', dale, 'direction', 'in', 'who_text', 'Dale Okafor', 'at', now() - interval '2 hours',
+  'subject', 'Re: Rough-in dates', 'body', 'One more question.', 'mailbox', 'mine', 'mail_user_id', '00000000-0000-0000-0000-0000000006d3')) FROM filed;
+SELECT mfu.same('a new mail in the same conversation opens the thread', (SELECT mfu.state(dale) FROM filed), 'waiting|-|-|-');
+SELECT mfu.same('a writer that sends no mark writes none', (SELECT history::text FROM public.messages WHERE gmail_id = 'g-filed-2'), 'false');
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.set_state(dale, 'done') FROM filed;
+RESET ROLE;
+SELECT public.email_write_line('g-filed-3', jsonb_build_object('contact_id', dale, 'direction', 'in', 'who_text', 'Dale Okafor', 'at', now() - interval '90 days',
+  'subject', 'Fixture count', 'body', 'Attached.', 'mailbox', 'mine', 'mail_user_id', '00000000-0000-0000-0000-0000000006d3', 'history', true)) FROM filed;
+SELECT mfu.same('a filed mail leaves a thread closed by a press Done', (SELECT mfu.state(dale) FROM filed), 'done|-|-|-');
+INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT dale, 'email', 'in', 'Dale Okafor', now() - interval '1 hour', 'Still waiting.' FROM filed;
+SELECT mfu.same('their live mail opens it again', (SELECT mfu.state(dale) FROM filed), 'waiting|-|-|-');
+SELECT public.email_write_line('g-filed-4', jsonb_build_object('contact_id', dale, 'direction', 'in', 'who_text', 'Dale Okafor', 'at', now() - interval '10 minutes',
+  'subject', 'An old one', 'body', 'Marked by the seat.', 'mailbox', 'mine', 'mail_user_id', '00000000-0000-0000-0000-0000000006d3', 'history', true)) FROM filed;
+SELECT public.email_write_line('g-filed-5', jsonb_build_object('contact_id', dale, 'direction', 'out', 'who_text', 'Rosa', 'who_user_id', '00000000-0000-0000-0000-0000000006d3',
+  'at', now() - interval '30 minutes', 'subject', 'Re: Rough-in dates', 'body', 'Answered from my own mail.', 'mailbox', 'mine', 'mail_user_id', '00000000-0000-0000-0000-0000000006d3', 'history', true)) FROM filed;
+SELECT mfu.same('a filed mail of ours still answers, past a filed mail of theirs', (SELECT mfu.state(dale) FROM filed), 'done|-|-|-');
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.set_state(dale, 'waiting') FROM filed;
+SELECT mfu.same('Reopen opens it', (SELECT mfu.state(dale) FROM filed), 'waiting|-|-|-');
+SELECT mfu.same('Reopen takes the mark off the thread''s mail', (SELECT count(*)::text FROM public.messages WHERE contact_id = (SELECT dale FROM filed) AND history), '0');
+SELECT mfu.refused('the office cannot file a mail by hand', $q$UPDATE public.messages SET history = true WHERE contact_id = (SELECT dale FROM filed)$q$, 'permission denied');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('someone off the office team takes no mark off', $q$SELECT public.messages_unfile((SELECT dale FROM filed))$q$, 'Only the office team can reopen a conversation');
+RESET ROLE;
+SELECT mfu.same('anon cannot call it', has_function_privilege('anon', 'public.messages_unfile(uuid)', 'execute')::text, 'false');
+UPDATE public.contacts SET has_user_id = '00000000-0000-0000-0000-0000000006d2', has_since = now(), has_how = 'rule', has_until = now() + interval '1 hour' WHERE id = (SELECT dale FROM filed);
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.set_state(dale, 'done') FROM filed;
+RESET ROLE;
+SELECT mfu.same('No reply needed on a held thread ends the hold with the holder',
+  (SELECT concat_ws('|', state, (has_user_id IS NULL)::text, (has_until IS NULL)::text) FROM public.contacts WHERE id = (SELECT dale FROM filed)), 'done|true|true');
+
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;
