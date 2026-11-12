@@ -1,17 +1,17 @@
 ---
 name: "Permits: the owner of record read by the parcel id an Austin permit carries"
 number: 316
-group: gated
-status: split off 2026-11-11 from the retired card #310, where it was PR 3 (optional, ask first) · measured the same day, nothing built
+group: ready
+status: split off 2026-11-11 from the retired card #310, where it was PR 3 (optional, ask first) · measured the same day · approved to build 2026-11-12, nothing built
 summary: >
   The Property line finds an Austin permit's owner by matching the street address at Travis
   County, then by the permit's point. Almost every Austin permit also carries the county's own
   id for its lot. Asked by that id the answer is the lot the permit names, with no matching.
   Measured on 185 commercial addresses, today's lookup lands on another parcel 8 times, about
   1 in 23. The other 177 already end on the right lot, so the gain is those few wrong owners.
-next: The owner says build it or drop it. On a yes it is one PR in permit-lookup and its three callers.
+next: Build the one PR in permit-lookup and its three callers, as the plan below says. Open a few of the 8 first.
 size: S, one PR
-blocker: The owner's yes. It was "only if the owner asks" on #310 and nobody has asked.
+blocker: None.
 ver: v2.6912 (every city's county read for the owner) · v2.6926 (the Loop and interstate spellings) · v2.6958 (the point from the parcel, PR 7702)
 mockup: not required — the Property line already exists; this changes which parcel answers it, not what it shows
 ---
@@ -43,14 +43,11 @@ inside it, so "another parcel" is not proven wrong every time. Open a few before
 Re-measure with a `vite-node` script that prints counts only. It needs no key: the feed and the
 layer are public.
 
-## The decision for the owner
+## The decision
 
-Build it, or drop it. One line each way:
-
-- **Build:** about 1 Austin card in 23 stops showing a neighbour's owner. One small PR, no cost
-  per lookup, no migration.
-- **Drop:** 96 in 100 are already right, and the card's **Open at the appraisal district** link
-  lets a person check the rest.
+Approved to build on 2026-11-12, on the measurement above. The gain is about 1 Austin card in 23
+that stops showing a neighbour's owner. It is one small PR with no cost per lookup and no
+migration.
 
 ## Where it plugs in
 
