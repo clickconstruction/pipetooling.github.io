@@ -2,7 +2,7 @@
 name: "Permits: the owner lookup as a whole, city by city"
 number: 320
 group: ready
-status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) and PR 3b (the pull's point for those rows, v2.6985) built, the rest not started
+status: measured 2026-11-11 while #316 was built · Grace's go for the whole train the same day · PR 1 (San Antonio asks the permit's point, v2.6978) and PR 2 (the county the lot is in, v2.6980) PR 3 (Williamson County by the R id, v2.6984) PR 3b (the pull's point for those rows, v2.6985) and PR 6 (how long an answer is kept, v2.6987) built, the rest not started
 summary: >
   Card #316 made an Austin permit's owner come from the lot the permit names. Asked whether that
   is the best the lookup can do, every city was measured. The larger gaps are elsewhere. San
@@ -12,7 +12,7 @@ summary: >
 next: PR 4, a lot the county's map holds with no owner. After PR 3b is deployed, read Austin's window again once so the rows already held take their point.
 size: M, a train of six small PRs and one measure
 blocker: None.
-ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson)
+ver: v2.6974 (#316, the owner by the parcel id) · v2.6978 (San Antonio asks the point) · v2.6980 (the county the lot is in) · v2.6984 (Williamson County by the R id) · v2.6985 (the pull's point at Williamson) · v2.6987 (kept days)
 mockup: not required — the Property line and its point line already exist; PR 4 and PR 5 add one line each and bring their words when they are built
 ---
 
@@ -100,8 +100,8 @@ section of `docs/EDGE_FUNCTIONS.md`, and is deployed from `main` after its merge
    appraisal district. First open one of those pages and see that it names the owner.
 5. **The county's address for the lot when it is not the permit's** (XS). One line on the sheets,
    as the point line has.
-6. **How long an answer is kept** (XS). A failure for an hour, a "no parcel" for a week, a found
-   owner for thirty days. Prod held 42 kept parcel rows and no kept failure on 2026-11-11.
+6. **How long an answer is kept** (XS). Built. A failure for an hour, a "no parcel" for a week, a
+   found owner for thirty days. Prod held 42 kept parcel rows and no kept failure on 2026-11-11.
 7. **San Antonio's address question, spelled the county's way** (S). The number and the street
    name, as the other four counties are asked, so the 18 in 159 find their lot by the address.
 8. **The point over the address where a permit has both** (measure first). Open San Marcos's 16.
@@ -133,3 +133,6 @@ Read-only, signed in on a dev server, counts only.
   Guadalupe County. San Marcos: 15 of 20 name an owner, 4 at Hays's own point and 5 with no
   parcel. None of the San Marcos 20 was over the county line. The second open of all 40 came
   from the kept answers.
+- **PR 3** (deployed from `main` 2026-11-12): Austin, the 16 newest permits whose lot id is
+  Williamson County's, one per address. All 16 name an owner and the card names Williamson
+  County on each, 15 by the id and 1 by the address. The second open came from the kept answers.

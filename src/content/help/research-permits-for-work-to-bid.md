@@ -243,7 +243,7 @@ Press **Copy** for the company's name, then **Open the state's search** and past
 
 Press **Google the company** to search Google for the name. A person is searched with their company.
 
-Press **Pursue with these facts** to make the lead with the phone and the website already on it. Each name and each address is looked up once a month. **Look again** asks fresh.
+Press **Pursue with these facts** to make the lead with the phone and the website already on it. Each name and each address is looked up once a month. An address with no parcel is looked up again after a week. **Look again** asks fresh.
 
 ## Decide on a row
 

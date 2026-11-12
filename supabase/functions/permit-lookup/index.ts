@@ -32,6 +32,7 @@ import {
   BEXAR_PARCELS_QUERY,
   companyFactsFromPlaces,
   companyLookupKey,
+  keptDays,
   lookupIsFresh,
   parcelFactsFromCounty,
   parcelFactsFromCountyAtPoint,
@@ -42,7 +43,8 @@ import {
 
 /**
  * Research, Who pulled it (punch list #292, PR 4, v2.6786): the two lookups behind the card,
- * cached in `permit_lookups` so each name and each address is asked once a month at most.
+ * cached in `permit_lookups` so each name and each address is asked once a month at most
+ * (`keptDays`: a county's "no parcel" once a week, a failure once an hour).
  * `company`: the contact's company (or the person) on Google Places Text Search, with the
  * server-side GOOGLE_MAPS_API_KEY the address autocomplete uses, leaning toward the permit's
  * city. `parcel`: the permit's street address on its county's parcel layer (owner of record,
@@ -57,7 +59,7 @@ import {
  * An id the layer does not hold falls back to the address and the point. An Austin permit over
  * the county line carries Williamson County's id (an R and six digits), so Williamson's layer is
  * asked for it, by the id, the address and the point (punch list #320). A source that fails
- * answers with its reason, cached too, so a dead source is not hammered.
+ * answers with its reason, cached for an hour, so a dead source is not hammered.
  *
  * Auth: a researcher's JWT (`user_can_research_permits()`), the archived-caller guard.
  * Body: `{ kind: 'company', contact, city }` or `{ kind: 'parcel', address, city, lat?, lng?, permit_id? }`.
@@ -150,7 +152,7 @@ serve(async (req) => {
   const askedBeforePoint = kind === 'parcel' && countySource === null && cached?.found === false && !cached.error && askedWithoutPoint(cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
   // The neighbouring counties were not asked until they could be: a kept "no parcel" from then is asked again once. A kept failure is left alone.
   const askedBeforeNeighbours = countySource !== null && cached?.found === false && !cached.error && askedWithoutNeighbours(countySource, cached.query as string | null | undefined, askablePoint(body.lat, body.lng))
-  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && !askedBeforeNeighbours && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
+  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && !askedBeforePoint && !askedBeforeNeighbours && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now(), keptDays({ kind, found: cached.found === true, error: cached.error as string | null }))) {
     return jsonResponse({ ok: true, kind, key, found: cached.found, facts: cached.facts, error: cached.error, cached: true, looked_up_at: cached.looked_up_at })
   }
 

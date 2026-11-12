@@ -182,8 +182,24 @@ export function parcelLookupKey(city: string, address: string | null | undefined
   return street ? `${city.toLowerCase()}|${street}` : null
 }
 
-/** A cached row is fresh for this long. */
+/** A found answer is kept this many days: the counties rebuild their parcel layers about monthly. */
 export const LOOKUP_FRESH_DAYS = 30
+/** A county's "no parcel" is kept a week: a lot the layer gains at its next rebuild should not wait a second month. */
+export const NO_PARCEL_FRESH_DAYS = 7
+/** A failure is kept an hour: long enough that a dead source is not hammered, short enough that one timeout clears by itself. */
+export const FAILURE_FRESH_DAYS = 1 / 24
+
+/**
+ * How many days a kept lookup is good for, by how it ended (punch list #320). A found answer and
+ * a company Google does not know keep their month: a company search is a paid call. A parcel the
+ * county does not hold is asked again after a week, and anything that failed after an hour.
+ */
+export function keptDays(row: { kind: 'company' | 'parcel'; found: boolean; error: string | null | undefined }): number {
+  if (row.error) return FAILURE_FRESH_DAYS
+  if (row.kind === 'parcel' && !row.found) return NO_PARCEL_FRESH_DAYS
+  return LOOKUP_FRESH_DAYS
+}
+
 export function lookupIsFresh(lookedUpAtIso: string, nowMs: number, freshDays = LOOKUP_FRESH_DAYS): boolean {
   const t = Date.parse(lookedUpAtIso)
   return Number.isFinite(t) && nowMs - t < freshDays * 86_400_000

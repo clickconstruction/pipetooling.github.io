@@ -280,7 +280,7 @@ async function lookup<F>(body: Record<string, unknown>): Promise<LookupAnswer<F>
   return { found: a.found === true, facts: a.found === true ? (a.facts ?? null) : null, error: a.error ?? null, cached: a.cached === true, lookedUpAt: a.looked_up_at ?? null }
 }
 
-/** The company on the permit, on Google Places: phone, website, address, what kind of business. Cached a month. */
+/** The company on the permit, on Google Places: phone, website, address, what kind of business. Kept a month, a failure an hour. */
 export function lookupCompany(contact: string, city: string, refresh = false): Promise<LookupAnswer<CompanyFacts>> {
   return lookup<CompanyFacts>({ kind: 'company', contact, city, refresh })
 }
@@ -288,7 +288,7 @@ export function lookupCompany(contact: string, city: string, refresh = false): P
 /** What a permit carries that the parcel lookup can use besides its address: its point and its own id. */
 export type ParcelLookupPermit = { lat: number | null; lng: number | null; id?: string | null }
 
-/** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
+/** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Kept a month when found, a week when the county has no parcel, an hour when the asking failed. */
 export function lookupParcel(address: string, city: string, refresh = false, permit: ParcelLookupPermit | null = null): Promise<LookupAnswer<ParcelFacts>> {
   // A city whose county's parcel record is not read says so on its card and opens the appraisal district.
   if (!cityReadsParcels(city)) return Promise.resolve({ found: false, facts: null, error: null, cached: true, lookedUpAt: null })

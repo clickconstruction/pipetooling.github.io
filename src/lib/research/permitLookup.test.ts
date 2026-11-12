@@ -5,6 +5,7 @@ import {
   companyFactsFromPlaces,
   companyLookupKey,
   contactParts,
+  keptDays,
   lookupIsFresh,
   nameKey,
   parcelFactsFromCounty,
@@ -102,5 +103,32 @@ describe('the parcel under the permit’s point, at Bexar County', () => {
   })
   it('leaves the address answer unmarked', () => {
     expect(parcelFactsFromCounty({ features: [row({ PropID: 555001, Owner: 'SAMPLE TRACT LLC' })] })?.matched_by).toBeUndefined()
+  })
+})
+
+describe('how long an answer is kept', () => {
+  const now = Date.parse('2026-11-11T12:00:00Z')
+  const hoursAgo = (h: number) => new Date(now - h * 3_600_000).toISOString()
+  it('keeps a found answer a month, whichever lookup it is', () => {
+    expect(keptDays({ kind: 'parcel', found: true, error: null })).toBe(30)
+    expect(keptDays({ kind: 'company', found: true, error: null })).toBe(30)
+  })
+  it('keeps a company Google does not know a month, because asking again is a paid call', () => {
+    expect(keptDays({ kind: 'company', found: false, error: null })).toBe(30)
+  })
+  it('asks a county again after a week when it had no parcel', () => {
+    const days = keptDays({ kind: 'parcel', found: false, error: null })
+    expect(days).toBe(7)
+    expect(lookupIsFresh(hoursAgo(6 * 24), now, days)).toBe(true)
+    expect(lookupIsFresh(hoursAgo(8 * 24), now, days)).toBe(false)
+  })
+  it('asks again after an hour when the asking failed, found or not, parcel or company', () => {
+    for (const kind of ['parcel', 'company'] as const) {
+      const days = keptDays({ kind, found: false, error: 'the county answered 500: {}' })
+      expect(lookupIsFresh(hoursAgo(0.5), now, days)).toBe(true)
+      expect(lookupIsFresh(hoursAgo(1.5), now, days)).toBe(false)
+    }
+    expect(keptDays({ kind: 'parcel', found: false, error: '' })).toBe(7)
+    expect(keptDays({ kind: 'parcel', found: false, error: undefined })).toBe(7)
   })
 })
