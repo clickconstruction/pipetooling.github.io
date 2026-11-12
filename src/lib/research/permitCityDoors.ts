@@ -39,7 +39,7 @@ export function countyGivesBuildingFacts(city: string | null | undefined): boole
 }
 
 /** The parcel's facts the cards read. */
-type LotFacts = { building_sf: number | null; year_built: string | null; improvement_value: number | null; acres: number | null; situs?: string | null; matched_by?: 'point' }
+type LotFacts = { building_sf: number | null; year_built: string | null; improvement_value: number | null; acres: number | null; situs?: string | null; matched_by?: 'point' | 'id' }
 
 function shortDollars(value: number): string {
   if (value >= 1_000_000) {

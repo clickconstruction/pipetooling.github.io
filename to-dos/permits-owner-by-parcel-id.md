@@ -1,18 +1,18 @@
 ---
 name: "Permits: the owner of record read by the parcel id an Austin permit carries"
 number: 316
-group: ready
-status: split off 2026-11-11 from the retired card #310, where it was PR 3 (optional, ask first) · measured the same day · approved to build 2026-11-12, nothing built
+group: close
+status: built 2026-11-11 as v2.6974 · the 28 other-parcel cases opened first, none a parent lot · left, the deploy of permit-lookup from main and the walk on Prospects → Permits, Austin
 summary: >
-  The Property line finds an Austin permit's owner by matching the street address at Travis
+  The Property line found an Austin permit's owner by matching the street address at Travis
   County, then by the permit's point. Almost every Austin permit also carries the county's own
   id for its lot. Asked by that id the answer is the lot the permit names, with no matching.
-  Measured on 185 commercial addresses, today's lookup lands on another parcel 8 times, about
-  1 in 23. The other 177 already end on the right lot, so the gain is those few wrong owners.
-next: Build the one PR in permit-lookup and its three callers, as the plan below says. Open a few of the 8 first.
+  Measured on 700 commercial addresses, the old lookup landed on another parcel 28 times, about
+  1 in 25, and on a different owner 10 times. The lookup now asks by the id first.
+next: Deploy permit-lookup from main once the PR merges, check the drift, then walk a few Austin cards and read the Property line. Delete this card after the walk.
 size: S, one PR
 blocker: None.
-ver: v2.6912 (every city's county read for the owner) · v2.6926 (the Loop and interstate spellings) · v2.6958 (the point from the parcel, PR 7702)
+ver: v2.6912 (every city's county read for the owner) · v2.6926 (the Loop and interstate spellings) · v2.6958 (the point from the parcel, PR 7702) · v2.6974 (the owner by the parcel id)
 mockup: not required — the Property line already exists; this changes which parcel answers it, not what it shows
 ---
 
@@ -39,6 +39,32 @@ live layer, with the points as the pull leaves them since v2.6958.
 
 The 8 were not opened one by one. A permit can name a parent lot while the address is a unit
 inside it, so "another parcel" is not proven wrong every time. Open a few before building.
+
+### Opened before building (2026-11-11, the whole window)
+
+All 700 addresses were put through the same code, with each lot's shape read beside it. Counts
+and shapes only.
+
+- 604 carry an id the layer holds, 81 one it does not, 15 an id that starts with R.
+- Of the 604: the address found the named lot 324 times, the point 251 times, the address found
+  **another lot 28 times**, and nothing was found once. That is 1 in 22, the same rate as above.
+- **None of the 28 is a parent lot with a unit inside it.** Neither lot's middle sits inside the
+  other's shape, no legal description names a unit, and the two lots are 7 m to 27 km apart.
+- In 16 of the 28 the named lot is itself at the asked number and street. Two or more lots share
+  them and the pick took the other one. 14 of the 28 addresses carry a unit and 5 a BLDG.
+- The owner differs on 10 of the 28. On the other 18 the owner is the same, and the values, the
+  acres and the appraisal link shown were the other lot's.
+- No id sits under two parcels or two owners on the layer. No address in the feed carries two
+  ids (3,355 addresses with an id, every kind), so one kept answer per address stays right.
+
+So the premise held and the PR was built.
+
+### Measured again through the new kernel (the same 700, before the deploy)
+
+- The 604 ids the layer holds: all 604 answered with the named lot, by id. The 28 on another lot
+  fell to none, the one with no parcel found its lot, and the owner shown changes on 10.
+- The 81 ids the layer does not hold fell back and answered as before (7 a parcel, 74 none).
+- The 15 ids that start with R were not asked and answered as before.
 
 Re-measure with a `vite-node` script that prints counts only. It needs no key: the feed and the
 layer are public.

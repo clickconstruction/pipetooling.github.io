@@ -2,7 +2,23 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { permitCity } from '../_shared/permitCities.ts'
-import { addressQuery, askablePoint, askedBexarLayer, askedOtherQuestion, parcelFactsByAddress, parcelFactsByPoint, parcelSourceFor, pointQuery, streetParts } from '../_shared/permitParcels.ts'
+import {
+  addressQuery,
+  askableParcelId,
+  askablePoint,
+  askedBexarLayer,
+  askedOtherQuestion,
+  askedWithoutId,
+  idQuery,
+  parcelFactsByAddress,
+  parcelFactsById,
+  parcelFactsByPoint,
+  parcelSourceFor,
+  pointQuery,
+  QUESTION_JOIN,
+  streetParts,
+  type ParcelSource,
+} from '../_shared/permitParcels.ts'
 import {
   BEXAR_PARCEL_FIELDS,
   BEXAR_PARCELS_QUERY,
@@ -23,11 +39,14 @@ import {
  * city. `parcel`: the permit's street address on its county's parcel layer (owner of record,
  * mailing address, values; the DBA in Bexar). Bexar's layer takes the address as one string;
  * Travis, Hays, Comal and Guadalupe take its number and street name (`_shared/permitParcels.ts`)
- * and, when the street address has no parcel, the permit's own point. A source that fails
+ * and, when the street address has no parcel, the permit's own point. An Austin permit carries
+ * the county's own id for its lot (`raw.tcad_id`, the layer's `geo_id`), so with `permit_id`
+ * Travis is asked by that id first (punch list #316): the lot the permit names, no matching.
+ * An id the layer does not hold falls back to the address and the point. A source that fails
  * answers with its reason, cached too, so a dead source is not hammered.
  *
  * Auth: a researcher's JWT (`user_can_research_permits()`), the archived-caller guard.
- * Body: `{ kind: 'company', contact, city }` or `{ kind: 'parcel', address, city, lat?, lng? }`.
+ * Body: `{ kind: 'company', contact, city }` or `{ kind: 'parcel', address, city, lat?, lng?, permit_id? }`.
  * Answer: `{ ok, kind, key, found, facts, error, cached, looked_up_at }`.
  */
 
@@ -49,7 +68,24 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
-type Body = { kind?: unknown; contact?: unknown; address?: unknown; city?: unknown; refresh?: unknown; lat?: unknown; lng?: unknown }
+type Body = { kind?: unknown; contact?: unknown; address?: unknown; city?: unknown; refresh?: unknown; lat?: unknown; lng?: unknown; permit_id?: unknown }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The parcel id the permit's own feed row carries, when the layer can be asked by it. Read with
+ * the service client: the list the app reads (`research_permits_v2`) does not carry the row.
+ * Held to the permit at the address being looked up, since the answer is kept under that address.
+ * Null on any miss, so the lookup falls back to the address and the point.
+ */
+async function parcelIdOnPermit(admin: ReturnType<typeof createClient>, source: ParcelSource, permitId: unknown, key: string): Promise<string | null> {
+  if (!source.id || typeof permitId !== 'string' || !UUID.test(permitId)) return null
+  const { data, error } = await admin.from('permits').select(`city, address, parcel_id:raw->>${source.id.permitKey}`).eq('id', permitId).maybeSingle()
+  if (error) console.warn(JSON.stringify({ fn: 'permit-lookup', permit: error.message }))
+  const row = data as { city?: string | null; address?: string | null; parcel_id?: unknown } | null
+  if (!row || parcelLookupKey(row.city ?? '', row.address) !== key) return null
+  return askableParcelId(source, row.parcel_id)
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -89,7 +125,10 @@ serve(async (req) => {
   // A "no parcel" asked with a question this function no longer asks (a spelling learned since) is asked again.
   const countySource = kind === 'parcel' ? parcelSourceFor(permitCity(city)?.county) : null
   const askedOldQuestion = countySource !== null && cached?.found === false && askedOtherQuestion(countySource, cached?.query as string | null | undefined, typeof body.address === 'string' ? body.address : null)
-  if (cached && !askedWrongCounty && !askedOldQuestion && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
+  // The id the permit carries for its lot, where the county can be asked by it. A row kept before the id was asked, found or not, is asked again once.
+  const parcelId = countySource !== null ? await parcelIdOnPermit(admin, countySource, body.permit_id, key) : null
+  const askedBeforeId = countySource !== null && cached != null && askedWithoutId(countySource, cached.query as string | null | undefined, parcelId)
+  if (cached && !askedWrongCounty && !askedOldQuestion && !askedBeforeId && body.refresh !== true && lookupIsFresh(cached.looked_up_at as string, Date.now())) {
     return jsonResponse({ ok: true, kind, key, found: cached.found, facts: cached.facts, error: cached.error, cached: true, looked_up_at: cached.looked_up_at })
   }
 
@@ -121,8 +160,9 @@ serve(async (req) => {
         }
       }
     } else if (parcelSourceFor(permitCity(city)?.county)) {
-      // Travis, Hays, Comal, Guadalupe: the number and the street name, then the permit's point when the street address has no parcel.
+      // Travis, Hays, Comal, Guadalupe: the id the permit carries where the county has one, then the number and the street name, then the permit's point when the street address has no parcel.
       const source = parcelSourceFor(permitCity(city)?.county)!
+      const byId = idQuery(source, parcelId)
       const parts = streetParts(typeof body.address === 'string' ? body.address : null)
       const point = askablePoint(body.lat, body.lng)
       const ask = async (params: URLSearchParams): Promise<unknown> => {
@@ -131,16 +171,26 @@ serve(async (req) => {
         if (!res.ok || (json as { error?: unknown }).error) throw new Error(`the county answered ${res.status}: ${JSON.stringify((json as { error?: unknown }).error ?? {}).slice(0, 160)}`)
         return json
       }
-      if (!parts && !point) error = 'nothing to look up'
+      if (!byId && !parts && !point) error = 'nothing to look up'
       else {
         let f = null
-        if (parts) {
+        const asked: string[] = []
+        // Each question is written down before it is asked, so a failure's row says how far the asking got.
+        const noteAsked = (q: string) => {
+          asked.push(q)
+          query = asked.join(QUESTION_JOIN)
+        }
+        if (byId) {
+          noteAsked(byId.get('where') ?? '')
+          f = parcelFactsById(source, await ask(byId))
+        }
+        if (!f && parts) {
           const params = addressQuery(source, parts)
-          query = params.get('where') ?? ''
+          noteAsked(params.get('where') ?? '')
           f = parcelFactsByAddress(source, await ask(params), parts)
         }
         if (!f && point) {
-          query = `${query}${query ? ' | ' : ''}point ${point.lng},${point.lat}`
+          noteAsked(`point ${point.lng},${point.lat}`)
           f = parcelFactsByPoint(source, await ask(pointQuery(source, point)))
         }
         if (f) {

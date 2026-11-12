@@ -65,14 +65,14 @@ export function WhoPulledItSheet({
       }
       if (row.address) {
         setParcel({ state: 'loading' })
-        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng })
+        lookupParcel(row.address, row.city, refresh, { lat: row.lat, lng: row.lng, id: row.id })
           .then((answer) => setParcel({ state: 'done', answer }))
           .catch((e) => setParcel({ state: 'failed', message: formatErrorMessage(e) }))
       } else {
         setParcel({ state: 'done', answer: { found: false, facts: null, error: 'the permit has no street address', cached: false, lookedUpAt: null } })
       }
     },
-    [row.contact, row.address, row.city, row.lat, row.lng],
+    [row.id, row.contact, row.address, row.city, row.lat, row.lng],
   )
 
   // The name's other permits: one word asked of the table, the rows held to the whole name by the kernel.
