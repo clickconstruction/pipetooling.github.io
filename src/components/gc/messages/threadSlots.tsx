@@ -13,6 +13,7 @@ import { createElement, Fragment, type ReactNode } from 'react'
 import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
 import { useEstimateDoorThreadSlots } from '../../estimates/useEstimateDoorThreadSlots'
 import { useEstimateLineThreadSlots } from '../../estimates/useEstimateLineThreadSlots'
+import { useFirstLookThreadSlots } from '../../firstLook/useFirstLookThreadSlots'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
@@ -189,7 +190,9 @@ export function useThreadSlots(): ThreadSlots {
   // Punch list #263 PR A (v2.6730): above the box of a thread narrowed to a job, the person's own mail with its person
   // that is not on that job yet, with Yes on each; after cut 2's owed strip in the slot they share.
   const myMailJobLine = useMyMailJobLineThreadSlots()
+  // Punch list #319 PR 1: a First look's card above the lines, for anyone a look was asked of and not yet closed.
+  const firstLooks = useFirstLookThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
   // #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, placedLines, leadDoors, newLane, myMailJobLine)
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, placedLines, leadDoors, firstLooks, newLane, myMailJobLine)
 }

@@ -13,7 +13,7 @@
 // ---------- the fill table ----------
 
 /** The blanks the app fills on the press. */
-export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill' | 'number' | 'estimate' | 'rate' | 'portal' | 'warranty'
+export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill' | 'number' | 'estimate' | 'rate' | 'portal' | 'warranty' | 'show'
 
 /**
  * Where the app reads a blank: the person written to, the signed-in user, the job, the drive to it, the schedule,
@@ -52,6 +52,8 @@ export const BLANKS: readonly Blank[] = [
   { key: 'rate', words: 'a link to rate us', from: 'page' },
   // Customer reviews (v2.5943, punch list #185): their portal's short address, the one link that is theirs.
   { key: 'portal', words: "their portal's short address", from: 'page' },
+  // First look (punch list #319 PR 1): a link made for this thread where they add photos and a short video.
+  { key: 'show', words: 'a link to show us the problem', from: 'page' },
 ]
 
 /** Chips for blanks the app never fills: the person types them before it sends. */

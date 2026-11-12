@@ -50,6 +50,10 @@ A person waiting in **New** has a sort card. On a wide window it sits whole at t
 
 A lead is a person who wrote to us and has no record yet. Their thread offers {{button:blue|Book a visit}} and {{button:outline|Start an estimate}}. Book a visit makes them a customer and opens Add Job with their name and number filled in. Start an estimate makes them a customer and opens a new estimate for them. Their thread comes along either way.
 
+## Ask for photos of the problem
+
+Type `/show` in the reply box to text a person a link for photos and a short video. What they send shows on a First look card above their messages. [Ask a customer to show you the problem before you go out](/help/ask-a-customer-to-show-you-the-problem) shows how.
+
 
 Our estimate emails carry a button in the thread. Press {{button:outline|Open estimate #166}} to leave the thread and open that estimate. A change order's email opens the change order the same way. A text that carried the estimate's link carries the same button under its words.
 
