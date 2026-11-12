@@ -1359,8 +1359,8 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
         deadline,
       )
       if ('paused' in put) {
-        // Part way: no reason to show, and the next run goes on from where Drive says it stopped.
-        await tried(r, null)
+        // Part way: no reason to show, and no stamp. The cron calls again in five minutes for a file never tried or
+        // not tried lately, and the copy goes on from where Drive says it stopped.
         continue
       }
       const { error: kept } = await admin
