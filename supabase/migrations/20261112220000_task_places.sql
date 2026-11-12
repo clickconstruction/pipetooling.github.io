@@ -34,11 +34,12 @@ COMMENT ON COLUMN public.checklist_items.place_accuracy_m IS 'Task places (#328)
 COMMENT ON COLUMN public.checklist_items.place_set_by IS 'Task places (#328): who set the place.';
 COMMENT ON COLUMN public.checklist_items.place_set_at IS 'Task places (#328): when the place was set.';
 
--- A point is whole or absent, and on the globe.
+-- A point is whole or absent, and on the globe. Both numbers are asked for by name: a check passes when its answer
+-- is unknown, and a range test on a null is unknown, so half a point would otherwise slip through.
 ALTER TABLE public.checklist_items DROP CONSTRAINT IF EXISTS checklist_items_place_point_check;
 ALTER TABLE public.checklist_items ADD CONSTRAINT checklist_items_place_point_check CHECK (
   (place_lat IS NULL AND place_lng IS NULL)
-  OR (place_lat BETWEEN -90 AND 90 AND place_lng BETWEEN -180 AND 180)
+  OR (place_lat IS NOT NULL AND place_lng IS NOT NULL AND place_lat BETWEEN -90 AND 90 AND place_lng BETWEEN -180 AND 180)
 );
 
 -- A name, a margin, a setter and a day belong to a point. None stands without one.
