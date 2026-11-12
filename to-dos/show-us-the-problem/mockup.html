@@ -107,6 +107,7 @@
   .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   ol.tips { margin: 6px 0 0; padding-left: 20px; font-size: .82rem; color: var(--text-700); }
   ol.tips li { margin: 0 0 3px; }
+  .p.why { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: .82rem; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .chip { font-size: .76rem; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 10px; color: var(--text-700); background: var(--surface); }
   .chip.on { background: var(--bg-blue-tint); border-color: #2563eb; color: var(--text-link); }
@@ -182,6 +183,8 @@
   .strip { margin-top: 10px; border: 1px solid var(--border-blue); background: var(--bg-blue-tint); border-radius: 10px; padding: 9px 10px; }
   .push { margin: 10px 12px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 9px 11px; font-size: .8rem; box-shadow: 0 3px 10px rgba(0,0,0,.14); }
   .push b { display: block; color: var(--text-strong); }
+  pre.tree { margin: 0; font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-700); white-space: pre; overflow-x: auto; }
+  pre.tree mark { background: var(--new-tint); color: var(--new); font-weight: 700; padding: 0 3px; border-radius: 3px; outline: 1px solid var(--new); }
   ul.calls { margin: 10px 0 0; padding-left: 20px; max-width: 96ch; }
   ul.calls li { margin: 0 0 8px; }
   ul.calls b { color: var(--text-strong); }
@@ -195,7 +198,7 @@
     <p class="eyebrow">Punch list #319 · First look · drawn 2026-11-11 · nothing here is built</p>
     <h1>The customer shows us the problem before we come out</h1>
     <p>Someone calls or texts. The office texts back one link. The customer adds photos and a short video on a page with no sign-in. The office prices it from what it sees, and the tech sees it before the visit. <span class="key"></span>A violet outline marks what is new on a screen the app already has. Every name, number, price and picture is made up.</p>
-    <nav class="jump"><a href="#short">The short of it</a><a href="#customer">1 · The customer's phone</a><a href="#office">2 · The office</a><a href="#tech">3 · The tech</a><a href="#guard">What the page never shows</a><a href="#calls">The owner's calls</a></nav>
+    <nav class="jump"><a href="#short">The short of it</a><a href="#customer">1 · The customer's phone</a><a href="#office">2 · The office</a><a href="#tech">3 · The tech</a><a href="#drive">Where the files live</a><a href="#guard">What the page never shows</a><a href="#calls">The owner's calls</a></nav>
   </div>
   <div class="themes" role="group" aria-label="Theme">
     <button type="button" data-set="light" aria-pressed="true">Light</button>
@@ -224,12 +227,12 @@
       <li>Rosa sees them in Dana's thread and starts the estimate there.</li>
       <li>Jorge sees them before the visit, with the right parts on the truck.</li>
     </ol>
-    <p>The first build is steps 1 to 3 on one real call. The tech's part follows once the office has used it.</p>
+    <p>The first build needs no page at all: Rosa asks by text, and the pictures Dana texts back show as a First look. The page, the video and the tech's part follow.</p>
   </div>
 </div>
 
 <h2 id="customer">1 · The customer's phone <small>from the text to the thank-you</small></h2>
-<p class="lede">Four screens, each 375 wide. The page is the customer's, so it stays light whatever theme the app is in.</p>
+<p class="lede">Five screens, each 375 wide. The page is the customer's, so it stays light whatever theme the app is in.</p>
 <div class="row">
 
   <div class="col">
@@ -269,12 +272,13 @@
               <li>The label on the water heater or the fixture.</li>
               <li>A video of 10 to 20 seconds if it drips, runs or makes a noise.</li>
             </ol>
+            <p class="p why">The more information you give us, and the higher the quality of the photos and videos, the more accurate we can be, allowing us to get you the best service and fewer trips means a better price.</p>
           </div>
           <div class="foot"><b>Only Click Plumbing sees what you send.</b> Water running right now? Shut off the main and call (512) 555-0100.</div>
         </div>
       </div>
     </div>
-    <p class="say">No sign-in and no name on the page. The link is the key, like the estimate link. The page says who asked and nothing about Dana, her address or a price.</p>
+    <p class="say">No sign-in and no name on the page. The link is the key, like the estimate link. The page says who asked and nothing about Dana, her address or a price. The line under the four tips is the owner's own, added 2026-11-11: it tells the customer why good photos are worth their while.</p>
   </div>
 
   <div class="col">
@@ -308,6 +312,33 @@
       </div>
     </div>
     <p class="say">Each file goes up as it is picked, straight from the phone to storage in small pieces. A video never passes through the app's own servers, which is where a big file has stopped a function before.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap"><b>C2</b> · no signal</div>
+    <div class="frame" data-theme="light">
+      <div class="screen">
+        <div class="bar"><span class="url">my.clickplumbing.com/show/k7m2p9xq4d</span></div>
+        <div class="pad">
+          <div class="brand"><i></i>Click Plumbing<span>(512) 555-0100</span></div>
+          <div class="warn" style="margin-top:12px"><b>Saved on this phone.</b> No signal right now. It sends when the signal is back.</div>
+          <div class="card">
+            <div class="k">3 photos and 1 video kept · none sent yet</div>
+            <div class="grid">
+              <div class="ph"><span class="tag">kept</span></div>
+              <div class="ph b"><span class="tag">kept</span></div>
+              <div class="ph c"><span class="tag">kept</span></div>
+              <div class="ph vid b"><span class="play"></span><span class="tag">kept</span></div>
+            </div>
+            <div class="det" style="margin-top:6px">Keep this page open if you can. If it closes, open the link again and they are still here for 7 days.</div>
+            <div class="btnrow"><span class="btn sm">+ Add another</span><span class="btn sm">Try now</span></div>
+          </div>
+          <div class="btns"><div class="btn dead">Sends when the signal is back</div></div>
+          <div class="foot"><b>No luck with this page?</b> Reply to Rosa's text with the photos. They reach her the same way.</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Asked for by the owner. Every file is kept on the phone the moment it is picked, so nothing is lost under a house. Two limits: the link needs a signal once to open, and an iPhone sends nothing while the page is closed.</p>
   </div>
 
   <div class="col">
@@ -385,7 +416,7 @@
                 <span class="btn sm">Ask a tech…</span>
                 <span class="btn sm">Ask for more</span>
               </div>
-              <div class="det" style="margin-top:8px">Kept in the app until a job is made. Then the photos file into Dana's Customer Pictures folder as crew photos do.</div>
+              <div class="det" style="margin-top:8px">In Drive: Dana Whitfield › Customer supplied photos › 2026-11-11 · Kitchen</div>
             </div>
           </div>
         </div>
@@ -475,6 +506,47 @@
 
 </div>
 
+<h2 id="drive">Where the files live <small>Google Drive, in a folder of their own</small></h2>
+<p class="lede">The owner asked for Google Drive and for a Customer supplied photos folder on jobs and customers. Both, drawn against the tree as it is today.</p>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <pre class="tree">PipeTooling Jobs
+└ Dana Whitfield
+   └ 1187 · Whitfield kitchen sink
+      ├ Customer Pictures
+      ├ Plans
+      └ Team only
+         ├ Photos
+         └ Sent by us</pre>
+    <p>Crew photos land in Customer Pictures. Nothing files under the customer before a job exists.</p>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <pre class="tree">PipeTooling Jobs
+└ Dana Whitfield
+   ├ <mark>Customer supplied photos</mark>
+   │  └ <mark>2026-11-11 · Kitchen</mark>
+   └ 1187 · Whitfield kitchen sink
+      ├ Customer Pictures
+      ├ <mark>Customer supplied photos</mark>
+      ├ Plans
+      └ Team only
+         ├ Photos
+         └ Sent by us</pre>
+    <p>A look files under the customer first. When a job is made from it, its folder moves under the job and every link keeps working.</p>
+  </div>
+</div>
+<div class="tw">
+<table class="t">
+  <tr><th>The step</th><th>What happens</th></tr>
+  <tr><td>1 · From the phone</td><td>Straight to the app's own storage, which takes pictures and video only and refuses anything over the cap.</td></tr>
+  <tr><td>2 · To Drive</td><td>Within five minutes, by the sweep that files crew photos. A video is copied in pieces, so a big one never stops it.</td></tr>
+  <tr><td>3 · Kept</td><td>Drive holds the keeping copy. The app keeps its own to show the pictures and play the video, since a tech has no Drive access.</td></tr>
+  <tr><td>Not a customer yet</td><td>The files wait in the app. They file to Drive the moment the office names the caller.</td></tr>
+</table>
+</div>
+
 <h2 id="guard">What the page never shows, and what guards it</h2>
 <p class="lede">A text can be forwarded. So the link is treated as a key that opens very little.</p>
 <div class="tw">
@@ -484,7 +556,7 @@
   <tr><td>Someone guesses a code</td><td>Ten letters, the estimate link's own alphabet and its guard: 20 wrong tries in an hour from one place and the door locks for that place.</td></tr>
   <tr><td>A link left open forever</td><td>It closes after 7 days, or when the office closes the look. A closed link says so and gives the phone number.</td></tr>
   <tr><td>A huge or endless upload</td><td>A cap per link: 20 photos and 3 videos, each video 2 minutes at most. Only pictures and video are taken.</td></tr>
-  <tr><td>A weak signal</td><td>Files go up in small pieces and pick up where they stopped. A photo is shrunk on the phone first, as crew photos are.</td></tr>
+  <tr><td>A weak signal, or none</td><td>Every file is kept on the phone when it is picked and sends by itself when the signal is back. A video picks up at the piece it stopped on. A reply to the text with the photos is the way round.</td></tr>
   <tr><td>Nobody looks</td><td>It lands on the thread as a customer's line, so Needs a reply, the badge and the push all fire. The thank-you promises only the office's own hours.</td></tr>
   <tr><td>A price from photos that the visit changes</td><td>The estimate says it was priced from photos and that the tech confirms it at the home before work starts.</td></tr>
 </table>
@@ -500,8 +572,11 @@
   <li><b>6. What we promise back.</b> A look within office hours, said in the hours the app holds. Or: a clock, such as within an hour.</li>
   <li><b>7. The price from photos.</b> One price, with the line that the tech confirms it at the home. Or: two options to pick between, or never a price without a visit.</li>
   <li><b>8. The tech's part.</b> The office asks one tech by name. Or: every tech sees a shared list and whoever is free answers.</li>
-  <li><b>9. Where the files live.</b> In the app until a job exists, then photos to the customer's Drive folder and the video kept in the app for a year. Or: everything to Drive, or the video dropped after the job is paid.</li>
+  <li><b>9. Where the files live.</b> Answered: Google Drive, in Customer supplied photos. Left of it: how long the app keeps its own copy of a video for playing. A year. Or: until the job is paid, or for good.</li>
   <li><b>10. A caller who is not a customer yet.</b> The look hangs on their number's thread and makes no customer until the office names them. Or: make the customer when the link goes.</li>
+  <li><b>11. The folder's name.</b> <i>Customer supplied photos</i>, holding video too. Or: Customer supplied files.</li>
+  <li><b>12. A picture a customer texts in.</b> Saved from a look, it goes to Customer supplied photos. Or: every texted picture saved to a job goes there from now on.</li>
+  <li><b>13. When the new folder is made.</b> When something first lands in it. Or: on every new job up front.</li>
 </ul>
 <p class="note"><b>Before any code:</b> try it by hand on the next five calls. Ask each caller to text a photo to the company number. It lands in their thread today. That shows whether callers will do it and whether the office can price from it, for nothing.</p>
 

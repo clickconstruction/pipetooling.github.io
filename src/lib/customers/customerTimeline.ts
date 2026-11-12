@@ -974,13 +974,16 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
     const kindWords = lienKindWords(f.kind)
     const amount = f.amount != null ? Number(f.amount) : null
     const sends = f.sends.filter((s) => timelineDayOfDate(s.sentOn))
-    if (sends.length === 0) {
+    // An affidavit is filed with the clerk and its copies are mailed after (punch list #314): its sends are those copies, so the
+    // filing keeps its own line and each copy adds one. A notice is its sends, so they stand in for it.
+    const isAffidavit = f.kind === 'affidavit'
+    if (sends.length === 0 || isAffidavit) {
       add({ key: `lien:${f.id}`, ymd: timelineDayOfInstant(f.createdAt), side: 'office', kind: 'lien', jobId: f.jobId, title: `${kindWords} recorded`, amount, foldKey: `${kindWords} recorded` })
-      continue
+      if (sends.length === 0) continue
     }
     sends.forEach((s, i) => {
       const method = sendMethodWords(s.method)
-      const title = `${kindWords} ${method && method.includes('mail') ? 'mailed' : 'sent'}`
+      const title = `${kindWords}${isAffidavit ? ' copy' : ''} ${method && method.includes('mail') ? 'mailed' : 'sent'}`
       add({ key: `lien:${f.id}:${i}`, ymd: timelineDayOfDate(s.sentOn), side: 'office', kind: 'lien', jobId: f.jobId, title, amount, lines: [method ?? '', recipientWords(s.recipient) ?? ''], foldKey: title })
     })
   }

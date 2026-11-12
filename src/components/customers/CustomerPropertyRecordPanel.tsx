@@ -15,6 +15,7 @@ import {
 } from '../../lib/customers/propertyRecord'
 import { lookupPropertyRecord, propertyLookupErrorMessage, propertyLookupHoldLine, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { splitJobAddressForPrefill } from '../../lib/txLocalityAddressSplit'
+import { HOMESTEAD_QUESTION, HOMESTEAD_UNANSWERED_NOTE, homesteadAnswer } from '../../lib/customers/homesteadAnswer'
 
 /**
  * The property record panel (customer properties train, PR 1 — v2.3004): the
@@ -32,6 +33,8 @@ export type PropertyRecordDraft = PropertyRecordFields & {
   /** The owner's email and phone (v2.6497): where the courtesy notice before a lien reaches the owner. Absent on a row read before migration 20261104163131, so the draft writes neither back. */
   owner_email?: string
   owner_phone?: string
+  /** When a person answered the homestead question (punch list #305): '' while nobody has. Absent on a row read before migration 20261112080000; a yes or no pressed here sets it either way. */
+  homestead_answered_at?: string
 }
 
 type Props = {
@@ -50,6 +53,11 @@ const labelStyle: CSSProperties = { display: 'block', fontSize: '0.75rem', color
 const provStyle: CSSProperties = { fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: 2, display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600 }
 const srcTag: CSSProperties = { fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.6875rem', background: 'var(--bg-muted)', borderRadius: 3, padding: '0 0.3rem', color: 'var(--text-muted)' }
+
+/** A yes or no answer's pill: the kind pills' look, with a name of its own for a screen reader. */
+function answerPill(on: boolean): CSSProperties {
+  return { padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 6, border: on ? '2px solid #2563eb' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', fontWeight: on ? 600 : 400, color: 'var(--text-700)' }
+}
 
 function pill(label: string, on: boolean, onClick: () => void, title?: string) {
   return (
@@ -76,6 +84,9 @@ function pill(label: string, on: boolean, onClick: () => void, title?: string) {
 }
 
 export default function CustomerPropertyRecordPanel({ address, fields, onChange, autoLookup = false, compact = false, pasteFirst = false }: Props) {
+  // The homestead question (punch list #305): unanswered only on a draft that carries the answer's column and holds none.
+  const homesteadState = homesteadAnswer(fields.homestead, fields.homestead_answered_at === undefined ? null : fields.homestead_answered_at.trim() !== '')
+  const answerHomestead = (yes: boolean) => onChange({ homestead: yes, homestead_answered_at: new Date().toISOString() })
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [outcome, setOutcome] = useState<PropertyLookupOutcome | null>(null)
   const autoRan = useRef(false)
@@ -225,11 +236,14 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
                       }
                       if (r.mailingAddress) patch.owner_mailing_address = r.mailingAddress
                       if (r.propId) patch.parcel_id = r.propId
+                      // The county's own page answers the homestead question (punch list #305): its exemptions line, read by the person who pasted it.
                       if (r.homestead === 'yes') {
                         patch.property_kind = 'residential'
                         patch.homestead = true
+                        patch.homestead_answered_at = new Date().toISOString()
                       } else if (r.homestead === 'no' && fields.property_kind === 'residential') {
                         patch.homestead = false
+                        patch.homestead_answered_at = new Date().toISOString()
                       }
                       patch.parcel_source = fields.county.trim() ? `${fields.county.trim()} CAD (pasted)` : 'CAD page (pasted)'
                       patch.parcel_tax_year = ''
@@ -335,13 +349,16 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
       <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {pill('Residential', fields.property_kind === 'residential', () => onChange({ property_kind: fields.property_kind === 'residential' ? '' : 'residential' }))}
         {pill('Commercial', fields.property_kind === 'non_residential', () => onChange({ property_kind: fields.property_kind === 'non_residential' ? '' : 'non_residential', homestead: false }))}
-        {fields.property_kind === 'residential' ? (
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Owner-occupied homestead: lien rights need a recorded pre-work contract signed by both spouses (Tex. Prop. Code § 53.254)">
-            <input type="checkbox" checked={fields.homestead} onChange={(e) => onChange({ homestead: e.target.checked })} />
-            homestead
-          </label>
-        ) : null}
       </div>
+      {/* The homestead question (punch list #305): a yes or a no, never a box left unticked. Nobody asked is not a no. */}
+      {fields.property_kind === 'residential' ? (
+        <div data-homestead-question={homesteadState} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem' }} title="Owner-occupied homestead: lien rights need a recorded pre-work contract signed by both spouses (Tex. Prop. Code § 53.254)">
+          <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{HOMESTEAD_QUESTION}</span>
+          <button type="button" aria-label="Homestead: yes" aria-pressed={homesteadState === 'yes'} onClick={() => answerHomestead(true)} style={answerPill(homesteadState === 'yes')}>Yes</button>
+          <button type="button" aria-label="Homestead: no" aria-pressed={homesteadState === 'no'} onClick={() => answerHomestead(false)} style={answerPill(homesteadState === 'no')}>No</button>
+          {homesteadState === 'unanswered' ? <span style={{ color: 'var(--text-amber-800)' }}>{HOMESTEAD_UNANSWERED_NOTE}</span> : null}
+        </div>
+      ) : null}
       {proposal?.found && fields.property_kind === 'residential' ? (
         <div style={{ ...provStyle, marginTop: -4 }}>
           {proposal.homestead === 'likely'

@@ -248,6 +248,7 @@ when_to_read:
    - [refresh-stripe-invoice-links](#refresh-stripe-invoice-links)
    - [pay-link](#pay-link)
    - [box-read](#box-read)
+   - [first-look](#first-look)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [ar-returned-checks](#ar-returned-checks)
@@ -1013,6 +1014,10 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.6986 (server 0.76.0) — counsel-only material is read by the seat** (the owner, 2026-11-11, "for now"): migration `20261112090000` adds `counsel_only_held_from_seat()`, which answers false, to the six restrictive seat fences and to `dev_matter_doc_read`'s refusal, so a counsel-only evidence record, its files and indexed text, the correction links that touch one and a counsel-only matter document come back to the seat, each marked `counsel_only`. `get_person_file`'s `held` and `get_case_brief`'s `counsel_only_held` count only what a definer's count names that the read did not hand back (`_shared/devMcpCounselOnly.ts`). The Drive filer, `legal-portal`'s lock and print, and the `hr_agent` key are unchanged; `legal-portal` and `hr-evidence-drive` are redeployed only for the shared words and comments. Closing it again is the switch's body made `SELECT true`.
+
+> **v2.6976 (server 0.75.0) — a bid's Labor tab** (the bid train's PR 4, `to-dos/mcp-servers.md`): **`plan_bid_labor` / `apply_bid_labor`** (`_shared/devMcpBidLabor.ts`) write the estimate's boxes (`cost_estimates`, made when the bid has none), the hours on the counted fixtures' labor rows (`cost_estimate_labor_rows`: a row changed, or minted as the tab's sync mints it, with `source: typed` and the queue's note so the database's fill on a first sent date leaves them alone; a fixture nobody counts is held) and the five direct cost tables' lines, under RLS as the dev. The plan states the tab's "Direct cost of this bid" before and after through `computeBidCostBreakdown` from the kernel copy at the bid's own rate. It never teaches the labor book. Also in this PR: `plan_bid_takeoff` reads a row whose only asks are held as held, with each reason (found on a ZZ bid's dry run). No RPC, no migration. Ninety-five write verbs.
 
 > **v2.6968 (server 0.74.0) — a bid's takeoff, as the Takeoffs tab holds it** (the bid train's PR 3, `to-dos/mcp-servers.md`): **`plan_bid_takeoff` / `apply_bid_takeoff`** (`_shared/devMcpBidTakeoff.ts`) write the part lines on a count row (`bids_takeoff_rough_part_lines`, each as the tab's own save writes it: the quantity for one counted unit, the parts book's lowest price and its price row when no price is given, how the part is sold snapshotted, after the row's last line) and the quoted materials cost each (`bid_count_row_custom_costs`, upserted on the bid and the count row, source `quoted`), under RLS as the dev. One line a part on a row: changed, added, or the row rewritten whole with `replace`. The plan states the bid's materials before and after through `combinedMaterials` from the kernel copy. A row or a line with a fault is held with its reason and the rest goes on. No RPC, no migration. Ninety-three write verbs.
 
@@ -5857,6 +5862,24 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the staff stamp), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional), `GOOGLE_SERVICE_ACCOUNT_JSON` (the photo's bytes from Drive; without it a filed photo falls back to the bucket copy, which the sweep has usually deleted, so the page shows no photo).
 
 **Implementation**: [`supabase/functions/box-read/index.ts`](../supabase/functions/box-read/index.ts); the pure part — the code check, the payload and its client read — in [`_shared/boxPage.ts`](../supabase/functions/_shared/boxPage.ts), re-exported by [`src/lib/materials/boxPage.ts`](../src/lib/materials/boxPage.ts) and tested from `src/lib/materials/boxPage.test.ts`. **Deploy**: `supabase functions deploy box-read` right after the merge; until then a signed-out scan reads the gateway's refusal on the page.
+
+### first-look
+
+**Purpose** (punch list #319, the spike, **v2.6981**): the only thing that reads or writes a First look. A caller is sent a link and adds photos and a short video of the problem on the page with no sign-in ([`src/pages/ShowUs.tsx`](../src/pages/ShowUs.tsx)); the owner and the developers make the link and see what came in on the desk ([`src/pages/FirstLooks.tsx`](../src/pages/FirstLooks.tsx)). `verify_jwt = false`: the page's asks carry the link's ten-letter code, which is the capability, and the desk's asks carry a JWT the function checks itself.
+
+**The page's asks** (no sign-in):
+- `GET ?code=<ten letters>` → `{ ok, look: { askedBy, photos, videos, sentCount }, caps: { photos, videos, photoBytes, videoBytes }, office: { phone, open, closesWords, opensWords } }`. Who asked, how many files the link holds, what it may take, the office's number and hours. Never a name, an address, a price or a file. The first open stamps `opened_at` (not with `&preview=1`). **404** for a code that opens nothing, counted as a miss through the estimate link's guard (`recordEstimateLinkMiss`), **429** `locked` past 20 in the hour; **410** `closed` or `expired` with the office's number.
+- `POST { code, action: "sign", mime, bytes, name?, fileId? }` → `{ fileId, bucket, path, token, signedUrl }` after the caps (`firstLookSignRefusal`: 20 photos and 3 videos arrived, 30 and 6 upload addresses ever handed out, 8 MB a photo, 52,428,800 bytes a video, pictures and video only; **422** with the words and a `code`). A one-file upload address into the private bucket `first-look-files` (`createSignedUploadUrl`, upsert). The bytes go from the phone to storage: `signedUrl` for one request, `token` as `x-signature` on the resumable endpoint for an upload in pieces. With `fileId` the same file is signed again, for an upload that picks up after the two hours an address lasts.
+- `POST { code, action: "done", fileId, road, resumed, tookMs, seconds? }` → `{ ok, photos, videos }`. The object's size is read from the bucket's listing and its first 32 bytes through a one-minute signed link with a `Range` header, never the whole file; anything whose first bytes are not a picture or a video of the declared kind (`firstLookSniff`) is deleted and refused **422**. **409** `not_there` while the object has not landed.
+- `POST { code, action: "send", place?, words? }` → `{ ok, thanks: { got, steps } }`. Stamps `sent_at`, adds one to `sent_count`, keeps the two fields, and when the look is tied to a contact writes one event line on their thread (`channel 'event'`, `direction 'team'`, `who_text 'The app'`, keyed `look:<id>:sent:<n>` on `quo_id`, duplicates ignored). The thank-you's first step is the office's own hours (`messages_office_hours_v1` through `officeOpen` and `nextOpening`).
+
+**The desk's asks** (a signed-in caller for whom `is_master_or_dev()` is true; anyone else **403**): `desk.list` (the newest fifty looks with their files, each finished file with a signed link good for an hour), `desk.mint { contactId?, label? }` → `{ code, lookId }` (ten letters from `23456789abcdefghjkmnpqrstuvwxyz`, no letter likelier than another, only the SHA-256 kept, good for 7 days, five tries on a clash), `desk.close { lookId }`, `desk.looked { lookId }`, `desk.remove { lookId }` (the bucket's objects, then the row and its files).
+
+**Rate limit**: 240 calls a minute per client address and 1,200 across the isolate, in memory, best effort. A page sending 23 files makes about fifty calls.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the desk caller's own client), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional).
+
+**Implementation**: [`supabase/functions/first-look/index.ts`](../supabase/functions/first-look/index.ts); the pure part — the code, the caps, the first-bytes check, a look's state, every word — in [`_shared/firstLook.ts`](../supabase/functions/_shared/firstLook.ts), re-exported by [`src/lib/firstLook/look.ts`](../src/lib/firstLook/look.ts) and tested from `src/lib/firstLook/look.test.ts`. The tables and the bucket are `docs/migrations/20261112060000_first_looks.md`. **Deploy**: `supabase functions deploy first-look` after the migration is pushed.
 
 ### sync-mercury-transactions
 

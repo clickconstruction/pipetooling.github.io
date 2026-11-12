@@ -343,9 +343,9 @@ describe('changes 6 to 11 · the picture, the clerks, who to ask, lines to write
     expect(lienHelpAfterSteps('Alder', true)[0]).toContain('The clerk charges a fee for each paper.')
     expect(typed.join(' ').match(/<span class="lien-help-write"><\/span>/g)).toHaveLength(3)
     expect(textOf(typed[1] as string)).toBe('Write on the stamped copy, and here. Recording number Filed on')
-    // Record service takes a day. The sheet no longer says to type a tracking number the form has no place for.
+    // Record service takes the day, and since change 5 each copy's certified mail number and a photo of its receipt. The sheet says what the form asks.
     expect(typed.join(' ')).not.toContain('tracking')
-    expect(textOf(typed[4] as string)).toBe('Press Record service… and set the day the copies were mailed.')
+    expect(textOf(typed[4] as string)).toBe('Press Record service… and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.')
     expect(lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026' })).toContain('<th>Recording no. · day filed</th>')
     for (const step of [...lienHelpAfterSteps('Alder', true), ...lienHelpAfterSteps('', false)]) expect(plainWordsFailures(textOf(step)), step).toEqual([])
   })
