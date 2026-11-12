@@ -180,4 +180,21 @@ describe('Show us the problem', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(io.read).toHaveBeenCalledTimes(2))
   })
+
+  it('the sample’s done state opens on its thank-you (What customers see)', async () => {
+    const thanks = { got: 'Got it. Rosa has your 3 photos and 1 video.', steps: ['Rosa looks at them today, before 5 PM.', 'We text you at this number with a price or a time to come out.'] }
+    const io = fakeIo({ kind: 'open', payload: { ...payload(), look: { askedBy: 'Rosa', photos: 3, videos: 1, sentCount: 1 }, thanks } })
+    mount(io, 'sample-done')
+    expect(await screen.findByText('Got it. Rosa has your 3 photos and 1 video.')).toBeTruthy()
+    expect(screen.getByText('Rosa looks at them today, before 5 PM.')).toBeTruthy()
+    expect(io.read).toHaveBeenCalledWith('sample-done')
+    expect(io.send).not.toHaveBeenCalled()
+  })
+
+  it('the sample opens as the page before anything is added', async () => {
+    const io = fakeIo({ kind: 'open', payload: payload() })
+    mount(io, 'sample')
+    expect(await screen.findByRole('heading', { name: FIRST_LOOK_WORDS.heading })).toBeTruthy()
+    expect(io.read).toHaveBeenCalledWith('sample')
+  })
 })

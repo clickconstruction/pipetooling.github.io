@@ -58,8 +58,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
   { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: what is in a cage or box on a job site, for whoever scans its QR. Not a customer surface.' },
   { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
-  // #319 (v2.6981), the First look spike: a look's link. Only the owner and the developers can make one while it is a spike, so no customer journey has it yet; it joins the homeowner's steps when the feature is built.
-  { kind: 'route', ref: '/show/:code', audience: 'staff', exempt: 'The First look spike: the page a look\'s link opens to take photos and a video of a problem. Links are made by the owner and the developers alone while it is being tried, so it is not yet a customer surface.' },
+  // #319: a First look's link, the page where a caller adds photos and a video of the problem. On the tab since v2.7017, with the ask that carries it.
+  { kind: 'route', ref: '/show/:code', audience: 'homeowner', steps: [H('first-look-page'), H('first-look-thanks')] },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },

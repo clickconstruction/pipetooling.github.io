@@ -10,7 +10,8 @@ describe('customerJourneys (What customers see)', () => {
     expect(journeys.map((j) => j.id)).toEqual(['homeowner', 'gc', 'sub', 'house', 'firm'])
     const ids = journeys.flatMap((j) => j.steps.map((s) => s.id))
     expect(new Set(ids).size).toBe(ids.length)
-    expect(journeys[0]!.steps.map((s) => s.id).slice(0, 4)).toEqual(['estimate-email', 'estimate-page', 'estimate-terms', 'estimate-thankyou'])
+    // Punch list #319: the First look comes before the estimate, as a caller meets it.
+    expect(journeys[0]!.steps.map((s) => s.id).slice(0, 7)).toEqual(['first-look-text', 'first-look-page', 'first-look-thanks', 'estimate-email', 'estimate-page', 'estimate-terms', 'estimate-thankyou'])
   })
   it('every email step is on the list the tab builds samples from (v2.3617)', () => {
     for (const j of journeys) for (const s of j.steps) if (s.render.kind === 'email') expect(SAMPLE_EMAIL_IDS).toContain(s.render.email)
@@ -65,8 +66,8 @@ describe('customerJourneys (What customers see)', () => {
       expect(existsSync(resolve(__dirname, `../content/help/${s.guide}.md`)), `${s.id} → ${s.guide}`).toBe(true)
     }
   })
-  it('lands on the estimate email first', () => {
-    expect(firstRenderableStep(journeys)).toEqual({ journeyId: 'homeowner', stepId: 'estimate-email' })
+  it('lands on the first page a caller meets: Show us the problem (punch list #319; the estimate email before it)', () => {
+    expect(firstRenderableStep(journeys)).toEqual({ journeyId: 'homeowner', stepId: 'first-look-page' })
     expect(findStep(journeys, 'sub', 'nope')).toBeNull()
   })
   it('captions read in office words — no function names or route paths where the office reads them (v2.3518)', () => {

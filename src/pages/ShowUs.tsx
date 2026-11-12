@@ -157,6 +157,8 @@ export default function ShowUs({ io = showUsIo }: { io?: ShowUsIo }) {
       setView(answer)
       if (answer.kind !== 'open') return
       setCounts({ photos: answer.payload.look.photos, videos: answer.payload.look.videos })
+      // The sample's done state (What customers see) opens on its thank-you. A real look never carries one.
+      if (answer.payload.thanks) setThanks(answer.payload.thanks)
       await store.sweep(Date.now() - KEPT_MAX_AGE_MS)
       const kept = await store.list(code)
       if (!live) return
