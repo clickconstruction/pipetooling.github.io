@@ -21,7 +21,8 @@ export interface LookDoors {
   /** A customer or a lead: the two doors are theirs. */
   has: boolean
   book: (words: string | null) => Promise<void>
-  startEstimate: (words: string | null) => Promise<void>
+  /** `firstLookId` is the look the press is on, so the estimate remembers it (PR 5). */
+  startEstimate: (words: string | null, firstLookId?: string | null) => Promise<void>
   pressing: boolean
 }
 
@@ -48,12 +49,14 @@ export function useLookDoors(contact: Contact, io?: LeadDoorsIo): LookDoors {
   )
 
   const startEstimate = useCallback(
-    async (words: string | null) => {
-      if (!isCustomer || !contact.customerId) return lead.startEstimate({ contactId: contact.id, contact, words })
+    async (words: string | null, firstLookId: string | null = null) => {
+      if (!isCustomer || !contact.customerId) return lead.startEstimate({ contactId: contact.id, contact, words, firstLookId })
       setBusy(true)
       try {
         if (!userId) throw new Error(LEAD_DOOR_WORDS.noSignIn)
-        const { estimateNumber } = await (io ?? defaultLeadDoorsIo()).startEstimate(contact.customerId, { userId, role })
+        const by = { userId, role }
+        const doorsIo = io ?? defaultLeadDoorsIo()
+        const { estimateNumber } = firstLookId ? await doorsIo.startEstimate(contact.customerId, by, { firstLookId }) : await doorsIo.startEstimate(contact.customerId, by)
         closeThread()
         navigate(`/estimates/${estimateNumber}`, { state: { freshEstimateDraft: true } })
       } catch (e) {

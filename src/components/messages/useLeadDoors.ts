@@ -24,6 +24,8 @@ export interface LeadDoorTarget {
   contactId: string
   contact?: Pick<Contact, 'id' | 'name' | 'channels'> | null
   words: string | null
+  /** The First look the estimate is started from, when the press is on a look's card (#319 PR 5). */
+  firstLookId?: string | null
 }
 
 export interface LeadDoors {
@@ -84,7 +86,9 @@ export function useLeadDoors(io?: LeadDoorsIo, read?: (contactId: string) => Pro
       setPressing(`estimate ${target.contactId}`)
       try {
         const { customerId } = await convert(target)
-        const { estimateNumber } = await (io ?? defaultLeadDoorsIo()).startEstimate(customerId, { userId: userId ?? '', role })
+        const by = { userId: userId ?? '', role }
+        const doorsIo = io ?? defaultLeadDoorsIo()
+        const { estimateNumber } = target.firstLookId ? await doorsIo.startEstimate(customerId, by, { firstLookId: target.firstLookId }) : await doorsIo.startEstimate(customerId, by)
         closeThread()
         navigate(`/estimates/${estimateNumber}`, { state: { freshEstimateDraft: true } })
       } catch (e) {
