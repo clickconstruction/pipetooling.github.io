@@ -42,6 +42,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
+import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadQuestionOpen } from '../../lib/customers/homesteadAnswer'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
 import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
@@ -331,6 +332,7 @@ export default function LienFilingTabs({
 
   // ---------- gates ----------
 
+  const homesteadUnanswered = homesteadQuestionOpen({ propertyKind: property.propertyKind, homestead: property.homestead, answered: property.homesteadAnswered })
   // Punch list #314: a mechanic's lien does not attach to public property. Every name the record gives is asked, not the one the paper prints.
   const ownerPublic = lienOwnerIsPublic([property.owner.ownerName, property.owner.ownerCompany])
   const affidavitGates: { ok: boolean; label: string }[] = [
@@ -343,7 +345,11 @@ export default function LienFilingTabs({
     // Punch list #305: the paper gives the hiring party's and the original contractor's last known address, both the GC on a job under one.
     contractorAddressGate({ isSub, hasAddress: originalContractorAddressRead ? Boolean(originalContractorAddress.trim()) : undefined }),
     { ok: !isSub || liveNotices.length > 0, label: isSub ? `§ 53.056 notice recorded${liveNotices.length > 0 ? ` — ${liveNotices.length} on file` : ''}` : 'No monthly notice required (original contractor)' },
-    { ok: !property.homestead, label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : 'Not a homestead' },
+    // Punch list #305: nobody asked is not a no. A residential property holds until the homestead question has a yes or a no on its record.
+    {
+      ok: !property.homestead && !homesteadUnanswered,
+      label: property.homestead ? 'Homestead: lien rights require a pre-work contract signed by both spouses and RECORDED with the county (§ 53.254) — the app cannot paper over this; talk to your attorney' : homesteadUnanswered ? HOMESTEAD_QUESTION_GATE_LABEL : 'Not a homestead',
+    },
   ]
   const affidavitReady = affidavitGates.every((g) => g.ok)
   const noticeCheckLines = useMemo(() => {

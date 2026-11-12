@@ -3,6 +3,7 @@ import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, PUBLIC_OWNER_DESK_SENTENCE, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
 import { ownerKind } from './ownerConfirm'
 import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienDesk'
+import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadAnsweredOnRow, homesteadQuestionOpen } from '../customers/homesteadAnswer'
 
 /**
  * The Lien desk's second kind (pure kernel): the § 53.052 affidavit — one
@@ -13,7 +14,9 @@ import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienD
  * contractor also needs that contractor's address on file (punch list #305):
  * § 53.054(a)(4) and (a)(5) ask for the hiring party's and the original
  * contractor's last known address, as the app reads them, and on a job under
- * a GC both are the GC. The same draft → approve → file flow as notices;
+ * a GC both are the GC. A residential property also needs the homestead
+ * question answered, yes or no: the flag is false by default, and nobody asked
+ * must not read as no. The same draft → approve → file flow as notices;
  * "sent" means the affidavit was filed with the clerk.
  */
 
@@ -39,6 +42,12 @@ export type LienAffidavitRow = {
    */
   has_contractor_address?: boolean | null
   /**
+   * Whether a person answered the homestead question on the job's property record (punch list #305, migration
+   * 20261112080000). Not from the RPC: the desk fills it from the property rows it reads (`withHomesteadAnswer`).
+   * Absent, nobody read the answer and the gate does not judge, as before the migration is pushed.
+   */
+  homestead_answered?: boolean | null
+  /**
    * Whether the property record names a public body as the owner (punch list #314). Not from the RPC: the desk fills
    * it from the property rows it reads (`withPublicOwner`). Absent, nobody read the record and the gate does not judge.
    */
@@ -61,7 +70,7 @@ export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label
   { key: 'missed', label: 'Missed' },
 ]
 
-export type LienAffidavitGateKey = 'owner' | 'public_owner' | 'legal' | 'contractor' | 'notice' | 'homestead'
+export type LienAffidavitGateKey = 'owner' | 'public_owner' | 'legal' | 'contractor' | 'notice' | 'homestead' | 'homestead_answer'
 
 export type LienAffidavitGate = { key: LienAffidavitGateKey; ok: boolean; label: string }
 
@@ -76,6 +85,32 @@ export function contractorAddressGate(f: { isSub: boolean; hasAddress: boolean |
   if (!f.isSub) return { key: 'contractor', ok: true, label: 'No general contractor to name (contracted with the owner)' }
   if (f.hasAddress === false) return { key: 'contractor', ok: false, label: 'The general contractor has no address on its customer record. The affidavit gives its last known address (§ 53.054)' }
   return { key: 'contractor', ok: true, label: "The general contractor's last known address" }
+}
+
+/**
+ * The homestead slot of the gate list (punch list #305), one line with three answers. Marked homestead: the hold
+ * that was always there, the attorney's (`homestead`). A residential property nobody answered for: a hold of its
+ * own (`homestead_answer`), cleared by a yes or a no on the property record; a yes then holds as a homestead.
+ * Otherwise *Not a homestead*. The key says which hold it is, so what reads `homestead` (the courtesy notice, the
+ * share) never takes an unanswered question for a homestead.
+ */
+export function homesteadGate(f: { homestead: boolean; propertyKind: string | null | undefined; answered: boolean | null | undefined }): LienAffidavitGate {
+  if (f.homestead) return { key: 'homestead', ok: false, label: 'Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney' }
+  if (homesteadQuestionOpen(f)) return { key: 'homestead_answer', ok: false, label: HOMESTEAD_QUESTION_GATE_LABEL }
+  return { key: 'homestead', ok: true, label: 'Not a homestead' }
+}
+
+/**
+ * A row with the homestead answer filled from the property rows the desk read: the job's linked record, by the
+ * link the RPC joins on (`jobs_ledger.customer_address_id`). A job with no linked record, or whose record was not
+ * read, is left as it was, and so is every row when the records do not carry the column yet.
+ */
+export function withHomesteadAnswer<R extends Pick<LienAffidavitRow, 'job_id'>>(rows: ReadonlyArray<R>, addressIdByJob: Readonly<Record<string, string | null | undefined>>, addressesById: Readonly<Record<string, unknown>>): Array<R & { homestead_answered?: boolean | null }> {
+  return rows.map((r) => {
+    const addressId = addressIdByJob[r.job_id]
+    const answered = addressId ? homesteadAnsweredOnRow(addressesById[addressId]) : null
+    return answered == null ? { ...r } : { ...r, homestead_answered: answered }
+  })
 }
 
 /**
@@ -97,9 +132,9 @@ export function ownerGate(f: { hasOwner: boolean; publicOwner: boolean | null | 
   return { key: 'owner', ok: f.hasOwner, label: 'Owner of record with a mailing address' }
 }
 
-/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, and a public owner's, which is a private owner. */
+/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, a public owner's, which is a private owner, and the homestead question's, which is its answer. */
 export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
-  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key
+  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key === 'homestead_answer' ? 'the homestead answer' : key
 }
 
 /**
@@ -149,13 +184,13 @@ export type LienAffidavitQueue = {
 
 const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
 
-export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address' | 'owner_public'>): LienAffidavitGate[] {
+export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address' | 'owner_public'> & Partial<Pick<LienAffidavitRow, 'property_kind' | 'homestead_answered'>>): LienAffidavitGate[] {
   return [
     ownerGate({ hasOwner: r.has_owner, publicOwner: r.owner_public }),
     { key: 'legal', ok: r.has_legal, label: 'County + legal description on the property record' },
     contractorAddressGate({ isSub: r.is_sub, hasAddress: r.has_contractor_address }),
     { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job — a late one counts while this window is open' : 'No monthly notice required (contracted with the owner)' },
-    { key: 'homestead', ok: !r.homestead, label: r.homestead ? 'Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney' : 'Not a homestead' },
+    homesteadGate({ homestead: r.homestead, propertyKind: r.property_kind, answered: r.homestead_answered }),
   ]
 }
 

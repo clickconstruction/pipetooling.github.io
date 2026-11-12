@@ -14,9 +14,18 @@ export async function savePropertyKind(customerAddressId: string, kind: Property
   await withSupabaseRetry(async () => await supabase.from('customer_addresses').update(patch as never).eq('id', customerAddressId), 'save property kind')
 }
 
-/** The Homestead tick beside a residential kind. */
+/**
+ * The Homestead tick beside a residential kind. A tick or an untick is a person's answer, so it stamps
+ * `homestead_answered_at` (punch list #305). The column lands with migration 20261112080000: when the stamped
+ * write is refused, the tick is saved without the stamp, as it was before the column.
+ */
 export async function savePropertyHomestead(customerAddressId: string, homestead: boolean): Promise<void> {
-  await withSupabaseRetry(async () => await supabase.from('customer_addresses').update({ homestead, updated_at: new Date().toISOString() } as never).eq('id', customerAddressId), 'save homestead')
+  const now = new Date().toISOString()
+  try {
+    await withSupabaseRetry(async () => await supabase.from('customer_addresses').update({ homestead, homestead_answered_at: now, updated_at: now } as never).eq('id', customerAddressId), 'save homestead')
+  } catch {
+    await withSupabaseRetry(async () => await supabase.from('customer_addresses').update({ homestead, updated_at: now } as never).eq('id', customerAddressId), 'save homestead (without the answer stamp)')
+  }
 }
 
 /**

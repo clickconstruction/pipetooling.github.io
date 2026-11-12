@@ -122,6 +122,8 @@ describe('lienFootBlockedSentence (v2.4797)', () => {
     expect(lienAffidavitFootBlockedSentence({ key: 'homestead', label: '' })).toContain('§ 53.254')
     expect(lienAffidavitFootBlockedSentence({ key: 'contractor', label: '' })).toBe("Don't file yet. Add the general contractor's address on its customer record first.")
     expect(lienAffidavitGateShortWords({ key: 'contractor' })).toBe('no address for the general contractor')
+    expect(lienAffidavitFootBlockedSentence({ key: 'homestead_answer', label: '' })).toBe("Don't file yet. Answer whether this home is the owner's homestead on the property record first.")
+    expect(lienAffidavitGateShortWords({ key: 'homestead_answer' })).toBe('homestead question not answered')
     expect(lienAffidavitFootBlockedSentence({ key: 'public_owner', label: '' })).toBe("Don't file yet. This is public property, so no lien can be filed. Ask the attorney about the payment bond.")
     expect(lienAffidavitGateShortWords({ key: 'public_owner' })).toBe('public property')
     // The notice's own gate asks every name too (punch list #314): the printed name can be an attention line.
