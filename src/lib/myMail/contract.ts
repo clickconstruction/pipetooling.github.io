@@ -266,10 +266,56 @@ export interface MyMailTagOk {
   filed?: number
 }
 
-/** Take a conversation back off its job. */
+/**
+ * Take a conversation back off its job. The dev seat's door adds `as`, the login whose box the conversation is in, and
+ * `plan`, which answers what the untag would do (`MyMailUntagPlanOk`) and writes nothing, the row's mark included; a
+ * person's own press carries neither. The seat takes off only a tag the seat made.
+ */
 export interface MyMailUntagRequest {
   action: 'untag'
   threadId: string
+  plan?: boolean
+  as?: string
+}
+
+/** Why one of the person's lines stays through an untag: the office keeps a promise, a highlight or what we owe on it. */
+export type MyMailUntagHeldWhy = 'promise' | 'highlight' | 'owed'
+
+/**
+ * What the seat's untag clears beyond the lines, and what it leaves, so nothing still shows who was written to: the
+ * ties that put a person on the job's people (`contact_jobs`) and the contacts the tag made for a sender nobody knew.
+ * `ties` and `contacts` go. `tiesLeft` are ties that stay though the person keeps no line on the job (made before the
+ * tag, or starred). `contactsLeftEmpty` are contacts that stay with no line at all (known ones, or made before the tag).
+ */
+export interface MyMailUntagSweep {
+  ties: string[]
+  tiesLeft: number
+  contacts: string[]
+  contactsLeftEmpty: number
+}
+
+/** The plan of an untag, written nowhere: what goes, what is held and why, what a matter keeps, and what is left. */
+export interface MyMailUntagPlanOk {
+  ok: true
+  plan: true
+  threadId: string
+  account: string
+  /** The job the conversation is on, as its key, and when it was tagged. */
+  jobKey: string
+  taggedAt: string | null
+  /** The person's own lines of the conversation that go, each with its files and its raw copy. */
+  remove: string[]
+  /** Their lines that stay on the job with their files, each with why. */
+  held: Array<{ id: string; why: MyMailUntagHeldWhy }>
+  /** The boxes' lines the tag tied, which come off the job and stay in Messages. */
+  untie: string[]
+  /** The copied files that leave the bucket with the lines that go. */
+  files: number
+  /** The live documents a legal matter made from the lines that go: the matter keeps its own copies. */
+  keptForMatter: number
+  /** Whether the tag's grey line stands on the thread; it goes. */
+  greyLine: boolean
+  sweep: MyMailUntagSweep
 }
 
 /**
@@ -283,6 +329,9 @@ export interface MyMailUntagOk {
   removed: number
   keptForMatter: boolean
   held?: number
+  /** The seat's untag alone: the boxes' lines untied, and what it cleared and left beyond the lines, as counts. */
+  untied?: number
+  swept?: { ties: number; tiesLeft: number; contacts: number; contactsLeftEmpty: number }
 }
 
 /** What the tab posts to the function. */
