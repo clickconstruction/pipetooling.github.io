@@ -61,7 +61,8 @@ describe('BridgeWeek', () => {
     // A move with a door is a link to it.
     expect(screen.getByRole('link', { name: /Bill the 11 finished jobs/ }).getAttribute('href')).toBe('/jobs?tab=stages')
     // Until a first call exists, the desk says how the week runs.
-    expect(screen.getByTestId('bridge-week-how').textContent).toContain('Monday you make the call.')
+    // The side panel that said how the week runs is off the page.
+    expect(screen.queryByTestId('bridge-week-how')).toBeNull()
     // Take the third move off, rename the second move's person, record.
     fireEvent.click(screen.getByRole('button', { name: /Take off the call: Take bank sorting/ }))
     fireEvent.click(screen.getByRole('button', { name: /Sam does: Price the 4 jobs/ }))

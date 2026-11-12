@@ -7,6 +7,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidBoardEstimatingPulseSection } from './BidBoardEstimatingPulseSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from './BidBoardWeeklyEstimatorLaborDevSection'
 import { BidBoardSentShareDevSection } from './BidBoardSentShareDevSection'
+import { BidBoardWonBySizeSection } from './BidBoardWonBySizeSection'
 
 type BidBoardEstimatingHealthSectionProps = {
   weeklySentSummaries: ReturnType<typeof buildBidBoardWeeklySentSummaries>
@@ -42,6 +43,10 @@ export function BidBoardEstimatingHealthSection({
   return (
     <Fragment>
       <BidBoardEstimatingPulseSection filteredBids={filteredBids} openBid={openBid} />
+      {/* Spike candidate 8: what we win, by the size of the bid, under The pulse. */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <BidBoardWonBySizeSection filteredBids={filteredBids} />
+      </div>
       {canSeeEstimatingLabor && (
         <Fragment>
           <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} wonDollarsPerWeek={wonDollarsPerWeek} />

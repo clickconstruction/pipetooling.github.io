@@ -54,6 +54,14 @@ import { buildFlowStrip } from '../lib/bridge/flowStrip'
 import type { CallPerson, MoveMark } from '../lib/bridge/callPeople'
 import { loadCallPeople, loadMoveMarks } from '../lib/bridge/callPeopleIo'
 import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
+import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
+import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
+import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
+import { buildBidWins, buildMarketWorth, type BidSent } from '../lib/bridge/bidWins'
+import { loadBidsSent } from '../lib/bridge/loadBidWins'
+import { leftOutKey, type LeftOutRule } from '../lib/bridge/leftOut'
+import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
+import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -169,6 +177,7 @@ export default function Bridge() {
   // The Monday sheet's `?view=monday` (v2.5224) retired with it: the first screen is the sheet.
   const [searchParams, setSearchParams] = useSearchParams()
   const doorParam = searchParams.get('door')
+  const pipeAcross = searchParams.get('pipe') === 'across'
   // Where to land after a door opens: the doors row, or a part inside the door.
   const [doorScroll, setDoorScroll] = useState<{ id: string; n: number } | null>(null)
   // Bills and receipts show fourteen days until this is pressed.
@@ -196,12 +205,70 @@ export default function Bridge() {
   const [pickable, setPickable] = useState<CallPerson[]>([])
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
-  const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
   /** ZZ test jobs leave the Bridge's own reads, the Bill pile and the Bill desk for everyone but a dev who shows them, as on the Dashboard (v2.5834, v2.6807). */
   const hideZz = useZzTestJobsHidden(role)
   /** The ids every Bridge read takes (v2.6813): the shared read while ZZ jobs are hidden, null for a dev who shows them. */
-  const readZzTestJobIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
-  const zzKey = hideZz ? 'hide' : 'show'
+  // Spike candidate 7: what the Bridge leaves out, a list set on the page (a development, a customer or an address). The
+  // jobs it names leave through the same ids as the ZZ test jobs, so they are left out exactly where a test job is.
+  const [leftOutRead, setLeftOutRead] = useState<LeftOutRead | null>(null)
+  const [leftOutRules, setLeftOutRules] = useState<LeftOutRule[] | null>(null)
+  const [leftOutSaved, setLeftOutSaved] = useState(true)
+  const [leftOutJobIds, setLeftOutJobIds] = useState<ReadonlySet<string> | null>(null)
+  useEffect(() => {
+    if (!isOwnerOrDev(role) || !user?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const read = await loadLeftOut(supabase)
+        if (cancelled) return
+        setLeftOutRead(read)
+        setLeftOutRules(read.rules)
+        setLeftOutSaved(!read.isDefault)
+      } catch {
+        // A list that cannot be read leaves nothing out, and the page still loads.
+        if (!cancelled) setLeftOutRules([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id])
+  useEffect(() => {
+    if (!leftOutRules) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const ids = await loadLeftOutJobIds(supabase, leftOutRules)
+        if (!cancelled) setLeftOutJobIds(ids)
+      } catch {
+        if (!cancelled) setLeftOutJobIds(new Set())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [leftOutRules])
+  const fin = useDashboardFinancials(isOwnerOrDev(role) && leftOutJobIds != null, refreshKey, role, user?.id ?? null, leftOutJobIds)
+  /** The ids every Bridge read takes: the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
+  const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
+    const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
+    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+  }, [hideZz, user?.id, leftOutJobIds])
+  const zzKey = `${hideZz ? 'hide' : 'show'}:${leftOutRules ? leftOutKey(leftOutRules) : ''}`
+  // The page follows a change at once and the list is saved behind it. A save that is refused says why and holds for the visit.
+  const changeLeftOut = useCallback(
+    async (next: LeftOutRule[]) => {
+      setLeftOutRules(next)
+      try {
+        await saveLeftOut(supabase, next)
+        setLeftOutSaved(true)
+      } catch (e) {
+        showToast(`Not saved, so it holds until you leave the page. ${formatErrorMessage(e)}`, 'error', 5000)
+      }
+    },
+    [showToast],
+  )
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -229,13 +296,14 @@ export default function Bridge() {
   }, [role, user?.id, refreshKey])
 
   useEffect(() => {
-    if (!isOwnerOrDev(role) || !user?.id) return
+    // The left-out list is read first, so the page is read once, without the jobs it names.
+    if (!isOwnerOrDev(role) || !user?.id || leftOutJobIds == null) return
     let cancelled = false
     setLoading(true)
     setError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const d = await loadBridgeData(supabase, { zzTestJobIds })
         if (cancelled) return
@@ -251,7 +319,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey, hideZz])
+  }, [role, user?.id, refreshKey, leftOutJobIds, readZzTestJobIds])
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -412,7 +480,7 @@ export default function Bridge() {
     setBillError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const v = await loadBillPileJobs(supabase, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         if (!cancelled) setBillJobs(v)
@@ -423,7 +491,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, hideZz, user?.id])
+  }, [data, readZzTestJobIds])
   const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
 
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
@@ -458,6 +526,49 @@ export default function Bridge() {
   }, [data, readZzTestJobIds])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
 
+  // Spike candidate 5: estimates after the won coefficient. Every estimate ever sent, read once the page's data is in.
+  // A read that fails leaves the line off the pipe; nothing else on the page waits on it.
+  const [estimatesSent, setEstimatesSent] = useState<EstimateSent[] | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const v = await loadEstimatesSent(supabase, { leftOut: leftOutRules ?? [] })
+        if (!cancelled) setEstimatesSent(v)
+      } catch {
+        if (!cancelled) setEstimatesSent(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, leftOutRules])
+  const estimateWins = useMemo(() => (data && estimatesSent ? buildEstimateWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, estimates: estimatesSent }) : null), [data, estimatesSent])
+
+  // Spike candidate 6: bids after the won coefficient, the same way. Every bid ever sent and the jobs made from them.
+  const [bidsSent, setBidsSent] = useState<BidSent[] | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const zzTestJobIds = await readZzTestJobIds()
+        if (cancelled) return
+        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: leftOutRules ?? [] })
+        if (!cancelled) setBidsSent(v)
+      } catch {
+        if (!cancelled) setBidsSent(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, readZzTestJobIds, leftOutRules])
+  const bidWins = useMemo(() => (data && bidsSent ? buildBidWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: bidsSent }) : null), [data, bidsSent])
+  // What Market is worth: both kinds of ask, each through its own coefficient. It waits for both reads, so the pipe is sized once.
+  const marketWorth = useMemo(() => (bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null), [bidWins, estimateWins])
+
   // The Bill desk (punch list #192, v2.5930): the leaks, the fast lane and the scorecard, read once when the window first opens.
   // The kernel memo sits after the stage flow below, since its facts read the Bill card's paces and weeks.
   const [billOpen, setBillOpen] = useState(false)
@@ -472,7 +583,7 @@ export default function Bridge() {
     setBillReadsError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id), zzTestJobIds })
         if (!cancelled) setBillReads({ forKey: key, reads })
@@ -483,7 +594,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [billOpen, data, billPile, billReads, billReadKey, hideZz, user?.id])
+  }, [billOpen, data, billPile, billReads, billReadKey, readZzTestJobIds])
 
   // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
   const [buildOpen, setBuildOpen] = useState(false)
@@ -1332,6 +1443,8 @@ export default function Bridge() {
           <span style={det} data-testid="bridge-date">
             {new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
             {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
+            {/* Spike candidate 1: the loaded page says the window it read, as its loading line did. */}
+            <span data-testid="bridge-window"> · reads the last {BRIDGE_DAYS_BACK / 7} weeks, since {windowStartLabel}</span>
           </span>
         ) : (
           <span style={det}>Where we stand, where cash is going, what would change it.</span>
@@ -1340,9 +1453,12 @@ export default function Bridge() {
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
+      {leftOutRules && (
+        <BridgeLeftOut rules={leftOutRules} isDefault={!leftOutSaved} developments={leftOutRead?.developments ?? []} customers={leftOutRead?.customers ?? []} jobCount={leftOutJobIds ? leftOutJobIds.size : null} onChange={(next) => void changeLeftOut(next)} />
+      )}
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
-        <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
+        <p style={det}>{loading ? `Reading the last ${BRIDGE_DAYS_BACK / 7} weeks…` : '—'}</p>
       ) : (
         <>
           {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. */}
@@ -1355,7 +1471,9 @@ export default function Bridge() {
               onAnswer={(o) => void answerCall(o, null)}
               onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
-              strip={flowStrip ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : null}
+              // Spike candidate 2: the pipe stands up. `?pipe=across` draws it as it was, to compare.
+              strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
+              stripSide={!pipeAcross}
               people={pickable}
             />
           ) : (
@@ -1772,6 +1890,10 @@ export default function Bridge() {
               desk={marketDesk}
               error={marketError}
               isLink={stageFlow?.linkId === 'market'}
+              fieldPerWeekUsd={stageInput?.fieldPerWeekUsd ?? null}
+              worth={marketWorth}
+              bidWins={bidWins}
+              estimateWins={estimateWins}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setMarketOpen(false)}
             />
@@ -1783,6 +1905,9 @@ export default function Bridge() {
               card={{ awaitingUsd: (demand?.sales.awaiting.bidsUsd ?? 0) + (demand?.sales.awaiting.estimatesUsd ?? 0), bids: demand?.sales.awaiting.bids ?? 0, bidsUsd: demand?.sales.awaiting.bidsUsd ?? 0, estimates: demand?.sales.awaiting.estimates ?? 0, estimatesUsd: demand?.sales.awaiting.estimatesUsd ?? 0 }}
               paces={{ soldPerWeekUsd: stageInput?.sales?.soldPerWeekUsd ?? null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }}
               isLink={stageFlow?.linkId === 'sales'}
+              worth={marketWorth}
+              bidWins={bidWins}
+              estimateWins={estimateWins}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setSalesOpen(false)}
             />

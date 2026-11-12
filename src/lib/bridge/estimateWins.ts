@@ -1,0 +1,172 @@
+import { stageUsd } from './stageFlow'
+
+/**
+ * Estimates after the won coefficient (spike candidate 5, punch list #303): what the estimates we send can be expected
+ * to sell, in dollars a week.
+ *
+ * The owner's ask, 2026-11-11: "on the bridge we see our Estimates sold after the coefficient of WON by dollars".
+ * His rule for a loss, the same day: "Sometimes it takes someone more than fourteen days to decide on an estimate. I
+ * would say that we should count estimates that are not signed after ninety days as lost."
+ *
+ * And for the ones a customer passed over: "When we send a customer multiple estimates and they choose some of those
+ * estimates, we can assume ones that they did not choose are lost."
+ *
+ * - **Won** is an estimate the customer approved, whenever that was.
+ * - **Lost** is an estimate the customer declined, one the customer did not choose, or one with no answer
+ *   `ESTIMATE_LOST_AFTER_DAYS` after it was sent.
+ * - **Not chosen** is an estimate with no answer whose customer approved another estimate after this one was sent,
+ *   for the same address (or with no address on one of the two). The choice was made with this one in hand. An
+ *   estimate sent after the customer's last approval is a new ask and is still out. One for another address is
+ *   another job and is still out.
+ *   The owner confirmed the address edge the same day: "Yes, same address only".
+ * - **Still out** is an estimate with no answer that is none of those. It is in neither count.
+ * - **The coefficient** is won by dollars: won dollars ÷ (won dollars + lost dollars).
+ * - **Sold a week** is the dollars of estimates sent in the page's window, a week, times the coefficient.
+ *
+ * What to know about the rule: a yes comes fast (on the live rows the day this was written, 19 of 20 inside 14 days)
+ * and a quiet no waits the full 90 days to count. So while the app's estimates are young the coefficient reads high,
+ * and it comes down as the unanswered ones pass 90 days. `agingOut` says how much is on its way: unanswered and past
+ * `ESTIMATE_USUAL_ANSWER_DAYS`.
+ *
+ * The sample is small, so the model carries its counts and the words say them. Pure: the loader beside it
+ * (`loadEstimateWins.ts`) reads the rows.
+ */
+
+/** An estimate with no answer this many days after it was sent counts as lost (the owner's rule, 2026-11-11). */
+export const ESTIMATE_LOST_AFTER_DAYS = 90
+/** Nearly every yes has come inside this many days, so an unanswered estimate past it is unlikely to be signed. */
+export const ESTIMATE_USUAL_ANSWER_DAYS = 14
+/** Under this many won and lost estimates the coefficient is too thin to lead with. */
+export const ESTIMATE_COEFFICIENT_MIN = 10
+
+export type EstimateSent = {
+  /** The day it was sent, company time. */
+  sentYmd: string
+  /** The app's status: 'sent' while it waits, 'customer_accepted', 'declined'. */
+  status: string
+  usd: number
+  /** Who it went to: the customer's id, or a stand-in when the estimate has none. Estimates with no key are never grouped. */
+  customerKey?: string | null
+  /** The address the work is for, trimmed and lowercased; empty when the estimate has none. */
+  addressKey?: string | null
+  /** The day the customer approved it, company time, on an approved estimate. */
+  answeredYmd?: string | null
+}
+
+type Tally = { count: number; usd: number }
+
+export type EstimateWins = {
+  /** Won by dollars: won ÷ (won + lost); null when nothing is won or lost yet, or they hold no dollars. */
+  coefficient: number | null
+  /** True when fewer than `ESTIMATE_COEFFICIENT_MIN` estimates are won or lost. */
+  thin: boolean
+  won: Tally
+  /** Declined by the customer. */
+  declined: Tally
+  /** No answer, and the customer approved another estimate for the same address after this one was sent. */
+  notChosen: Tally
+  /** No answer after `ESTIMATE_LOST_AFTER_DAYS`. */
+  expired: Tally
+  /** Sent inside the window. */
+  window: { count: number; usd: number; weeks: number; sentPerWeekUsd: number; wonUsd: number }
+  /** Sent dollars a week × the coefficient; null without a coefficient. */
+  soldPerWeekUsd: number | null
+  /** No answer yet and not yet lost: what is still out, and what it is worth at the coefficient. */
+  out: Tally & { expectedUsd: number | null }
+  /** Of what is still out, the part past the usual answer days: likely on its way to lost. */
+  agingOut: Tally
+  /** The coefficient if everything in `agingOut` ends up lost; null without a coefficient. */
+  coefficientIfAgedOut: number | null
+  /** One line for the pipe's Market row. */
+  line: string
+  /** The sentences behind the line, for a breakdown. */
+  detail: string[]
+}
+
+const DAY = 86_400_000
+const dayOf = (ymd: string): number => Date.parse(`${ymd}T00:00:00Z`)
+const pct = (share: number): string => `${Math.round(share * 100)}%`
+const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many)
+const tally = (): Tally => ({ count: 0, usd: 0 })
+const add = (t: Tally, usd: number): void => {
+  t.count += 1
+  t.usd += usd
+}
+
+export function buildEstimateWins(input: { todayYmd: string; windowStart: string; estimates: ReadonlyArray<EstimateSent> }): EstimateWins {
+  const today = dayOf(input.todayYmd)
+  const start = dayOf(input.windowStart)
+  const weeks = Math.max(1, (today - start) / (7 * DAY))
+  const won = tally()
+  const declined = tally()
+  const notChosen = tally()
+  const expired = tally()
+  const out = tally()
+  const agingOut = tally()
+  const win = { count: 0, usd: 0, wonUsd: 0 }
+  // Each customer's approvals, by the day they chose and the address chosen for.
+  const choices = new Map<string, Array<{ day: number; address: string }>>()
+  for (const e of input.estimates) {
+    if (e.status !== 'customer_accepted' || !e.customerKey) continue
+    const day = dayOf(e.answeredYmd ?? e.sentYmd)
+    if (!Number.isFinite(day)) continue
+    const list = choices.get(e.customerKey) ?? []
+    list.push({ day, address: e.addressKey ?? '' })
+    choices.set(e.customerKey, list)
+  }
+  const passedOver = (e: EstimateSent, sent: number): boolean => {
+    if (!e.customerKey) return false
+    const address = e.addressKey ?? ''
+    return (choices.get(e.customerKey) ?? []).some((c) => c.day >= sent && (c.address === address || c.address === '' || address === ''))
+  }
+  for (const e of input.estimates) {
+    const sent = dayOf(e.sentYmd)
+    if (!Number.isFinite(sent) || sent > today) continue
+    const usd = Number.isFinite(e.usd) && e.usd > 0 ? e.usd : 0
+    const age = Math.round((today - sent) / DAY)
+    if (e.status === 'customer_accepted') add(won, usd)
+    else if (e.status === 'declined') add(declined, usd)
+    else if (e.status === 'sent') {
+      if (passedOver(e, sent)) add(notChosen, usd)
+      else if (age >= ESTIMATE_LOST_AFTER_DAYS) add(expired, usd)
+      else {
+        add(out, usd)
+        if (age >= ESTIMATE_USUAL_ANSWER_DAYS) add(agingOut, usd)
+      }
+    } else continue
+    if (sent >= start) {
+      win.count += 1
+      win.usd += usd
+      if (e.status === 'customer_accepted') win.wonUsd += usd
+    }
+  }
+  const lostUsd = declined.usd + notChosen.usd + expired.usd
+  const decided = won.count + declined.count + notChosen.count + expired.count
+  const coefficient = won.usd + lostUsd > 0 ? won.usd / (won.usd + lostUsd) : null
+  const thin = decided < ESTIMATE_COEFFICIENT_MIN
+  const sentPerWeekUsd = win.usd / weeks
+  const soldPerWeekUsd = coefficient != null ? sentPerWeekUsd * coefficient : null
+  const expectedUsd = coefficient != null ? out.usd * coefficient : null
+  const coefficientIfAgedOut = coefficient != null ? won.usd / (won.usd + lostUsd + agingOut.usd) : null
+
+  const line = soldPerWeekUsd != null && coefficient != null ? `estimates ${stageUsd(soldPerWeekUsd)} at ${pct(coefficient)} won${thin ? ', a thin count' : ''}` : 'estimates: no won share yet'
+  const detail: string[] = []
+  if (coefficient != null) {
+    detail.push(`Estimates: won by dollars is ${pct(coefficient)}.`)
+    detail.push(`${won.count} ${plural(won.count, 'estimate was', 'estimates were')} approved, for ${stageUsd(won.usd)}.`)
+    if (declined.count > 0) detail.push(`${declined.count} ${plural(declined.count, 'was', 'were')} declined, for ${stageUsd(declined.usd)}.`)
+    if (notChosen.count > 0) detail.push(`${notChosen.count} ${plural(notChosen.count, 'was', 'were')} not chosen when the customer approved another, for ${stageUsd(notChosen.usd)}.`)
+    detail.push(expired.count > 0 ? `${expired.count} had no answer after ${ESTIMATE_LOST_AFTER_DAYS} days and ${plural(expired.count, 'counts', 'count')} as lost, for ${stageUsd(expired.usd)}.` : `None has gone ${ESTIMATE_LOST_AFTER_DAYS} days with no answer yet.`)
+    detail.push(`${stageUsd(sentPerWeekUsd)} of estimates went out a week over the last ${Math.round(weeks)} weeks.`)
+    if (soldPerWeekUsd != null) detail.push(`At ${pct(coefficient)} that sells ${stageUsd(soldPerWeekUsd)} a week.`)
+    if (out.count > 0 && expectedUsd != null) detail.push(`${out.count} ${plural(out.count, 'estimate is', 'estimates are')} still out, for ${stageUsd(out.usd)}. At ${pct(coefficient)} that is ${stageUsd(expectedUsd)}.`)
+    if (agingOut.count > 0 && coefficientIfAgedOut != null) {
+      detail.push(`${agingOut.count} of those ${plural(agingOut.count, 'has', 'have')} waited over ${ESTIMATE_USUAL_ANSWER_DAYS} days, for ${stageUsd(agingOut.usd)}.`)
+      detail.push(`If none of them signs, won by dollars comes down to ${pct(coefficientIfAgedOut)}.`)
+    }
+    if (thin) detail.push(`Only ${decided} ${plural(decided, 'estimate is', 'estimates are')} won or lost so far, so the share can swing.`)
+  } else {
+    detail.push('No estimate is won or lost yet, so there is no won share to use.')
+  }
+  return { coefficient, thin, won, declined, notChosen, expired, window: { count: win.count, usd: win.usd, weeks, sentPerWeekUsd, wonUsd: win.wonUsd }, soldPerWeekUsd, out: { ...out, expectedUsd }, agingOut, coefficientIfAgedOut, line, detail }
+}

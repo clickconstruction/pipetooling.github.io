@@ -6,8 +6,9 @@
  * pace, so the open pile reads as its honest expected dollars. The asker is
  * the bid's customer (the bid form's GC field writes `customer_id`, never
  * `gc_builder_id`), falling back to the GC builder, else the no-GC bucket. A
- * win is the Sales card's own rule (`demandPace.ts`): a bid marked won or
- * started_or_complete, or one a job was created from. The chase ranks askers
+ * win is the owner's rule of 2026-11-11 (`../bidWins.ts`, punch list #303): a
+ * bid marked won or started_or_complete. A job made from a bid decides nothing,
+ * so a bid with a job and no mark is in no asker's record. The chase ranks askers
  * by the expected dollars a call protects, with a flip to open dollars so the
  * inversion is visible; the decided asks fold into a funnel by loss category
  * with the unreasoned losses named, each with a door onto its bid. The
@@ -65,9 +66,10 @@ export type SalesOpenBid = {
 }
 
 /**
- * A bid decided inside the span: marked won, lost or started_or_complete, or
- * one a job was created from. The Sales card's rule (`demandPace.ts`): won,
- * started_or_complete and a job each count as a win.
+ * A bid decided inside the span: marked won, lost or started_or_complete. The
+ * loader also hands over the bids a job was created from with no mark
+ * (`outcome` null): a job decides nothing (the owner's rule, 2026-11-11), so
+ * the desk leaves those out of every record (`isMarked`).
  */
 export type SalesDecidedBid = {
   id: string
@@ -76,11 +78,11 @@ export type SalesDecidedBid = {
   customerId?: string | null
   usd: number
   sentYmd: string | null
-  /** Null when the bid's only decision is the job made from it. */
+  /** Null when the bid has a job and no mark: not decided, and in no record. */
   outcome: 'won' | 'lost' | 'started_or_complete' | null
-  /** `outcome_at`, the day the office recorded the answer; null when only the job decides it. */
+  /** `outcome_at`, the day the office recorded the answer; null when none is on record. */
   outcomeYmd: string | null
-  /** The day the job this bid became was created, the decided day when `outcomeYmd` is null. */
+  /** The day the job this bid became was created: a marked bid's decided day when `outcomeYmd` is null. */
   jobCreatedYmd?: string | null
   lossCategory: string | null
   lossReason: string | null
@@ -217,7 +219,7 @@ export type SalesDesk = {
   bar: { protectedUsd: number; atRiskUsd: number; evaporatingUsd: number; deadOpenUsd: number }
   legend: SalesLegendEntry[]
   tiles: [SalesTile, SalesTile, SalesTile]
-  /** `$3.3M asked · worth about $485k`, a label line. */
+  /** `$3.3M asked. Worth about $485k.`: the window's headline until the reads by the owner's rules land. */
   headline: string
   verdict: string
   ruleLines: string[]
@@ -294,8 +296,11 @@ const bidName = (b: Pick<SalesOpenBid, 'projectName' | 'bidNumber'>): string => 
 /** The asker a bid belongs to: its customer, else its GC builder, else the no-GC bucket. */
 export const askerKey = (b: { customerId?: string | null; gcBuilderId: string | null }): string => b.customerId ?? b.gcBuilderId ?? 'none'
 
-/** The Sales card's rule: marked won, marked started_or_complete, or a job was created from it. */
-export const isWin = (d: Pick<SalesDecidedBid, 'outcome' | 'jobCreatedYmd'>): boolean => d.outcome === 'won' || d.outcome === 'started_or_complete' || !!d.jobCreatedYmd
+/** The owner's rule (2026-11-11): won only when marked won, or marked started_or_complete. A job made from the bid does not make it won. */
+export const isWin = (d: Pick<SalesDecidedBid, 'outcome'>): boolean => d.outcome === 'won' || d.outcome === 'started_or_complete'
+
+/** Decided is marked: won, lost or started_or_complete. A bid with a job and no mark is not decided. */
+export const isMarked = (d: Pick<SalesDecidedBid, 'outcome'>): boolean => d.outcome != null
 
 /** The day the bid was decided: `outcome_at` as recorded, else the day its job was created. */
 export const decidedYmd = (d: Pick<SalesDecidedBid, 'outcomeYmd' | 'jobCreatedYmd'>): string | null => d.outcomeYmd ?? d.jobCreatedYmd ?? null
@@ -383,16 +388,16 @@ function askerRow(a: SalesAsker, opts: { leaderByExpected: SalesAsker | null; bi
   const n = bids.length
   const story: string[] = bids.map((b) => {
     const head = b.usd > 0 ? `${b.name}, ${stageUsd(b.usd)}, ${b.ageDays} ${plural(b.ageDays, 'day', 'days')} out.` : `${b.name}, no value, ${b.ageDays} ${plural(b.ageDays, 'day', 'days')} out.`
-    return b.pastDays > 0 ? `${head} ${b.pastDays} past their pace.` : head
+    return b.pastDays > 0 ? `${head} ${b.pastDays} ${plural(b.pastDays, 'day', 'days')} past their usual answer.` : head
   })
   if (a.deadWeight) story.push(`${a.decided.count} asks these 12 months, no answer on any.`)
   const biggestExpected = [...bids].sort((x, y) => y.expectedUsd - x.expectedUsd)[0] ?? null
   const biggest = bids[0] ?? null
   let say: string | null = null
   if (a.deadWeight) say = 'Not a bid call, a relationship call. Are we ever in the running, or are we pricing their paperwork?'
-  else if (opts.biggestOpen === a && opts.leaderByExpected && opts.leaderByExpected !== a) say = `Biggest open dollars on the desk. At ${pct(a.rate)} they buy less expected than ${opts.leaderByExpected.name}.`
-  else if (a.state === 'past' && n > 1 && biggestExpected && biggestExpected.expectedUsd > 0) say = `Deciding ${biggestExpected.name} alone moves ${stageUsd(biggestExpected.expectedUsd)} of expected.`
-  else if (a.state === 'past' && opts.bestRate === a) say = 'Best win rate on the desk, and the ask is aging.'
+  else if (opts.biggestOpen === a && opts.leaderByExpected && opts.leaderByExpected !== a) say = `Biggest open dollars in the list. At ${pct(a.rate)} won they are worth less than ${opts.leaderByExpected.name}.`
+  else if (a.state === 'past' && n > 1 && biggestExpected && biggestExpected.expectedUsd > 0) say = `Deciding ${biggestExpected.name} alone settles ${stageUsd(biggestExpected.expectedUsd)} of what the pile is worth.`
+  else if (a.state === 'past' && opts.bestRate === a) say = 'Best won rate in the list, and the ask is getting old.'
   else if (a.state === 'inside' && a.paceSource === 'own') say = `An answer takes about ${a.paceDays} days here, as recorded. Calling early spends goodwill.`
   const move = a.deadWeight ? 'Decide the relationship, not the bid.' : a.callBid ? `Call ${a.name} about ${a.callBid.name}.` : 'Leave them.'
   const doorBid = a.callBid ?? (n === 1 ? biggest : null)
@@ -402,10 +407,10 @@ function askerRow(a: SalesAsker, opts: { leaderByExpected: SalesAsker | null; bi
     : a.rateSource === 'own'
       ? `${a.decided.won} of ${a.decided.count} · ${pct(a.rate)}`
       : a.rateSource === 'window'
-        ? `${a.decided.count === 0 ? 'no decided bids' : `${a.decided.won} of ${a.decided.count}`} · the window's ${pct(a.rate)}`
-        : `${a.decided.won} of ${a.decided.count} · no win share to read`
-  const paceLabel = a.deadWeight ? '' : a.paceSource === 'own' ? `answers in about ${a.paceDays} d, as recorded` : `no pace on record, ${SALES_NO_PACE_DAYS} d assumed`
-  const state: SalesRowState = a.deadWeight ? { kind: 'dead', label: 'dead weight' } : a.state === 'past' ? { kind: 'past', label: `${a.pastDays} d past pace` } : { kind: 'inside', label: 'inside pace' }
+        ? `${a.decided.count === 0 ? 'no decided bids' : `${a.decided.won} of ${a.decided.count}`} · all bids together, ${pct(a.rate)}`
+        : `${a.decided.won} of ${a.decided.count} · no won rate yet`
+  const paceLabel = a.deadWeight ? '' : a.paceSource === 'own' ? `answers in about ${a.paceDays} d, as recorded` : `no answers on record, ${SALES_NO_PACE_DAYS} d assumed`
+  const state: SalesRowState = a.deadWeight ? { kind: 'dead', label: 'never answered' } : a.state === 'past' ? { kind: 'past', label: `${a.pastDays} ${plural(a.pastDays, 'day', 'days')} late` } : { kind: 'inside', label: 'on time' }
   return {
     key: a.key,
     kind: 'asker',
@@ -438,12 +443,12 @@ function restRow(folded: SalesAsker[]): SalesDeskRow | null {
     name: 'Everyone else',
     meta: `${n} ${plural(n, 'bid', 'bids')}`,
     openUsd,
-    winsLabel: 'their own paces',
+    winsLabel: 'their own records',
     paceLabel: '',
     expectedUsd,
     rate: null,
-    state: past > 0 ? { kind: 'past', label: `${past} past pace` } : { kind: 'inside', label: 'inside pace' },
-    story: [past > 0 ? `${n} smaller ${plural(n, 'bid', 'bids')}, ${past} past ${plural(past, 'its', 'their')} asker's pace.` : `${n} smaller ${plural(n, 'bid', 'bids')}, none past ${plural(n, 'its', 'their')} asker's pace this week.`],
+    state: past > 0 ? { kind: 'past', label: `${past} late` } : { kind: 'inside', label: 'on time' },
+    story: [past > 0 ? `${n} smaller ${plural(n, 'bid', 'bids')}, ${past} past ${plural(past, 'its', 'their')} asker's usual answer.` : `${n} smaller ${plural(n, 'bid', 'bids')}, none past ${plural(n, 'its', 'their')} asker's usual answer this week.`],
     say: null,
     move: past > 0 ? `Decide the ${past} on the Bid Board.` : 'Nothing this week.',
     door: { label: 'Open the Bid Board ›', to: BID_BOARD_PATH },
@@ -477,17 +482,17 @@ function estimatesRow(estimates: SalesOpenEstimate[], share: number | null, pace
       name: 'The estimates',
       meta: `${customers} ${plural(customers, 'customer', 'customers')}`,
       openUsd,
-      winsLabel: share != null ? `${pct(share)} by value` : 'no share to read',
+      winsLabel: share != null ? `${pct(share)} won by dollars` : 'no won rate yet',
       paceLabel: pace.floored
         ? pace.source === 'own'
           ? `fade at a ${paceDays} d floor, the estimates answer in ~${pace.rawDays} d`
-          : `fade at a ${paceDays} d floor, no estimate pace yet`
+          : `fade at a ${paceDays} d floor, no estimate answers yet`
         : pace.source === 'own'
-          ? `fade at the estimates' ~${paceDays} d pace`
-          : `fade at the company's ${paceDays} d pace, no estimate pace yet`,
+          ? `fade at the estimates' ~${paceDays} d usual answer`
+          : `fade at the company's ${paceDays} d usual answer, no estimate answers yet`,
       expectedUsd,
       rate: share,
-      state: { kind: 'aging', label: 'aging daily' },
+      state: { kind: 'aging', label: 'getting old' },
       story,
       say: null,
       move,
@@ -533,19 +538,21 @@ function buildFunnel(decided: SalesDecidedBid[]): SalesFunnel {
     const v = byCat.get(c.key) as { count: number; usd: number }
     if (v.count > 0) lines.push({ key: c.key, label: c.label, count: v.count, usd: v.usd })
   }
-  if (none.count > 0) lines.push({ key: 'none', label: 'No reason recorded', count: none.count, usd: none.usd })
+  if (none.count > 0) lines.push({ key: 'none', label: 'No reason written', count: none.count, usd: none.usd })
   const words = [`Won ${stageUsd(wonUsd)} on ${wonCount} ${plural(wonCount, 'bid', 'bids')}. Lost ${stageUsd(lostUsd)} on ${lostCount} ${plural(lostCount, 'bid', 'bids')}.`]
   const top = lines.filter((l) => l.key !== 'won' && l.key !== 'none').sort((a, b) => b.usd - a.usd)
   if (top.length >= 2) words.push(`Most lost to ${plainName(top[0]!.label)}, ${stageUsd(top[0]!.usd)}, then ${plainName(top[1]!.label)}, ${stageUsd(top[1]!.usd)}.`)
   else if (top.length === 1) words.push(`Every reasoned loss went to ${plainName(top[0]!.label)}, ${stageUsd(top[0]!.usd)}.`)
-  const blind = none.count > 0 ? `${none.count} ${plural(none.count, 'loss carries', 'losses carry')} no reason, so this strip under-reads.` : null
+  const blind = none.count > 0 ? `${none.count} ${plural(none.count, 'loss carries', 'losses carry')} no reason, so the reasons read low.` : null
   return { won: { count: wonCount, usd: wonUsd }, lost: { count: lostCount, usd: lostUsd }, lines, noReason: none, noReasonBids, words, blind }
 }
 
 export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const { todayYmd, fallbackRate } = input
+  // Decided is marked: a bid with a job and no mark is in no record, neither won nor lost.
+  const decidedBids = input.decidedBids.filter(isMarked)
   const decidedByAsker = new Map<string, SalesDecidedBid[]>()
-  for (const d of input.decidedBids) {
+  for (const d of decidedBids) {
     const key = askerKey(d)
     const list = decidedByAsker.get(key) ?? []
     list.push(d)
@@ -600,7 +607,7 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
 
   // The company pace: the median answer over every decided bid, the pace the estimates fall back to.
   const allPaces: number[] = []
-  for (const d of input.decidedBids) {
+  for (const d of decidedBids) {
     const day = decidedYmd(d)
     if (d.sentYmd && day) allPaces.push(Math.max(0, daysBetween(d.sentYmd, day)))
   }
@@ -649,74 +656,81 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const estimatesUsd = input.openEstimates.reduce((s, e) => s + e.usd, 0)
   const askedUsd = bidsUsd + estimatesUsd
   const expectedUsd = protectedUsd + atRiskUsd + evaporatingUsd
-  const funnel = buildFunnel(input.decidedBids)
+  const funnel = buildFunnel(decidedBids)
   const noReason = funnel.noReason.count
 
   const legend: SalesLegendEntry[] = [
-    { key: 'protected', label: 'Protected', usd: protectedUsd, words: "Inside the asker's answer pace. Leave them." },
-    { key: 'risk', label: 'At risk', usd: atRiskUsd, words: "Past the asker's pace. The chase list below, biggest first." },
-    { key: 'evaporating', label: 'Evaporating', usd: evaporatingUsd, words: 'The aging estimates. Answer speed is the lever.' },
+    { key: 'protected', label: 'On time', usd: protectedUsd, words: "Inside the asker's usual answer. Leave them." },
+    { key: 'risk', label: 'Past their usual answer', usd: atRiskUsd, words: 'A call decides the ask or starts its clock again. Call the biggest first.' },
+    { key: 'evaporating', label: 'Estimates getting old', usd: evaporatingUsd, words: 'The estimates with no answer yet. A fast answer wins them.' },
     {
       key: 'dead',
-      label: 'Dead weight, $0',
+      label: 'Never answered, $0',
       usd: deadOpenUsd,
       words: dead.length === 0 ? 'No asker on the pile has gone silent on every bid.' : dead.length === 1 ? `${dead[0]!.name} never answers and holds ${stageUsd(deadOpenUsd)} open.` : `${dead.length} askers never answer and hold ${stageUsd(deadOpenUsd)} open.`,
     },
   ]
   const tiles: [SalesTile, SalesTile, SalesTile] = [
     { head: 'What the pile is worth', value: `≈ ${stageUsd(expectedUsd)}`, words: `Open dollars flatter the pile. Say the ${stageUsd(expectedUsd)}, never the ${stageUsd(askedUsd)}.`, tone: 'plain' },
-    { head: 'At risk, the calls', value: `${stageUsd(atRiskUsd)} on ${calls} ${plural(calls, 'call', 'calls')}`, words: "Past the asker's own answer pace. A call re-arms the ask or decides it.", tone: calls > 0 ? 'amber' : 'green' },
+    { head: 'Past their usual answer', value: `${stageUsd(atRiskUsd)} on ${calls} ${plural(calls, 'call', 'calls')}`, words: "These asks are past the asker's usual answer. A call decides the ask or starts its clock again.", tone: calls > 0 ? 'amber' : 'green' },
     {
-      head: 'What thins the reading',
+      head: 'What makes the rates less sure',
       value: `${noValueBids} + ${noReason}`,
-      words: `${noValueBids} ${plural(noValueBids, 'bid rides', 'bids ride')} at $0 value and ${noReason} ${plural(noReason, 'loss carries', 'losses carry')} no reason. Both thin every share below.`,
+      words: `${noValueBids} ${plural(noValueBids, 'bid has', 'bids have')} no value and ${noReason} ${plural(noReason, 'loss carries', 'losses carry')} no reason. Both make every rate here less sure.`,
       tone: noValueBids + noReason > 0 ? 'red' : 'green',
     },
   ]
-  const verdict = calls > 0 ? `${calls} ${plural(calls, 'call', 'calls')} this week ${plural(calls, 'protects', 'protect')} ${stageUsd(atRiskUsd)} of it.` : "No ask is past its asker's pace this week."
-  const offWords = offBids > 0 ? `${stageUsd(offUsd)} more on ${offBids} ${plural(offBids, 'bid', 'bids')} sits past the ${AWAITING_DAYS}-day window, off this pile and off the bar.` : null
+  const verdict = calls > 0 ? `${calls} ${plural(calls, 'call', 'calls')} this week ${plural(calls, 'protects', 'protect')} ${stageUsd(atRiskUsd)} of what the pile is worth.` : "No ask is past its asker's usual answer this week."
+  const offWords = offBids > 0 ? `${offBids} more ${plural(offBids, 'bid', 'bids')}, ${stageUsd(offUsd)}, ${plural(offBids, 'was', 'were')} sent over ${AWAITING_DAYS} days ago. ${plural(offBids, 'It is', 'They are')} off this pile and off the bar.` : null
 
   const estimatePaceWords =
     estimatesPaceFloored && estimatesPaceSource === 'own'
       ? [
-          `The estimates answer in ${estimatesRawPaceDays} ${plural(estimatesRawPaceDays, 'day', 'days')}, the median of acceptor_consented_at less sent_at.`,
+          `The estimates answer in ${estimatesRawPaceDays} ${plural(estimatesRawPaceDays, 'day', 'days')}, the middle number from sent to accepted.`,
           `They fade at a ${SALES_ESTIMATE_PACE_FLOOR_DAYS} day floor instead.`,
-          'Under it a same day answer would read every open estimate as past pace and worth $0.',
+          'Under it a same day answer would read every open estimate as late and worth $0.',
           'The floor is an owner call.',
         ]
       : estimatesPaceFloored
         ? [
-            `No estimate pace is on record yet, so the company's ${companyPaceDays} day pace would stand in.`,
+            `No estimate has an answer on record yet, so the company's ${companyPaceDays} day answer would stand in.`,
             `They fade at a ${SALES_ESTIMATE_PACE_FLOOR_DAYS} day floor instead.`,
-            'Under it a same day answer would read every open estimate as past pace and worth $0.',
+            'Under it a same day answer would read every open estimate as late and worth $0.',
             'The floor is an owner call.',
           ]
         : estimatesPaceSource === 'own'
-          ? [`They fade at the estimates' own ${estimatesPaceDays} day pace, the median of acceptor_consented_at less sent_at.`]
-          : [`They fade at the company's ${companyPaceDays} day pace, since no estimate pace is on record yet.`]
+          ? [`They fade at the estimates' own ${estimatesPaceDays} day answer, the middle number from sent to accepted.`]
+          : [`They fade at the company's ${companyPaceDays} day answer, since no estimate has one on record yet.`]
+  // The list's own rules, in plain words and with no column names: the window's How this is counted prints them after the headline's.
   const howItReads = [
+    'The list behind Every asker still ranks each asker by their own record.',
+    'So does What is in the pile.',
     'An asker is the customer on the bid, the GC the bid form names.',
     'A bid with no customer reads its GC builder, or folds into No GC on the bid.',
-    `An asker's win rate and answer pace come from their decided bids, the last ${Math.round(SALES_DECIDED_DAYS / 30)} months.`,
-    'A bid marked won or started counts as won, and so does a bid a job was made from.',
+    `An asker's won rate and usual answer come from their marked bids, the last ${Math.round(SALES_DECIDED_DAYS / 30)} months.`,
+    'A bid counts as won only when it is marked won, or marked started or complete.',
+    'A job made from a bid does not make it won.',
+    'A bid counts as lost only when it is marked lost.',
     'The rate is won dollars over won and lost dollars.',
-    'The pace is the median of outcome_at less bid_date_sent, as recorded.',
-    'That is the day the office recorded the answer, not the day the GC spoke.',
-    'A bid with no outcome_at reads the day its job was made.',
-    fallbackRate != null ? `Fewer than ${SALES_RATE_MIN_DECIDED} decided bids falls back to the window's ${pct(fallbackRate)} win share.` : `Fewer than ${SALES_RATE_MIN_DECIDED} decided bids falls back to the window's win share, which nothing sent can give yet.`,
-    'Expected is the bid value times that rate.',
-    `It fades to zero past ${SALES_AGING_PACE_MULTIPLE} times the asker's pace.`,
-    `An asker with no pace on record is read at ${SALES_NO_PACE_DAYS} days.`,
-    'The aging rule is an owner call.',
-    `An ask's age counts from bid_date_sent. After ${AWAITING_DAYS} days it leaves this pile.`,
-    'The funnel reads outcome, outcome_at and loss_category, with loss_reason on each bid.',
-    'A loss with no reason opens on its bid, where Why we lost is written.',
-    'Estimates read created_at, sent_at, acceptor_consented_at and total_cents.',
+    'The usual answer is the middle number of days from sent to answered.',
+    'That is the day the office wrote the answer down, not the day the GC spoke.',
+    'A marked bid with no answer day reads the day its job was made.',
+    fallbackRate != null ? `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the won rate of all bids together, ${pct(fallbackRate)}.` : `Fewer than ${SALES_RATE_MIN_DECIDED} marked bids falls back to the rate of all bids together, which nothing sent gives yet.`,
+    'What an ask is worth is the bid value times that rate.',
+    `It fades to nothing by ${SALES_AGING_PACE_MULTIPLE} times the asker's usual answer.`,
+    `An asker with no answer on record is read at ${SALES_NO_PACE_DAYS} days.`,
+    'The fading rule is an owner call.',
+    `An ask's age counts from the day it was sent. After ${AWAITING_DAYS} days it leaves this pile.`,
+    'A bid that became a job leaves the pile too, marked or not.',
+    'So the list and the pile do not add up to the headline.',
+    'Estimates read the day asked, the day sent, the day accepted and the total.',
     ...estimatePaceWords,
-    `The speed line reads once ${SALES_ESTIMATE_SPEED_MIN} decided estimates sit on each side of the same-day line.`,
-    'Nothing records here.',
-    'Answers land where the app keeps them: the bid outcome with its reason, next_followup_on and last_contact.',
-    'The week’s call rides the lit link’s desk above, not here.',
+    `The line about speed reads once ${SALES_ESTIMATE_SPEED_MIN} answered estimates went out the same day and ${SALES_ESTIMATE_SPEED_MIN} later.`,
+    'Why we lost reads the reason written on each lost bid.',
+    'A loss with no reason opens on its bid, where Why we lost is written.',
+    'Nothing is recorded in this window.',
+    'An answer is written on the bid: its mark, its reason and the next follow up.',
+    "The week's call is recorded on the link desk above, not here.",
   ].join(' ')
 
   return {
@@ -728,9 +742,9 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     bar: { protectedUsd, atRiskUsd, evaporatingUsd, deadOpenUsd },
     legend,
     tiles,
-    headline: `${stageUsd(askedUsd)} asked · worth about ${stageUsd(expectedUsd)}`,
+    headline: `${stageUsd(askedUsd)} asked. Worth about ${stageUsd(expectedUsd)}.`,
     verdict,
-    ruleLines: ['Every number below is expected dollars.', "That is the ask times the asker's own decided win rate.", 'It fades to zero past twice their answer pace.'],
+    ruleLines: ['Every number here is what the ask is worth.', "That is the ask times the asker's own won rate.", 'It fades to nothing by twice their usual answer.'],
     calls: { count: calls, usd: atRiskUsd },
     thins: { noValueBids, noReasonLosses: noReason },
     funnel,
@@ -762,7 +776,7 @@ export function sortSalesRows(rows: ReadonlyArray<SalesDeskRow>, by: SalesSortKe
 }
 
 export function salesSortButtonLabel(by: SalesSortKey): string {
-  return by === 'open' ? 'Ranked by open dollars · press for expected dollars' : 'Ranked by expected dollars · press to see it by open dollars'
+  return by === 'open' ? 'Ranked by open dollars. Press to rank by what each ask is worth.' : 'Ranked by what each ask is worth. Press to rank by open dollars.'
 }
 
 /** The note under the flip: who leads by open dollars when expected dollars disagree; null while the flip is off. */
@@ -770,8 +784,8 @@ export function salesFlipNote(rows: ReadonlyArray<SalesDeskRow>, by: SalesSortKe
   if (by !== 'open' || rows.length === 0) return null
   const byOpen = sortSalesRows(rows, 'open')[0] as SalesDeskRow
   const byExpected = sortSalesRows(rows, 'expected')[0] as SalesDeskRow
-  if (byOpen.key === byExpected.key) return `By open dollars ${byOpen.name} leads, and so it does by expected dollars.`
-  const why = byOpen.rate != null && byOpen.kind === 'asker' ? `The ${pct(byOpen.rate)} win share says otherwise.` : 'The expected dollars say otherwise.'
+  if (byOpen.key === byExpected.key) return `By open dollars ${byOpen.name} leads, and by what the asks are worth too.`
+  const why = byOpen.rate != null && byOpen.kind === 'asker' ? `Their ${pct(byOpen.rate)} won rate says otherwise.` : 'What the asks are worth says otherwise.'
   return `By open dollars ${byOpen.name} leads. ${why} Press again.`
 }
 
