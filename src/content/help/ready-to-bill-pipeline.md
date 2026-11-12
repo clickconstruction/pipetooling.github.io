@@ -148,6 +148,8 @@ A paid-up job never sits in Ready to Bill or in Billed Waiting for Payment. Once
 
 The **Not Billed Out** card in Dashboard Financials shows the total revenue that has not reached a customer invoice yet. So nothing slips.
 
+Some customers pay on a set day of the month, and a bill must be in by their cutoff. A Ready to Bill row for one of them reads *Send by Nov 30 to be due Dec 10. After that, Jan 10.* Send those first. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar#the-cutoff-before-a-bill-goes-out).
+
 ## Breaking off a partial invoice
 
 To bill part of a job now and the rest later, you open the job's **Bill** tab. You use **Bill part of it** under **Make a bill**, or tick lines on the money card. That is the main path on a computer. On the **mobile cards** view, the **⋯** menu's **Partial invoice** item opens a small modal instead:
