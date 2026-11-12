@@ -736,6 +736,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     openStagesDetailJobModal,
     setAiaG702StagesJob,
     canCreateHazmatFee,
+    offerHazmatFee,
     openHazmatFee,
     hazmatFeeJobIds,
     canEditJobPctComplete,
@@ -889,7 +890,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     if (showAiaG702G703(props.authRole, j)) {
       items.push({ key: 'aia', label: 'AIA G702-G703', onClick: () => setAiaG702StagesJob(j) })
     }
-    if (canCreateHazmatFee) {
+    if (canCreateHazmatFee && offerHazmatFee) {
       items.push({
         key: 'hazmat',
         label: 'Hazmat fee',
@@ -1218,6 +1219,15 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           const week = getDefaultWeekRange().start
           navigate(scheduleDispatchWeekUrl(j.id, week))
         },
+      })
+    }
+    // v2.7012: the same line a Waiting or Working card lists, so a job sent back from Billed can take its fee on a phone.
+    if (props.canCreateHazmatFee && props.offerHazmatFee) {
+      items.push({
+        key: 'hazmat',
+        label: 'Hazmat fee',
+        onClick: () => props.openHazmatFee(j),
+        badge: props.hazmatFeeJobIds?.has(j.id) ? 'live' : undefined,
       })
     }
     if (onOpenLienRelease) {
