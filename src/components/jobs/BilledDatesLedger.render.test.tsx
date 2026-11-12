@@ -70,7 +70,7 @@ describe('BilledDatesLedger (v2.4205)', () => {
     document.body.innerHTML = ''
     const late = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway({ todayYmd: today, openBalance: 15406, lastWorkYmd: '2026-08-14', propertyKind: 'residential', expectedPayYmd: '2026-10-04', filedYmd: null, releasedYmd: null, isSub: false }), inCollections: false })
     render(<BilledDatesLedger ledger={late} onLienDesk={onLienDesk} onMoney={onMoney} />)
-    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date1d past')
+    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date')
     fireEvent.click(screen.getByTestId('ledger-verdict'))
     expect(onMoney).toHaveBeenCalledTimes(1)
     document.body.innerHTML = ''

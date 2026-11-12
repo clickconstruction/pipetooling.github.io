@@ -19,6 +19,7 @@ import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import { buildPaymentChaseQueue } from '../../lib/jobs/paymentChase'
 import type { PaceContext } from '../../lib/jobs/payPace'
+import type { PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import type { PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import type { StagesSectionOpenState } from '../../lib/jobs/stagesSectionPrefs'
@@ -76,6 +77,8 @@ export type StagesBilledMoneyModalsProps = {
   loadChaseTouches: BilledMoneyData['loadChaseTouches']
   /** The GC facts and the GC pace here for the board's bills (v2.6034): the forecast and call mode read the pile's pace order. */
   billedPace: PaceContext | null
+  /** The stored Pay calendars (punch list #323), for the Payment forecast's due days. */
+  payCalendars?: PayCalendarIndex | null
   gcTemperatureById: ReturnType<typeof latestTemperatureByGc>
   chaseTodayYmd: string
   forecastTodayYmd: string
@@ -129,6 +132,7 @@ export default function StagesBilledMoneyModals({
   chaseTouches,
   loadChaseTouches,
   billedPace,
+  payCalendars,
   gcTemperatureById,
   chaseTodayYmd,
   forecastTodayYmd,
@@ -265,6 +269,7 @@ export default function StagesBilledMoneyModals({
           promises={promisedPayDates}
           slipByCustomer={promiseSlipByCustomer}
           pace={billedPace}
+          payCalendars={payCalendars}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {
