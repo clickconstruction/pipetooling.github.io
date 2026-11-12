@@ -139,3 +139,7 @@ Read-only, signed in on a dev server, counts only.
 - **PR 3** (deployed from `main` 2026-11-12): Austin, the 16 newest permits whose lot id is
   Williamson County's, one per address. All 16 name an owner and the card names Williamson
   County on each, 15 by the id and 1 by the address. The second open came from the kept answers.
+- **PR 3b** (deployed from `main` 2026-11-12): a dry run of the pull, Austin since 2026-08-29,
+  wrote nothing and ran clean. It read 4,199 rows, asked 930 lot ids and would put a point on
+  1,381 rows. The table held 148 Austin rows with a Williamson County id, 71 of them with no
+  point. They take one when Austin's window is read again, which is the owner's call.
