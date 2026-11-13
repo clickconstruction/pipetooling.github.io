@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
 import { FinishedDateInput } from '../FinishedDateInput'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import {
@@ -30,6 +31,8 @@ export type TheirPaperSheetProps = {
   /** After a save (the parent reloads its coverage). */
   onDone?: () => void
   job: { id: string; num: string; partyName: string }
+  /** Who pays this job's bills (punch list #323, PR 7): with one, the sheet offers the press that sets their Pay calendar, carrying this paper's clause. */
+  payer?: { id: string; name: string } | null
   /** The record being edited, or null for a new one. */
   existing: TheirPaperRecord | null
   overlayZIndex?: number
@@ -59,6 +62,7 @@ export default function TheirPaperSheet(p: TheirPaperSheetProps) {
   const [scanOpen, setScanOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const payCalendarModal = usePayCalendarModal()
 
   // Opened again, or on another record: the form starts from that record.
   useEffect(() => {
@@ -224,6 +228,30 @@ export default function TheirPaperSheet(p: TheirPaperSheetProps) {
           ))}
         </div>
 
+        {p.payer && payCalendarModal ? (
+          // Punch list #323, PR 7: the paper names the cutoff and the pay day; the Pay calendar is where they are set, for this
+          // job or for every job this payer pays. The press carries the clause and its words so they are not typed twice.
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>
+            <button
+              type="button"
+              className="payCalendarPress"
+              data-testid="their-paper-pay-calendar"
+              disabled={busy}
+              onClick={() => {
+                const payer = p.payer
+                if (!payer) return
+                payCalendarModal.openPayCalendar(payer, {
+                  job: { id: p.job.id, label: `Job ${p.job.num}` },
+                  initial: { clause: draft.terms.pay_calendar.clause, words: draft.terms.pay_calendar.words },
+                  zIndex: (p.overlayZIndex ?? 1300) + 10,
+                })
+              }}
+            >
+              Set {p.payer.name}’s pay calendar…
+            </button>{' '}
+            The cutoff and the pay day are set there, for this job or for every job they pay.
+          </div>
+        ) : null}
         <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }}>Nothing is sent to anyone. The job reads the paper as it is, and the Legal desk's agreement line reads it too.</div>
         {problem && (draft.ourSigner || draft.reliedOn || draft.link) ? <div style={{ fontSize: '0.8rem', color: 'var(--text-amber-700)' }} data-testid="their-paper-problem">{problem}</div> : null}
         {error ? <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{error}</div> : null}

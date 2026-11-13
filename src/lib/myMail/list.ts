@@ -103,7 +103,7 @@ export function onTheJobWords(ok: Pick<MyMailTagOk, 'lines' | 'tied' | 'files'>)
 
 /** The words after a tag: the job, then what is on it now. */
 export function taggedWords(ok: Pick<MyMailTagOk, 'lines' | 'tied' | 'files'>, chip?: Pick<MyMailJobChip, 'num' | 'name'> | null): string {
-  return `${chip ? `Tagged onto ${jobWords(chip)}.` : 'Tagged.'} ${onTheJobWords(ok)}`
+  return `${chip ? `Saved to ${jobWords(chip)}.` : 'Saved.'} ${onTheJobWords(ok)}`
 }
 
 /**
@@ -131,7 +131,7 @@ export function tagActWords(act: MyMailTagAct, ok: Pick<MyMailTagOk, 'lines' | '
 
 /** The words after an untag: what came off the job, and the copy a legal matter keeps. */
 export function untaggedWords(ok: Pick<MyMailUntagOk, 'removed' | 'keptForMatter'>): string {
-  const off = ok.removed > 0 ? `Untagged. ${lines(ok.removed)} came off the job.` : 'Untagged. Nothing came off the job.'
+  const off = ok.removed > 0 ? `Taken off the job. ${lines(ok.removed)} came off.` : 'Taken off the job. No line came off.'
   return ok.keptForMatter ? `${off} The legal matter keeps its own copy.` : off
 }
 
@@ -146,7 +146,7 @@ export const MY_MAIL_LIST_WORDS = {
   offline: 'No connection, so your mail could not be read. It reads again when the signal is back.',
   yes: 'Yes',
   other: 'other…',
-  tag: 'Tag…',
+  tag: 'Save to job…',
   noGuess: 'no guess',
   openLine: 'open the line ›',
   /** A tagged conversation's mail that no line holds yet (v2.6295): the same press, which opens the reader and its Put it on the job. */
@@ -157,8 +157,8 @@ export const MY_MAIL_LIST_WORDS = {
   older: 'Older ›',
   newer: '‹ Newer',
   openSettings: 'Open Your account',
-  tagging: 'Tagging…',
-  notTagged: 'The conversation was not tagged.',
+  tagging: 'Saving…',
+  notTagged: 'The conversation was not saved.',
   notMoved: 'The conversation was not moved.',
   notPutOn: 'The mail was not put on the job.',
 } as const
@@ -180,8 +180,8 @@ export function notTaggedWords(act: MyMailTagAct): string {
 
 /** What a view says of a page it drew nothing of, while Gmail holds older mail. */
 const EMPTY_PAGE: Readonly<Record<MyMailView, string>> = {
-  toTag: 'Nothing to tag on this page.',
-  tagged: 'No tagged conversations on this page.',
+  toTag: 'Nothing to save on this page.',
+  tagged: 'No saved conversations on this page.',
   all: 'Only notices and newsletters on this page.',
 }
 
