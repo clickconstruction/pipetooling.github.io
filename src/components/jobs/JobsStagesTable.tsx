@@ -103,6 +103,8 @@ export type JobsStagesTableProps = {
   canCreateHazmatFee: boolean
   /** The section's stage offers the Hazmat fee press (v2.7012): Waiting, Working and Ready to Bill say so; a section that says nothing offers none. */
   offerHazmatFee?: boolean
+  /** Punch list #323, PR 5: a line under the job's progress, for a payer on a Pay calendar whose cutoff is close (*Bill by Nov 30 to be due Dec 10.*). A section that passes nothing draws none. */
+  jobCutoffLine?: (job: JobWithDetails) => ReactNode
   openHazmatFee: (j: JobWithDetails) => void
   /** Jobs with a live (non-voided) hazmat fee — their ☣ button wears a bright green box (v2.1040). */
   hazmatFeeJobIds?: ReadonlySet<string>
@@ -188,6 +190,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     setAiaG702StagesJob,
     canCreateHazmatFee,
     offerHazmatFee,
+    jobCutoffLine,
     openHazmatFee,
     hazmatFeeJobIds,
     canEditJobPctComplete,
@@ -447,6 +450,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                     onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                   />
+                  {jobCutoffLine?.(j)}
                 </td>
                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>

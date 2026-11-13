@@ -1,0 +1,254 @@
+/**
+ * A site's materials on one screen (punch list #330): everything in the cages and boxes of a
+ * development's jobs, read only. On top, how fresh the record is and the figures a manager asks
+ * for; under them one row per part across the site's jobs with its total and the boxes that hold
+ * it (`sitePartRows`), or the boxes by place. A state of the Materials desk (`?site=<development
+ * id>`), so the rows are the on-site store's, already read by the desk. Nothing here writes: a
+ * box opens on its job's page or the phone screen, where the presses are.
+ */
+import { useState, type CSSProperties, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { containerLines, lastCountWords, type Movement } from '../../lib/materials/onSite'
+import { serverLines } from '../../lib/materials/onSiteServerSummary'
+import { listContainers, listMovements, listPlaces, serverSummary } from '../../lib/materials/onSiteStore'
+import { jobMaterialsSummaryFor } from '../../lib/materials/onSiteSummary'
+import { readSiteView, writeSiteView, type SiteView } from '../../lib/materials/siteMaterialsViewPrefs'
+import { filterPartRows, lastRecordedWords, QUIET_DAYS, searchPartRows, shownTotalWords, siteGlance, sitePartRows, sitePlaceSections, siteWeekFlow, spellingsWords, type SiteFilter, type SitePartRow, type SiteRollupJob } from '../../lib/materials/siteRollup'
+
+type Props = {
+  site: { id: string; name: string }
+  /** The site's jobs that hold boxes, with how each reads in a row. */
+  jobs: ReadonlyArray<{ id: string; label: string }>
+  /** The week's missing money is drawn for the roles that read it on the desk. */
+  showMoney: boolean
+  onBack: () => void
+  /** What the back press returns to: "Materials desk", "On site". */
+  backLabel: string
+  /** Where a box opens: the job's page for the office, the phone screen for a crew. */
+  boxHref: (jobId: string, containerId: string) => string
+  /** The site's Development page, for the roles that may open it. */
+  developmentHref?: string | null
+  /** The desk is still reading the boxes. */
+  loading?: boolean
+}
+
+const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
+const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflow: 'hidden', minWidth: 0 }
+const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }
+const chipBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap' }
+const chipDim: CSSProperties = { ...chipBase, color: 'var(--text-muted)', borderColor: 'var(--border)' }
+const chipAmber: CSSProperties = { ...chipBase, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }
+const chipBox: CSSProperties = { ...chipBase, color: 'var(--text-strong)', borderColor: 'var(--border-strong)', background: 'var(--bg-subtle)', fontVariantNumeric: 'tabular-nums' }
+const tileBase: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.5rem 0.65rem', minWidth: 0, display: 'grid', gap: 1, alignContent: 'start', textAlign: 'left', font: 'inherit', color: 'var(--text-strong)' }
+const tileKey: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const tileBig: CSSProperties = { fontSize: '1.15rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }
+const tileSmall: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+const pill = (on: boolean): CSSProperties => ({ ...btn, minHeight: 32, fontSize: '0.8rem', borderRadius: 999, ...(on ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) })
+
+function money(n: number): string {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+function count(n: number, one: string, many: string): string {
+  return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
+}
+
+function Tile({ label, big, small, tone, on, onPress }: { label: string; big: ReactNode; small?: ReactNode; tone?: 'amber' | 'green'; on?: boolean; onPress?: () => void }) {
+  const toned: CSSProperties = tone === 'amber' ? { background: 'var(--bg-amber-100)', borderColor: 'var(--text-amber-800)' } : tone === 'green' ? { background: 'var(--bg-green-100)', borderColor: 'var(--text-green-700)' } : {}
+  const ink = tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-700)' : undefined
+  const body = (
+    <>
+      <span style={{ ...tileKey, ...(ink ? { color: ink } : {}) }}>{label}</span>
+      <span style={{ ...tileBig, ...(ink ? { color: ink } : {}) }}>{big}</span>
+      {small ? <span style={tileSmall}>{small}</span> : null}
+    </>
+  )
+  if (!onPress) return <div style={{ ...tileBase, ...toned }}>{body}</div>
+  return (
+    <button type="button" aria-pressed={Boolean(on)} onClick={onPress} style={{ ...tileBase, ...toned, cursor: 'pointer', ...(on ? { outline: '2px solid var(--text-link)', outlineOffset: 1 } : {}) }}>
+      {body}
+    </button>
+  )
+}
+
+export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backLabel, boxHref, developmentHref, loading }: Props) {
+  const now = new Date()
+  const [view, setView] = useState<SiteView>(() => readSiteView())
+  const [filter, setFilter] = useState<SiteFilter>('all')
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
+
+  // The store's own rows, job by job. A job past the ledger cap reads its lines from the database's summary.
+  const rollup: SiteRollupJob[] = jobs.map((j) => {
+    const summary = serverSummary(j.id)
+    return { jobId: j.id, label: j.label, containers: listContainers(j.id), places: listPlaces(j.id), lines: summary ? serverLines(summary) : containerLines(listMovements(j.id)) }
+  })
+  const movements: Movement[] = jobs.flatMap((j) => listMovements(j.id))
+  const glance = siteGlance(rollup, now)
+  const flow = siteWeekFlow(movements, now)
+  const week = jobs.reduce((sum, j) => {
+    const s = jobMaterialsSummaryFor(j.id, now)
+    return { lines: sum.lines + s.missingLines, money: sum.money + s.missingMoneyWeek }
+  }, { lines: 0, money: 0 })
+
+  const rows = sitePartRows(rollup, now)
+  const shownRows = searchPartRows(filterPartRows(rows, filter), query)
+  const sections = view === 'place' ? sitePlaceSections(rollup, now) : []
+  const narrowed = filter !== 'all' || query.trim() !== ''
+  const last = lastRecordedWords(glance)
+  const quiet = glance.quietDays != null && glance.quietDays >= QUIET_DAYS
+
+  const pickView = (v: SiteView) => {
+    setView(v)
+    writeSiteView(v)
+  }
+  const toggleFilter = (f: SiteFilter) => {
+    setFilter((cur) => (cur === f ? 'all' : f))
+    if (view !== 'part') pickView('part')
+  }
+  const toggleRow = (key: string) =>
+    setOpen((cur) => {
+      const next = new Set(cur)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const clear = () => {
+    setFilter('all')
+    setQuery('')
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '0.9rem' }} data-testid="site-materials-view">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <button type="button" aria-label={`Back to ${backLabel}`} title={backLabel} style={{ ...btn, width: 36, height: 36, minHeight: 36, padding: 0, justifyContent: 'center', flex: '0 0 auto', lineHeight: 1 }} onClick={onBack}>
+          ‹
+        </button>
+        <div style={{ display: 'grid', minWidth: 0, flex: '1 1 220px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', lineHeight: 1.2 }}>{site.name}</h2>
+          <span style={muted}>
+            Everything in the cages and boxes on this site, across {count(jobs.length, 'job', 'jobs')}. Read only: a box opens where it can be counted.
+            {loading ? ' Loading…' : ''}
+          </span>
+        </div>
+        {developmentHref ? <Link to={developmentHref} style={{ ...btn, fontWeight: 500 }}>Open the Development page</Link> : null}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '0.5rem' }} role="group" aria-label="This site at a glance">
+        <Tile label="Last recorded" big={last.big} small={last.small} tone={glance.lastRecorded ? (quiet ? 'amber' : 'green') : undefined} />
+        <Tile label="Boxes" big={glance.boxes.toLocaleString('en-US')} small={`${count(glance.jobsWithBoxes, 'job', 'jobs')} · ${count(glance.places, 'place', 'places')}`} />
+        <Tile label="On hand" big={count(glance.lines, 'line', 'lines')} small={count(glance.pieces, 'piece', 'pieces')} />
+        <Tile label="Due a count" big={glance.dueNow.toLocaleString('en-US')} small={glance.dueSoon > 0 ? `${glance.dueSoon.toLocaleString('en-US')} more this week` : 'none more this week'} tone={glance.dueNow > 0 ? 'amber' : undefined} on={filter === 'due'} onPress={() => toggleFilter('due')} />
+        <Tile label="Can't find" big={glance.cannotFindLines.toLocaleString('en-US')} small={glance.cannotFindLines === 1 ? 'line since its count' : 'lines since their count'} tone={glance.cannotFindLines > 0 ? 'amber' : undefined} on={filter === 'cannot'} onPress={() => toggleFilter('cannot')} />
+        <Tile label="Short at a count" big={glance.shortLines.toLocaleString('en-US')} small={glance.shortLines === 1 ? 'line at its last count' : 'lines at their last count'} tone={glance.shortLines > 0 ? 'amber' : undefined} on={filter === 'short'} onPress={() => toggleFilter('short')} />
+        <Tile label="Missing this week" big={showMoney ? money(week.money) : week.lines.toLocaleString('en-US')} small={showMoney ? count(week.lines, 'line', 'lines') : week.lines === 1 ? 'line' : 'lines'} />
+        <Tile label="This week" big={`${flow.cameIn.toLocaleString('en-US')} in`} small={`${flow.used.toLocaleString('en-US')} used${flow.invoices > 0 ? ` · ${count(flow.invoices, 'invoice', 'invoices')}` : ''}`} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span role="group" aria-label="How the list reads" style={{ display: 'inline-flex', gap: '0.35rem' }}>
+          <button type="button" aria-pressed={view === 'part'} style={pill(view === 'part')} onClick={() => pickView('part')}>By part</button>
+          <button type="button" aria-pressed={view === 'place'} style={pill(view === 'place')} onClick={() => pickView('place')}>By place</button>
+        </span>
+        {view === 'part' ? (
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a part or a box on this site"
+            aria-label="Find a part or a box on this site"
+            style={{ flex: '1 1 220px', minWidth: 0, minHeight: 36, borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.9rem' }}
+          />
+        ) : null}
+      </div>
+
+      {view === 'part' ? (
+        <div style={sec}>
+          {narrowed && shownRows.length > 0 ? (
+            <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="site-shown-total">
+              <span><strong>{shownTotalWords(shownRows)}</strong></span>
+              <button type="button" style={{ ...btn, minHeight: 26, fontSize: '0.72rem', padding: '0 0.5rem', fontWeight: 500 }} onClick={clear}>Show every row</button>
+            </div>
+          ) : null}
+          {shownRows.length === 0 ? (
+            rows.length === 0
+              ? <EmptyState compact main={loading ? 'Reading the boxes…' : 'No part is on hand on this site yet.'} tail={loading ? undefined : 'A crew counts parts into a box on the phone’s On site tab.'} />
+              : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
+          ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} />)}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {sections.length === 0 ? <div style={sec}><EmptyState compact main={loading ? 'Reading the boxes…' : 'No cage or box is on this site yet.'} tail={loading ? undefined : 'A job’s Materials page is where the first is added.'} /></div> : null}
+          {sections.map((s) => (
+            <div key={s.key} style={sec}>
+              <h3 style={{ margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                {s.name}
+                <span style={{ ...muted, fontWeight: 400 }}>{count(s.boxes.length, 'box', 'boxes')} · {count(s.pieces, 'piece', 'pieces')}{s.jobLabels.length > 1 ? ` · ${s.jobLabels.length} jobs` : ''}</span>
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '0.5rem', padding: '0.6rem' }}>
+                {s.boxes.map((b) => (
+                  <div key={b.containerId} style={{ borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, padding: '0.4rem 0.55rem', display: 'grid', gap: '0.2rem', minWidth: 0, alignContent: 'start' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link to={boxHref(b.jobId, b.containerId)} style={{ fontWeight: 800, color: 'var(--text-link)', textDecoration: 'none' }} title={`Open ${b.label} on ${b.jobLabel}`}>{b.label}</Link>
+                      {b.kind !== 'unsorted' ? <span style={b.due ? chipAmber : chipDim}>{b.due ? 'due a count' : lastCountWords(b.countedAt ? { at: b.countedAt, byName: '' } : null, now).replace(/ by $/, '')}</span> : null}
+                    </div>
+                    {s.jobLabels.length > 1 ? <span style={{ ...muted, fontSize: '0.72rem' }}>{b.jobLabel}</span> : null}
+                    {b.lines.length === 0 ? <span style={muted}>Empty</span> : b.lines.map((l) => (
+                      <div key={l.partKey} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', fontSize: '0.82rem' }}>
+                        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{l.name}{l.cannotFind > 0 ? <span style={{ ...chipAmber, marginLeft: 6 }}>{l.cannotFind} can't find</span> : null}</span>
+                        <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{l.onHand.toLocaleString('en-US')}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PartRow({ row, open, onToggle, boxHref, now }: { row: SitePartRow; open: boolean; onToggle: () => void; boxHref: Props['boxHref']; now: Date }) {
+  const spellings = spellingsWords(row)
+  const warn = row.cannotFind > 0 || row.short > 0
+  const firstBoxes = row.boxes.slice(0, 4)
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', ...(warn ? { background: 'var(--bg-amber-100)' } : {}) }} data-site-part-row={row.key}>
+      <button type="button" aria-expanded={open} onClick={onToggle} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', alignItems: 'baseline' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text-strong)', minWidth: 0, overflowWrap: 'anywhere' }}>
+          {row.name}
+          {row.manufacturer ? <span style={{ ...muted, fontWeight: 500 }}> · {row.manufacturer}</span> : null}
+          {spellings ? <span style={{ ...muted, fontWeight: 500, marginLeft: 6 }}>{spellings}</span> : null}
+        </span>
+        <span style={{ fontWeight: 800, fontSize: '1rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>{row.total.toLocaleString('en-US')}</span>
+        <span style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+          {firstBoxes.map((b) => <span key={`${b.containerId}:${b.spelling}`} style={chipBox}>{b.label} · {b.onHand.toLocaleString('en-US')}</span>)}
+          {row.boxes.length > firstBoxes.length ? <span style={chipDim}>+{row.boxes.length - firstBoxes.length}</span> : null}
+          {row.cannotFind > 0 ? <span style={chipAmber}>{row.cannotFind} can't find</span> : null}
+          {row.short > 0 ? <span style={chipAmber}>{row.short} short at a count</span> : null}
+          {row.due ? <span style={chipAmber}>due a count</span> : <span style={chipDim}>{lastCountWords(row.countedAt ? { at: row.countedAt, byName: '' } : null, now).replace(/ by $/, '')}</span>}
+        </span>
+      </button>
+      {open ? (
+        <div style={{ margin: '0 0.75rem 0.6rem', background: 'var(--bg-subtle)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, padding: '0.4rem 0.6rem', display: 'grid', gap: '0.3rem', fontSize: '0.82rem' }}>
+          {row.boxes.map((b) => (
+            <div key={`${b.containerId}:${b.spelling}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ minWidth: 0 }}>
+                <Link to={boxHref(b.jobId, b.containerId)} style={{ fontWeight: 800, color: 'var(--text-link)', textDecoration: 'none' }} title={`Open ${b.label} on ${b.jobLabel}`}>{b.label}</Link>
+                <span style={muted}>{b.placeName ? ` · ${b.placeName}` : ''} · {b.jobLabel}{row.spellings.length > 1 ? ` · typed “${b.spelling}”` : ''}</span>
+              </span>
+              <span style={{ whiteSpace: 'nowrap' }}>
+                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{b.onHand.toLocaleString('en-US')}</strong>
+                <span style={muted}> · {b.lineCountedAt ? lastCountWords({ at: b.lineCountedAt, byName: '' }, now).replace(/ by $/, '') : 'never counted'}</span>
+              </span>
+            </div>
+          ))}
+          {row.spellings.length > 1 ? <span style={muted}>These names are one row because their words are the same. Each keeps its own count in its box.</span> : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}

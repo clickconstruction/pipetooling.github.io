@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -31,6 +31,23 @@ Each line is one send. The line shows these facts.
 Press **Copy as sent** to open the email as the customer read it. The bill is attached to that copy.
 
 Press the green job name to open the job.
+
+## Did the email arrive
+
+An email line says what the mail service last reported.
+
+- *Delivered* and a time means their mail server took the email.
+- *Opened* and a time means someone opened the email after it was delivered.
+- *Bounced. It did not arrive.* means their mail server refused the email. The line has a red border.
+- *Sent. Their mail server has not answered yet.* means the answer is still to come.
+
+Delivered does not mean someone read the email. Opened is the stronger word.
+
+A red tile at the top reads **Did not arrive** with a count. The tile counts sends that did not arrive on a bill that is still open.
+
+Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
+
+A line whose bill was paid says *Paid* and the day.
 
 ## A bill sent more than once
 
