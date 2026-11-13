@@ -70,7 +70,7 @@ const PENDING_OPEN_ADD_TASK_KEY = 'add_task_pending_open_v1'
 const INSTALLED_KEY = 'add_task_shortcut_installed_v1'
 const BANNER_DISMISSED_KEY = 'add_task_banner_dismissed_v1'
 
-/** Path to return to after sign-in (honored by SignInRoute). Used by the standalone /task launch. */
+/** Where the path to return to after sign-in is stored. Written by the sign-in gate, the standalone /task launch, a box label's page and a file link; read once by `LeaveSignIn`, held to `signInReturnAddress.ts`'s rule. */
 export const POST_LOGIN_REDIRECT_KEY = 'post_login_redirect'
 
 function safeGet(key: string): string | null {

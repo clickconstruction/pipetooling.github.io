@@ -68,8 +68,8 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 |---|---|---|
 | 1–92 | imports | 7 eager pages (6–12: 5 auth + `BidRoom`, `SubmittalRoom`), **34 `lazy()` staff pages** (13–46), 14 eager public/room pages (47–60, incl. `PartnerStatement` 56), 30 contexts/components |
 | 100–118 | `AuthGateLoadingScreen` | "Loading…", then after 5 s a `/fix-cache.html` link |
-| 120–125 | `ProtectedRoute` | `useAuth` loading → gate screen; no user → `/sign-in` |
-| 127–146 | `SignInRoute` | signed in → one-shot `POST_LOGIN_REDIRECT_KEY` (internal paths only) else `/dashboard` |
+| 120–125 | `ProtectedRoute` | `useAuth` loading → gate screen; no user → `SignedOutGate` (`components/SignInReturn.tsx`): keeps the asked-for address for a visitor who arrived signed out, then `/sign-in` |
+| 127–146 | `SignInRoute` | signed in → `LeaveSignIn`: the one-shot return address (the page's own `?next=`, else `POST_LOGIN_REDIRECT_KEY`; a path on this site only, `lib/signInReturnAddress.ts`) else the role's landing |
 | 149–184 | `AuthHandler` | `#access_token&refresh_token&type=magiclink` → clear hash → `setSession` → `wipeServiceWorkersAndCaches` → reload |
 | 186–189 | `NavigateToEditCustomer` | `/customers/:id/edit` → `/customers` with `state.openEditCustomer` |
 | 191–353 | `AppContent` | `session-expiring` toast effect (194–205); `AuthHandler`, `UpdatePrompt`, `<Routes>` (211–350) |
@@ -196,14 +196,14 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 - Mode shells are just routes: `dispatch-mode` ×5 → `DispatchMode`, `job-mode/*` ×3 → `JobModeTabs`.
 - **Parsers that read this JSX as text:** `customerSurfaceRegistry.test.ts` (`publicRoutesFromAppSource`, 8 cases). Every absolute `path` inside `<Routes>` whose chunk lacks the text `ProtectedRoute` counts as public and needs a journey step. Also `twins/appDirectoryCheck.test.ts` (`appRoutePathsFromSource`, 6) and `scripts/map-surface.mjs --routes`. A route config array or a route split into another file silently changes what all three see.
-- **Tests:** the two parser tests above. `ProtectedRoute` / `SignInRoute` behavior is untested. `POST_LOGIN_REDIRECT_KEY` handling (open-redirect guard `startsWith('/') && !startsWith('//')`, 136) is untested, since `iosPwa.test.ts` (10) does not touch it.
-- **Approach:** keep in place. Stage-A the redirect sanitizer (inventory #7).
+- **Tests:** the two parser tests above. The return address is held by `signInReturnAddress.test.ts` (the rule that keeps only a path on this site, the gate's keep / forget / leave, the emailed link's `?next=` round trip) and `SignInReturn.render.test.tsx` (`SignedOutGate`, `LeaveSignIn` under StrictMode). `ProtectedRoute` / `SignInRoute` themselves are not rendered by a test.
+- **Approach:** keep in place. The redirect sanitizer (inventory #7) is out.
 
 ### C. Role route guard + per-role landing
 
 | Trigger | Where | Lands on |
 |---|---|---|
-| Sign-in completes | `SignInRoute` 133–143 | saved internal path (one-shot) else `/dashboard` |
+| Sign-in completes | `SignInRoute` → `LeaveSignIn` | the return address (one-shot: what the gate, `/task`, a box label or a file link kept, or what an emailed link carries) else the role's landing |
 | `/` | index route 303 | `/dashboard` |
 | Unknown path | `*` 349 | `/` → `/dashboard` |
 | Path not allowed for role | guard effect 399–404 (`isPathAllowedForRole`) | estimator `/bids`, else `/dashboard` (duplicates `roleHomePath`, `roleGate.ts` 149) |
@@ -323,7 +323,7 @@ There is **no data engine**. Layout loads almost nothing itself; each banner, fo
 | 4 | optimistic pin flip 2075–2094; bid label `${prefix}${num}` 226–231; pin-for refusal + name fallback 2204–2212, 2229 | `pinnedTabs.ts` → `togglePinnedOptimistic`, `bidPinLabel`, `pinForTargetCheck` | add/remove idempotence incl. `bidId`; label fallback `'Bid'`; refusal copy |
 | 5 | `signOutEverywhere` 276–282 (≡ Settings `handleSignOut` 566–574) | `src/lib/signOut.ts` → `clearSupabaseStorageKeys(storage)` + `signOutEverywhere()` | only `sb-*` keys are removed |
 | 6 | `handleBackToMyAccount` 469–485 (near-copy of Settings 630–646: there a `setSession` failure and the return use `window.location.href`, here `navigate('/sign-in')` and `location.assign`; both also clear local `impersonating` state, which stays in each component); literal `IMPERSONATION_KEY` 116 (≡ Settings 626/631/632) | `impersonationSession.ts` → `returnToOriginalAccount()`; use `IMPERSONATION_ORIGINAL_STORAGE_KEY` | stash missing / tokens missing / `setSession` throws |
-| 7 | `SignInRoute` saved-path sanitizer (App 133–142) | `iosPwa.ts` → `resolvePostLoginDestination(saved)` | `//evil`, `http://…`, empty → `/dashboard` |
+| 7 | `SignInRoute` saved-path sanitizer (App 133–142) | **done**: `src/lib/signInReturnAddress.ts` → `safeReturnAddress`, `signedInDestination` | `//evil`, `http://…`, `/\evil`, `/..//evil`, empty → the role's landing |
 | 8 | `AuthHandler` hash parse (App 155–162) | `parseMagicLinkHash(hash)` | only `type=magiclink` with both tokens |
 
 **Already extracted (reuse, don't re-extract):** `layoutRouteAccess` (19 cases), `roleGate` (16), `pinnedTabs` (18), `phoneDock` (16), `assistantDispatchLanding` (17), `chunkLoadRecovery` (17), `iosPwa` (10), `fieldJobLookup` (9), `ledgerDisplayPrefixes` (9), `roadmapVisibility` (7), `taskModeToggle` (7), `bodyScrollLock` (7), `appActivityPage` (6), `impersonationUiLabels` (5), `navClickTelemetry` (5), `bankingAccess` (4), `jobModeTelemetry` (4), `headerTaskDispatchEstimatorEligible` (4), `dispatchModePoToggle` (3), `impersonationSession` (3), `txCountySettings` (3), `jobModeToggle` (16), `customerWaiting` (10), `navFitCollapse` (7), `pinModeToggle` (5), `partnerNavStatus` (4). **No test:** `dispatchModeToggle`, `subcontractorLikeRole` (`isAssistantLike` / `isSubcontractorLikeRole`, used by every gate), `todos/punchListAccess`, `canLeaveJobFieldReport`, `dismissalSync`, `hardReload`, `dashboardPrefetch`, `jobAddressLocalitySettings`, `people/fetchActiveUsers`.
@@ -337,7 +337,7 @@ There is **no data engine**. Layout loads almost nothing itself; each banner, fo
 | Region | Covered by | Gap |
 |---|---|---|
 | A Boot/providers | `useAuth`, `UpdatePrompt`, `chunkLoadRecovery`, `RouteLoadingFallback` | no `App` render; `AuthHandler`, `ForceReloadContext`, `RealtimeLifecycleContext` |
-| B Routes | `customerSurfaceRegistry.test`, `appDirectoryCheck.test` (source parsers) | `ProtectedRoute`, `SignInRoute` redirect sanitizer |
+| B Routes | `customerSurfaceRegistry.test`, `appDirectoryCheck.test` (source parsers), `signInReturnAddress.test`, `SignInReturn.render.test` | `ProtectedRoute` and `SignInRoute` rendered whole |
 | C Guard/landing | `layoutRouteAccess`, `roleGate`, `taskModeToggle`, `assistantDispatchLanding`; e2e deep links (non-gating) | effect wiring; nav ↔ guard parity |
 | E Modes | `useJobModeEnabled`, `jobModeToggle`, `pinModeToggle`, `dispatchModePoToggle`, `taskModeToggle`, `jobModeTelemetry` | inline derivations; 3 mode hooks; `dispatchModeToggle` |
 | F/G/H/I Nav + toolbar + gear + mobile | `useNavFitCollapse` + `navFitCollapse`, `partnerNavStatus`, `roadmapVisibility`, `bankingAccess`, `fieldJobLookup`, `headerTaskDispatchEstimatorEligible` (source-scan), `phoneDock`, `ViewAsPanel`, `PartnerStatementNavLink`; `HeaderGlobalSearch`'s three render tests (v2.5915, v2.5933); e2e viewport smoke (non-gating) | every inline role branch; `DispatchModeFooter`, `PhoneDockMoreSheet`; `subcontractorLikeRole` |
