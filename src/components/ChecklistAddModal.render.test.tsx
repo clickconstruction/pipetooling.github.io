@@ -27,6 +27,8 @@ vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise
 
 // Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
 const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
+// Rows the modal updates after the insert (the card's tag, punch list #334).
+const updated = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
 
 vi.mock('../lib/supabase', () => {
   // Table-aware stub: the generic renderSmokeMocks stub resolves single() to
@@ -42,6 +44,10 @@ vi.mock('../lib/supabase', () => {
       return builder
     }
     builder.upsert = builder.insert
+    builder.update = (row: unknown) => {
+      updated.push({ table, row })
+      return builder
+    }
     builder.single = () => Promise.resolve({ data: singleResult, error: null })
     builder.then = (f?: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
       listPromise().then(f, r)
@@ -365,6 +371,69 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     expect(typeof row.place_set_at).toBe('string')
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     offeredPlaces.places = []
+    cleanup()
+  })
+})
+
+// A card written for one specific thing (punch list #334): the Bridge opens the window with what finished looks like,
+// no photo asked, and the key of the thing. Made-up customer.
+const THING_PRESET = {
+  title: 'Call Alder Builders about $40.0k late. Get a pay date for each bill.',
+  links: ['https://app.example/customers/c1?todo=payer.c1'],
+  doneWhen: ['201 · Maple Lofts: pay date written down', ' 202 · Oak Court: pay date written down '],
+  asksForPhoto: false,
+  sourceTag: 'payer.c1',
+}
+
+function OpenWithThingOnMount() {
+  const modal = useChecklistAddModal()
+  const opened = useRef(false)
+  useEffect(() => {
+    if (modal && !opened.current) {
+      opened.current = true
+      modal.openAddModal({ preset: THING_PRESET })
+    }
+  }, [modal])
+  return null
+}
+
+describe('ChecklistAddModal, a card written for one thing (punch list #334)', () => {
+  it('opens with the Done when lines shown and no photo asked, and Send keeps the thing’s key on the card', async () => {
+    inserted.length = 0
+    updated.length = 0
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <OpenWithThingOnMount />
+        <ChecklistAddModal />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Robert')
+    expect(screen.getByDisplayValue(THING_PRESET.title)).toBeTruthy()
+    // The lines arrive trimmed, one a line, and the fold is open so the sender reads them.
+    const lines = screen.getByDisplayValue(/201 · Maple Lofts: pay date written down\s+202 · Oak Court: pay date written down/) as HTMLTextAreaElement
+    expect(lines.value).toBe('201 · Maple Lofts: pay date written down\n202 · Oak Court: pay date written down')
+    expect((screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(row.links).toEqual(THING_PRESET.links)
+    expect(row.asks_for_photo).toBe(false)
+    // The key is written apart from the insert, so a card is still made where the column is not there yet.
+    expect('source_tag' in row).toBe(false)
+    await vi.waitFor(() => expect(updated).toEqual([{ table: 'checklist_items', row: { source_tag: 'payer.c1' } }]))
+    await vi.waitFor(() => expect(screen.queryByDisplayValue(THING_PRESET.title)).toBeNull())
+    cleanup()
+  })
+
+  it('writes no key on a card a person wrote by hand', async () => {
+    inserted.length = 0
+    updated.length = 0
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    expect(updated).toEqual([])
     cleanup()
   })
 })
