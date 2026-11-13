@@ -8,7 +8,7 @@ covers:
   - src/pages/Jobs.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-04
+last_updated: 2026-11-13
 ---
 
 ## Overview
@@ -218,11 +218,12 @@ All strip themselves with `setSearchParams(…, { replace: true })`. `?tab=` (ro
 - **Data:** self-loading — [`useTeamBoardWeek`](../src/hooks/useTeamBoardWeek.ts) → [`lib/fetchTeamBoardWeek.ts`](../src/lib/fetchTeamBoardWeek.ts) → [`lib/teamBoard.ts`](../src/lib/teamBoard.ts) (`buildTeamBoard`, tested). Does not read the page's `jobs`. The page still fires `loadLaborJobs` / `loadTeamLaborData` on this tab (1344, 1351) though the tab consumes neither.
 - **Status:** **Done.** Render test.
 
-### `subs` — Subs (Work / Pay; v2.2927 fold of `work_orders` + `sub_sheet_ledger`)
+### `subs` — Subs (Work / Pay / Ledger; v2.2927 fold of `work_orders` + `sub_sheet_ledger`)
 
-- **Render (1978–2043):** [`JobsSubsTab`](../src/components/jobs/JobsSubsTab.tsx) (75-line shell) takes `view` (`subsView`, 1698), `canSeeWork`, `onViewChange` (writes `?view=pay` / deletes it), and four slots:
+- **Render (1978–2043):** [`JobsSubsTab`](../src/components/jobs/JobsSubsTab.tsx) (75-line shell) takes `view` (`subsView`, 1698), `canSeeWork`, `onViewChange` (writes `?view=pay` or `?view=ledger` / deletes it), and five slots:
   - **Work** — [`JobsSubsWorkView`](../src/components/jobs/JobsSubsWorkView.tsx) (1,312 lines, 10 props; superintendents get `null`): reads the page's `jobs`, self-loads `step_commitments`, `job_stage_windows`, `people_labor_jobs`, `project_workflow_steps`, `jobs_ledger`, `people`, `users`, RPC `create_sheet_for_work_order`; `?wo=` / `?wof=` deep links; `onOpenSheet` resolves the sheet in the page's `laborJobs` and calls `subLaborFormRef.openEdit`; `onSetSheetStage` = `setLaborJobStage`; its toolbar portals into `subsWorkToolbarHost` (a `<div ref={setSubsWorkToolbarHost}>` in the `workToolbar` slot).
   - **Pay** — `SubLaborToolbar` (`payToolbar`: search + New) and [`JobsSubLaborTab`](../src/components/jobs/JobsSubLaborTab.tsx) `hideToolbar` (875 lines, 20 props: ledger values, `subLaborOutstandingByPerson` / `subLaborDueTotal`, openers through the handles, `onPrintJobSubSheet`, date/stage mutations, reload).
+  - **Ledger** (v2.7174) — [`SubPaymentsLedger`](../src/components/jobs/SubPaymentsLedger.tsx) in the optional `ledger` slot, handed in for the roles who see Work; a Pay-only role gets no tab and `?view=ledger` opens Pay. It reads the page's `laborJobs` (each sheet's `payments` and `payment_events`), fetches only the roster through `useRosterSubKinds`, writes nothing, and carries its own search and periods, so no toolbar rides the control's row. The kernel is [`subPaymentsLedger.ts`](../src/lib/subWorkOrders/subPaymentsLedger.ts); `onOpenSheet` is `subLaborFormRef.openEdit`.
 - **Always-mounted modal trio (tail):** [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) 2169–2198 (2,623 lines, 45 `useState`, 27 props; handle `open` / `openNew` / `openEdit` / `openNewWithJobNumber` / `openWithBillingPrefill` — the last has had **no page caller since v2.1623**, only its render test; mapped in [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md)); [`SubLaborPaymentModals`](../src/components/jobs/SubLaborPaymentModals.tsx) 2202–2209 (276 lines; handle `openMakePayment` / `openBackcharge` / `openEditPayment` / `clearEditPayment`; `onRequestRemove` hands off); [`SubLaborPaymentMoveRemoveModals`](../src/components/jobs/SubLaborPaymentMoveRemoveModals.tsx) 2210–2217 (259 lines, v2.3562; handle `openMove` / `openRemove` / `clear`). The form modal's `onClearEditPayment` clears both payment handles; it receives `setActiveTab` directly.
 - **Owned page state (5):** `people` (178, `loadRoster`), `editingLaborJob` (289 — the form modal's controlled value + setter: its `openEdit` sets it for `?editLabor=`, and `useSubLaborLedger`'s `onLaborJobsReloaded` re-syncs it, 318), `defaultLaborRateValue` (292) — these three are read only by `JobsSubLaborFormModal` — `subLaborSearch` (366), `subsWorkToolbarHost` (368). Shared: `users` (Pipeline + Job Summary + this tab's form modal), drive values (Crew P&L + Job Summary; legacy rows only).
 - **Engine:** [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) (293–324; 358 lines): `people_labor_jobs` + items / payments / payment events / assignees, `jobs_ledger`, `projects`, `users`; RPCs `set_sub_sheet_stage`, `move_labor_job_payment`, `remove_labor_job_payment`, `restore_labor_job_payment`.

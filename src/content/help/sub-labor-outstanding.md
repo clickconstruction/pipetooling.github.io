@@ -73,4 +73,5 @@ The row shows when a sheet was paid without opening it. The dates sit under the 
 ## More on paying subs
 
 - [Fix a payment on the wrong sheet](/help/fix-a-payment-on-the-wrong-sheet): move it, remove it, or undo a removal.
+- [See every payment made to subs by date](/help/see-every-sub-payment-by-date): the Ledger beside Pay, to check against the bank.
 - [Work the Subs tab on a phone](/help/work-the-subs-tab-on-a-phone): the Pay and Work views as rows.
