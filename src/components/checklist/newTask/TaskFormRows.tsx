@@ -345,7 +345,7 @@ export function TaskFormRows(props: Props) {
       <div style={rowStyle}>
         <span style={labStyle}>Where</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
-          <TaskPlaceRow value={props.place} onChange={props.onPlace} variant="shelf" />
+          <TaskPlaceRow value={props.place} onChange={props.onPlace} variant="shelf" {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} />
           <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
         </div>
       </div>
