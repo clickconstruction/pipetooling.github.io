@@ -349,6 +349,7 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 - **The bucket `painted-map-photos`** is private. Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos; removing one is its uploader's and the office's.
 - **A line is a shape**: `points` holds pairs of numbers, with no time for a point. Nothing here records where a person was or when.
 - The three tables carry the training blocks, the twin fence and the archived seal. Nothing signed-out reads them.
+- **On screen** (v2.7211): the line under the address in the job window's top band (`JobPaintedMapsStrip`) reads the job's maps and its development's under this gate, for every role that can open the job. It has no role check of its own: a caller the gate turns away gets an empty list and sees only **＋ Paint a map**, and a save they may not make is refused by the database in words. In the window, the presses that change a line or the map show for its maker and for the office (`isOfficeRole`); the database holds the same line.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
