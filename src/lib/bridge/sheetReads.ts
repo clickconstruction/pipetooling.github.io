@@ -58,7 +58,7 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
     soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: opts.zzTestJobIds, leftOut: [] })),
-    soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: [] })),
+    soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: [], zzTestJobIds: opts.zzTestJobIds })),
   ])
   const items = fin ? [...fin.ar.items, ...fin.arCollections.items] : []
   const collectReads = fin
