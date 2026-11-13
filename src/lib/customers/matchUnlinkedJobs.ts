@@ -12,10 +12,10 @@
  *  - 'job_name': no customer_name, but the job name exactly equals one
  *    customer — the HCP-era pattern, pre-checked.
  *  - 'prefix': the job name starts with exactly one customer's name (≥ 6
- *    normalized chars, e.g. "Mary Evans (to be paid by DRF)") — proposed but
+ *    normalized chars, e.g. "Mary Elwin (to be paid by DLF)") — proposed but
  *    unchecked; the user confirms.
- *  - 'none': no proposal — the user picks (aliases like "Dudley Mason" →
- *    "RMC- Dudley Mason") or skips.
+ *  - 'none': no proposal — the user picks (aliases like "Dunmere Mallin" →
+ *    "RLC- Dunmere Mallin") or skips.
  *
  * Pure; normalization shared with customerSimilarity so the two dedupe
  * surfaces agree on what "the same name" means.

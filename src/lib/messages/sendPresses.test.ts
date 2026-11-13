@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { SHOW_WORDS } from '../firstLook/ask'
 import { slashPaperKind, slashWordAt } from '../quickReplies/slash'
-import { sendPressesHead, sendPressesShown, withSlashWord } from './sendPresses'
+import { SEND_PRESS_TYPED, SEND_PRESSES, sendPressesHead, sendPressesShown, withSlashWord } from './sendPresses'
 
 describe('the three presses over the reply box (punch list #319 PR 1b)', () => {
   it('names the person, never a guessed pronoun', () => {
@@ -32,5 +33,15 @@ describe('the three presses over the reply box (punch list #319 PR 1b)', () => {
     const word = slashWordAt(under.text, under.caret)!
     expect(word.start).toBe(21)
     expect(slashPaperKind(word.words)).toBe('bill')
+  })
+
+  it('each hover line ends with the word that does the same when typed (v2.7123)', () => {
+    expect(SEND_PRESSES.photosTip.endsWith('Same as typing /show.')).toBe(true)
+    expect(SEND_PRESSES.estimateTip.endsWith('Same as typing /estimate.')).toBe(true)
+    expect(SEND_PRESSES.billTip.endsWith('Same as typing /bill.')).toBe(true)
+    // The words are ones the box knows: /show opens the ask, the other two open their list.
+    expect(SHOW_WORDS).toContain(SEND_PRESS_TYPED.photos.slice(1))
+    expect(slashPaperKind(SEND_PRESS_TYPED.estimate.slice(1))).toBe('estimate')
+    expect(slashPaperKind(SEND_PRESS_TYPED.bill.slice(1))).toBe('bill')
   })
 })

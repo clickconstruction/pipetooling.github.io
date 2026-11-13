@@ -154,7 +154,7 @@ export function BidsWhyWeLostLens({
     for (const b of bids) {
       const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
       // T5-07 (X7): a customer-linked bid keys by the customer; a name-only builder keys by the
-      // shared identity key (+ aliases), so "H & I" and "H&I" are one card.
+      // shared identity key (+ aliases), so "B & D" and "H&I" are one card.
       const builderKey = bidLevelBuilderKey(b, builderName)
       for (const row of gcOutcomeRowsForBid(b, { key: builderKey, name: canonicalIdentityName(normalizeIdentityKey(builderName), builderAliases) ?? builderName }, gcPacketsByBid[b.id])) out.push({ bid: b, row })
     }

@@ -438,8 +438,8 @@ export function renderByPerson(rows: readonly PersonStanding[]): string {
  * A counterparty with no alias whose first name is exactly one person's first name on the pay
  * reports — "Trace Whites" → Trace, "Juan M Farias Jr" → Juan. A person recorded with an initial
  * ("Michael A", "Julia W") also needs the counterparty's surname to start with it, so "Michael
- * Zinna" never lands on Michael A. Null when nothing or more than one person fits; nicknames
- * ("Mike Z" for Michael Zinna, "Jesse" for Jessie Lopez) stay a person's alias to add.
+ * Zellin" never lands on Michael A. Null when nothing or more than one person fits; nicknames
+ * ("Mike Z" for Michael Zellin, "Jesse" for Jessie Lopez) stay a person's alias to add.
  */
 export function guessPersonByName(counterparty: string, personNames: readonly string[]): string | null {
   const tokens = counterparty.trim().split(/\s+/).filter(Boolean)

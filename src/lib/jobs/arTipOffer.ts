@@ -40,7 +40,7 @@ export type ArTipOffer = {
   amount: number
   /** The one job every applied row shares, or null when the office must choose. */
   jobId: string | null
-  /** "960 · Elaine Giesber-Installations Pcv & Lavatory Sink", or null when there is no single job. */
+  /** "960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink", or null when there is no single job. */
   jobLabel: string | null
   /**
    * The jobs this deposit actually paid, first-seen order. The tip belongs to one of them, so

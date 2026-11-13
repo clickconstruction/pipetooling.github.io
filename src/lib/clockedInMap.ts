@@ -50,7 +50,7 @@ export type ClockedInStop = {
   /** `job:<id>` | `bid:<id>` | `office` — the pin id and the rail row key. */
   id: string
   kind: ClockedInStopKind
-  /** `JP1021 · Vecchio Pinpoint` — the strip's own short label. */
+  /** `JP1021 · Vellano Pinpoint` — the strip's own short label. */
   label: string
   address: string
   addressKey: string

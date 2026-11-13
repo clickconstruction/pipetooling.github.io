@@ -2,7 +2,7 @@
 title: review my team's completed tasks
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: checklist review, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates
+keywords: checklist review, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where
 order: 41
 ---
 When someone finishes a checklist task you assigned, it lands in Checklist review. You sign it off there, or send it back with a comment.
@@ -31,6 +31,19 @@ If it's not done right, you type a comment. The comment is required, so the pers
 - The task goes back to open on their **Today** list. It has an amber "Reopened by you" strip carrying your comment.
 - They get a notification with your reason.
 - When they complete it again, it returns here for another look.
+
+## See where the open tasks are
+
+Above **Outstanding by person** sits a map called **Where the open tasks are**. It shows up when an open task on the board has a place.
+
+- Each person has a colour. Tap a name to see that person's tasks alone. Tap the name again to see everyone.
+- A navy dot with a number is a place more than one person has a task at.
+- Tap a dot to read who has what there. {{button:blue|Directions}} takes you to the place.
+- A line under the map counts the open tasks with no place. They are still on the board below.
+
+The map shows where the tasks are. It does not show where a person is, and it asks no phone for its location.
+
+Use it before you hand out the day. Two people sent to the same corner show up as one navy dot.
 
 ## Your people on the Dashboard
 

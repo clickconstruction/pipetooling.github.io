@@ -326,7 +326,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
           const d = dnb(j)
           return { ...jobRow(j, inp), value: d != null ? `${inp.money(d)} done, not billed` : 'no percent yet' }
         })
-        // The waiting jobs with money left (the Gun Dog spike, 2026-11-02): never billed, so the tile reads *Not yet billed* and the card says where it sits.
+        // The waiting jobs with money left (the Gray Fox spike, 2026-11-02): never billed, so the tile reads *Not yet billed* and the card says where it sits.
         const leftOf = (j: MemberJob) => Math.max(0, (j.revenue ?? 0) - (j.payments_made ?? 0))
         const waiting = members.jobs.filter((j) => (j.status ?? '').toLowerCase() === 'waiting' && leftOf(j) > 0).sort((a, b) => leftOf(b) - leftOf(a))
         const waitingRows = waiting.map((j) => ({ ...jobRow(j, inp), value: noMoney(inp) ? null : `${inp.money(leftOf(j))} left` }))

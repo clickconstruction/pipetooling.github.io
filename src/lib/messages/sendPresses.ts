@@ -8,13 +8,19 @@
 import { canOpenMessages } from '../gc/access'
 import type { UserRole } from '../../hooks/useAuth'
 
+/** The word each press stands for, as it is typed in the box. */
+export const SEND_PRESS_TYPED = { photos: '/show', estimate: '/estimate', bill: '/bill' } as const
+
+/** A hover line's last sentence: the word that does the same from the keyboard (v2.7123). */
+const typed = (key: keyof typeof SEND_PRESS_TYPED) => `Same as typing ${SEND_PRESS_TYPED[key]}.`
+
 export const SEND_PRESSES = {
   photos: 'Ask for photos',
-  photosTip: 'Puts the ask in the box with a link made for them, where they add photos and a short video.',
+  photosTip: `Puts the ask in the box with a link made for them, where they add photos and a short video. ${typed('photos')}`,
   estimate: 'An estimate',
-  estimateTip: 'Lists their estimates. Pick one and its line goes in the box with its link.',
+  estimateTip: `Lists their estimates. Pick one and its line goes in the box with its link. ${typed('estimate')}`,
   bill: 'A bill',
-  billTip: 'Lists their bills. Pick one and its line goes in the box with its pay page.',
+  billTip: `Lists their bills. Pick one and its line goes in the box with its pay page. ${typed('bill')}`,
   /** The `/estimate` list's last row: with estimates to pick from, and with none. */
   startNewEstimate: 'Start a new estimate',
   startEstimate: 'Start an estimate',
