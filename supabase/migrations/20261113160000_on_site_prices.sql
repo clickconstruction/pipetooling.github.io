@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.on_site_prices (
   -- The source as it read when accepted: the supply house's name for a bill.
   source_words text NOT NULL DEFAULT '',
   -- The day the price is from: the bill's day, or the day it was typed. Stale past 90 days, as a book price is.
-  priced_on date NOT NULL DEFAULT CURRENT_DATE,
+  priced_on date NOT NULL DEFAULT public.app_today(),
   by_user_id uuid DEFAULT auth.uid(),
   by_name text NOT NULL DEFAULT '',
   at timestamptz NOT NULL DEFAULT now(),
