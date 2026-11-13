@@ -101,6 +101,8 @@ type Props = {
   hideWhere?: boolean
   /** The presses the Add row offers. All of them, unless a window names its own: a roadmap task has only the lines and the photo. */
   addKeys?: readonly TaskAddKey[]
+  /** The layer of what the rows open through a portal, over the window that holds them. Left out, each keeps its own. */
+  pickerZIndex?: number
 }
 
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gap: 8, padding: '10px 0', borderTop: '1px solid var(--border)', alignItems: 'center' }
@@ -482,6 +484,7 @@ export function TaskFormRows(props: Props) {
               emptyOption={{ value: '', label: '— add someone else —' }}
               placeholder="— add someone else —"
               listAriaLabel="Also notify when completed"
+              {...(props.pickerZIndex != null ? { portalZIndex: props.pickerZIndex } : {})}
               searchReplacesTrigger
               hideEmptyOptionInListWhenUnset
             />
