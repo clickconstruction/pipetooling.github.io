@@ -222,7 +222,7 @@ the strip's hour, never after hours (`BREACH_MINUTES`, v2.5875). A line on the w
 the holder, the office's wait or the after-hours push (v2.5728, punch list #142 PR 6: `notifyPlan.ts`'s kit branch,
 the kit read once per run through `_shared/walkKit.ts`). Each person's own hours (**Push me**, `pushHours.ts`,
 `user_push_hours`, v2.6026) hold a push for them since v2.6029 (punch list #141 PR 3): the planner splits each due push
-with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push, the office
+with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push (a row with `channel = 'app'`, v2.7068, is a notice that was never a push: `gmail-mine` tells a mailbox's owner that the dev seat saved their mail), the office
 hears at once when the holder is off (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.*), and a push to
 the Customers seat alone widens to the office roles who are on while the seat is off. Every other push the app sends
 (a dispatch or estimator request, a marked bid, help feedback, a lien notice, the try-out question, a bid's call-again

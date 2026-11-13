@@ -37,7 +37,7 @@ Type a name, like *Pump house*. Then tap {{button:blue|Use this place}}. The nam
 The app asks your phone where it is only when you tap **Use where I am**. That one reading becomes the task's place. The app does not follow you after that.
 
 :::example A place in two taps
-"Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The task is saved with its place.
+"Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The person sees the place on the task, with directions. [Find where a task is](/help/check-off-my-daily-tasks#find-where-a-task-is) shows their side.
 :::
 
 ## When it happens

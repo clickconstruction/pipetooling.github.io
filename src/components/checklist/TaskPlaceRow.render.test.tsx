@@ -74,7 +74,7 @@ describe('TaskPlaceRow', () => {
     r.rerender(<Harness initial={{ lat: 29.55, lng: -98.29, name: 'Pump house', accuracyM: null }} onChange={onChange} />)
     const lit = screen.getByRole('button', { name: 'Pump house' })
     expect(lit.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByText('The place is saved with the task.')).toBeTruthy()
+    expect(screen.getByText('The person sees this place on the task, with directions.')).toBeTruthy()
     fireEvent.click(lit)
     expect(onChange).toHaveBeenLastCalledWith(null)
   })
