@@ -19,7 +19,7 @@ export type JobSharePayload = {
   url: string
 }
 
-/** `Job #951 — Shearer Pinpoint`, degrading gracefully when either part is missing. */
+/** `Job #951 — Shellan Pinpoint`, degrading gracefully when either part is missing. */
 export function buildJobShareTitle(fields: JobShareFields): string {
   const hcp = fields.hcpNumber?.trim() ?? ''
   const name = fields.jobName?.trim() ?? ''

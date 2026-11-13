@@ -58,7 +58,7 @@ export type AiaFieldDef = {
 }
 
 /**
- * Ordered form fields and their Excel targets (Mission Hills G702/G703 template). The G703's
+ * Ordered form fields and their Excel targets (Mission Flats G702/G703 template). The G703's
  * rows are not here: they are the application's lines (`aiaPayApplicationLines.ts`).
  */
 export const AIA_FIELD_DEFS: readonly AiaFieldDef[] = [

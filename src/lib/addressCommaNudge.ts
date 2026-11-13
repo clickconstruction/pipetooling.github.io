@@ -4,7 +4,7 @@ import { getExtraTxLocalityKeywords, TX_JOB_ADDRESS_LOCALITY_KEYWORDS } from './
 /**
  * The comma nudge (v2.2323): entry-time help for the job address field.
  * Customer statements split street from city at a comma, so an address pasted
- * without one ("1200 Kenney Fort Blvd Round Rock, TX 78665") renders with the
+ * without one ("1200 Kelby Fort Blvd Round Rock, TX 78665") renders with the
  * city stuck in the bold street. This kernel powers two things under the
  * address input: a live "how it reads on statements" preview (same splitter
  * as the portal, so they can never disagree) and a one-tap suggestion that

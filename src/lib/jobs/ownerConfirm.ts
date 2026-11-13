@@ -101,7 +101,7 @@ export function ownerKind(ownerName: string): OwnerKind {
 
 const ENTITY_SUFFIX_RE = /\b(llc|l l c|inc|incorporated|corp|corporation|co|company|lp|l p|llp|ltd|limited|the)\b/g
 
-/** Lower-case letters and digits only, entity suffixes dropped: "ATI Schertz, LLC" → "ati schertz". */
+/** Lower-case letters and digits only, entity suffixes dropped: "AXO Schertz, LLC" → "axo schertz". */
 export function normalizeOwnerName(name: string): string {
   return name
     .toLowerCase()

@@ -107,7 +107,7 @@ function shortDay(ymd: string): string {
 }
 
 /**
- * The words the inbox row and New Job show for a draft: "Wendi's draft: GC Southern Post · starts at $38,625 · wanted by
+ * The words the inbox row and New Job show for a draft: "Wendi's draft: GC Southern Pine · starts at $38,625 · wanted by
  * Oct 30 · note: the slab pour is the 3rd". Only the parts the draft holds.
  */
 export function jobDraftWords(d: JobDraft, senderName: string | null | undefined): string {

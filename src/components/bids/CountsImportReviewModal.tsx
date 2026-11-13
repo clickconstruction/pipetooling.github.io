@@ -30,7 +30,7 @@ export type CountsImportSourceContext = {
   /** The arriving copy's project name (from its heading) and who is importing it. */
   projectName: string | null
   importerName: string | null
-  /** The projects already on the bid: a label (*SpaceX BA · Taunya*) and how many rows carry a share of each. */
+  /** The projects already on the bid: a label (*SkyLab BA · Taunya*) and how many rows carry a share of each. */
   bidProjects: Array<{ id: string; label: string; rows: number }>
   /** The Combine ↔ Replace switch, offered when a second project arrives; null = no switch. */
   onModeChange: ((mode: Extract<CountsImportMode, 'combine' | 'replace'>) => void) | null

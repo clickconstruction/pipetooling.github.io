@@ -27,7 +27,7 @@ export type HandoverEstimateRow = {
 export type HandoverGroup = {
   estimateId: string
   estimateNumber: number | null
-  /** "CO #78 — Herber Custom Homes" / "Estimate #79 — Field estimate — Mike…" */
+  /** "CO #78 — Helbrow Custom Homes" / "Estimate #79 — Field estimate — Mike…" */
   label: string
   status: string
   photos: HandoverPhotoRow[]

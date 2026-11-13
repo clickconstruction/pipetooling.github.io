@@ -3,7 +3,7 @@ import { bodyPieces } from '../../../lib/messages/bodyLinks'
 import { LinkMark } from './LinkMark'
 
 /**
- * The words of a line as the thread and the message window draw them (v2.6508, Grace's ask on Glenn Geling's
+ * The words of a line as the thread and the message window draw them (v2.6508, Grace's ask on Glenn Gelwin's
  * invitation to bid): a web address is the link's own words in the house link blue with a link mark beside it, one
  * `<a>` that opens in a new tab, so one press reaches it instead of a copy and a paste; a mail client's doubled
  * `url <url>` reads once; the sender's `*bold*` reads bold with the stars gone (`bodyPieces`). The parent keeps

@@ -742,7 +742,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
           {developmentName ? (
             job.development?.id ? (
               // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
-              // the Gun Dog page); the board's filter by development lives in the house dropdown by the search.
+              // the Gray Fox page); the board's filter by development lives in the house dropdown by the search.
               <Link
                 to={`/developments/${job.development.id}`}
                 onClick={(e) => e.stopPropagation()}
@@ -887,7 +887,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
           {developmentName ? (
             job.development?.id ? (
               // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
-              // the Gun Dog page); the board's filter by development lives in the house dropdown by the search.
+              // the Gray Fox page); the board's filter by development lives in the house dropdown by the search.
               <Link
                 to={`/developments/${job.development.id}`}
                 onClick={(e) => e.stopPropagation()}

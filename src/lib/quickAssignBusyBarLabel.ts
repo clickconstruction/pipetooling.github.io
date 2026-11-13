@@ -4,14 +4,14 @@ import { splitJobAddressForPrefill } from './txLocalityAddressSplit'
 export type QuickAssignBusyBarInput = {
   hcpNumber: string | null
   clickNumber: string | null
-  /** The job's customer, as `jobs_ledger.customer_name` — "Megan Connell", "DRF Harwood Repairs". */
+  /** The job's customer, as `jobs_ledger.customer_name` — "Megan Corbray", "DLF Harlund Repairs". */
   customerName: string
   jobAddress: string
 }
 
 /**
  * The town in a job address. The prefill splitter wants "City, ST ZIP"; many
- * stored addresses end "…, Harwood, TX" with no zip, so those fall back to the
+ * stored addresses end "…, Harlund, TX" with no zip, so those fall back to the
  * segment before a trailing two-letter state.
  */
 export function quickAssignBusyBarTown(jobAddress: string): string {
@@ -23,7 +23,7 @@ export function quickAssignBusyBarTown(jobAddress: string): string {
   return ''
 }
 
-/** "DRF Harwood Repairs" → "DRF Harwood"; a one-word name stays; empty → "". */
+/** "DLF Harlund Repairs" → "DLF Harlund"; a one-word name stays; empty → "". */
 export function firstTwoWords(name: string): string {
   return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).join(' ')
 }

@@ -58,9 +58,9 @@ export function ScheduleSheetAction({ label, hint, onClick, primary, danger }: {
 }
 
 export type ScheduleBlockSheetProps = {
-  /** The job's title — `J473 · Mike Holub`. */
+  /** The job's title — `J473 · Mike Holmby`. */
   title: string
-  /** `7a–9a · Malachi · 109 Tuscarora Trail` */
+  /** `7a–9a · Malachi · 109 Tamberline Trail` */
   subtitle: string
   /** The block's note, '' when none — the note row reads *Edit the note* with it, *Add a note* without. */
   note: string

@@ -23,7 +23,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * (`personTimeline.ts`) turns what comes back into the line.
  */
 
-/** *Job 629 · Gun Dog rough-in*: the number the statement's record id already carries, and the name beside it. */
+/** *Job 629 · Gray Fox rough-in*: the number the statement's record id already carries, and the name beside it. */
 export function statementJobLabel(j: { click_number: string | null; job_name: string | null }): string {
   const number = (j.click_number ?? '').trim()
   const name = (j.job_name ?? '').trim()
