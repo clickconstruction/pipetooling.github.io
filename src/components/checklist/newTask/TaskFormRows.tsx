@@ -198,6 +198,8 @@ export function TaskFormRows(props: Props) {
         <div
           hidden={!listOpen}
           data-testid="new-task-everyone"
+          // With the keyboard on its search box, the window brings the box to the top so the names show under it.
+          data-keyboard-reveal="top"
           style={panelStyle}
           onKeyDown={(e) => {
             if (e.key !== 'Tab' || !props.onSearchTab) return
