@@ -217,7 +217,7 @@ export function supabaseTeamCardIo(client: unknown = supabase): TeamCardIo {
   }
 }
 
-/** The owner's reads and the two writes. Only a dev may write a setting; the database refuses anyone else. */
+/** The owner's reads and the two writes. The owner or a dev may write a setting (`20261113130000_card_looks_keys_owner.sql`); the database refuses anyone else. */
 export function supabaseLooksAdminIo(client: unknown = supabase): LooksAdminIo {
   const db = client as SupabaseClient
   return {
@@ -225,13 +225,13 @@ export function supabaseLooksAdminIo(client: unknown = supabase): LooksAdminIo {
     async saveLooks(setting) {
       const saved = await db.from('app_settings').upsert({ key: CARD_LOOKS_SETTING_KEY, value_text: serializeCardLooks(setting) }, { onConflict: 'key' }).select('key')
       checkSupabaseError(saved, 'save the looks')
-      if (!saved.data?.length) throw new Error('The looks were not saved. Only a dev may change them.')
+      if (!saved.data?.length) throw new Error('The looks were not saved. Only the owner or a dev may change them.')
     },
     sizes: () => readSizes(db),
     async saveSizes(setting) {
       const saved = await db.from('app_settings').upsert({ key: CARD_SIZES_SETTING_KEY, value_text: serializeCardSizes(setting) }, { onConflict: 'key' }).select('key')
       checkSupabaseError(saved, 'save the card sizes')
-      if (!saved.data?.length) throw new Error('The card sizes were not saved. Only a dev may change them.')
+      if (!saved.data?.length) throw new Error('The card sizes were not saved. Only the owner or a dev may change them.')
     },
     async picks() {
       const text = (v: unknown) => (typeof v === 'string' ? v : null)
