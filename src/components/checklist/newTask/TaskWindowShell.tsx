@@ -5,6 +5,8 @@ type Props = {
   /** The id of the title, which the dialog is labelled by. */
   titleId: string
   title: string
+  /** A quiet line under the title, such as the stage a roadmap task joins. */
+  subtitle?: ReactNode
   /** The presses at the right of the title: a second Send, a door, the ×. */
   headActions: ReactNode
   /** The form. It scrolls between the head and the bar. */
@@ -27,7 +29,7 @@ type Props = {
  * v2.7085 the card is no taller than the part of the screen the keyboard leaves, so the bar sits just above the
  * keyboard. At a desk the card is centered.
  */
-export function TaskWindowShell({ titleId, title, headActions, children, bar, phone, zIndex, overlayBackground = 'rgba(0,0,0,0.5)', onBackdrop, cardTestId }: Props) {
+export function TaskWindowShell({ titleId, title, subtitle, headActions, children, bar, phone, zIndex, overlayBackground = 'rgba(0,0,0,0.5)', onBackdrop, cardTestId }: Props) {
   const keyboardRoom = useVisualViewportHeight()
   const overlayPadding = phone ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))'
   const padX = phone ? '1rem' : '1.25rem'
@@ -50,9 +52,12 @@ export function TaskWindowShell({ titleId, title, headActions, children, bar, ph
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: phone ? `0.75rem ${padX} 0.4rem` : `1.1rem ${padX} 0.4rem` }}>
-          <h3 id={titleId} style={{ margin: 0 }}>
-            {title}
-          </h3>
+          <div style={{ minWidth: 0 }}>
+            <h3 id={titleId} style={{ margin: 0 }}>
+              {title}
+            </h3>
+            {subtitle ? <div style={{ fontSize: 13, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</div> : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headActions}</div>
         </div>
         <div data-testid="new-task-form" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${padX}` }}>
