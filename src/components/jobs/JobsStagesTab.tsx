@@ -1816,9 +1816,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     // card hidden rather than offering call mode whose writes would fail.
     if (!canMarkPromisedPay || !cacheLeanBilledRows || chaseTouches == null) return null
     return summarizePaymentChase(
-      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext),
+      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext, payCalendars, acceptedByInvoice),
     )
-  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext])
+  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext, payCalendars, acceptedByInvoice])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {

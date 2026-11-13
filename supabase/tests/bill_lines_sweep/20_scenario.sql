@@ -1,5 +1,6 @@
 -- The bill lines sweep (v2.6882, punch list #298 PR 2, migration *_bill_lines_sweep): the holds table and who reads it,
--- one paper a bill, whose read a read is, the switch and the cron. Fixtures are written as postgres; the tries run as
+-- one paper a bill, whose read a read is, the switch and the cron; and since v2.7103 (PR 1c, migration
+-- *_supply_paper_check_rules) the rules a paper was checked under and the charge the subtotal leaves out. Fixtures are written as postgres; the tries run as
 -- each account under RLS; everything rolls back. Raises on the first failed assertion; ends with
 -- "bill_lines_sweep PASSED". See scripts/pgtest-bill-lines-sweep.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -78,6 +79,34 @@ SELECT bs.same('the office writes no hold', bs.try($$INSERT INTO public.supply_b
 SELECT bs.same('the office lifts no hold', bs.try($$DELETE FROM public.supply_bill_holds$$), '42501');
 SELECT bs.sign_in('00000000-0000-0000-0000-0000002980a2');
 SELECT bs.same('a helper reads no hold', (SELECT count(*)::text FROM public.supply_bill_holds), '0');
+RESET ROLE;
+
+-- ---------- The checks the measure asked for (v2.7103, migration *_supply_paper_check_rules) ----------
+
+SELECT bs.same('a paper on file was checked under the first rules', (SELECT check_rules::text FROM public.supply_papers WHERE id = '00000000-0000-0000-0000-0000002980c1'), '1');
+
+SET LOCAL ROLE authenticated;
+SELECT bs.sign_in('00000000-0000-0000-0000-0000002980a1');
+-- The bill is $48.10. One part at $43.10 and a shipping charge of $5.00 printed under a subtotal of $43.10.
+SELECT bs.same('the office saves a paper with a charge outside the subtotal', bs.try($$SELECT public.supply_paper_save('00000000-0000-0000-0000-0000002980b2',
+  '{"kind":"invoice","number":"S100201","subtotal_cents":4310,"tax_cents":0,"total_cents":4810,"check_state":"adds_up"}'::jsonb,
+  '[{"line_no":1,"line_kind":"part","description":"PVC 2 DWV 90","qty_shipped":10,"unit_price":4.31,"extended_cents":4310},{"line_no":2,"line_kind":"charge","description":"SHIPPING","extended_cents":500}]'::jsonb)$$), 'ok');
+SELECT bs.same('a charge the subtotal leaves out and the total takes back in adds up', (SELECT check_state || '|' || check_note || '|' || check_rules FROM public.supply_papers WHERE invoice_id = '00000000-0000-0000-0000-0000002980b2'), 'adds_up||2');
+-- The same lines against a total that never took the charge in: the charge is not outside, the lines are over.
+SELECT bs.same('the same paper with a total of the subtotal', bs.try($$SELECT public.supply_paper_save('00000000-0000-0000-0000-0000002980b2',
+  '{"kind":"invoice","number":"S100201","subtotal_cents":4310,"tax_cents":0,"total_cents":4310,"check_state":"adds_up"}'::jsonb,
+  '[{"line_no":1,"line_kind":"part","description":"PVC 2 DWV 90","qty_shipped":10,"unit_price":4.31,"extended_cents":4310},{"line_no":2,"line_kind":"charge","description":"SHIPPING","extended_cents":500}]'::jsonb)$$), 'ok');
+SELECT bs.same('a charge the total does not take in is not outside', (SELECT check_state || '|' || check_note FROM public.supply_papers WHERE invoice_id = '00000000-0000-0000-0000-0000002980b2'), 'off|The lines are $5.00 over the subtotal.');
+-- Two charges that are outside together: a part at $40.10, shipping $3.00 and a fuel charge $5.00.
+SELECT bs.same('the office saves a paper with two charges outside', bs.try($$SELECT public.supply_paper_save('00000000-0000-0000-0000-0000002980b2',
+  '{"kind":"invoice","number":"S100201","subtotal_cents":4010,"tax_cents":0,"total_cents":4810,"check_state":"adds_up"}'::jsonb,
+  '[{"line_no":1,"line_kind":"part","description":"PVC 2 DWV 90","extended_cents":4010},{"line_no":2,"line_kind":"charge","description":"SHIPPING","extended_cents":300},{"line_no":3,"line_kind":"charge","description":"FUEL","extended_cents":500}]'::jsonb)$$), 'ok');
+SELECT bs.same('every charge together may be outside', (SELECT check_state FROM public.supply_papers WHERE invoice_id = '00000000-0000-0000-0000-0000002980b2'), 'adds_up');
+-- A rebate among the parts is a negative line: $50.00 less $1.90 is the subtotal.
+SELECT bs.same('the office saves a paper with a rebate line', bs.try($$SELECT public.supply_paper_save('00000000-0000-0000-0000-0000002980b2',
+  '{"kind":"invoice","number":"S100201","subtotal_cents":4810,"tax_cents":0,"total_cents":4810,"check_state":"adds_up"}'::jsonb,
+  '[{"line_no":1,"line_kind":"part","description":"DRILL KIT","extended_cents":5000},{"line_no":2,"line_kind":"part","description":"INSTANT REBATE","extended_cents":-190}]'::jsonb)$$), 'ok');
+SELECT bs.same('a negative line takes its money off the sum', (SELECT p.check_state || '|' || (SELECT sum(extended_cents) FROM public.supply_paper_lines l WHERE l.paper_id = p.id) FROM public.supply_papers p WHERE p.invoice_id = '00000000-0000-0000-0000-0000002980b2'), 'adds_up|4810');
 RESET ROLE;
 
 -- ---------- A hold goes with its bill ----------

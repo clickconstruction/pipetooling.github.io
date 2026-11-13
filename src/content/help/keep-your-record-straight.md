@@ -17,8 +17,8 @@ The card is on the Job Mode view too. When your record is clean, the **Your reco
 
 :::example A Friday card
 **Your record** · this week · 2 things only you can fix
-You're still on the clock from Thursday — Clocked in at 878 Take 5 Seguin, never clocked out. {{button:blue|Fix day}}
-1007 SpaceX has no % complete — You clocked 24h there this week. {{button:blue|Set %}}
+You're still on the clock from Thursday — Clocked in at 878 Tune 5 Seguin, never clocked out. {{button:blue|Fix day}}
+1007 SkyLab has no % complete — You clocked 24h there this week. {{button:blue|Set %}}
 :::
 
 ## What it isn't

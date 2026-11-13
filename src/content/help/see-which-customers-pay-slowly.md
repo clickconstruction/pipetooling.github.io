@@ -20,7 +20,7 @@ The strip is a door. You click anywhere on the strip. The link at the strip's ri
 - **The receipts**: you click any customer row and their story unfolds in two halves. ***Owes now — by job*** lists each open bill with its wait clock and dollars, straight into the job. *Paid before — the payments behind the median* shows when they owe something now. Each payment is a row: a {{chip:green|+8}} pill, then *05/01–05/09*, then the job. That one means billed May 1, and the money hit May 9, eight days later. Tap a row to open its job. Green is at or under the company median. Amber is above it. Red is twice it or more. So one glance shows whether a median is built on steady habits or one slow outlier. A customer with none says why: *No invoice-linked payments in the last 12 months — nothing measurable yet.*
 
 :::example Who's actually slow?
-The Comm median says ~25d — but the breakdown shows that's Knight Contracting at ~25d with $16,893 open, while TF Harper runs ~44d with $2,918 open. One number was hiding two very different customers.
+The Comm median says ~25d — but the breakdown shows that's Kestrin Contracting at ~25d with $16,893 open, while TF Halden runs ~44d with $2,918 open. One number was hiding two very different customers.
 :::
 
 ## More on pay speed

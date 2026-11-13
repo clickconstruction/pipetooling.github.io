@@ -13,7 +13,7 @@ The {{button:outline|?}} beside the full screen button opens a card that says wh
 
 The header counts the pile. It reads *4 deposits to match · $9,115.42 unapplied*. The left side lists those deposits. Each row already says what the app knows about it. {{chip:green|1 exact match}} means one open bill equals it to the cent. {{chip:yellow|probably recorded}} means a payment of that amount is already on a job with no deposit linked. See *If the payment was already recorded by hand*. {{chip:yellow|same amount, several bills}} and {{chip:blue|payer known}} say what they say. No chip means you pick by hand.
 
-*To match · All* above the list switches between the pile and everything. All includes deposits fully applied or marked returned. The search box looks in both. Type a cheque on To match that was already applied. It shows under *Nothing to match · found in All*, not as no match. Under each row, one line is its trail. It reads *→ #650 ATI Schertz today 4:02 PM by Taunya · was #878 Take 5- Seguin 9/29*, the old job struck through. So a cheque that moved, was taken off, or bounced says so where it sits. A payment recorded by hand and linked to its deposit later says both steps, and who did each. Under All, the deposits touched in the last 30 days come first. The newest action is on top, under a heading for its day. Older deposits follow by bank date. Pick a row. The right side is where you say which bill it pays.
+*To match · All* above the list switches between the pile and everything. All includes deposits fully applied or marked returned. The search box looks in both. Type a cheque on To match that was already applied. It shows under *Nothing to match · found in All*, not as no match. Under each row, one line is its trail. It reads *→ #650 AXO Schertz today 4:02 PM by Taunya · was #878 Tune 5- Seguin 9/29*, the old job struck through. So a cheque that moved, was taken off, or bounced says so where it sits. A payment recorded by hand and linked to its deposit later says both steps, and who did each. Under All, the deposits touched in the last 30 days come first. The newest action is on top, under a heading for its day. Older deposits follow by bank date. Pick a row. The right side is where you say which bill it pays.
 
 The rare controls live behind the {{button:outline|⋯}} button in the header. **Mark returned deposits** puts a Returned tick on every row, for bounced checks. Devs also see the **Mercury filter** there.
 
@@ -21,18 +21,18 @@ The rare controls live behind the {{button:outline|⋯}} button in the header. *
 
 The deposit's bank name, note and memo are checked against your customers and GCs. When there is a clear match, their open bills lead the panel under **Who paid you**. Each shows the amount, the job, where, and a Stripe tag when the bill went out through Stripe.
 
-:::example a $250.00 check from DRF
-**From Done Right Foundation — their open bills**
+:::example a $250.00 check from DLF
+**From Dead Level Foundation — their open bills**
 {{chip:green|$250.00 · 992 · Johnson Plumbing Test — matches this deposit}} {{chip:gray|$2,650.00 · 868 · Service Visit}}
 :::
 
-- Bills whose balance equals the deposit are green and listed first. One tap fills the allocation. Then press {{button:blue|Apply $250.00}}. A second tap on another bill adds a second line. Bills already on a line leave the list. The footer reads the plan back before you press it. It reads *Applies $250.00 to 992 · Done Right Foundation and books it as Income. The bill is settled.* {{button:outline|Apply & next ›}} applies and moves you to the next deposit instead of closing.
+- Bills whose balance equals the deposit are green and listed first. One tap fills the allocation. Then press {{button:blue|Apply $250.00}}. A second tap on another bill adds a second line. Bills already on a line leave the list. The footer reads the plan back before you press it. It reads *Applies $250.00 to 992 · Dead Level Foundation and books it as Income. The bill is settled.* {{button:outline|Apply & next ›}} applies and moves you to the next deposit instead of closing.
 
 :::example Booked as Income on its own
 Applying a deposit also gives it the **Income** label in Banking, so the P&L counts it without anyone opening Banking (an org-wide switch a dev or leader turns on under Banking → Accounting). A label a rule or a person already set is never changed: if the deposit was already labelled something else, a small amber line under the header reads *Labelled Taxes and Licenses in Banking, not Income. Apply leaves that alone.* Remove the payment later and the label the rule set goes with it.
 :::
 - **A bill paid, but booked as an expense?** A rule can label money coming in the same as money going out. Then a deposit that paid a bill reads *Banking books it as Taxes and Licenses.* Press {{button:dark|Book it as Income}} to put it right. The line names the rule that labelled it. In Banking, that rule can be limited to money going out. If the payment comes off later, the old label goes back.
-- Initials work. A check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo. That is read too, and the header says so. It reads *Memo mentions…*.
+- Initials work. A check deposited as "DLF" finds **Dead Level Foundation**. Check services often put the real customer in the deposit memo. That is read too, and the header says so. It reads *Memo mentions…*.
 - No clear match? You still get the **Matches deposit amount** row. That lists any bill equal to the deposit, whoever it belongs to. The full searchable picker is there too.
 
 **Give it the whole screen.** The button between **⋯** and **Close** takes the window full screen. The deposits and the match pane then split the whole width. It opens the way you left it. Press it again for the window.
@@ -68,12 +68,12 @@ The review panel lists each pair. The deposit is on the left and the bill it pay
 
 ## Finding a bill by hand
 
-The bill picker searches by amount, job number, job name and address. It also searches the customer or GC name, even when the job name does not mention them. Typing "weiss" finds Weiss Services' bills no matter what the jobs are called.
+The bill picker searches by amount, job number, job name and address. It also searches the customer or GC name, even when the job name does not mention them. Typing "welby" finds Welby Services' bills no matter what the jobs are called.
 
-Each bill in the list is two lines. First the amount. Then the job number and name, who pays, the address and which line, such as *Invoice #2* or *Billed line*. A {{chip:purple|Stripe}} tag shows when the bill went out through Stripe. The list opens in the deposit's order. The matched payer's bills come first. The one equal to the deposit sits on top in green with **✓ matches this deposit**. Then other bills equal to the deposit, then the rest. The footer under it counts the open bills and what they add up to. After a pick, the control reads the bill back. It reads *$250.00 · 1015 · Montolongo Post Test*.
+Each bill in the list is two lines. First the amount. Then the job number and name, who pays, the address and which line, such as *Invoice #2* or *Billed line*. A {{chip:purple|Stripe}} tag shows when the bill went out through Stripe. The list opens in the deposit's order. The matched payer's bills come first. The one equal to the deposit sits on top in green with **✓ matches this deposit**. Then other bills equal to the deposit, then the rest. The footer under it counts the open bills and what they add up to. After a pick, the control reads the bill back. It reads *$250.00 · 1015 · Montelby Post Test*.
 
 :::example Picking from the list
-{{chip:green|$1,855.70 · 1042 Giesber Master Bath · ✓ matches this deposit}} sits first because the deposit came from Elaine Giesber and equals her open bill; her other jobs follow, then any other bill equal to $1,855.70, then everything else. Type "giesber", "1042", "cibolo" or "1855" to narrow it.
+{{chip:green|$1,855.70 · 1042 Gilbrow Master Bath · ✓ matches this deposit}} sits first because the deposit came from Elaine Gilbrow and equals her open bill; her other jobs follow, then any other bill equal to $1,855.70, then everything else. Type "gilbrow", "1042", "cibolo" or "1855" to narrow it.
 :::
 
 ## When a check covers several bills
@@ -94,7 +94,7 @@ Sometimes a customer rounds up, or adds something for the crew. Once the bills o
 
 :::example the tip strip
 **$50.00 more than the bills.**
-They paid over. Record it as a tip on 960 · Elaine Giesber-Installations Pcv & Lavatory Sink.
+They paid over. Record it as a tip on 960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink.
 {{button:blue|Add a $50.00 Tip line}}
 :::
 
@@ -167,10 +167,10 @@ Every open case sits under **Came back** at the top of To match. The header coun
 
 The case tells the story first. It lists when the check posted, who applied it and when the bank sent it back. Then it says what that costs. It may read *#878 owes the $13,680 again.* Then it gives one next step.
 
-:::example the case of Southern Post's check
-**Southern Post · $13,680** {{chip:red|came back · Insufficient funds}}
-Sep 21 Taunya applied it to #878 Take 5- Seguin. Sep 23 The bank sent it back.
-**Next:** Get a new check from Southern Post. It has been 8 days. {{button:blue|They said…}}
+:::example the case of Southern Pine's check
+**Southern Pine · $13,680** {{chip:red|came back · Insufficient funds}}
+Sep 21 Taunya applied it to #878 Tune 5- Seguin. Sep 23 The bank sent it back.
+**Next:** Get a new check from Southern Pine. It has been 8 days. {{button:blue|They said…}}
 :::
 
 - **Still on a job.** The next step is {{button:red|Take it off the job}}. It reads back what changes on each job first. It may read *$11,181.78 comes off bill 2.* One press takes it off every job it paid. Each job's history keeps the removal and who did it. A bill Stripe holds as paid must be undone there first. The read-back says so.
@@ -184,7 +184,7 @@ A check that came back cannot pay a bill. Its pane has no bills to pick and Appl
 
 ### A check marked returned by hand
 
-**Mark returned deposits** behind {{button:outline|⋯}} still puts a Returned tick on each row. Ticking one the bank never sent back asks first. It reads *Did the bank send DRF's $250 check back?* Say yes and it opens a case. Say no when it is not a customer's payment. Then close it out with a reason instead. A case marked by hand has **It did not bounce** under More. That puts it back in To match.
+**Mark returned deposits** behind {{button:outline|⋯}} still puts a Returned tick on each row. Ticking one the bank never sent back asks first. It reads *Did the bank send DLF's $250 check back?* Say yes and it opens a case. Say no when it is not a customer's payment. Then close it out with a reason instead. A case marked by hand has **It did not bounce** under More. That puts it back in To match.
 
 ### A check that never reached the bank
 
@@ -204,7 +204,7 @@ A bank payment through Stripe can fail days after the customer pressed Pay. The 
 
 ### You don't have to go looking
 
-The moment Mercury reports the return, the office gets an email and a push. The email reads *The bank sent back Southern Post's $13,680 check.* It then says where the check is now and links to its case. It goes to the people on the **Payment made** email stream, under Settings → Email streams. When that list is empty it goes to the whole office. It is sent only once per check.
+The moment Mercury reports the return, the office gets an email and a push. The email reads *The bank sent back Southern Pine's $13,680 check.* It then says where the check is now and links to its case. It goes to the people on the **Payment made** email stream, under Settings → Email streams. When that list is empty it goes to the whole office. It is sent only once per check.
 
 On the Pipeline the money card reads *2 checks came back*. The job's Billed Awaiting Payment row wears {{chip:red|⚠ check returned · $13,680}} while a payment still counts it. The Dashboard's **Needs you** card names each check and opens its case.
 
