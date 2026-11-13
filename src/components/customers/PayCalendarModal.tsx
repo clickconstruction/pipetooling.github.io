@@ -70,6 +70,8 @@ export default function PayCalendarModal({
   payerId,
   payerName,
   job = null,
+  initial = null,
+  zIndex = 1200,
   onClose,
   onSaved,
 }: {
@@ -77,6 +79,10 @@ export default function PayCalendarModal({
   payerName: string
   /** The job the press sat on; absent, the window is the payer's alone. */
   job?: PayCalendarJob | null
+  /** A clause and its words to start from when nothing is stored for what the window opens on (PR 7): the paper the press sat on. */
+  initial?: { clause?: string; words?: string } | null
+  /** The layer to draw at; 1200 unless the opener is itself a window above that. */
+  zIndex?: number
   onClose: () => void
   onSaved?: () => void
 }) {
@@ -103,6 +109,8 @@ export default function PayCalendarModal({
 
   const jobId = job?.id ?? null
   const developmentId = job?.developmentId ?? null
+  const initialClause = initial?.clause?.trim() || null
+  const initialWords = initial?.words?.trim() || null
 
   useEffect(() => {
     let cancelled = false
@@ -121,7 +129,9 @@ export default function PayCalendarModal({
         // A job that already carries its own opens on the job; anything else opens on the payer.
         setScope(forJob ? 'job' : 'payer')
         setJobOff(forJob?.off === true)
-        setForm(forJob?.calendar ?? own?.calendar ?? PAY_CALENDAR_DEFAULT)
+        const stored = forJob?.calendar ?? own?.calendar ?? null
+        // Nothing stored: the paper's clause and words start the form, so they are not typed twice.
+        setForm(stored ?? { ...PAY_CALENDAR_DEFAULT, clause: (initialClause ?? '').slice(0, PAY_CALENDAR_CLAUSE_MAX), words: (initialWords ?? '').slice(0, PAY_CALENDAR_WORDS_MAX) })
         setReceipts(paid)
         setOtherJobIds(devJobs.filter((id) => id !== jobId))
       } catch (e) {
@@ -133,7 +143,7 @@ export default function PayCalendarModal({
     return () => {
       cancelled = true
     }
-  }, [payerId, jobId, developmentId])
+  }, [payerId, jobId, developmentId, initialClause, initialWords])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -257,7 +267,7 @@ export default function PayCalendarModal({
       aria-modal="true"
       aria-labelledby={titleId}
       data-testid="pay-calendar-modal"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
       onClick={(e) => {
         e.stopPropagation()
         if (!saving) onClose()
