@@ -55,6 +55,28 @@ export function loadPayerPayCalendars(db: Db, payerId: string): Promise<PayCalen
   return readRows(db, payerId)
 }
 
+const PAY_CALENDAR_CHANGED_EVENT = 'pay-calendar-changed'
+
+/** Says a pay calendar was saved or cleared in this tab (punch list #341): the window says it once per save, however many jobs it wrote. */
+export function dispatchPayCalendarChanged(): void {
+  try {
+    window.dispatchEvent(new Event(PAY_CALENDAR_CHANGED_EVENT))
+  } catch {
+    /* non-browser */
+  }
+}
+
+/**
+ * Runs `onChange` after any pay calendar save in this tab, whichever door opened the window, so
+ * the board, the job window's row and a line elsewhere never show yesterday's calendar. Returns
+ * the unsubscribe.
+ */
+export function onPayCalendarChanged(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener(PAY_CALENDAR_CHANGED_EVENT, onChange)
+  return () => window.removeEventListener(PAY_CALENDAR_CHANGED_EVENT, onChange)
+}
+
 /** What a save writes: a calendar, a job's off switch, or null to clear the row. */
 export type PayCalendarSave = PayCalendar | { off: true } | null
 

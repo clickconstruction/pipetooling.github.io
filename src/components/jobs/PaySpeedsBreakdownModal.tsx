@@ -430,9 +430,10 @@ export default function PaySpeedsBreakdownModal({
                 {focus.sentence}
                 {focus.paysIn ? ' Counted over the last 12 months.' : ''}
               </p>
-              {/* Punch list #323: this payer's Pay calendar in a few words, or the press that sets one; both open its window. */}
+              {/* Punch list #323: this payer's Pay calendar in a few words, or the press that sets one; both open its window.
+                  Opened from a row (punch list #341) the line is that row's job's: whose calendar it reads, and the window on the job. */}
               <div style={{ margin: '-0.25rem 0 0.5rem' }}>
-                <PayCalendarLine payerId={focus.customerId} payerName={focus.name} />
+                <PayCalendarLine payerId={focus.customerId} payerName={focus.name} job={focusPayer?.job ?? null} />
               </div>
               {receiptsPanel(
                 { customerId: focus.customerId, name: focus.name, segment: focus.segment, medianDays: focus.medianDays, samples: focus.samples, open: focus.open, receipts: focus.receipts },
