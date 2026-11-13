@@ -20,6 +20,7 @@ import { isPendingOnSitePress, onSiteSender, pendingOnSitePresses } from './onSi
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
+import type { BoxPatch } from './editBox'
 import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from './stickers'
 import type { PhotoNote, PhotoStatus } from './photo'
 import { loadPartPriceRows } from './partPrices'
@@ -460,6 +461,25 @@ export function pinContainer(containerId: string, pin: { lat: number; lng: numbe
     const box = c.containers.find((x) => x.id === containerId)
     if (!box) continue
     commit(jobId, `The pin on ${box.label}`, [{ table: 'job_containers', op: 'update', id: containerId, row: { lat: pin?.lat ?? null, lng: pin?.lng ?? null } }])
+    return
+  }
+}
+
+/**
+ * Edit a box (v2.7179): its name, its kind, its where line, only what changed. Callers run `editBoxVerdict`
+ * first and pass its patch. The code on the printed label is cut from the id, so a rename leaves it working,
+ * and the database keeps the old name by itself (`job_container_names`).
+ */
+export function editContainer(containerId: string, patch: BoxPatch): void {
+  for (const [jobId, c] of jobs) {
+    const box = c.containers.find((x) => x.id === containerId)
+    if (!box) continue
+    const row: Record<string, unknown> = {}
+    if (patch.label !== undefined) row.label = patch.label
+    if (patch.kind !== undefined) row.kind = patch.kind
+    if (patch.where !== undefined) row.where_note = patch.where
+    if (Object.keys(row).length === 0) return
+    commit(jobId, patch.label !== undefined ? `Renaming ${box.label}` : `The change to ${box.label}`, [{ table: 'job_containers', op: 'update', id: containerId, row }])
     return
   }
 }
