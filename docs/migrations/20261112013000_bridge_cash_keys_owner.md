@@ -10,3 +10,5 @@ The owner's role saves the Bridge's three cash settings (punch list #303). Behin
 Checked before the PR on a local Postgres 15 with the baseline's table, its two general policies, the read-only fences and the real role helpers, the file applied twice: the owner passes on the three keys by insert and by update and is refused on any other key; a read-only owner, the controller and the assistant are refused; the dev is unchanged.
 
 Deploy order: none. The client's writes are the same before and after; they pass once this is pushed.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

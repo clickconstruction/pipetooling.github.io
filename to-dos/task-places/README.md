@@ -36,7 +36,7 @@ Grace, 2026-11-12, right after Farm Mode became Task Mode (v2.7050):
 > their tasks are.
 
 She asked for a design, not a build. This card is the plan and [mockup.html](mockup.html) is the
-picture. Nothing is built.
+picture. She then said to build the whole train, and all eight PRs are live (see *Where it stands*).
 
 ## The answer, in short
 

@@ -240,6 +240,20 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(doors.filter(isDevOnly).length).toBeGreaterThan(20)
   })
 
+  it('the two card-and-footer cards open for the roles that see each card (v2.7139, punch list #313)', () => {
+    const looks = doors.find((d) => d.to === '/settings?tab=settings-people#settings-card-looks')!
+    const own = doors.find((d) => d.to === '/settings?tab=settings-account#settings-card-and-footer')!
+    expect(looks.label).toBe('Card and footer looks')
+    expect(own.label).toBe('Your card and footer')
+    for (const r of ROLES) {
+      expect(looks.gate(plainViewer(r)), `looks: ${r}`).toBe(r === 'dev' || r === 'master_technician')
+      expect(own.gate(plainViewer(r)), `own: ${r}`).toBe(r !== 'subcontractor')
+    }
+    // One door for the owner's card, though the Dev doors card lists it too.
+    expect(doors.filter((d) => d.to === looks.to)).toHaveLength(1)
+    expect(isDevOnly(looks)).toBe(false)
+  })
+
   it('gates: the punch list, the Bridge and Crew P&L for the owner and the developers, Banking for the controller', () => {
     const open = (role: DoorViewer['role'], id: string) => doorsFor(plainViewer(role), sources).some((d) => d.id === id)
     expect(open('dev', 'todo:126')).toBe(true)

@@ -8,6 +8,7 @@ function row(p: Partial<PackageExternalRow> = {}): PackageExternalRow {
     count: p.count ?? 1,
     unitPrice: p.unitPrice ?? 100,
     revenue: p.revenue ?? 100,
+    isFixedPrice: p.isFixedPrice,
   }
 }
 
@@ -246,10 +247,10 @@ describe('whole dollars (v2.7045)', () => {
     )
   })
 
-  it('reads a fixed price in whole dollars: the price is the line total whatever the count', () => {
-    expect(body([row({ fixture: 'Mobilize', count: 3, unitPrice: 5000.5, revenue: 5000.5 })], 5000.5)[0]).toBe(
-      'Mobilize — 3 × $5,001 = $5,001',
-    )
+  it('reads a fixed price in whole dollars: one figure for the line, rounded like any line total', () => {
+    expect(
+      body([row({ fixture: 'Mobilize', count: 3, unitPrice: 5000.5, revenue: 5000.5, isFixedPrice: true })], 5000.5)[0],
+    ).toBe('Mobilize — 3, fixed price $5,001')
   })
 
   it('shows the true total rounded, not the rounded lines added up', () => {
@@ -275,5 +276,97 @@ describe('whole dollars (v2.7045)', () => {
     const lines = body([row({ fixture: 'Y', count: 2, unitPrice: 0, revenue: Number.NaN })], 0)
     expect(lines[0]).toBe('Y — 2 × $0 = $0')
     expect(lines[lines.length - 1]).toBe('Total: $0')
+  })
+})
+
+describe('a fixed price reads as one price for the line (v2.7136)', () => {
+  const body = (rows: PackageExternalRow[], totalRevenue: number): string[] =>
+    buildBidPricingPackageSmsText({ bidLabel: 'BE1', plansLink: null, externalRows: rows, totalRevenue })
+      .split('\n')
+      .slice(2)
+
+  it('a count over 1 shows the count and the fixed price, with no × and no =', () => {
+    const [line] = body([row({ fixture: 'Mobilize', count: 3, unitPrice: 5000, revenue: 5000, isFixedPrice: true })], 5000)
+    expect(line).toBe('Mobilize — 3, fixed price $5,000')
+    expect(line).not.toContain('×')
+    expect(line).not.toContain('=')
+  })
+
+  it('a count of 1 reads the same way: the flag decides, not the count', () => {
+    expect(body([row({ fixture: 'Permit', count: 1, unitPrice: 750, revenue: 750, isFixedPrice: true })], 750)[0]).toBe(
+      'Permit — 1, fixed price $750',
+    )
+  })
+
+  it('a count that is not whole shows exactly as stored', () => {
+    expect(
+      body([row({ fixture: 'Trench', count: 74.29, unitPrice: 2400, revenue: 2400, isFixedPrice: true })], 2400)[0],
+    ).toBe('Trench — 74.29, fixed price $2,400')
+  })
+
+  it('a fixed price with cents rounds to the dollar like any line total; under 50 cents keeps them', () => {
+    expect(
+      body([row({ fixture: 'Flush', count: 2, unitPrice: 1249.49, revenue: 1249.49, isFixedPrice: true })], 1249.49)[0],
+    ).toBe('Flush — 2, fixed price $1,249')
+    expect(
+      body([row({ fixture: 'Hauling', count: 4, unitPrice: 812.5, revenue: 812.5, isFixedPrice: true })], 812.5)[0],
+    ).toBe('Hauling — 4, fixed price $813')
+    expect(body([row({ fixture: 'Tag', count: 2, unitPrice: 0.25, revenue: 0.25, isFixedPrice: true })], 0.25)[0]).toBe(
+      'Tag — 2, fixed price $0.25',
+    )
+  })
+
+  it('a plain row with a count of 1 still reads 1 × $x = $x', () => {
+    expect(body([row({ fixture: 'Heater', count: 1, unitPrice: 6400, revenue: 6400 })], 6400)[0]).toBe(
+      'Heater — 1 × $6,400 = $6,400',
+    )
+    expect(
+      body([row({ fixture: 'Med Gas', count: 1, unitPrice: 4287.71, revenue: 4287.71, isFixedPrice: false })], 4287.71)[0],
+    ).toBe('Med Gas — 1 × $4,288 = $4,288')
+  })
+
+  it('changes no line total and not the Total: only the words of a fixed line', () => {
+    const rows = [
+      row({ fixture: 'LAV-A', count: 3, unitPrice: 2900, revenue: 8700 }),
+      row({ fixture: 'Mobilize', count: 3, unitPrice: 5000.5, revenue: 5000.5, isFixedPrice: true }),
+      row({ fixture: 'Permit', count: 1, unitPrice: 750.4, revenue: 750.4, isFixedPrice: true }),
+    ]
+    const total = 8700 + 5000.5 + 750.4
+    const lines = body(rows, total)
+    expect(lines).toEqual([
+      'LAV-A — 3 × $2,900 = $8,700',
+      'Mobilize — 3, fixed price $5,001',
+      'Permit — 1, fixed price $750',
+      '',
+      'Total: $14,451',
+    ])
+    // The same rows read as plain rows end each line on the same figure, and the Total is the same.
+    const lastFigure = (l: string) => /\$[\d,.]+$/.exec(l)?.[0] ?? l
+    const asPlain = body(rows.map((r) => ({ ...r, isFixedPrice: false })), total)
+    expect(lines.map(lastFigure)).toEqual(asPlain.map(lastFigure))
+  })
+
+  it('a fixed row in either price of Send both reads the same way', () => {
+    const text = buildBidPricingPackageSmsText({
+      bidLabel: 'BE1',
+      plansLink: null,
+      externalRows: [],
+      totalRevenue: 0,
+      sections: [
+        { name: 'Base', starred: true, externalRows: [row({ fixture: 'Mobilize', count: 3, unitPrice: 5000, revenue: 5000, isFixedPrice: true })], totalRevenue: 5000 },
+        { name: 'Alternate', externalRows: [row({ fixture: 'Mobilize', count: 2, unitPrice: 3500, revenue: 3500, isFixedPrice: true })], totalRevenue: 3500 },
+      ],
+    })
+    expect(text).toContain('Mobilize — 3, fixed price $5,000')
+    expect(text).toContain('Mobilize — 2, fixed price $3,500')
+    expect(text.split('\n').filter((l) => l.startsWith('Total:'))).toEqual(['Total: $5,000', 'Total: $3,500'])
+  })
+
+  it('a plain row no longer passes for fixed: its price keeps the cents the sum needs', () => {
+    // 2 × $0.60 is $1.20, which shows $1. The old guess took a price that rounds to its line
+    // total for a fixed one and printed 2 × $1 = $1.
+    expect(body([row({ fixture: 'Washer', count: 2, unitPrice: 0.6, revenue: 1.2 })], 1.2)[0]).toBe(
+      'Washer — 2 × $0.60 = $1',
+    )
   })
 })

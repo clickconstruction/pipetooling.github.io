@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~640 tables, all with RLS; ~186 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~660 tables, all with RLS; ~188 Edge Functions.
 
 ---
 
@@ -74,6 +74,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 9. **Branch + PR** — `main` is protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → the merge queue (the *main merge queue* ruleset: squash, all-green, six entries built at once and five merged, a 240-minute check timeout — v2.6395) runs `checks` once more on the merged content and squash-merges; nothing on `main` gates on them again: `deploy.yml` only builds and deploys (its `npm run build` still runs `tsc -b`, and since v2.6119 its build job runs `check:calls-ahead --prod`, holding the deploy while the client calls what only an unpushed migration creates), and `warm-caches.yml` re-runs typecheck and lint on each merge only to save the `.cache` every PR and queue build restores. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first (the typecheck takes a machine-wide lock, so two worktrees' typechecks run one after the other — `docs/SESSIONS.md` → One typecheck at a time; `TYPECHECK_NO_LOCK=1` skips it, as CI does) — `checks` never builds (only `deploy.yml` does), so a change to a glob, an asset import or `vite.config.ts` is proven by a local `npm run build`, never by a green PR. Never `git add -A`.
 10. **Theme tokens, not raw hexes** — CSS variables from `src/index.css`; CI runs `node scripts/theme-tokenize.mjs --check src`.
 11. **Docs ship with the PR** — release note + `docs/recent-features/` fragment, migration and edge-function fragments, help guide, specialist doc: `CLAUDE.md` → Working conventions. Amend the line that holds a fact; never append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
+12. **Made-up names** — the repo is public: a test, a help guide, a release note, a doc, a to-do card or a note in the code names no real customer, GC, owner or job, and no real street address, job number or email; it uses an invented one.
 
 ---
 
@@ -85,4 +86,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-11-10
+last_updated: 2026-11-13

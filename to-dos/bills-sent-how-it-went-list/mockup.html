@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bills sent: the office edits the list under How the bill went</title>
+<style>
+  /* Punch list #340. The owner asked that the people who open Bills sent can add to and edit the list under
+     "How the bill went". Drawn 2026-11-13, with that day as today. Nothing here is built. Every name, job,
+     amount and count on this page is made up: Harlan Voss, Sable Ridge Builders, Larkfield Construction,
+     Priya and Marcus in the office, jobs J1389 to J1433. No live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-700: #1d4ed8;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d;
+    --dead-fill: #e5e7eb; --dead-text: #6b7280;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-700: #93c5fd;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e;
+    --dead-fill: #374151; --dead-text: #9ca3af;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  h3 { font-size: 16px; margin: 30px 0 2px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 14px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h4 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 0; }
+
+  /* one option: a desk drawing beside a phone drawing */
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin-top: 12px; align-items: start; }
+  @media (min-width: 1040px) { .pair { grid-template-columns: minmax(0, 1fr) 380px; } }
+  .col { display: grid; gap: 6px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .sug .cap, .cap.sug { color: var(--new); }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); background: var(--bg-page); color: var(--text-base); min-width: 0; position: relative; }
+  .sug .frame { border: 2px solid var(--new); }
+  .frame.phone { border-radius: 26px; max-width: 380px; width: 100%; overflow: hidden; }
+  .pad { padding: 12px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+  .tag.sep { color: var(--copper); background: transparent; border: 1px solid var(--copper); }
+  ul.pts { margin: 6px 0 0; padding-left: 20px; max-width: 96ch; }
+  ul.pts li { margin: 0 0 3px; }
+
+  /* drawn app pieces: the yellow strip, a bill's row, the form */
+  .gap { border: 1px solid var(--border-amber); background: var(--bg-amber-tint); border-radius: 10px; padding: 9px 11px; font-size: 13px; min-width: 0; }
+  .gap h4 { margin: 0; font-size: 13px; color: var(--text-amber-800); }
+  .g { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 0 0; margin-top: 6px; border-top: 1px dashed var(--border-strong); }
+  .g .bill { font-weight: 700; color: var(--text-strong); text-decoration: underline; text-underline-offset: 2px; }
+  .g .job { color: var(--text-green-700); font-weight: 600; }
+  .g .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; white-space: nowrap; }
+  .g > p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--text-700); }
+  .lnk { font: inherit; border: 0; background: transparent; padding: 0; color: var(--text-700); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .form { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 8px; margin-top: 6px; padding: 8px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); min-width: 0; position: relative; }
+  .form .wide { grid-column: 1 / -1; min-width: 0; }
+  .fl { display: grid; gap: 2px; font-size: 12px; color: var(--text-700); min-width: 0; align-content: start; }
+  .fi, .form select, .form input[type="text"], .win input[type="text"] { font: inherit; font-size: 14px; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-strong); min-width: 0; width: 100%; min-height: 32px; }
+  .fi.ph { color: var(--text-muted); }
+  .fi.sel { display: flex; justify-content: space-between; gap: 6px; }
+  .fi.sel::after { content: "▾"; color: var(--text-muted); }
+  .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+  .acts small { color: var(--text-muted); font-size: 12px; }
+  .go { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 13px; border-radius: 6px; border: 1px solid transparent; background: #2563eb; color: #fff; cursor: pointer; white-space: nowrap; }
+  .go.dead { background: var(--dead-fill); color: var(--dead-text); cursor: default; }
+  .btn { font: inherit; font-size: 13px; font-weight: 700; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; white-space: nowrap; }
+  .frame.phone .go, .frame.phone .btn { display: inline-flex; align-items: center; min-height: 44px; border-radius: 8px; font-size: 14px; padding: 0 14px; }
+  /* room under the fields for the list drawn open, where the fields sit in one row */
+  @media (min-width: 700px) { .frame:not(.phone) .acts.m-now { margin-top: 104px; } .frame:not(.phone) .acts.m-a { margin-top: 214px; } }
+  .frame.phone .fi, .frame.phone select, .frame.phone input[type="text"] { min-height: 44px; font-size: 16px; }
+  .frame.phone .form { grid-template-columns: minmax(0, 1fr); }
+
+  /* the system's own menu, drawn open as in the owner's screenshot */
+  .sysmenu { position: absolute; left: 0; top: 26px; z-index: 3; width: min(300px, 96%); background: #3b3f46; color: #f3f4f6; border-radius: 10px; padding: 5px; box-shadow: 0 10px 30px rgba(0,0,0,.45); font-size: 14px; }
+  .sysmenu div { padding: 4px 10px 4px 26px; border-radius: 6px; position: relative; }
+  .sysmenu div.on { background: #2f6fed; }
+  .sysmenu div.on::before { content: "✓"; position: absolute; left: 8px; }
+  .sysmenu hr { border: 0; border-top: 1px solid #5b616b; margin: 4px 6px; }
+  .sysmenu div.new { color: #d8ccff; font-weight: 600; }
+  .fault { color: var(--text-red-700); font-weight: 600; }
+
+  /* option B: the choices as chips */
+  .ways { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .way { font: inherit; font-size: 13px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; text-align: left; }
+  .way[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); font-weight: 700; }
+  .way.add { border-style: dashed; color: var(--text-blue-700); font-weight: 600; }
+  .frame.phone .way { min-height: 40px; font-size: 14px; }
+  .adder { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+  .adder input { flex: 1 1 12rem; }
+  [hidden] { display: none !important; }
+
+  /* the small window that edits the list */
+  .scrim { background: rgba(17,24,39,.45); padding: 18px 12px; border-radius: 0 0 10px 10px; display: grid; justify-items: center; }
+  .win { width: min(100%, 520px); background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.3); font-size: 13px; min-width: 0; }
+  .win .hd { padding: 11px 14px 8px; border-bottom: 1px solid var(--border); }
+  .win .hd b { font-size: 16px; color: var(--text-strong); display: block; }
+  .win .hd span { color: var(--text-muted); }
+  .win .bd { padding: 6px 14px 10px; }
+  .wrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .wrow .mv { display: flex; gap: 2px; }
+  .wrow .mv span { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--text-700); font-size: 11px; cursor: pointer; }
+  .wrow .mv span.off { color: var(--border-strong); border-color: var(--border); cursor: default; }
+  .wrow .wd { min-width: 0; overflow-wrap: anywhere; color: var(--text-strong); font-weight: 600; }
+  .wrow .wd small { display: block; font-weight: 400; color: var(--text-muted); font-size: 12px; }
+  .wrow .do { display: flex; gap: 10px; white-space: nowrap; }
+  .wrow.edit { background: var(--bg-blue-tint); margin: 0 -8px; padding: 6px 8px; border-radius: 8px; border-bottom: 0; }
+  .wrow.gone .wd { color: var(--text-muted); font-weight: 500; }
+  .win .addrow { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0 4px; }
+  .win .addrow input { flex: 1 1 12rem; }
+  .win .fold { margin-top: 8px; color: var(--text-700); }
+  .win .ft { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); border-radius: 0 0 12px 12px; }
+  .win .ft small { color: var(--text-muted); flex: 1 1 14rem; }
+  .frame.phone .scrim { padding: 26px 0 0; border-radius: 0; }
+  .frame.phone .win { width: 100%; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .frame.phone .win .ft { border-radius: 0; }
+  .frame.phone .wrow .mv span { width: 36px; height: 36px; }
+  .frame.phone .wrow { grid-template-columns: auto minmax(0, 1fr); }
+  .frame.phone .wrow .do { grid-column: 2; padding-bottom: 2px; }
+  .frame.phone .wrow .do .lnk { min-height: 32px; }
+
+  /* Settings, for option C */
+  .setbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; font-size: 13px; color: var(--text-muted); }
+  .setbar b { color: var(--text-strong); font-size: 15px; }
+  .setcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .setcard h5 { margin: 0 0 2px; font-size: 14px; color: var(--text-strong); }
+
+  /* the row's own improvements */
+  .hint { font-size: 12px; color: var(--text-muted); }
+  .quick { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+  .quick span { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  .quick span.on { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: var(--text-blue-700); font-weight: 700; }
+  .more { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-subtle); min-width: 0; }
+  .more label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0 8px; align-items: baseline; padding: 4px 0; }
+  .more label small { grid-column: 2 / -1; color: var(--text-muted); }
+  .will { grid-column: 1 / -1; border-left: 3px solid var(--text-blue-700); background: var(--bg-blue-tint); padding: 6px 10px; border-radius: 0 8px 8px 0; color: var(--text-strong); min-width: 0; overflow-wrap: anywhere; }
+  .will small { display: block; color: var(--text-700); }
+
+  table.t { border-collapse: collapse; width: 100%; max-width: 980px; margin-top: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  table.t th, table.t td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  .scroll { overflow-x: auto; }
+  ol.calls { max-width: 96ch; padding-left: 22px; }
+  ol.calls li { margin: 0 0 8px; }
+  ol.calls b { color: var(--text-strong); }
+  .rt { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; white-space: nowrap; background: var(--bg-blue-tint); color: var(--text-blue-700); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #340 · a mock-up · nothing here is built</p>
+    <h1>Bills sent: the office edits the list under <i>How the bill went</i></h1>
+    <p>The page <b>Bills sent</b> has one form, <b>Say how it went…</b>, and one list in it. Today the list has four choices and only a developer can change them. This page draws the form as it is, then three ways the office could add to the list and edit it, then three more fixes to the form that are separate from the list. Every name, job and amount is made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#now">1 · Now</a>
+  <a href="#a">2 · Option A, a line in the list</a>
+  <a href="#b">3 · Option B, chips</a>
+  <a href="#c">4 · Option C, Settings</a>
+  <a href="#window">5 · The window</a>
+  <a href="#row">6 · The form itself</a>
+  <a href="#old">7 · Old records</a>
+  <a href="#calls">8 · Your calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h4>Who opens the page</h4>
+    <p><b>The office only. You have it right.</b> Four roles open Bills sent: the developer, the master, the assistant and the controller. No field role opens it. The same four can press <b>Say how it went…</b>.</p>
+  </div>
+  <div class="sug">
+    <h4>What I suggest</h4>
+    <p><b>Option B.</b> The choices become chips in the form, with <b>＋ Add a way</b> at the end and <b>Edit list</b> beside it. One press picks a way, a new way is typed where the person stands, and nothing covers the next field.</p>
+  </div>
+  <div>
+    <h4>What must hold, whichever you pick</h4>
+    <ul>
+      <li>A bill recorded last month keeps the words it was recorded with.</li>
+      <li>A way is taken off the list, never deleted.</li>
+      <li>Every way, old or new, counts under <b>Recorded by hand</b>.</li>
+      <li>The list holds 12 ways at most and never fewer than one.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ───────────────────────── 1 · NOW ───────────────────────── -->
+<h2 id="now">1 · Now <small>the form as it is today</small></h2>
+<p class="lede">A bill in the yellow box has <b>Say how it went…</b>. The press opens four fields. The first is a list the system draws, with four fixed choices.</p>
+<div class="pair">
+  <div class="col">
+    <span class="cap">Now · at a desk · the list drawn open</span>
+    <div class="frame"><div class="pad">
+      <div class="gap">
+        <h4>9 bills are billed with no send on record</h4>
+        <div class="g">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <p>Billed Mon, Nov 9 at 10:12 AM. Not paid. The app has no email, text or print for this bill.</p>
+          <div class="form">
+            <div class="fl">How the bill went
+              <span class="fi sel">Pick one</span>
+            </div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="fl">A note, if you want one<span class="fi">&nbsp;</span></div>
+            <div class="sysmenu" aria-hidden="true">
+              <div class="on">Pick one</div><div>Handed over</div><div>Mailed</div><div>Emailed from a person’s own mailbox</div><div>Sent from Housecall Pro</div>
+            </div>
+            <div class="acts m-now"><span class="go dead">Record how it went</span><span class="lnk">Cancel</span><small>Pick how the bill went.</small></div>
+          </div>
+        </div>
+        <div class="g">
+          <div><span class="bill">Bill</span> · <span class="job">J1418 · Service visit, 41 Tamarack Ln</span> · Harlan Voss</div>
+          <div class="amt">$2,260.00</div>
+          <p>Billed Mon, Nov 9 at 10:31 AM. Not paid. The app has no email, text or print for this bill. <span class="lnk">Say how it went…</span></p>
+        </div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><span class="fault">The list is fixed.</span> A bill uploaded to a builder’s pay portal has no choice that fits, so the truth goes in the note.</li>
+      <li><span class="fault">The open list covers the next field.</span> The system draws it over <i>Who it went to</i>.</li>
+      <li><span class="fault">The day offers today.</span> This bill was made four days ago, and the record cannot be changed once saved.</li>
+      <li><span class="fault">One bill at a time.</span> Two bills to the same person the same day are two forms.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">Now · on a phone</span>
+    <div class="frame phone"><div class="pad">
+      <div class="gap">
+        <h4>9 bills are billed with no send on record</h4>
+        <div class="g">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <p>Billed Mon, Nov 9 at 10:12 AM. Not paid. The app has no email, text or print for this bill.</p>
+          <div class="form">
+            <label class="fl">How the bill went
+              <select><option>Pick one</option><option>Handed over</option><option>Mailed</option><option>Emailed from a person’s own mailbox</option><option>Sent from Housecall Pro</option></select>
+            </label>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="fl">A note, if you want one<span class="fi">&nbsp;</span></div>
+            <div class="acts"><span class="go dead">Record how it went</span><span class="btn">Cancel</span><small>Pick how the bill went.</small></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 2 · OPTION A ───────────────────────── -->
+<h2 id="a">2 · Option A <small>a line at the foot of the list</small></h2>
+<p class="lede">The form stays as it is. The list gains one last line, <b>Edit this list…</b>, which opens the small window drawn in <a href="#window">part 5</a>. The smallest change to the screen.</p>
+<div class="pair">
+  <div class="col">
+    <span class="cap">Option A · at a desk · the list drawn open</span>
+    <div class="frame"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <p>Billed Mon, Nov 9 at 10:12 AM. Not paid. The app has no email, text or print for this bill.</p>
+          <div class="form">
+            <div class="fl">How the bill went<span class="fi sel">Pick one</span></div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="fl">A note, if you want one<span class="fi">&nbsp;</span></div>
+            <div class="sysmenu" aria-hidden="true">
+              <div class="on">Pick one</div><div>Handed over</div><div>Mailed</div><div>Emailed from a person’s own mailbox</div><div>Sent from Housecall Pro</div><div>Uploaded to the builder’s pay portal</div><div>Left at the front desk</div><hr><div class="new">Edit this list…</div>
+            </div>
+            <div class="acts m-a"><span class="go dead">Record how it went</span><span class="lnk">Cancel</span><small>Pick how the bill went.</small></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><b>For it:</b> one new line and one window. A person who never edits the list sees nothing new.</li>
+      <li><b>Against it:</b> the system still draws the list over the next field. A line in a list that opens a window is easy to miss, and on a phone it sits at the bottom of the wheel.</li>
+      <li>Adding a way takes four presses: open the list, the last line, type, <b>Add to the list</b>.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">Option A · on a phone · this list can be pressed</span>
+    <div class="frame phone"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <div class="form">
+            <label class="fl">How the bill went
+              <select><option>Pick one</option><option>Handed over</option><option>Mailed</option><option>Emailed from a person’s own mailbox</option><option>Sent from Housecall Pro</option><option>Uploaded to the builder’s pay portal</option><option>Left at the front desk</option><option disabled>──────────</option><option>Edit this list…</option></select>
+            </label>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="acts"><span class="go dead">Record how it went</span><span class="btn">Cancel</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 3 · OPTION B ───────────────────────── -->
+<h2 id="b">3 · Option B <small>the choices as chips</small> <span class="tag">My suggestion</span></h2>
+<p class="lede">The list becomes a row of chips, the same chips the page already uses for <i>All · Email · Text</i>. The last chip is <b>＋ Add a way</b>. <b>Edit list</b> opens the same small window. <b>Both drawings can be pressed:</b> pick a way, add one, open the window.</p>
+<div class="pair sug">
+  <div class="col">
+    <span class="cap">Option B · at a desk · press it</span>
+    <div class="frame"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <p>Billed Mon, Nov 9 at 10:12 AM. Not paid. The app has no email, text or print for this bill.</p>
+          <div class="form" data-live>
+            <div class="fl wide">How the bill went
+              <div class="ways">
+                <button type="button" class="way" aria-pressed="false">Handed over</button>
+                <button type="button" class="way" aria-pressed="false">Mailed</button>
+                <button type="button" class="way" aria-pressed="false">Emailed from a person’s own mailbox</button>
+                <button type="button" class="way" aria-pressed="false">Sent from Housecall Pro</button>
+                <button type="button" class="way" aria-pressed="false">Uploaded to the builder’s pay portal</button>
+                <button type="button" class="way add" data-add>＋ Add a way</button>
+                <button type="button" class="lnk" data-edit>Edit list</button>
+              </div>
+              <div class="adder" data-adder hidden>
+                <input type="text" maxlength="60" placeholder="The new way, in a few words" aria-label="The new way">
+                <button type="button" class="go" data-add-go>Add to the list</button>
+                <button type="button" class="lnk" data-add-no>Cancel</button>
+                <small class="hint" style="flex-basis:100%">Everyone who opens Bills sent gets the new way. 5 of 12.</small>
+              </div>
+            </div>
+            <div class="fl">Who it went to<input type="text" value="Harlan Voss"></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="fl">A note, if you want one<input type="text" value=""></div>
+            <div class="acts"><button type="button" class="go dead" data-save>Record how it went</button><span class="lnk">Cancel</span><small data-say>Pick how the bill went.</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="scrim" data-win hidden style="margin-top:10px">
+        <div class="win">
+          <div class="hd"><b>How a bill went: the list</b><span>Everyone who opens Bills sent picks from this list.</span></div>
+          <div class="bd">
+            <div class="wrow"><div class="mv"><span class="off">▲</span><span>▼</span></div><div class="wd">Handed over</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+            <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Mailed</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+            <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Emailed from a person’s own mailbox</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+            <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Sent from Housecall Pro</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+            <div class="wrow"><div class="mv"><span>▲</span><span class="off">▼</span></div><div class="wd">Uploaded to the builder’s pay portal<small>Added by Priya on Wed, Nov 11</small></div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          </div>
+          <div class="ft"><small>A bill already recorded keeps the words it was recorded with. 5 of 12.</small><button type="button" class="go" data-win-done>Done</button></div>
+        </div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><b>For it:</b> one press picks a way, where the list took two. Every choice is in view, so nothing covers the next field. Adding a way takes three presses and never leaves the form.</li>
+      <li><b>Against it:</b> the form is one row taller. Twelve long ways would fill four rows on a phone, which is why the list stops at 12.</li>
+      <li>The chips are the page’s own. The window is the app’s own window. Nothing new is drawn.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">Option B · on a phone · press it</span>
+    <div class="frame phone"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <div class="form" data-live>
+            <div class="fl wide">How the bill went
+              <div class="ways">
+                <button type="button" class="way" aria-pressed="false">Handed over</button>
+                <button type="button" class="way" aria-pressed="false">Mailed</button>
+                <button type="button" class="way" aria-pressed="false">Emailed from a person’s own mailbox</button>
+                <button type="button" class="way" aria-pressed="false">Sent from Housecall Pro</button>
+                <button type="button" class="way" aria-pressed="false">Uploaded to the builder’s pay portal</button>
+                <button type="button" class="way add" data-add>＋ Add a way</button>
+                <button type="button" class="lnk" data-edit style="min-height:40px">Edit list</button>
+              </div>
+              <div class="adder" data-adder hidden>
+                <input type="text" maxlength="60" placeholder="The new way, in a few words" aria-label="The new way">
+                <button type="button" class="go" data-add-go>Add to the list</button>
+                <button type="button" class="btn" data-add-no>Cancel</button>
+              </div>
+            </div>
+            <div class="fl">Who it went to<input type="text" value="Harlan Voss"></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="acts"><button type="button" class="go dead" data-save>Record how it went</button><span class="btn">Cancel</span><small data-say>Pick how the bill went.</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scrim" data-win hidden>
+      <div class="win">
+        <div class="hd"><b>How a bill went: the list</b><span>Everyone who opens Bills sent picks from this list.</span></div>
+        <div class="bd">
+          <div class="wrow"><div class="mv"><span class="off">▲</span><span>▼</span></div><div class="wd">Handed over</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Mailed</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span class="off">▼</span></div><div class="wd">Uploaded to the builder’s pay portal<small>Added by Priya on Wed, Nov 11</small></div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+        </div>
+        <div class="ft"><small>A bill already recorded keeps its words.</small><button type="button" class="go" data-win-done>Done</button></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 4 · OPTION C ───────────────────────── -->
+<h2 id="c">4 · Option C <small>a card in Settings, with a door from the form</small></h2>
+<p class="lede">The form keeps its list and gains a quiet line under it, <b>Edit this list in Settings</b>. The list is edited on a card in Settings.</p>
+<div class="pair">
+  <div class="col">
+    <span class="cap">Option C · at a desk · the form, then the card in Settings</span>
+    <div class="frame"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <div class="form">
+            <div class="fl">How the bill went<span class="fi sel">Pick one</span><span class="lnk" style="font-size:12px">Edit this list in Settings</span></div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="fl">A note, if you want one<span class="fi">&nbsp;</span></div>
+            <div class="acts"><span class="go dead">Record how it went</span><span class="lnk">Cancel</span><small>Pick how the bill went.</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="setbar" style="border-radius:0;border-top:1px solid var(--border)"><b>Settings</b><span>Jobs, bills and liens</span></div>
+    <div class="pad">
+      <div class="setcard">
+        <h5>How a bill went</h5>
+        <p style="margin:0 0 4px;color:var(--text-muted)">The choices under <i>How the bill went</i> on Bills sent.</p>
+        <div class="wrow"><div class="mv"><span class="off">▲</span><span>▼</span></div><div class="wd">Handed over</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+        <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Mailed</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+        <div class="wrow"><div class="mv"><span>▲</span><span class="off">▼</span></div><div class="wd">Emailed from a person’s own mailbox</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+        <div class="addrow" style="display:flex;flex-wrap:wrap;gap:6px;padding-top:8px"><span class="fi ph" style="flex:1 1 12rem">The new way, in a few words</span><span class="go dead">Add to the list</span></div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><b>For it:</b> lists that shape the app have a home in Settings, and the form gains only one quiet line.</li>
+      <li><b>Against it:</b> the door leaves Bills sent, so the half-filled form is lost. And <b>Settings → Jobs, bills and liens opens for a developer alone today</b>, so the assistant and the controller could not reach the card without a new gate on that tab.</li>
+      <li>The app already moved one list the other way. The stage checklist questions left Settings for the job’s own tab, where the work is.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">Option C · on a phone</span>
+    <div class="frame phone"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <div class="form">
+            <div class="fl">How the bill went<span class="fi sel">Pick one</span><span class="lnk" style="min-height:32px;display:inline-flex;align-items:center">Edit this list in Settings</span></div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went<span class="fi">11/13/2026</span></div>
+            <div class="acts"><span class="go dead">Record how it went</span><span class="btn">Cancel</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 5 · THE WINDOW ───────────────────────── -->
+<h2 id="window">5 · The window <small>the same for Option A and Option B</small></h2>
+<p class="lede">One small window does the slower work: rename, move up or down, take off, bring back. Here it is with one way being renamed and one taken off earlier.</p>
+<div class="pair">
+  <div class="col">
+    <span class="cap">The window · at a desk</span>
+    <div class="frame"><div class="scrim" style="border-radius:11px">
+      <div class="win">
+        <div class="hd"><b>How a bill went: the list</b><span>Everyone who opens Bills sent picks from this list.</span></div>
+        <div class="bd">
+          <div class="wrow"><div class="mv"><span class="off">▲</span><span>▼</span></div><div class="wd">Handed over</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow edit"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd"><input type="text" value="Mailed, first class" maxlength="60" aria-label="The way’s words"><small>Was: Mailed. A bill already recorded as Mailed still reads Mailed.</small></div><div class="do"><span class="go">Save the name</span><span class="lnk">Cancel</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Emailed from a person’s own mailbox</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Sent from Housecall Pro</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span class="off">▼</span></div><div class="wd">Uploaded to the builder’s pay portal<small>Added by Priya on Wed, Nov 11</small></div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="addrow"><span class="fi ph" style="flex:1 1 12rem">The new way, in a few words</span><span class="go dead">Add to the list</span></div>
+          <div class="fold"><b>Taken off (1)</b>
+            <div class="wrow gone" style="border-bottom:0"><div class="mv"></div><div class="wd"><s>Faxed</s><small>Taken off by Marcus on Mon, Nov 9. 2 bills were recorded with it and still say so.</small></div><div class="do"><span class="lnk">Bring back</span></div></div>
+          </div>
+        </div>
+        <div class="ft"><small>A bill already recorded keeps the words it was recorded with. 5 of 12.</small><span class="go">Done</span></div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><b>Rename</b> fixes the words. A different way is a new line, not a rename.</li>
+      <li><b>Take off</b> hides a way from the form. It stays here under <i>Taken off</i> with who and when, and <b>Bring back</b> returns it.</li>
+      <li>The window refuses a name already on the list, a 13th way, and taking off the last way. Each refusal says why.</li>
+      <li>Each change saves when pressed. <b>Done</b> only closes the window.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">The window · on a phone · a sheet from the bottom</span>
+    <div class="frame phone"><div class="scrim">
+      <div class="win">
+        <div class="hd"><b>How a bill went: the list</b><span>Everyone who opens Bills sent picks from this list.</span></div>
+        <div class="bd">
+          <div class="wrow"><div class="mv"><span class="off">▲</span><span>▼</span></div><div class="wd">Handed over</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Mailed</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span>▼</span></div><div class="wd">Emailed from a person’s own mailbox</div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="wrow"><div class="mv"><span>▲</span><span class="off">▼</span></div><div class="wd">Uploaded to the builder’s pay portal<small>Added by Priya on Wed, Nov 11</small></div><div class="do"><span class="lnk">Rename</span><span class="lnk">Take off</span></div></div>
+          <div class="addrow"><span class="fi ph" style="flex:1 1 100%">The new way, in a few words</span><span class="go dead">Add to the list</span></div>
+          <div class="fold"><b>Taken off (1)</b> <span class="lnk">Show</span></div>
+        </div>
+        <div class="ft"><small>A bill already recorded keeps its words. 4 of 12.</small><span class="go">Done</span></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 6 · THE FORM ITSELF ───────────────────────── -->
+<h2 id="row">6 · The form itself <small>three fixes, each on its own</small> <span class="tag sep">Separate from the list</span></h2>
+<p class="lede">None of these needs the list to change, and none needs the database to change. Take any, all or none. They are drawn together on Option B’s form so you can see the whole.</p>
+<div class="pair">
+  <div class="col">
+    <span class="cap">The form with R1, R2 and R3 · at a desk</span>
+    <div class="frame"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <p>Billed Mon, Nov 9 at 10:12 AM. Not paid. The app has no email, text or print for this bill.</p>
+          <div class="form">
+            <div class="fl wide">How the bill went
+              <div class="ways">
+                <span class="way" aria-pressed="true">Handed over</span><span class="way">Mailed</span><span class="way">Emailed from a person’s own mailbox</span><span class="way">Sent from Housecall Pro</span><span class="way add">＋ Add a way</span><span class="lnk">Edit list</span>
+              </div>
+            </div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl"><span>The day it went <span class="tag sep">R1</span></span>
+              <span class="fi">11/09/2026</span>
+              <span class="quick"><span class="on">Mon, Nov 9 · the day it was billed</span><span>Today</span></span>
+            </div>
+            <div class="fl">A note, if you want one<span class="fi">&nbsp;</span></div>
+            <div class="more">
+              <b style="color:var(--text-strong)">2 more bills to Harlan Voss have no send on record.</b> <span class="tag sep">R2</span>
+              <div class="hint">Tick the ones that went the same way, to the same person, on the same day.</div>
+              <label><input type="checkbox" checked><span><span class="job" style="color:var(--text-green-700);font-weight:600">J1418 · Service visit, 41 Tamarack Ln</span></span><b>$2,260.00</b><small>Billed Mon, Nov 9 at 10:31 AM</small></label>
+              <label><input type="checkbox"><span><span class="job" style="color:var(--text-green-700);font-weight:600">J1389 · Quarry Row duplex</span></span><b>$6,125.00</b><small>Billed Thu, Oct 22 at 3:40 PM</small></label>
+            </div>
+            <div class="will"><span class="tag sep" style="margin-left:0">R3</span> <b>Each record will read:</b> Mon, Nov 9 · <span class="rt">Handed over</span> · to Harlan Voss · recorded by hand by Priya on Fri, Nov 13.<small>It is your word, with your name. It cannot be changed once saved.</small></div>
+            <div class="acts"><span class="go">Record how 2 bills went</span><span class="lnk">Cancel</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <ul class="pts">
+      <li><b>R1 · The day offers the day the bill was made.</b> Today is one press away. A bill billed in September no longer starts on today’s date.</li>
+      <li><b>R2 · Several bills to one person at once.</b> The form lists that person’s other bills with no send on record. The button counts what it will record. Each bill still gets its own record.</li>
+      <li><b>R3 · The form reads the record back before the press.</b> A record cannot be changed once saved, so the person sees the sentence first.</li>
+    </ul>
+  </div>
+  <div class="col">
+    <span class="cap">The form with R1, R2 and R3 · on a phone</span>
+    <div class="frame phone"><div class="pad">
+      <div class="gap">
+        <div class="g" style="border-top:0;margin-top:0;padding-top:0">
+          <div><span class="bill">Bill</span> · <span class="job">J1402 · Alder Court remodel</span> · Harlan Voss</div>
+          <div class="amt">$1,840.00</div>
+          <div class="form">
+            <div class="fl wide">How the bill went
+              <div class="ways">
+                <span class="way" aria-pressed="true">Handed over</span><span class="way">Mailed</span><span class="way">Emailed from a person’s own mailbox</span><span class="way">Sent from Housecall Pro</span><span class="way add">＋ Add a way</span><span class="lnk">Edit list</span>
+              </div>
+            </div>
+            <div class="fl">Who it went to<span class="fi">Harlan Voss</span></div>
+            <div class="fl">The day it went
+              <span class="fi">11/09/2026</span>
+              <span class="quick"><span class="on">Mon, Nov 9 · billed</span><span>Today</span></span>
+            </div>
+            <div class="more">
+              <b style="color:var(--text-strong)">2 more bills to Harlan Voss have no send on record.</b>
+              <label><input type="checkbox" checked><span class="job" style="color:var(--text-green-700);font-weight:600">J1418 · Service visit</span><b>$2,260.00</b><small>Billed Mon, Nov 9</small></label>
+              <label><input type="checkbox"><span class="job" style="color:var(--text-green-700);font-weight:600">J1389 · Quarry Row duplex</span><b>$6,125.00</b><small>Billed Thu, Oct 22</small></label>
+            </div>
+            <div class="will"><b>Each record will read:</b> Mon, Nov 9 · Handed over · to Harlan Voss · recorded by hand by Priya on Fri, Nov 13.<small>It cannot be changed once saved.</small></div>
+            <div class="acts"><span class="go">Record how 2 bills went</span><span class="btn">Cancel</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 7 · OLD RECORDS ───────────────────────── -->
+<h2 id="old">7 · Old records <small>what a change to the list does, and does not do</small></h2>
+<p class="lede">Today a record keeps a short code for its way, and the screen looks the words up when it draws. So a rename would reword last month’s records. The first step of the build closes that: each record keeps the words too.</p>
+<div class="scroll">
+<table class="t">
+  <tr><th>The office does this</th><th>The form</th><th>A bill recorded before it</th><th>The chips, the tiles, Print and the CSV</th></tr>
+  <tr><td>Adds <i>Uploaded to the builder’s pay portal</i></td><td>A new chip, for everyone, at the end</td><td>No change</td><td>A bill recorded with it is under <span class="rt">Recorded by hand</span>. Its line, Print and the CSV say the new words. The tiles count it on the day it went.</td></tr>
+  <tr><td>Renames <i>Mailed</i> to <i>Mailed, first class</i></td><td>The chip reads the new words</td><td>Still reads <b>Mailed</b>, on the list, on the bill’s record, in Print and in the CSV</td><td>No change to any count</td></tr>
+  <tr><td>Takes off <i>Faxed</i></td><td>The chip is gone</td><td>Still reads <b>Faxed</b></td><td>No change to any count</td></tr>
+  <tr><td>Brings <i>Faxed</i> back</td><td>The chip returns where it was</td><td>No change</td><td>No change</td></tr>
+  <tr><td>Moves a way up or down</td><td>The chips follow the new order</td><td>No change</td><td>No change</td></tr>
+</table>
+</div>
+<p class="note"><b>Why every way counts under Recorded by hand.</b> The chips sort a line by who says the bill went. <i>Email</i> means the app sent it and the mail server answered. A way the office typed is a person’s word. A person’s word under <i>Email</i> would sit beside lines that say <i>Delivered 9:28 AM</i> and look like the same proof.</p>
+
+<!-- ───────────────────────── 8 · THE CALLS ───────────────────────── -->
+<h2 id="calls">8 · Your calls <small>a word each will do</small></h2>
+<ol class="calls">
+  <li><b>Which option?</b> A, B or C. I suggest <b>B</b>.</li>
+  <li><b>Who may edit the list?</b> The four roles that open the page, or the master and the developer only. I suggest <b>the four</b>: the people clearing the yellow box are the ones who meet a missing way, and every change carries a name and a day.</li>
+  <li><b>May the four ways there today be renamed and taken off?</b> Yes or no. I suggest <b>yes</b>. <i>Emailed from a person’s own mailbox</i> is long, and the office knows its own words best.</li>
+  <li><b>Does every way count under Recorded by hand?</b> Yes, or a way may name the chip it counts under. I suggest <b>yes, every way</b>.</li>
+  <li><b>Is 12 the right cap?</b> 12, or another number.</li>
+  <li><b>R1, the day offers the day the bill was made?</b> Yes or no. I suggest <b>yes</b>.</li>
+  <li><b>R2, several bills to one person at once?</b> Yes or no. I suggest <b>yes</b>, after the list is done.</li>
+  <li><b>R3, the form reads the record back?</b> Yes or no. I suggest <b>yes</b>.</li>
+</ol>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+
+    // Option B can be pressed: pick a way, add one, open the window. Nothing is saved anywhere.
+    document.querySelectorAll('.form[data-live]').forEach(function (form) {
+      var frame = form.closest('.frame');
+      var ways = form.querySelector('.ways');
+      var adder = form.querySelector('[data-adder]');
+      var typed = adder.querySelector('input');
+      var save = form.querySelector('[data-save]');
+      var say = form.querySelector('[data-say]');
+      var win = frame.querySelector('[data-win]');
+      function pick(chip) {
+        ways.querySelectorAll('.way:not(.add)').forEach(function (w) { w.setAttribute('aria-pressed', String(w === chip)); });
+        save.classList.remove('dead');
+        say.textContent = 'Will read: ' + chip.textContent + ' · recorded by hand by Priya on Fri, Nov 13.';
+      }
+      ways.addEventListener('click', function (ev) {
+        var chip = ev.target.closest('.way');
+        if (chip && !chip.classList.contains('add')) pick(chip);
+      });
+      form.querySelector('[data-add]').addEventListener('click', function () { adder.hidden = false; typed.focus(); });
+      form.querySelector('[data-add-no]').addEventListener('click', function () { adder.hidden = true; typed.value = ''; });
+      function add() {
+        var words = typed.value.trim();
+        if (!words) { typed.focus(); return; }
+        var chip = document.createElement('button');
+        chip.type = 'button'; chip.className = 'way'; chip.textContent = words;
+        ways.insertBefore(chip, form.querySelector('[data-add]'));
+        adder.hidden = true; typed.value = '';
+        pick(chip);
+      }
+      form.querySelector('[data-add-go]').addEventListener('click', add);
+      typed.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') add(); });
+      form.querySelector('[data-edit]').addEventListener('click', function () { win.hidden = !win.hidden; if (!win.hidden) win.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+      win.querySelector('[data-win-done]').addEventListener('click', function () { win.hidden = true; });
+    });
+  })();
+</script>
+</body>
+</html>
