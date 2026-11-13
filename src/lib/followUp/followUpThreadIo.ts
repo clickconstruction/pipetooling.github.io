@@ -32,7 +32,7 @@ export interface FollowUpThreadRows {
   calls?: CallTaskDbRow[]
 }
 
-export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed' | 'callAdd' | 'setPrefers'> {
+export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'noReplyNeeded' | 'backDone' | 'markOwed' | 'callAdd' | 'setPrefers'> {
   loadThread(contactId: string, todayYmd: string): Promise<FollowUpThreadRows>
   loadTeam(): Promise<Teammate[]>
   /**
@@ -95,6 +95,7 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
     takeIt: presses.takeIt,
     handTo: presses.handTo,
     setState: presses.setState,
+    noReplyNeeded: presses.noReplyNeeded,
     backDone: presses.backDone,
     markOwed: presses.markOwed,
   }

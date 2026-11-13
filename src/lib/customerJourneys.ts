@@ -14,20 +14,22 @@
  * Every public route and every outside-facing email sender must have a step here or a named
  * exemption — `customerSurfaceRegistry.ts` is the registry and its test is the guard (v2.3505).
  * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
- * the collections law firm. Collections paper sits at the end of the journey it belongs to.
+ * the collections law firm. A sixth group since punch list #326: the lien letters, every letter the
+ * owner of a property and their builder get on an unpaid job, in the order it goes. The homeowner's
+ * own collections paper still ends the homeowner's journey, where A person reads it.
  */
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_LOW, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply' | 'lien-courtesy-owner' | 'lien-courtesy-gc'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply', 'lien-courtesy-owner', 'lien-courtesy-gc']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
-export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating' | 'text-first-look'
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating' | 'text-first-look' | 'text-lien-courtesy-owner' | 'text-lien-courtesy-gc'
 
-export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating', 'text-first-look']
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating', 'text-first-look', 'text-lien-courtesy-owner', 'text-lien-courtesy-gc']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -53,9 +55,27 @@ export type JourneyStep = {
   render: JourneyStepRender
 }
 
-export type JourneyId = 'homeowner' | 'gc' | 'sub' | 'house' | 'firm'
+export type JourneyId = 'homeowner' | 'gc' | 'lien' | 'sub' | 'house' | 'firm'
 
-export type Journey = { id: JourneyId; title: string; subtitle: string; steps: JourneyStep[] }
+/** One stage of a group that goes in a fixed order (the lien letters): its place, its name, and when it goes, in one plain sentence. */
+export type JourneyStage = { n: string; name: string; when: string }
+
+export type Journey = { id: JourneyId; title: string; subtitle: string; steps: JourneyStep[]; /** The order the group's letters go in, drawn over its cards. Absent on a journey with no fixed order. */ stages?: JourneyStage[] }
+
+/**
+ * The lien letters' order (punch list #326), as the Lien desk runs it: three letters before the lien, the lien, the
+ * release. `n` is the number each step's `when` opens with; a blank `n` is a letter beside the order. The days are the
+ * commercial clock's, with a house's earlier month said beside them.
+ */
+export const LIEN_STAGES: readonly JourneyStage[] = [
+  { n: '1', name: 'Notice of claim', when: 'Certified mail to the owner and the builder, for each unpaid month. Due by the 15th of the third month after the work. On a house, the second month.' },
+  { n: '2', name: 'Courtesy notice', when: 'A reminder by email and text. It goes on days 1 to 5 of the month the lien is due.' },
+  { n: '3', name: 'Attorney’s letter', when: 'A second letter to the owner, 10 to 14 days after the notice, when nobody has paid or answered.' },
+  { n: '4', name: 'Lien affidavit', when: 'Filed with the county clerk by the 15th of the fourth month after the last month worked. On a house, the third month.' },
+  { n: '5', name: 'Release', when: 'Sent once the claim is paid. A filed affidavit also gets a release of record.' },
+  { n: '', name: 'Final demand letter', when: 'Optional. A last demand with a pay by date, before an affidavit.' },
+  { n: '', name: 'Retainage notice', when: 'Only for money the builder holds back. Due 30 days after our contract ends.' },
+]
 
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 /** The pay page (punch list #35, v2.3754) renders a sample bill for the sample token and never forwards. */
@@ -690,15 +710,133 @@ export function customerJourneys(): Journey[] {
           reflects: ['The words the office wrote, with a subject from the job and the first line after the greeting', 'The greeting the office kept on the first line', 'The sender’s name, title, cell and own two lines in the signature'],
           render: { kind: 'email', email: 'messages-reply' },
         },
+      ],
+    },
+    {
+      id: 'lien',
+      title: 'Lien letters',
+      subtitle: 'Sample Owner LLC and Sample Contracting · an unpaid month on a job under a builder, and every letter in the order it goes',
+      stages: [...LIEN_STAGES],
+      steps: [
+        {
+          id: 'lien-cover-letter',
+          label: 'Cover letter with the notice',
+          sublabel: 'the first page in the owner’s envelope · Lien desk → Send the run',
+          when: 'Step 1 · each unpaid month',
+          customerCan: 'Read in plain words that their builder has not paid us, that they did not hire us, and the three ways it ends.',
+          guide: 'send-lien-notices-from-the-lien-desk',
+          reflects: ['Counsel’s cover letter and what fills its blanks', 'Company name, phone and license on the letterhead'],
+          render: { kind: 'paper', paper: 'lien-cover-letter' },
+        },
         {
           id: 'owner-notice',
-          label: 'Notice to the owner of record',
-          sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice',
-          when: 'Unpaid month',
+          label: 'Notice of claim (§ 53.056)',
+          sublabel: 'certified mail to the owner and the builder · Lien desk → Send the run',
+          when: 'Step 1 · by the 15th of the third month',
           customerCan: 'Read the notice that their contractor has not paid, the months it covers, and the invoice enclosed.',
           guide: 'send-lien-notices-from-the-lien-desk',
           reflects: ['Notice wording and the cover letter', 'The invoice enclosed'],
           render: { kind: 'paper', paper: 'owner-notice' },
+        },
+        {
+          id: 'lien-courtesy-email-owner',
+          label: 'Courtesy notice: the owner’s email',
+          sublabel: 'a reminder, never certified mail · Lien desk → Send a courtesy notice',
+          when: 'Step 2 · days 1 to 5 of the lien’s month',
+          customerCan: 'Read that the notice still stands and the day the lien goes on, then hold the money back and call us.',
+          guide: 'send-a-courtesy-notice-before-a-lien',
+          reflects: ['The courtesy notice’s words', 'The office’s name and number under it'],
+          render: { kind: 'email', email: 'lien-courtesy-owner' },
+        },
+        {
+          id: 'lien-courtesy-text-owner',
+          label: 'Courtesy notice: the owner’s text',
+          sublabel: 'the same reminder, short · Lien desk → Send a courtesy notice',
+          when: 'Step 2 · with the email',
+          customerCan: 'Read the claim and the day the lien goes on in one text, and call the number in it.',
+          guide: 'send-a-courtesy-notice-before-a-lien',
+          reflects: ['The courtesy notice’s words', 'The opt-out line a first text carries'],
+          render: { kind: 'text', text: 'text-lien-courtesy-owner' },
+        },
+        {
+          id: 'lien-courtesy-email-gc',
+          label: 'Courtesy notice: the builder’s email',
+          sublabel: 'the builder’s copy names the pay page · Lien desk → Send a courtesy notice',
+          when: 'Step 2 · days 1 to 5 of the lien’s month',
+          customerCan: 'Read the claim, the day the lien goes on and the pay link, then pay or tell us what is wrong.',
+          guide: 'send-a-courtesy-notice-before-a-lien',
+          reflects: ['The courtesy notice’s words', 'The pay page’s address', 'The office’s name and number under it'],
+          render: { kind: 'email', email: 'lien-courtesy-gc' },
+        },
+        {
+          id: 'lien-courtesy-text-gc',
+          label: 'Courtesy notice: the builder’s text',
+          sublabel: 'the same reminder, short, with the pay link · Lien desk → Send a courtesy notice',
+          when: 'Step 2 · with the email',
+          customerCan: 'Read the claim and the day the lien goes on, and pay from the link.',
+          guide: 'send-a-courtesy-notice-before-a-lien',
+          reflects: ['The courtesy notice’s words', 'The pay page’s address'],
+          render: { kind: 'text', text: 'text-lien-courtesy-gc' },
+        },
+        {
+          id: 'lien-letter-paid-out',
+          label: 'Attorney’s letter: the owner may have paid the builder in full',
+          sublabel: 'a second letter to the owner, with the notice again · Lien desk → Send the attorney’s letter',
+          when: 'Step 3 · day 10 to 14 after the packet',
+          customerCan: 'Read that 10 percent had to be held back, the day the affidavit is filed, and three questions to answer by phone.',
+          guide: 'send-lien-notices-from-the-lien-desk',
+          reflects: ['Counsel’s second letter, the paid out one', 'Company name, phone and license on the letterhead'],
+          render: { kind: 'paper', paper: 'lien-letter-paid-out' },
+        },
+        {
+          id: 'lien-letter-quiet',
+          label: 'Attorney’s letter: the builder is not answering',
+          sublabel: 'the other second letter, with the notice again · Lien desk → Send the attorney’s letter',
+          when: 'Step 3 · day 10 to 14 after the packet',
+          customerCan: 'Read that their builder has gone quiet, what to hold back, and the three ways it ends.',
+          guide: 'send-lien-notices-from-the-lien-desk',
+          reflects: ['Counsel’s second letter, the one for a builder who is not answering', 'Company name, phone and license on the letterhead'],
+          render: { kind: 'paper', paper: 'lien-letter-quiet' },
+        },
+        {
+          id: 'lien-affidavit',
+          label: 'Lien affidavit',
+          sublabel: 'filed with the county clerk, then mailed to the owner and the builder within 5 days · Liens on job → Mechanic’s lien',
+          when: 'Step 4 · by the 15th of the fourth month',
+          customerCan: 'Read the sworn claim recorded on the property: the month, the amount and the notice that came first.',
+          guide: 'file-a-lien-and-never-miss-its-deadlines',
+          reflects: ['The affidavit’s sworn wording, which is counsel’s', 'Owner of record, county and legal description on the property record'],
+          render: { kind: 'paper', paper: 'lien-affidavit' },
+        },
+        {
+          id: 'lien-release-of-record',
+          label: 'Release of record',
+          sublabel: 'filed with the same clerk once the claim is paid · Liens on job → Release of record',
+          when: 'Step 5 · after payment',
+          customerCan: 'Hold the recorded paper that takes the lien off the property. A claim paid before an affidavit gets the lien release instead.',
+          guide: 'file-a-lien-and-never-miss-its-deadlines',
+          reflects: ['The release’s wording', 'The recording number typed when the affidavit was filed'],
+          render: { kind: 'paper', paper: 'lien-release-of-record' },
+        },
+        {
+          id: 'lien-demand-letter',
+          label: 'Final demand letter',
+          sublabel: 'optional, to whoever owes the bill · Liens on job → Demand letter',
+          when: 'Beside the order · before an affidavit',
+          customerCan: 'Read the final demand, the statement of account and the invoice, and pay or respond by the deadline.',
+          guide: 'send-a-final-demand-letter',
+          reflects: ['Demand letter wording and the legal lines', 'Statement of account'],
+          render: { kind: 'paper', paper: 'demand-letter' },
+        },
+        {
+          id: 'lien-retainage',
+          label: 'Retainage notice (§ 53.057)',
+          sublabel: 'for money the builder holds back · Lien desk → All filings → Retainage',
+          when: 'Beside the order · 30 days after our contract ends',
+          customerCan: 'Read that retainage is unpaid, and hold it back from the builder.',
+          guide: 'send-lien-notices-from-the-lien-desk',
+          reflects: ['Retainage notice wording', 'Company name, phone and license on the letterhead'],
+          render: { kind: 'paper', paper: 'lien-retainage' },
         },
       ],
     },

@@ -18,6 +18,9 @@ import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useOpenThread } from '../gc/messages/openThread'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { lookTaskPreset, TECH_READ_WORDS, techLine } from '../../lib/firstLook/tech'
+import { LookFile } from './LookFile'
 import { useLookDoors } from './useLookDoors'
 
 const DEFAULT_IO = supabaseFirstLookThreadIo()
@@ -30,41 +33,6 @@ const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 1
 const head: CSSProperties = { display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem' }
 const press: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', font: 'inherit' }
 const quiet: CSSProperties = { ...press, color: 'var(--text-muted)', fontWeight: 500 }
-const thumb: CSSProperties = { width: 76, height: 76, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }
-const fileChip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.3rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-base)', background: 'var(--surface)', display: 'inline-flex', gap: 6, alignItems: 'center' }
-
-/** One file on the card: a photo as a picture, a video in a player, either as a named chip when the browser cannot draw it. */
-export function LookFile({ kind, url, label, texted }: { kind: 'photo' | 'video'; url: string | undefined; label: string; texted: boolean }) {
-  const [failed, setFailed] = useState(false)
-  const title = texted ? `${label}, ${LOOK_CARD_WORDS.texted}` : label
-  if (!url) {
-    return (
-      <span data-look-file="waiting" style={fileChip} title={LOOK_CARD_WORDS.notDrawn}>
-        {label}
-      </span>
-    )
-  }
-  if (failed) {
-    return (
-      <span data-look-file="chip" style={fileChip} title={kind === 'video' ? LOOK_CARD_WORDS.videoNotPlayed : undefined}>
-        {label}
-        <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-          {LOOK_CARD_WORDS.open}
-        </a>
-      </span>
-    )
-  }
-  if (kind === 'video') {
-    return (
-      <video data-look-file="video" controls preload="metadata" src={url} title={title} aria-label={title} onError={() => setFailed(true)} style={{ maxWidth: 'min(100%, 260px)', maxHeight: 180, borderRadius: 8, border: '1px solid var(--border)' }} />
-    )
-  }
-  return (
-    <a data-look-file="photo" href={url} target="_blank" rel="noreferrer" title={title}>
-      <img src={url} alt={title} loading="lazy" onError={() => setFailed(true)} style={thumb} />
-    </a>
-  )
-}
 
 function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { contact: Contact; cardOf: LookCard; urls: Readonly<Record<string, string>>; nowIso: string; io: FirstLookThreadIo; doorsIo?: LeadDoorsIo; onChanged: () => void }) {
   const open = useOpenThread()
@@ -78,8 +46,19 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
   const hasDoors = doors.has
   const drive = lookCardDriveLine(cardOf, contact.kind === 'customer' && Boolean(contact.customerId))
   const pressing = busy !== null || doors.pressing
-  const book = () => doors.book(words)
+  // The job Add Job makes takes the look with it (PR 6): its Drive folder moves under the job and the tech sees it.
+  const book = () => doors.book(words, (jobId) => void io.setJob(look.id, jobId).then(onChanged, () => undefined))
   const startEstimate = () => doors.startEstimate(words, look.id)
+  // PR 7: the ask rides a task card. Whoever the task is given to may open this one look; their answer comes back to the thread.
+  const addTask = useChecklistAddModal()
+  const askTech = () =>
+    addTask?.openAddModal({
+      preset: lookTaskPreset(contact, look, window.location.origin),
+      onSaved: (taskId) => {
+        if (taskId) void io.askTech(look.id, taskId).then(onChanged, (e: unknown) => say(formatErrorMessage(e, 'The task went, and the look was not opened to the tech.'), 'error'))
+      },
+    })
+  const tech = techLine(look, (iso) => formatDenverCalendarDayShort(Date.parse(iso)))
   const close = async () => {
     setBusy('close')
     try {
@@ -116,6 +95,11 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
           ))}
         </div>
       )}
+      {tech && (
+        <div data-look-tech style={{ fontSize: '0.85rem', fontWeight: look.tech_read ? 600 : 400 }}>
+          {tech}
+        </div>
+      )}
       {drive && (
         <div data-look-drive style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {drive.href ? (
@@ -141,13 +125,18 @@ function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { co
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
         {hasDoors && (
           <>
-            <button type="button" style={press} title={LEAD_DOOR_WORDS.estimateTip} disabled={pressing} onClick={() => void startEstimate()}>
+            <button type="button" style={press} title={contact.kind === 'customer' ? LOOK_CARD_WORDS.estimateTipCustomer : LEAD_DOOR_WORDS.estimateTip} disabled={pressing} onClick={() => void startEstimate()}>
               {LOOK_CARD_WORDS.startEstimate}
             </button>
-            <button type="button" style={press} title={LEAD_DOOR_WORDS.bookTip} disabled={pressing} onClick={() => void book()}>
+            <button type="button" style={press} title={contact.kind === 'customer' ? LOOK_CARD_WORDS.bookTipCustomer : LEAD_DOOR_WORDS.bookTip} disabled={pressing} onClick={() => void book()}>
               {LOOK_CARD_WORDS.bookVisit}
             </button>
           </>
+        )}
+        {addTask && (
+          <button type="button" style={press} title={TECH_READ_WORDS.askTip} disabled={pressing} onClick={askTech}>
+            {TECH_READ_WORDS.ask}
+          </button>
         )}
         <button type="button" style={press} disabled={pressing} onClick={() => askForPhotos(contact.id)}>
           {cardOf.files.length + cardOf.texted.length === 0 ? SHOW_ASK_WORDS.again : SHOW_ASK_WORDS.more}

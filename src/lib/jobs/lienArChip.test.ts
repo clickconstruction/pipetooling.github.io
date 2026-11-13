@@ -214,9 +214,45 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(letter.door).toEqual({ to: 'desk', jobId: 'j858', kind: 'notice', pile: 'sent' })
   })
 
+  it('an affidavit’s row names its own paper, keeps the leader’s name, and every chip carries its words with no day (v2.7042, punch list #325)', () => {
+    const aff = { kind: 'affidavit' as const, key: 'affidavit:j273', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber' as const, target: { open: 'affidavits' as const, jobId: 'j273' } }
+    // It read "Affidavit · Notice to draft": the move's words were the notice's.
+    const draft = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'draft', sub: 'Affidavit to draft' })] }))!
+    expect(draft).toMatchObject({ words: 'Affidavit to draft · by Nov 16 · 34d', lead: 'Affidavit to draft', action: 'draft', paper: 'affidavit' })
+    // It read "Affidavit · Waiting on the leader": the name sat behind the paper's own lead-in.
+    const waiting = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on Robert · since Oct 7' })] }))!
+    expect(waiting).toMatchObject({ words: 'Affidavit · Waiting on Robert · by Nov 16 · 34d', lead: 'Affidavit · Waiting on Robert' })
+    // It read "Affidavit · Approve the notice".
+    const mine = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on your approval' })] }))!
+    expect(mine).toMatchObject({ words: 'Approve the affidavit · by Nov 16 · 34d', lead: 'Approve the affidavit' })
+    const file = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'file_affidavit', sub: 'Affidavit approved · ready to file' })] }))!
+    expect(file).toMatchObject({ words: 'File the affidavit · by Nov 16 · 34d', lead: 'File the affidavit', action: 'file_affidavit' })
+    // A notice's chip is as it was, with its lead beside it; paper that is out has no move and its lead is its words.
+    expect(lienArChipFor(input({ nextUp: [row({ sub: 'Waiting on your approval' })], entry: entry() }))!).toMatchObject({ words: 'Approve the notice · by Oct 15 · 2d', lead: 'Approve the notice', action: 'approve' })
+    expect(lienArChipFor(input({ jobId: 'j858', filings: [filing({ id: 'f2', job_id: 'j858', sends: [{ recipient: 'owner', method: 'hand', tracking: '' }] })] }))!).toMatchObject({ words: 'Sent Sep 12 · by hand', lead: 'Sent Sep 12 · by hand', action: null })
+  })
+
+  it('a chip carries its move as the next act on the lien path (v2.7043): a gate by its fact, a hold with its reason, a reminder with none', () => {
+    const aff = { kind: 'affidavit' as const, key: 'affidavit:j273', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber' as const, target: { open: 'affidavits' as const, jobId: 'j273' } }
+    const gates = (keys: string[]) => ({ jobId: 'j273', pile: 'needs_property', deadline: '2026-11-16', gates: ['owner', 'legal', 'contractor', 'notice', 'homestead_answer'].map((key) => ({ key, ok: !keys.includes(key), label: key })) }) as never
+    const held = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the property record is not complete' })], affidavit: gates(['homestead_answer']) }))!
+    expect(held.act).toMatchObject({ words: 'Answer the homestead question', dated: true })
+    // Its own words still say the pile's; the act is beside them for a reader that leads with it.
+    expect(held.words).toBe('Affidavit · fix the property · by Nov 16 · 34d')
+    expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the property record is not complete' })], affidavit: gates(['owner', 'legal']) }))!.act?.words).toBe('Fix the property record')
+    // With no affidavit entry in hand the desk's own row still says which hold it is.
+    expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond' })] }))!.act).toMatchObject({ words: 'Public property, no lien', dated: false })
+    expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the general contractor has no address on file' })] }))!.act?.words).toBe('Add the GC’s address')
+    expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on Robert · since Oct 7' })] }))!.act?.words).toBe('Waiting on Robert')
+    const hold = lienArChipFor(input({ nextUp: [row({ action: 'review_hold', sub: 'Held' })], entry: entry({ pile: 'held', item: { hold_reason: 'promised', hold_until: '2026-10-12' } as never }) }))!
+    expect(hold.act).toMatchObject({ words: 'Review the hold', under: 'Held · they promised · asks again Oct 12' })
+    expect(lienArChipFor(input({ jobId: 'j858', nextUp: [row({ key: 'letter-two:j858', jobId: 'j858', action: 'letter_two', sub: 'day 12 · the attorney’s letter', dueOn: null, daysLeft: null })], letterTwo: two({ state: 'due', day: 12 }) }))!.act).toBeNull()
+    expect(lienArChipFor(input({ jobId: 'j858', filings: [filing({ id: 'f3', job_id: 'j858' })] }))!.act).toBeNull()
+  })
+
   it('the customer header carries the worst state, counting the jobs that share it; the lens pair counts customers', () => {
-    const red: LienArChip = { tone: 'red', state: 'due', paper: 'notice', words: 'Notice to draft · by Oct 15 · 2d', sentence: '', title: '', door: { to: 'desk', jobId: 'a', kind: 'notice', pile: 'to_draft' }, dueOn: '2026-10-15', daysLeft: 2 }
-    const green: LienArChip = { tone: 'green', state: 'out', paper: 'notice', words: 'Delivered Sep 16', sentence: '', title: '', door: { to: 'window', jobId: 'b', tab: 'notice' }, dueOn: null, daysLeft: null }
+    const red: LienArChip = { tone: 'red', state: 'due', paper: 'notice', words: 'Notice to draft · by Oct 15 · 2d', lead: 'Notice to draft', action: 'draft', act: null, sentence: '', title: '', door: { to: 'desk', jobId: 'a', kind: 'notice', pile: 'to_draft' }, dueOn: '2026-10-15', daysLeft: 2 }
+    const green: LienArChip = { tone: 'green', state: 'out', paper: 'notice', words: 'Delivered Sep 16', lead: 'Delivered Sep 16', action: null, act: null, sentence: '', title: '', door: { to: 'window', jobId: 'b', tab: 'notice' }, dueOn: null, daysLeft: null }
     const header = lienArCustomerChip([{ label: '273', chip: red }, { label: '890', chip: { ...red, dueOn: '2026-10-20', daysLeft: 7 } }, { label: '858', chip: green }, { label: '800', chip: null }])!
     expect(header).toMatchObject({ tone: 'red', state: 'due', words: 'Notice to draft · by Oct 15 · 2d · 2 jobs' })
     expect(header.title).toBe('273: Notice to draft · by Oct 15 · 2d\n890: Notice to draft · by Oct 15 · 2d\n858: Delivered Sep 16')

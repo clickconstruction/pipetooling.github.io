@@ -14,7 +14,7 @@ Tap the {{icon:search}} **search icon** in the top strip of your Dashboard. Type
 
 - On a phone, the search icon sits in the top strip next to the Dashboard icon.
 - On a wider screen it sits at the right end of the header.
-- It is there on every page, not just the Dashboard. Farm Mode hides it, like everything else.
+- The search icon is there on every page, not just the Dashboard. Task Mode hides it, like everything else.
 
 ## Find a guide from the same box
 

@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · the card, the mock-up and the build plan the same day · the owner's side liked the proposal, asked for the files in Google Drive, an upload with no signal, a Customer supplied photos folder and three presses for a text, and asked for the spike on main to try on his own phone · THE SPIKE IS BUILT AND LIVE 2026-11-12 (v2.6981 #7742, v2.6993 #7746, v2.6995 #7750; migration 20261112060000 pushed, first-look deployed), for the owner and the developers alone · walked on the live site with real uploads · nothing texts a customer and nothing files to Drive yet
+status: asked 2026-11-11 · the spike live 2026-11-12 (v2.6981, v2.6993, v2.6995) · the owner's side tried it, said *I like all of it, start PR one and build it all* · THE TRAIN IS BUILT AND ON MAIN 2026-11-12: the ask and the card (v2.6999), the three presses (v2.7000, moved onto the Text row in v2.7054), Drive (v2.7001, v2.7025), the kept place (v2.7002), the estimate (v2.7004), the job (v2.7005), the page's own entry (v2.7007, v2.7038), Spanish (v2.7009), What customers see (v2.7017) · the tech (v2.7006) · every migration pushed, every function deployed
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -17,10 +17,10 @@ summary: >
   so the card calls the record a First look and the customer's page Show us the problem. The
   files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
   under each job, and what is picked on the phone is kept there until it has signal to send.
-next: the owner's own try on a real iPhone and a real Android phone at clicktooling.com/first-looks, which fills the two answers a desk cannot (how big a real clip is, and whether it plays); then his go on PR 1
-size: L as a train of eight (M · S · S · S · M · S · S · M); the spike already built most of PRs 3 and 4
-blocker: The owner's try on real phones, then his go. Raising the 50 MiB a file limit in the Supabase dashboard if a video longer than about 40 seconds is wanted.
-opinion: build — the spike proved the hard part on the real storage: a video goes up in pieces with the link's key and picks up after a lost signal
+next: #7842 merges, so Ask a tech opens where it can be seen; then the owner's first real call with it, and his try of a real iPhone clip on the office's machines
+size: L, built as nine PRs and four small ones after
+blocker: Three things that are the owner's: the Worker's /show/ line in the Cloudflare dashboard, raising the 50 MiB a file limit if a video longer than about 40 seconds is wanted, and a real iPhone clip played on the office's machines.
+opinion: built — what is left is small and named under *What is not done*
 mockup: to-dos/show-us-the-problem/mockup.html
 ---
 
@@ -324,6 +324,43 @@ To tie a link to a real person, open their thread on Messages, copy the id after
 - **Known and left as it is in the spike:** an upload address is good for two hours, so a link's holder could put other bytes at a finished file's place inside that time. The real build moves a file to a final place when it is done.
 - **The 50 MiB limit** holds a video to about 20 to 40 seconds. The page says so in words. Two minutes needs the limit raised in the Supabase dashboard, which is the owner's press.
 
+## The train, built 2026-11-12
+
+On 2026-11-12 the owner's side tried the live spike on a phone and said: *I like all of it, start PR one and build it all if we have not already.* It was built that day as nine PRs, and a tenth for What customers see. The first two merged as a stack. The rest were then cut from main one by one, so those that touch different files went through the queue side by side.
+
+| PR | Version | What it is |
+|---|---|---|
+| 1 | v2.6999 | `/show` in a thread's reply box puts the ask in with a link made for that thread (`mint_first_look`, filled as `{rate}` is). The First look card above the thread's lines: the photos drawn, the video in a player, the pictures texted back since the ask, their words, **Start an estimate**, **Book a visit**, **Ask for more**, **Close the look**. The customer's send is their own line, so the thread goes to Needs a reply. |
+| 1b | v2.7000 | *Send Dana* **Ask for photos** · **An estimate** · **A bill** over the reply box on a text, for the office team. Each runs its typed word's code. `/estimate` ends with a row that starts one. `/bill` with no open bill says nothing is owed. |
+| 2 | v2.7001 | Google Drive: the customer's **Customer supplied photos**, a folder a look named by its day and place. The photo sweep's twelfth source. A video is copied to Drive in pieces, its place kept on the row. Texted pictures go to the same folder. A look with files in and no Send for half an hour counts as sent. |
+| 3 | v2.7002 | A finished, checked file moves out from under its upload address, so a link's holder cannot swap it. |
+| 5 | v2.7004 | The estimate remembers the look. The office's editor draws the customer's photos, video and words. The customer's page reads *Priced from your photos. The tech confirms the price at your home before any work starts.* |
+| 6 | v2.7005 | The look follows the job: a trigger on `estimates` when the estimate gains its job, and Book a visit. The Job Mode card shows **What the customer sent**. In Drive the look's folder moves under the job's own Customer supplied photos. |
+| 7 | v2.7006 | **Ask a tech…** sends one tech a task whose link opens that one look and nothing else of the thread. The tech answers *I can price it from this* or *Needs a visit to price* with a note, which lands on the thread as a team note. |
+| 4 | v2.7007 | The customer's page is an entry of its own: about 60 KB over the wire where the app's shell cost 2.4 MB. The link is unchanged. |
+| 4b | v2.7009 | The customer's page in Spanish, by the phone's own language, with a press to change it. |
+| the sample | v2.7017 | The owner's side asked for the page on Settings → What customers see. Three steps open the homeowner's journey: the ask by text, the page, and the page after Send, drawn from a sample the function serves with the office's own phone and hours. |
+| the Drive wake | v2.7025 | The first live walk filed nothing: the sweep's five-minute timer only calls the function when one of its listed sources has work, and a look was not on the list. The timer now also wakes for a look's file that is not in Drive and for a picture texted by a customer with an open look. |
+| the build's entry | v2.7038 | PR 4 named the app's entry `main` in the build, which renamed its script and stopped every deploy for two hours. The entry is keyed `index` again, and a test reads the deploy's own check. |
+| the presses' row | v2.7054 | The owner's side marked the empty space beside Text · Email · Note · Call. The three presses sit there now, at the right, and wrap under the kinds on a phone. |
+
+### Where the build left the plan
+
+- **PR 1 carries the link.** The plan's PR 1 had no public page, because the page did not exist. The spike put it on main, so the ask carries the link from the first day.
+- **The language is the phone's.** The plan said the customer's own setting. A look can be for a number nobody has named, and every phone says what language it reads.
+- **The Spanish thank-you names no closing time.** The office's hours are kept as English words.
+- **Texted pictures are read off the thread's own lines** for the card, and filed to Drive by the sweep. They are not rows of the look.
+
+### What is not done
+
+- **The Worker's `/show/` line.** The Worker on `my.clickplumbing.com` is edited in the Cloudflare dashboard, which the building session could not reach, so the mirror in `scripts/cloudflare/` was left alone too. The link reads `clicktooling.com/show/<code>`. To make it `my.clickplumbing.com/show/<code>`: add a line before the slug rule that answers a 301 to `https://clicktooling.com/show/<code>`, as `/e/` and `/pay/` do, in both copies, then change `showUsLink`'s origin in `src/lib/firstLook/look.ts`.
+- **The SQL bed.** A bed needs Docker to run before it is trusted, and the building machine had none.
+- **The trial desk stays the owner's and the developers'.** The plan opened it to the office team. The thread's own ask made that unnecessary, and the desk's *Make a link* tied to nobody is a tester's press.
+- **The job's Photos window does not count a look's photos**, and the job window's Documents tab does not list the new folder. The Job Mode card's strip is where a job shows them.
+- **Texted pictures are not on the estimate's strip or the Job Mode card**, only on the thread's card and in Drive.
+- **A video's copy in the app is kept for good.** The owner's call 9 (a year) has no sweep yet.
+- **A real iPhone and a real Android phone** have still sent nothing but the owner's one photo on the trial link. How big a real clip is, and whether an iPhone's plays on the office's machines, are his to see on the First look card.
+
 ## Is this the best we can do?
 
 Asked of the first plan on 2026-11-11, at the owner's prompt. Eight things changed.
@@ -394,4 +431,26 @@ Asked 2026-11-11 and read against `main` the same day. The owner's side read the
 
 **Not done**: nothing texts a customer; nothing files to Drive; the thread has no card; the reply box has no `/show` and no three presses; an estimate does not remember a look; a tech sees nothing. No real iPhone or Android phone was used: every walk was a desk browser. The dry run of the migration against prod inside a rolled-back transaction was refused by the session's safety check, so the migration's first run was the push itself, which passed.
 
-**Next**: the owner's try on his own phones, then his go on PR 1.
+**2026-11-12, later: the train.** The owner's side said to build it all, and it was built that day (*The train, built 2026-11-12* above). The whole suite ran green on the stack's tip, 4,568 files and 42,197 tests, with every check script and lint. PR 1 (#7755) merged at 16:25 UTC; its migration was pushed (1,251 local files, 1,251 remote versions) and `first-look` redeployed. The others follow through the queue one at a time.
+
+**2026-11-12, by the end of the day: on main, and walked.** Every piece is merged, with its migration pushed and its functions deployed (1,261 local files, 1,261 remote versions, no drift). The tech's piece (#7834) merged last, at 00:23 UTC on the 13th, and its migration was pushed two minutes later.
+
+**The live walks**, on clicktooling.com with ZZ Test looks on a ZZ Test customer's thread, signed in as the dev, no text sent:
+
+- **The ask and the card**: `/show` led the list, the ask took a link made for the thread, a signed-out phone sent a photo and a video, the card drew both, and the send was a line of the thread. 13 of 13.
+- **The three presses**: **Ask for photos** put the same ask in the box. 13 of 13.
+- **Drive**: the first walk filed nothing, which found the sweep's timer did not wake for a look (v2.7025). After it, a photo, a small video and a 14 MB video in pieces were filed within five minutes, and the card read **Open in Drive**.
+- **The estimate**: walked from a local copy against the live data before the site could deploy. The draft was deleted.
+- **The page's own entry**: a look's link landed on the light page with no sign-in, 6 files and 64 KB over the wire.
+- **What customers see**: the text, the page and the page after Send, drawn in Settings.
+- **The job**: a look was tied to a ZZ Test job with the function **Book a visit** calls. The job read its look, the photo and the video opened from signed addresses, and the next sweep filed both to Drive and stamped the folder as moved under the job.
+- **Spanish**: a phone set to Spanish opened the sample and a real link in Spanish, one press turned the page to English and back, the button read *Enviar 1 foto*, and the thank-you read *Recibido. Robert tiene 1 foto.* The office's card read the place as *Kitchen* and their words as written.
+
+- **The presses' row**: on the live site the three presses sit level with Text, at the right edge, and at 375 wide they wrap under the kinds with nothing off the side.
+- **The tech**: **Ask a tech…** was on the card, and the press found a fault. Add a task opened with the question on it underneath the thread's window, where nobody could see it, because the thread's window sits on a higher layer. **Send as a task** in a thread's menu had the same fault. #7842 puts Add a task on top; it was seen right on the real thread window from a local server. The tech's page opened for the one look, drew the photo with the place and the words, and kept **Send my answer** dead until an answer was picked. An answer sent by the office's own sign-in read *The office has your answer*, and the card and a team note on the thread both read *Robert: Needs a visit to price* with the note. No task was saved.
+
+Every ZZ Test look was removed from the desk afterwards, with its rows and its files. Two Drive folders the walks made stay under the ZZ Test customer and the ZZ Test job, since nothing here can delete from Drive.
+
+**Not walked live**: a task saved to a tech, since it would land on a real person's Checklist, so the gate that opens one look to one tech is held by its tests alone. Nor the Job Mode card itself. It draws only for a job the signed-in person is clocked in on or scheduled for, and that would write a real person's hours on the live data. Its drawing is held by its render tests, and the read behind it is what the job walk checked. A swap of a kept file (v2.7002) was not tried on the live site by hand either. The sample of the page after Send reads in English on a Spanish phone, because the sample's words come from the function with no language; a real send answers in the page's language.
+
+**Next**: the owner's first real call with it.

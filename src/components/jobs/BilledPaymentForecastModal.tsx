@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Mail, X } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import type { PaceContext } from '../../lib/jobs/payPace'
+import type { PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -14,6 +15,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { summarizeNoticeMonths, noticeStateText, workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import ForecastWorkMonthsPanel, { ForecastNoticeChip } from './ForecastWorkMonthsPanel'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * "Payment forecast" on the Billed Awaiting Payment header: open dollars
@@ -104,6 +106,8 @@ export default function BilledPaymentForecastModal({
   workMonths,
   onOpenLienNotice,
   pace,
+  payCalendars,
+  acceptedByInvoice,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -121,7 +125,7 @@ export default function BilledPaymentForecastModal({
   canExcludePayments?: boolean
   /** Devs only: the Data health ⚙ No Count Date setting (v2.2303). */
   canSetNoCountDate?: boolean
-  /** Staff senders: Money waiting's "✉ Email this weekly…" (v2.2565). */
+  /** Staff senders: Money waiting's "Email this weekly…" (v2.2565). */
   canEmailMoneyWaiting?: boolean
   /** Open a drill-down row's job stacked above the modals, refreshing on save (v2.2311). */
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
@@ -139,10 +143,14 @@ export default function BilledPaymentForecastModal({
   onOpenLienNotice?: (jobId: string) => void
   /** The GC facts and the GC pace here (v2.6034): a first-job GC's row reads the GC pace, not the company's. */
   pace?: PaceContext | null
+  /** The stored Pay calendars (punch list #323): a payer on one shows its due day, and buckets by that day plus its usual lateness. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }) {
   const forecast = useMemo(
-    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace),
-    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace],
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars, acceptedByInvoice),
+    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars, acceptedByInvoice],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
@@ -203,9 +211,7 @@ export default function BilledPaymentForecastModal({
               Email this forecast…
             </button>
           )}
-          <button type="button" className="forecastHeadClose" onClick={onClose} aria-label="Close">
-            <X size={18} strokeWidth={2} aria-hidden="true" />
-          </button>
+          <WindowCloseButton onClose={onClose} />
           <p className="forecastHeadIntro">
             Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
             months). Click a tile to see just its bills; click a row to jump to that bill on the board.
@@ -450,6 +456,14 @@ export default function BilledPaymentForecastModal({
                           {r.segment ? <> {segmentTag(r.segment)}</> : null}
                           {r.model?.source === 'promised' ? (
                             <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
+                          ) : r.model?.source === 'terms' && r.model.dueYmd ? (
+                            // A payer on a Pay calendar (punch list #323): the day the contract makes the bill due, amber once
+                            // it has passed. The date on the right is still when their money is expected.
+                            <span data-testid="forecast-due" style={{ color: r.model.daysPastDue > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: r.model.daysPastDue > 0 ? 600 : undefined }} title={r.model.title}>
+                              {' '}
+                              · due {formatYmdMonthDay(r.model.dueYmd)}
+                              {r.model.daysPastDue > 0 ? ` · ${r.model.daysPastDue}d past` : ''}
+                            </span>
                           ) : r.model ? (
                             // The pace it read (v2.6034): pays in ~35d, the GC pace ~35d over 3 payers, commercial pace ~12d, company avg.
                             <span style={{ color: 'var(--text-muted)' }} title={r.model.title}> · {r.model.paceWords}</span>

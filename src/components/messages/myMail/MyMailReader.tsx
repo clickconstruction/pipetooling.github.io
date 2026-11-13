@@ -14,7 +14,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MyMailJobChip, MyMailRefusal, MyMailRow } from '../../../lib/myMail/contract'
 import { chipWords, doneWords, MY_MAIL_LIST_WORDS } from '../../../lib/myMail/list'
 import type { MyMailIo } from '../../../lib/myMail/myMailIo'
-import { canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, readerBody, taggedJob, threadCountWords, type MyMailDone, type MyMailOpened } from '../../../lib/myMail/reader'
+import { AFTER_TAG_WORDS, afterTag, canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, readerBody, taggedJob, threadCountWords, type AfterTagPress, type MyMailDone, type MyMailOpened } from '../../../lib/myMail/reader'
 import { gmailThreadHref } from '../../../lib/myMail/tab'
 import { fullWhen } from '../../../lib/messages/thread'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../../lib/offlineRecoveryState'
@@ -51,6 +51,8 @@ export interface MyMailReaderProps {
   /** The person a line sits on, from the page's view of Messages. */
   lineContact: (messageId: string) => string | null
   onOpenThread: (contactId: string, messageId: string | null) => void
+  /** The press on the line after a tag (v2.7032): Put on Follow up, or No reply needed. Absent: the line draws with no press. */
+  onAfterTag?: (press: AfterTagPress) => void
   onClose: () => void
 }
 
@@ -81,7 +83,8 @@ function Bar({
   onPutOn,
   onUntag,
   onOpenThread,
-}: Pick<MyMailReaderProps, 'done' | 'busy' | 'phone' | 'onYes' | 'onPick' | 'onMove' | 'onPutOn' | 'onUntag' | 'onOpenThread'> & { mail: MyMailOpened; fresh: boolean; contactId: string | null; lineId: string | null }) {
+  onAfterTag,
+}: Pick<MyMailReaderProps, 'done' | 'busy' | 'phone' | 'onYes' | 'onPick' | 'onMove' | 'onPutOn' | 'onUntag' | 'onOpenThread' | 'onAfterTag'> & { mail: MyMailOpened; fresh: boolean; contactId: string | null; lineId: string | null }) {
   const presses = (nodes: ReactNode) => (busy ? <span style={mutedSmall}>{MY_MAIL_LIST_WORDS.tagging}</span> : nodes)
   const thread = contactId ? (
     <Btn kind="quiet" onClick={() => onOpenThread(contactId, lineId)}>
@@ -121,11 +124,23 @@ function Bar({
       )
     }
     const put = done ? doneWords(done.ok, done.act) : null
+    // What the tag did to Follow up, and the one press that says otherwise (v2.7032, punch list #324).
+    const after = done ? afterTag(done.ok) : null
     return (
       <div data-my-mail-bar="tagged" style={barStyle('var(--bg-green-tint)')}>
         <span style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>{W.on}</span>
         <span style={chipStyle(job.chip, true)}>{job.chip ? chipWords(job.chip) : W.onTheJob}</span>
         {put ? <span style={mutedSmall}>{put}</span> : null}
+        {after && done ? (
+          <span data-my-mail-after-tag={done.after ?? after.press} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', flexBasis: '100%' }}>
+            <span style={mutedSmall}>{done.after ? AFTER_TAG_WORDS.went[done.after] : after.words}</span>
+            {!done.after && onAfterTag && !busy ? (
+              <Btn onClick={() => onAfterTag(after.press)} title={after.tip}>
+                {after.label}
+              </Btn>
+            ) : null}
+          </span>
+        ) : null}
         {thread}
         {presses(tagged)}
       </div>
@@ -174,7 +189,7 @@ function Bar({
   )
 }
 
-export function MyMailReader({ io, row, address, phone, readKey, done, busy, problem, onYes, onPick, onMove, onPutOn, onUntag, lineContact, onOpenThread, onClose }: MyMailReaderProps) {
+export function MyMailReader({ io, row, address, phone, readKey, done, busy, problem, onYes, onPick, onMove, onPutOn, onUntag, lineContact, onOpenThread, onAfterTag, onClose }: MyMailReaderProps) {
   const [mail, setMail] = useState<MyMailOpened | null>(null)
   // The `readKey` the mail was read at: an older one means a tag or an untag came since, and this sitting's is newer.
   const [readAt, setReadAt] = useState<number | null>(null)
@@ -228,6 +243,7 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
           onPutOn={onPutOn}
           onUntag={onUntag}
           onOpenThread={onOpenThread}
+          onAfterTag={onAfterTag}
         />
       ) : null}
       {problem ? (

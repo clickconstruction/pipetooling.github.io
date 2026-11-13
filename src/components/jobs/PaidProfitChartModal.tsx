@@ -23,6 +23,7 @@ import {
   filterJobsByAccountMan,
   STAGES_ACCOUNT_MAN_FILTER_NONE,
 } from '../../lib/jobsStagesBoard'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * 📊 on the Paid in Full header (v2.1879, dev/controller): every paid job as a
@@ -155,14 +156,7 @@ export default function PaidProfitChartModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Paid in Full — profit vs clocked hours</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-          >
-            ×
-          </button>
+          <WindowCloseButton onClose={onClose} />
         </div>
 
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', margin: '0.5rem 0 0.25rem' }}>

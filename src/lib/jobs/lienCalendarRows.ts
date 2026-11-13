@@ -11,7 +11,9 @@ import type { BilledLienClock, BilledLienClockJob } from '../../hooks/useBilledL
 import type { LienCalendarJob } from './lienCalendar'
 import { buildLienPayRunway, type LienPayRunway } from './lienPayRunway'
 import { lienBilledOpen } from './lienBilledOpen'
-import { billedExpectedPayModel, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import type { PaySpeedData, PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel } from './billedDuePay'
+import { calendarFor, type PayCalendarIndex } from './payCalendar'
 import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import { listPayer, paySpeedPayer } from './billToParty'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
@@ -27,6 +29,10 @@ export type LienRunwayDeps = {
   promisedPayDates: Record<string, PromisedPayDate> | null
   paceContext: PaceContext | null
   todayYmd: string
+  /** The stored Pay calendars (punch list #323): a payer on one is expected on its due day plus its usual lateness. Absent or null, the pace guess as before. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id: a calendar counts its cutoff from it. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
 /** The billed jobs whose lien clocks are read: a job marked Uncollectible is off the desk — no clock, no row (v2.4788, punch list #94). */
@@ -52,12 +58,13 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
   const payer = inv ? paySpeedPayer(job, inv) : null
   const model =
     inv && payer
-      ? billedExpectedPayModel(
-          { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
+      ? billedPayModel(
+          { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: deps.acceptedByInvoice?.get(inv.id) ?? null },
           deps.paySpeeds,
           deps.todayYmd,
           deps.promisedPayDates?.[job.id] ?? null,
           paceInputFor(deps.paceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, deps.paySpeeds),
+          calendarFor(deps.payCalendars, { payerId: payer.id, jobId: job.id }),
         )
       : null
   return buildLienPayRunway({

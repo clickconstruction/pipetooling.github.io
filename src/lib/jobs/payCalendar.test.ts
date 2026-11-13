@@ -9,12 +9,16 @@ import {
   latenessAgainst,
   latenessWords,
   nextCutoff,
+  nextCutoffChip,
   normalizePayCalendar,
   ordinalDay,
   parsePayCalendarRow,
   payCalendarPreview,
   payCalendarShort,
   payCalendarWords,
+  payCutoffLine,
+  sendTodayCutoffWords,
+  usuallyLandsShort,
   usuallyLandsWords,
   type PayCalendar,
 } from './payCalendar'
@@ -242,5 +246,46 @@ describe('the record against the calendar', () => {
     expect(usuallyLandsWords('2026-12-10', latenessAgainst(receipts, TENTH))).toBe('Usually lands about 6d after. About Dec 16.')
     expect(usuallyLandsWords('2026-12-10', latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('Usually lands by the due day.')
     expect(usuallyLandsWords('2026-12-10', null)).toBeNull()
+    // The fewest words, the day first, for a row that cuts the tail.
+    expect(usuallyLandsShort('2026-12-10', latenessAgainst(receipts, TENTH))).toBe('Usually lands about Dec 16')
+    expect(usuallyLandsShort('2026-12-10', latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('Usually lands by the due day')
+    expect(usuallyLandsShort('2026-12-10', null)).toBeNull()
+  })
+})
+
+describe('the cutoff as a row and the send window say it (PR 3)', () => {
+  it('says the two days, blue while the cutoff is far and amber in its last week', () => {
+    expect(payCutoffLine('2026-11-12', TENTH)).toEqual({
+      sendBy: 'Send by Nov 30 to be due Dec 10.',
+      after: 'After that, Jan 10.',
+      soon: false,
+      daysLeft: 18,
+      cutoffYmd: '2026-11-30',
+      title: 'A bill in by the last day of the month is paid the 10th of the next month. The cutoff is in 18 days.',
+    })
+    expect(payCutoffLine('2026-11-23', TENTH)).toMatchObject({ soon: true, daysLeft: 7 })
+    expect(payCutoffLine('2026-11-22', TENTH)).toMatchObject({ soon: false, daysLeft: 8 })
+    expect(payCutoffLine('2026-11-29', TENTH)?.title).toContain('The cutoff is tomorrow.')
+    expect(payCutoffLine('2026-11-30', TENTH)).toMatchObject({ soon: true, daysLeft: 0, sendBy: 'Send by Nov 30 to be due Dec 10.' })
+    expect(payCutoffLine('2026-11-30', TENTH)?.title).toContain('The cutoff is today.')
+    // The day after the cutoff the line is next month's.
+    expect(payCutoffLine('2026-12-01', TENTH)).toMatchObject({ sendBy: 'Send by Dec 31 to be due Jan 10.', after: 'After that, Feb 10.', soon: false })
+    expect(payCutoffLine('nope', TENTH)).toBeNull()
+  })
+
+  it('says at the moment of sending what today makes the bill and what waiting costs', () => {
+    expect(sendTodayCutoffWords('2026-11-12', BY_25TH)).toEqual({ due: 'Sent today, this bill is due Dec 30.', cutoff: 'Their cutoff is Nov 25. After that, Jan 30.', soon: false })
+    // One day past the 25th: sent today it is already next month's.
+    expect(sendTodayCutoffWords('2026-11-26', BY_25TH)).toEqual({ due: 'Sent today, this bill is due Jan 30.', cutoff: 'Their cutoff is Dec 25. After that, Feb 28.', soon: false })
+    expect(sendTodayCutoffWords('2026-11-25', BY_25TH)?.soon).toBe(true)
+  })
+
+  it('names the nearest cutoff among the bills waiting to go, and how many it holds', () => {
+    const lark = payCutoffLine('2026-11-12', TENTH)!
+    const sable = payCutoffLine('2026-11-12', BY_25TH)!
+    expect(nextCutoffChip([lark, sable, lark])).toEqual({ label: 'Next cutoff Nov 25 · 1 bill', soon: false, count: 1, cutoffYmd: '2026-11-25' })
+    expect(nextCutoffChip([lark, lark])).toMatchObject({ label: 'Next cutoff Nov 30 · 2 bills', count: 2 })
+    expect(nextCutoffChip([payCutoffLine('2026-11-20', BY_25TH)!])).toMatchObject({ soon: true })
+    expect(nextCutoffChip([])).toBeNull()
   })
 })

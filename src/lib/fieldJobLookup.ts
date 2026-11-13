@@ -15,14 +15,14 @@ import { directionsUrlForAddress } from './directionsUrl'
  */
 
 /** Office roles that get the full search (jobs, bids, estimates, customers + Job Detail). */
-export function officeHeaderSearchEligible(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
-  if (farmModeActive) return false
+export function officeHeaderSearchEligible(role: UserRole | null | undefined, taskModeActive: boolean): boolean {
+  if (taskModeActive) return false
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 /** Field roles that get the read-only job lookup: helpers + subcontractor (not superintendent / primary / estimator). */
-export function fieldJobLookupEligible(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
-  if (farmModeActive) return false
+export function fieldJobLookupEligible(role: UserRole | null | undefined, taskModeActive: boolean): boolean {
+  if (taskModeActive) return false
   return isSubcontractorLikeRole(role)
 }
 
@@ -32,14 +32,14 @@ export function fieldJobLookupEligible(role: UserRole | null | undefined, farmMo
  * bid, estimate or customer row: each of those reads is its own question for the role, and the Bid Board, Jobs and
  * Customers already search them.
  */
-export function doorsOnlyHeaderSearchEligible(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
-  if (farmModeActive) return false
+export function doorsOnlyHeaderSearchEligible(role: UserRole | null | undefined, taskModeActive: boolean): boolean {
+  if (taskModeActive) return false
   return role === 'estimator' || role === 'primary' || role === 'superintendent'
 }
 
-/** Union used by Layout to mount the header search entry points at all: every signed-in role outside Farm Mode. */
-export function headerSearchEligibleForRole(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
-  return officeHeaderSearchEligible(role, farmModeActive) || fieldJobLookupEligible(role, farmModeActive) || doorsOnlyHeaderSearchEligible(role, farmModeActive)
+/** Union used by Layout to mount the header search entry points at all: every signed-in role outside Task Mode. */
+export function headerSearchEligibleForRole(role: UserRole | null | undefined, taskModeActive: boolean): boolean {
+  return officeHeaderSearchEligible(role, taskModeActive) || fieldJobLookupEligible(role, taskModeActive) || doorsOnlyHeaderSearchEligible(role, taskModeActive)
 }
 
 // The directions link lives in `directionsUrl.ts` (pure, no import) since punch list #205, so the trade portal draws it too.
