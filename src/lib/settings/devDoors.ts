@@ -182,7 +182,7 @@ export const DEV_DOORS: readonly DevDoor[] = [
   // Quickfill
   d({ id: 'quickfill-active-sections', label: 'Active sections', area: 'Quickfill', to: '/quickfill', who: 'dev', what: 'Hide or reorder Quickfill’s stations for everyone. The edit modes on Office, Difficult people and Assistant Dailys are the office’s.', gate: { file: 'src/pages/Quickfill.tsx', text: "{role === 'dev' && (" } }),
   // Other pages
-  d({ id: 'page-bridge', label: 'The Bridge', area: 'Other pages', to: '/bridge', who: 'owner or dev', what: 'The owner’s chart table: the weakest link, the piles and the week’s call.', gate: { file: 'src/pages/Bridge.tsx', text: '(r) => isOwnerOrDev(r)' } }),
+  d({ id: 'page-bridge', label: 'The Bridge', area: 'Other pages', to: '/bridge', who: 'owner or dev', what: 'The owner’s chart table: the weakest link, the piles and what to do now.', gate: { file: 'src/pages/Bridge.tsx', text: '(r) => isOwnerOrDev(r)' } }),
   d({ id: 'page-partnerships', label: 'Partnerships', area: 'Other pages', to: '/partnerships', who: 'dev', what: 'Partner deals as settings, and their statements.', gate: { file: 'src/pages/Partnerships.tsx', text: "role !== 'dev'" } }),
   d({ id: 'page-templates', label: 'Templates', area: 'Other pages', to: '/templates', who: 'owner or dev', what: 'The project workflow templates.', gate: { file: 'src/pages/Templates.tsx', text: '!isOwnerOrDev(role)' } }),
   d({ id: 'page-first-looks', label: 'First looks', area: 'Other pages', to: '/first-looks', who: 'owner or dev', what: 'A spike: make a link, add photos and a video from a phone, see what came in.', gate: { file: 'src/lib/firstLook/look.ts', text: 'export function canOpenFirstLooks' } }),

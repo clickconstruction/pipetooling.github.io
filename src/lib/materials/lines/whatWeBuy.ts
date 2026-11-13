@@ -19,6 +19,8 @@ import { PRICING_UNIT_DIVISOR, type PricingUnit } from './paperChecks'
 export interface PurchaseLine {
   id: string
   invoiceId: string
+  /** The paper's own number, as printed. */
+  billNumber?: string
   houseId: string | null
   /** YYYY-MM-DD, the paper's date; null when the paper prints none. */
   datedOn: string | null
@@ -40,6 +42,8 @@ export interface CodeTeach {
   codeKey: string
   partId: string | null
   notAPart: boolean
+  /** How many of the book's units one of the house's prices covers (a stick of ten feet against a book priced a foot: 10). 1 when not said. */
+  unitFactor?: number
 }
 
 export type BuySort = 'spend' | 'quantity' | 'often'

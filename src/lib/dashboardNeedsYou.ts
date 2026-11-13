@@ -52,7 +52,6 @@ import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
 import { MAIL_SAVED_WORDS, type MailSavedNeed } from './myMail/savedForYou'
-import { MY_MOVES_WORDS, type MyMovesNeed } from './bridge/callPeople'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
@@ -118,7 +117,6 @@ export type NeedsYouItem = {
     | 'todays-sends'
     | 'while-off'
     | 'mail-saved'
-    | 'bridge-moves'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -239,8 +237,6 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'while-off': 40,
   // The owner is told (v2.7068): news with nothing to do, so it sits below everything that asks for a press.
   'mail-saved': 90,
-  // The week's one decision, handed to this person (punch list #303 PR 4): beside the hard weekly deadline.
-  'bridge-moves': 20,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -759,14 +755,6 @@ export type NeedsYouInputs = {
    */
   whileOffEnabled?: boolean
   whileOff?: WhatWaited | null
-  /**
-   * The week's call (v2.6864, punch list #303 PR 4): the moves on the Bridge's standing call that carry the viewer's own
-   * account, as `useBridgeMoves` reads them (`bridge/callPeople.ts` → `myMovesNeed`). Everyone who signs in; null when
-   * no move is theirs. The line is the first move: its button opens the page where that work is done, or marks the
-   * move done when the app has no page for it.
-   */
-  bridgeMovesEnabled?: boolean
-  bridgeMoves?: MyMovesNeed | null
   /** The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job. */
   mailSavedEnabled?: boolean
   mailSaved?: MailSavedNeed | null
@@ -1480,21 +1468,6 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
-  }
-
-  if (inputs.bridgeMovesEnabled && inputs.bridgeMoves && inputs.bridgeMoves.count > 0) {
-    const b = inputs.bridgeMoves
-    items.push({
-      key: 'bridge-moves',
-      severity: 'amber',
-      kicker: MY_MOVES_WORDS.kicker,
-      title: b.title,
-      detail: b.detail,
-      figure: b.count > 99 ? '99+' : String(b.count),
-      actionLabel: b.door ? b.door.label : MY_MOVES_WORDS.markDone,
-      // With a page to open, Done is the link beside the button; with none, Done is the button.
-      ...(b.door ? { secondary: [{ key: 'done', label: MY_MOVES_WORDS.done }] } : {}),
-    })
   }
 
   // The owner is told (v2.7068): someone else saved the viewer's mail onto a job. Blue: news, with nothing to do.
