@@ -34,14 +34,17 @@
  * runway's, so the row and the Lien calendar never show two days. With no act
  * the row keeps the deadline's own name. A closed window is one line, *Lien
  * gone Oct 15*, and a filed lien whose copies are not served asks *Serve the
- * affidavit* by its fifth day.
+ * affidavit* by its fifth day. Since v2.7047 the row follows the Lien window
+ * on two clocks: a notice window closed with the affidavit's day still ahead
+ * is *Send the late notice by* that day, not *Lien gone*, and the serve day
+ * comes with the runway, so it shows before the Lien desk is ever opened.
  */
-import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
-import { billedPayModel } from './billedDuePay'
+import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
 import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
-import { LIEN_ROW_PRESS_SENTENCE, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
+import { LIEN_LATE_NOTICE_ACT, LIEN_ROW_PRESS_SENTENCE, lienActFor, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
@@ -124,7 +127,7 @@ export type BilledDatesLedger = {
 export type BilledDatesLedgerInput = {
   todayYmd: string
   /** Null on a job-shell row (no bill line). */
-  row: ExpectedPayRowInput | null
+  row: BilledPayRowInput | null
   data: PaySpeedData | null
   /** The GC facts and the GC pace here for this bill (v2.6034, `paceInputFor`); null or absent reads the payer as one that is not a GC. */
   pace?: ExpectedPayPaceInput | null
@@ -292,20 +295,28 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
     if (scheduledInKind) return null // a credit comes as it comes: nobody is asked for a date
     return { label: 'Ask for a date', value: '', tone: 'plain', action: moneyAction, title: 'Nobody has said when this will be paid' }
   }
+  // A notice window that closed with the affidavit's own day still ahead (v2.7047, punch list #325, PR 4): the Lien
+  // window and the desk read v2.4708's rule, that a late notice can still carry the lien, and the row follows them.
+  // The runway keeps its own states; only this row reads past them.
+  const lateOpen = runway?.state === 'closed' && runway.closedBy === 'notice' && runway.daysToLien != null && runway.daysToLien >= 0 && runway.lienByYmd !== ''
   if (runway && runway.state !== 'none') {
     const guess = lienDayGuessSentence(runway)
     if (runway.state === 'filed') {
       lienTab = 'affidavit'
       const filedDate = runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? ''
-      const serveBy = lienState?.action === 'record_service' && act && lienState.dueOn ? lienState.dueOn : ''
+      // The copy's last day: the runway's (v2.7047, read with the clocks, so the row asks without the Lien desk open), else the desk's own row.
+      const serveBy = runway.serveByYmd || (lienState?.action === 'record_service' && lienState.dueOn ? lienState.dueOn : '')
       const serveDays = serveBy ? daysBetweenYmd(todayYmd, serveBy) : null
-      if (serveBy && serveDays != null) {
+      const serveAct = lienActFor({ paper: 'affidavit', action: 'record_service' })
+      if (serveBy && serveDays != null && serveAct) {
         // The copies are not served: five days is the shortest clock on the path, so the act takes the line and the filing day sits under it.
-        rows.push({ key: 'filed', label: act!.words, joiner: 'by', date: formatYmdMonthDay(serveBy), far: serveDays < 0 ? `${dWord(-serveDays)} late` : farWords(serveDays, 'bare'), tone: 'red', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: act!.why, dayWords: formatYmdMonthDay(serveBy) }), sub: filedDate ? `Filed ${filedDate}` : '' })
+        rows.push({ key: 'filed', label: serveAct.words, joiner: 'by', date: formatYmdMonthDay(serveBy), far: serveDays < 0 ? `${dWord(-serveDays)} late` : farWords(serveDays, 'bare'), tone: 'red', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: serveAct.why, dayWords: formatYmdMonthDay(serveBy) }), sub: filedDate ? `Filed ${filedDate}` : '' })
       } else {
-        rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: filedDate, far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: 'The lien affidavit is on file. The money is still owed.', dayWords: '' }), sub: '', ...stateUnder('affidavit', '', false) })
+        // Served: the runway knows the day without the desk; the desk's chip says the same once it is read.
+        const served = runway.servedYmd ? { sub: `served ${formatYmdMonthDay(runway.servedYmd)}`, subTone: 'green' as const } : null
+        rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: filedDate, far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: 'The lien affidavit is on file. The money is still owed.', dayWords: '' }), sub: '', ...(served ?? stateUnder('affidavit', '', false)) })
       }
-    } else if (runway.state === 'closed') {
+    } else if (runway.state === 'closed' && !lateOpen) {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
@@ -330,6 +341,8 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
     } else {
       // On a sub job the notice comes first; nothing can be filed before it goes.
       const noticeFirst = runway.state === 'notice_due' && runway.daysToNotice != null && runway.noticeByYmd !== ''
+      // No notice went for any month: the late notice is the step. One that did go carries the affidavit, as the desk's gate reads it.
+      const lateNotice = lateOpen && !runway.noticeMonths.some((m) => m.state === 'sent' || m.state === 'mailed')
       const clockYmd = noticeFirst ? runway.noticeByYmd : runway.lienByYmd
       const clockDays = noticeFirst ? runway.daysToNotice! : runway.daysToLien
       // A retainage notice due before the clock's own day is the nearest paper: it takes the line, with its own day.
@@ -341,7 +354,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       // The act names the row when it is a step toward the row's own day: on the row's paper, or a notice that still has to go before the affidavit.
       const lineAct = act && (lienState?.paper === rowPaper || (rowPaper === 'affidavit' && lienState?.paper === 'notice')) ? act : null
       // A notice, a retainage notice and a notice that must go before the affidavit are all read on the window's notice tab.
-      lienTab = rowPaper === 'affidavit' && !(lineAct && lienState?.paper === 'notice') ? 'affidavit' : 'notice'
+      lienTab = rowPaper === 'affidavit' && !(lineAct && lienState?.paper === 'notice') && !(lateNotice && !lineAct) ? 'affidavit' : 'notice'
       if (lineAct && !lineAct.dated) {
         // No lien can attach, so there is no day to race: the fact, and who to ask.
         rows.push({ key: noticeFirst ? 'notice' : 'lien', label: lineAct.words, joiner: '', date: '', far: '', tone: 'amber', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: lineAct.why, dayWords: '' }), sub: lineAct.under, subTone: 'amber', subTitle: lineAct.why })
@@ -353,14 +366,14 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
         // The row is the to-do when the money is not landing before it: expected after it, already
         // past, or never named. A notice is cheap and preserves the lien, so it asks at any distance;
         // a lien asks inside three weeks.
-        const urgent = short || ((moneyPast || moneyTo == null) && ((noticeFirst && !own) || deadlineDays <= LIEN_RUNWAY_AMBER_DAYS))
+        const urgent = short || ((moneyPast || moneyTo == null) && ((noticeFirst && !own) || lateNotice || deadlineDays <= LIEN_RUNWAY_AMBER_DAYS))
         const tone: LedgerTone = short || deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'red' : urgent ? 'amber' : moneyAhead && slack != null && slack >= 0 ? 'green' : 'plain'
         const dayWords = formatYmdMonthDay(deadlineYmd)
-        const quietWhy = noticeFirst ? 'A notice to the owner and the GC is owed for this work.' : 'The lien affidavit is the next paper on this job.'
+        const quietWhy = noticeFirst ? 'A notice to the owner and the GC is owed for this work.' : lateNotice ? LIEN_LATE_NOTICE_ACT.why : 'The lien affidavit is the next paper on this job.'
         rows.push({
           key: own ? 'retainage' : noticeFirst ? 'notice' : 'lien',
           // The paper is the affidavit everywhere a person meets it: the Lien window's header and the desk say *File the affidavit* (v2.7042).
-          label: lineAct ? lineAct.words : noticeFirst ? 'Lien notice' : urgent ? 'File the affidavit' : 'Lien',
+          label: lineAct ? lineAct.words : noticeFirst ? 'Lien notice' : lateNotice ? LIEN_LATE_NOTICE_ACT.words : urgent ? 'File the affidavit' : 'Lien',
           joiner: 'by',
           date: dayWords,
           far: farWords(deadlineDays, 'bare'),

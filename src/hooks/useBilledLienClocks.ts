@@ -16,6 +16,10 @@ export type BilledLienClock = {
   propertyKind: string
   /** The live affidavit's filed date; null when none is on file. */
   filedYmd: string | null
+  /** The day a copy of that affidavit was served on the owner and the GC (v2.7047); null while it is not, or when none is on file. */
+  servedYmd?: string | null
+  /** The last day to serve that copy as the filing holds it (§ 53.055); null when the filing has none written. */
+  serveDueYmd?: string | null
   /** A live release of record; null when none. */
   releasedYmd: string | null
   /** 'YYYY-MM' months the job's live § 53.056 notices say they cover (sub jobs; empty otherwise). */
@@ -79,6 +83,8 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
           for (const r of (rows ?? []) as { id: string; property_kind: string | null }[]) kindById.set(r.id, r.property_kind ?? '')
         }
         const filedByJob = new Map<string, string>()
+        // The service facts of the affidavit `filedByJob` chose (v2.7047, punch list #325): the row asks to serve without the Lien desk open.
+        const serviceByJob = new Map<string, { servedYmd: string | null; serveDueYmd: string | null }>()
         const releasedByJob = new Map<string, string>()
         const noticedByJob = new Map<string, Set<string>>()
         const noticeOnFile = new Set<string>()
@@ -115,13 +121,13 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             () =>
               supabase
                 .from('job_lien_filings')
-                .select('job_id, kind, filed_at, created_at, months_covered')
+                .select('job_id, kind, filed_at, created_at, months_covered, served_at, serve_due')
                 .in('job_id', chunk)
                 .in('kind', ['affidavit', 'release_of_record', 'notice_53_056'])
                 .is('voided_at', null),
             'lien runway: filings',
           )
-          for (const r of (rows ?? []) as { job_id: string; kind: string; filed_at: string | null; created_at: string; months_covered: string[] | null }[]) {
+          for (const r of (rows ?? []) as { job_id: string; kind: string; filed_at: string | null; created_at: string; months_covered: string[] | null; served_at?: string | null; serve_due?: string | null }[]) {
             if (r.kind === 'notice_53_056') {
               noticeOnFile.add(r.job_id)
               const set = noticedByJob.get(r.job_id) ?? new Set<string>()
@@ -134,7 +140,11 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             if (!when) continue
             if (r.kind === 'affidavit') {
               const prev = filedByJob.get(r.job_id)
-              if (!prev || when < prev) filedByJob.set(r.job_id, when)
+              if (!prev || when < prev) {
+                filedByJob.set(r.job_id, when)
+                // served_at and serve_due are `date` columns.
+                serviceByJob.set(r.job_id, { servedYmd: r.served_at ? r.served_at.slice(0, 10) : null, serveDueYmd: r.serve_due ? r.serve_due.slice(0, 10) : null }) // tz-ok: job_lien_filings.served_at and serve_due are date columns
+              }
             } else if (r.kind === 'release_of_record') {
               const prev = releasedByJob.get(r.job_id)
               if (!prev || when > prev) releasedByJob.set(r.job_id, when)
@@ -178,6 +188,8 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
           next[j.id] = {
             propertyKind: j.customer_address_id ? kindById.get(j.customer_address_id) ?? '' : '',
             filedYmd: filedByJob.get(j.id) ?? null,
+            servedYmd: serviceByJob.get(j.id)?.servedYmd ?? null,
+            serveDueYmd: serviceByJob.get(j.id)?.serveDueYmd ?? null,
             releasedYmd: releasedByJob.get(j.id) ?? null,
             noticedMonths: [...(noticedByJob.get(j.id) ?? [])].sort(),
             noticeOnFile: noticeOnFile.has(j.id),

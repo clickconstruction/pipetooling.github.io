@@ -58,6 +58,10 @@ export type LienRunwayInput = {
   filedYmd: string | null
   /** A release of record on file (the lien is discharged). */
   releasedYmd: string | null
+  /** The day a copy of the filed affidavit was served (v2.7047); null or absent while it is not. */
+  servedYmd?: string | null
+  /** The last day to serve it, as the filing holds it. Absent, the runway names no serve day: the Lien desk asks for service only of a filing that carries one, and the row asks when the desk does. */
+  serveDueYmd?: string | null
   /** A GC on the job — we are a subcontractor, and § 53.056 wants a notice to the owner and the GC before any lien (v2.4096). */
   isSub?: boolean
   /** 'YYYY-MM' months the job's live § 53.056 notices say they cover. */
@@ -115,6 +119,12 @@ export type LienPayRunway = {
   noticeSent: boolean
   /** Every month still owed is printed and in the mail (v2.5522): the next move is recording the mailing, not drafting. */
   noticeMailed: boolean
+  /** On a filed lien: the day its copy was served, 'YYYY-MM-DD'; '' while it is not (v2.7047). */
+  servedYmd: string
+  /** On a filed lien not yet served: the last day to serve a copy on the owner and the GC (§ 53.055); '' otherwise. */
+  serveByYmd: string
+  /** Days from today to `serveByYmd` (negative once late); null when there is none. */
+  daysToServe: number | null
   /** No clock hours — the clock counts from the month the job was created. */
   datedFromCreation: boolean
   /** The day every date counts from was set by hand (v2.4830). */
@@ -149,6 +159,9 @@ const NONE: LienPayRunway = {
   kindAssumed: false,
   noticeSent: false,
   noticeMailed: false,
+  servedYmd: '',
+  serveByYmd: '',
+  daysToServe: null,
   datedFromCreation: false,
   datedByHand: false,
   basisYmd: '',
@@ -263,6 +276,9 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
 
   if (input.filedYmd) {
     const filed = input.filedYmd.slice(0, 10)
+    // v2.7047: five days to serve a copy is the shortest clock on the path, so the runway carries it for the row.
+    const servedYmd = (input.servedYmd ?? '').slice(0, 10)
+    const serveByYmd = servedYmd ? '' : (input.serveDueYmd ?? '').slice(0, 10)
     return {
       ...NONE,
       state: 'filed',
@@ -271,6 +287,9 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       lines: [`lien filed ${formatYmdMonthDay(filed)}`],
       noticeSent: false,
       noticeMailed: false,
+      servedYmd,
+      serveByYmd,
+      daysToServe: serveByYmd ? daysBetweenYmd(today, serveByYmd) : null,
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
       basisYmd,
@@ -388,6 +407,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   if (noticeOwed) {
     const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, noticeMailed ? `record the mailing · ${daysWords(daysToNotice)}` : `send the notice · ${daysWords(daysToNotice)}`]
     return {
+      ...NONE,
       state: 'notice_due',
       tone: daysToNotice <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber',
       words: wordsOf(lines),
@@ -418,6 +438,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     const short = livePay - daysToLien
     const lines = [`file lien by ${lienWords} → pay ${formatYmdMonthDay(payYmd)}`, 'file first']
     return {
+      ...NONE,
       state: 'file_first',
       tone: 'red',
       words: wordsOf(lines),
@@ -446,6 +467,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     const room = daysToLien - livePay
     const lines = [`pay ${formatYmdMonthDay(payYmd)} → file lien by ${lienWords}`, `${daysWords(room)} of room`]
     return {
+      ...NONE,
       state: 'room',
       tone: daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green',
       words: wordsOf(lines),
@@ -474,6 +496,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const lead = payPast ? `pay was due ${formatYmdMonthDay(payYmd)}` : 'no pay date'
   const lines = [`${lead} · file lien by ${lienWords}`, `${daysWords(daysToLien)} to the flag`]
   return {
+    ...NONE,
     state: 'no_pay',
     tone: urgencyTone,
     words: wordsOf(lines),

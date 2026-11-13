@@ -14,6 +14,10 @@ import {
   taskPlaceAccuracyWords,
   taskPlaceColumns,
   taskPlaceDirection,
+  taskPlaceDraft,
+  taskPlaceDraftChanged,
+  taskPlaceSheetAccuracy,
+  taskPlaceSheetStart,
   taskPlaceDistanceWords,
   taskPlaceDots,
   taskPlaceFixWords,
@@ -212,6 +216,43 @@ describe('the dots on a map of tasks', () => {
     expect(tasksWithoutPlaceWords(1, 3)).toBe('1 more task has no place. It is in the list below.')
     expect(tasksWithoutPlaceWords(4, 0)).toBe('4 tasks have no place. They are in the list below.')
     expect(tasksWithoutPlaceWords(0, 3)).toBeNull()
+  })
+})
+
+describe('the giver\'s hands (PR 2)', () => {
+  it('a saved place comes back as a draft, and a place nobody named comes back with an empty name box', () => {
+    expect(taskPlaceDraft(taskPlaceFromRow(row()))).toEqual({ lat: 29.5512, lng: -98.2874, name: 'Pump house', accuracyM: 6 })
+    expect(taskPlaceDraft(taskPlaceFromRow(row({ place_name: null })))?.name).toBe('')
+    expect(taskPlaceDraft(null)).toBeNull()
+  })
+
+  it('knows when the giver changed the place, so an edit to the title leaves who placed it alone', () => {
+    const a = { lat: 29.5, lng: -98.3, name: 'Pump house', accuracyM: 6 }
+    expect(taskPlaceDraftChanged(a, { ...a })).toBe(false)
+    expect(taskPlaceDraftChanged(a, { ...a, name: ' Pump  house ' })).toBe(false)
+    expect(taskPlaceDraftChanged(a, { ...a, name: 'Pump shed' })).toBe(true)
+    expect(taskPlaceDraftChanged(a, { ...a, lat: 29.5001 })).toBe(true)
+    expect(taskPlaceDraftChanged(a, null)).toBe(true)
+    expect(taskPlaceDraftChanged(null, a)).toBe(true)
+    expect(taskPlaceDraftChanged(null, null)).toBe(false)
+  })
+
+  it('keeps the phone\'s margin while the ring sits on the reading, and drops it once the ring is dragged', () => {
+    const fix = { ...HERE, accuracyM: 6 }
+    expect(taskPlaceSheetAccuracy(fix, HERE)).toBe(6)
+    expect(taskPlaceSheetAccuracy(fix, { lat: HERE.lat + 0.00001, lng: HERE.lng })).toBe(6)
+    expect(taskPlaceSheetAccuracy(fix, { lat: HERE.lat + 0.0001, lng: HERE.lng })).toBeNull()
+    expect(taskPlaceSheetAccuracy(null, HERE)).toBeNull()
+    expect(taskPlaceSheetAccuracy({ ...HERE, accuracyM: null }, HERE)).toBeNull()
+  })
+
+  it('opens the sheet on the place being moved, else the last place set, else the office', () => {
+    const office = { lat: 29.4, lng: -98.5 }
+    const last = { lat: 29.56, lng: -98.29 }
+    expect(taskPlaceSheetStart(HERE, [last], office)).toEqual(HERE)
+    expect(taskPlaceSheetStart(null, [last], office)).toEqual(last)
+    expect(taskPlaceSheetStart(null, [], office)).toEqual(office)
+    expect(taskPlaceSheetStart(null, [], null)).toBeNull()
   })
 })
 

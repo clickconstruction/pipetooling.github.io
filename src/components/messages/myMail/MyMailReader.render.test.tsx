@@ -94,6 +94,34 @@ describe('MyMailReader', () => {
     expect(presses.onPick).not.toHaveBeenCalled()
   })
 
+  it('says what the tag did to Follow up, with the one press that says otherwise (v2.7032, punch list #324)', async () => {
+    const io = fakeMyMailIo({ open: async () => openedMail(byId('dale-new'), { tagged: { ...ELM, messageId: 'm-elm-1' } }) })
+    const onAfterTag = vi.fn()
+    const old = { ...TAG_OK, contactId: 'c-dale', lines: 3, filed: 3, state: 'done' as const }
+    const { dialog } = await read('dale-new', { done: { ok: old, chip: ELM, act: 'tag' }, onAfterTag }, io)
+    const line = (await within(dialog).findByText('3 old mails were filed for the record. Nothing went on Follow up.')).closest('[data-my-mail-after-tag]') as HTMLElement
+    expect(line.getAttribute('data-my-mail-after-tag')).toBe('putOnFollowUp')
+    fireEvent.click(within(line).getByRole('button', { name: 'Put on Follow up' }))
+    expect(onAfterTag).toHaveBeenCalledWith('putOnFollowUp')
+    cleanup()
+
+    // A live conversation: on Follow up, with No reply needed. Once the press went, the line says so and offers no more.
+    const live = { ...TAG_OK, contactId: 'c-dale', lines: 3, filed: 0, state: 'waiting' as const }
+    const second = await read('dale-new', { done: { ok: live, chip: ELM, act: 'tag' }, onAfterTag }, io)
+    expect(await within(second.dialog).findByText('This conversation is on Follow up.')).toBeTruthy()
+    expect(within(second.dialog).getByRole('button', { name: 'No reply needed' })).toBeTruthy()
+    cleanup()
+    const third = await read('dale-new', { done: { ok: live, chip: ELM, act: 'tag', after: 'noReply' }, onAfterTag }, io)
+    expect(await within(third.dialog).findByText('Cleared from Follow up.')).toBeTruthy()
+    expect(within(third.dialog).queryByRole('button', { name: 'No reply needed' })).toBeNull()
+    cleanup()
+
+    // An answer from before the function knew: no line at all.
+    const fourth = await read('dale-new', { done: { ok: TAG_OK, chip: ELM, act: 'tag' }, onAfterTag }, io)
+    await within(fourth.dialog).findByText('✓ On')
+    expect(fourth.dialog.querySelector('[data-my-mail-after-tag]')).toBeNull()
+  })
+
   it('finds the thread of a conversation tagged before, through the page’s view of the line', async () => {
     const { presses, dialog } = await read('dale-old')
     const bar = (await within(dialog).findByText('✓ On')).closest('[data-my-mail-bar]') as HTMLElement
