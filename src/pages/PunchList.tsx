@@ -31,8 +31,8 @@ import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } fr
 import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
 import { unpackHistory } from '../lib/todos/punchListHistory'
+import packedHistory from '../lib/todos/punchListHistoryData'
 import board from 'virtual:punch-list'
-import packedHistory from 'virtual:punch-list-history'
 
 /**
  * /punch-list — the to-do board, in the app (v2.3558).

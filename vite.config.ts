@@ -99,21 +99,19 @@ function todoBoardPlugin() {
 }
 
 /**
- * The punch list's history, replayed from git when the Punch list page's chunk is built: `virtual:punch-list-history`
- * is every change of `to-dos/` on main as the burndown on /punch-list draws it (`scripts/todos/readTodoHistory.ts`).
- * Nothing is committed. A build with no git history serves an empty one and the page says so; `deploy.yml` checks
- * the whole history out. The dev server replays once a start.
+ * The punch list's history, replayed from git when the Punch list page's chunk is built: the plugin loads
+ * `src/lib/todos/punchListHistoryData.ts` (an empty history, which TypeScript and the tests read) with every change
+ * of `to-dos/` on main as the burndown on /punch-list draws it (`scripts/todos/readTodoHistory.ts`). A real file, not a
+ * virtual module, so no global type declaration is needed. Nothing is committed. A build with no git history serves
+ * an empty one and the page says so; `deploy.yml` checks the whole history out. The dev server replays once a start.
  */
-const PUNCH_HISTORY_ID = 'virtual:punch-list-history'
-const PUNCH_HISTORY_RESOLVED = '\0' + PUNCH_HISTORY_ID
+const PUNCH_HISTORY_FILE = '/src/lib/todos/punchListHistoryData.ts'
 function todoHistoryPlugin() {
   return {
     name: 'todo-history',
-    resolveId(id: string) {
-      return id === PUNCH_HISTORY_ID ? PUNCH_HISTORY_RESOLVED : null
-    },
+    enforce: 'pre' as const,
     load(id: string) {
-      return id === PUNCH_HISTORY_RESOLVED ? renderTodoHistoryModule(process.cwd()) : null
+      return id.split('?')[0]!.replace(/\\/g, '/').endsWith(PUNCH_HISTORY_FILE) ? renderTodoHistoryModule(process.cwd()) : null
     },
   }
 }

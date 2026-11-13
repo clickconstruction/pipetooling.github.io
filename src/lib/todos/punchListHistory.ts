@@ -8,7 +8,7 @@ import { BOARD_GROUPS, GROUP_LABELS, type BoardGroup, type BoardItem, type TodoD
  * she had been reading in a chat to live on /punch-list, hour by hour, since the work comes in waves.
  *
  * Nothing is recorded for it. The build replays every commit on main that changed `to-dos/`
- * (`scripts/todos/readTodoHistory.ts`, the `virtual:punch-list-history` module) and hands this kernel
+ * (`scripts/todos/readTodoHistory.ts`, loaded as `punchListHistoryData.ts`) and hands this kernel
  * each board as it stood; the rules below turn those boards into the numbers the page draws, so the
  * history is as true as the folder's own and cannot drift from it.
  *

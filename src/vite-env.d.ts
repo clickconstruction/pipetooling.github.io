@@ -19,13 +19,6 @@ declare module 'virtual:punch-list' {
   export default data
 }
 
-/** The punch list's history, replayed from git at build time by `todoHistoryPlugin` (vite.config.ts) for the burndown on /punch-list. */
-declare module 'virtual:punch-list-history' {
-  import type { PackedHistory } from './lib/todos/punchListHistory'
-  const history: PackedHistory
-  export default history
-}
-
 /** The lens's schema map, read from src/types/database.ts at build time by `lensSchemaPlugin` (vite.config.ts, punch list #194). */
 declare module 'virtual:lens-schema' {
   import type { LensSchema } from './lib/lens/answer/lensSchemaTypes'

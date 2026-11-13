@@ -1,8 +1,8 @@
 /**
  * The punch list's history, read from git for the burndown on /punch-list: every commit on main that
  * changed `to-dos/` is replayed into the board as it stood, and `historyFromStates` turns the boards
- * into the changes the page draws. The Vite plugin (`todoHistoryPlugin` in vite.config.ts) serves the
- * result as `virtual:punch-list-history`; nothing is written to the repo.
+ * into the changes the page draws. The Vite plugin (`todoHistoryPlugin` in vite.config.ts) loads the
+ * result in place of `src/lib/todos/punchListHistoryData.ts`; nothing is written to the repo.
  *
  * Three git calls, however long the history: one log with each commit's changed paths, one batch read
  * of the to-do files it names (each parsed once, by its blob id), and one question about the clone.
@@ -130,7 +130,7 @@ export function readTodoHistory(root: string): PunchListHistory {
   }
 }
 
-/** The module `virtual:punch-list-history` serves. */
+/** The module `todoHistoryPlugin` loads in place of `src/lib/todos/punchListHistoryData.ts`. */
 export function renderTodoHistoryModule(root: string): string {
-  return `// virtual:punch-list-history — rendered from git by scripts/todos/readTodoHistory.ts; never committed.\nexport default ${JSON.stringify(packHistory(readTodoHistory(root)))}\n`
+  return `// src/lib/todos/punchListHistoryData.ts as built: rendered from git by scripts/todos/readTodoHistory.ts; never committed.\nexport default ${JSON.stringify(packHistory(readTodoHistory(root)))}\n`
 }
