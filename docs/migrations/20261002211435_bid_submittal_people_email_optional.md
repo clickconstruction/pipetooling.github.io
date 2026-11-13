@@ -6,7 +6,7 @@ Ships with the *Their answer* window (v2.4442). Additive: one `NOT NULL` dropped
 |---|---|---|
 | `bid_submittal_people.email` | `text NOT NULL` | `text NULL` |
 
-**Why.** The office records what a reviewer said under a person on the room. The estimator often knows only who the company is: Wendi typed "spacex" in the name box and was afraid to add an address. A reviewer the office names (`how = 'named'`) can now be a name alone: the bid's GC as a company, a contact with no address on file, or a typed name.
+**Why.** The office records what a reviewer said under a person on the room. The estimator often knows only who the company is: Wendi typed "skylab" in the name box and was afraid to add an address. A reviewer the office names (`how = 'named'`) can now be a name alone: the bid's GC as a company, a contact with no address on file, or a typed name.
 
 **What the email still is.** The room's key for a person who comes back. The unique index `bid_submittal_people_room_email_key` on `(room_id, lower(email))` is untouched, and NULLs never collide in it, so a room can hold several people with no address. The client keeps them apart by name (`matchRoomPerson` in `src/lib/submittals/reviewerPick.ts`): an entry with no email reuses the person of that name who has none, and never takes over a person who has one.
 

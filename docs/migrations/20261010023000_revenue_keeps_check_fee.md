@@ -25,11 +25,11 @@ Either. The client half needs nothing from this file, and these functions need n
 
 ## Checked before the PR
 
-On PGlite 0.5.8 with stand-ins for the tables and helpers the four bodies read, two beds from one seed. Southern Post has $13,680 on bill 1 with the $30 fee, a $2,000 line not billed, a $500 hazmat fee and a voided $250 one. Bill 2 carries a fee line with no case, a blank case, a bad amount, a negative one, a numeric case, two junk entries and a case-named `"20"`. Bill 3's `fee_lines` is an object, and bill 4's is null.
+On PGlite 0.5.8 with stand-ins for the tables and helpers the four bodies read, two beds from one seed. Southern Pine has $13,680 on bill 1 with the $30 fee, a $2,000 line not billed, a $500 hazmat fee and a voided $250 one. Bill 2 carries a fee line with no case, a blank case, a bad amount, a negative one, a numeric case, two junk entries and a case-named `"20"`. Bill 3's `fee_lines` is an object, and bill 4's is null.
 
 - **Before** (the three functions as main defines them): Add discount wrote $16,080, the tip $16,230 and Collect Payment $15,830. Each lost the $30, and Collect Payment lost the $20 and the $500 too.
 - **After** (the file applied twice):
-  - `job_rider_fees` reads $550 for Southern Post (500 + 30 + 20), $0 for a job with no rider, and $0 for an unknown job;
+  - `job_rider_fees` reads $550 for Southern Pine (500 + 30 + 20), $0 for a job with no rider, and $0 for an unknown job;
   - Add discount writes $16,130, the tip $16,280 and Collect Payment $16,380;
   - on a job with no rider the three write $900, $1,025 and $1,150, its lines alone;
   - Add discount answers the revenue it wrote, a sub still cannot record a tip, and the office still cannot use the field's Collect Payment;
