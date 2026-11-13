@@ -5987,6 +5987,12 @@ export type Database = {
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          place_accuracy_m: number | null
+          place_lat: number | null
+          place_lng: number | null
+          place_name: string | null
+          place_set_at: string | null
+          place_set_by: string | null
           remind_day_before: boolean
           reminder_scope: string | null
           reminder_time: string | null
@@ -6010,6 +6016,12 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
@@ -6033,6 +6045,12 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
@@ -6057,6 +6075,13 @@ export type Database = {
           {
             foreignKeyName: "checklist_items_notify_on_complete_user_id_fkey"
             columns: ["notify_on_complete_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_place_set_by_fkey"
+            columns: ["place_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -11027,6 +11052,7 @@ export type Database = {
           doc_kind: string
           estimate_number: number
           field_write_up: Json | null
+          first_look_id: string | null
           for_address: string | null
           id: string
           internal_notes: string | null
@@ -11071,6 +11097,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11115,6 +11142,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11161,6 +11189,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_first_look_id_fkey"
+            columns: ["first_look_id"]
+            isOneToOne: false
+            referencedRelation: "first_looks"
             referencedColumns: ["id"]
           },
           {
@@ -11795,13 +11830,18 @@ export type Database = {
         Row: {
           asked_by: string | null
           asked_by_name: string
+          asked_task_id: string | null
+          asked_tech_at: string | null
+          asked_tech_ids: string[]
           closed_at: string | null
           closed_by: string | null
           code_hash: string
           contact_id: string | null
           drive_folder_id: string | null
+          drive_job_folder_at: string | null
           expires_at: string
           id: string
+          job_id: string | null
           label: string
           looked_at: string | null
           looked_by: string | null
@@ -11810,18 +11850,28 @@ export type Database = {
           place: string | null
           sent_at: string | null
           sent_count: number
+          tech_note: string | null
+          tech_read: string | null
+          tech_read_at: string | null
+          tech_read_by: string | null
+          tech_read_name: string | null
           words: string | null
         }
         Insert: {
           asked_by?: string | null
           asked_by_name?: string
+          asked_task_id?: string | null
+          asked_tech_at?: string | null
+          asked_tech_ids?: string[]
           closed_at?: string | null
           closed_by?: string | null
           code_hash: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11830,18 +11880,28 @@ export type Database = {
           place?: string | null
           sent_at?: string | null
           sent_count?: number
+          tech_note?: string | null
+          tech_read?: string | null
+          tech_read_at?: string | null
+          tech_read_by?: string | null
+          tech_read_name?: string | null
           words?: string | null
         }
         Update: {
           asked_by?: string | null
           asked_by_name?: string
+          asked_task_id?: string | null
+          asked_tech_at?: string | null
+          asked_tech_ids?: string[]
           closed_at?: string | null
           closed_by?: string | null
           code_hash?: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at?: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11850,6 +11910,11 @@ export type Database = {
           place?: string | null
           sent_at?: string | null
           sent_count?: number
+          tech_note?: string | null
+          tech_read?: string | null
+          tech_read_at?: string | null
+          tech_read_by?: string | null
+          tech_read_name?: string | null
           words?: string | null
         }
         Relationships: [
@@ -11872,6 +11937,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -27440,6 +27512,7 @@ export type Database = {
           estimate_id: string | null
           gmail_id: string | null
           gmail_thread_id: string | null
+          history: boolean
           id: string
           introduces_user_id: string | null
           invitation: Json | null
@@ -27483,6 +27556,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -27526,6 +27600,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -28974,6 +29049,73 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payer_pay_calendars: {
+        Row: {
+          clause: string
+          cutoff_day: number | null
+          id: string
+          job_id: string | null
+          months_after: number
+          off: boolean
+          pay_day: number | null
+          pay_when_paid: boolean
+          payer_customer_id: string
+          set_at: string
+          set_by: string | null
+          words: string
+        }
+        Insert: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Update: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id?: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payer_pay_calendars_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_payer_customer_id_fkey"
+            columns: ["payer_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -40439,6 +40581,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      answer_first_look: {
+        Args: { p_look_id: string; p_note?: string; p_read: string }
+        Returns: Json
+      }
       answer_invitation: {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
@@ -40549,6 +40695,10 @@ export type Database = {
         Returns: boolean
       }
       archived_pre_request: { Args: never; Returns: undefined }
+      ask_tech_first_look: {
+        Args: { p_item_id: string; p_look_id: string }
+        Returns: Json
+      }
       assert_caller_can_merge_customer_pair: {
         Args: {
           p_survivor_master_user_id: string
@@ -45034,6 +45184,7 @@ export type Database = {
       }
       messages_tech_on_job: { Args: { p_job_id: string }; Returns: boolean }
       messages_tech_team: { Args: never; Returns: boolean }
+      messages_unfile: { Args: { p_contact_id: string }; Returns: undefined }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
@@ -46359,6 +46510,10 @@ export type Database = {
         Args: { p_contact_id: string; p_job_id: string; p_job_kind: string }
         Returns: undefined
       }
+      set_first_look_job: {
+        Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
+      }
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
@@ -46422,6 +46577,14 @@ export type Database = {
       }
       set_pay_config: {
         Args: { p_changes: Json; p_person: string; p_reason: string }
+        Returns: Json
+      }
+      set_payer_pay_calendar: {
+        Args: {
+          p_calendar: Json
+          p_job_id: string
+          p_payer_customer_id: string
+        }
         Returns: Json
       }
       set_person_hours: {

@@ -6,7 +6,6 @@
  * case, as `my_mail_set` saves them: twenty at most, each as long as Gmail lets a label be. Inbox and Sent are what
  * the tab reads, and Drafts, Spam and Trash are never read, so none of those is a label to leave out. Pure.
  */
-import { MY_MAIL_GMAIL_LABEL } from './contract'
 
 /** How many labels a person may leave out (`my_mail_set`'s own limit). */
 export const MY_MAIL_HIDDEN_MAX = 20
@@ -26,7 +25,7 @@ export const MY_MAIL_CARD_WORDS = {
   tag: 'A tag copies that conversation onto the job, where the office team reads it.',
   untag: 'Untag takes it back, unless the office already put it on a legal matter.',
   never: 'Never read: Drafts, Spam, Trash, and any label you name here.',
-  gmailLabel: `Nothing writes to your Gmail except the label ${MY_MAIL_GMAIL_LABEL} on a tagged mail.`,
+  gmailLabel: 'Nothing writes to your Gmail. A tag adds no label and changes no mail.',
   onlyYou: 'Only you see this tab. Nobody on the team reads your mail through the app.',
   hidden: 'Labels left out',
   addLabel: '+ a label',

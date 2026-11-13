@@ -16,7 +16,8 @@ import { bidCustomerChoices, jobChoices, rosterChoices, whoGuesses, type BidPick
 import type { NewLaneCardIo, NewLaneCardRows } from '../../lib/followUp/newLaneCardIo'
 import { hasTargets, INVITATION_WORDS, laneJobs, laneRowFor, namedWords, rulePick, startedBidWords, tiedWords } from '../../lib/followUp/newLaneRows'
 import { samePerson } from '../../lib/followUp/customerLink'
-import { hasToast } from '../../lib/followUp/queue'
+import { hasToast, stateToast } from '../../lib/followUp/queue'
+import { NO_REPLY_PRESS, NO_REPLY_TIP, NO_REPLY_UNNAMED_TIP } from '../../lib/followUp/noReply'
 import { NOTICE_LINES } from '../../lib/emailIn/leftOutSenders'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { AboveLinesActs } from '../gc/messages/threadSlots'
@@ -60,7 +61,9 @@ export function NewLaneSlot({
   const [busy, setBusy] = useState(false)
   // Over a thread's lines the card folds to one row (v2.6476, every screen since v2.6482); beside them (v2.6478) it is
   // whole. The thread window says which through the open thread; Sort all and the Answer all desk give no fold.
-  const foldCard = useOpenThread()?.foldCard ?? false
+  const openThread = useOpenThread()
+  const foldCard = openThread?.foldCard ?? false
+  const overThread = openThread != null
   const jobKeys = contact.jobIds.join(',')
 
   const load = useCallback(async () => {
@@ -183,7 +186,7 @@ export function NewLaneSlot({
       },
     )
 
-  return (
+  const card = (
     <NewLaneCard
       key={`${row.messageId}:${jobs.map((j) => j.id).join(',')}`}
       row={row}
@@ -247,5 +250,18 @@ export function NewLaneSlot({
         void run(() => (userId === me.id ? io.takeIt(contact.id) : io.handTo(contact.id, userId)), hasToast(me.name, contact.name, to))
       }}
     />
+  )
+  // No reply needed (v2.7029, punch list #324): on a desk the card is all there is, so the press sits under it. Over a
+  // thread the status row holds it. An invitation's own presses (Not for us, Keep) already close a Bid it? card.
+  if (overThread || row.sort === 'bid') return card
+  return (
+    <>
+      {card}
+      <div data-new-lane-no-reply style={{ margin: '0.4rem 0.9rem 0', display: 'flex', justifyContent: 'flex-end' }}>
+        <Btn kind="quiet" title={row.kind === 'unknown' ? NO_REPLY_UNNAMED_TIP : NO_REPLY_TIP} onClick={() => void run(() => io.noReplyNeeded(contact.id, me.name), stateToast('noReplyNeeded', contact.name) ?? '')} disabled={busy}>
+          {NO_REPLY_PRESS}
+        </Btn>
+      </div>
+    </>
   )
 }

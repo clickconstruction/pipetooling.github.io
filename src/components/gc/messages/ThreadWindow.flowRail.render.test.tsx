@@ -29,6 +29,7 @@ const fakeCardIo = vi.hoisted(() => ({
   loadKnown: vi.fn(async () => ({})),
   markNotice: vi.fn(async () => undefined),
   unmarkNotice: vi.fn(async () => undefined),
+  noReplyNeeded: vi.fn(async () => undefined),
   makeCustomerRecord: vi.fn(async () => 'c-new'),
   startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '512', customer: 'Ridgeway Builders' })),
   answerInvitation: vi.fn(async () => undefined),

@@ -93,6 +93,7 @@ function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows =
     takeIt: vi.fn(async () => undefined),
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
     backDone: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o-new'),
     callAdd: vi.fn(async () => 'c-new'),
@@ -108,13 +109,13 @@ function BoxStandIn({ contactId }: { contactId: string }) {
 }
 
 /** The slots as the window draws them, for one person, with or without a reply box. */
-function Harness({ io, contact, box = false, line, loadLines }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage; loadLines?: (customerId: string) => Promise<BidMoneyLine[]> }) {
+function Harness({ io, contact, box = false, line, loadLines, lines }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage; loadLines?: (customerId: string) => Promise<BidMoneyLine[]>; lines?: readonly ThreadMessage[] }) {
   const slots = useFollowUpThreadSlots(io, loadLines)
   return (
     <div>
       <div data-testid="under">{line ? slots.underLine?.(line, contact) : null}</div>
       <div data-testid="header">{slots.headerRight?.(contact)}</div>
-      <div data-testid="status">{slots.statusRow?.(contact)}</div>
+      <div data-testid="status">{slots.statusRow?.(contact, lines)}</div>
       <div data-testid="above">{slots.aboveBox?.(contact)}</div>
       <div data-testid="court">{JSON.stringify(slots.court?.(contact) ?? null)}</div>
       {box && <BoxStandIn contactId={contact.id} />}
@@ -130,10 +131,10 @@ function Harness({ io, contact, box = false, line, loadLines }: { io: FollowUpTh
 }
 
 const reread = vi.fn()
-function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, line?: ThreadMessage, loadLines?: (customerId: string) => Promise<BidMoneyLine[]>) {
+function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, line?: ThreadMessage, loadLines?: (customerId: string) => Promise<BidMoneyLine[]>, lines?: readonly ThreadMessage[]) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
-      <Harness io={io} contact={contact} box={box} line={line} loadLines={loadLines} />
+      <Harness io={io} contact={contact} box={box} line={line} loadLines={loadLines} lines={lines} />
     </MessagesRereadContext.Provider>,
   )
 }
@@ -221,12 +222,37 @@ describe('Follow up in the thread window', () => {
     renderThread(io)
     fireEvent.click(await more().findByRole('button', { name: 'No reply needed' }))
     expect(await screen.findByText('Greg Paulk cleared from Follow up.')).toBeTruthy()
-    expect(io.setState).toHaveBeenCalledWith('greg', 'done')
+    expect(io.noReplyNeeded).toHaveBeenCalledWith('greg', 'Robert')
     cleanup()
 
     const closed = fakeIo({}, rows({ state: 'done', has_user_id: null, has_since: null, has_how: null }))
     renderThread(closed)
     fireEvent.click(await more().findByRole('button', { name: 'Reopen' }))
+    expect(await screen.findByText('Greg Paulk is back in Follow up.')).toBeTruthy()
+    expect(closed.setState).toHaveBeenCalledWith('greg', 'waiting')
+  })
+
+  it('the status row offers No reply needed while it is open, and says who closed it once it is done (v2.7029)', async () => {
+    const status = () => within(screen.getByTestId('status'))
+    const io = fakeIo()
+    renderThread(io)
+    fireEvent.click(await status().findByRole('button', { name: 'No reply needed' }))
+    expect(await screen.findByText('Greg Paulk cleared from Follow up.')).toBeTruthy()
+    expect(io.noReplyNeeded).toHaveBeenCalledWith('greg', 'Robert')
+    expect(JSON.parse(screen.getByTestId('court').textContent ?? 'null')).toMatchObject({ closed: false })
+    cleanup()
+
+    const hourAgo = new Date(Date.now() - 3_600_000).toISOString()
+    const lines: ThreadMessage[] = [
+      { id: 'm-in', contactId: 'greg', jobId: null, channel: 'text', direction: 'in', at: new Date(Date.now() - 7_200_000).toISOString(), who: 'Greg Paulk', body: 'Thanks, got it.' },
+      { id: 'm-said', contactId: 'greg', jobId: null, channel: 'event', direction: 'team', at: hourAgo, who: 'Rosa', body: 'Rosa said on Nov 12 that no reply is needed.' },
+    ]
+    const closed = fakeIo({}, rows({ state: 'done', has_user_id: null, has_since: null, has_how: null }))
+    renderThread(closed, GREG, false, undefined, undefined, lines)
+    expect(await status().findByText(/^Done · no reply needed · Rosa, /)).toBeTruthy()
+    expect(status().queryByRole('button', { name: 'No reply needed' })).toBeNull()
+    expect(JSON.parse(screen.getByTestId('court').textContent ?? 'null')).toMatchObject({ closed: true })
+    fireEvent.click(status().getByRole('button', { name: 'Reopen' }))
     expect(await screen.findByText('Greg Paulk is back in Follow up.')).toBeTruthy()
     expect(closed.setState).toHaveBeenCalledWith('greg', 'waiting')
   })

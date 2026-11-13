@@ -96,3 +96,13 @@ describe('the calendar on the stamps’ hover card', () => {
     expect(stampCalendar(DEMO_MESSAGES, 'nobody', DEMO_NOW)).toBeNull()
   })
 })
+
+describe('a mail filed for the record is still when they last wrote (v2.7029, punch list #324)', () => {
+  it('never says they have not written on a thread of filed mail', () => {
+    const kevin = contactById(DEMO_CONTACTS, DEMO_CONTACTS[0]!.id)!
+    const filed: ThreadMessage = { id: 'f1', contactId: kevin.id, jobId: null, channel: 'email', direction: 'in', at: '2026-03-03T15:00:00Z', who: kevin.name, subject: 'Rough-in dates', body: 'The 9th works.', history: true }
+    const words = stampSentence(kevin, [filed], kevin.id, DEMO_NOW).text
+    expect(words).not.toMatch(/ha(s|ve) not written yet\. We/)
+    expect(words).toContain('We have not written yet.')
+  })
+})

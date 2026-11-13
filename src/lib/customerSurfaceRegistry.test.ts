@@ -114,11 +114,11 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
     ).toEqual(['a', 'b'])
   })
 
-  it('the count line names five audiences and says how many steps still wait on a release', () => {
+  it('the count line names the audiences (six groups since the lien letters, punch list #326) and says how many steps still wait on a release', () => {
     const c = journeyCoverage(journeys)
-    expect(c.audiences).toBe(5)
+    expect(c.audiences).toBe(6)
     expect(c.steps).toBe(c.rendered + c.paper + c.soon + c.external)
-    const parts = [`${c.steps} steps across 5 audiences`, `${c.rendered} rendered live`]
+    const parts = [`${c.steps} steps across 6 audiences`, `${c.rendered} rendered live`]
     if (c.paper > 0) parts.push(`${c.paper} open as the PDF`)
     if (c.soon > 0) parts.push(`${c.soon} next release`)
     if (c.external > 0) parts.push(`${c.external} sent by another system`)

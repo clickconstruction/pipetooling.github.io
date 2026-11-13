@@ -72,6 +72,49 @@ export interface MyMailDone {
   chip: MyMailJobChip | null
   /** The press that tagged: a first tag, **Another job…**, or **Put it on the job**. */
   act: MyMailTagAct
+  /** The press on the line after the tag, once it went (v2.7032): the line then says what it did. */
+  after?: AfterTagPress
+}
+
+// ---------- the line after a tag: what it did to Follow up, and the one press that undoes it (v2.7032, #324) ----------
+
+/** The press the line offers: put old mail on Follow up after all, or say a live conversation needs no reply. */
+export type AfterTagPress = 'putOnFollowUp' | 'noReply'
+
+export interface AfterTag {
+  words: string
+  press: AfterTagPress
+  label: string
+  tip: string
+}
+
+export const AFTER_TAG_WORDS = {
+  putOnFollowUp: 'Put on Follow up',
+  putOnFollowUpTip: 'Opens the thread on Follow up as waiting on us. The old mail then counts as theirs to answer.',
+  noReply: 'No reply needed',
+  noReplyTip: 'Takes the row off Follow up. Nothing is owed. The thread keeps a line that says who closed it.',
+  onFollowUp: 'This conversation is on Follow up.',
+  /** What the line says once its press went. */
+  went: { putOnFollowUp: 'It is on Follow up now.', noReply: 'Cleared from Follow up.' } as Readonly<Record<AfterTagPress, string>>,
+  failed: { putOnFollowUp: 'It could not be put on Follow up.', noReply: 'It could not be cleared from Follow up.' } as Readonly<Record<AfterTagPress, string>>,
+} as const
+
+/** "6 old mails were filed for the record. Nothing went on Follow up." */
+export function filedWords(count: number): string {
+  return `${count} old ${count === 1 ? 'mail was' : 'mails were'} filed for the record. Nothing went on Follow up.`
+}
+
+/**
+ * What a tag did to Follow up, with the press that says otherwise. The age decides (`messages/filed.ts`) and a person
+ * overrules after, so the common tag, today's mail, costs no extra press. The thread is open: that it is on Follow up,
+ * and **No reply needed**. Every mail the tag wrote was old and the thread is not open: the count, and **Put on Follow
+ * up**. Nothing for an answer from before v2.7027, a tag that landed on nobody, or a thread that is simply Done.
+ */
+export function afterTag(ok: Pick<MyMailTagOk, 'lines' | 'filed' | 'state' | 'contactId'>): AfterTag | null {
+  if (!ok.contactId || ok.filed === undefined) return null
+  if (ok.state === 'waiting') return { words: AFTER_TAG_WORDS.onFollowUp, press: 'noReply', label: AFTER_TAG_WORDS.noReply, tip: AFTER_TAG_WORDS.noReplyTip }
+  if (ok.lines > 0 && ok.filed === ok.lines && ok.state !== 'snoozed') return { words: filedWords(ok.filed), press: 'putOnFollowUp', label: AFTER_TAG_WORDS.putOnFollowUp, tip: AFTER_TAG_WORDS.putOnFollowUpTip }
+  return null
 }
 
 /** A tagged conversation as the bar names it: the job's key and chip, and whether a line holds this mail. */

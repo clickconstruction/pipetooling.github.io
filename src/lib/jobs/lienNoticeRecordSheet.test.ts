@@ -16,13 +16,16 @@ import {
   LIEN_RECORD_CLEAR,
   LIEN_RECORD_COPY_BY_HAND,
   LIEN_RECORD_COPY_BY_HAND_NO_FILE,
+  LIEN_RECORD_COPY_BY_HAND_NOTE,
   LIEN_RECORD_COPY_DRAWN,
   LIEN_RECORD_COPY_SAVED,
   LIEN_RECORD_ENVELOPE,
   LIEN_RECORD_FIX,
   LIEN_RECORD_MATCH,
   LIEN_RECORD_NO_NOTICE,
+  LIEN_RECORD_NOTE_ONLY,
   LIEN_RECORD_NOT_SUB,
+  LIEN_RECORD_SAVED_NOTE,
   LIEN_RECORD_STYLES,
   LIEN_RECORD_WHOLE,
   lienNoticeCopiesHtml,
@@ -197,7 +200,7 @@ describe('lienNoticeRecordSheetHtml · one page in front of one paper', () => {
     const record = recordOf([{ ...CLEAN[0]!, document_url: '', document_note: '<b>bin 4</b>' }], CLEAN_MONTHS)
     const sheet = lienNoticeRecordSheetHtml({ ...HEAD, ownerName: 'A & B <Trust>' }, record, '')
     expect(sheet).toContain('A &amp; B &lt;Trust&gt;')
-    expect(sheet).toContain('Saved copy: &lt;b&gt;bin 4&lt;/b&gt;')
+    expect(sheet).toContain(`<td>${LIEN_RECORD_SAVED_NOTE}</td><td colspan="3">&lt;b&gt;bin 4&lt;/b&gt;</td>`)
     expect(sheet).not.toContain('<b>bin 4</b>')
   })
 })
@@ -211,7 +214,7 @@ describe('the record’s words', () => {
 
   it('says a notice’s paper total beside this job’s share, and a saved copy’s note', () => {
     const base = { n: 1, recordedOn: '', byHand: false, months: ['2026-08'], claim: 1200, printedClaim: 4180, savedCopy: false, savedNote: 'in the blue folder', copies: [], snapshot: null }
-    expect(lienRecordNoticeWords(base)).toBe('Names August 2026 · Claim $4,180.00 on the paper, $1,200.00 for this job · Saved copy: in the blue folder')
+    expect(lienRecordNoticeWords(base)).toBe(`Names August 2026 · Claim $4,180.00 on the paper, $1,200.00 for this job · ${LIEN_RECORD_NOTE_ONLY}`)
     expect(lienRecordNoticeWords({ ...base, months: [], claim: null, printedClaim: null, byHand: true, savedNote: '' })).toBe('Names no month · Entered after the fact · No saved copy')
   })
 
@@ -220,7 +223,7 @@ describe('the record’s words', () => {
   })
 
   it('every sentence the page writes follows the plain-words rules', () => {
-    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ENVELOPE, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
+    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ENVELOPE, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
@@ -354,8 +357,28 @@ describe('lienNoticeCopiesHtml · a copy of each notice, drawn from its own reco
     expect(second).toContain(LIEN_RECORD_COPY_SAVED)
     expect(second).not.toContain('entered after it was mailed')
     const noted = lienNoticeCopiesHtml(recordOf([{ ...HARD[0]!, document_note: 'in the blue folder' }], ['2026-07']), { jobLabel: HEAD.jobLabel })
-    expect(noted).toContain('This notice was entered after it was mailed. Saved copy: in the blue folder')
+    expect(noted).toContain(LIEN_RECORD_COPY_BY_HAND_NOTE)
+    expect(noted).not.toContain(LIEN_RECORD_COPY_BY_HAND_NO_FILE)
     expect(lienNoticeCopiesHtml(recordOf([{ ...HARD[0]!, document_url: 'https://drive.example/n' }], ['2026-07']), { jobLabel: HEAD.jobLabel })).toContain(LIEN_RECORD_COPY_BY_HAND)
+  })
+
+  it('prints the office’s note on a saved copy whole: a row under the notice’s copies, and a line that closes the delivery record', () => {
+    // A receipt and the day of delivery are written beside the saved copy, so that line is the certified mail's own detail.
+    const note = 'USPS receipt 10/14 4:02 PM Cedar Fork · delivered 10/17 11:20 AM, Cedar Fork 75001'
+    const record = recordOf([{ ...CLEAN[0]!, document_url: 'https://drive.example/n', document_note: note }], CLEAN_MONTHS)
+    const sheet = lienNoticeRecordSheetHtml(HEAD, record, '')
+    expect(sheet).toContain('Saved copy on file')
+    expect(sheet).toContain(`<tr data-lien-record-saved-note="1"><td>${LIEN_RECORD_SAVED_NOTE}</td><td colspan="3">${note}</td></tr>`)
+    // The row sits under the notice's last copy, inside the same table.
+    expect(sheet.indexOf('data-lien-record-saved-note="1"')).toBeGreaterThan(sheet.lastIndexOf('data-lien-record-copy="'))
+    const copies = lienNoticeCopiesHtml(record, { jobLabel: HEAD.jobLabel, todayYmd: '2026-11-12' })
+    expect(copies).toContain(`<li data-state="note" data-lien-record-sent-note><span class="lien-help-mark">•</span><span>${LIEN_RECORD_SAVED_NOTE} — ${note}</span></li></ul>`)
+    // Said once on the page: the line above the notice names where the copy opens, not the note again.
+    expect(copies.split(note)).toHaveLength(2)
+    // A batch block carries the row too, and a notice with no note has neither.
+    expect(lienNoticeRecordBatchHtml([{ head: HEAD, record }], '')).toContain('data-lien-record-saved-note="1"')
+    const bare = recordOf(CLEAN, CLEAN_MONTHS)
+    expect(lienNoticeRecordSheetHtml(HEAD, bare, '') + lienNoticeCopiesHtml(bare, { jobLabel: HEAD.jobLabel })).not.toMatch(/data-lien-record-saved-note|data-lien-record-sent-note/)
   })
 
   it('each band says what the next page is, and the page has no foot to run onto a second sheet', () => {

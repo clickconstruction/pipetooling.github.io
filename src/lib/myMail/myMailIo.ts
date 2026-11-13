@@ -15,6 +15,8 @@ import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { MyMailSetParams, MyMailSetRow } from '../../types/database-functions'
 import { errorKindOf, withSupabaseRetry } from '../../utils/errorHandling'
+import { supabaseFollowUpIo } from '../followUp/followUpIo'
+import type { AfterTagPress } from './reader'
 import {
   MY_MAIL_FUNCTION,
   MY_MAIL_REFUSAL_WORDS,
@@ -40,6 +42,11 @@ export interface MyMailIo {
   open(req: Asked<MyMailOpenRequest>): Promise<MyMailOpenOk | MyMailRefusal>
   tag(req: Asked<MyMailTagRequest>): Promise<MyMailTagOk | MyMailRefusal>
   untag(req: Asked<MyMailUntagRequest>): Promise<MyMailUntagOk | MyMailRefusal>
+  /**
+   * The line after a tag (v2.7032, punch list #324): put a filed conversation on Follow up (`set_state`, which takes
+   * the mark off its mail), or close a live one with No reply needed, the grey line naming the person signed in.
+   */
+  afterTag(contactId: string, press: AfterTagPress): Promise<void>
 }
 
 const REFUSALS: ReadonlySet<string> = new Set(Object.keys(MY_MAIL_REFUSAL_WORDS))
@@ -77,6 +84,17 @@ export function supabaseMyMailIo(client: unknown = supabase): MyMailIo {
     open: (req) => ask<MyMailOpenOk>(db, { action: 'open', ...req }),
     tag: (req) => ask<MyMailTagOk>(db, { action: 'tag', ...req }),
     untag: (req) => ask<MyMailUntagOk>(db, { action: 'untag', ...req }),
+    async afterTag(contactId, press) {
+      const followUp = supabaseFollowUpIo(db)
+      if (press === 'putOnFollowUp') {
+        await followUp.setState(contactId, 'waiting')
+        return
+      }
+      const { data } = await db.auth.getUser()
+      const me = data.user ? await db.from('users').select('name, email').eq('id', data.user.id).maybeSingle() : null
+      const row = (me?.data ?? null) as { name?: string | null; email?: string | null } | null
+      await followUp.noReplyNeeded(contactId, row?.name?.trim() || row?.email?.trim() || 'Someone')
+    },
   }
 }
 

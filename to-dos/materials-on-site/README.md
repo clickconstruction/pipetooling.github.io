@@ -462,7 +462,8 @@ one count dropped from the kernel's copy disagreed on that line. The types and t
 - the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
   Android;
 - a sent-copy record of the manifest if the week of use asks for it;
-- a site-wide place that is not a row of one job, so the material location report's by-location fold (#268) stops guessing by name.
+- a site-wide place that is not a row of one job, so the material location report's by-location fold (#268) stops guessing by name;
+- stickers printed ahead of the boxes, and a box renamed after the fact: its own card, #329 (`to-dos/stickers-before-boxes/README.md`).
 
 **V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
 name of a job's folder, which the live test raised, are #211 (`where-files-go/`).
