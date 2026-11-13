@@ -485,9 +485,10 @@ describe('billsSent — a record made by hand (PR 6)', () => {
       recipientName: 'Hal Jensen, on site',
       jobIds: [JOB_A],
       source: { table: 'jobs_ledger_invoices', id: BILL_A },
-      sourceSnapshot: { by_hand: true, how: 'handed', went_on: '2026-11-09', note: 'With the permit card.' },
+      sourceSnapshot: { by_hand: true, how: 'handed', how_label: 'Handed over', went_on: '2026-11-09', note: 'With the permit card.' },
     })
     expect(byHandFiling(gap, { ...draft, how: 'mailed' }).how).toBe('mail')
+    expect(byHandFiling(gap, { ...draft, how: 'own_mailbox' }).sourceSnapshot).toMatchObject({ how: 'own_mailbox', how_label: 'Emailed from a person\u2019s own mailbox' })
     expect(byHandFiling(gap, { ...draft, how: 'own_mailbox' }).how).toBe('email')
     expect(byHandFiling(gap, { ...draft, how: 'housecall_pro' }).how).toBe('email')
   })
@@ -518,6 +519,28 @@ describe('billsSent — a record made by hand (PR 6)', () => {
     expect(billsSentDays(lines, '2026-11-12').map((d) => d.label)).toEqual(['Mon, Nov 9'])
     expect(billsSentGaps(data, lines)).toEqual({ open: [], paid: [] })
     expect(billsSentFilter(lines, 'by_hand', '').map((l) => l.id)).toEqual(['h1'])
+  })
+
+  it('reads a record with the words it was made with, whatever the list says now', () => {
+    const made = (id: string, sourceSnapshot: Record<string, unknown>) => copy({ id, kind: 'bill_by_hand', how: 'mail', recipientName: 'Hal Jensen', recipientEmails: [], copyPath: null, sentByName: 'Priya', sourceSnapshot, resendEmailId: null })
+    // The list's words for `mailed` are Mailed. This record was made when the way read otherwise, and says so still.
+    const renamed = made('h1', { by_hand: true, how: 'mailed', how_label: ' Mailed, first class ', went_on: '2026-11-09', note: '' })
+    // A way that is on no list now keeps its words too.
+    const gone = made('h2', { by_hand: true, how: 'w_3f9a1c2e', how_label: 'Uploaded to the builder\u2019s pay portal', went_on: '2026-11-10', note: '' })
+    // A record made before the words were kept reads the list's words for its code, and a code on no list the route's name.
+    const older = made('h3', { by_hand: true, how: 'mailed', went_on: '2026-11-08', note: '' })
+    const lost = made('h4', { by_hand: true, how: 'w_0000', how_label: '  ', went_on: '2026-11-07', note: '' })
+    const lines = billsSentLines(input([renamed, gone, older, lost]))
+    expect(lines.map((l) => [l.id, l.routeWords])).toEqual([
+      ['h2', 'Uploaded to the builder\u2019s pay portal'],
+      ['h1', 'Mailed, first class'],
+      ['h3', 'Mailed'],
+      ['h4', 'Recorded by hand'],
+    ])
+    // Every one is a record by hand, whatever its words, and the search and the spreadsheet read the same words.
+    expect(lines.every((l) => l.route === 'by_hand')).toBe(true)
+    expect(billsSentFilter(lines, 'all', 'pay portal').map((l) => l.id)).toEqual(['h2'])
+    expect(billsSentCsv(lines)).toContain('"Mailed, first class"')
   })
 })
 

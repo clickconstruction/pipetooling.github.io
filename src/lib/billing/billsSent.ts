@@ -29,6 +29,7 @@
  * PR 6 lets a person say how a bill went when the app did not send it: handed over, mailed, emailed from their own
  * mailbox, sent from Housecall Pro. The record is one sent copy of kind `bill_by_hand` with no copy body
  * (`byHandFiling`), so the bill leaves the gaps and reads as a line on the day it went, marked as someone's word.
+ * The record keeps the words of the way it was made with (punch list #340, PR 1), so its line never rewords.
  *
  * A phone draws a line in three rows (`billsSentPhoneWords`): the time and the amount, then the work, then where it
  * went. The bill's number stays on the bill's record, where the whole line leads.
@@ -538,7 +539,6 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
   )
 
   const byHandLines = byHand.map((c) => {
-    const how = byHandHowOf(c)
     const recordedYmd = Number.isFinite(Date.parse(c.sentAt)) ? calendarYmdInAppTzFromIso(c.sentAt) : ''
     const said = typeof c.sourceSnapshot?.note === 'string' ? c.sourceSnapshot.note.trim() : ''
     return bareLine({
@@ -548,7 +548,7 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       jobId: (c.jobIds ?? [])[0] ?? null,
       dayOnly: true,
       route: 'by_hand',
-      routeWords: () => BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === how)?.label ?? 'Recorded by hand',
+      routeWords: () => byHandWordsOf(c),
       toName: c.recipientName,
       by: c.sentByName,
       note: [`Recorded by hand${recordedYmd ? ` on ${formatWorkDateYmdWeekdayShortFriendly(recordedYmd)}` : ''}. The app sent nothing and kept no copy.`, said].filter(Boolean).join(' '),
@@ -1001,6 +1001,18 @@ function byHandHowOf(copy: BillsSentCopy): BillsSentByHandHow | null {
   return BILLS_SENT_BY_HAND_HOWS.some((h) => h.key === how) ? (how as BillsSentByHandHow) : null
 }
 
+/**
+ * The words a by-hand record reads with: its own (`how_label`, kept on the record since punch list #340), else the
+ * list's words for its code, else the route's name. A record keeps the words it was made with, so a way renamed or
+ * taken off the list later changes no line, print or spreadsheet row written before.
+ */
+function byHandWordsOf(copy: BillsSentCopy): string {
+  const kept = typeof copy.sourceSnapshot?.how_label === 'string' ? copy.sourceSnapshot.how_label.trim() : ''
+  if (kept) return kept
+  const how = byHandHowOf(copy)
+  return BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === how)?.label ?? 'Recorded by hand'
+}
+
 /** The moment a by-hand record's line sits at: noon, Central, on the day the person named; the day it was recorded when it names none. */
 function byHandWentAtIso(copy: BillsSentCopy): string {
   const ymd = typeof copy.sourceSnapshot?.went_on === 'string' ? copy.sourceSnapshot.went_on : ''
@@ -1029,11 +1041,12 @@ export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string): st
 
 /**
  * The sent copy a by-hand record files: no copy body, the bill as its source, and what the person said in
- * `source_snapshot` (`how`, `went_on`, `note`). The addresses stay empty on purpose: the words are a person's, typed
+ * `source_snapshot` (`how`, its words as picked in `how_label`, `went_on`, `note`). The addresses stay empty on purpose: the words are a person's, typed
  * as they knew them, and an address there would read into a customer's thread as an email the app sent.
  */
 export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { jobId: string | null }, draft: BillsSentByHandDraft): SentFiling {
-  const label = BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === draft.how)?.label ?? 'Recorded by hand'
+  const picked = BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === draft.how)?.label ?? ''
+  const label = picked || 'Recorded by hand'
   return {
     kind: BILLS_SENT_BY_HAND_KIND,
     title: ['Bill', gap.jobWords, `${label}, recorded by hand`].filter(Boolean).join(' · '),
@@ -1041,7 +1054,7 @@ export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { 
     recipientName: draft.toWhom.trim(),
     jobIds: [gap.jobId],
     source: { table: BILL_SOURCE, id: gap.billId },
-    sourceSnapshot: { by_hand: true, how: draft.how, went_on: draft.wentOnYmd, note: draft.note.trim() },
+    sourceSnapshot: { by_hand: true, how: draft.how, how_label: picked, went_on: draft.wentOnYmd, note: draft.note.trim() },
   }
 }
 
