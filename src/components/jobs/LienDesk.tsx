@@ -145,6 +145,8 @@ import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
+import LienDeskMoreSheet from './LienDeskMoreSheet'
+import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -330,6 +332,9 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
  * The title bar's doors share § Rules' height (v2.4746, the owner's ask): its 0.78rem line at the root's 1.5, 2px of
  * padding above and below, and the 1px border. Send the run, Put a GC on notice…, ☎ and Share (on a computer) take it.
  */
+/** A phone's tabs and chips are a thumb tall and share the row's width (punch list #352, PR 1). */
+const PHONE_TAB: React.CSSProperties = { flex: '1 0 auto', minHeight: 44, padding: '0 8px' }
+const PHONE_CHIP: React.CSSProperties = { flex: 'none', minHeight: 40, padding: '2px 14px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
 const headDoor: React.CSSProperties = { height: 'calc(0.78rem * 1.5 + 6px)', boxSizing: 'border-box', paddingTop: 0, paddingBottom: 0, display: 'inline-flex', alignItems: 'center' }
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -568,6 +573,10 @@ export default function LienDesk({
   const [callScriptOpen, setCallScriptOpen] = useState(false)
   // The ? and its card (punch list #187 PR 3): what each part of the desk holds, after § Rules.
   const [legendOpen, setLegendOpen] = useState(false)
+  // A phone's header is one row (punch list #352, PR 1): the doors it held are rows of the More sheet, and § Rules,
+  // whose window the door itself holds on a computer, is held here so the sheet can close behind it.
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
   // The address can name the affidavit to open on (v2.7180), as it names a notice: `/lien-desk?tab=affidavits&job=…`.
@@ -1727,6 +1736,23 @@ export default function LienDesk({
   const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
   // *Record the mailing · 7 sealed*, not *· 7  7 sealed* (v2.6569): the pill's words drop the count the door already says.
   const runTail = runDoorTail(runDoor.count, runPill.words)
+  // The run door shows on every view but Affidavits, to the office, while a notice waits. On a phone it is the first row of More and the More button wears its count (punch list #352, PR 1).
+  const runDoorShown = kind !== 'affidavit' && office && runCount > 0
+  const runDoorHint = runDoor.label === 'Record the mailing' ? 'The printed notices are in the mail: type each envelope’s tracking number in the run to record the mailing' : 'Every approved notice — monthly and retainage — as one packet and one tracking form'
+  const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
+  const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
+  const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: office && !!onOpenOwnerRecords })
+  const moreButton = lienDeskMoreButton(moreRun)
+  const pickMore = (key: LienDeskMoreKey) => {
+    setMoreOpen(false)
+    if (key === 'run') setRunOpen(true)
+    else if (key === 'gc_notice') setGcPickerOpen(true)
+    else if (key === 'rules') setRulesOpen(true)
+    else if (key === 'caller') setCallScriptOpen(true)
+    else if (key === 'legend') setLegendOpen(true)
+    else if (key === 'share') setShareOpen(true)
+    else if (key === 'owner_records') onOpenOwnerRecords?.()
+  }
   // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
@@ -2809,8 +2835,30 @@ export default function LienDesk({
   )
 
   // ---------- affidavits: the list and the pane (v2.3412) ----------
+  // The pile chips of Affidavits and Retainage. A pile with nothing in it draws no chip unless it is the one picked.
+  const pileChip = (key: string, label: string, n: number, on: boolean, onPress: () => void) => (
+    <button key={key} type="button" aria-pressed={on} onClick={onPress} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer', ...(isMobile ? PHONE_CHIP : null) }}>
+      {label} · <strong>{n}</strong>
+    </button>
+  )
+  const affPileChips = LIEN_AFFIDAVIT_PILES.flatMap((p) => {
+    const n = data?.affidavits.counts[p.key] ?? 0
+    if (n === 0 && affPile !== p.key) return []
+    const on = affPile === p.key
+    return [pileChip(p.key, p.label, n, on, () => setAffPile(on ? null : p.key))]
+  })
+  const retPileChips = LIEN_RETAINAGE_PILES.flatMap((p) => {
+    const n = data?.retainage.counts[p.key] ?? 0
+    if (n === 0 && retPile !== p.key) return []
+    const on = retPile === p.key
+    return [pileChip(p.key, p.label, n, on, () => setRetPile(on ? null : p.key))]
+  })
+  // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
+  const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
+
   const affList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+      {pileStrip(affPileChips)}
       {affVisible.length === 0 ? (
         loading || data == null ? (
           <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Looking at every unpaid job…</p>
@@ -2988,6 +3036,7 @@ export default function LienDesk({
   // ---------- retainage: the list and the pane (v2.3753) ----------
   const retList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
+      {pileStrip(retPileChips)}
       {retVisible.length === 0 ? (
         !loading && data != null && (finding || retPile) ? (
           <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
@@ -3714,98 +3763,81 @@ export default function LienDesk({
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
           {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
           {noticeOpenStacked ? (
-            <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, marginRight: 8 }}>
+            <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 44 : 30, marginRight: 8 }}>
               <span aria-hidden="true">←</span> Notices
             </button>
           ) : backDoor}
           <h2
-            // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
-            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flex: '1 1 auto', paddingRight: '3rem', boxSizing: 'border-box' } : {}) }}
+            // On a phone the title shares its line with the way back and More (punch list #352, PR 1); the rows under it get the card's width.
+            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
             ⏱ Lien desk
           </h2>
+          {isMobile ? (
+            <button type="button" data-lien-desk-more="door" aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={moreButton.label} onClick={() => setMoreOpen(true)} style={{ position: 'relative', flex: 'none', width: 44, height: 44, display: 'inline-grid', placeItems: 'center', border: 'none', borderRadius: 10, background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer' }}>
+              <span aria-hidden="true">⋯</span>
+              {moreButton.badge != null ? <span aria-hidden="true" data-lien-desk-more-badge style={{ position: 'absolute', top: 2, right: 0, minWidth: 18, height: 18, padding: '0 5px', boxSizing: 'border-box', borderRadius: 999, background: '#2563eb', color: '#fff', fontSize: '0.7rem', fontWeight: 700, lineHeight: '18px', textAlign: 'center' }}>{moreButton.badge}</span> : null}
+            </button>
+          ) : null}
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
-          <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
+          <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['next', 'calendar', 'paper'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
               return (
-                <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
+                <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
                   {v === 'next' ? `Do now${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
                 </button>
               )
             })}
           </div>
           {/* The run sits beside the views on every view (v2.4740, the owner's ask; on the second line's left end since v2.4629). */}
-          {kind !== 'affidavit' && office && runCount > 0 ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), ...headDoor }} data-lien-desk-run title={runDoor.label === 'Record the mailing' ? 'The printed notices are in the mail: type each envelope’s tracking number in the run to record the mailing' : 'Every approved notice — monthly and retainage — as one packet and one tracking form'}>
+          {!isMobile && runDoorShown ? (
+            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), ...headDoor }} data-lien-desk-run title={runDoorHint}>
               <span className="lienRunDoorBar" aria-hidden="true"><i className="lienRunDoorSealed" style={{ width: `${runPill.sealedPct}%` }} /><i className="lienRunDoorWait" style={{ width: `${runPill.waitPct}%` }} /></span>
               {runDoor.label} · {runDoor.count}
               {runTail ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runTail}</span> : null}
             </button>
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
-          {isMobile ? (
-            <>
-              {rulesAndCaller}
-              <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
-            </>
+          {isMobile ? <LienRulesDoor button={false} open={rulesOpen} onOpenChange={setRulesOpen} where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} job={rulesJob} todayYmd={todayYmd} /> : null}
+          {isMobile && shareOpen && data ? (
+            <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
           ) : null}
-          {isMobile ? headerTools : null}
+          {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds the tool row on a computer (v2.6569), or the door on a phone. */}
           {/* The second line is the tool row on a computer (v2.6569); on a phone it comes only with the paper tabs or the owner-records door. */}
-          {!isMobile || paperShown || ownerRecordsDoor ? (
+          {!isMobile || paperShown ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {paperShown ? (
-            <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
+            <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden' }}>
               {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
                   {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
                 </button>
               ))}
             </div>
           ) : null}
-          {kind === 'retainage'
-            ? LIEN_RETAINAGE_PILES.map((p) => {
-                const n = data?.retainage.counts[p.key] ?? 0
-                if (n === 0 && retPile !== p.key) return null
-                const on = retPile === p.key
-                return (
-                  <button key={p.key} type="button" aria-pressed={on} onClick={() => setRetPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
-                    {p.label} · <strong>{n}</strong>
-                  </button>
-                )
-              })
-            : null}
-          {kind === 'affidavit'
-            ? LIEN_AFFIDAVIT_PILES.map((p) => {
-                const n = data?.affidavits.counts[p.key] ?? 0
-                if (n === 0 && affPile !== p.key) return null
-                const on = affPile === p.key
-                return (
-                  <button key={p.key} type="button" aria-pressed={on} onClick={() => setAffPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
-                    {p.label} · <strong>{n}</strong>
-                  </button>
-                )
-              })
-            : null}
+          {/* The pile chips: in the header on a computer; on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). */}
+          {kind === 'retainage' && !isMobile ? retPileChips : null}
+          {kind === 'affidavit' && !isMobile ? affPileChips : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
-          {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
+          {gcNoticeShown && onPutGcOnNotice ? (
             <div style={{ position: 'relative' }}>
-              <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), ...headDoor, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
+              {isMobile ? null : <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), ...headDoor, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
                 ⚠ Put a GC on notice…
-              </button>
+              </button>}
               {gcPickerOpen ? (
                 <>
-                  <div onClick={() => setGcPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
-                  <div role="menu" aria-label="GCs with unpaid work" data-lien-gc-picker style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 6, width: 'min(420px, calc(100vw - 4rem))', maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)' }}>
+                  <div onClick={() => setGcPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 5, ...(isMobile ? { background: 'rgba(15, 23, 42, 0.35)' } : null) }} />
+                  <div role="menu" aria-label="GCs with unpaid work" data-lien-gc-picker style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 6, width: 'min(420px, calc(100vw - 4rem))', ...(isMobile ? { position: 'fixed', left: '0.75rem', right: '0.75rem', top: '16vh', width: 'auto' } : null), maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)' }}>
                     <div style={{ padding: '0.45rem 0.75rem 0.35rem' }}>
                       <div style={boxHead}>Put a GC on notice</div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>Notices due in the next {LIEN_DESK_LEAD_DAYS} days, most money first. The run covers every unpaid job with the GC, not only these.</div>
@@ -3845,7 +3877,6 @@ export default function LienDesk({
           ) : null}
           {isMobile ? null : ownerRecordsDoor}
           {isMobile ? null : headerTools}
-          {isMobile ? ownerRecordsDoor : null}
           </span>
           {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
         </div>
