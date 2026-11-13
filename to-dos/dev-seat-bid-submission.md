@@ -2,7 +2,7 @@
 name: "The dev seat files a bid's sent paper from Drive and links it: plan_bid_submission and read_drive_folder"
 number: 339
 group: ready
-status: not started · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13 · the link alone is live already: `plan_bid_update` sets `bids.bid_submission_link` (v2.6945)
+status: built v2.7154 (2026-11-13), server 0.82.0: `read_drive_folder` and `plan_bid_submission` / `apply_bid_submission`, kernel `_shared/devMcpBidSubmission.ts`, tested over a stood-in database and Drive · NOT deployed and never run against Drive: `dev-mcp` goes out from main with the owner's yes · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13
 summary: >
   Old proposal files are being copied into company Drive, a folder a bid, and each bid should
   link the paper that was sent. The dev seat can set the link, but it cannot read a Drive folder,
@@ -10,7 +10,7 @@ summary: >
   Drive through a browser and left the links in bid notes. Two verbs close it: a read of a Drive
   folder and a file's facts, and a plan → apply pair that files a sent paper into the bid's own
   folder and links it, as the Files window would if it had the press.
-next: Build it in one PR from fresh main, kernel first, then dry-run on b398 "ZZ Test" and walk one apply on a ZZ bid with the owner's word. Read card #317's kit section first: every seat PR moves the same version and count pins.
+next: Three steps, each with the owner's own yes. Deploy `dev-mcp` from main. Dry-run `plan_bid_submission` on b398 "ZZ Test", which writes nothing. Walk one `apply_bid_submission` on a ZZ bid with a made-up file. Then ask the owner the one design call below, and retire this card and #317.
 size: M (one read verb, one write pair, no migration)
 blocker: none
 opinion: build — the old-proposals work waits on it, and every door it needs already exists on the server
@@ -93,6 +93,17 @@ Until it is built: `plan_bid_update` links a file that is already where it belon
 - Other dev seat PRs land often and each bumps the server version: take the next free one at the
   merge-up and never push a version another open PR holds.
 - No migration: the rows are `bids` under RLS as the dev; the Drive side is the service account's.
+
+## As built (v2.7154)
+
+- The ask is `submission = { bid, drive_file_id | drive_url, replace? }`; `bid` is an id or text that finds one bid.
+- "The company's Shared Drive" is the one that holds the jobs root (Documents → Where files go). A file in it is copied by Drive; any other is read on the server and put through `drive-link`, 10 MB at most.
+- A paper whose bytes are already in Sent by us (the same name, size and md5, or the file itself) is not copied again: only the link and the note are written.
+- Several papers on one bid: each is filed in Sent by us and the newest filed keeps the link. The owner's call on the folder as the link is still open.
+- A Google Doc, Sheet or Slides is refused: it can still be edited, so it is not the paper that was sent. Download it as a PDF.
+- The plan reads Drive on a `drive.readonly` token; the full token is minted in the copy alone, after the hash matched.
+- `read_drive_folder` runs with a dev's own key alone and is refused under `view_as`: the service account sees more than any one person.
+- The fragment is `docs/recent-features/v2.7154.md`; the README row says what the pair does not do.
 
 ## How to verify
 
