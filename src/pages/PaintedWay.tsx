@@ -215,9 +215,9 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
         ) : null}
       </div>
       {photo ? (
-        <div role="dialog" aria-modal="true" aria-label={`The photo of ${photo.name}`} data-way-photo style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 12 }} onClick={() => setPhoto(null)}>
+        <div role="dialog" aria-modal="true" aria-label={`The photo of ${photo.name}`} data-way-photo style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(12px + var(--app-top-chrome, 0px)) 12px 12px' }} onClick={() => setPhoto(null)}>
           <img src={photo.url} alt={photo.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
-          <button type="button" onClick={() => setPhoto(null)} style={{ position: 'absolute', right: 12, top: 12, minHeight: 40, padding: '0 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.5)', background: 'rgba(17,24,39,0.7)', color: CARD, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>
+          <button type="button" onClick={() => setPhoto(null)} style={{ position: 'absolute', right: 12, top: 'calc(12px + var(--app-top-chrome, 0px))', minHeight: 40, padding: '0 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.5)', background: 'rgba(17,24,39,0.7)', color: CARD, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>
             Close
           </button>
         </div>
