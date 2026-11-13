@@ -29,9 +29,13 @@ vi.mock('../../lib/jobs/ownerConfirmJobFormClient', () => ({
   fetchJobsAtProperty: (_a: string, self: unknown) => Promise.resolve([self]),
   fetchCustomerAddressRow: () => Promise.resolve(null),
 }))
+// The Contract and Sub work order rows: their strips read their own rows (covered in each strip's own smoke); here only the rows' labels matter.
+vi.mock('./JobContractStrip', () => ({ default: () => <span data-testid="contract-strip-stub" /> }))
+vi.mock('./JobWorkOrderStrip', () => ({ default: () => <span data-testid="work-order-strip-stub" /> }))
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { JobFormEditFactRows } from './JobFormEditFactRows'
+import type { JobWithDetails } from '../../types/jobWithDetails'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { Database } from '../../types/database'
@@ -86,7 +90,9 @@ function Harness({
   customerName = 'Todd Crayle',
   customerEmail = 'Todd@crayleproperties.example',
   customerPhone = '(210) 415-5375',
+  paperJob = null,
 }: {
+  paperJob?: JobWithDetails | null
   customerName?: string
   customerEmail?: string
   customerPhone?: string
@@ -176,11 +182,33 @@ function Harness({
       developments={[]}
       onCreateDevelopment={vi.fn(async () => null)}
       projectLinksGate={false}
+      contractJob={paperJob}
+      workOrderJob={paperJob}
     />
   )
 }
 
 describe('JobFormEditFactRows', () => {
+  it('the Contract and Sub work order rows keep their labels on one line and carry no pencil (the owner’s pick, 2026-11-13)', async () => {
+    renderWithProviders(<Harness paperJob={{ id: 'job-1', hcp_number: '1431', customer_id: 'cust-1' } as unknown as JobWithDetails} />)
+    await settle()
+    // Contract fits its column; Sub work order is a few pixels wider and is held to one line.
+    expect(screen.getByTestId('contract-strip-stub')).toBeTruthy()
+    expect(screen.getByText('Contract')).toBeTruthy()
+    expect(screen.queryByText('Customer Contract')).toBeNull()
+    expect(screen.getByText('Sub work order').style.whiteSpace).toBe('nowrap')
+    expect(screen.getByText('Phone').style.whiteSpace).toBe('')
+    expect(screen.queryByRole('button', { name: 'Edit Contract' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit Sub work order' })).toBeNull()
+  })
+
+  it('an unsaved job draws neither row', async () => {
+    renderWithProviders(<Harness />)
+    await settle()
+    expect(screen.queryByTestId('contract-strip-stub')).toBeNull()
+    expect(screen.queryByTestId('work-order-strip-stub')).toBeNull()
+  })
+
   it('renders every row with its resting value', () => {
     renderWithProviders(<Harness />)
     for (const label of ['Account man', 'Team', 'Customer', 'Phone', 'Email', 'GC/Builder', 'Date met', 'Folders', 'Project', 'Plans', 'Bid', 'Development']) {

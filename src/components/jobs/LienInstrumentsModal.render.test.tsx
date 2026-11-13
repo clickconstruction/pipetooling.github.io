@@ -132,7 +132,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
       expect(document.querySelector('[data-lien-window-timeline]')).toBeNull()
       expect(document.querySelector('[data-lien-window-fold-strip]')!.textContent).toMatch(/^Next /)
       const bar = document.querySelector('[data-lien-window-papers]')!
-      expect([...bar.querySelectorAll('[role="tab"]')].map((t) => t.textContent)).toEqual(['Demand letter', '§ 53.056 notice', "Mechanic's lien"])
+      expect([...bar.querySelectorAll('[role="tab"]')].map((t) => t.textContent)).toEqual(['Demand letter', '§ 53.056 notice', 'Lien affidavit'])
       expect(bar.querySelector('[aria-selected="true"]')?.textContent).toBe('Demand letter')
       fireEvent.click(screen.getByRole('tab', { name: '§ 53.056 notice' }))
       expect(bar.querySelector('[aria-selected="true"]')?.textContent).toBe('§ 53.056 notice')

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import {
+  EDIT_TASK_REPEATS_NOTE,
+  editTaskWhenNote,
   dropSoloSelfWhenAddingOthers,
   faceMark,
   newTaskSentence,
@@ -280,6 +282,16 @@ describe('roadmapTaskSentence', () => {
     expect(roadmapTaskSentence({ ...base, stageTitle: '' }).text).toBe('It joins this stage. Nobody has it yet.')
   })
 
+  it('closes the stage name as a sentence once, whatever mark the name ends in (punch list #348)', () => {
+    // A stage named with its own full stop read "…North fence.. Nobody has it yet."
+    expect(roadmapTaskSentence({ ...base, stageTitle: 'North fence.' }).text).toBe('It joins the stage North fence. Nobody has it yet.')
+    expect(roadmapTaskSentence({ ...base, stageTitle: 'North fence. ' }).text).toBe('It joins the stage North fence. Nobody has it yet.')
+    expect(roadmapTaskSentence({ ...base, stageTitle: 'North fence...' }).text).toBe('It joins the stage North fence. Nobody has it yet.')
+    expect(roadmapTaskSentence({ ...base, stageTitle: 'Are the tools easy to reach?' }).text).toBe('It joins the stage Are the tools easy to reach? Nobody has it yet.')
+    expect(roadmapTaskSentence({ ...base, stageTitle: 'Fence it!' }).text).toBe('It joins the stage Fence it! Nobody has it yet.')
+    expect(roadmapTaskSentence({ ...base, stageTitle: '.' }).text).toBe('It joins this stage. Nobody has it yet.')
+  })
+
   it('says who gets it when the stage unlocks, in place of a day', () => {
     expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo'] }).text).toBe('It joins the stage North fence. Theo gets it when the stage unlocks.')
     expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo', 'Imani'] }).text).toMatch(/Theo and Imani each get it when the stage unlocks\.$/)
@@ -296,5 +308,24 @@ describe('roadmapTaskSentence', () => {
     for (const shape of [base, { ...base, assigneeNames: ['Theo', 'Imani', 'Wes'], lineCount: 12, asksForPhoto: true }, { ...base, title: '' }]) {
       expect(plainWordsFailures(roadmapTaskSentence(shape).text)).toEqual([])
     }
+  })
+})
+
+describe('editTaskWhenNote', () => {
+  it('is quiet on a one-time task, which has no days to come (punch list #348)', () => {
+    expect(editTaskWhenNote({ savedRepeats: false, repeatsNow: false })).toBeNull()
+  })
+
+  it('shows on a task that repeats, and on one being made to repeat', () => {
+    expect(editTaskWhenNote({ savedRepeats: true, repeatsNow: true })).toBe(EDIT_TASK_REPEATS_NOTE)
+    expect(editTaskWhenNote({ savedRepeats: false, repeatsNow: true })).toBe(EDIT_TASK_REPEATS_NOTE)
+  })
+
+  it('stays while a repeating task is being made one-time, since that save drops the days ahead', () => {
+    expect(editTaskWhenNote({ savedRepeats: true, repeatsNow: false })).toBe(EDIT_TASK_REPEATS_NOTE)
+  })
+
+  it('keeps to plain words', () => {
+    expect(plainWordsFailures(EDIT_TASK_REPEATS_NOTE)).toEqual([])
   })
 })

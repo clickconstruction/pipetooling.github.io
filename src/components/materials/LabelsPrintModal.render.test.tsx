@@ -61,6 +61,26 @@ describe('LabelsPrintModal', () => {
     expect(screen.getAllByTestId('labels-tape')).toHaveLength(2)
   })
 
+  it('a label prints the letters and number alone, the chip keeps the whole name, and a line says so (v2.7195)', () => {
+    const C7 = '11112222-0000-4000-8000-000000000007'
+    const D9 = '33334444-0000-4000-8000-000000000009'
+    const named = [container(A1, 'A1', 'cage'), container(C7, 'C7 3/4 PEX', 'cage'), container(D9, 'CONCRETE MIX', 'loose')]
+    renderWithProviders(<LabelsPrintModal jobLabel="Oak Hollow Apartments Building C" containers={named} lines={[]} places={places} only={null} onClose={() => {}} print={() => {}} />)
+    expect(screen.getAllByTestId('labels-pick').map((b) => b.textContent)).toEqual(['A1', 'C7 3/4 PEX', 'CONCRETE MIX'])
+    const sheets = screen.getAllByTestId('labels-sheet')
+    expect(sheets[1]!.textContent).toContain('C7')
+    expect(sheets[1]!.textContent).not.toContain('PEX')
+    expect(sheets[2]!.textContent).toContain('CONCRETE MIX')
+    expect(screen.getByTestId('labels-short-note').textContent).toBe('C7 3/4 PEX prints as C7. A label carries the letter and number alone.')
+    fireEvent.click(screen.getByTestId('labels-output-tape'))
+    const strips = screen.getAllByTestId('labels-tape')
+    expect(strips[1]!.textContent).toContain('C7')
+    expect(strips[1]!.textContent).not.toContain('PEX')
+    // Left out of the run, the line goes with it.
+    fireEvent.click(screen.getAllByTestId('labels-pick')[1]!)
+    expect(screen.queryByTestId('labels-short-note')).toBeNull()
+  })
+
   it('a chip leaves a box out and the press counts what is left; none left makes it dead', () => {
     const { print } = setup()
     const picks = screen.getAllByTestId('labels-pick')

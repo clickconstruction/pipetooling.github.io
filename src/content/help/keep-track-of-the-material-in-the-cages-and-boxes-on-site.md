@@ -98,6 +98,8 @@ Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with 
 
 The Labels window asks first what the labels print on. Pick **Brother tape** for the P-touch, or **Paper sheet** for any printer. Each box becomes one strip of tape with the QR, the stencil and the code.
 
+A label prints the letter and number alone. A box named G12 COPPER 90 prints as G12, so the label stays true when the box holds something else. A name with no letter and number prints whole. A line under the boxes says which labels print shorter.
+
 The app prints straight to the P-touch from Chrome or Edge on a computer. There is nothing to install. The first time, the window lists three steps. Plug the P-touch in with its USB cable and switch it on. Quit Brother's P-touch Editor if it is open. Press **Connect the P-touch** and pick the printer in the browser's list. The browser remembers it.
 
 Once it is connected, the window names the printer and the tape inside it. Press **Print 1 test strip** before a whole run. It prints the first ticked box alone. Check that the strip is cut right and the code scans. Then press **Print 3 tape labels**. The strips print one at a time and the printer cuts each one. A run wastes one blank square of tape at its start, however many strips it holds. Print strips together to save tape.
@@ -125,6 +127,20 @@ To record a part used, moved or counted, press **Sign in to record a use or a co
 A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
+
+## Change a box's name or kind
+
+A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. The office page has the same **Edit** press on each box.
+
+- **Its name** takes a new name. A name another box on the job carries is refused.
+- **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
+- **Where exactly** says where it stands, such as on a pallet by the north door.
+
+The press says what it will do, such as **Rename to G70** or **Save G70**.
+
+A label printed with the old name still opens the box, because its code never changes. Only the large words are old. Print the label again to show the new name.
+
+Rename a box only when the same things are inside. For different things, retire the box and add a new one. Last week's count then still means what it meant.
 
 ## Retire a box
 

@@ -403,6 +403,58 @@ describe('SiteMaterialsView', () => {
     await waitFor(() => expect(worth.textContent).toContain('$100.00 known'))
   })
 
+  it('the Worth tile holds three lists, and an old price is checked against a newer bill', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    // A price typed for 2" 90 last winter: known, and older than 90 days.
+    store.sitePrices = [{ id: 'old1', rowKey: 'words:2" 90', rowName: '2" 90', kind: 'price', unitPrice: 2, source: 'typed', sourceLineId: null, sourceWords: '', pricedOn: '2026-02-04', byName: 'Dana', at: '2026-02-04T15:00:00Z' }]
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    await waitFor(() => expect(worth.textContent).toContain('2 of 4 lines have a price · 1 on a price older than 90 days'))
+    fireEvent.click(worth)
+    const lens = screen.getByTestId('site-price-lens')
+    expect(within(lens).getByRole('button', { name: 'No price · 1' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(lens).getByRole('button', { name: 'An old price · 1' }))
+    expect(screen.getByTestId('site-shown-total').textContent).toContain('the rows on a price older than 90 days')
+    expect([...document.querySelectorAll('[data-site-part-row]')]).toHaveLength(1)
+    fireEvent.click(await screen.findByRole('button', { name: 'Check 1 old price one at a time' }))
+
+    const win = await screen.findByTestId('site-pricing-window')
+    expect(screen.getByRole('dialog').textContent).toContain('Check the old prices · Juniper Ridge')
+    expect(screen.getByTestId('pricing-now').textContent).toBe('Now: $2.00 for one · typed by Dana · Feb 4, 282 days ago')
+    // Only the bill newer than that price is offered. The parts book is not, and neither is Other part.
+    expect(within(win).queryByRole('button', { name: /Use 2 PVC 90 DWV/ })).toBeNull()
+    expect(within(win).queryByRole('button', { name: 'Other part…' })).toBeNull()
+    fireEvent.click(await within(win).findByRole('button', { name: 'Use the bill’s price for 2 PVC DWV 90 ELL at $2.18 each for 2" 90' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-walk-end').textContent).toContain('Nothing waiting on a newer price on this site.'))
+    expect(worth.textContent).not.toContain('older than 90 days')
+    fireEvent.click(within(screen.getByTestId('pricing-walk-end')).getByRole('button', { name: 'Done' }))
+
+    // The list is empty, says so, and leads back to every row. Left out has nothing and says so.
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(0)
+    expect(screen.getByText('Nothing waiting on a newer price on this site.')).toBeTruthy()
+    fireEvent.click(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: 'Left out · 0' }))
+    expect(screen.getByText('Nothing was left out on this site.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3)
+  })
+
+  it('with no row left to price the list says so and offers the old prices', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    store.sitePrices = [
+      { id: 'a', rowKey: 'words:2" 90', rowName: '2" 90', kind: 'price', unitPrice: 2, source: 'typed', sourceLineId: null, sourceWords: '', pricedOn: '2026-02-04', byName: 'Dana', at: '2026-02-04T15:00:00Z' },
+      { id: 'b', rowKey: 'words:2" 90 pvc', rowName: '2" 90 pvc', kind: 'price', unitPrice: 2.18, source: 'bill', sourceLineId: 'l1', sourceWords: 'Cedar Fork Supply', pricedOn: '2026-10-09', byName: 'Dana', at: '2026-11-13T15:00:00Z' },
+    ]
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    await waitFor(() => expect(worth.textContent).toContain('4 of 4 lines have a price · 1 on a price older than 90 days'))
+    fireEvent.click(worth)
+    expect(screen.getByText('Nothing waiting on a price on this site.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /one at a time/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the 1 on an old price' }))
+    expect(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: 'An old price · 1' }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(1)
+  })
+
   it('a source that did not answer is named, and a typed key in a box is not an answer', async () => {
     setup({ canTie: true, byName: 'Dana', searchBook: vi.fn(async () => []) })
     offersIo.load.mockResolvedValue({ sources: { parts: [], prices: [], lines: [] }, bookError: null, billsError: 'You do not have access to the bills.' })
