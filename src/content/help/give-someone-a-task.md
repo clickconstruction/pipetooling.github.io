@@ -2,7 +2,7 @@
 title: give someone a task
 category: Office
 roles: dev, master_technician, assistant, controller, primary, estimator, subcontractor, helpers
-keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines
+keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines, place, where, map, spot, use where I am
 order: 40
 ---
 The ＋ Task button in the top bar opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it and send it.
@@ -18,6 +18,26 @@ The **＋ Task button** is the checkmark icon. Tap {{button:blue|Send}}. The tas
 
 :::example The Monday flurry
 "Clean the shop bays" → tap **Farm crew** → Send. Four people get the task in two taps, and tomorrow the crew chip is still there for the next one.
+:::
+
+## Say where it is
+
+Under the people sits a row called **Place**. Use it when the work is at a spot, like a pump house or a gate. Leave the row alone for a task with no place.
+
+- **A place used before**: every place a task already has shows as a chip. Tap a chip and the task has that place. Tap the chip again to take the place off.
+- **＋ New place**: opens **Where is it?**, a view from above with a ring in the middle.
+
+In **Where is it?** you set the place one of two ways.
+
+1. Stand on the spot and tap {{button:outline|Use where I am}}. The map moves to you and says how sure your phone is.
+2. Drag the map until the ring is on the spot. Do this at a desk, or when your phone is not sure.
+
+Type a name, like *Pump house*. Then tap {{button:blue|Use this place}}. The name becomes a chip for the next task.
+
+The app asks your phone where it is only when you tap **Use where I am**. That one reading becomes the task's place. The app does not follow you after that.
+
+:::example A place in two taps
+"Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The person sees the place on the task, with directions. [Find where a task is](/help/check-off-my-daily-tasks#find-where-a-task-is) shows their side.
 :::
 
 ## When it happens

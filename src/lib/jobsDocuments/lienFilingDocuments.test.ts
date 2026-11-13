@@ -4,6 +4,7 @@ import {
   buildLienNoticeBlocks,
   buildReleaseOfRecordBlocks,
   filingDocFooter,
+  filingBulletBody,
   filingDocHtml,
   appendToFilingPrintHtml,
   filingDocPrintHtml,
@@ -569,5 +570,29 @@ describe('the printed page (v2.6810)', () => {
     expect(appendToFilingPrintHtml(html, '')).toBe(html)
     // A page that is not this builder's takes it before the body closes, as before.
     expect(appendToFilingPrintHtml('<html><body><p>x</p></body></html>', '<i>y</i>')).toBe('<html><body><p>x</p><i>y</i></body></html>')
+  })
+})
+
+describe('a bullet in a letter (v2.7071)', () => {
+  it('knows a bullet paragraph by its mark, and nothing else', () => {
+    expect(filingBulletBody('• Have the builder pay us.')).toBe('Have the builder pay us.')
+    expect(filingBulletBody('1. You may withhold.')).toBeNull()
+    expect(filingBulletBody('Pay us • today.')).toBeNull()
+    expect(filingBulletBody('•')).toBeNull()
+  })
+
+  it('draws it indented with the mark hanging in front, and leaves every other paragraph as it was', () => {
+    const html = filingDocHtml([
+      { kind: 'paragraph', text: 'Any one of these works.' },
+      { kind: 'paragraph', text: '• Have the builder pay us <now>.' },
+    ])
+    expect(html).toContain('<p style="margin:0 0 0.75em">Any one of these works.</p>')
+    // The words sit 2.6em in on every line; the first line is pulled back by the mark's own box, so the mark hangs.
+    expect(html).toContain('<p data-filing-bullet style="margin:0 0 0.75em;padding-left:2.6em;text-indent:-1.1em"><span style="display:inline-block;width:1.1em;text-indent:0">• </span>Have the builder pay us &lt;now&gt;.</p>')
+    expect(html.match(/data-filing-bullet/g)).toHaveLength(1)
+  })
+
+  it('the letter as plain text keeps the line as it was written', () => {
+    expect(filingDocText([{ kind: 'paragraph', text: '• Have the builder pay us.' }])).toBe('• Have the builder pay us.')
   })
 })

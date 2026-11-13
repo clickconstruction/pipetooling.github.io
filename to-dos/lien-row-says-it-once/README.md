@@ -2,7 +2,7 @@
 name: "Pipeline: a billed row's lien line says it once, and names the next act"
 number: 325
 group: ready
-status: asked 2026-11-12 · Grace took all four picks, asked for a second pass (five changes), then said build the entire train · PR 1 is v2.7042, PR 2 is v2.7043 and PR 3 is v2.7046 · PRs 4 and 5 stacked behind them
+status: asked 2026-11-12 · Grace took all four picks, asked for a second pass (five changes), then said build the entire train · PRs 1 to 4 are v2.7042, v2.7043, v2.7046 and v2.7047 · PR 5 stacked behind them
 summary: >
   A row in Billed Awaiting Payment or Collections prints two lien lines in its Progress & payment
   column, and they often say one thing twice: File the lien by Nov 16, 4d, then File the affidavit,
@@ -11,7 +11,7 @@ summary: >
   whose words are the next act on the lien path and whose day is the legal last day that act
   protects, a second line only for paper that is already out, a line under the rule that speaks of
   money alone, and a press that opens the Lien window on the right paper.
-next: PRs 4 and 5, each armed when the one under it has merged.
+next: PR 5, then each PR armed when the one under it has merged.
 size: M as a train of five (S · M · S · M · S); PR 1 alone removes the repeat
 blocker: None. The train is being built.
 opinion: build — PR 1 is small and safe, and PR 2 fixes the cause, a bold line that asks for an act the job is not ready for
@@ -249,3 +249,7 @@ Answered 2026-11-12: "I like all of your suggestions." All four picks stand.
   no row says so. The Lien desk does.
 - The phone's two-line rows carry a chip from the runway (*lien in 4 d*, *file first*). PR 5 can give
   it the same act words.
+- PR 4 taught the row the late notice by reading past the runway's `closed` state. The runway itself still
+  answers `closed` the day a notice window shuts, so the Lien desk's Deadlines view, the phone chip and the
+  Dashboard's lien card still say *lien gone* while a late notice can go. Moving the rule into the runway
+  touches the calendar's marks and buckets, and is its own card.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, runRecordSplit, runRecordWords, stepRunPreview, trackingShape } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_COVER_LETTER_CLASS, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, runRecordSplit, runRecordWords, stepRunPreview, trackingShape } from './lienDeskRun'
 import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
@@ -410,6 +410,9 @@ describe('the pages one copy prints (v2.4621 — the run preview reads them, the
     const [owner, gc] = n0.recipients
     // The run from this data carries counsel's letter as the cover page; without one the note is the cover page.
     expect(runCopyPages(n0, owner!)[0]!.label).toBe('Cover letter')
+    // Counsel's letter prints on the tight sheet, so it is one sheet in the envelope (v2.7071). A short note keeps the paper's own leading.
+    expect(runCopyPages(n0, owner!)[0]!.html.startsWith(`<div class="${RUN_COVER_LETTER_CLASS}">`)).toBe(true)
+    expect(runCopyHtml(n0, owner!)).toContain(`.${RUN_COVER_LETTER_CLASS} { line-height: 1.45; }`)
     expect(runCopyPages(n0, owner!, { j650: ['<p>invoice one</p>'] })[0]!.html).toContain('with invoices')
     const n = { ...n0, coverLetter: null, coverNote: 'A routine notice.' }
     const invoices = { j650: ['<p>invoice one</p>', '<p>invoice two</p>'] }
@@ -419,6 +422,7 @@ describe('the pages one copy prints (v2.4621 — the run preview reads them, the
     const full = runCopyPages(n, owner!, invoices, pay)
     expect(full.map((p) => p.label)).toEqual(['Cover note', '§ 53.056 notice · copy for owner of record', 'Pay codes', 'Unpaid invoice 1 of 2', 'Unpaid invoice 2 of 2'])
     expect(full[0]!.html).toContain('A routine notice.')
+    expect(full[0]!.html).not.toContain(RUN_COVER_LETTER_CLASS)
     expect(full[2]!.html).toBe('<p>pay codes</p>')
     // The GC's copy carries the invoices but no pay page by default.
     expect(runCopyPages(n, gc!, invoices, pay).map((p) => p.label)).toEqual(['§ 53.056 notice · copy for original contractor', 'Unpaid invoice 1 of 2', 'Unpaid invoice 2 of 2'])

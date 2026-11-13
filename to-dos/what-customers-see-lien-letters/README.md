@@ -99,4 +99,4 @@ One PR. The group is of no use without its letters, and the letters have no plac
 
 ## Where it stands
 
-Built with its mock-up. Left: the owner's look.
+Built with its mock-up and live. The first export from the live site showed the sample notice form naming a month and a date of its own; v2.7070 puts it on the sample job's month and mailing day. Left: the owner's look.
