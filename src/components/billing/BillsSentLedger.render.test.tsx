@@ -105,6 +105,47 @@ describe('BillsSentLedger', () => {
     expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(2)
   })
 
+  it('draws the sends that kept no copy, and the bills with no send on record above the days', async () => {
+    const OTHER = 'bbbbbbbb-2222-4222-8222-222222222222'
+    const PAID = 'cccccccc-3333-4333-8333-333333333333'
+    io.data = {
+      ...data([copy({})]),
+      bills: new Map([
+        [BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }],
+        [OTHER, { id: OTHER, jobId: JOB, amount: 640, status: 'billed' }],
+      ]),
+      stamps: [{ billId: OTHER, atIso: '2026-11-02T18:00:00.000Z', channel: 'housecallpro' }],
+      texts: [{ id: 't1', atIso: '2026-11-04T20:14:00.000Z', billId: BILL, jobId: JOB, number: '(512) 555-0142', toName: 'Hal Jensen', by: 'Priya', delivery: 'delivered' }],
+      unsent: [
+        { billId: 'dddddddd-4444-4444-8444-444444444444', jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' },
+        { billId: PAID, jobId: JOB, amount: 300, status: 'paid', billedAtIso: '2026-11-10T16:00:00.000Z' },
+      ],
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const lines = await screen.findAllByTestId('bills-sent-line')
+    expect(lines.map((l) => l.textContent?.slice(0, 8))).toEqual([expect.stringMatching(/^\d{1,2}:\d\d [AP]/), expect.stringMatching(/^\d{1,2}:\d\d [AP]/), 'Day only'])
+    expect(lines[0]?.textContent).toContain('To Hal Jensen · (512) 555-0142')
+    expect(lines[0]?.textContent).toContain('Text with pay linkby Priya2nd send. First sent Tue, Nov 3.Delivered')
+    expect(lines[2]?.textContent).toContain('Sent from Housecall Pro. The app has the day only.')
+    expect(lines[2]?.querySelector('button')).toBeNull()
+    // The strip: the open bill, the paid one behind a press, and the tile.
+    expect(screen.getByTestId('bills-sent-tile-gaps').textContent).toBe('No send on record1')
+    const strip = screen.getByTestId('bills-sent-gaps')
+    expect(strip.textContent).toContain('1 bill is billed with no send on record')
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
+    expect(strip.textContent).toContain('$2,140.00Billed Mon, Nov 9 at 3:26 PM. Not paid. The app has no email, text or print for this bill.')
+    expect(strip.textContent).toContain('1 more bill was paid with no send on record.')
+    fireEvent.click(screen.getByRole('button', { name: 'Show them' }))
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(2)
+    // Its own chip shows the strip alone; a route chip hides it.
+    fireEvent.click(screen.getByRole('button', { name: 'No send on record' }))
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    expect(screen.getByTestId('bills-sent-gaps')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Housecall Pro' }))
+    expect(screen.queryByTestId('bills-sent-gaps')).toBeNull()
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
+  })
+
   it('says what fills an empty list, and offers the Pipeline', async () => {
     renderWithProviders(<BillsSentLedger />)
     const empty = await screen.findByTestId('bills-sent-empty')

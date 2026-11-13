@@ -6,7 +6,7 @@
 -- day, a cutoff and a month count out of range, an off switch with no job, an unknown payer and an unknown job are
 -- refused in words; below the function the shape and the one-row-a-payer rules hold under a direct write. Everything
 -- rolls back. Raises on the first failed assertion; ends with "pay_calendar PASSED". See scripts/pgtest-pay-calendar.sh.
--- Never against prod. Every name is made up.
+-- Section 8 adds the day a payer accepted a bill (PR 4). Never against prod. Every name is made up.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -142,6 +142,41 @@ SELECT pcal.refused('a second row for one payer and job', $q$INSERT INTO public.
 -- A payer that is deleted takes its calendars with it.
 DELETE FROM public.customers WHERE id = '00000000-0000-0000-0000-0000000cac02';
 SELECT pcal.same('a deleted payer''s calendar goes with it', (SELECT count(*)::text FROM public.payer_pay_calendars WHERE payer_customer_id = '00000000-0000-0000-0000-0000000cac02'), '0');
+
+-- 8 · The day a payer accepted a bill (PR 4, migration *_invoice_payer_acceptances): the office sets it on one bill,
+-- a second set replaces it, the billed-money roles read it and a subcontractor reads nothing, a primary and a
+-- subcontractor cannot set it, an unknown bill is refused in words, and clearing leaves no row.
+INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount) VALUES
+  ('00000000-0000-0000-0000-0000000cad01', '00000000-0000-0000-0000-0000000caf01', 1, 'billed', 22750);
+CREATE FUNCTION pcal.accepted() RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce((SELECT accepted_on::text FROM public.invoice_payer_acceptances WHERE invoice_id = '00000000-0000-0000-0000-0000000cad01'), 'none')
+$$;
+CREATE FUNCTION pcal.accepted_by() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT coalesce((SELECT u.name FROM public.invoice_payer_acceptances a JOIN public.users u ON u.id = a.marked_by WHERE a.invoice_id = '00000000-0000-0000-0000-0000000cad01'), 'nobody')
+$$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pcal TO anon, authenticated, service_role;
+SET LOCAL ROLE authenticated;
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+SELECT pcal.same('no accepted day to begin with', pcal.accepted(), 'none');
+SELECT pcal.same('Rosa sets the accepted day', (public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad01', DATE '2026-12-02'))->>'acceptedOn', '2026-12-02');
+SELECT pcal.same('the office reads it', pcal.accepted(), '2026-12-02');
+SELECT pcal.same('stamped with who marked it', pcal.accepted_by(), 'Paycal Rosa');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca102');
+SELECT pcal.same('Mo replaces it', (public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad01', DATE '2026-12-03'))->>'acceptedOn', '2026-12-03');
+SELECT pcal.same('one row, the new day', pcal.accepted(), '2026-12-03');
+SELECT pcal.same('stamped again', pcal.accepted_by(), 'Paycal Mo');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca103');
+SELECT pcal.same('Pat, a primary, reads it', pcal.accepted(), '2026-12-03');
+SELECT pcal.refused('Pat cannot set it', $q$SELECT public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad01', DATE '2026-12-04')$q$, 'Not allowed to set the day a bill was accepted');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca105');
+SELECT pcal.same('Hank, a subcontractor, reads nothing', pcal.accepted(), 'none');
+SELECT pcal.refused('Hank cannot set it', $q$SELECT public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad01', DATE '2026-12-04')$q$, 'Not allowed to set the day a bill was accepted');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+SELECT pcal.refused('a bill that is not one', $q$SELECT public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad99', DATE '2026-12-04')$q$, 'Bill not found');
+SELECT pcal.refused('nobody writes the table directly', $q$INSERT INTO public.invoice_payer_acceptances (invoice_id, accepted_on) VALUES ('00000000-0000-0000-0000-0000000cad01', DATE '2026-12-05')$q$, 'permission denied');
+SELECT pcal.same('clearing it', (public.set_invoice_payer_accepted_on('00000000-0000-0000-0000-0000000cad01', NULL))->>'cleared', 'true');
+SELECT pcal.same('leaves no row', pcal.accepted(), 'none');
+RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'pay_calendar PASSED'; END $$;
 ROLLBACK;

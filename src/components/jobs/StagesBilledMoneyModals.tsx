@@ -79,6 +79,8 @@ export type StagesBilledMoneyModalsProps = {
   billedPace: PaceContext | null
   /** The stored Pay calendars (punch list #323), for the Payment forecast's due days. */
   payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one (PR 4), for the forecast's due days. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
   gcTemperatureById: ReturnType<typeof latestTemperatureByGc>
   chaseTodayYmd: string
   forecastTodayYmd: string
@@ -133,6 +135,7 @@ export default function StagesBilledMoneyModals({
   loadChaseTouches,
   billedPace,
   payCalendars,
+  acceptedByInvoice,
   gcTemperatureById,
   chaseTodayYmd,
   forecastTodayYmd,
@@ -270,6 +273,7 @@ export default function StagesBilledMoneyModals({
           slipByCustomer={promiseSlipByCustomer}
           pace={billedPace}
           payCalendars={payCalendars}
+          acceptedByInvoice={acceptedByInvoice}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {
