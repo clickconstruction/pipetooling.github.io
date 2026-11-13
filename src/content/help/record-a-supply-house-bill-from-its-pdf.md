@@ -88,4 +88,14 @@ A bill stays at *No lines yet* when the app cannot open its link. It also stays 
 
 A line whose own arithmetic fails is marked with an exclamation point. Fix its quantity, its price or its extension.
 
+### What the check allows
+
+Some papers are right and still look off. The check knows these cases.
+
+- Pipe sold by the stick prints a price a foot, rounded. The line may miss its extension by a few cents.
+- A box or a case may be priced by the piece. The strip then says *Line 7 is priced by the piece, 50 to a pack.*
+- A shipping charge may be printed under the subtotal. The strip then says *A charge of $45.00 is printed outside the subtotal.*
+- A rebate among the parts takes money off. Type its extension with a minus sign, such as *-30.00*.
+- A line that was ordered and not shipped has no extension. It is left out of the arithmetic.
+
 If you have checked the paper and the gap is the paper's own, press {{button:outline|Count it as read anyway}}. Confirm with {{button:blue|Count it as read}}. The lines then count, and the gap stays beside them with your name.

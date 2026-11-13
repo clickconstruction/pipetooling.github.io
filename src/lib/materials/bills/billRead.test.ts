@@ -24,6 +24,7 @@ import {
   readBillAnswer,
   readBillRequest,
   safeFileName,
+  signedMoneyCents,
   typedCount,
   typedOver,
   type BillFields,
@@ -101,6 +102,27 @@ describe('the printed digits', () => {
     expect(dateYmd('10/22/2026')).toBe('2026-10-22')
     expect(dateYmd('1/2/26')).toBe('2026-01-02')
     expect(dateYmd('Oct 22')).toBe('')
+  })
+})
+
+describe('a line that takes money off keeps its sign', () => {
+  it('reads a minus, parentheses, a trailing minus and CR as negative, and a plain amount as it is', () => {
+    expect(signedMoneyCents('-40.00')).toBe(-4000)
+    expect(signedMoneyCents('(40.00)')).toBe(-4000)
+    expect(signedMoneyCents('40.00-')).toBe(-4000)
+    expect(signedMoneyCents('40.00 CR')).toBe(-4000)
+    expect(signedMoneyCents('$1,284.10')).toBe(128410)
+    expect(signedMoneyCents('0.00')).toBe(0)
+    expect(signedMoneyCents('-0.00')).toBe(0)
+    expect(signedMoneyCents('')).toBeNull()
+    expect(signedMoneyCents(-12.4)).toBe(-1240)
+  })
+  it('leaves the paper\'s own money unsigned: the kind carries the direction', () => {
+    expect(moneyCents('-138.99')).toBe(13899)
+  })
+  it('asks the model for the sign on the line and nowhere else', () => {
+    expect(BILL_SCHEMA.properties.lines.items.properties.extended.description).toMatch(/keeps a minus sign/)
+    expect(BILL_SCHEMA.properties.total.description).toMatch(/always positive/)
   })
 })
 
