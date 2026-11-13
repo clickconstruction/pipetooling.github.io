@@ -275,6 +275,19 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: null }))).toEqual([])
   })
 
+  it('card charges waiting on a receipt the text cannot get (punch list #299): one gray line with why, gated by the flag', () => {
+    const detail = '2 with no cell on file, 1 after a STOP. Each row names its next press.'
+    const one = buildNeedsYouItems(inputs({ receiptChasesEnabled: true, receiptChases: { count: 1, detail } }))
+    expect(one.map((i) => i.key)).toEqual(['receipts-to-chase'])
+    expect(one[0]).toMatchObject({ severity: 'gray', kicker: 'Card receipts', title: 'A card charge waits on a receipt the text cannot get', detail, figure: '1', actionLabel: 'See it' })
+    const many = buildNeedsYouItems(inputs({ receiptChasesEnabled: true, receiptChases: { count: 120, detail } }))
+    expect(many[0]).toMatchObject({ title: '120 card charges wait on a receipt the text cannot get', figure: '99+', actionLabel: 'See them' })
+    expect(NEEDS_YOU_RANK['receipts-to-chase']).toBe(40)
+    expect(buildNeedsYouItems(inputs({ receiptChasesEnabled: false, receiptChases: { count: 3, detail } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ receiptChasesEnabled: true, receiptChases: { count: 0, detail } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ receiptChasesEnabled: true, receiptChases: null }))).toEqual([])
+  })
+
   it('returns nothing when every source is quiet', () => {
     expect(buildNeedsYouItems(inputs())).toEqual([])
   })

@@ -11,7 +11,7 @@ import type { UserRole } from '../../hooks/useAuth'
  * trail of what was saved with Undo, and a done count. One shell, a kernel per kind. This
  * file is the shell's kernel: the kinds, the order, the words. Pure.
  */
-export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing' | 'purchase' | 'move-window' | 'work-order' | 'job-kind' | 'baseline'
+export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing' | 'purchase' | 'move-window' | 'work-order' | 'job-kind' | 'baseline' | 'receipt'
 
 /** The line each kind's rows sit behind: the deck orders kinds by that line's rank, and the line's button opens the deck on that kind. */
 export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
@@ -30,10 +30,12 @@ export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
   'job-kind': 'jobs-no-kind',
   // The working projects with no hours baseline (punch list #234, PR 1a).
   baseline: 'projects-no-baseline',
+  // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2).
+  receipt: 'receipts-to-chase',
 }
 
 /** The kinds the deck handles today; a kind is added here the PR its fields ship. */
-export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window', 'work-order', 'job-kind', 'baseline']
+export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window', 'work-order', 'job-kind', 'baseline', 'receipt']
 
 export function fillInKindOfItem(key: NeedsYouItem['key']): FillInKind | null {
   for (const kind of FILL_IN_KINDS_BUILT) if (FILL_IN_KIND_ITEM[kind] === key) return kind
@@ -50,6 +52,7 @@ export const FILL_IN_KIND_WORDS: Record<FillInKind, { kicker: string; one: strin
   'move-window': { kicker: 'Job accounts · the move window', one: 'charge', many: 'charges', saved: (n) => (n === 1 ? '1 charge is settled in the window.' : `${n} charges are settled in the window.`) },
   'work-order': { kicker: 'Work orders · drafted, no price yet', one: 'work order', many: 'work orders', saved: (n) => (n === 1 ? '1 work order has its price.' : `${n} work orders have their price.`) },
   'job-kind': { kicker: 'Jobs · working, no kind', one: 'job', many: 'jobs', saved: (n) => (n === 1 ? '1 job has its kind.' : `${n} jobs have their kind.`) },
+  receipt: { kicker: 'Card receipts · the text could not get it', one: 'charge', many: 'charges', saved: (n) => (n === 1 ? '1 charge is off the receipt list.' : `${n} charges are off the receipt list.`) },
   baseline: { kicker: 'Projects · working, no hours baseline', one: 'project', many: 'projects', saved: (n) => (n === 1 ? '1 project has its baseline.' : `${n} projects have their baseline.`) },
 }
 

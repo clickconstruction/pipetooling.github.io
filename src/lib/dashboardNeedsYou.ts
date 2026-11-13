@@ -151,6 +151,7 @@ export type NeedsYouItem = {
     | 'jobs-no-kind'
     | 'in-kind-credit-due'
     | 'projects-no-baseline'
+    | 'receipts-to-chase'
     | 'line-budgets-review'
     | 'materials-count-due'
     | 'materials-missing-week'
@@ -276,6 +277,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'in-kind-credit-due': 30,
   // A project with no hours baseline: the Costs tab, the Projects board and the superintendent's line read nothing (punch list #234, PR 1a).
   'projects-no-baseline': 60,
+  // Billing accuracy, a step under the charges themselves: a charge with no paper that no text can ask for (punch list #299).
+  'receipts-to-chase': 40,
   // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
   'line-budgets-review': 40,
   // Materials on site (punch list #209, v2.6728): the money that walked away this week sits with billing accuracy; a box due a count is hygiene.
@@ -471,6 +474,9 @@ export type NeedsYouInputs = {
   /** Working projects with no hours baseline (punch list #234, PR 1a). */
   baselineGapsEnabled?: boolean
   baselineGaps?: { count: number } | null
+  /** Card charges waiting on a receipt the text cannot get, with why (punch list #299, the step after PR 2). */
+  receiptChasesEnabled?: boolean
+  receiptChases?: { count: number; detail: string } | null
   /** The owner's weekly review of the assumed lines on this week's projects (punch list #234, PR 1c). */
   lineBudgetsReviewEnabled?: boolean
   lineBudgetsReview?: { lines: number; projects: number; assumedUsd: number; totalUsd: number } | null
@@ -1077,6 +1083,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: n === 1 ? 'A job working has no kind' : `${n} jobs working have no kind`,
       detail: 'No price before the work, no bid and no stages, so the app cannot read it. Say whether each is a service call or a project.',
       figure: String(n),
+      actionLabel: n === 1 ? 'See it' : 'See them',
+    })
+  }
+
+  if (inputs.receiptChasesEnabled && (inputs.receiptChases?.count ?? 0) > 0) {
+    const { count: n, detail } = inputs.receiptChases!
+    items.push({
+      key: 'receipts-to-chase',
+      severity: 'gray',
+      kicker: 'Card receipts',
+      title: n === 1 ? 'A card charge waits on a receipt the text cannot get' : `${n} card charges wait on a receipt the text cannot get`,
+      detail,
+      figure: n > 99 ? '99+' : String(n),
       actionLabel: n === 1 ? 'See it' : 'See them',
     })
   }

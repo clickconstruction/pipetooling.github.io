@@ -2,7 +2,7 @@
 name: "A text when a charge lands on your card, with a place to photograph the receipt"
 number: 299
 group: gated
-status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101, #7888) live on clicktooling.com and walked there on 2026-11-13 · the owner said finish building on 2026-11-13 · PR 2 (the text, v2.7142) built the same day and shipped switched off: the switch on Settings, the sweep receipt-request, the Team queue's line · its migration is not pushed, its function is not deployed and no text has gone · the four Needs you items and PR 3 follow
+status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101, #7888) live on clicktooling.com and walked there on 2026-11-13 · the owner said finish building on 2026-11-13 · PR 2 (the text, v2.7142) built the same day and shipped switched off: the switch on Settings, the sweep receipt-request, the Team queue's line · its migration is not pushed, its function is not deployed and no text has gone · the office's Needs you items (v2.7148) built the same day · PR 3 follows
 mockup: to-dos/ticket-text/mockup.html
 summary: >
   The second door on the supply house ticket (#295). When a card charge posts to a card assigned
@@ -11,7 +11,7 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: the owner's yes, in order, to PR 2's push (20261113140000_receipt_texts.sql), to the deploy of receipt-request, and to a first press of the switch on one card (Only me, to try it first) with Send texts on; her word on calls 1, 3, 4 and 5; the rule for /r/ on the short host's Worker, which a person adds in the Cloudflare dashboard.
+next: the owner's yes, in order, to PR 2's push (20261113140000_receipt_texts.sql), to the deploy of receipt-request, to the push of the Needs you step's migration (20261113150000_receipt_requests_office.sql) right after its merge, and to a first press of the switch on one card (Only me, to try it first) with Send texts on; her word on calls 1, 3, 4 and 5 and on Text again; the rule for /r/ on the short host's Worker, which a person adds in the Cloudflare dashboard.
 size: M as a train of three (M · M · S), after #295's PR 3 has shipped
 blocker: nothing blocks the build. A first text waits on the owner's yes to the push, the deploy and the switch's first press. Call 4, a push beside the text, waits on her word. The Worker rule waits on a person with the Cloudflare dashboard.
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
@@ -211,7 +211,8 @@ only as an addition (call 4 of the foot), never instead of the text she chose.
 - Charges that wait together and post inside one hour share one text and one link. One reminder, between six and nine in the evening at least twelve hours after the text.
 - A request is claimed before its text goes, so two sweeps never text one charge twice, and a refused text gives the claim back.
 - **Changed when picked up**: the moment the switch went on is stamped by the database (the trigger `receipt_texts_stamp`), not by the phone that pressed, so a wrong clock cannot reach back. A trial list that does not read is off, never everyone. The cron's guard counts only a trial's own people. An unregistered number or the day's cap stops the sweep instead of spending a charge's three tries.
-- The four Needs you items are a separate step after PR 2; until then each reason shows on the charge's line in the Team queue.
+
+**The office's Needs you items are built** (v2.7148, `docs/recent-features/v2.7148.md`), the step after PR 2: one line on the Needs you card, *N card charges wait on a receipt the text cannot get*, and a Fill them in kind on Quickfill whose rows are frame T7's sentences. Each row has its door (Add the cell, Tie the card, the Team queue), **Copy the receipt link** and **Got it** with Undo. Its migration `20261113150000_receipt_requests_office.sql` must be pushed right after its merge, since the client calls the two functions it creates. Not built: **Text again**, a second text by a person's press, which waits on the owner's word with call 1.
 
 **What a first text waits on, in order, each the owner's yes**: the push of PR 2's migration; `supabase functions deploy receipt-request`; Send texts on; the switch's first press on one card (**Only me, to try it first**, a card tied to the presser, a cell on file). The Worker rule for `/r/` is a person's step in the Cloudflare dashboard and only shortens the link.
 

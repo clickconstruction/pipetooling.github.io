@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, texted, no text, receipt text, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
+keywords: team purchases, follow-up, texted, no text, receipt text, got it, needs you, fill them in, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
 where: /tally?tab=transactions
 order: 60
 ---
@@ -108,6 +108,24 @@ A charge that could not be texted wears a yellow chip, {{chip:yellow|No text}}. 
 Fixing the reason does not text that charge again. The next charge on the card texts the holder.
 
 With receipt texts off, the app sends no text. You send the link.
+
+## The charges on Needs you
+
+Some charges need you because the text cannot finish them. The **Needs you** card counts them as *N card charges wait on a receipt the text cannot get*.
+
+On Quickfill, {{button:outline|Fill them in}} walks them one at a time. Each row says what happened.
+
+- The holder has no cell on file. The row's door reads *Add Jordan's cell*.
+- The card is tied to no one, or to a person who has left. The row's door reads *Tie the card*.
+- The holder replied STOP. Ask for the receipt another way.
+- The text did not go. Send the link yourself.
+- The holder was texted twice and sent no receipt.
+
+Press **Copy the receipt link** on a row to send the link yourself. The row stays.
+
+Press {{button:blue|Got it}} when you have done what you can. The row leaves the list. The link stays open, and a receipt that comes later still lands on the charge. **Undo** under the card brings the row back.
+
+A row also leaves the list when the receipt comes, or when its link closes after 14 days.
 
 A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
 
