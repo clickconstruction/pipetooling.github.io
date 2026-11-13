@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) live 2026-11-13: the four check rules and a fifth the measure found again, its migration pushed and the sweep's functions deployed; the sweep checked the 44 off bills again on prod and turned 23 green, so 475 of 496 bills read add up and 21 wait for a person, as the read-only measure said · PR 3 (v2.7110) live 2026-11-13: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · PR 4a (v2.7114) merged 2026-11-13: Materials → What we buy, on the house's code, checked to the dollar against a hand sum · PR 4b (v2.7116) built 2026-11-12: Price over time, a row's purchases as points with the book's price beside them · PR 4c (v2.7118) built 2026-11-13: What to stock, ranked by trips, with the two limits on the page · left: the matching list (2a), then the price offered from a bill (2b), then the estimator's read of the views (call 7)
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) live 2026-11-13: the four check rules and a fifth the measure found again, its migration pushed and the sweep's functions deployed; the sweep checked the 44 off bills again on prod and turned 23 green, so 475 of 496 bills read add up and 21 wait for a person, as the read-only measure said · PR 3 (v2.7110) live 2026-11-13: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · PR 4a (v2.7114) live 2026-11-13: Materials → What we buy, on the house's code, checked to the dollar against a hand sum · PR 4b (v2.7116) live 2026-11-13: Price over time, a row's purchases as points with the book's price beside them · PR 4c (v2.7118) live 2026-11-13: What to stock, ranked by trips, with the two limits on the page · PR 2a (v2.7121) live 2026-11-13: Codes with no part on the Parts Book, by dollars, with the book's offers and the four presses · left: the price offered from a bill (2b), the estimator's read of the views (call 7), then stage 5's joins
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: the matching list (2a), *Codes with no part* on the Parts Book, sorted by dollars. It is what joins one part bought at two houses, and so what makes Price over time and What to stock read true. The owner's two open calls are in *The calls the measure raises*.
+next: someone who keeps the Parts Book presses *Match 105 offered codes* and works the first forty rows of *Codes with no part*, about a third of the dollars. Then PR 2b, the price offered from a bill, which the card holds to an offer for its first month. The owner's two open calls are in *The calls the measure raises*.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
 opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after
-ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.7103 (PR 1c) · v2.7110 (PR 3) · v2.7114 (PR 4a) · v2.7116 (PR 4b) · v2.7118 (PR 4c) · v2.6088 · v2.6095 (the bill reader this builds on)
+ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.7103 (PR 1c) · v2.7110 (PR 3) · v2.7114 (PR 4a) · v2.7116 (PR 4b) · v2.7118 (PR 4c) · v2.7121 (PR 2a) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -663,21 +663,42 @@ So **49 bills need a person**: 28 held and 21 off. PR 3's list is where they are
 
 ## Where it stands
 
-**PR 4c (v2.7118) is built** (2026-11-13): **What to stock**, the third view of What we buy. A row is listed when it
+**PR 2a (v2.7121) is live** (2026-11-13): **Codes with no part**, a press on the Parts Book for the office. On the
+live data that day it listed 1,968 codes, the first forty of them 35 percent of the dollars, and the book offered a
+sure part for 97, each found by its manufacturer's number or by the same name. One press takes those. Three things
+the mock-up drew are not in it. **The unit factor** is kept at 1 on a code taught here; a house that sells a stick
+against a book priced a foot is set under *Their numbers* on the part. **The book's price is not moved** by a
+match: that is PR 2b. **A new part is not tied to its code in one press**: *New part in the book* opens the Add Part
+form on the line's words, and the new part is then offered on the row by its name. Live on clicktooling.com from
+15:52 UTC and walked there, read only: 2,136 codes with no part, the first forty 34 percent of the dollars, and
+**Match 105 offered codes** (both up from the morning, since the re-checked bills now count); *Pick a part* found
+the book's parts by a typed word. No code was taught on the walk: the first press is the Parts Book keeper's.
+
+**What we buy and Price over time reached the site on 2026-11-13 at 13:59 UTC**, two hours after PR 4a merged. The
+whole app's type check had outgrown its 10 GB heap that afternoon, so the deploys and every pull request's checks
+died until v2.7134 gave it 12 GB; a second session's migration held the deploys too. Walked on clicktooling.com:
+What we buy read $116,093 of parts, $2,239 of charges and 226 bills from June to November, the same three figures as
+an independent sum from the live tables, and Price over time drew the most often bought part's 14 purchases as 14
+points and 14 rows with its tip on hover.
+
+**PR 4c (v2.7118) is live** (2026-11-13): **What to stock**, the third view of What we buy. A row is listed when it
 was bought on three or more separate days in the last 30, 90 or 180 days, and the rows are ranked by trips. A trip
 is to the counter when its bill carries a PO Generator code or is under $250; that line is a constant
 (`SMALL_BILL_CENTS`) and the owner's to move. On the live data of 2026-11-13 the last 90 days list 22 rows and the
 most trips on one is 4, so the signal is thin, as stage 4 said it would be while big-box purchases have no lines
 and while a part at two houses is two rows. The mock-up's count of card charges with no lines is not on the page:
-the page says the limit in words.
+the page says the limit in words. Live on clicktooling.com from 15:08 UTC and walked there: the last 90 days listed 23
+parts (one more than that morning, since the re-checked bills now count), the top one bought on 5 trips, 1 to 20 at
+a time, for 4 jobs, read as *a trip every 18 days*; both limits on the page; 50 parts at 180 days and 1 at 30; a
+part's name opened its prices.
 
-**PR 4b (v2.7116) is built** (2026-11-12): **Price over time**, the second view of What we buy. A row's name opens
+**PR 4b (v2.7116) is live** (2026-11-13): **Price over time**, the second view of What we buy. A row's name opens
 it. Every purchase is a point, the three biggest houses each in a colour of their own, the book's price the dashed
 line. Under it: the last price paid at each house and how it moved, the cheapest house of the last 90 days, and
 every purchase as a row. Frame H drew **Use $3.84** on the book's card; that press writes the book's price and is
 PR 2b's, so it is not here.
 
-**PR 4a (v2.7114) is built** (2026-11-12): Materials → **What we buy**, a tab in the Purchase group for the office
+**PR 4a (v2.7114) is live** (2026-11-13): Materials → **What we buy**, a tab in the Purchase group for the office
 roles. A row is a part, or a house and its code where no part is matched; the filters are a house, a job and the
 months; the sort is spend, quantity or how often. Its live check: the page's parts, charges, bill count and top
 three rows equalled a hand sum from the tables. Two of the card's calls are open on it. **Call 7 is half built**:
@@ -702,7 +723,7 @@ bills read add up and 21 are off**, the read-only measure's own numbers. Walked 
 reads green on a case priced by the piece (*Line 12 is priced by the piece, 24 to a pack.*) and on a shipping charge
 under the subtotal (*A charge of $50.00 is printed outside the subtotal.*). Two small leftovers, for whoever next
 touches the sweep: the run's log line runs the status into the re-check words with no full stop between them, and
-`supply_papers.check_rules` waits for the next types regeneration.
+`supply_papers.check_rules` waited for a types regeneration, which carried it on 2026-11-13 (#7927).
 
 **PR 2 (v2.6882) is on main, its migration pushed and its functions deployed** (2026-11-10). The
 edge function `bill-lines-sweep` opens the Drive file a bill's row links as the service account,

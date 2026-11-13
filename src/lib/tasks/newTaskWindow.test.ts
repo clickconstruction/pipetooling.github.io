@@ -4,6 +4,7 @@ import {
   dropSoloSelfWhenAddingOthers,
   faceMark,
   newTaskSentence,
+  roadmapTaskSentence,
   recentAssigneeIds,
   reminderPressWords,
   taskAddRow,
@@ -245,6 +246,12 @@ describe('newTaskSentence', () => {
     expect(say({ assigneeIds: ['rosa'], tellOtherName: 'Imani' }).text).toMatch(/Imani hears when it is done\.$/)
   })
 
+  it('names the giver on an edit by someone else', () => {
+    expect(say({ giverName: 'Rosa' }).text).toMatch(/Rosa hears when it is done\.$/)
+    expect(say({ giverName: 'Rosa', tellOtherName: 'Imani' }).text).toMatch(/Rosa and Imani hear when it is done\.$/)
+    expect(say({ giverName: 'Rosa', tellMe: false }).text).toBe('Theo gets it today. It stays until it is done.')
+  })
+
   it('keeps every shape of the sentence to plain words', () => {
     const shapes: Array<Partial<NewTaskSentenceInput>> = [
       {},
@@ -258,5 +265,36 @@ describe('newTaskSentence', () => {
       { staysUntilDone: false },
     ]
     for (const shape of shapes) expect(plainWordsFailures(say(shape).text)).toEqual([])
+  })
+})
+
+describe('roadmapTaskSentence', () => {
+  const base = { title: 'Set the corner posts', stageTitle: 'North fence', assigneeNames: [] as string[], lineCount: 0, asksForPhoto: false, editing: false }
+
+  it('holds the save until the task is typed', () => {
+    expect(roadmapTaskSentence({ ...base, title: ' ' })).toEqual({ text: 'Type the task first.', dead: true })
+  })
+
+  it('says the stage it joins and that nobody has it yet', () => {
+    expect(roadmapTaskSentence(base)).toEqual({ text: 'It joins the stage North fence. Nobody has it yet.', dead: false })
+    expect(roadmapTaskSentence({ ...base, stageTitle: '' }).text).toBe('It joins this stage. Nobody has it yet.')
+  })
+
+  it('says who gets it when the stage unlocks, in place of a day', () => {
+    expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo'] }).text).toBe('It joins the stage North fence. Theo gets it when the stage unlocks.')
+    expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo', 'Imani'] }).text).toMatch(/Theo and Imani each get it when the stage unlocks\.$/)
+    expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo', 'Imani', 'Wes', 'Nell'] }).text).toMatch(/4 people each get it when the stage unlocks\.$/)
+  })
+
+  it('says what the card carries, and leaves the stage out of an edit', () => {
+    expect(roadmapTaskSentence({ ...base, assigneeNames: ['Theo'], lineCount: 2, asksForPhoto: true, editing: true }).text).toBe(
+      'Theo gets it when the stage unlocks. It has 2 Done when… lines and asks for a photo at the finish.',
+    )
+  })
+
+  it('keeps to plain words', () => {
+    for (const shape of [base, { ...base, assigneeNames: ['Theo', 'Imani', 'Wes'], lineCount: 12, asksForPhoto: true }, { ...base, title: '' }]) {
+      expect(plainWordsFailures(roadmapTaskSentence(shape).text)).toEqual([])
+    }
   })
 })

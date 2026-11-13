@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: close
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · PRs 1 to 8 are live on clicktooling.com and were walked there, read only, 2026-11-13 · PR 2's migration is pushed · a final walk of the whole page found one fault of the train's own, fixed in v2.7137 · PRs 9 to 12 are built and open
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · PRs 1 to 8 merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105 and v2.7109), each walked on clicktooling.com, read only · PR 2's migration is pushed · a final walk of the whole page found one fault of the train's own, fixed in v2.7137 · PRs 9 to 12 are built and open
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,9 +12,9 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: PR 9, the check on every line, once #7873 is on main. Then PRs 10, 11 and 12 in order, each migration pushed right after its merge, and a walk on the live site after each.
+next: PRs 9 to 12 in order, the bottom PR armed alone: the check on every line, the hours on a job with no percent, the Monday email without the call, the to-do's tag as its own column. Each migration is pushed right after its merge, and each PR is walked on the live site.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
-blocker: PR 9 waits for #7873, from the new task window's train, #331. Both change the window that makes a task, so #7873 goes first and PR 9 takes it in. Nothing else blocks the train.
+blocker: None. #7873, from the new task window's train, #331, changed the same window as PR 9. It merged first, and PR 9 has taken it in.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
 mockup: not required — every part was built on a spike and walked by the owner on the live page, 2026-11-12
 ---
@@ -261,16 +261,17 @@ bigger than a fix on the way or belongs to another part of the app, so each wait
 ## Where it stands
 
 Asked, built on a spike and walked by the owner on 2026-11-12. He called it satisfactory and said to build
-the whole train. On 2026-11-13 PRs 1 to 8 reached `main` and the live site. Each was walked there, read
-only. PR 2's migration is pushed, and every function those PRs touched is current.
+the whole train. On 2026-11-13 PRs 1 to 8 reached `main` and the live site: v2.7089 (1), v2.7095 (2),
+v2.7119 (3), v2.7120 (4), v2.7088 (5), v2.7099 (6), v2.7105 (7) and v2.7109 (8). Each was walked there,
+read only. PR 2's migration is pushed, and every function those PRs touched is current.
 
 A final walk of the whole page on the live site followed, at 1400 px in light and dark and at 375 px. The
 page matches what the owner approved on the spike, short of PRs 9 and 10. It found one fault of the train's
 own, fixed in v2.7137: on a phone the name that leads each line was a press only 16 px tall. It found two
 more that belong elsewhere, listed under *Found while building, not built*.
 
-PRs 9 to 12 are built and open, each on the one before it. PR 9 waits for #7873, as the blocker above says.
-PR 11's migration drops the two functions behind the old Needs you line. PR 12's adds the tag's column. Each
+PRs 9 to 12 are built and open, each on the one before it. PR 9 has taken in #7873, which changed the same
+window and merged first. PR 11's migration drops the two functions behind the old Needs you line. PR 12's adds the tag's column. Each
 is pushed right after its merge, and PR 11's comes with a small PR that takes the two functions out of the
 generated types.
 

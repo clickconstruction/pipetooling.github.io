@@ -77,7 +77,7 @@ This list shows purchases, not use. A bill cannot say how many the jobs used.
 
 A house prints its own code for a part on every line. The parts book learns a house's code once. Until then the row is counted by the house and its code, and it reads *no part yet*.
 
-The same part bought at two houses is two rows until both codes are matched. Teach a code under **Their numbers** on the part. See [keep a supply house's number on a part](/help/keep-a-supply-houses-number-on-a-part).
+The same part bought at two houses is two rows until both codes are matched. Match the codes in one place with **Codes with no part** on the Parts Book. See [Match the codes on the bills](/help/keep-a-supply-houses-number-on-a-part#match-the-codes-on-the-bills).
 
 ## What the page cannot say
 

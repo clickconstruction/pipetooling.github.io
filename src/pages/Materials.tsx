@@ -8,7 +8,7 @@ import {
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
-import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, resolveMaterialsTab, supplyHousesPaneFor, type MaterialsTab } from '../lib/materials/materialsTabs'
+import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, resolveMaterialsTab, supplyHousesPaneFor, type MaterialsTab, isMaterialsOfficeRole } from '../lib/materials/materialsTabs'
 import { materialsGroupsFor, materialsPressesFor, trackBadges, type MaterialsPress } from '../lib/materials/materialsGroups'
 import { boxPagePath } from '../lib/materials/boxPage'
 import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
@@ -1528,6 +1528,7 @@ export default function Materials() {
         setExpandedPartId={setExpandedPartId}
         setViewingPartPrices={setViewingPartPrices}
         openAddPart={openAddPart}
+        openAddPartNamed={isMaterialsOfficeRole(myRole) ? openAddPartWithName : undefined}
         openEditPart={openEditPart}
         openSupplyHousesModal={openSupplyHousesModal}
       />

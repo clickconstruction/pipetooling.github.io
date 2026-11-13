@@ -50,6 +50,8 @@ changed. That left fourteen lines where a real-looking name is live text.
 - The help recordings: #336.
 - The frozen aggregators: `docs/RECENT_FEATURES.md` and `src/content/releaseNotesArchive.ts`.
 - `supabase/migrations/` (applied to prod), `supabase/functions/` (a change needs a deploy) and `supabase/seed.sql`.
+- Comments in seven `src/lib` kernels that the edge functions carry a generated copy of (#7908 names them). A change
+  needs `npm run gen:edge-kernels` and a redeploy of the 34 functions that read the copy.
 - Four twin docs that ride the `twin-mcp` bundle: `docs/twins/EXTRACTOR.md`, `PLACEMENT.md`, `pricer.md` and
   `missions/estimator.md`. A change needs `node scripts/build-twin-mcp-briefs.mjs` and a deploy.
 - The two scripts in `scripts/sweeps/`. Their file names hold a name too.
@@ -59,5 +61,5 @@ changed. That left fourteen lines where a real-looking name is live text.
 
 ## Done looks like
 
-`count.mjs` over the non-test source files finds one line: the billing template's path. The PR is merged, and the
-changed samples read right on the live site.
+`count.mjs` over the non-test source files finds only the billing template's path and the comments of the seven edge
+kernels above. The PR is merged, and the changed samples read right on the live site.

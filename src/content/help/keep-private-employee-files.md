@@ -128,6 +128,21 @@ Every change to an item writes a line on the log. You can add a line of your own
 
 Does the item already have a number that people use? Type it in the number box. The file refuses a number that is taken.
 
+## See what an agent is waiting on you for
+
+An agent can keep a plan on a person's file and wait for your yes. The plan is not written until you say so.
+
+1. Open **People**, then **HR**.
+2. Look for *Waiting on you* at the top. It shows only when a plan is waiting.
+
+Each row names the person and what the plan is about. It shows how long the plan has waited and who kept it. The grey box says in words what the plan would write.
+
+To say yes, tell the agent in a session to apply it. The agent checks the plan against the file again first. A plan that no longer fits is not written.
+
+A row marked *no longer matches* was not written. The file changed after the plan was made. The agent plans again.
+
+Open a person's file to see only that person's plans.
+
 ## Name a theme to look for
 
 A long record is read by pattern, not by date. A theme is a plain name for one pattern. Dishonesty is a theme. Interference with the business is a theme.

@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
 import { parseLines } from '../../lib/taskCriteria'
 import { asksForPhotoDefault } from '../../lib/taskProgress'
 import type { TaskPlaceDraft } from '../../lib/tasks/taskPlace'
-import { TaskPlaceRow } from './TaskPlaceRow'
+import { roadmapTaskSentence, taskPersonName } from '../../lib/tasks/newTaskWindow'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useRecentTaskAssignees } from '../../hooks/useRecentTaskAssignees'
+import type { TaskSpotPhotoDraft } from './TaskSpotPhotoField'
+import { TaskFormRows } from './newTask/TaskFormRows'
+import { TaskSendBar } from './newTask/TaskSendBar'
+import { TaskWindowClose, TaskWindowShell } from './newTask/TaskWindowShell'
+import { TASK_WORDS_BOX_STYLE, restingTaskFormValue } from './newTask/taskWindowBits'
 import { ROADMAP_TASK_PICKER_Z, ROADMAP_TASK_WINDOW_Z } from '../../lib/windowLayers'
-import {
-  matchesPersonQuery,
-  singleEnterTarget,
-  visibleAssigneeRows,
-} from '../../lib/checklistAssigneeSearch'
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -19,16 +21,22 @@ type UserRow = { id: string; name: string; email: string }
 // (setTitle → re-render → "new" dep) re-ran the reset and wiped the title.
 const NO_PRESET_ASSIGNEES: readonly string[] = []
 
+/** A roadmap task's own rare things. It has no day, reminder or link: its stage decides when it lands. */
+const ROADMAP_ADD_KEYS = ['lines', 'photo'] as const
+
 type Props = {
   open: boolean
   groupId: string | null
   groupTitle: string
   users: UserRow[]
-  /** When set and present in `users`, that row is shown first. */
+  /** When set and present in `users`, that person's face is first, as Me. */
   currentUserId: string | null
   onClose: () => void
-  /** Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed; PR 4: the photo switch. */
-  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean, place: TaskPlaceDraft | null) => Promise<boolean>
+  /**
+   * Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed; PR 4: the
+   * photo switch. #328: the place. #331: the giver's photo of the spot, which the parent files once the task has an id.
+   */
+  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean, place: TaskPlaceDraft | null, spotPhoto: TaskSpotPhotoDraft | null) => Promise<boolean>
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
   portalContainer?: HTMLElement | null
   /** When set, modal is in edit mode (title + assignees pre-filled). */
@@ -38,11 +46,13 @@ type Props = {
 }
 
 /**
- * Add a task to a Roadmap group (title + optional assignees). Parent supplies onSave; returns true on success.
+ * Add a task to a Roadmap stage. Parent supplies onSave; returns true on success.
  *
- * Crew tags (the shared ChecklistCrewTagsRow above the assignee list) surface
- * People → Teams as one-tap staffing; tags never change what a task stores —
- * they only drive the same checkboxes.
+ * Since v2.7093 (punch list #331, PR 4) it draws the same rows as the New task window: the words, **For** as faces
+ * with the crews and **Someone else**, **Where** as the place shelf and the Photo press, and **Add** with the two
+ * things a roadmap task carries, the Done when… lines and the photo at the finish. It has no When row: a roadmap
+ * task lands on each person's list when its stage unlocks, and the sentence above the button says so. Assignees stay
+ * optional, and crews never change what a task stores, they only pick the same people.
  */
 export function ChecklistTechTreeAddTaskModal({
   open,
@@ -57,56 +67,49 @@ export function ChecklistTechTreeAddTaskModal({
   initialEditTitle = '',
   initialEditAssigneeUserIds = NO_PRESET_ASSIGNEES,
 }: Props) {
+  const phone = useIsMobile()
+  const titleRef = useRef<HTMLTextAreaElement | null>(null)
   const [title, setTitle] = useState('')
   const [linesText, setLinesText] = useState('')
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
   // Punch list #328, PR 5: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
-  const [assignees, setAssignees] = useState<Record<string, boolean>>({})
-  const [personQuery, setPersonQuery] = useState('')
+  // #331: the giver's photo of the spot, held here until the parent has an id to file it under.
+  const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
-  /** userId → crew name, for the "via crew" attribution pill; UI-only. */
-  const [viaCrew, setViaCrew] = useState<Record<string, string>>({})
+  /** The rows keep what is open themselves. A new open gives them a new key, so they start closed. */
+  const [rowsKey, setRowsKey] = useState(0)
   const isEditMode = Boolean(editingTaskId)
-
-  const usersOrderedForDisplay = useMemo(() => {
-    if (!currentUserId) return users
-    const me = users.find((u) => u.id === currentUserId)
-    if (!me) return users
-    return [me, ...users.filter((u) => u.id !== currentUserId)]
-  }, [users, currentUserId])
+  const recentIds = useRecentTaskAssignees(currentUserId, open)
 
   useEffect(() => {
     if (!open) return
     if (editingTaskId) {
       setTitle(initialEditTitle)
-      const m: Record<string, boolean> = {}
-      for (const id of initialEditAssigneeUserIds) {
-        m[id] = true
-      }
-      setAssignees(m)
+      setAssigneeIds([...initialEditAssigneeUserIds])
     } else {
       setTitle('')
-      setAssignees({})
+      setAssigneeIds([])
     }
     setLinesText('')
-    setViaCrew({})
-    setPersonQuery('')
+    setAsksForPhotoPick(null)
     setPlace(null)
+    setSpotPhoto(null)
+    setRowsKey((k) => k + 1)
   }, [open, groupId, editingTaskId, initialEditTitle, initialEditAssigneeUserIds])
 
   if (!open || !groupId) return null
 
+  const lines = editingTaskId ? [] : parseLines(linesText)
+  const asksForPhoto = asksForPhotoPick ?? asksForPhotoDefault(lines.length)
+
   const handleSave = async () => {
     const trimmed = title.trim()
-    if (!trimmed) return
+    if (!trimmed || saving) return
     setSaving(true)
     try {
-      const assigneeUserIds = Object.entries(assignees)
-        .filter(([, v]) => v)
-        .map(([k]) => k)
-      const lines = editingTaskId ? [] : parseLines(linesText)
-      const ok = await onSave(trimmed, assigneeUserIds, lines, asksForPhotoPick ?? asksForPhotoDefault(lines.length), place)
+      const ok = await onSave(trimmed, assigneeIds, lines, asksForPhoto, place, spotPhoto)
       if (ok) {
         setLinesText('')
         setAsksForPhotoPick(null)
@@ -117,268 +120,102 @@ export function ChecklistTechTreeAddTaskModal({
     }
   }
 
-  const staffCrew = (memberIds: string[], checked: boolean, crewName: string) => {
-    setAssignees((m) => {
-      const next = { ...m }
-      for (const id of memberIds) next[id] = checked
-      return next
-    })
-    setViaCrew((v) => {
-      const next = { ...v }
-      for (const id of memberIds) {
-        if (checked) next[id] = crewName
-        else delete next[id]
-      }
-      return next
-    })
-  }
-
   const target = typeof document !== 'undefined' ? (portalContainer ?? document.body) : null
   if (!target) return null
 
+  const sentence = roadmapTaskSentence({
+    title,
+    stageTitle: groupTitle,
+    assigneeNames: assigneeIds.map((id) => taskPersonName(users.find((u) => u.id === id))),
+    lineCount: lines.length,
+    asksForPhoto: !isEditMode && asksForPhoto,
+    editing: isEditMode,
+  })
+
   return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: ROADMAP_TASK_WINDOW_Z,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+    <TaskWindowShell
+      titleId="tech-tree-add-task-modal-title"
+      title={isEditMode ? 'Edit task' : 'Add task'}
+      subtitle={`Stage: ${groupTitle || '—'}`}
+      phone={phone}
+      zIndex={ROADMAP_TASK_WINDOW_Z}
+      overlayBackground="rgba(0,0,0,0.4)"
+      onBackdrop={() => {
+        if (!saving) onClose()
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose()
-      }}
+      cardTestId="roadmap-add-task-card"
+      headActions={<TaskWindowClose onClose={onClose} />}
+      bar={
+        <TaskSendBar
+          sentence={sentence.text}
+          dead={sentence.dead}
+          label={isEditMode ? 'Save' : 'Add task'}
+          busyLabel={isEditMode ? 'Saving…' : 'Adding…'}
+          submitting={saving}
+          onSend={() => void handleSave()}
+          tellMe={null}
+          onTellMe={() => {}}
+          error={null}
+        />
+      }
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tech-tree-add-task-modal-title"
-        style={{
-          background: 'var(--surface)',
-          borderRadius: 8,
-          padding: 20,
-          maxWidth: 440,
-          width: '100%',
-          maxHeight: 'min(90vh, 100%)',
-          overflow: 'auto',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <h2 id="tech-tree-add-task-modal-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
-          {isEditMode ? 'Edit task' : 'Add task'}
-        </h2>
-        <p style={{ margin: '0 0 1rem', color: 'var(--text-slate-500)', fontSize: 13 }}>Group: {groupTitle || '—'}</p>
-        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-add-task-title">
-          Task title
-        </label>
-        <input
+      <div style={{ paddingBottom: 12 }}>
+        <textarea
+          ref={titleRef}
           id="tech-tree-add-task-title"
+          aria-label="Task"
+          autoFocus
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box' }}
+          onChange={(e) => setTitle(e.target.value.replace(/\n/g, ' '))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault()
+          }}
+          rows={2}
+          placeholder="What needs to be done?"
           disabled={saving}
+          style={TASK_WORDS_BOX_STYLE}
         />
-        {!editingTaskId ? (
-          <>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-add-task-lines">
-              Done when… (optional, one line a row)
-            </label>
-            <textarea
-              id="tech-tree-add-task-lines"
-              value={linesText}
-              onChange={(e) => setLinesText(e.target.value)}
-              rows={3}
-              placeholder="Each line becomes a box the person ticks. The task reads its percent from the ticks."
-              style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 14 }}
-              disabled={saving}
-            />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 14 }}>
-              <input type="checkbox" checked={asksForPhotoPick ?? asksForPhotoDefault(parseLines(linesText).length)} onChange={(e) => setAsksForPhotoPick(e.target.checked)} disabled={saving} />
-              <span>Asks for a photo at the finish</span>
-            </label>
-          </>
-        ) : null}
-        {!isEditMode ? (
-          <div style={{ marginBottom: 12 }}>
-            <TaskPlaceRow value={place} onChange={setPlace} sheetZIndex={ROADMAP_TASK_PICKER_Z} />
-          </div>
-        ) : null}
-        <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>
-        <ChecklistCrewTagsRow
-          users={users}
-          assignees={assignees}
-          onStaffCrew={staffCrew}
-          currentUserId={currentUserId}
-        />
-        {(() => {
-          const enterTarget = singleEnterTarget(usersOrderedForDisplay, personQuery, assignees)
-          const filtering = personQuery.trim() !== ''
-          const rows = visibleAssigneeRows(usersOrderedForDisplay, personQuery, assignees)
-          const matchCount = filtering ? usersOrderedForDisplay.filter((u) => matchesPersonQuery(u, personQuery)).length : rows.length
-          const addPerson = (id: string) => {
-            setAssignees((m) => ({ ...m, [id]: true }))
-            setViaCrew((v) => {
-              if (!(id in v)) return v
-              const next = { ...v }
-              delete next[id]
-              return next
-            })
-            setPersonQuery('')
-          }
-          return (
-            <>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  border: '1.5px solid var(--border-strong)',
-                  borderRadius: 7,
-                  height: 36,
-                  padding: '0 10px',
-                  marginBottom: 8,
-                  boxSizing: 'border-box',
-                  background: 'var(--surface)',
-                }}
-              >
-                <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: 13, flex: 'none' }}>🔍</span>
-                <input
-                  value={personQuery}
-                  onChange={(e) => setPersonQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && enterTarget) {
-                      e.preventDefault()
-                      addPerson(enterTarget.id)
-                    } else if (e.key === 'Escape' && personQuery !== '') {
-                      e.stopPropagation()
-                      setPersonQuery('')
-                    }
-                  }}
-                  placeholder="Search people…"
-                  aria-label="Search people"
-                  disabled={saving}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 14,
-                    background: 'transparent',
-                    color: 'var(--text-strong)',
-                    padding: 0,
-                  }}
-                />
-                {enterTarget ? (
-                  <span
-                    style={{
-                      flex: 'none',
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      color: 'var(--text-blue-800)',
-                      background: 'var(--bg-blue-tint)',
-                      borderRadius: 999,
-                      padding: '2px 8px',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    ↵ add {enterTarget.name || enterTarget.email}
-                  </span>
-                ) : null}
-                {filtering ? (
-                  <button
-                    type="button"
-                    onClick={() => setPersonQuery('')}
-                    aria-label="Clear search"
-                    style={{
-                      flex: 'none',
-                      border: 'none',
-                      background: 'none',
-                      padding: 2,
-                      color: 'var(--text-muted)',
-                      fontSize: 14,
-                      lineHeight: 1,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ✕
-                  </button>
-                ) : null}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflow: 'auto', marginBottom: 16 }}>
-                {rows.map((u) => (
-                  <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={!!assignees[u.id]}
-                      onChange={(e) => {
-                        setAssignees((m) => ({ ...m, [u.id]: e.target.checked }))
-                        // A manual change means this box is yours now, not the crew's.
-                        setViaCrew((v) => {
-                          if (!(u.id in v)) return v
-                          const next = { ...v }
-                          delete next[u.id]
-                          return next
-                        })
-                      }}
-                      disabled={saving}
-                    />
-                    {u.name || u.email}
-                    {assignees[u.id] && viaCrew[u.id] ? (
-                      <span
-                        style={{
-                          fontSize: 11.5,
-                          color: 'var(--text-blue-800)',
-                          background: 'var(--bg-blue-tint)',
-                          borderRadius: 999,
-                          padding: '2px 8px',
-                        }}
-                      >
-                        {viaCrew[u.id]}
-                      </span>
-                    ) : null}
-                    {filtering && assignees[u.id] && !matchesPersonQuery(u, personQuery) ? (
-                      // Checked people never filter out — this quiet tag says why the row is here.
-                      <span
-                        style={{
-                          fontSize: 11.5,
-                          color: 'var(--text-muted)',
-                          border: '1px dashed var(--border-strong)',
-                          borderRadius: 999,
-                          padding: '2px 8px',
-                        }}
-                      >
-                        selected
-                      </span>
-                    ) : null}
-                  </label>
-                ))}
-                {filtering && matchCount === 0 ? (
-                  <span style={{ fontSize: 14, color: 'var(--text-muted)', padding: '4px 2px' }}>
-                    No one matches “{personQuery.trim()}”
-                  </span>
-                ) : null}
-              </div>
-            </>
-          )
-        })()}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || !title.trim()}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
       </div>
-    </div>,
+      <TaskFormRows
+        key={rowsKey}
+        value={restingTaskFormValue(assigneeIds, todayYmdInAppTz())}
+        onChange={(patch) => {
+          if (patch.assigned_to_user_ids) setAssigneeIds(patch.assigned_to_user_ids)
+        }}
+        when="today"
+        onWhen={() => {}}
+        repeatMode="weekly"
+        onRepeatMode={() => {}}
+        hideWhen
+        // The place and the lines are set when the task is made. A task already on the roadmap changes them on its card.
+        hideWhere={isEditMode}
+        addKeys={isEditMode ? [] : ROADMAP_ADD_KEYS}
+        linesText={linesText}
+        onLinesText={setLinesText}
+        linesHint="Each line becomes a box the person ticks. The task reads its percent from the ticks."
+        asksForPhoto={asksForPhoto}
+        onAsksForPhoto={setAsksForPhotoPick}
+        place={place}
+        onPlace={setPlace}
+        spotPhoto={spotPhoto}
+        onSpotPhoto={setSpotPhoto}
+        busy={saving}
+        users={users}
+        meId={currentUserId}
+        recentIds={recentIds}
+        seatIds={isEditMode ? initialEditAssigneeUserIds : NO_PRESET_ASSIGNEES}
+        // Nobody is picked when the window opens, and a pick adds a person beside the others.
+        soloSelfRule={false}
+        canSeeReach={false}
+        pushEnabledIds={null}
+        phone={phone}
+        todayStr={todayYmdInAppTz()}
+        searchId="tech-tree-add-task-assign-search"
+        onLinkToken={() => {}}
+        // The roadmap's windows sit far above Add a task, so the place sheet is told to open above this one.
+        pickerZIndex={ROADMAP_TASK_PICKER_Z}
+      />
+    </TaskWindowShell>,
     target,
   )
 }

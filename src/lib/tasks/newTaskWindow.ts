@@ -243,6 +243,14 @@ function joinAnd(words: readonly string[]): string {
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 }
 
+/** What the card will carry, as one sentence, or null: *It has 2 Done when… lines and asks for a photo at the finish.* */
+function cardCarries(lineCount: number, asksForPhoto: boolean): string | null {
+  const lines = lineCount > 0 ? `${lineCount} Done when… line${lineCount === 1 ? '' : 's'}` : null
+  if (lines && asksForPhoto) return `It has ${lines} and asks for a photo at the finish.`
+  if (lines) return `It has ${lines}.`
+  return asksForPhoto ? 'It asks for a photo at the finish.' : null
+}
+
 export interface TaskSendWho {
   meId: string | null
   assigneeIds: readonly string[]
@@ -285,6 +293,11 @@ export interface NewTaskSentenceInput extends TaskSendWho {
   tellMe: boolean
   /** Who else hears, or null. */
   tellOtherName: string | null
+  /**
+   * The giver's name when the person at the window is not the giver, as on an edit of someone else's task.
+   * The giver is then named where the sentence would say *You*.
+   */
+  giverName?: string | null
 }
 
 export interface NewTaskSentence {
@@ -349,19 +362,50 @@ export function newTaskSentence(input: NewTaskSentenceInput): NewTaskSentence {
     }
   }
 
-  const carries: string[] = []
-  if (input.lineCount > 0) carries.push(`${input.lineCount} Done when… line${input.lineCount === 1 ? '' : 's'}`)
-  if (input.asksForPhoto) carries.push('a photo at the finish')
-  if (carries.length === 2) parts.push(`It has ${carries[0]} and asks for ${carries[1]}.`)
-  else if (input.lineCount > 0) parts.push(`It has ${carries[0]}.`)
-  else if (input.asksForPhoto) parts.push('It asks for a photo at the finish.')
+  const carries = cardCarries(input.lineCount, input.asksForPhoto)
+  if (carries) parts.push(carries)
 
   const hears: string[] = []
-  if (input.tellMe && !onlyMe(input)) hears.push('You')
+  const giver = input.giverName ?? 'You'
+  if (input.tellMe && (input.giverName || !onlyMe(input))) hears.push(giver)
   if (input.tellOtherName) hears.push(input.tellOtherName)
   if (hears.length === 2) parts.push(`${joinAnd(hears)} hear when it is done.`)
-  else if (hears[0] === 'You') parts.push('You hear when it is done.')
+  else if (hears[0] === 'You' && !input.giverName) parts.push('You hear when it is done.')
   else if (hears.length === 1) parts.push(`${hears[0]} hears when it is done.`)
 
+  return { text: parts.join(' '), dead: false }
+}
+
+// ───────────────────────────────────────────────── a task on a roadmap ──
+
+export interface RoadmapTaskSentenceInput {
+  /** The words typed in the What box. */
+  title: string
+  /** The stage the task joins, as the roadmap names it. */
+  stageTitle: string
+  /** Who has the task, by name. A roadmap task may have nobody yet. */
+  assigneeNames: readonly string[]
+  lineCount: number
+  asksForPhoto: boolean
+  /** The window is changing a task that is already on the roadmap. */
+  editing: boolean
+}
+
+/**
+ * What saving a roadmap task will do, for the bar of its window. A roadmap task has no day of its own: it lands on
+ * each person's list when its stage unlocks, so the sentence says that in place of a day.
+ */
+export function roadmapTaskSentence(input: RoadmapTaskSentenceInput): NewTaskSentence {
+  if (!input.title.trim()) return { text: 'Type the task first.', dead: true }
+  const parts: string[] = []
+  const stage = input.stageTitle.trim()
+  if (!input.editing) parts.push(stage ? `It joins the stage ${stage}.` : 'It joins this stage.')
+  const names = input.assigneeNames.map((n) => n.trim()).filter(Boolean)
+  if (names.length === 0) parts.push('Nobody has it yet.')
+  else if (names.length === 1) parts.push(`${names[0]} gets it when the stage unlocks.`)
+  else if (names.length <= 3) parts.push(`${joinAnd(names)} each get it when the stage unlocks.`)
+  else parts.push(`${names.length} people each get it when the stage unlocks.`)
+  const carries = cardCarries(input.lineCount, input.asksForPhoto)
+  if (carries) parts.push(carries)
   return { text: parts.join(' '), dead: false }
 }
