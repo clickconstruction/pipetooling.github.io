@@ -113,8 +113,9 @@ import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet } from '../../lib/jobs/lienAffidavitBatch'
-import { LIEN_HELP_SHEET_BOX, useLienHelpSheetChoice } from './lienHelpSheetChoice'
+import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords } from '../../lib/jobs/lienAffidavitBatch'
+import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_COPIES_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeCopiesBatchChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
+import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
@@ -1632,6 +1633,10 @@ export default function LienDesk({
   // Print every ready affidavit on the short form for the notary (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
   const affPrintPlan = lienAffidavitPrintPlan(affEntries)
   const [affHelpSheet, setAffHelpSheet] = useLienHelpSheetChoice()
+  // The notice records (punch list #322): what was mailed before each paper, in front of the stack with the help sheet.
+  const [affNoticeRecord, setAffNoticeRecord] = useLienNoticeRecordChoice()
+  // A copy of each notice behind the records: off until someone ticks it, since a batch has many notices behind it.
+  const [affNoticeCopies, setAffNoticeCopies] = useLienNoticeCopiesBatchChoice()
   const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
   // The county these are signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
   const affSigning = useLienSigningCounty(issuer)
@@ -1648,13 +1653,17 @@ export default function LienDesk({
       // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
-      const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings }), filings }))
+      const swornMonths = lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings })
+      const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings }))
+      // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
+      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd })
       const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
-      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null) }]
+      return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
+  const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
   const printReadyAffidavits = () => {
     if (!data || affPrintWords.dead) return
     // The help sheet prints first (punch list #314): the blanks, when to stop, and a row for each paper. It is in no job's filed copy.
@@ -1667,10 +1676,12 @@ export default function LienDesk({
             ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
           ],
           demandDate(todayYmd),
-          { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode() },
+          { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode(), recordFollows: affNoticeRecord },
         )
       : null
-    const run = lienAffidavitPrintRun(affPrintPapers, helpSheet)
+    // The notice records, then a copy of each notice when its box is ticked, print behind the help sheet and in front of the stack, never between two papers (punch list #322).
+    const noticeCopies = affNoticeCopies ? lienAffidavitBatchNoticeCopies(affPrintPapers, filingLetterheadFromIssuer(issuer), todayYmd) : ''
+    const run = lienAffidavitPrintRun(affPrintPapers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(affPrintPapers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
     if (!openHtmlPrintWindow(run.html)) {
       showToast('Popup blocked — allow popups to print.', 'error')
       return
@@ -2851,6 +2862,17 @@ export default function LienDesk({
             <input type="checkbox" checked={affHelpSheet} onChange={(e) => setAffHelpSheet(e.target.checked)} />
             {LIEN_HELP_SHEET_BOX}
           </label>
+          {/* The notice records (punch list #322): on unless the office turns them off, kept on this computer as the help sheet's box is. */}
+          <label data-lien-affidavit-notice-record style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
+            <input type="checkbox" checked={affNoticeRecord} onChange={(e) => setAffNoticeRecord(e.target.checked)} />
+            {LIEN_NOTICE_RECORD_BOX}
+          </label>
+          {affNoticeCopyCount > 0 ? (
+            <label data-lien-affidavit-notice-copies style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
+              <input type="checkbox" checked={affNoticeCopies} onChange={(e) => setAffNoticeCopies(e.target.checked)} />
+              {LIEN_NOTICE_COPIES_BOX} ({affNoticeCopyCount === 1 ? '1 more page' : `${affNoticeCopyCount} more pages or so`})
+            </label>
+          ) : null}
           <LienSigningCountyBox id="lien-affidavit-signing-county" county={affSigning.county} onChange={affSigning.setCounty} />
           <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
           {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}

@@ -41,7 +41,7 @@ describe('showEstimatorInboxButton', () => {
 })
 
 describe('showHeaderNewBidButton (v2.6167, the Bids page alone since v2.6839)', () => {
-  it('every role that can make a bid has the press on the Bids page, off in Farm Mode', () => {
+  it('every role that can make a bid has the press on the Bids page, off in Task Mode', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent'] as const) {
       expect(showHeaderNewBidButton(role, false, '/bids')).toBe(true)
       expect(showHeaderNewBidButton(role, true, '/bids')).toBe(false)
@@ -69,7 +69,7 @@ describe('showHeaderNewBidButton (v2.6167, the Bids page alone since v2.6839)', 
 
   it('Layout draws the header press on this rule alone, with the page it is on', () => {
     const layout = readFileSync(LAYOUT_PATH, 'utf8')
-    expect(layout).toMatch(/showHeaderNewBidButton\(role, farmModeActive, location\.pathname\) && \(/)
-    expect(layout).not.toMatch(/role === 'estimator' && !farmModeActive && \(/)
+    expect(layout).toMatch(/showHeaderNewBidButton\(role, taskModeActive, location\.pathname\) && \(/)
+    expect(layout).not.toMatch(/role === 'estimator' && !taskModeActive && \(/)
   })
 })

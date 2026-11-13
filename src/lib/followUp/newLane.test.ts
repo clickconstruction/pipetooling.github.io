@@ -649,3 +649,17 @@ describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
     for (const words of [bidWhy(INVITE), START_BID_WORDS]) expect(plainWordsFailures(words)).toEqual([])
   })
 })
+
+describe('a mail filed for the record (v2.7027, punch list #324)', () => {
+  const dale: NewLaneContact = { id: 'dale', kind: 'unknown', name: 'dale@ridgeway.example', company: '', jobIds: [], defaultJobId: null }
+  const mail = (id: string, at: string, history: boolean): NewLaneMessage => ({ id, contactId: 'dale', jobId: 'j1077', channel: 'email', direction: 'in', at, body: 'The 9th works.', subject: 'Rough-in dates', ...(history ? { history: true } : {}) })
+
+  it('never asks Who is this? of a sender with filed mail alone', () => {
+    expect(newLane([dale], [mail('old', '2026-03-03T15:00:00Z', true)], ACTIVE, NOW)).toEqual([])
+  })
+
+  it('asks about the new mail, not the filed one', () => {
+    const rows = newLane([dale], [mail('old', '2026-03-03T15:00:00Z', true), mail('new', '2026-10-13T14:00:00Z', false)], ACTIVE, NOW)
+    expect(rows.map((r) => [r.sort, r.messageId])).toEqual([['who', 'new']])
+  })
+})

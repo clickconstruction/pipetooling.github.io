@@ -71,6 +71,19 @@ describe('GuideBrowser records a guide open', () => {
   })
 })
 
+describe('GuideBrowser opens a renamed guide by its old address (v2.7050)', () => {
+  it('the Farm Mode address opens the Task Mode guide, counts it as that guide and rewrites the address', async () => {
+    installDomShims()
+    inserts.length = 0
+    render(tree('/help?g=farm-mode&via=share'))
+    await waitFor(() => expect(clickRows()).toHaveLength(1))
+    expect(clickRows()[0]).toMatchObject({ control: 'guide_opened', target: '/help?g=task-mode#via=share' })
+    expect(screen.getByRole('heading', { name: 'How do I use Task Mode to see only my checklist?' })).toBeTruthy()
+    expect(screen.queryByText(/That guide wasn.t found/)).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('?g=task-mode'))
+  })
+})
+
 describe('GuideBrowser search', () => {
   it('a search no guide matches names it and offers Clear the search, which empties the box', () => {
     installDomShims()

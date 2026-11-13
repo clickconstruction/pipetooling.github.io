@@ -8,9 +8,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabase } from '../supabase'
-import { showUsLink } from './ask'
 import type { ThreadLook, ThreadLookFile } from './card'
-import { FIRST_LOOK_BUCKET } from './look'
+import { FIRST_LOOK_BUCKET, showUsLink } from './look'
 
 /** How long a signed address to a look's file lasts: an hour, so a video keeps playing while the card is open. */
 export const LOOK_FILE_SIGNED_SECONDS = 3600
@@ -18,6 +17,14 @@ export const LOOK_FILE_SIGNED_SECONDS = 3600
 export interface FirstLookThreadIo {
   /** The looks asked on this thread that are not closed, and their finished files. */
   looks(contactId: string): Promise<{ looks: ThreadLook[]; files: ThreadLookFile[] }>
+  /** One look and its finished files, by the look's id: for an estimate or a job that remembers it. Null when it is gone. */
+  lookById(lookId: string): Promise<{ look: ThreadLook; files: ThreadLookFile[] } | null>
+  /** The looks a job was made from, newest first, with their finished files (PR 6). Whoever may see the job's photos reads them. */
+  looksOfJob(jobId: string): Promise<{ looks: ThreadLook[]; files: ThreadLookFile[] }>
+  /** Ties a look to the job Book a visit made from it. */
+  setJob(lookId: string, jobId: string): Promise<void>
+  /** The look an estimate was started from, or null. Null too from a database that has no such column yet. */
+  lookOfEstimate(estimateId: string): Promise<string | null>
   /** A signed address for each of a look's files, by its place in the bucket. A file that will not sign is left out. */
   signLookFiles(paths: readonly string[]): Promise<Record<string, string>>
   /** A signed address for each file that came on a line, by its `message_attachments` id. */
@@ -61,6 +68,45 @@ export function supabaseFirstLookThreadIo(client: unknown = supabase): FirstLook
       if (isMissingColumn(files.error)) files = await readFiles(FILE_BASE)
       checkSupabaseError(files, 'read what came in')
       return { looks: rows, files: (files.data ?? []) as unknown as ThreadLookFile[] }
+    },
+    async lookById(lookId) {
+      const readLook = (columns: string) => db.from('first_looks').select(columns).eq('id', lookId).maybeSingle()
+      let look = await readLook(LOOK_COLUMNS)
+      if (isMissingColumn(look.error)) look = await readLook(LOOK_BASE)
+      checkSupabaseError(look, 'read the look')
+      if (!look.data) return null
+      const readFiles = (columns: string) => db.from('first_look_files').select(columns).eq('look_id', lookId).not('finished_at', 'is', null).is('removed_at', null).order('finished_at', { ascending: true })
+      let files = await readFiles(FILE_COLUMNS)
+      if (isMissingColumn(files.error)) files = await readFiles(FILE_BASE)
+      checkSupabaseError(files, 'read what came in')
+      return { look: look.data as unknown as ThreadLook, files: (files.data ?? []) as unknown as ThreadLookFile[] }
+    },
+    async looksOfJob(jobId) {
+      const looks = await db.from('first_looks').select(LOOK_COLUMNS).eq('job_id', jobId).order('made_at', { ascending: false }).limit(5)
+      // A database from before the column has no look for any job.
+      if (isMissingColumn(looks.error)) return { looks: [], files: [] }
+      checkSupabaseError(looks, 'read the job’s look')
+      const rows = (looks.data ?? []) as unknown as ThreadLook[]
+      if (!rows.length) return { looks: [], files: [] }
+      const files = await db
+        .from('first_look_files')
+        .select(FILE_COLUMNS)
+        .in('look_id', rows.map((l) => l.id))
+        .not('finished_at', 'is', null)
+        .is('removed_at', null)
+        .order('finished_at', { ascending: true })
+      checkSupabaseError(files, 'read what the customer sent')
+      return { looks: rows, files: (files.data ?? []) as unknown as ThreadLookFile[] }
+    },
+    async setJob(lookId, jobId) {
+      const result = await db.rpc('set_first_look_job', { p_look_id: lookId, p_job_id: jobId })
+      checkSupabaseError(result, 'tie the look to the job')
+    },
+    async lookOfEstimate(estimateId) {
+      const row = await db.from('estimates').select('first_look_id').eq('id', estimateId).maybeSingle()
+      if (row.error) return null
+      const id = (row.data as { first_look_id?: string | null } | null)?.first_look_id
+      return typeof id === 'string' && id ? id : null
     },
     async signLookFiles(paths) {
       if (!paths.length) return {}

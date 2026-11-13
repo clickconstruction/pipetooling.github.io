@@ -36,13 +36,12 @@ const plan: MyMailTagPlan = {
   mailbox: 'mine',
   mailUserId: 'u-dana',
   steps: [
-    { kind: 'write', gmailId: 'm1', threadId: THREAD, rfcMessageId: '<a@x>', direction: 'in', party: { name: 'Supplier', address: 'ap@supplier.test' }, whoUserId: null, whoText: 'Supplier', subject: 'Invoice 4471', body: 'The bill.', at: '2026-08-03T15:00:00.000Z', files: [{ partId: '2', attachmentId: 'a1', name: 'invoice.pdf', mime: 'application/pdf', size: 1200, keep: 'copy' }], links: [], emlName: 'm1.eml' },
+    { kind: 'write', gmailId: 'm1', threadId: THREAD, rfcMessageId: '<a@x>', direction: 'in', party: { name: 'Supplier', address: 'ap@supplier.test' }, whoUserId: null, whoText: 'Supplier', subject: 'Invoice 4471', body: 'The bill.', at: '2026-08-03T15:00:00.000Z', files: [{ partId: '2', attachmentId: 'a1', name: 'invoice.pdf', mime: 'application/pdf', size: 1200, keep: 'copy' }], links: [], emlName: 'm1.eml', history: false },
     { kind: 'tie', gmailId: 'm2', rfcMessageId: '<b@x>', messageId: 'line-2', onJob: null, tie: true },
     { kind: 'skip', gmailId: 'm3', why: 'draft' },
   ],
   threadRow: { user_id: 'u-dana', gmail_thread_id: THREAD, bid_id: null, project_id: null, jobs_ledger_id: JOB, tagged_by: 'u-dana' },
-  label: 'Tagged in ClickTooling',
-  counts: { lines: 1, tied: 1, files: 1, skipped: 1 },
+  counts: { lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 },
 }
 const emails = [email({}), email({ gmailId: 'm2', at: '2026-08-04T15:00:00.000Z', subject: 'Re: Invoice 4471', from: { name: null, address: 'dana@example-plumbing.test' } }), email({ gmailId: 'm3', at: null, labels: ['DRAFT'] })]
 
@@ -57,10 +56,10 @@ describe('the parser and the preview', () => {
   it('reads a plan back mail by mail, with what the tag would do and why', () => {
     const preview = tagPlanPreview(plan, emails, 'dana@example-plumbing.test', `bid:${JOB}`)
     expect(preview.ok && preview.plan).toBe(true)
-    expect(preview.counts).toEqual({ lines: 1, tied: 1, files: 1, skipped: 1 })
+    expect(preview.counts).toEqual({ lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 })
     expect(preview.movingFrom).toBe(`bid:${JOB}`)
     expect(preview.mails).toEqual([
-      { gmailId: 'm1', kind: 'write', at: '2026-08-03T15:00:00.000Z', from: 'Supplier <ap@supplier.test>', subject: 'Invoice 4471', files: 1 },
+      { gmailId: 'm1', kind: 'write', at: '2026-08-03T15:00:00.000Z', from: 'Supplier <ap@supplier.test>', subject: 'Invoice 4471', files: 1, lands: 'followUp' },
       { gmailId: 'm2', kind: 'tie', at: '2026-08-04T15:00:00.000Z', from: 'dana@example-plumbing.test', subject: 'Re: Invoice 4471', tie: true, why: 'a line on the person is tied to this job' },
       { gmailId: 'm3', kind: 'skip', at: null, from: 'Supplier <ap@supplier.test>', subject: 'Invoice 4471', why: 'a draft' },
     ])
@@ -96,13 +95,13 @@ describe('plan_mail_tag · the kernel', () => {
   it('commits to the account, the conversation, the job and what each mail becomes, and words the plan', () => {
     const args = { account: KNOWN[0]!, threadId: THREAD, job: { kind: 'pipeline' as const, id: JOB }, person: null, target: `pipeline ${JOB}` }
     const c = tagCommitment(args, preview)
-    expect(c).toEqual({ account: 'dana@example-plumbing.test', thread_id: THREAD, job: { kind: 'pipeline', id: JOB }, counts: { lines: 1, tied: 1, files: 1, skipped: 1 }, mails: [{ gmailId: 'm1', kind: 'write' }, { gmailId: 'm2', kind: 'tie', tie: true }, { gmailId: 'm3', kind: 'skip' }], moving_from: null })
+    expect(c).toEqual({ account: 'dana@example-plumbing.test', thread_id: THREAD, job: { kind: 'pipeline', id: JOB }, counts: { lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 }, mails: [{ gmailId: 'm1', kind: 'write' }, { gmailId: 'm2', kind: 'tie', tie: true }, { gmailId: 'm3', kind: 'skip' }], moving_from: null })
     expect(JSON.stringify(c)).not.toContain('Supplier')
     expect(tagReading(preview)).toBe('3 mails in the conversation: 1 line written, 1 line tied, 1 file kept, 1 mail skipped.')
-    expect(tagReading({ ...preview, counts: { lines: 0, tied: 0, files: 0, skipped: 3 }, movingFrom: 'bid:x' })).toContain('moves off bid:x. Nothing would land')
+    expect(tagReading({ ...preview, counts: { lines: 0, tied: 0, files: 0, skipped: 3, filed: 0 }, movingFrom: 'bid:x' })).toContain('moves off bid:x. Nothing would land')
     const reply = tagPlanReply(c, preview, 'abcdef0123456789')
     expect(reply.plan_hash).toBe('abcdef0123456789')
-    expect(reply.lands).toBe("2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test.")
+    expect(reply.lands).toBe("2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat.")
     expect(String(reply.next)).toContain('apply_mail_tag')
     const done = tagApplyReply(c, preview, { ok: true, jobKey: `pipeline:${JOB}`, lines: 1, tied: 1, files: 1, contactId: 'c1', unknownSender: null })
     expect(done.tagged).toBe('1 line written and 1 line tied onto 912 Limitless Renovations, 1 file kept; later mail in the conversation follows by itself.')

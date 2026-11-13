@@ -48,12 +48,13 @@ export function activeJobKeys(rows: LaneJobRows): Set<string> {
  * A line's box, whether a person tied it, and whether the app sent it on its own, from R6's `messages.mailbox`, R7's
  * `messages.tied_by` and v2.6012's `messages.auto`.
  */
-export function laneFacts(row: LaneFactsRow): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto' | 'invitation'> {
+export function laneFacts(row: LaneFactsRow): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto' | 'invitation' | 'history'> {
   return {
     mailbox: row.mailbox === 'team' || row.mailbox === 'bids' ? (row.mailbox as Mailbox) : null,
     tiedByHand: Boolean(row.tied_by),
     auto: row.auto === true,
     invitation: lineInvitation(row),
+    ...(row.history === true ? { history: true } : {}),
   }
 }
 
@@ -62,6 +63,8 @@ export interface LaneFactsRow {
   mailbox?: string | null
   tied_by?: string | null
   auto?: boolean | null
+  /** `messages.history` (v2.7027): the mail was filed for the record. */
+  history?: boolean | null
   /** `messages.invitation`: the kernel's facts with a person's answer, null on every other line, missing on a read from before the column. */
   invitation?: unknown
   channel?: string
@@ -184,6 +187,8 @@ export interface LaneLineRow {
   mailbox?: string | null
   tied_by?: string | null
   auto?: boolean | null
+  /** `messages.history` (v2.7027). */
+  history?: boolean | null
   /** `messages.invitation` (v2.6222). */
   invitation?: unknown
 }

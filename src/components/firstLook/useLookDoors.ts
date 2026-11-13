@@ -20,8 +20,10 @@ import { useLeadDoors } from '../messages/useLeadDoors'
 export interface LookDoors {
   /** A customer or a lead: the two doors are theirs. */
   has: boolean
-  book: (words: string | null) => Promise<void>
-  startEstimate: (words: string | null) => Promise<void>
+  /** `onCreatedJobId` hears the job Add Job made, so the look's card ties the look to it (PR 6). */
+  book: (words: string | null, onCreatedJobId?: (jobId: string) => void) => Promise<void>
+  /** `firstLookId` is the look the press is on, so the estimate remembers it (PR 5). */
+  startEstimate: (words: string | null, firstLookId?: string | null) => Promise<void>
   pressing: boolean
 }
 
@@ -39,21 +41,23 @@ export function useLookDoors(contact: Contact, io?: LeadDoorsIo): LookDoors {
   const role = auth?.role ?? null
 
   const book = useCallback(
-    async (words: string | null) => {
-      if (!isCustomer) return lead.book({ contactId: contact.id, contact, words })
-      if (jobForm) jobForm.openNewJob({ prefillCustomer: jobPrefillFrom(leadFacts(contact, words)), onSaved: reread })
+    async (words: string | null, onCreatedJobId?: (jobId: string) => void) => {
+      if (!isCustomer) return lead.book({ contactId: contact.id, contact, words, ...(onCreatedJobId ? { onCreatedJobId } : {}) })
+      if (jobForm) jobForm.openNewJob({ prefillCustomer: jobPrefillFrom(leadFacts(contact, words)), onSaved: reread, ...(onCreatedJobId ? { onCreatedJobId } : {}) })
       else toasts?.showToast(LEAD_DOOR_WORDS.noJobForm, 'info')
     },
     [isCustomer, lead, contact, jobForm, reread, toasts],
   )
 
   const startEstimate = useCallback(
-    async (words: string | null) => {
-      if (!isCustomer || !contact.customerId) return lead.startEstimate({ contactId: contact.id, contact, words })
+    async (words: string | null, firstLookId: string | null = null) => {
+      if (!isCustomer || !contact.customerId) return lead.startEstimate({ contactId: contact.id, contact, words, firstLookId })
       setBusy(true)
       try {
         if (!userId) throw new Error(LEAD_DOOR_WORDS.noSignIn)
-        const { estimateNumber } = await (io ?? defaultLeadDoorsIo()).startEstimate(contact.customerId, { userId, role })
+        const by = { userId, role }
+        const doorsIo = io ?? defaultLeadDoorsIo()
+        const { estimateNumber } = firstLookId ? await doorsIo.startEstimate(contact.customerId, by, { firstLookId }) : await doorsIo.startEstimate(contact.customerId, by)
         closeThread()
         navigate(`/estimates/${estimateNumber}`, { state: { freshEstimateDraft: true } })
       } catch (e) {

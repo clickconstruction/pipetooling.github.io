@@ -13,6 +13,7 @@ import type { ThreadLook, ThreadLookFile } from '../../lib/firstLook/card'
 import type { FirstLookThreadIo } from '../../lib/firstLook/threadIo'
 import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import type { ThreadMessage } from '../../lib/messages/thread'
+import { fakeFirstLookThreadIo } from '../../test/fakeFirstLookIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { OpenThreadContext, type OpenThread } from '../gc/messages/openThread'
 import { FirstLookCards } from './FirstLookCards'
@@ -42,14 +43,7 @@ const LOOK: ThreadLook = { id: 'L1', contact_id: 'dana', asked_by_name: 'Rosa', 
 const PHOTO: ThreadLookFile = { id: 'F1', look_id: 'L1', kind: 'photo', mime: 'image/jpeg', storage_path: 'L1/F1.jpg', bytes: 400_000, seconds: null, finished_at: iso(30) }
 const VIDEO: ThreadLookFile = { id: 'F2', look_id: 'L1', kind: 'video', mime: 'video/mp4', storage_path: 'L1/F2.mp4', bytes: 9_000_000, seconds: 14, finished_at: iso(29) }
 
-const fakeIo = (over: Partial<FirstLookThreadIo> = {}): FirstLookThreadIo => ({
-  looks: vi.fn(async () => ({ looks: [], files: [] })),
-  signLookFiles: vi.fn(async (paths: readonly string[]) => Object.fromEntries(paths.map((p) => [p, `https://files.test/${p}`]))),
-  signTexted: vi.fn(async (ids: readonly string[]) => Object.fromEntries(ids.map((id) => [id, `https://texted.test/${id}`]))),
-  mint: vi.fn(async () => ({ id: 'L9', link: 'https://clicktooling.com/show/k7m2p9xq4d' })),
-  stamp: vi.fn(async () => undefined),
-  ...over,
-})
+const fakeIo = fakeFirstLookThreadIo
 const fakeDoors = (): LeadDoorsIo => ({ convert: vi.fn(async () => ({ customerId: 'cust-1' })), startEstimate: vi.fn(async () => ({ estimateNumber: 42 })) })
 
 function draw(contact: Contact, io: FirstLookThreadIo, lines: ThreadMessage[] = []) {
@@ -121,7 +115,8 @@ describe('the First look card on a thread (punch list #319 PR 1)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Start an estimate' }))
     await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/estimates/42', { state: { freshEstimateDraft: true } }))
     expect(doors.convert).not.toHaveBeenCalled()
-    expect(doors.startEstimate).toHaveBeenCalledWith('cust-dana', expect.objectContaining({ role: 'assistant' }))
+    // The estimate remembers the look it was started from (PR 5).
+    expect(doors.startEstimate).toHaveBeenCalledWith('cust-dana', expect.objectContaining({ role: 'assistant' }), { firstLookId: 'L1' })
     expect(win.closeThread).toHaveBeenCalled()
   })
 
@@ -131,6 +126,9 @@ describe('the First look card on a thread (punch list #319 PR 1)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Book a visit' }))
     await waitFor(() => expect(jobForm.openNewJob).toHaveBeenCalled())
     expect(jobForm.openNewJob.mock.calls[0]![0].prefillCustomer).toEqual({ name: 'Dana Whitfield', phone: '(830) 555-0101', email: null, note: 'Kitchen: It drips at night' })
+    // The job Add Job makes takes the look with it (PR 6).
+    jobForm.openNewJob.mock.calls[0]![0].onCreatedJobId('job-7')
+    await waitFor(() => expect(io.setJob).toHaveBeenCalledWith('L1', 'job-7'))
   })
 
   it('a number nobody has named gets no doors, and is told to name them', async () => {

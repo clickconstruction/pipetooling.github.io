@@ -21,7 +21,8 @@ import { courtFactsFromRows } from '../../lib/followUp/courtFacts'
 import { pressProblem } from '../../lib/followUp/followUpIo'
 import { followUpContactOf, followUpMessagesFromRows, holdersFromRows, owedRecordsFromRows } from '../../lib/followUp/followUpRows'
 import { supabaseFollowUpThreadIo, type FollowUpThreadIo, type FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
-import { BACK_CLEARED_TOAST, backPill, hasToast, openOwed, snoozedWords, standingBackNote, stateToast } from '../../lib/followUp/queue'
+import { BACK_CLEARED_TOAST, backPill, hasToast, openOwed, snoozedWords, standingBackNote, stateToast, stateToday } from '../../lib/followUp/queue'
+import { threadClose } from '../../lib/followUp/noReply'
 import { owedStore } from '../../lib/followUp/owedStore'
 import { owedDayToast, owedMarkedToast, owedWhatToast, type DayKept } from '../../lib/messages/owed'
 import type { Teammate } from '../../lib/followUp/team'
@@ -177,7 +178,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
       : []
 
   return {
-    court: (c) => (mine(c.id) ? court : null),
+    // The move line reads the state too (v2.7029): a Done conversation whose last word is theirs waits on nobody.
+    court: (c) => (mine(c.id) ? { ...(court ?? {}), closed: stateToday(followUpContactOf(c, rows.contact, userNames), todayYmd) === 'done' } : null),
     // Calls (v2.5596): under a text we sent a customer today, the quiet ask, until a call to them waits.
     underLine: (m, c) => {
       if (!mine(c.id)) return null
@@ -264,11 +266,14 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
           }}
         />
       ) : null,
-    statusRow: (c) => {
+    statusRow: (c, lines = []) => {
       if (!mine(c.id)) return null
       const note = standingBackNote(notes, c.id)
       const back = note ? backPill(note) : null
-      const snoozed = snoozedWords(followUpContactOf(c, rows.contact, userNames))
+      const person = followUpContactOf(c, rows.contact, userNames)
+      const snoozed = snoozedWords(person)
+      // No reply needed in plain sight (v2.7029, punch list #324): the press while it is Open, who closed it once it is Done.
+      const close = threadClose({ state: stateToday(person, todayYmd), lines, contactId: c.id, nowIso })
       return (
         <>
           <button
@@ -295,6 +300,26 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
             </span>
           )}
           {snoozed && <Chip tone="grey">{snoozed}</Chip>}
+          {close?.kind === 'press' && (
+            <button
+              type="button"
+              data-follow-up-no-reply
+              title={close.tip}
+              disabled={pressing !== null}
+              onClick={() => void press('state', () => io.noReplyNeeded(c.id, me.name), stateToast('noReplyNeeded', c.name))}
+              style={quiet}
+            >
+              {close.label}
+            </button>
+          )}
+          {close?.kind === 'done' && (
+            <span data-follow-up-done={close.how} title={close.tip} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <Chip tone="grey">{close.words}</Chip>
+              <button type="button" disabled={pressing !== null} onClick={() => void press('state', () => io.setState(c.id, 'waiting'), stateToast('reopen', c.name))} style={quiet}>
+                Reopen
+              </button>
+            </span>
+          )}
         </>
       )
     },
@@ -339,7 +364,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
               label: r.label,
               tip: r.tip,
               disabled: pressing !== null,
-              onPress: () => void press('state', () => io.setState(c.id, r.sets), stateToast(r.move, c.name)),
+              onPress: () => void press('state', () => (r.move === 'noReplyNeeded' ? io.noReplyNeeded(c.id, me.name) : io.setState(c.id, r.sets)), stateToast(r.move, c.name)),
             })),
             // The customer's say (v2.5597): how they hear from us, set by the office; a tick marks the one that stands.
             ...(c.kind === 'customer'

@@ -18,9 +18,10 @@ export type SendAnswer = { ok: true; thanks: FirstLookThanks } | { ok: false; wh
 
 export type ShowUsIo = {
   read(code: string): Promise<FirstLookPageView | { kind: 'signal' }>
-  sign(code: string, file: { mime: string; bytes: number; name: string; fileId: string | null }): Promise<SignAnswer>
+  /** `lang` is the page's language, so a refusal comes back in it (PR 4b). */
+  sign(code: string, file: { mime: string; bytes: number; name: string; fileId: string | null }, lang?: 'en' | 'es'): Promise<SignAnswer>
   done(code: string, input: { fileId: string; road: 'pieces' | 'whole'; resumed: number; tookMs: number; seconds: number | null }): Promise<DoneAnswer>
-  send(code: string, input: { place: string | null; words: string | null }): Promise<SendAnswer>
+  send(code: string, input: { place: string | null; words: string | null; lang?: 'en' | 'es' }): Promise<SendAnswer>
   putWhole(signedUrl: string, blob: Blob, mime: string, onSent: (bytes: number) => void): Promise<WholeAnswer>
   pieces: PieceTransport
   piecePlan(signed: { bucket: string; path: string; token: string }, mime: string): PiecePlan
@@ -92,8 +93,8 @@ export const showUsIo: ShowUsIo = {
       return { kind: 'signal' }
     }
   },
-  async sign(code, file) {
-    const res = await post({ code, action: 'sign', mime: file.mime, bytes: file.bytes, name: file.name, ...(file.fileId ? { fileId: file.fileId } : {}) })
+  async sign(code, file, lang) {
+    const res = await post({ code, action: 'sign', mime: file.mime, bytes: file.bytes, name: file.name, ...(file.fileId ? { fileId: file.fileId } : {}), ...(lang === 'es' ? { lang } : {}) })
     if (!res) return { ok: false, why: 'signal' }
     const b = res.body
     if (res.status === 200 && b.ok === true && typeof b.fileId === 'string' && typeof b.token === 'string' && typeof b.signedUrl === 'string' && typeof b.path === 'string' && typeof b.bucket === 'string') {
@@ -113,7 +114,7 @@ export const showUsIo: ShowUsIo = {
     return { ok: false, why: 'refused', words: str(b.error, FALLBACK) }
   },
   async send(code, input) {
-    const res = await post({ code, action: 'send', place: input.place, words: input.words })
+    const res = await post({ code, action: 'send', place: input.place, words: input.words, ...(input.lang === 'es' ? { lang: input.lang } : {}) })
     if (!res) return { ok: false, why: 'signal' }
     const b = res.body
     if (res.status === 200 && b.ok === true && isRecord(b.thanks) && typeof b.thanks.got === 'string' && Array.isArray(b.thanks.steps)) {

@@ -1181,7 +1181,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         uncollectible: jobUncollectible(row.job),
         lienState: (() => {
           const chip = lienStateFn(row.job.id)
-          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence } : null
+          // v2.7042: the chip's parts go with its words, so the line never repeats the row's day and count (punch list #325).
+          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence, lead: chip.lead, dueOn: chip.dueOn, paper: chip.paper, action: chip.action, act: chip.act, noted: chip.state === 'gone' && chip.tone === 'muted' } : null
         })(),
       })
       if (ledger.rows.length === 0) return null

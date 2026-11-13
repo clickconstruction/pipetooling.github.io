@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { KEEP_FILE_BYTES } from '../emailIn/emailLine'
 import type { EmailAddress, EmailFile, EmailIn } from '../emailIn/gmailMessage'
-import { MY_MAIL_GMAIL_LABEL, type MyMailJobChip } from './contract'
+import type { MyMailJobChip } from './contract'
 import { MY_MAIL_MAILBOX, planTag, type MyMailKnown, type MyMailPerson, type MyMailTagStep } from './tagPlan'
 
 // Made-up people: Marisol Vega (the estimator whose box it is) and Rosa Diaz in the office; Dale Okafor at Ridgeway
@@ -67,6 +67,7 @@ describe('planTag: what a tag writes, mail by mail', () => {
         files: [{ partId: '1', attachmentId: 'att-spec', name: 'elm-ct-spec-sheet.pdf', mime: 'application/pdf', size: 212_000, keep: 'copy' }],
         links: [],
         emlName: 'g-dale-1.eml',
+        history: false,
       },
       {
         kind: 'write',
@@ -83,6 +84,7 @@ describe('planTag: what a tag writes, mail by mail', () => {
         files: [],
         links: [],
         emlName: 'g-marisol-1.eml',
+        history: false,
       },
       expect.objectContaining({ kind: 'write', gmailId: 'g-dale-2', direction: 'in', party: daleAt, whoUserId: null }),
     ])
@@ -91,8 +93,9 @@ describe('planTag: what a tag writes, mail by mail', () => {
     expect(plan.mailbox).toBe(MY_MAIL_MAILBOX)
     expect(plan.mailUserId).toBe('u-marisol')
     expect(plan.threadRow).toEqual({ user_id: 'u-marisol', gmail_thread_id: 't-elm', bid_id: null, project_id: null, jobs_ledger_id: 'job-elm', tagged_by: 'u-marisol' })
-    expect(plan.label).toBe(MY_MAIL_GMAIL_LABEL)
-    expect(plan.counts).toEqual({ lines: 3, tied: 0, files: 1, skipped: 0 })
+    // Nothing is written to Gmail: the plan names no label (v2.7035).
+    expect('label' in plan).toBe(false)
+    expect(plan.counts).toEqual({ lines: 3, tied: 0, files: 1, skipped: 0, filed: 0 })
   })
 
   it('ties a mail a line already holds and never writes it twice, leaving the office’s tie on another job where it is', () => {
@@ -111,7 +114,7 @@ describe('planTag: what a tag writes, mail by mail', () => {
       { kind: 'tie', gmailId: 'g-marisol-1', rfcMessageId: '<g-marisol-1@mail.example>', messageId: 'm-2', onJob: harborKey, tie: false },
       { kind: 'tie', gmailId: 'g-dale-2', rfcMessageId: '<g-dale-2@mail.example>', messageId: 'm-3', onJob: 'pipeline:job-elm', tie: false },
     ])
-    expect(plan.counts).toEqual({ lines: 0, tied: 1, files: 0, skipped: 0 })
+    expect(plan.counts).toEqual({ lines: 0, tied: 1, files: 0, skipped: 0, filed: 0 })
   })
 
   it('moves the person’s own lines from an earlier tag onto the new job', () => {
@@ -125,7 +128,7 @@ describe('planTag: what a tag writes, mail by mail', () => {
       '<g-marisol-1@mail.example>': { messageId: 'm-2', jobKey: 'pipeline:job-elm', mine: true },
       '<g-dale-2@mail.example>': { messageId: 'm-3', jobKey: 'pipeline:job-elm', mine: true },
     })
-    expect(planTag(conversation, marisol, elm, again).counts).toEqual({ lines: 0, tied: 0, files: 0, skipped: 0 })
+    expect(planTag(conversation, marisol, elm, again).counts).toEqual({ lines: 0, tied: 0, files: 0, skipped: 0, filed: 0 })
   })
 
   it('never writes a draft, Spam, Trash or a chat, a copy of ours from a box or the app, or one Message-ID twice', () => {
@@ -150,7 +153,7 @@ describe('planTag: what a tag writes, mail by mail', () => {
     )
     expect(kinds(plan.steps)).toEqual(['skip:draft', 'skip:spamOrTrash', 'skip:spamOrTrash', 'skip:chat', 'skip:noParty', 'skip:noParty', 'write:in', 'skip:twice', 'write:in'])
     expect(plan.steps[8]).toMatchObject({ kind: 'write', gmailId: 'g-none', rfcMessageId: null })
-    expect(plan.counts).toEqual({ lines: 2, tied: 0, files: 0, skipped: 7 })
+    expect(plan.counts).toEqual({ lines: 2, tied: 0, files: 0, skipped: 7, filed: 0 })
   })
 
   it('writes a note to self on the person’s own thread, coming in, as a teammate’s mail to the box is', () => {
@@ -195,14 +198,14 @@ describe('planTag: what a tag writes, mail by mail', () => {
     const personal = { ...dale2, labels: ['INBOX', 'Label_7'] }
     const plan = planTag({ threadId: 't-elm', messages: [dale1, personal] }, marisol, elm, { ...known({ '<g-dale-2@mail.example>': { messageId: 'm-3', jobKey: null } }), hidden: ['Label_7'] })
     expect(kinds(plan.steps)).toEqual(['write:in', 'skip:hidden'])
-    expect(plan.counts).toEqual({ lines: 1, tied: 0, files: 1, skipped: 1 })
+    expect(plan.counts).toEqual({ lines: 1, tied: 0, files: 1, skipped: 1, filed: 0 })
   })
 
   it('finds the person’s own line for a mail with no Message-ID by its Gmail id, and moves it with a tag onto another job', () => {
     const bare = { ...marisol1, headers: {} }
     const plan = planTag({ threadId: 't-elm', messages: [bare] }, marisol, elm, { ...known(), byGmailId: { 'g-marisol-1': { messageId: 'm-bare', jobKey: harborKey, mine: true } } })
     expect(plan.steps).toEqual([{ kind: 'tie', gmailId: 'g-marisol-1', rfcMessageId: null, messageId: 'm-bare', onJob: harborKey, tie: true }])
-    expect(plan.counts).toEqual({ lines: 0, tied: 1, files: 0, skipped: 0 })
+    expect(plan.counts).toEqual({ lines: 0, tied: 1, files: 0, skipped: 0, filed: 0 })
   })
 
   it('moves a box’s line the tag tied before (its row records it) with a tag onto another job, and never the office’s tie', () => {
@@ -252,5 +255,24 @@ describe('planTag: what a tag writes, mail by mail', () => {
     expect(bid.threadRow).toMatchObject({ bid_id: 'bid-club', project_id: null, jobs_ledger_id: null })
     const project = planTag(conversation, marisol, { kind: 'project', id: 'proj-42', key: 'project:proj-42', num: '#42', name: 'Harbor clinic' }, known())
     expect(project.jobColumns).toEqual({ bid_id: null, project_id: 'proj-42', jobs_ledger_id: null })
+  })
+
+  it('files a mail more than fourteen days old when the plan is made, and no younger (v2.7027, punch list #324)', () => {
+    const old = email('g-old', { at: '2026-03-03T15:00:00.000Z', headers: { 'message-id': '<g-old@mail.example>' } })
+    const plan = planTag({ threadId: 't-elm', messages: [old, dale1, marisol1] }, marisol, elm, { ...known(), nowIso: '2026-11-12T18:00:00.000Z' })
+    const writes = plan.steps.filter((s): s is Extract<MyMailTagStep, { kind: 'write' }> => s.kind === 'write')
+    expect(writes.map((s) => [s.gmailId, s.history])).toEqual([
+      ['g-old', true],
+      ['g-dale-1', false],
+      ['g-marisol-1', false],
+    ])
+    expect(plan.counts).toEqual({ lines: 3, tied: 0, files: 1, skipped: 0, filed: 1 })
+    // Fifteen days on, the whole conversation is history.
+    expect(planTag(conversation, marisol, elm, { ...known(), nowIso: '2026-11-17T18:00:00.000Z' }).counts.filed).toBe(3)
+  })
+
+  it('files nothing when the plan is given no clock, or a mail has no time', () => {
+    expect(planTag({ threadId: 't-elm', messages: [email('g-old', { at: '2026-03-03T15:00:00.000Z' })] }, marisol, elm, known()).counts.filed).toBe(0)
+    expect(planTag({ threadId: 't-elm', messages: [email('g-none', { at: null })] }, marisol, elm, { ...known(), nowIso: '2026-11-12T18:00:00.000Z' }).counts.filed).toBe(0)
   })
 })

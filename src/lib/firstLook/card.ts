@@ -112,6 +112,9 @@ export const LOOK_CARD_WORDS = {
   bookVisit: 'Book a visit',
   close: 'Close the look',
   closeTip: 'Takes the card off the thread and stops the link. The photos stay with the look.',
+  /** The two doors' hover words for someone who is a customer already: nothing is made of them, the door just opens. */
+  estimateTipCustomer: 'Opens a new estimate on them, with these photos beside the price. The thread closes.',
+  bookTipCustomer: 'Opens Add Job with their name, number and words filled in. The look goes with the job.',
   closeAsk: 'Close this look? The card leaves the thread and the link stops taking photos.',
   closed: 'The look is closed.',
   nameFirst: 'Name them to start an estimate or book a visit. Press Who is this?',
@@ -126,6 +129,12 @@ export const LOOK_CARD_WORDS = {
 export function lookAskedWords(look: Pick<ThreadLook, 'asked_by_name'>, dayWords: string): string {
   const who = look.asked_by_name.trim()
   return who ? `Asked ${dayWords} by ${who}` : `Asked ${dayWords}`
+}
+
+/** The same words after a comma, *asked Nov 12 by Rosa*: only the first letter drops, never a name's or a month's. */
+export function lookAskedLower(look: Pick<ThreadLook, 'asked_by_name'>, dayWords: string): string {
+  const words = lookAskedWords(look, dayWords)
+  return words.charAt(0).toLowerCase() + words.slice(1)
 }
 
 /** How many of each kind a card holds, the page's files and the texted ones together. */
@@ -163,3 +172,16 @@ export function lookCardDriveLine(card: Pick<LookCard, 'look' | 'files'>, hasCus
   const failWhy = card.files.find((f) => !f.drive_file_id && f.fail_why)?.fail_why ?? null
   return lookDriveLine({ total: card.files.length, filed, folderUrl: card.look.drive_folder_id ? driveFolderUrl(card.look.drive_folder_id) : null, hasCustomer, failWhy })
 }
+
+/** The estimate's strip (PR 5): whose look it is and when it was asked. */
+export const LOOK_STRIP_WORDS = {
+  head: 'Photos the customer sent',
+  /** What the customer reads on a price made from their photos (the owner's call 7). */
+  pricedFromPhotos: 'Priced from your photos. The tech confirms the price at your home before any work starts.',
+} as const
+
+/** The Job Mode card's strip (PR 6): what the customer sent before the visit. */
+export const JOB_LOOK_WORDS = {
+  head: 'What the customer sent',
+  none: 'They sent their words and no photo.',
+} as const

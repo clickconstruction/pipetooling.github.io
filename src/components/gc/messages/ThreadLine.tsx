@@ -7,7 +7,7 @@ const HOLD_TRAVEL_PX = 10
 import type { AppFoldThreadRow } from '../../../lib/messages/appLines'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
-import { bioMark, callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
+import { bioMark, callLength, channelWord, clockTime, deliveryMark, isLong, type FiledMark, type ThreadMessage } from '../../../lib/messages/thread'
 import { FiledLines, LineFileChips } from './LineFiles'
 import { MessageBody } from './MessageBody'
 import type { Contact } from '../../../lib/contacts/kernel'
@@ -34,6 +34,7 @@ export function ThreadLine({
   smallPrint,
   userNames = {},
   contact = null,
+  filed = null,
   onOpen,
   onTie,
   onJob,
@@ -58,6 +59,8 @@ export function ThreadLine({
   smallPrint?: readonly string[]
   /** The team's names, for who filed a paper from the line. */
   userNames?: Readonly<Record<string, string>>
+  /** The mark on a mail filed for the record (v2.7027, `filedMark`): *filed Nov 9* beside who. Null on every other line. */
+  filed?: FiledMark | null
   onOpen: () => void
   onTie: () => void
   /** A press on the line's job tag: the job's tiles filter, or a line with no job asks for one. */
@@ -184,6 +187,15 @@ export function ThreadLine({
               style={{ border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--surface)', padding: '0 0.4rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-blue-700)' }}
             >
               {bio.words}
+            </span>
+          )}
+          {filed && (
+            <span
+              data-thread-filed={message.id}
+              title={filed.title}
+              style={{ border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--surface)', padding: '0 0.4rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}
+            >
+              {filed.words}
             </span>
           )}
           {job !== 'none' && tile ? (

@@ -15,12 +15,12 @@ import { isOfficeRole } from './doorRoles'
  * roadmap itself. This function is the one place that decides the door; every
  * surface that points at the roadmap reads it.
  *
- * Farm Mode hides the door for everyone — the mode is "one page, the daily
+ * Task Mode hides the door for everyone — the mode is "one page, the daily
  * list"; the Layout bounce lands the person on `/checklist` and the on-page
  * chip says how to leave.
  */
-export function canOpenRoadmap(role: UserRole | null | undefined, farmModeEnabled: boolean): boolean {
-  if (farmModeEnabled) return false
+export function canOpenRoadmap(role: UserRole | null | undefined, taskModeEnabled: boolean): boolean {
+  if (taskModeEnabled) return false
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
@@ -31,8 +31,8 @@ export function canOpenRoadmap(role: UserRole | null | undefined, farmModeEnable
  * Mode; `dashboardNeedsYou.ts` enforces the same rule structurally through
  * `kind: 'roadmap'`.
  */
-export function canSeeRoadmapNeedsYou(role: UserRole | null | undefined, farmModeEnabled: boolean): boolean {
-  return isOfficeRole(role) && canOpenRoadmap(role, farmModeEnabled)
+export function canSeeRoadmapNeedsYou(role: UserRole | null | undefined, taskModeEnabled: boolean): boolean {
+  return isOfficeRole(role) && canOpenRoadmap(role, taskModeEnabled)
 }
 
 export const ROADMAP_PATH = '/roadmap'
