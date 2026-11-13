@@ -11,6 +11,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatCurrency } from '../jobs/jobFormMoney'
 import { bidImportCarry, decideBidImportGc, type BidImportGcOption } from './jobImportFromBid'
 import type { GcPacket } from './gcPackets'
+import { draftPayTermsDraftWords, parseDraftPayTerms, type DraftPayTerms } from '../jobs/draftPayTerms'
 
 export const JOB_DRAFT_VERSION = 1
 
@@ -27,6 +28,8 @@ export interface JobDraft {
   /** YYYY-MM-DD: the day the estimator wants it opened by; null for no day. */
   wantedBy: string | null
   note: string | null
+  /** The winning GC's pay terms as the estimator read them (punch list #323): the office makes them the Pay calendar. Absent or null for none. */
+  payTerms?: DraftPayTerms | null
 }
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -40,6 +43,7 @@ export function parseJobDraft(raw: unknown): JobDraft | null {
   if (r.v !== JOB_DRAFT_VERSION) return null
   const carry = typeof r.carry === 'number' && Number.isFinite(r.carry) && r.carry > 0 ? Math.round(r.carry * 100) / 100 : null
   const wantedBy = text(r.wantedBy)
+  const payTerms = parseDraftPayTerms(r.payTerms)
   return {
     v: JOB_DRAFT_VERSION,
     jobName: text(r.jobName),
@@ -50,6 +54,8 @@ export function parseJobDraft(raw: unknown): JobDraft | null {
     serviceTypeId: textOrNull(r.serviceTypeId),
     wantedBy: YMD.test(wantedBy) ? wantedBy : null,
     note: textOrNull(r.note),
+    // No key at all without terms: a draft with none is written exactly as before.
+    ...(payTerms ? { payTerms } : {}),
   }
 }
 
@@ -108,7 +114,8 @@ function shortDay(ymd: string): string {
 
 /**
  * The words the inbox row and New Job show for a draft: "Wendi's draft: GC Southern Pine · starts at $38,625 · wanted by
- * Oct 30 · note: the slab pour is the 3rd". Only the parts the draft holds.
+ * Oct 30 · note: the slab pour is the 3rd · pay terms: in by the 25th, paid the 10th, only this job". Only the parts the
+ * draft holds.
  */
 export function jobDraftWords(d: JobDraft, senderName: string | null | undefined): string {
   const who = (senderName ?? '').trim()
@@ -117,6 +124,7 @@ export function jobDraftWords(d: JobDraft, senderName: string | null | undefined
   parts.push(d.carry != null ? `starts at $${formatCurrency(d.carry)}` : 'starts at $0')
   if (d.wantedBy) parts.push(`wanted by ${shortDay(d.wantedBy)}`)
   if (d.note) parts.push(`note: ${d.note}`)
+  if (d.payTerms) parts.push(draftPayTermsDraftWords(d.payTerms))
   return `${who ? `${who}'s draft` : 'The draft'}: ${parts.join(' · ')}`
 }
 

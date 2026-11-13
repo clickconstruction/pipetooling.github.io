@@ -256,7 +256,7 @@ export default function LienDeskPage() {
   if (!isStagesOfficeRole(role)) return <Navigate to="/dashboard" replace />
 
   const backDoor = (
-    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={BACK_DOOR}>
+    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={isMobile ? { ...BACK_DOOR, height: 44 } : BACK_DOOR}>
       <span aria-hidden="true">←</span> {canGoBack ? 'Back' : 'Pipeline'}
     </button>
   )

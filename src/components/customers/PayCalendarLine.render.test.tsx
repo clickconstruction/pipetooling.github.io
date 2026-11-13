@@ -116,3 +116,44 @@ describe('PayCalendarLine on a payer', () => {
     expect(screen.queryByTestId('pay-calendar-line')).toBeNull()
   })
 })
+
+describe('PayCalendarLine with terms an estimator read on the bid (punch list #323)', () => {
+  const CAL = { cutoffDay: 25, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '§ 5.2', words: '' }
+  const OFFER = { terms: { scope: 'job' as const, calendar: CAL }, from: 'Dana Whitfield' }
+
+  it('offers them on a job with no calendar, in place of the bare press, and opens the window filled in', async () => {
+    renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} variant="row" offer={OFFER} />)
+    await waitFor(() => expect(line().textContent).toBe('From Dana Whitfield’s draft · In by the 25th, paid the 10th · Check and use'))
+    fireEvent.click(screen.getByTestId('pay-calendar-line-offer-press'))
+    expect(opener.openPayCalendar).toHaveBeenCalledWith(PAYER, { onSaved: expect.any(Function), job: JOB, initial: { calendar: CAL, scope: 'job', from: 'Dana Whitfield’s draft' } })
+  })
+
+  it('a job that follows its payer still says so, with the job’s own terms offered beside it', async () => {
+    io.loadPayerPayCalendars.mockResolvedValue([PAYER_ROW])
+    renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} offer={OFFER} />)
+    await waitFor(() => expect(line().textContent).toBe('Follows Larkfield Construction · In by month end, paid the 10thFrom Dana Whitfield’s draft · In by the 25th, paid the 10th · Check and use'))
+  })
+
+  it('terms for the payer are answered once the payer has a calendar', async () => {
+    io.loadPayerPayCalendars.mockResolvedValue([PAYER_ROW])
+    renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} offer={{ ...OFFER, terms: { scope: 'payer', calendar: CAL } }} />)
+    await waitFor(() => expect(line().textContent).toBe('Follows Larkfield Construction · In by month end, paid the 10th'))
+  })
+
+  it('offers nothing once the job carries its own, or was switched off', async () => {
+    io.loadPayerPayCalendars.mockResolvedValue([PAYER_ROW, JOB_OWN])
+    const first = renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} offer={OFFER} />)
+    await waitFor(() => expect(line().textContent).toBe('This job’s own · In by the 25th, paid the 30th'))
+    first.unmount()
+    io.loadPayerPayCalendars.mockResolvedValue([JOB_OFF])
+    renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} offer={OFFER} />)
+    await waitFor(() => expect(line().textContent).toBe('No pay calendar on this job'))
+  })
+
+  it('offers nothing to a reader who cannot set a calendar', async () => {
+    auth.role = 'estimator'
+    renderWithProviders(<PayCalendarLine payerId={PAYER.id} payerName={PAYER.name} job={JOB} offer={OFFER} />)
+    await waitFor(() => expect(io.loadPayerPayCalendars).toHaveBeenCalled())
+    expect(screen.queryByTestId('pay-calendar-line-offer')).toBeNull()
+  })
+})
