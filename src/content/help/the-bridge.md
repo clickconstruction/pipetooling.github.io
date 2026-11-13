@@ -265,7 +265,7 @@ Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on 
 
 The email shows the three tiles, the strip of pipe and the week's call with its moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
-Market on the email's pipe reads what the asks are worth a week, by the page's rule. The email does not read the list of what the Bridge leaves out. The email's numbers can differ from the page's while that list names something. One line under the pipe says what the bids win and what the estimates sell.
+The email leaves out [what the Bridge leaves out](#what-the-bridge-leaves-out). When the list names something, a line under the email's name says what is left out. Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 
 The email records nothing. The email's button opens the Bridge. A move the page would give to you goes out with no name on it.
 
