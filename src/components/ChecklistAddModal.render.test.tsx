@@ -83,6 +83,7 @@ import {
   useChecklistAddModal,
 } from '../contexts/ChecklistAddModalContext'
 import { renderWithProviders } from '../test/renderSmokeMocks'
+import { THREAD_WINDOW_Z } from '../lib/windowLayers'
 
 function OpenOnMount() {
   const modal = useChecklistAddModal()
@@ -228,6 +229,12 @@ describe('ChecklistAddModal closing', () => {
     expect((screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement).value).toBe('Order the 3/4" copper')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
+    cleanup()
+  })
+
+  it('opens over a thread window, so Ask a tech… and Send as a task show it (v2.7069)', async () => {
+    await renderOpenModal()
+    expect(Number(screen.getByRole('dialog').style.zIndex)).toBeGreaterThan(THREAD_WINDOW_Z)
     cleanup()
   })
 })

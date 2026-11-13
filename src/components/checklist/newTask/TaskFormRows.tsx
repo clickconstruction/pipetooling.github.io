@@ -95,6 +95,8 @@ type Props = {
   dueNote?: ReactNode
   /** Shown under the When row: an edit says what a save does to the days already made. */
   whenNote?: ReactNode
+  /** The layer of what the rows open through a portal, over the window that holds them. Left out, each keeps its own. */
+  pickerZIndex?: number
 }
 
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gap: 8, padding: '10px 0', borderTop: '1px solid var(--border)', alignItems: 'center' }
@@ -471,6 +473,7 @@ export function TaskFormRows(props: Props) {
               emptyOption={{ value: '', label: '— add someone else —' }}
               placeholder="— add someone else —"
               listAriaLabel="Also notify when completed"
+              {...(props.pickerZIndex != null ? { portalZIndex: props.pickerZIndex } : {})}
               searchReplacesTrigger
               hideEmptyOptionInListWhenUnset
             />

@@ -24,6 +24,7 @@ import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TASK_WORDS_BOX_STYLE, focusPeopleSearchIfOpen } from './checklist/newTask/taskWindowBits'
 import { TaskSendBar } from './checklist/newTask/TaskSendBar'
 import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindowShell'
+import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -476,9 +477,9 @@ export default function ChecklistAddModal({
       titleId="checklist-add-modal-title"
       title="New task"
       phone={phone}
-      // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
-      // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      zIndex={1012}
+      // Above Job Detail (1004) and Edit Job (1010) so the header send-as-task buttons stack this over either
+      // (v2.1529), and above a thread's window (1200) so Ask a tech… and Send as a task do too (v2.7069).
+      zIndex={ADD_TASK_WINDOW_Z}
       overlayBackground={overlayBackground}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header or a successful Send.
@@ -766,6 +767,8 @@ export default function ChecklistAddModal({
           }, 0)
         }}
         initialOpen={rowsOpen}
+        // What the rows open through a portal, the notify list and the place sheet, sits over this window (v2.7069).
+        pickerZIndex={ADD_TASK_PICKER_Z}
       />
     </TaskWindowShell>
   )
