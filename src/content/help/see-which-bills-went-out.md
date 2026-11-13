@@ -16,7 +16,9 @@ You do nothing to fill it. A line appears when someone sends a bill from the app
 
 On a phone you can add the page to your home screen. The list opens to the newest day.
 
-You can also reach it from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
+You can also reach it from the [Pipeline](/jobs?tab=stages). Find the **Billed Awaiting Payment** header. Press {{button:outline|Bills sent}} at the end of its row of buttons.
+
+There is a third way in from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
 
 ## Put a button on your Dashboard
 
