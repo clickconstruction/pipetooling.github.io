@@ -69,7 +69,7 @@ describe('the share arithmetic', () => {
   })
 
   it('labels a source by its name and importer, falling back to the link’s host', () => {
-    expect(countSourceLabel({ project_name: 'SpaceX BA', link: 'https://counttooling.com/app/?t=x' }, 'Robert')).toBe('SpaceX BA · Robert')
+    expect(countSourceLabel({ project_name: 'SkyLab BA', link: 'https://counttooling.com/app/?t=x' }, 'Robert')).toBe('SkyLab BA · Robert')
     expect(countSourceLabel({ project_name: null, link: 'https://counttooling.com/app/?t=x' }, null)).toBe('counttooling.com')
     // v2.6237: the robot's source is plain Robot, whoever pressed Add; its short label is Robot too.
     expect(countSourceLabel({ project_name: 'Robot', link: 'https://counttooling.com/app/?t=x', source_kind: 'robot' }, 'Robert')).toBe('Robot')
@@ -92,7 +92,7 @@ describe('removing a project and the From pill (v2.5520)', () => {
     expect(countRowFrom({ t1: 5 }, labels)).toEqual({ kind: 'one', words: 'Taunya', title: 'Taunya’s count', keys: ['t1'] })
     expect(countRowFrom({ t1: 1489.04, r2: 338.41 }, labels, (n) => n.toLocaleString('en-US'))).toEqual({ kind: 'both', words: 'both', title: 'both · Taunya 1,489.04 · Robert 338.41', keys: ['t1', 'r2'] })
     expect(countRowFrom({ gone: 3 }, labels).words).toBe('?')
-    expect(countSourceShortLabel('SpaceX BA · Robert')).toBe('Robert')
+    expect(countSourceShortLabel('SkyLab BA · Robert')).toBe('Robert')
     expect(countSourceShortLabel('counttooling.com')).toBe('counttooling.com')
   })
 })

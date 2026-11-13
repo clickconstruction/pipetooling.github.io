@@ -12,7 +12,7 @@ import { plainWordsFailures } from '../plainWords'
 
 const TODAY = '2026-10-30'
 const alvarez = { kind: 'team' as const, userId: 'u-da', name: 'Daniel Alvarez', role: 'Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000' }
-const nguyen = { kind: 'witness' as const, userId: null, name: 'Thanh Nguyen', role: 'the foreman for Brightline Electric, the electrical subcontractor on the job' }
+const newell = { kind: 'witness' as const, userId: null, name: 'Tobin Newell', role: 'the foreman for Brightline Electric, the electrical subcontractor on the job' }
 const draft: StatementDraft = {
   title: 'Affidavit of Daniel Alvarez', affiant: alvarez, incidentOn: '2026-09-03', incidentTo: '2026-09-17', form: 'notary', venueCounty: 'Guadalupe',
   body: 'I am the Responsible Master Plumber of record. I was the plumber in charge of the rough-in at Quick Lube.\n3. On September 3, 2026, at about 7:40 in the morning, I was on the site with two of my crew.\n\nNorthline never called us back.',
@@ -59,8 +59,8 @@ describe('the opener and the paragraphs', () => {
     expect(statementOpener(alvarez, 'declaration')).toContain('capable of making this declaration.')
   })
   it('a witness says who they are and that they have no stake', () => {
-    expect(statementOpener(nguyen, 'declaration')).toBe('My name is Thanh Nguyen. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman for Brightline Electric, the electrical subcontractor on the job. I have no interest in the outcome of this dispute. The facts stated here are within my personal knowledge and are true and correct.')
-    expect(statementOpener({ ...nguyen, role: '' }, 'notary')).not.toContain(' I am .')
+    expect(statementOpener(newell, 'declaration')).toBe('My name is Tobin Newell. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman for Brightline Electric, the electrical subcontractor on the job. I have no interest in the outcome of this dispute. The facts stated here are within my personal knowledge and are true and correct.')
+    expect(statementOpener({ ...newell, role: '' }, 'notary')).not.toContain(' I am .')
   })
   it('the body splits on line breaks and drops a number the writer typed', () => {
     expect(statementParagraphs(draft.body)).toEqual(['I am the Responsible Master Plumber of record. I was the plumber in charge of the rough-in at Quick Lube.', 'On September 3, 2026, at about 7:40 in the morning, I was on the site with two of my crew.', 'Northline never called us back.'])
@@ -69,10 +69,10 @@ describe('the opener and the paragraphs', () => {
   })
   it('the suggested title and the by-line follow the affiant and the form', () => {
     expect(suggestedStatementTitle(alvarez, 'notary')).toBe('Affidavit of Daniel Alvarez')
-    expect(suggestedStatementTitle(nguyen, 'declaration')).toBe('Declaration of Thanh Nguyen')
-    expect(suggestedStatementTitle({ ...nguyen, name: ' ' }, 'notary')).toBe('')
+    expect(suggestedStatementTitle(newell, 'declaration')).toBe('Declaration of Tobin Newell')
+    expect(suggestedStatementTitle({ ...newell, name: ' ' }, 'notary')).toBe('')
     expect(statementByWords(alvarez)).toBe('Daniel Alvarez · team')
-    expect(statementByWords(nguyen)).toBe('Thanh Nguyen · witness')
+    expect(statementByWords(newell)).toBe('Tobin Newell · witness')
   })
 })
 
@@ -108,47 +108,47 @@ describe('the three faces under each form', () => {
     expect(t.startsWith('JURAT\n\nThis jurat is attached to the handwritten statement of Daniel Alvarez, _____ pages, each initialed by the signer.')).toBe(true)
     expect(t).not.toContain('My name is')
     expect(t).toContain(juratSentence('Daniel Alvarez'))
-    expect(attachedToLine('declaration', 'Thanh Nguyen')).toBe('This declaration is attached to the handwritten statement of Thanh Nguyen, _____ pages, each initialed by the signer.')
+    expect(attachedToLine('declaration', 'Tobin Newell')).toBe('This declaration is attached to the handwritten statement of Tobin Newell, _____ pages, each initialed by the signer.')
   })
   it('no notary, the whole paper: no venue caption, the § 132.001(d) block with the details typed at print time, the day left blank', () => {
     // v2.6243: the block reads the statement's full name, so ¶1, the block and the signature name the declarant one way.
-    const d: StatementDraft = { ...draft, affiant: { ...nguyen, name: ' Thanh  Van Nguyen ' }, form: 'declaration', title: 'Declaration of Thanh Van Nguyen', venueCounty: 'Williamson' }
+    const d: StatementDraft = { ...draft, affiant: { ...newell, name: ' Tobin  Van Newell ' }, form: 'declaration', title: 'Declaration of Tobin Van Newell', venueCounty: 'Williamson' }
     const declarant = { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
     const t = texts(d, 'whole', declarant)
     expect(t).not.toContain('STATE OF TEXAS')
     expect(t).not.toContain('SWORN TO')
-    expect(t).toContain('1. My name is Thanh Van Nguyen. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman')
-    expect(t).toContain('My name is Thanh Van Nguyen, my date of birth is March 14, 1988, and my address is 1400 Example Rd, Round Rock, Texas 78664, and United States of America. I declare under penalty of perjury that the foregoing is true and correct.')
+    expect(t).toContain('1. My name is Tobin Van Newell. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman')
+    expect(t).toContain('My name is Tobin Van Newell, my date of birth is March 14, 1988, and my address is 1400 Example Rd, Round Rock, Texas 78664, and United States of America. I declare under penalty of perjury that the foregoing is true and correct.')
     expect(t).toContain('Executed in Williamson County, State of Texas, on the ______ day of __________, __________.')
-    expect(t).toContain('Thanh Van Nguyen, Declarant')
-    expect(t).not.toMatch(/Thanh +Nguyen|Thanh {2}Van/)
+    expect(t).toContain('Tobin Van Newell, Declarant')
+    expect(t).not.toMatch(/Tobin +Newell|Tobin {2}Van/)
     expect(t).not.toContain('Notary Public')
-    expect(texts(d, 'signing', declarant)).toContain('This declaration is attached to the handwritten statement of Thanh Van Nguyen, _____ pages')
+    expect(texts(d, 'signing', declarant)).toContain('This declaration is attached to the handwritten statement of Tobin Van Newell, _____ pages')
   })
   it('no notary with no details yet: the statute’s own blanks print, so the paper can be filled by hand', () => {
-    const d: StatementDraft = { ...draft, affiant: nguyen, form: 'declaration', venueCounty: '' }
+    const d: StatementDraft = { ...draft, affiant: newell, form: 'declaration', venueCounty: '' }
     const t = texts(d, 'signing')
-    expect(t).toContain('DECLARATION\n\nThis declaration is attached to the handwritten statement of Thanh Nguyen')
+    expect(t).toContain('DECLARATION\n\nThis declaration is attached to the handwritten statement of Tobin Newell')
     expect(t).toContain('My name is __________ (First) __________ (Middle) __________ (Last), my date of birth is __________')
     expect(t).toContain('Executed in __________ County, State of Texas, on the ______ day of __________, __________.')
-    expect(declarationJurat(null, '', 'Thanh Nguyen').statement).toBe(DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')))
+    expect(declarationJurat(null, '', 'Tobin Newell').statement).toBe(DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')))
   })
   it('the declarant’s details are whole or the print waits; the name is the statement’s, and one word waits too (v2.6243)', () => {
     expect(declarantProblem(DECLARANT_BLANK, ' ')).toBe('Type their full name on the statement first.')
     const oneWord = declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' }, ' Malachi ')
     expect(oneWord).toBe('Their full name is one word. Texas asks for a first and a last name. Go back and type it as it reads on their ID.')
     expect(plainWordsFailures(oneWord!)).toEqual([])
-    expect(declarantProblem(DECLARANT_BLANK, 'Thanh Nguyen')).toBe('Type the declarant’s date of birth.')
-    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14' }, 'Thanh Nguyen')).toBe('Type the declarant’s street, city, state, zip code and country.')
-    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' }, 'Thanh Nguyen')).toBeNull()
+    expect(declarantProblem(DECLARANT_BLANK, 'Tobin Newell')).toBe('Type the declarant’s date of birth.')
+    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14' }, 'Tobin Newell')).toBe('Type the declarant’s street, city, state, zip code and country.')
+    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' }, 'Tobin Newell')).toBeNull()
     expect(Object.keys(DECLARANT_BLANK)).not.toContain('firstName')
   })
   it('a name prints trimmed with one space between words; one word is flagged', () => {
-    expect(fullNameWords('  Thanh   Van Nguyen ')).toBe('Thanh Van Nguyen')
+    expect(fullNameWords('  Tobin   Van Newell ')).toBe('Tobin Van Newell')
     expect(isOneWordName(' Malachi ')).toBe(true)
-    expect(isOneWordName('Thanh Van Nguyen')).toBe(false)
+    expect(isOneWordName('Tobin Van Newell')).toBe(false)
     expect(isOneWordName('  ')).toBe(false)
-    expect(statementOpener({ ...nguyen, name: 'Thanh  Nguyen' }, 'notary').startsWith('My name is Thanh Nguyen. I am over eighteen')).toBe(true)
+    expect(statementOpener({ ...newell, name: 'Tobin  Newell' }, 'notary').startsWith('My name is Tobin Newell. I am over eighteen')).toBe(true)
   })
   it('the print title names the face', () => {
     expect(statementPrintTitle(draft, 'whole')).toBe('Affidavit of Daniel Alvarez')
@@ -164,7 +164,7 @@ describe('the draft’s rules', () => {
     // v2.6238: a picked team member with no name asks for the name on their ID; nobody picked asks for the pick.
     expect(statementDraftProblem({ ...draft, affiant: { ...alvarez, name: '' } }, TODAY)).toBe('Type their full name, as it reads on their ID.')
     expect(statementDraftProblem({ ...draft, affiant: { ...alvarez, userId: null, name: '' } }, TODAY)).toBe('Pick who swears it.')
-    expect(statementDraftProblem({ ...draft, affiant: { ...nguyen, name: '' } }, TODAY)).toBe('Type the witness’s full name.')
+    expect(statementDraftProblem({ ...draft, affiant: { ...newell, name: '' } }, TODAY)).toBe('Type the witness’s full name.')
     expect(statementDraftProblem({ ...draft, title: ' ' }, TODAY)).toBe('Give the statement a title.')
     expect(statementDraftProblem({ ...draft, incidentOn: '2026-02-30' }, TODAY)).toBe('Pick the day it is about.')
     expect(statementDraftProblem({ ...draft, incidentOn: '2026-11-01', incidentTo: '' }, TODAY)).toBe('The day it is about cannot be ahead of today.')
@@ -239,7 +239,7 @@ describe('the meta and the state words', () => {
     expect(statementKindWords(signed)).toBe('sworn statement')
     expect(statementKindWords(meta({ form: 'declaration', state: 'signed' }))).toBe('declaration')
     expect(statementFirmKindWords(signed)).toBe("sworn statement by the office's team")
-    expect(statementFirmKindWords(meta({ form: 'declaration', affiant: { kind: 'witness', name: 'Thanh Nguyen' } }))).toBe('unsworn declaration by a witness · draft, not signed')
+    expect(statementFirmKindWords(meta({ form: 'declaration', affiant: { kind: 'witness', name: 'Tobin Newell' } }))).toBe('unsworn declaration by a witness · draft, not signed')
     expect(statementShowsLine(signed, '2026-09-03')).toBe('Sworn Oct 29 before a notary in Guadalupe County. What was seen or heard on Sep 3 to Sep 17.')
     expect(incidentSpanWords('2026-09-03', '2026-09-03')).toBe('Sep 3')
   })
@@ -270,8 +270,8 @@ describe('the record check beside the day', () => {
     expect(recordCheckHeading('', null)).toBe('What the record says about those days')
   })
   it('a witness with no roster row is matched by name; a span over a fortnight names no empty days; a bad day lists nothing', () => {
-    const lines = recordCheckLines({ incidentOn: '2026-09-01', incidentTo: '2026-09-30', affiant: { userId: null, name: 'Thanh Nguyen' }, sessions: [], reports: [{ authorName: 'thanh nguyen', templateName: '', createdOn: '2026-09-09', jobLabel: '742' }], notes: [], clockWords })
-    expect(lines).toEqual([{ ymd: '2026-09-09', kind: 'report', text: 'Field report · thanh nguyen · job 742', theirs: true }])
+    const lines = recordCheckLines({ incidentOn: '2026-09-01', incidentTo: '2026-09-30', affiant: { userId: null, name: 'Tobin Newell' }, sessions: [], reports: [{ authorName: 'tobin newell', templateName: '', createdOn: '2026-09-09', jobLabel: '742' }], notes: [], clockWords })
+    expect(lines).toEqual([{ ymd: '2026-09-09', kind: 'report', text: 'Field report · tobin newell · job 742', theirs: true }])
     expect(recordCheckLines({ incidentOn: 'soon', incidentTo: null, affiant: { userId: null, name: '' }, sessions: [], reports: [], notes: [], clockWords })).toEqual([])
   })
 })
@@ -308,9 +308,9 @@ describe('the role under a signature (v2.6238)', () => {
     expect(signatureRoleLine('  ')).toBe('')
   })
   it('the paper prints it under the signature while the opener keeps the words as typed', () => {
-    const d: StatementDraft = { ...draft, affiant: nguyen, form: 'declaration', venueCounty: 'Williamson' }
+    const d: StatementDraft = { ...draft, affiant: newell, form: 'declaration', venueCounty: 'Williamson' }
     const t = filingDocText(statementPaperBlocks({ draft: d, face: 'whole', declarant: null }))
-    expect(t).toContain('Thanh Nguyen, Declarant\nForeman for Brightline Electric, the electrical subcontractor on the job')
+    expect(t).toContain('Tobin Newell, Declarant\nForeman for Brightline Electric, the electrical subcontractor on the job')
     expect(t).toContain('I am the foreman for Brightline Electric, the electrical subcontractor on the job.')
   })
 })

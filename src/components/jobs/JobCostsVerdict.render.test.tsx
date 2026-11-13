@@ -30,7 +30,7 @@ const kept = { loading: false, loaded: true, busy: false, error: null, row: null
 afterEach(cleanup)
 
 const renderVerdict = (priced: Parameters<typeof buildCostsVerdict>[0]['priced']) =>
-  render(<JobCostsVerdict verdict={buildCostsVerdict({ ...base, priced })} canWrite budget={budget} linkedBid={{ id: 'b66', bid_number: '66', project_name: 'Mission Hill Park' }} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} />)
+  render(<JobCostsVerdict verdict={buildCostsVerdict({ ...base, priced })} canWrite budget={budget} linkedBid={{ id: 'b66', bid_number: '66', project_name: 'Mission Flat Park' }} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} />)
 
 describe("JobCostsVerdict · the second walk's slips (punch list #234)", () => {
   const costed: ResolvedJobBudget = { ...assumed, source: 'bid', glyph: '◆', directUsd: 3_000, components: { laborHours: 70, laborRate: null, laborUsd: 0, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, partial: { labor: true, materials: false, subs: false } }

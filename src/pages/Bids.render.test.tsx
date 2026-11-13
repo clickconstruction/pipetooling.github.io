@@ -265,8 +265,8 @@ describe('Bids page render smoke — a refused link', () => {
 const BID = {
   id: 'bid-1',
   bid_number: '482',
-  project_name: 'Pondhill Building 2',
-  address: '4114 Pond Hill Rd',
+  project_name: 'Penmoor Building 2',
+  address: '4114 Pen Moor Rd',
   service_type_id: 'st-1',
   outcome: null,
   bid_date_sent: null,
@@ -322,7 +322,7 @@ describe('Bids page render smoke — a link to a bid', () => {
   it.each(['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release'])('?tab=%s&bidId= opens the tab on that bid and keeps the link', async (tab) => {
     renderBidsAt(`/bids?tab=${tab}&bidId=bid-1`, 'estimator', [BID])
     await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
-    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Penmoor Building 2/).length).toBeGreaterThan(0))
     await settle()
     expect(currentTab()).toBe(tab)
     expect(currentParam('bidId')).toBe('bid-1')
@@ -456,7 +456,7 @@ describe('Bids page render smoke — Edit Bid writes', () => {
   /** Opens BID on the Bid window's Edit face and waits until the form holds the bid. */
   async function openBidOnEdit(row: Record<string, unknown> = BID) {
     renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [row])
-    await waitFor(() => expect(projectName()?.value).toBe('Pondhill Building 2'))
+    await waitFor(() => expect(projectName()?.value).toBe('Penmoor Building 2'))
     await pageAtRest()
     smoke.writes = []
   }
@@ -484,9 +484,9 @@ describe('Bids page render smoke — Edit Bid writes', () => {
 
   it('a change saves itself after the pause — one update, that field only, on that bid', async () => {
     await openBidOnEdit()
-    await runTheDebounce(() => fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } }))
+    await runTheDebounce(() => fireEvent.change(projectName()!, { target: { value: 'Penmoor Building 3' } }))
     await waitFor(() => expect(bidWrites()).toHaveLength(1))
-    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] })
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Penmoor Building 3' }, filters: [['id', 'bid-1']] })
     expect(bidWindowOpen()).toBe(true)
   })
 
@@ -500,17 +500,17 @@ describe('Bids page render smoke — Edit Bid writes', () => {
 
   it('closing inside the pause saves the change first, once, then closes', async () => {
     await openBidOnEdit()
-    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    fireEvent.change(projectName()!, { target: { value: 'Penmoor Building 3' } })
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
     await waitFor(() => expect(bidWindowOpen()).toBe(false))
-    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] }])
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Penmoor Building 3' }, filters: [['id', 'bid-1']] }])
   })
 
   it('a refused write keeps the window open and says so; Close without saving closes it with no second write', async () => {
     await openBidOnEdit()
     smoke.refuseBidUpdates = true
-    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    fireEvent.change(projectName()!, { target: { value: 'Penmoor Building 3' } })
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
     expect(await screen.findByText(/Couldn’t save your latest changes/)).toBeTruthy()
@@ -541,10 +541,10 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     expect(dueDate().value).toBe('2026-10-01')
     await runTheDebounce(() => {
       fireEvent.change(dueDate(), { target: { value: '0002-10-08' } })
-      fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+      fireEvent.change(projectName()!, { target: { value: 'Penmoor Building 3' } })
     })
     await waitFor(() => expect(bidWrites()).toHaveLength(1))
-    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] })
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Penmoor Building 3' }, filters: [['id', 'bid-1']] })
     expect(screen.getAllByText(HELD_DATE_LINE)).toHaveLength(1)
     // A second pause, still mid-year: nothing to write, nothing said again.
     await runTheDebounce(() => fireEvent.change(dueDate(), { target: { value: '0202-10-08' } }))
@@ -577,9 +577,9 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     const typed = await screen.findByPlaceholderText('Project name')
     const confirm = () => screen.getByRole('button', { name: 'Delete bid' }) as HTMLButtonElement
     expect(confirm().disabled).toBe(true)
-    fireEvent.change(typed, { target: { value: 'Pondhill' } })
+    fireEvent.change(typed, { target: { value: 'Penmoor' } })
     expect(confirm().disabled).toBe(true)
-    fireEvent.change(typed, { target: { value: 'Pondhill Building 2' } })
+    fireEvent.change(typed, { target: { value: 'Penmoor Building 2' } })
     expect(confirm().disabled).toBe(false)
     fireEvent.click(confirm())
     await waitFor(() => expect(bidWindowOpen()).toBe(false))
@@ -589,7 +589,7 @@ describe('Bids page render smoke — Edit Bid writes', () => {
   it('Delete bid → Cancel writes nothing and leaves the bid open', async () => {
     await openBidOnEdit()
     fireEvent.click(screen.getByRole('button', { name: 'Delete bid…' }))
-    fireEvent.change(await screen.findByPlaceholderText('Project name'), { target: { value: 'Pondhill Building 2' } })
+    fireEvent.change(await screen.findByPlaceholderText('Project name'), { target: { value: 'Penmoor Building 2' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     await settle()
     expect(screen.queryByPlaceholderText('Project name')).toBeNull()
@@ -622,13 +622,13 @@ describe('Bids page render smoke — Edit Bid writes', () => {
 
   it('Open Counts on an open bid saves the pending change, closes, and lands on its Counts tab', async () => {
     await openBidOnEdit()
-    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    fireEvent.change(projectName()!, { target: { value: 'Penmoor Building 3' } })
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Open Counts' }))
     await waitFor(() => expect(currentTab()).toBe('counts'))
     await waitFor(() => expect(bidWindowOpen()).toBe(false))
     expect(currentParam('bidId')).toBe('bid-1')
-    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] }])
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Penmoor Building 3' }, filters: [['id', 'bid-1']] }])
   })
 
   it('New Bid → Create and open counts inserts one bid and lands on Counts', async () => {
@@ -687,7 +687,7 @@ describe('Bids page render smoke — an empty list names the next press (punch l
   it('around one unsent bid, each empty pile says its own good state', async () => {
     renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
     await pageAtRest()
-    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Penmoor Building 2/).length).toBeGreaterThan(0))
     // The last line is the Health section's chart of wins by bid size (punch list #318): no sent bid is marked yet.
     expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.', 'No sent bid on this board is marked won or lost yet. Mark a bid won or lost and its size fills in here.'])
   })
@@ -695,7 +695,7 @@ describe('Bids page render smoke — an empty list names the next press (punch l
   it('Submission follow-up: each empty pile says its good state, and a search with no bid offers Clear the search', async () => {
     renderBidsAt('/bids?tab=submission-followup', 'estimator', [BID])
     await pageAtRest()
-    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Penmoor Building 2/).length).toBeGreaterThan(0))
     expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.'])
     fireEvent.change(screen.getByPlaceholderText('Search bids (project name or GC/Builder)...'), { target: { value: 'Ridgeway' } })
     expect(emptyLines()).toEqual([

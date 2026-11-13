@@ -20,7 +20,7 @@ vi.mock('react-router-dom', async () => {
 const state = { revisionCount: 0, notNeededAt: null as string | null, bidId: 'b398' as string | null }
 vi.mock('../../lib/supabase', () => ({
   supabase: {
-    rpc: () => Promise.resolve({ data: [{ id: 'j1', hcp_number: 'J964', click_number: null, job_name: 'Pondhill', job_address: '1 Pond Rd', bid_id: state.bidId }], error: null }),
+    rpc: () => Promise.resolve({ data: [{ id: 'j1', hcp_number: 'J964', click_number: null, job_name: 'Penmoor', job_address: '1 Pond Rd', bid_id: state.bidId }], error: null }),
     from: (table: string) => {
       const b: Record<string, unknown> = {}
       const chain = () => b
@@ -57,7 +57,7 @@ describe('JobSubmittalsAfterCreatePrompt', () => {
   it('asks on a job from a won bid with picks; Build Rev 1 builds it linked to the job and opens the tab', async () => {
     const close = vi.fn()
     renderWithProviders(<JobSubmittalsAfterCreatePrompt jobId="j1" onClose={close} />)
-    expect(await screen.findByText('Submittals for J964 · Pondhill?')).toBeTruthy()
+    expect(await screen.findByText('Submittals for J964 · Penmoor?')).toBeTruthy()
     expect(screen.getByText('4 tags on the schedule · 1 picked line')).toBeTruthy()
     fireEvent.click(screen.getByTestId('submittals-prompt-build'))
     await waitFor(() => expect(close).toHaveBeenCalled())

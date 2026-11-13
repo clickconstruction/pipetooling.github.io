@@ -27,7 +27,7 @@ function makeProps(overrides: Partial<ModalProps> = {}): ModalProps {
   return {
     open: true,
     mode: 'edit',
-    jobTitle: '878 · Take 5- Seguin',
+    jobTitle: '878 · Tune 5- Seguin',
     personLabel: 'Malachi',
     workDate: '2026-08-03',
     timeStart: '06:00',

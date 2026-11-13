@@ -12,7 +12,7 @@ describe('anyTyped', () => {
 })
 
 describe('editDirty', () => {
-  const opened = { company: 'Bexar Fire Protection', phone: '(210) 555-0188', trades: 'Concrete' }
+  const opened = { company: 'Baxter Fire Protection', phone: '(210) 555-0188', trades: 'Concrete' }
   it('is clean while the boxes read as they opened, spaces aside', () => {
     expect(editDirty({ ...opened }, opened)).toBe(false)
     expect(editDirty({ ...opened, phone: ' (210) 555-0188 ' }, opened)).toBe(false)

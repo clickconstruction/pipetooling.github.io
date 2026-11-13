@@ -36,7 +36,7 @@ describe('parseDevelopmentOverview', () => {
   const raw = {
     development: { id: 'd1', name: 'ZZ Test development' },
     bids: [
-      { id: 'b1', bid_number: '161', project_name: 'Lot 4', address: '1 Gun Dog Trl', outcome: null, bid_date_sent: '2026-10-01', estimator_id: 'u1', created_at: '2026-09-01T00:00:00Z', development_id: 'd1', notes: 'two phases' },
+      { id: 'b1', bid_number: '161', project_name: 'Lot 4', address: '1 Gray Fox Trl', outcome: null, bid_date_sent: '2026-10-01', estimator_id: 'u1', created_at: '2026-09-01T00:00:00Z', development_id: 'd1', notes: 'two phases' },
       { bid_number: 'no id' },
     ],
     jobs: [{ id: 'j1', hcp_number: '956', job_name: 'Lot 4', status: 'billed', bid_id: 'b1', development_id: 'd1', last_work_date: '2026-10-20', created_at: '2026-09-02T00:00:00Z' }],

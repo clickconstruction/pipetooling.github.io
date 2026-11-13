@@ -12,19 +12,19 @@ import type { LienGate } from '../../lib/jobs/lienDeskGates'
 afterEach(cleanup)
 
 const gate = (n: 1 | 2 | 3 | 4, key: LienGate['key'], label: string, tone: LienGate['tone'], value: string): LienGate => ({ n, key, label, tone, value, title: `${label}: ${value}` })
-const clear = [gate(1, 'owner', 'Owner of record', 'ok', 'Khan Umar'), gate(2, 'gc', 'Original contractor', 'ok', 'RMC- Dudley Mason'), gate(3, 'kind', 'Property kind', 'ok', 'Residential · Bexar'), gate(4, 'months', 'Approved hours', 'ok', 'Jul, Aug')]
+const clear = [gate(1, 'owner', 'Owner of record', 'ok', 'Karrow Ulric'), gate(2, 'gc', 'Original contractor', 'ok', 'RLC- Dunmere Mallin'), gate(3, 'kind', 'Property kind', 'ok', 'Residential · Bexar'), gate(4, 'months', 'Approved hours', 'ok', 'Jul, Aug')]
 const details = { owner: <span>owner row</span>, gc: <span>gc row</span>, kind: <span>kind row</span>, months: <span>months row</span> }
 const verdict = { ready: true, headline: 'Ready to go out', summary: 'All 4 clear', blockers: 0, checks: 0 }
 
 describe('LienGatesSentFold — one line on a sent notice (v2.6625, punch list #248)', () => {
   it('draws the line with no verdict, and Details ∨ opens the four facts as rows', () => {
-    const fold = { sentOn: 'Oct 14', head: 'Sent Oct 14', line: 'Sent Oct 14 · Khan Umar · RMC- Dudley Mason · Residential · Bexar · Jul + Aug', rows: [{ n: 1 as const, key: 'owner' as const, label: 'Owner of record', value: 'Khan Umar' }, { n: 2 as const, key: 'gc' as const, label: 'Original contractor', value: 'RMC- Dudley Mason' }, { n: 3 as const, key: 'kind' as const, label: 'Property kind', value: 'Residential · Bexar' }, { n: 4 as const, key: 'months' as const, label: 'Months the notice named', value: 'Jul + Aug' }] }
+    const fold = { sentOn: 'Oct 14', head: 'Sent Oct 14', line: 'Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug', rows: [{ n: 1 as const, key: 'owner' as const, label: 'Owner of record', value: 'Karrow Ulric' }, { n: 2 as const, key: 'gc' as const, label: 'Original contractor', value: 'RLC- Dunmere Mallin' }, { n: 3 as const, key: 'kind' as const, label: 'Property kind', value: 'Residential · Bexar' }, { n: 4 as const, key: 'months' as const, label: 'Months the notice named', value: 'Jul + Aug' }] }
     const { container } = render(<LienGatesSentFold fold={fold} />)
     expect((container.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe(fold.line)
     expect(container.querySelector('.lienGatesVerdict')).toBeNull()
     expect(container.querySelectorAll('[data-lien-gates-sent-row]')).toHaveLength(0)
     fireEvent.click(container.querySelector('[data-lien-gates-sent-fold="open"]') as HTMLElement)
-    expect([...container.querySelectorAll('[data-lien-gates-sent-row]')].map((d) => d.textContent)).toEqual(['1Owner of recordKhan Umar', '2Original contractorRMC- Dudley Mason', '3Property kindResidential · Bexar', '4Months the notice namedJul + Aug'])
+    expect([...container.querySelectorAll('[data-lien-gates-sent-row]')].map((d) => d.textContent)).toEqual(['1Owner of recordKarrow Ulric', '2Original contractorRLC- Dunmere Mallin', '3Property kindResidential · Bexar', '4Months the notice namedJul + Aug'])
     fireEvent.click(container.querySelector('[data-lien-gates-sent-fold="close"]') as HTMLElement)
     expect(container.querySelectorAll('[data-lien-gates-sent-row]')).toHaveLength(0)
   })

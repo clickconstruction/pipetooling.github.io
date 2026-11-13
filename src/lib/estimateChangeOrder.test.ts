@@ -72,8 +72,8 @@ describe('doc kind + money', () => {
 
 describe('changeOrderDocDisplayTitle', () => {
   it('rewrites the "Estimate for" default to "Change Order for"', () => {
-    expect(changeOrderDocDisplayTitle('Estimate for Knight Contracting')).toBe('Change Order for Knight Contracting')
-    expect(changeOrderDocDisplayTitle('  estimate for Knight Contracting  ')).toBe('Change Order for Knight Contracting')
+    expect(changeOrderDocDisplayTitle('Estimate for Kestrin Contracting')).toBe('Change Order for Kestrin Contracting')
+    expect(changeOrderDocDisplayTitle('  estimate for Kestrin Contracting  ')).toBe('Change Order for Kestrin Contracting')
     expect(changeOrderDocDisplayTitle('Estimate for customer')).toBe('Change Order for customer')
   })
 
@@ -84,7 +84,7 @@ describe('changeOrderDocDisplayTitle', () => {
 
   it('leaves hand-written titles and empties alone', () => {
     expect(changeOrderDocDisplayTitle('Deep cleaning of AC units')).toBe('Deep cleaning of AC units')
-    expect(changeOrderDocDisplayTitle('Change Order for Knight Contracting')).toBe('Change Order for Knight Contracting')
+    expect(changeOrderDocDisplayTitle('Change Order for Kestrin Contracting')).toBe('Change Order for Kestrin Contracting')
     expect(changeOrderDocDisplayTitle('Revised estimate for review')).toBe('Revised estimate for review')
     expect(changeOrderDocDisplayTitle('')).toBe('')
     expect(changeOrderDocDisplayTitle('Estimate for ')).toBe('Estimate for')
@@ -106,9 +106,9 @@ describe('negative lines via allowNegative (credits)', () => {
 
 const docArgs: EstimateChangeOrderDocArgs = {
   documentLabel: 'Change Order #1044',
-  customerName: 'Summit GC',
+  customerName: 'Selwick GC',
   customerAddress: '3915 N Loop 1604 E, San Antonio, TX',
-  projectLabel: 'J804 · Auto Zone',
+  projectLabel: 'J804 · Tire Barn',
   projectAddress: '3915 N Loop 1604 E, San Antonio, TX',
   fields: {
     description_of_change: 'Reroute 2" condensate line <per plan>',
@@ -127,8 +127,8 @@ describe('document builders', () => {
   it('html carries label, both blocks, escaped narrative, cost rows, net change', () => {
     const html = buildEstimateChangeOrderDocHtml(docArgs)
     expect(html).toContain('Change Order #1044')
-    expect(html).toContain('<strong>Summit GC</strong>')
-    expect(html).toContain('J804 · Auto Zone')
+    expect(html).toContain('<strong>Selwick GC</strong>')
+    expect(html).toContain('J804 · Tire Barn')
     expect(html).toContain('Reroute 2&quot; condensate line &lt;per plan&gt;')
     expect(html).toContain('Response requested by 2026-08-26')
     expect(html).toContain('Reroute — labor + materials')

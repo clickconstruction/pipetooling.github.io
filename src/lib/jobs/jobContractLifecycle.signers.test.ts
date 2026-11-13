@@ -183,9 +183,9 @@ describe('a paper filed with its Signed on date reads as a day, not a moment (v2
     for (const iso of ['2026-09-30T12:00:01Z', '2026-09-30T12:00:00.123Z', '2026-09-30T17:00:00Z', '2026-09-30', '', null, undefined]) expect(isSignedOnDayMarker(iso)).toBe(false)
   })
 
-  it('the line says the day they signed, with no time: v2.4657’s Palmers read "on Sep 30, 2026"', () => {
-    const palmers = { ...onDay, signer_printed_name: 'Michael Palmer', co_signer_name: 'Grace Palmer', co_signer_printed_name: 'Grace Palmer' }
-    expect(jobContractSignersAuditLine(palmers)).toBe('Signed on paper by Michael Palmer and Grace Palmer on Sep 30, 2026')
+  it('the line says the day they signed, with no time: v2.4657’s Palverns read "on Sep 30, 2026"', () => {
+    const palverns = { ...onDay, signer_printed_name: 'Michael Palvern', co_signer_name: 'Grace Palvern', co_signer_printed_name: 'Grace Palvern' }
+    expect(jobContractSignersAuditLine(palverns)).toBe('Signed on paper by Michael Palvern and Grace Palvern on Sep 30, 2026')
     expect(jobContractSignatureAuditLine({ ...onDay, signer_printed_name: 'Sam Owner' })).toBe('Signed on paper by Sam Owner on Sep 30, 2026')
     expect(jobContractSignatureAuditLine({ ...onDay, signer_printed_name: '' })).toBe('Signed on paper on Sep 30, 2026')
   })

@@ -11,15 +11,15 @@ describe('jpVenue (v2.4764)', () => {
   it('both venue bases, one per distinct property, the precinct not yet', () => {
     const places = venuePlaces({
       properties: [
-        { address: '380 TX-123, Seguin, TX 78155', county: 'Guadalupe', jobLabels: ['878 · Take 5- Seguin'] },
-        { address: '380 TX-123, Seguin, TX 78155', county: 'Guadalupe', jobLabels: ['879 · Take 5- Seguin add'] },
-        { address: '150 E Sonterra Blvd, San Antonio', county: 'Bexar', jobLabels: ['898 · Reliant'] },
+        { address: '410 TX-123, Seguin, TX 78155', county: 'Guadalupe', jobLabels: ['878 · Tune 5- Seguin'] },
+        { address: '410 TX-123, Seguin, TX 78155', county: 'Guadalupe', jobLabels: ['879 · Tune 5- Seguin add'] },
+        { address: '150 E Sonmere Blvd, San Antonio', county: 'Bexar', jobLabels: ['898 · Relwyn'] },
       ],
       payer: { name: 'TC/JP Seguin 2019 LLC', address: '9000 Tesoro Dr, San Antonio', county: 'Bexar' },
     })
     expect(places.map((p) => [p.basis, p.county, p.where])).toEqual([
-      ['work', 'Guadalupe', '380 TX-123, Seguin, TX 78155'],
-      ['work', 'Bexar', '150 E Sonterra Blvd, San Antonio'],
+      ['work', 'Guadalupe', '410 TX-123, Seguin, TX 78155'],
+      ['work', 'Bexar', '150 E Sonmere Blvd, San Antonio'],
       ['defendant', 'Bexar', 'TC/JP Seguin 2019 LLC, 9000 Tesoro Dr, San Antonio'],
     ])
     expect(courtWords(places[0]!)).toBe('Guadalupe County · justice precinct not yet')

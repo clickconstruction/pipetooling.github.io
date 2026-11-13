@@ -14,7 +14,7 @@ import {
 import { haversineMeters, straightLineDriveMinutes, TRAVEL_ROAD_WINDING_FACTOR } from './jobTravelEstimate'
 
 const OFFICE = { lat: 29.653, lng: -97.797 }
-const VECCHIO = { lat: 29.88, lng: -97.94 }
+const VELLANO = { lat: 29.88, lng: -97.94 }
 
 beforeEach(() => resetTravelMemoForTests())
 
@@ -40,8 +40,8 @@ describe('formatting', () => {
 
 describe('estimateStopTravel', () => {
   it('is straight line × 1.3 at 35 mph, marked estimate', () => {
-    const t = estimateStopTravel(VECCHIO, OFFICE)
-    const straight = haversineMeters(VECCHIO, OFFICE)
+    const t = estimateStopTravel(VELLANO, OFFICE)
+    const straight = haversineMeters(VELLANO, OFFICE)
     expect(t.source).toBe('estimate')
     expect(t.meters).toBeCloseTo(straight * TRAVEL_ROAD_WINDING_FACTOR, 6)
     expect(t.seconds).toBe(straightLineDriveMinutes(straight) * 60)
@@ -51,12 +51,12 @@ describe('estimateStopTravel', () => {
 
 describe('fetchRoutedTravel', () => {
   it('reads meters and seconds; distance-only keeps seconds null; refusals and throws are null', async () => {
-    expect(await fetchRoutedTravel(VECCHIO, OFFICE, async () => ({ ok: true, meters: 32000, seconds: 1900.4 }))).toEqual({ meters: 32000, seconds: 1900, source: 'routed' })
-    expect(await fetchRoutedTravel(VECCHIO, OFFICE, async () => ({ ok: true, meters: 32000 }))).toEqual({ meters: 32000, seconds: null, source: 'routed' })
-    expect(await fetchRoutedTravel(VECCHIO, OFFICE, async () => ({ ok: false, error: 'no_key' }))).toBeNull()
-    expect(await fetchRoutedTravel(VECCHIO, OFFICE, async () => null)).toBeNull()
+    expect(await fetchRoutedTravel(VELLANO, OFFICE, async () => ({ ok: true, meters: 32000, seconds: 1900.4 }))).toEqual({ meters: 32000, seconds: 1900, source: 'routed' })
+    expect(await fetchRoutedTravel(VELLANO, OFFICE, async () => ({ ok: true, meters: 32000 }))).toEqual({ meters: 32000, seconds: null, source: 'routed' })
+    expect(await fetchRoutedTravel(VELLANO, OFFICE, async () => ({ ok: false, error: 'no_key' }))).toBeNull()
+    expect(await fetchRoutedTravel(VELLANO, OFFICE, async () => null)).toBeNull()
     expect(
-      await fetchRoutedTravel(VECCHIO, OFFICE, async () => {
+      await fetchRoutedTravel(VELLANO, OFFICE, async () => {
         throw new Error('403')
       }),
     ).toBeNull()
@@ -65,7 +65,7 @@ describe('fetchRoutedTravel', () => {
 
 describe('computeTravelForStops', () => {
   const stops = [
-    { id: 'job:1', addressKey: 'a', coords: VECCHIO },
+    { id: 'job:1', addressKey: 'a', coords: VELLANO },
     { id: 'job:2', addressKey: 'b', coords: { lat: 29.7, lng: -97.6 } },
     { id: 'job:3', addressKey: 'c', coords: { lat: 30.1, lng: -98.2 } },
   ]
@@ -106,7 +106,7 @@ describe('computeTravelForStops', () => {
       inFlight -= 1
       return { ok: true as const, meters: 1000, seconds: 60 }
     })
-    const many = Array.from({ length: 9 }, (_, i) => ({ id: `s${i}`, addressKey: `k${i}`, coords: VECCHIO }))
+    const many = Array.from({ length: 9 }, (_, i) => ({ id: `s${i}`, addressKey: `k${i}`, coords: VELLANO }))
     const out = await computeTravelForStops(many, OFFICE, invoke as never, 3)
     expect(out.size).toBe(9)
     expect(peak).toBeLessThanOrEqual(3)

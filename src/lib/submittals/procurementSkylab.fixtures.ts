@@ -1,5 +1,5 @@
 /**
- * BP375 SPACEX BA-02N as the procurement log redraw's working page holds it (`RAW` and `LATER` in
+ * BP375 SKYLAB BA-02N as the procurement log redraw's working page holds it (`RAW` and `LATER` in
  * `before-after.html` on PR #4527's branch; the card was closed unmerged once the train shipped): 47 lines, 14 fixtures, one house. `today` is
  * the log read on 2026-10-05: five parts sent back, three carriers on site, 39 waiting, no lead
  * time and no stage dates. `later` is the page's made-up three weeks on, read on 2026-10-26:
@@ -31,7 +31,7 @@ const FIXTURES: Array<[tag: string, fixture: string, count: number | null, ids: 
 const BACK: Record<string, string> = { m2: '830AA', a2: 'TEL145', b1: 'KOHLER 2215-0', b2: 'TEL145', w2: 'TET2UA31#SS' }
 const CARRIERS: Record<string, string> = { e7: 'JOSAM 17560-WCBL floor mount bi-level water cooler carrier', u3: 'JOSAM 17560-UR floor mount urinal carrier', w5: 'JOSAM 12694 4" NH double adjustable horizontal closet carrier' }
 
-export const spacexToday: ProcurementRow[] = FIXTURES.flatMap(([tag, fixture, count, ids, oo = '']) => {
+export const skylabToday: ProcurementRow[] = FIXTURES.flatMap(([tag, fixture, count, ids, oo = '']) => {
   const list = ids.split(' ')
   const orderOnly = new Set(oo.split(' ').filter(Boolean))
   return list.map((id): ProcurementRow => {
@@ -59,7 +59,7 @@ const LATER: Record<string, [ProcurementStatus, Partial<ProcurementRow>]> = {
   ...each('a2 b2', ['awaiting', { leadTimeDays: 28, requiredOn: '2026-12-08', submittal: 'open', reviewNote: null }]),
 }
 const idOf = (r: ProcurementRow) => r.partKey ?? Object.entries({ FCO: 'fco', FD: 'fd', 'HB-3': 'hb', 'UTILITY SINK': 'ut', 'WHA-200': 'h2', 'WHA-300': 'h3', 'WHA-500': 'h5' }).find(([tag]) => tag === r.tag)?.[1] ?? ''
-export const spacexLater: ProcurementRow[] = spacexToday.map((r) => {
+export const skylabLater: ProcurementRow[] = skylabToday.map((r) => {
   const to = LATER[idOf(r)]
   return to ? { ...r, status: to[0], ...to[1] } : r
 })

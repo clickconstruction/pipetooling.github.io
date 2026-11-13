@@ -248,8 +248,8 @@ describe('PricingCardsRow — own-takeoff alternate cards', () => {
 })
 
 describe('PricingCardsRow — on an own-takeoff alternate (v2.6000, Wendi’s video of 2026-10-27)', () => {
-  // BP545's shape: the base version Tommy Gillis and INCLUDING WATER SOFTENER, an alternate with its own takeoff.
-  const base = { id: 'v1', name: 'Tommy Gillis', include_in_submission: true, is_alternate: false, customer_id: null, sort_order: 0 } as unknown as BidVersion
+  // BP545's shape: the base version Tommy Gilmere and INCLUDING WATER SOFTENER, an alternate with its own takeoff.
+  const base = { id: 'v1', name: 'Tommy Gilmere', include_in_submission: true, is_alternate: false, customer_id: null, sort_order: 0 } as unknown as BidVersion
   const alt = { id: 'alt', name: 'INCLUDING WATER SOFTENER', include_in_submission: true, is_alternate: true, customer_id: null, sort_order: 1 } as unknown as BidVersion
   // The alternate's own ★, a copy of the base's price with its name — why the far side read "WENDI" alone.
   const ALT_STAR = pricing('pW', 'WENDI', { bid_version_id: 'alt', include_in_submission: true })
@@ -273,8 +273,8 @@ describe('PricingCardsRow — on an own-takeoff alternate (v2.6000, Wendi’s vi
     expect(band.textContent).toContain('You are on INCLUDING WATER SOFTENER, an alternate with its own takeoff.')
     expect(band.textContent).toContain('The base is the first card.')
     const tray = band.parentElement as HTMLElement
-    expect(tray.querySelector('[title]')).toBe(cardOf('Tommy Gillis'))
-    const baseCard = cardOf('Tommy Gillis')
+    expect(tray.querySelector('[title]')).toBe(cardOf('Tommy Gilmere'))
+    const baseCard = cardOf('Tommy Gilmere')
     expect(baseCard.textContent).toContain('base')
     expect(baseCard.textContent).toContain('$150,400.00')
     expect(baseCard.textContent).toContain('On their letter · base')
@@ -291,8 +291,8 @@ describe('PricingCardsRow — on an own-takeoff alternate (v2.6000, Wendi’s vi
     expect(screen.getByTestId('pricing-cards-on-alternate').textContent).not.toContain('first card')
     const quietBase = { ...base, include_in_submission: false } as unknown as BidVersion
     rerender(<PricingCardsRow {...props({ activeVersion: alt, scenarios: [ALT_STAR], selectedPricingVersionId: 'pW', selectedBidVersionId: 'alt', customerFacingPricingId: 'pW', revenueOf: () => 150400, baseVersions: [quietBase], altVersionData: {} })} />)
-    expect(cardOf('Tommy Gillis').textContent).toContain('…')
-    expect(cardOf('Tommy Gillis').textContent).toContain('Only you see this')
+    expect(cardOf('Tommy Gilmere').textContent).toContain('…')
+    expect(cardOf('Tommy Gilmere').textContent).toContain('Only you see this')
   })
 })
 

@@ -7,7 +7,7 @@ const promise = (over: Partial<PaymentPromise> = {}): PaymentPromise => ({
   jobId: 'j1',
   customerId: 'c1',
   promisedYmd: '2026-11-20',
-  saidBy: 'Umar Khan',
+  saidBy: 'Ulric Karrow',
   heardByName: 'Taunya',
   channel: 'phone',
   source: 'office',
@@ -35,10 +35,10 @@ describe('promise activity events (v2.4103)', () => {
         occurredAt: '2026-09-28T16:20:00Z',
         actorName: 'Taunya',
         financial: true,
-        detail: { promisedYmd: '2026-11-20', source: 'office', channel: 'phone', saidBy: 'Umar Khan' },
+        detail: { promisedYmd: '2026-11-20', source: 'office', channel: 'phone', saidBy: 'Ulric Karrow' },
       },
     })
-    expect(ev!.event.summary).toBe('Pay by Nov 20, 2026 — Umar Khan · by phone · heard by Taunya · “check goes out with the draw”')
+    expect(ev!.event.summary).toBe('Pay by Nov 20, 2026 — Ulric Karrow · by phone · heard by Taunya · “check goes out with the draw”')
   })
 
   it('a date the customer named themselves has no office actor', () => {

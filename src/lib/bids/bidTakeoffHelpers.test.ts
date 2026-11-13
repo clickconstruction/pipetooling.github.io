@@ -179,7 +179,7 @@ describe('saveAsAssemblyDefaultName', () => {
   })
   it('drops a blank half instead of leaving a dangling dash', () => {
     expect(saveAsAssemblyDefaultName('I-6', '')).toBe('I-6')
-    expect(saveAsAssemblyDefaultName(null, 'Palmer Winery')).toBe('Palmer Winery')
+    expect(saveAsAssemblyDefaultName(null, 'Palvern Winery')).toBe('Palvern Winery')
     expect(saveAsAssemblyDefaultName('   ', undefined)).toBe('New assembly')
   })
 })

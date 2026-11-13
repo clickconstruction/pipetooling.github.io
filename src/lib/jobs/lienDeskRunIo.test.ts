@@ -73,18 +73,18 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
     itemId: 'it1',
     jobId: 'j650',
     kind: 'notice_53_056',
-    label: '650 · ATI Schertz',
+    label: '650 · AXO Schertz',
     jobNumber: '650',
     months: ['2026-06', '2026-07'],
     amount: 33_500,
-    fields: { noticeDate: '2026-10-06', projectDescription: 'ATI Schertz — 1204 Elbel Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
+    fields: { noticeDate: '2026-10-06', projectDescription: 'AXO Schertz — 1204 Elwick Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
     extras: { refItems: ['Job #650'] },
     coverLetter: null,
     coverNote: null,
     ownerUnconfirmed: false,
     recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '4 Example Way, Schertz, TX', email: 'owner@elbel.test', method: 'certified_mail', tracking: '9407 1' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '9407 2', courtesy: true },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '4 Example Way, Schertz, TX', email: 'owner@elwick.test', method: 'certified_mail', tracking: '9407 1' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '9407 2', courtesy: true },
     ],
     ...partial,
   }
@@ -104,14 +104,14 @@ beforeEach(() => {
 describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
   it('writes the notice first, then emails the GC its copy with words for the form and the mail', async () => {
     const result = await recordLienDeskRun([notice()], OPTS)
-    expect(db.events).toEqual(['insert', 'sent it1', 'email office@loberg.test'])
+    expect(db.events).toEqual(['insert', 'sent it1', 'email office@lowbeck.test'])
     expect(db.invokes).toHaveLength(1)
     expect(db.invokes[0]!.name).toBe('send-lien-filing-email')
     expect(db.invokes[0]!.body).toMatchObject({
       job_id: 'j650',
-      to_email: 'office@loberg.test',
+      to_email: 'office@lowbeck.test',
       recipient_label: 'original_contractor',
-      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
+      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · AXO Schertz',
       email_text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail. For questions call the office: (512) 360-0599',
     })
     // The statutory record is the paper: the courtesy email is not one of the sends.
@@ -119,7 +119,7 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
       { recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-06' },
       { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-10-06' },
     ])
-    expect(result).toEqual({ recorded: ['it1'], failed: [], releaseFailed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [], offers: [] })
+    expect(result).toEqual({ recorded: ['it1'], failed: [], releaseFailed: [], courtesySent: [{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test' }], courtesyFailed: [], offers: [] })
   })
 
   it('a courtesy email that fails leaves the notice recorded and says why', async () => {
@@ -128,7 +128,7 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
     expect(result.recorded).toEqual(['it1'])
     expect(result.failed).toEqual([])
     expect(result.courtesySent).toEqual([])
-    expect(result.courtesyFailed).toEqual([{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }])
+    expect(result.courtesyFailed).toEqual([{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test', reason: 'Resend 502' }])
   })
 
   it('a notice that fails to record sends no courtesy email', async () => {
@@ -148,24 +148,24 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
     const result = await recordLienDeskRun([gcWith(notice(), { method: 'email', tracking: '' })], OPTS)
     expect(db.invokes).toHaveLength(1)
     // the email method's own send, before the record, with the function's own words
-    expect(db.events.slice(0, 2)).toEqual(['email office@loberg.test', 'insert'])
+    expect(db.events.slice(0, 2)).toEqual(['email office@lowbeck.test', 'insert'])
     expect(db.invokes[0]!.body.subject).toBeUndefined()
-    expect((db.inserts[0] as { sends: { recipient: string; tracking: string }[] }).sends[1]!.tracking).toBe('resend:re_1 → office@loberg.test')
+    expect((db.inserts[0] as { sends: { recipient: string; tracking: string }[] }).sends[1]!.tracking).toBe('resend:re_1 → office@lowbeck.test')
     expect(result.courtesySent).toEqual([])
   })
 
   it('one notice for the jobs at a property emails its courtesy copy once, after every part is recorded', async () => {
     const combined: CombinedRunNotice = {
-      ...notice({ label: 'ATI Schertz · 650 + 651', jobNumber: '650 + 651', amount: 38_000 }),
+      ...notice({ label: 'AXO Schertz · 650 + 651', jobNumber: '650 + 651', amount: 38_000 }),
       parts: [
-        { itemId: 'it1', jobId: 'j650', jobNumber: '650', label: '650 · ATI Schertz', amount: 33_500, months: ['2026-06', '2026-07'] },
-        { itemId: 'it2', jobId: 'j651', jobNumber: '651', label: '651 · ATI Schertz annex', amount: 4_500, months: ['2026-08'] },
+        { itemId: 'it1', jobId: 'j650', jobNumber: '650', label: '650 · AXO Schertz', amount: 33_500, months: ['2026-06', '2026-07'] },
+        { itemId: 'it2', jobId: 'j651', jobNumber: '651', label: '651 · AXO Schertz annex', amount: 4_500, months: ['2026-08'] },
       ],
     }
     const result = await recordLienDeskRun([combined], OPTS)
-    expect(db.events).toEqual(['insert', 'sent it1', 'sent it2', 'email office@loberg.test'])
+    expect(db.events).toEqual(['insert', 'sent it1', 'sent it2', 'email office@lowbeck.test'])
     expect(result.recorded).toEqual(['it1', 'it2'])
-    expect(result.courtesySent).toEqual([{ itemId: 'it1', label: 'ATI Schertz · 650 + 651', email: 'office@loberg.test' }])
+    expect(result.courtesySent).toEqual([{ itemId: 'it1', label: 'AXO Schertz · 650 + 651', email: 'office@lowbeck.test' }])
   })
 
   it('a notice with a pay offer (v2.4704) asks lien-pay-offer for its filing once it is recorded, and a refusal never un-records it', async () => {

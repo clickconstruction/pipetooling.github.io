@@ -117,15 +117,15 @@ function makeProps(overrides: Partial<JobsStagesTabProps> = {}): JobsStagesTabPr
 
 const SEARCH_PLACEHOLDER = 'Search HCP, name, address'
 const EXCLUDE_KEY = 'jobs-stages-exclude-filters'
-const sagebrush = { id: 'dev-sagebrush', name: 'Sagebrush' }
-const HIDDEN_SAGEBRUSH = JSON.stringify({ gc: [], development: ['dev-sagebrush'], accountMan: [] })
+const sagemoor = { id: 'dev-sagemoor', name: 'Sagemoor' }
+const HIDDEN_SAGEMOOR = JSON.stringify({ gc: [], development: ['dev-sagemoor'], accountMan: [] })
 
 function boardJobs() {
   return [
     makeJob({ job_name: 'Waiting Casa', status: 'waiting' }),
     makeJob({ job_name: 'Working Duplex', status: 'working' }),
-    makeJob({ job_name: 'Lot 12', status: 'working', development: sagebrush }),
-    makeJob({ job_name: 'Lot 14', status: 'paid', development: sagebrush }),
+    makeJob({ job_name: 'Lot 12', status: 'working', development: sagemoor }),
+    makeJob({ job_name: 'Lot 14', status: 'paid', development: sagemoor }),
   ]
 }
 
@@ -152,7 +152,7 @@ describe('a search whose matches the filters hold back', () => {
       'pipetooling_stages_sections_v2',
       JSON.stringify({ waiting: true, working: true, readyToBill: true, billed: true, collections: true, paid: true }),
     )
-    localStorage.setItem(EXCLUDE_KEY, HIDDEN_SAGEBRUSH)
+    localStorage.setItem(EXCLUDE_KEY, HIDDEN_SAGEMOOR)
     cache.merged = [...ALL_SCOPES]
     cache.zzCount = 0
     cache.zzIds = new Set()
@@ -165,43 +165,43 @@ describe('a search whose matches the filters hold back', () => {
 
   it('says how many instead of "No match anywhere", in the sections too, and leaves the rows behind the hide', async () => {
     await mount()
-    await search('Sagebrush')
+    await search('Sagemoor')
     await pastTheLookup()
     expect(heldBack()).toBe('2 matches are hidden by your filters.Show them')
     expect(screen.queryByText(/No match anywhere/)).toBeNull()
-    expect(boardWords()).toContain('No jobs in Working match ‘Sagebrush’ with your filters on.')
-    expect(boardWords()).toContain('No jobs in Paid in Full match ‘Sagebrush’ with your filters on.')
+    expect(boardWords()).toContain('No jobs in Working match ‘Sagemoor’ with your filters on.')
+    expect(boardWords()).toContain('No jobs in Paid in Full match ‘Sagemoor’ with your filters on.')
     expect(screen.queryByText('Lot 12')).toBeNull()
     expect(screen.queryByText('Lot 14')).toBeNull()
   })
 
   it('Show them puts the matches on the board until the search is cleared; the hide stays saved', async () => {
     await mount()
-    await search('Sagebrush')
+    await search('Sagemoor')
     await press('Show them')
     expect(screen.getByText('Lot 12')).toBeTruthy()
     expect(screen.getByText('Lot 14')).toBeTruthy()
     expect(heldBack()).toBe('Showing 2 matches your filters hide.Hide them')
     // The chip still says what is saved, and a section with no match no longer blames the filters.
     expect(screen.getByRole('button', { name: /1 group hidden from the board/ })).toBeTruthy()
-    expect(boardWords()).toContain('No jobs in Waiting match ‘Sagebrush’.')
+    expect(boardWords()).toContain('No jobs in Waiting match ‘Sagemoor’.')
     expect(boardWords()).not.toContain('with your filters on')
-    expect(localStorage.getItem(EXCLUDE_KEY)).toBe(HIDDEN_SAGEBRUSH)
+    expect(localStorage.getItem(EXCLUDE_KEY)).toBe(HIDDEN_SAGEMOOR)
 
     await search('')
     expect(screen.queryByText('Lot 12')).toBeNull()
     expect(heldBack()).toBeNull()
-    expect(localStorage.getItem(EXCLUDE_KEY)).toBe(HIDDEN_SAGEBRUSH)
+    expect(localStorage.getItem(EXCLUDE_KEY)).toBe(HIDDEN_SAGEMOOR)
 
     // The next search starts behind the filters again.
-    await search('Sagebrush')
+    await search('Sagemoor')
     expect(screen.queryByText('Lot 12')).toBeNull()
     expect(heldBack()).toBe('2 matches are hidden by your filters.Show them')
   })
 
   it('Hide them puts the matches back behind the filters with the search still typed', async () => {
     await mount()
-    await search('Sagebrush')
+    await search('Sagemoor')
     await press('Show them')
     await press('Hide them')
     expect(screen.queryByText('Lot 12')).toBeNull()
@@ -209,8 +209,8 @@ describe('a search whose matches the filters hold back', () => {
   })
 
   it('a match on the board and one behind the filters are both said', async () => {
-    await mount({ jobs: [...boardJobs(), makeJob({ job_name: 'Sagebrush Repipe', status: 'waiting' })] })
-    await search('Sagebrush')
+    await mount({ jobs: [...boardJobs(), makeJob({ job_name: 'Sagemoor Repipe', status: 'waiting' })] })
+    await search('Sagemoor')
     await pastTheLookup()
     expect(screen.getByRole('button', { name: 'Show them' })).toBeTruthy()
     expect(heldBack()).toBe('2 matches are hidden by your filters.Show them')
@@ -228,7 +228,7 @@ describe('a search whose matches the filters hold back', () => {
   it('with no filter on, the same search just finds the jobs and says nothing about filters', async () => {
     localStorage.removeItem(EXCLUDE_KEY)
     await mount()
-    await search('Sagebrush')
+    await search('Sagemoor')
     expect(screen.getByText('Lot 12')).toBeTruthy()
     expect(heldBack()).toBeNull()
     expect(boardWords()).not.toContain('with your filters on')

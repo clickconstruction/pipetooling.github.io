@@ -24,8 +24,8 @@ const ALLOCATIONS = [
   { invoice_id: 'e', job_id: 'j650', pct: 100 },
 ]
 const JOBS = [
-  { jobId: 'j650', jobNumber: '650', jobName: 'ATI Schertz', billed: 33500, paidIn: 17777.51 },
-  { jobId: 'j363', jobNumber: '363', jobName: 'Michael Palmer', billed: 31400, paidIn: 31400 },
+  { jobId: 'j650', jobNumber: '650', jobName: 'AXO Schertz', billed: 33500, paidIn: 17777.51 },
+  { jobId: 'j363', jobNumber: '363', jobName: 'Michael Palvern', billed: 31400, paidIn: 31400 },
 ]
 const WORD = { houseId: 'reece', balance: 7393.33, noticeYmd: '2026-10-14', saidBy: 'Dana', note: 'on their list', notedByName: 'Grace', notedYmd: TODAY }
 function asks(words?: Parameters<typeof buildLienSupplierJobs>[0]['wordsByJob']) {
@@ -79,8 +79,8 @@ describe('houseAskMessage', () => {
         '2. The day your lien notice goes out, if one is set.',
         '',
         // The address's own full stop is not doubled.
-        'A. 363 Michael Palmer, 12 Oak St, San Antonio. Our books show $6,216.26 unpaid since July. Invoices R-1001, R-1002.',
-        'B. 650 ATI Schertz. Our books show $12,114.55 unpaid since August.',
+        'A. 363 Michael Palvern, 12 Oak St, San Antonio. Our books show $6,216.26 unpaid since July. Invoices R-1001, R-1002.',
+        'B. 650 AXO Schertz. Our books show $12,114.55 unpaid since August.',
         '',
         'Thank you,',
         'Grace',
