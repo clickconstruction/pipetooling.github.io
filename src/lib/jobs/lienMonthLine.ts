@@ -45,8 +45,10 @@ export type LienMonthLineDue = {
 export type LienMonthLine = {
   /** The day's headline: what is left in the zone today is in. */
   head: string
-  /** The month and the day, where that falls in the rhythm, and what slipped earlier. */
+  /** The month and the day, and where that falls in the rhythm. */
   sub: string
+  /** What slipped in the zones the month has passed, as *8 slipped earlier*; empty when nothing did. Drawn in red. */
+  slipWords: string
   /** The day the zone's first row is due and how long is left, when the desk knows it. */
   chip: { words: string; tone: 'red' | 'amber' | 'quiet' } | null
   tone: LienMonthLineTone
@@ -99,10 +101,11 @@ export function lienMonthLine(month: LienMonth, due?: LienMonthLineDue | null): 
   const { head, tone } = zone ? headFor(zone) : { head: 'The lien month', tone: 'quiet' as const }
   const showDue = !!due && tone === 'now'
   const slipped = slippedEarlier(month)
-  const sub = [`${monthName(month.month)}, day ${month.today}`, WEEK[month.zone], slipped > 0 ? `${slipped} slipped earlier` : ''].filter(Boolean).join(' · ')
+  const sub = `${monthName(month.month)}, day ${month.today} · ${WEEK[month.zone]}`
   return {
     head: showDue ? `${head} by ${lienMonthDayWords(due.ymd)}` : head,
     sub,
+    slipWords: slipped > 0 ? `${slipped} slipped earlier` : '',
     chip: showDue ? { words: leftWords(due.daysLeft), tone: due.daysLeft <= 3 ? 'red' : due.daysLeft <= 7 ? 'amber' : 'quiet' } : null,
     tone,
     segments: month.zones.map((z) => ({ key: z.key, days: Math.max(1, z.days), state: z.state, slipped: z.key !== 'quiet' && z.slipped > 0 && z.state !== 'ahead' })),

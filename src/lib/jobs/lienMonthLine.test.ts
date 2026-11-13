@@ -21,6 +21,7 @@ describe('lienMonthLine', () => {
     const line = lienMonthLine(month('liens', 13, { liens: { left: 9, done: 0 } }))
     expect(line.head).toBe('9 liens to file')
     expect(line.sub).toBe('November, day 13 · liens week')
+    expect(line.slipWords).toBe('')
     expect(line.tone).toBe('now')
     expect(line.chip).toBeNull()
   })
@@ -45,7 +46,8 @@ describe('lienMonthLine', () => {
   it('what slipped earlier in the month is named under the headline, counted once', () => {
     const line = lienMonthLine(month('liens', 13, { reminders: { slipped: 3 }, notices: { slipped: 5 }, liens: { left: 9 }, catch_up: { slipped: 8, left: 8 } }))
     // Catch-up is ahead here and counts the same slips again, so it adds nothing.
-    expect(line.sub).toBe('November, day 13 · liens week · 8 slipped earlier')
+    expect(line.sub).toBe('November, day 13 · liens week')
+    expect(line.slipWords).toBe('8 slipped earlier')
   })
 
   it('nothing left in today’s zone says what went, in the zone’s own words', () => {

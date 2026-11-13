@@ -144,13 +144,16 @@ function LienMonthLine({ month, on, onPick, shown, total, due }: BarProps) {
         data-tone={line.tone}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`The lien month: ${line.head}. ${line.sub}`}
+        aria-label={`The lien month: ${line.head}. ${line.sub}${line.slipWords ? `. ${line.slipWords}` : ''}`}
         onClick={() => setOpen(true)}
         style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 56, padding: '0.45rem 0.75rem', border: 'none', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
       >
         <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 1 }}>
           <span data-testid="lien-month-line-head" style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.2, color: headColor, overflowWrap: 'anywhere' }}>{line.head}</span>
-          <span data-testid="lien-month-line-sub" style={{ ...muted, fontSize: '0.78rem' }}>{line.sub}</span>
+          <span data-testid="lien-month-line-sub" style={{ ...muted, fontSize: '0.78rem' }}>
+            {line.sub}
+            {line.slipWords ? <span data-testid="lien-month-line-slipped" style={{ color: RED, fontWeight: 600 }}> · {line.slipWords}</span> : null}
+          </span>
           <span aria-hidden style={{ display: 'grid', gridTemplateColumns: line.segments.map((seg) => `${seg.days}fr`).join(' '), gap: 2, height: 5, marginTop: 4 }}>
             {line.segments.map((seg) => (
               <i key={seg.key} data-state={seg.state} style={{ borderRadius: 3, background: seg.slipped ? RED : seg.state === 'now' ? TONE[seg.key].fg : 'var(--border-strong)', opacity: seg.state === 'now' ? 1 : seg.slipped ? 0.45 : 0.5 }} />
