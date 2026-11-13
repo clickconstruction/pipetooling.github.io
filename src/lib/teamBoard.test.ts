@@ -34,8 +34,8 @@ function block(over: Partial<TeamBoardBlock> & { id: string; personName: string;
   return { userId: 'u-' + over.personName.toLowerCase(), jobId: null, bidId: null, note: null, ...over }
 }
 const LABELS = {
-  'job:j878': { label: 'J878 · Take 5- Seguin', sub: '380 TX-123' },
-  'job:j650': { label: 'J650 · ATI Schertz', sub: '5498 Cibolo Valley Dr' },
+  'job:j878': { label: 'J878 · Tune 5- Seguin', sub: '410 TX-123' },
+  'job:j650': { label: 'J650 · AXO Schertz', sub: '5498 Cinder Valley Dr' },
   'job:office': { label: 'J000 · Office', sub: 'Kingsbury' },
 }
 

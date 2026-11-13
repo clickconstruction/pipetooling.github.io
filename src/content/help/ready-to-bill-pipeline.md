@@ -53,7 +53,7 @@ Under **Make a bill**, **every bill on the job sits in one Invoices list**. That
 
 :::example One bill, three lines
 {{chip:blue|Billed}} **$9,800.00** {{button:outline|Text}} {{button:outline|Copy link}} {{button:outline|Email}} {{button:outline|QR}} View {{button:outline|⋯}}
-sent Sep 4 to RMC-Dudley Mason
+sent Sep 4 to RLC-Dunmere Mallin
 **$9,800 open** · 21 d past expected · They said Sep 19
 :::
 
@@ -106,7 +106,7 @@ The amber count on Accounts Receivable is the same unallocated-bank-deposits bad
 
 The **Crew & Dates** cell names the people on the job whose accounts are live. Crew whose accounts have been archived fold into *and 3 archived*. So a long-running job does not stretch the line. You click the names to open **Everyone on the job**. It lists each person with their role, status, hours, days and last day on the job. Status reads {{chip:green|Active}} or *Archived Jul 12*. Live accounts come first, then archived, each by hours. Under a grey heading sits anyone with hours here who was never put on the crew list. A name opens their Person desk.
 
-:::example Mission Hills
+:::example Mission Flats
 The cell reads *Malachi, Tristen, Trace, Michael A, and 5 archived*. Click it: Mario and Jesse, both archived in July, carried 300 of the job's 959 hours; Tristen's last day was yesterday.
 :::
 
@@ -241,7 +241,7 @@ A check recorded with Mark Paid closes the Stripe invoice seven days later, as p
 Then you press {{button:blue|Bill Customer}} as usual. A fresh Stripe invoice goes out with a new number and a new pay link. The old invoice stays in Stripe as paid and reversed. The reversal is kept on the job's payment record with who did it and why.
 
 :::example the check could not be deposited
-Iannotti PRV: a $600 Stripe bill was marked paid by check on Sep 24; the mobile deposit failed the next morning. View Bill → *Check didn't clear · send back…* → Send back puts the job at Ready to Bill; Bill Customer sends a new $600 bill and the customer pays online.
+Ilmotti PRV: a $600 Stripe bill was marked paid by check on Sep 24; the mobile deposit failed the next morning. View Bill → *Check didn't clear · send back…* → Send back puts the job at Ready to Bill; Bill Customer sends a new $600 bill and the customer pays online.
 :::
 
 A bill the customer paid by **card or bank transfer** through Stripe is different. That money is real. The send-back says to refund it in the Stripe Dashboard first.

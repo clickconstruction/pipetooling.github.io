@@ -49,7 +49,7 @@ vi.mock('../../utils/errorHandling', async (importOriginal) => ({
 
 import { recordLienNoticeByHand } from './lienNoticeByHandIo'
 
-const fields: LienNoticeFields = { noticeDate: '2026-09-22', projectDescription: 'Dudley (Lennox) — 9703 Lenox Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RMC-Dudley Mason', contractedWithIfDifferent: '', claimAmount: '17585.00', contactPerson: 'Malachi Whites', claimantAddress: '5501 Balcones Dr' }
+const fields: LienNoticeFields = { noticeDate: '2026-09-22', projectDescription: 'Dunmere (Linmoor) — 9703 Linmor Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RLC-Dunmere Mallin', contractedWithIfDifferent: '', claimAmount: '17585.00', contactPerson: 'Malachi Whites', claimantAddress: '5501 Balcones Dr' }
 
 const input = (sentOn: string): ByHandInput => ({
   sentOn,
@@ -61,7 +61,7 @@ const input = (sentOn: string): ByHandInput => ({
   documentUrl: '',
   documentNote: '',
   jobs: [
-    { jobId: 'j273', label: '273 · Dudley (Lennox)', amount: 17_585, itemId: 'it273' },
+    { jobId: 'j273', label: '273 · Dunmere (Linmoor)', amount: 17_585, itemId: 'it273' },
     { jobId: 'j858', label: '858 · Service visit', amount: 7_902, itemId: null },
   ],
 })

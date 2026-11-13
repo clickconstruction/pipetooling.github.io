@@ -3,7 +3,7 @@
  * The Deposit required? nudge reads the GC too (v2.5015, the owner's call of 2026-10-09): bills the
  * office gave up on count against the customer on the job, as before, and against the GC when the
  * job billed the GC. The shapes are prod's two GC marks of 2026-10-07: J1002 had no customer and
- * billed Heron Construction Group; 881 had a customer and billed RMC- Dudley Mason. The read is a
+ * billed Hadlow Construction Group; 881 had a customer and billed RLC- Dunmere Mallin. The read is a
  * stand-in that applies the hook's own filters to these rows; the amounts are made up.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -12,16 +12,16 @@ import { cleanup, renderHook, waitFor } from '@testing-library/react'
 type Job = { id: string; customer_id: string | null; gc_customer_id: string | null; bill_to_party: string; status: string; collections_at: string | null; uncollectible_at: string | null; revenue: number; payments_made: number }
 const givenUp = { status: 'billed', collections_at: '2026-10-01T12:00:00Z', uncollectible_at: '2026-10-07T12:00:00Z' }
 const JOBS: Job[] = [
-  // J1002: nobody as the customer, Heron Construction Group billed.
-  { id: 'j1002', customer_id: null, gc_customer_id: 'gc-heron', bill_to_party: 'gc', ...givenUp, revenue: 4000, payments_made: 1500 },
-  // 881: Dudley Mason the customer, RMC- Dudley Mason billed.
-  { id: 'j881', customer_id: 'cust-dudley', gc_customer_id: 'gc-rmc', bill_to_party: 'gc', ...givenUp, revenue: 3000, payments_made: 0 },
-  // Heron on a job its customer paid for: Heron owed nothing there.
-  { id: 'j-cust-paid', customer_id: 'cust-ann', gc_customer_id: 'gc-heron', bill_to_party: 'customer', ...givenUp, revenue: 900, payments_made: 0 },
+  // J1002: nobody as the customer, Hadlow Construction Group billed.
+  { id: 'j1002', customer_id: null, gc_customer_id: 'gc-hadlow', bill_to_party: 'gc', ...givenUp, revenue: 4000, payments_made: 1500 },
+  // 881: Dunmere Mallin the customer, RLC- Dunmere Mallin billed.
+  { id: 'j881', customer_id: 'cust-dunmere', gc_customer_id: 'gc-rlc', bill_to_party: 'gc', ...givenUp, revenue: 3000, payments_made: 0 },
+  // Hadlow on a job its customer paid for: Hadlow owed nothing there.
+  { id: 'j-cust-paid', customer_id: 'cust-ann', gc_customer_id: 'gc-hadlow', bill_to_party: 'customer', ...givenUp, revenue: 900, payments_made: 0 },
   // A split job: each bill picks its payer, so it is not the GC's by the job alone.
-  { id: 'j-split', customer_id: 'cust-bo', gc_customer_id: 'gc-heron', bill_to_party: 'split', ...givenUp, revenue: 700, payments_made: 0 },
-  // Heron's own billed job, still being chased: not given up.
-  { id: 'j-chasing', customer_id: null, gc_customer_id: 'gc-heron', bill_to_party: 'gc', status: 'billed', collections_at: '2026-10-01T12:00:00Z', uncollectible_at: null, revenue: 5000, payments_made: 0 },
+  { id: 'j-split', customer_id: 'cust-bo', gc_customer_id: 'gc-hadlow', bill_to_party: 'split', ...givenUp, revenue: 700, payments_made: 0 },
+  // Hadlow's own billed job, still being chased: not given up.
+  { id: 'j-chasing', customer_id: null, gc_customer_id: 'gc-hadlow', bill_to_party: 'gc', status: 'billed', collections_at: '2026-10-01T12:00:00Z', uncollectible_at: null, revenue: 5000, payments_made: 0 },
 ]
 
 /** Top-level comma split, leaving `and(...)` groups whole. */
@@ -80,13 +80,13 @@ async function expectHeadline(id: string, expected: string | null) {
 const nudge = (dollars: string) => `The office gave up on 1 bill from this customer ($${dollars}) — set Deposit required?`
 
 describe('useCustomerTermsWarning — the given-up bills of a GC the job billed (the owner’s call of 2026-10-09)', () => {
-  it('J1002’s shape: picking Heron Construction Group nudges toward Deposit required for the bill it owed', async () => {
-    await expectHeadline('gc-heron', nudge('2,500'))
+  it('J1002’s shape: picking Hadlow Construction Group nudges toward Deposit required for the bill it owed', async () => {
+    await expectHeadline('gc-hadlow', nudge('2,500'))
   })
 
   it('881’s shape: the GC that was billed sees it, and the job’s customer still does, as before', async () => {
-    await expectHeadline('gc-rmc', nudge('3,000'))
-    await expectHeadline('cust-dudley', nudge('3,000'))
+    await expectHeadline('gc-rlc', nudge('3,000'))
+    await expectHeadline('cust-dunmere', nudge('3,000'))
   })
 
   it('a GC on a job its customer paid, or a split job, owes nothing by the job alone; a customer’s own counts as before', async () => {

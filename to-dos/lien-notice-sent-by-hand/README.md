@@ -6,10 +6,10 @@ status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent b
 summary: >
   **A notice went out and the app never learned of it.** Taunya mailed a § 53.056 notice on
   2026-09-22 to the owner of 9703 Lenox Hl: one paper for jobs 273, 858 and 866 (three jobs at one
-  property under RMC- Dudley Mason), claiming $28,987 for April, June, July and August, with the
+  property under RLC- Dunmere Mallin), claiming $28,987 for April, June, July and August, with the
   residential cover letter, the homestead statement and a page of QR codes to the five bills. The
   filings table had no row for any notice, ever; 273 still sat in *Awaiting approval* with a draft
-  for July and August, and 858 and 866 were "ready" in the Dudley run, so the next run would have
+  for July and August, and 858 and 866 were "ready" in the Dunmere run, so the next run would have
   mailed them again. Three gaps: no way to record a notice that went out by hand; nowhere to keep
   the file (the owner's ask — "plain text fields with a Google Drive link to the file in
   question"); and one paper over several jobs at a property, claiming the whole balance, where the
@@ -39,7 +39,7 @@ the file in question."*
 |---|---|---|
 | Jobs | 273 + 858 + 866 at 9703 Lenox Hl (1009's $350 left out) | one notice per job; 858/866 first entered the lien readers with v2.3747 |
 | Claim | $28,987 for April, June, July, August | 273's balance $17,585; timely months only (v2.3745) — only August is open |
-| Record | none — the filings table is empty | 273 *Awaiting approval* (Jul + Aug draft); 858, 866 *ready* in the Dudley run |
+| Record | none — the filings table is empty | 273 *Awaiting approval* (Jul + Aug draft); 858, 866 *ready* in the Dunmere run |
 | File | a PDF in Taunya's mail | nowhere to keep it (before PR 1) |
 
 The pages are the app's own paper (the residential letter of v2.3745, the form with the § 53.254(g)
@@ -79,6 +79,6 @@ not print. So the office prints from the app and mails by hand; the record has t
 - PR 1: Lien window → a job with a GC → **Save & record sends…** shows *Saved copy* with a link and
   a note; a recorded row reads *Saved copy · Drive ›* and *change*; the Legal desk's filings table
   has a *Copy* column; the run's footer has the same two boxes. Kernel tests + the run modal smoke.
-- PR 2: the Lenox record — 273's item moves to Sent, 858/866 leave the Dudley run, the three
-  filings share a packet and the Drive link; *Put RMC- Dudley Mason on notice* lists them as
+- PR 2: the Lenox record — 273's item moves to Sent, 858/866 leave the Dunmere run, the three
+  filings share a packet and the Drive link; *Put RLC- Dunmere Mallin on notice* lists them as
   noticed.

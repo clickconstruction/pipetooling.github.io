@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · left: the checks and the match the measure asks for (1c), the held list's screen (3), then the views and the matching list
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) built 2026-11-12: the four check rules and a fifth the measure found again, with the bills on file checked once more by the sweep; run read only over every line on file, 23 of the 44 off bills turn green and none that added up fails · left: the held list's screen (3), then the views and the matching list
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: PR 1c, small and from the measure: four rules the check kernel does not know (a price rounded on the paper, a pack priced by the piece, a charge outside the subtotal, a rebate line that is negative). The suffix match the measure also asked for is live (v2.6897, the owner's yes of 2026-11-10). Then PR 3, the held list as a screen, since 34 held or off bills need a person. The owner's two open calls are in *The calls the measure raises*.
+next: PR 3, the held list as a screen, since 49 bills need a person after PR 1c: 28 held and 21 still off. Then What we buy on the house's code. After PR 1c merges: push its migration, deploy `bill-lines-sweep` and `bill-read`, and read the live count back onto this card. The owner's two open calls are in *The calls the measure raises*.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
 opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after
-ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.6088 · v2.6095 (the bill reader this builds on)
+ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.7103 (PR 1c) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -633,7 +633,39 @@ office's, and are a finding of their own: the amount on file is not the amount o
 - **Which is built first after 1c and 3, What we buy or the matching list?** *Default:* What we
   buy, on the house's code.
 
+### The measure again, after PR 1c
+
+Run on 2026-11-12 with PR 1c's rules over every paper on file, read only, counts only. It ran from the lines on
+file without the PDFs' text; the sweep's own recheck holds the part codes to the text as well, so the live count is
+read back here after the deploy.
+
+| | 2026-11-10, after the suffix match | With PR 1c's rules |
+| --- | --- | --- |
+| Bills on file | 539 | 543 |
+| Lines read | 492 | 496 |
+| Adding up | 448 | **475**, 96 percent of the bills read |
+| Off | 44 | **21** |
+| Held | 28 | 28: the number is not in its file 19, the app cannot open the file 7, a statement 2 |
+| No PDF | 19 | 19 |
+
+- **23 bills turn green with no press**: a price rounded on the paper 11, a line ordered and not shipped 5, a
+  rebate read as a positive 2, a pack priced by the piece 2, a price not read 2, a charge outside the subtotal 1.
+- **The fifth rule is new.** The 23 bills the suffix match brought in are partial shipments. Their papers print a
+  line that was ordered and not shipped with no quantity shipped and no extension, and the check held it to the
+  quantity ordered. Five were off for that alone. The purchase view also fell back to the quantity ordered, so such
+  a line would have counted as bought; its quantity shipped is now written as 0.
+- **No paper that added up before fails now**: 452 of 452.
+- **21 stay off and need a person**: the paper's total is not the amount typed on the row 12 (the office's: the row
+  or the link is wrong), the lines do not meet the subtotal 8 (four over, four short: a subtotal row read as a
+  line, lines with no extension, a line missing), a line that shipped and charged nothing 1.
+
+So **49 bills need a person**: 28 held and 21 off. PR 3's list is where they are seen.
+
 ## Where it stands
+
+**PR 1c (v2.7103) is built** (2026-11-12): the check kernel's rules, the reader's signed line, the migration
+`20261113070000_supply_paper_check_rules.sql` and the sweep's one more check of the off papers on file. After its
+merge: push the migration, then deploy `bill-lines-sweep` and `bill-read`.
 
 **PR 2 (v2.6882) is on main, its migration pushed and its functions deployed** (2026-11-10). The
 edge function `bill-lines-sweep` opens the Drive file a bill's row links as the service account,

@@ -5,7 +5,7 @@ import { buildGcReviewRollup } from '../gcReviewRollup'
 import { gcUnpaidInvoiceDocs, gcUnpaidInvoicePrintSummary, planGcUnpaidInvoicePrint } from './gcUnpaidInvoicePrint'
 
 const NOW = new Date('2026-09-27T12:00:00Z')
-const MASON = { id: 'gc-mason', name: 'RMC- Dudley Mason' }
+const MALLIN = { id: 'gc-mallin', name: 'RLC- Dunmere Mallin' }
 
 type Inv = JobWithDetails['invoices'][number]
 
@@ -29,14 +29,14 @@ function job(id: string, over: Partial<JobWithDetails> = {}): JobWithDetails {
   return {
     id,
     status: 'billed',
-    gcCustomer: MASON,
-    gc_customer_id: MASON.id,
+    gcCustomer: MALLIN,
+    gc_customer_id: MALLIN.id,
     bill_to_party: 'gc',
     hcp_number: id.replace('j', ''),
     click_number: '',
-    job_name: 'Dudley Mason',
-    job_address: `${id} Terrell Rd, San Antonio, TX 78209`,
-    customer_name: 'Bobby Urrabazo',
+    job_name: 'Dunmere Mallin',
+    job_address: `${id} Tarrow Rd, San Antonio, TX 78209`,
+    customer_name: 'Bobby Urrell',
     customer_email: '',
     revenue: 1000,
     payments_made: 0,
@@ -88,9 +88,9 @@ describe('planGcUnpaidInvoicePrint', () => {
     const active = [invoiceRow(mine, inv('i-790', mine.id, 1712.5)), invoiceRow(other, inv('i-999', other.id, 50))]
     const inCollections = [invoiceRow(collections, inv('i-800', collections.id, 1600))]
     const all = [...active, ...inCollections]
-    const without = buildGcReviewRollup(active, inCollections, { now: NOW }).groups.find((g) => g.gcId === MASON.id)!
+    const without = buildGcReviewRollup(active, inCollections, { now: NOW }).groups.find((g) => g.gcId === MALLIN.id)!
     expect(planGcUnpaidInvoicePrint(without, all).targets.map((t) => t.invoiceId)).toEqual(['i-790'])
-    const withCollections = buildGcReviewRollup(active, inCollections, { now: NOW, includeCollections: true }).groups.find((g) => g.gcId === MASON.id)!
+    const withCollections = buildGcReviewRollup(active, inCollections, { now: NOW, includeCollections: true }).groups.find((g) => g.gcId === MALLIN.id)!
     expect(planGcUnpaidInvoicePrint(withCollections, all).targets.map((t) => t.invoiceId).sort()).toEqual(['i-790', 'i-800'])
   })
 
@@ -150,19 +150,19 @@ describe('gcUnpaidInvoicePrintSummary', () => {
   const none = { rowsWithoutBill: 0, noLongerUnpaid: 0, failed: 0 }
 
   it('says how many printed', () => {
-    expect(gcUnpaidInvoicePrintSummary('RMC- Dudley Mason', { printed: 19, ...none })).toEqual({ message: '19 unpaid invoices for RMC- Dudley Mason.', complete: true })
-    expect(gcUnpaidInvoicePrintSummary('Knight', { printed: 1, ...none }).message).toBe('1 unpaid invoice for Knight.')
+    expect(gcUnpaidInvoicePrintSummary('RLC- Dunmere Mallin', { printed: 19, ...none })).toEqual({ message: '19 unpaid invoices for RLC- Dunmere Mallin.', complete: true })
+    expect(gcUnpaidInvoicePrintSummary('Kestrin', { printed: 1, ...none }).message).toBe('1 unpaid invoice for Kestrin.')
   })
 
   it('names every row it left out and why', () => {
-    const s = gcUnpaidInvoicePrintSummary('Knight', { printed: 4, rowsWithoutBill: 1, noLongerUnpaid: 2, failed: 1 })
+    const s = gcUnpaidInvoicePrintSummary('Kestrin', { printed: 4, rowsWithoutBill: 1, noLongerUnpaid: 2, failed: 1 })
     expect(s.complete).toBe(false)
-    expect(s.message).toBe('4 unpaid invoices for Knight — left out: 1 row is a job balance with no invoice; 2 bills are no longer unpaid; 1 bill could not be built.')
+    expect(s.message).toBe('4 unpaid invoices for Kestrin — left out: 1 row is a job balance with no invoice; 2 bills are no longer unpaid; 1 bill could not be built.')
   })
 
   it('says so when there is nothing to print', () => {
-    expect(gcUnpaidInvoicePrintSummary('Knight', { printed: 0, ...none, rowsWithoutBill: 2 }).message).toBe(
-      'No unpaid invoices to print for Knight — left out: 2 rows are job balances with no invoice.',
+    expect(gcUnpaidInvoicePrintSummary('Kestrin', { printed: 0, ...none, rowsWithoutBill: 2 }).message).toBe(
+      'No unpaid invoices to print for Kestrin — left out: 2 rows are job balances with no invoice.',
     )
   })
 })

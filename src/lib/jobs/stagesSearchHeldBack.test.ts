@@ -8,38 +8,38 @@ const job = (id: string, p: Partial<JobWithDetails> = {}): JobWithDetails =>
 const billedBill = { id: 'b1', status: 'billed', amount: 100, sequence_order: 1 } as JobWithDetails['invoices'][number]
 
 describe('countStagesSearchHeldBack', () => {
-  const hidden = job('h1', { job_name: 'Sagebrush Lot 12', status: 'paid' })
-  const shown = job('s1', { job_name: 'Sagebrush Lot 3' })
+  const hidden = job('h1', { job_name: 'Sagemoor Lot 12', status: 'paid' })
+  const shown = job('s1', { job_name: 'Sagemoor Lot 3' })
   const other = job('o1', { job_name: 'Oak Street' })
 
   it('counts the matches the filters took off, in any stage, and not the ones on the board', () => {
-    expect(countStagesSearchHeldBack([hidden, shown, other], [shown, other], 'sagebrush')).toBe(1)
+    expect(countStagesSearchHeldBack([hidden, shown, other], [shown, other], 'sagemoor')).toBe(1)
   })
 
   it('a job the filters took off that does not match is not counted', () => {
-    expect(countStagesSearchHeldBack([hidden, other], [hidden], 'sagebrush')).toBe(0)
+    expect(countStagesSearchHeldBack([hidden, other], [hidden], 'sagemoor')).toBe(0)
   })
 
   it('no search, or no filter taking anything off, holds nothing back', () => {
     expect(countStagesSearchHeldBack([hidden, shown], [shown], '  ')).toBe(0)
-    expect(countStagesSearchHeldBack([hidden, shown], [hidden, shown], 'sagebrush')).toBe(0)
+    expect(countStagesSearchHeldBack([hidden, shown], [hidden, shown], 'sagemoor')).toBe(0)
   })
 
   it('a job the lookup found by something the row does not print counts too', () => {
     const byCustomer = job('c1', { job_name: 'Lot 9' })
-    expect(countStagesSearchHeldBack([byCustomer], [], 'sagebrush', new Set(['c1']))).toBe(1)
+    expect(countStagesSearchHeldBack([byCustomer], [], 'sagemoor', new Set(['c1']))).toBe(1)
   })
 
   it('a row the board would never draw is never promised: a billing-only job with no bill', () => {
-    const billingOnly = job('b1', { job_name: 'Sagebrush (GC)', billing_only: true })
-    expect(countStagesSearchHeldBack([billingOnly], [], 'sagebrush')).toBe(0)
+    const billingOnly = job('b1', { job_name: 'Sagemoor (GC)', billing_only: true })
+    expect(countStagesSearchHeldBack([billingOnly], [], 'sagemoor')).toBe(0)
   })
 
   it('a billing-only job with a bill is drawn under Billed, once however many lists hold it', () => {
-    const billingOnly = job('b2', { job_name: 'Sagebrush (GC)', billing_only: true, invoices: [billedBill] })
-    expect(countStagesSearchHeldBack([billingOnly], [], 'sagebrush')).toBe(1)
-    const billed = job('b3', { job_name: 'Sagebrush Billed', status: 'billed', invoices: [billedBill] })
-    expect(countStagesSearchHeldBack([billed], [], 'sagebrush')).toBe(1)
+    const billingOnly = job('b2', { job_name: 'Sagemoor (GC)', billing_only: true, invoices: [billedBill] })
+    expect(countStagesSearchHeldBack([billingOnly], [], 'sagemoor')).toBe(1)
+    const billed = job('b3', { job_name: 'Sagemoor Billed', status: 'billed', invoices: [billedBill] })
+    expect(countStagesSearchHeldBack([billed], [], 'sagemoor')).toBe(1)
   })
 })
 

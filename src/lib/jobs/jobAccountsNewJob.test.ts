@@ -25,16 +25,16 @@ const newJobEntries = [entry('ferguson', 'Ferguson', 'none'), entry('reece', 'Re
 describe('samePropertyOffers', () => {
   const j964 = {
     id: 'j964',
-    label: '964 · Pondhill demo',
-    address: '4114 Pond Hill Rd, Building #2, San Antonio, TX',
+    label: '964 · Penmoor demo',
+    address: '4114 Pen Moor Rd, Building #2, San Antonio, TX',
     entries: [entry('ferguson', 'Ferguson', 'open', { accountRef: 'JA-4114', openedVia: 'phone', rep: { id: 'c1', name: 'Curly', phone: null } }), entry('reece', 'Reece', 'none')],
   }
   const elsewhere = { id: 'j1', label: '1 · Elsewhere', address: '1 Other St, Austin, TX', entries: [entry('reece', 'Reece', 'open', { accountRef: 'R-1' })] }
 
   it('offers the open account from a job at the same address, exact or by street line', () => {
-    const exact = samePropertyOffers('4114 pond hill rd, building #2, san antonio, tx', newJobEntries, [elsewhere, j964])
-    expect(exact).toEqual([{ houseId: 'ferguson', houseName: 'Ferguson', fromJobId: 'j964', fromJobLabel: '964 · Pondhill demo', accountRef: 'JA-4114', openedVia: 'phone', repContactId: 'c1' }])
-    const street = samePropertyOffers('4114 Pond Hill Rd, Bldg 3, San Antonio, TX 78231', newJobEntries, [j964])
+    const exact = samePropertyOffers('4114 pen moor rd, building #2, san antonio, tx', newJobEntries, [elsewhere, j964])
+    expect(exact).toEqual([{ houseId: 'ferguson', houseName: 'Ferguson', fromJobId: 'j964', fromJobLabel: '964 · Penmoor demo', accountRef: 'JA-4114', openedVia: 'phone', repContactId: 'c1' }])
+    const street = samePropertyOffers('4114 Pen Moor Rd, Bldg 3, San Antonio, TX 78231', newJobEntries, [j964])
     expect(street.map((o) => o.houseId)).toEqual(['ferguson'])
   })
 
@@ -47,8 +47,8 @@ describe('samePropertyOffers', () => {
 })
 
 describe('buildNewJobAccountsPlan', () => {
-  const offers = samePropertyOffers('4114 Pond Hill Rd, Building #2, San Antonio, TX', newJobEntries, [
-    { id: 'j964', label: '964', address: '4114 Pond Hill Rd, Building #2, San Antonio, TX', entries: [entry('ferguson', 'Ferguson', 'open', { accountRef: 'JA-4114' })] },
+  const offers = samePropertyOffers('4114 Pen Moor Rd, Building #2, San Antonio, TX', newJobEntries, [
+    { id: 'j964', label: '964', address: '4114 Pen Moor Rd, Building #2, San Antonio, TX', entries: [entry('ferguson', 'Ferguson', 'open', { accountRef: 'JA-4114' })] },
   ])
 
   it('splits picks into reuse and ask, never both, and ignores non-none houses', () => {
@@ -65,6 +65,6 @@ describe('buildNewJobAccountsPlan', () => {
   })
 
   it('words the reuse note', () => {
-    expect(reuseNote('964 · Pondhill demo')).toBe('Same property as 964 · Pondhill demo')
+    expect(reuseNote('964 · Penmoor demo')).toBe('Same property as 964 · Penmoor demo')
   })
 })

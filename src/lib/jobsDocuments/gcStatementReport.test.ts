@@ -6,7 +6,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
   return {
     key: 'gc-1',
     gcId: 'gc-1',
-    gcName: 'Knight Contracting',
+    gcName: 'Kestrin Contracting',
     isNoGc: false,
     rows: [
       {
@@ -32,7 +32,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
 describe('buildGcStatementReportHtml', () => {
   it('single group titles as a GC statement and includes rows + subtotal', () => {
     const html = buildGcStatementReportHtml([group()], { dateStr: '7/31/2026' })
-    expect(html).toContain('GC statement — Knight Contracting — 7/31/2026')
+    expect(html).toContain('GC statement — Kestrin Contracting — 7/31/2026')
     expect(html).toContain('Rosemary Garza')
     expect(html).toContain('828')
     expect(html).toContain('Jul 12, 2026')

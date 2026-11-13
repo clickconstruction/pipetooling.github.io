@@ -43,14 +43,14 @@ beforeEach(() => {
 const RUSTY: Contact = {
   id: 'c-rusty',
   kind: 'customer',
-  name: 'Rusty Cottar',
+  name: 'Rusty Cotterby',
   goesBy: null,
-  company: 'Cottar Builders',
-  record: { table: 'customers', id: 'cust-cottar' },
-  channels: [{ id: 'ch-1', kind: 'email', value: 'rusty@cottarbuilders.example', optedOutAt: null }],
+  company: 'Cotterby Builders',
+  record: { table: 'customers', id: 'cust-cotterby' },
+  channels: [{ id: 'ch-1', kind: 'email', value: 'rusty@cotterbybuilders.example', optedOutAt: null }],
   jobIds: ['bid:b-oak'],
   defaultJobId: null,
-  customerId: 'cust-cottar',
+  customerId: 'cust-cotterby',
 }
 const OAK: JobTile = { key: 'bid:b-oak', kind: 'bid', num: 'B512', name: 'Oak Hill Clinic', day: { words: 'bid due Thu Nov 12 · 4 days', tone: 'soon' } }
 
@@ -61,7 +61,7 @@ const line = (id: string, direction: 'in' | 'out', at: string): ThreadMessage =>
   channel: 'email',
   direction,
   at,
-  who: direction === 'in' ? 'Rusty Cottar' : 'Wendi Doll',
+  who: direction === 'in' ? 'Rusty Cotterby' : 'Wendi Doll',
   subject: 'Bid request',
   body: direction === 'in' ? 'Can you price the plumbing on Oak Hill?' : 'Numbers attached.',
 })
@@ -72,7 +72,7 @@ const sentRow = (over: Partial<MyMailRow> = {}): MyMailRow => ({
   gmailId: 'g-1',
   threadId: 't-1',
   direction: 'out',
-  who: { name: 'Rusty Cottar', address: 'rusty@cottarbuilders.example' },
+  who: { name: 'Rusty Cotterby', address: 'rusty@cotterbybuilders.example' },
   subject: 'Re: Bid request',
   snippet: 'Numbers attached.',
   at: '2026-11-07T20:00:00.000Z',
@@ -145,7 +145,7 @@ describe('useOwnMailboxThreadSlots: the strip above the box (punch list #207, v2
     const io = fakeIo()
     const { above, reread } = mount(io, THEIRS_LAST)
     fireEvent.click(within(above).getByRole('button', { name: 'Find my sent mail' }))
-    await waitFor(() => expect(io.listSent).toHaveBeenCalledWith('to:rusty@cottarbuilders.example newer_than:30d'))
+    await waitFor(() => expect(io.listSent).toHaveBeenCalledWith('to:rusty@cotterbybuilders.example newer_than:30d'))
     const list = await within(above).findByRole('list')
     const rows = within(list).getAllByRole('listitem')
     expect(rows).toHaveLength(2)

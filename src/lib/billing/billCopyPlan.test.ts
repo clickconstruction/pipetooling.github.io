@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — the pure plan, tested here.
 import { BILL_COPY_MAX, copyEmailsFromRow, planBillCopies } from '../../../supabase/functions/_shared/billCopyPlan'
 
-const list = ['pm@hartwell.example', 'ap@drf.example', 'tenant@one-off.example']
+const list = ['pm@hartwell.example', 'ap@dlf.example', 'tenant@one-off.example']
 const live = { stripeMode: 'live' as const, invoiceLivemode: true, copyEmails: list, callerEmail: 'office@click.example' }
 
 describe('copyEmailsFromRow', () => {
   it('lowercases, trims, dedupes and drops what is not an address', () => {
-    expect(copyEmailsFromRow([' PM@Hartwell.example ', 'pm@hartwell.example', 'not an address', '', 7, null, 'ap@drf.example'])).toEqual(['pm@hartwell.example', 'ap@drf.example'])
+    expect(copyEmailsFromRow([' PM@Hartwell.example ', 'pm@hartwell.example', 'not an address', '', 7, null, 'ap@dlf.example'])).toEqual(['pm@hartwell.example', 'ap@dlf.example'])
   })
   it('is empty for anything but a list', () => {
     expect(copyEmailsFromRow(null)).toEqual([])

@@ -11,7 +11,7 @@ import {
 
 const marker = (over: Record<string, unknown> = {}) => ({
   started_at: '2026-09-28T14:10:00Z',
-  job: { id: 'job-1', hcp: '5124', name: 'Herber Custom Homes', address: '12 Oak St', customer_id: 'cust-1' },
+  job: { id: 'job-1', hcp: '5124', name: 'Helbrow Custom Homes', address: '12 Oak St', customer_id: 'cust-1' },
   ...over,
 })
 
@@ -22,7 +22,7 @@ function row(over: Partial<QuickEstimateDraftRow> = {}): QuickEstimateDraftRow {
     doc_kind: 'change_order',
     customer_id: 'cust-1',
     change_order_fields: {
-      description_of_change: 'Job: HCP 5124 — Herber Custom Homes (12 Oak St)\n\nPhone: 512 555 0101\n\nAdded a hose bib on the back wall.',
+      description_of_change: 'Job: HCP 5124 — Helbrow Custom Homes (12 Oak St)\n\nPhone: 512 555 0101\n\nAdded a hose bib on the back wall.',
       reason_for_change: 'Customer asked',
       impact_on_schedule: '',
       response_requested_by: '2026-10-02',
@@ -46,7 +46,7 @@ describe('quickEstimateResumeFromDraft', () => {
   it('reads a change-order draft back into the wizard fields', () => {
     const s = quickEstimateResumeFromDraft(row())!
     expect(s.branch).toBe('change_order')
-    expect(s.job).toEqual({ id: 'job-1', hcp: '5124', name: 'Herber Custom Homes', address: '12 Oak St', customer_id: 'cust-1' })
+    expect(s.job).toEqual({ id: 'job-1', hcp: '5124', name: 'Helbrow Custom Homes', address: '12 Oak St', customer_id: 'cust-1' })
     expect(s.description).toBe('Added a hose bib on the back wall.')
     expect(s.phone).toBe('512 555 0101')
     expect(s.coReason).toBe('Customer asked')
@@ -82,7 +82,7 @@ describe('quickEstimateResumeFromDraft', () => {
 
   it('an empty draft (job picked, nothing typed, no photo) has no content', () => {
     const s = quickEstimateResumeFromDraft(row({
-      change_order_fields: { description_of_change: 'Job: HCP 5124 — Herber Custom Homes (12 Oak St)' },
+      change_order_fields: { description_of_change: 'Job: HCP 5124 — Helbrow Custom Homes (12 Oak St)' },
       line_items_snapshot: [],
       estimate_field_photos: [],
     }))!

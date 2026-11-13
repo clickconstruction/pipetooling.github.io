@@ -67,20 +67,20 @@ describe('the address and the bid', () => {
     expect(roomLinkUrl('https://clicktooling.com/', TOKEN)).toBe(roomLink('https://clicktooling.com', TOKEN))
   })
   it('names the bid as the reply email does', () => {
-    expect(roomLinkBidLabel({ bid_number: '375', project_name: 'SpaceX BA-02N' })).toBe('B375 SpaceX BA-02N')
-    expect(roomLinkBidLabel({ bid_number: null, project_name: 'SpaceX BA-02N' })).toBe('SpaceX BA-02N')
+    expect(roomLinkBidLabel({ bid_number: '375', project_name: 'SkyLab BA-02N' })).toBe('B375 SkyLab BA-02N')
+    expect(roomLinkBidLabel({ bid_number: null, project_name: 'SkyLab BA-02N' })).toBe('SkyLab BA-02N')
     expect(roomLinkBidLabel({ bid_number: ' ', project_name: null })).toBe('the project')
     expect(roomLinkBidLabel(null)).toBe('the project')
   })
 })
 
 describe('buildSubmittalRoomLinkEmail', () => {
-  const base = { companyName: 'Click Plumbing and Electrical', phone: '(512) 360-0599', bidLabel: 'B375 SpaceX BA-02N', revNumber: 2, personName: 'Dana Whitfield', mayDecide: true, link: `https://clicktooling.com/submittal?t=${TOKEN}`, note: '' }
+  const base = { companyName: 'Click Plumbing and Electrical', phone: '(512) 360-0599', bidLabel: 'B375 SkyLab BA-02N', revNumber: 2, personName: 'Dana Whitfield', mayDecide: true, link: `https://clicktooling.com/submittal?t=${TOKEN}`, note: '' }
   it('names the revision and the bid, greets by first name, and carries their link', () => {
     const m = buildSubmittalRoomLinkEmail(base)
-    expect(m.subject).toBe('Click Plumbing and Electrical shared Rev 2 of the submittal for B375 SpaceX BA-02N')
+    expect(m.subject).toBe('Click Plumbing and Electrical shared Rev 2 of the submittal for B375 SkyLab BA-02N')
     expect(m.text.split('\n')[0]).toBe('Hi Dana,')
-    expect(m.text).toContain('Rev 2 of the submittal for B375 SpaceX BA-02N is ready for your review.')
+    expect(m.text).toContain('Rev 2 of the submittal for B375 SkyLab BA-02N is ready for your review.')
     expect(m.text).toContain('On the page you can approve each product, send one back, or ask a question.')
     expect(m.text).toContain(`Open the review: ${base.link}`)
     expect(m.text).toContain('This link is yours. There is no password.')
@@ -89,8 +89,8 @@ describe('buildSubmittalRoomLinkEmail', () => {
   })
   it('a watcher reads that they can read and ask; no shared revision names none', () => {
     const m = buildSubmittalRoomLinkEmail({ ...base, mayDecide: false, revNumber: null })
-    expect(m.subject).toBe('Click Plumbing and Electrical shared the submittal for B375 SpaceX BA-02N')
-    expect(m.text).toContain('The submittal for B375 SpaceX BA-02N is ready for your review.')
+    expect(m.subject).toBe('Click Plumbing and Electrical shared the submittal for B375 SkyLab BA-02N')
+    expect(m.text).toContain('The submittal for B375 SkyLab BA-02N is ready for your review.')
     expect(m.text).toContain('On the page you can read every product and ask a question.')
     expect(m.text).not.toContain('approve')
   })

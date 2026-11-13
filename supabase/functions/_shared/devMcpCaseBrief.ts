@@ -16,6 +16,7 @@ import type { RowFilter } from './devMcpDoor.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
 import { cutText, fitReply, outlineHeadings, type FitStep, type Shortened } from './devMcpReplyFit.ts'
 import { counselOnlyStillHeld } from './devMcpCounselOnly.ts'
+import { AMENDMENTS_NOTE, amendmentCounts, amendmentDays, newestAmendments, readPersonAmendments, seatAmendmentBits } from './devMcpAmendments.ts'
 
 export type CaseBriefAsk = { person: string }
 export type CaseBriefReader = { role: string; todayYmd: string }
@@ -25,6 +26,8 @@ export const AGENT_NOTES_TITLE = 'Agent notes'
 /** How much of the notes the brief carries; the rest is a section read away. */
 export const AGENT_NOTES_CHARS = 1200
 const NEWEST_ENTRIES = 10
+/** Punch list #315: how many of the newest correction links the brief lists. */
+const NEWEST_AMENDMENTS = 10
 const HEADLINES = 5
 /** The fit's steps (v2.6935), mildest first: how many headings a document keeps, then the lists' newest rows. */
 export const BRIEF_DOC_SECTION_STEPS = [40, 24, 16, 12, 8, 5, 3] as const
@@ -136,6 +139,17 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const newestRows = newestIds.length ? await read<{ id: string; content: string }>('entries', () => reader.rows('person_file_entries', { select: 'id,content', filters: [{ column: 'id', op: 'in', value: newestIds }], limit: NEWEST_ENTRIES })) : []
   const wordsOf = new Map(newestRows.map((r) => [r.id, r.content]))
 
+  // Punch list #315 (0.81.0): the correction links, a source of their own. A read that fails is named in `held` and takes
+  // only the links out. The days of both ends come from the rows already here; an end outside them is one more read.
+  const amendRead = isDev ? await readPersonAmendments(reader, personId) : null
+  if (amendRead?.heldWhy) held.push({ source: 'correction links', reason: amendRead.heldWhy })
+  if (amendRead?.capped) held.push({ source: 'correction links', reason: `more than ${ALL_ROWS_MAX} rows of person_file_amendments: the read stopped there` })
+  const knownDays = new Map<string, string | null>()
+  for (const e of entries) knownDays.set(`hr_entry:${e.id}`, e.entry_date)
+  for (const r of evidence) knownDays.set(`hr_evidence:${r.id}`, r.dated_on)
+  const amendDayOf = amendRead && amendRead.rows.length > 0 ? await amendmentDays(reader, amendRead, knownDays) : knownDays
+  const amendBits = (kind: 'hr_entry' | 'hr_evidence', id: string) => (amendRead ? seatAmendmentBits(`${kind}:${id}`, amendRead.index, (k) => amendDayOf.get(k) ?? null) : {})
+
   // The summary whole (a page by rule), the agent's notes' first lines: two small reads after the indexes.
   const summaryIndex = fileIndex.find((f) => f.kind === 'summary') ?? null
   const narrativeIndex = fileIndex.find((f) => f.kind === 'narrative') ?? null
@@ -210,7 +224,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const documentsAt = (sectionMax: number | null, newest: number | null) =>
     (newest == null ? listed : listed.slice(0, newest)).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, section_count: count(d.headings), sections: sections(d.headings, sectionMax), evidence_id: d.evidence_id ?? null }))
   const evidenceAt = (newest: number | null) =>
-    (newest == null ? evidence : evidence.slice(0, newest)).map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null }))
+    (newest == null ? evidence : evidence.slice(0, newest)).map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null, ...amendBits('hr_evidence', r.id) }))
   const matterHeadings = headingsOf(matter?.narrative_md ?? '')
   const matterSteps = matterEntries
     .filter((e) => e.kind === 'plan' && !e.voided_at)
@@ -241,8 +255,11 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       first: entryDates[0] ?? null,
       last: entryDates[entryDates.length - 1] ?? null,
       by_source: bySource,
-      newest: entries.slice(0, NEWEST_ENTRIES).map((e) => ({ id: e.id, ymd: e.entry_date, source: e.source, first_line: firstLine(wordsOf.get(e.id) ?? '') })),
+      newest: entries.slice(0, NEWEST_ENTRIES).map((e) => ({ id: e.id, ymd: e.entry_date, source: e.source, first_line: firstLine(wordsOf.get(e.id) ?? ''), ...amendBits('hr_entry', e.id) })),
     },
+    // Punch list #315 (0.81.0): the correction links, counted, and the newest ten with both ends by row and day. An entry
+    // or record above that a link touches carries standing, amended_by, amends and latest_word; null when not read.
+    amendments: amendRead && !amendRead.heldWhy ? { ...amendmentCounts(amendRead), newest: newestAmendments(amendRead, (k) => amendDayOf.get(k) ?? null, NEWEST_AMENDMENTS), note: AMENDMENTS_NOTE } : null,
     matter: matter
       ? {
           id: matter.id,

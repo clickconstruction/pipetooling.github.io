@@ -26,7 +26,7 @@ function job(invoices: JobsLedgerInvoiceRow[]): JobWithDetails {
   return { id: 'job1', invoices } as unknown as JobWithDetails
 }
 
-const bankCheck = { postedYmd: '2026-09-14', counterparty: 'Loberg Contracting', kind: 'checkDeposit', status: 'sent', failureReason: null }
+const bankCheck = { postedYmd: '2026-09-14', counterparty: 'Lowbeck Contracting', kind: 'checkDeposit', status: 'sent', failureReason: null }
 
 describe('instrumentWord — the eight spellings of three things', () => {
   it('reads check, cheque and checkDeposit as check; Card (external) as card; ACH as ach; nothing as null', () => {
@@ -83,7 +83,7 @@ describe('paymentLineWords — the line under a bill', () => {
     const row = payment({ mercury_transaction_id: 'mt1', payment_type: 'checkDeposit', reference_number: '4ed0c1d2-0000-4000-8000-0000000003c1' })
     const words = paymentLineWords({ slice: { payment: row, amount: 11700, partial: false }, source: paymentSource(row, job([invoice()]), bankCheck), billSentYmd: '2026-07-15', bank: bankCheck })
     expect(words.dateText).toBe('Sep 14')
-    expect(words.who).toBe('check from Loberg Contracting')
+    expect(words.who).toBe('check from Lowbeck Contracting')
     expect(words.daysText).toBe('61 d')
     expect(words.daysTone).toBe('ok')
     expect(words.pinned).toBe(true)
@@ -189,7 +189,7 @@ describe('orderMoneyByDate — the By date reading', () => {
 describe('sourceWords — the line in a sentence', () => {
   it('names the payer on a bank row, the channel on a Stripe row, and the hand on the rest', () => {
     const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'paid' } as Partial<JobsLedgerInvoiceRow>)])
-    expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, bankCheck), bankCheck)).toBe('check from Loberg Contracting')
+    expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, bankCheck), bankCheck)).toBe('check from Lowbeck Contracting')
     expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, { ...bankCheck, counterparty: null }), { ...bankCheck, counterparty: null })).toBe('check · bank deposit')
     expect(sourceWords(paymentSource(payment({ note: 'Stripe' }), stripeJob))).toBe('card through Stripe')
     expect(sourceWords(paymentSource(payment({ payment_type: 'check' }), stripeJob))).toBe('check recorded in Stripe')

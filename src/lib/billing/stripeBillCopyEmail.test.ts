@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildStripeBillCopyEmail, formatCentsUsd, formatDueDate, stripeBillCopyTestLine } from '../../../supabase/functions/_shared/stripeBillCopyEmail'
 
 const base = {
-  payerName: 'Josh Peterson',
-  jobLabel: 'J1013 · Peterson Pretest',
+  payerName: 'Josh Pettlow',
+  jobLabel: 'J1013 · Pettlow Pretest',
   jobAddress: '390 Pecan Meadows, New Braunfels, TX',
   invoiceNumber: '1013-2609121030',
   amountDueCents: 25000,
@@ -16,20 +16,20 @@ const base = {
 describe('buildStripeBillCopyEmail', () => {
   it('names the payer, the job, the amount, the due date and the pay link', () => {
     const out = buildStripeBillCopyEmail(base)
-    expect(out.subject).toBe('Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest')
-    expect(out.text).toContain('sent to Josh Peterson for 390 Pecan Meadows')
+    expect(out.subject).toBe('Copy of invoice #1013-2609121030 — J1013 · Pettlow Pretest')
+    expect(out.text).toContain('sent to Josh Pettlow for 390 Pecan Meadows')
     expect(out.text).toContain('Amount due: $250.00 · Due Sep 25, 2026')
     expect(out.text).toContain(base.hostedInvoiceUrl)
     expect(out.text).toContain(base.invoicePdfUrl)
     expect(out.html).toContain('Pay or view the bill')
-    expect(out.html).toContain('Josh Peterson was sent the bill directly.')
+    expect(out.html).toContain('Josh Pettlow was sent the bill directly.')
     expect(`${out.text}${out.html}`).not.toContain('Stripe')
   })
   it('survives a missing due date, PDF and address', () => {
     const out = buildStripeBillCopyEmail({ ...base, dueDateUnix: null, invoicePdfUrl: null, jobAddress: '' })
     expect(out.text).toContain('Amount due: $250.00\n')
     expect(out.text).not.toContain('PDF:')
-    expect(out.text).toContain('sent to Josh Peterson.')
+    expect(out.text).toContain('sent to Josh Pettlow.')
     expect(out.html).not.toContain('Download the PDF')
   })
   it('adds the recipient statement link only when given', () => {
@@ -62,9 +62,9 @@ describe('buildStripeBillCopyEmail', () => {
     }
   })
   it('a test copy is marked in the subject and names the addresses it did not go to', () => {
-    const out = buildStripeBillCopyEmail({ ...base, testHeldBack: ['pm@hartwell.example', 'ap@drf.example'] })
-    const line = 'Test bill. This copy came to you instead of pm@hartwell.example, ap@drf.example; nothing was sent to the copy list.'
-    expect(out.subject).toBe('[Test] Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest')
+    const out = buildStripeBillCopyEmail({ ...base, testHeldBack: ['pm@hartwell.example', 'ap@dlf.example'] })
+    const line = 'Test bill. This copy came to you instead of pm@hartwell.example, ap@dlf.example; nothing was sent to the copy list.'
+    expect(out.subject).toBe('[Test] Copy of invoice #1013-2609121030 — J1013 · Pettlow Pretest')
     expect(out.text.startsWith(`${line}\n\nThis is a copy of the bill`)).toBe(true)
     expect(out.html).toContain(line)
     expect(out.html.indexOf(line)).toBeLessThan(out.html.indexOf('Copy of a bill'))

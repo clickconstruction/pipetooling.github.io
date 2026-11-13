@@ -15,8 +15,8 @@ The copy might go to the accounts-payable clerk at a builder, a spouse or the pr
 2. Click it. You see the people on file for whoever pays this job, each with a tick:
 
 :::example the row, opened
-☑ **DRF** ap@drfbuilders.com · contact on Josh Peterson
-☐ **Lisa Peterson** lisa.p@gmail.com · contact on Josh Peterson
+☑ **DLF** ap@dlfbuilders.example · contact on Josh Pettlow
+☐ **Lisa Pettlow** lisa.p@gmail.com · contact on Josh Pettlow
 {{button:outline|+ Add a person}}
 :::
 
@@ -27,12 +27,12 @@ The copy might go to the accounts-payable clerk at a builder, a spouse or the pr
 
 Some jobs have a GC who is not the customer. There, the row also offers the party who is **not** being billed:
 
-- Customer pays → *Copy Done Right Foundation · the GC, not billed*
-- GC pays → *Copy Laura Shearer · the customer, not billed*
+- Customer pays → *Copy Dead Level Foundation · the GC, not billed*
+- GC pays → *Copy Laura Shellan · the customer, not billed*
 
 You tick that line, and every bill on this job copies them. The tick is a setting on the job, not on the customer. The reason is that it depends on who pays this one. On a **Split by line** job, the row does not offer it. Each draft picks its own payer there.
 
-A copy is the email, once. Sometimes the other party should also **see the bill on their portal statement**. An example is a builder keeping an eye on which homeowners still owe for repairs. For that, you use the line right under *Copy* in Bill Customer: **Show it on Done Right Foundation's statement**. Showing it is a separate tick, with its own memory row on the job: **Show Done Right**. The reason is that an email and a standing statement are different promises. See *choose who gets the bill on a job* → Show the other party a bill they don't pay.
+A copy is the email, once. Sometimes the other party should also **see the bill on their portal statement**. An example is a builder keeping an eye on which homeowners still owe for repairs. For that, you use the line right under *Copy* in Bill Customer: **Show it on Dead Level Foundation's statement**. Showing it is a separate tick, with its own memory row on the job: **Show Dead Level**. The reason is that an email and a standing statement are different promises. See *choose who gets the bill on a job* → Show the other party a bill they don't pay.
 
 ## What Bill Customer does with it
 

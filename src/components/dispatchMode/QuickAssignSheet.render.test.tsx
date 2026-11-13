@@ -28,11 +28,11 @@ vi.mock('../../lib/scheduleDispatchHub', async () => {
           id: 'j473',
           hcp_number: '473',
           click_number: null,
-          job_name: 'Mike Holub',
+          job_name: 'Mike Holmby',
           project_id: null,
           created_at: '2026-01-05T15:00:00Z',
-          job_address: '109 Tuscarora Trail',
-          customer_name: 'Mike Holub',
+          job_address: '109 Tamberline Trail',
+          customer_name: 'Mike Holmby',
           status: 'working',
           service_type: null,
         },
@@ -91,7 +91,7 @@ function listedJobs(picker: ReturnType<typeof within>): string[] {
 describe('QuickAssignSheet · the job picker', () => {
   it('lists both jobs, newest first, before anything is typed', async () => {
     const picker = await openPicker()
-    expect(listedJobs(picker)).toEqual(['J1007 · ZZ Test sink', 'J473 · Mike Holub'])
+    expect(listedJobs(picker)).toEqual(['J1007 · ZZ Test sink', 'J473 · Mike Holmby'])
   })
 
   it('the search box finds a job by its Click number and a job by its HCP number', async () => {
@@ -101,7 +101,7 @@ describe('QuickAssignSheet · the job picker', () => {
     expect(listedJobs(picker)).toEqual(['J1007 · ZZ Test sink'])
     expect(picker.queryByText('No jobs match.')).toBeNull()
     fireEvent.change(search, { target: { value: '473' } })
-    expect(listedJobs(picker)).toEqual(['J473 · Mike Holub'])
+    expect(listedJobs(picker)).toEqual(['J473 · Mike Holmby'])
     fireEvent.change(search, { target: { value: '5555' } })
     expect(listedJobs(picker)).toEqual([])
     expect(picker.getByText('No jobs match.')).toBeTruthy()
@@ -114,6 +114,6 @@ describe('QuickAssignSheet · the job picker', () => {
     fireEvent.change(numberBox, { target: { value: '1007' } })
     expect(listedJobs(picker)).toEqual(['J1007 · ZZ Test sink'])
     fireEvent.change(numberBox, { target: { value: '473' } })
-    expect(listedJobs(picker)).toEqual(['J473 · Mike Holub'])
+    expect(listedJobs(picker)).toEqual(['J473 · Mike Holmby'])
   })
 })

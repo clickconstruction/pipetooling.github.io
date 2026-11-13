@@ -54,9 +54,9 @@ import type { LienWaiverFields } from '../jobsDocuments/lienWaiverRelease'
 
 const FIELDS: LienWaiverFields = {
   companyName: 'Click Plumbing and Electrical',
-  checkFrom: 'Southern Post Construction, LLC',
+  checkFrom: 'Southern Pine Construction, LLC',
   amount: '3800',
-  projectDescription: 'Take 5 Seguin — 380 TX-123, Seguin, TX 78155',
+  projectDescription: 'Tune 5 Seguin — 410 TX-123, Seguin, TX 78155',
   throughDate: '',
   signedDate: '2026-10-26',
   signerName: 'Malachi Whites',

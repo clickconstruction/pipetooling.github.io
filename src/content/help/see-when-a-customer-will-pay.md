@@ -32,7 +32,7 @@ Each billed row ends with the bill's dates in one block. The block is a short le
 You hover over the row and it spells out the math. In Collections, the row reads red whatever the dates say.
 
 :::example Answering "when do we get paid on 964?"
-Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *Expected Sep 8 · in 12d*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
+Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *Expected Sep 8 · in 12d*. Kestrin Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
 ## When the customer names a real date
@@ -66,6 +66,8 @@ In by month end, paid the 10th
 The contract says when a bill is due. The record says when the money lands. The app shows both and counts on the second. The forecast and the lien dates still read when the money is expected.
 
 A date the customer names still wins. The row reads *They said Nov 20*, and the due day sits under it.
+
+The job window reads the same day. Its bills list says *due Nov 10 · 2 d past* for the same bill. Call mode judges the same customer against the same calendar.
 
 ## The pay history under it
 

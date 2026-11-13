@@ -29,7 +29,7 @@ describe('lienRuleDateRows (v2.4826)', () => {
 describe('lienRulesJobFrom + lienRulesJobLine', () => {
   const months = [{ key: '2026-06' }, { key: '2026-07' }]
   it('a sub job on a commercial property: the queue deadline and the § 53.052 date from the last month', () => {
-    const job = lienRulesJobFrom({ label: '804 · Summit GC- Auto Zone', propertyKind: 'non_residential', isSub: true, months, earliestDeadline: '2026-10-15' }, '2026-10-07')
+    const job = lienRulesJobFrom({ label: '804 · Selwick GC- Tire Barn', propertyKind: 'non_residential', isSub: true, months, earliestDeadline: '2026-10-15' }, '2026-10-07')
     expect(job).toMatchObject({ kindWords: 'commercial', workMonth: '2026-07', workMonthWords: 'July', noticeDue: '2026-10-15', lienDue: '2026-11-16' })
     expect(lienRulesJobLine(job)).toEqual({ facts: 'Sub job · commercial · last work July', noticeDue: 'Oct 15', lienDue: 'Nov 16' })
   })

@@ -18,7 +18,7 @@ describe('tagBlock', () => {
   })
 
   it('one assembly and nothing else (LAV-1): named on the fixture, its parts one step in, order-only last', () => {
-    const asm = 'LAV 1 assembly SPACEX'
+    const asm = 'LAV 1 assembly SKYLAB'
     const rows = [part('tsl', { assembly: asm }), part('toto', { assembly: asm }), part('bobrick', { assembly: asm }), part('supply', { assembly: asm, orderOnly: true }), part('drain', { assembly: asm, orderOnly: true })]
     const b = tagBlock(rows)
     expect(b.single).toBe(false)

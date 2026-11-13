@@ -9,6 +9,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
+import { loadPayCalendars } from '../lib/jobs/payCalendarIo'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
@@ -66,6 +68,8 @@ export function usePipelineMoneyOpportunities(opts: {
   const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
   const [promises, setPromises] = useState<Record<string, PromisedPayDate> | null>(null)
   const [touches, setTouches] = useState<ChaseTouch[] | null>(null)
+  /** The stored Pay calendars (punch list #323): the chip counts callers as Call mode does, a calendar payer against its due day. */
+  const [payCalendars, setPayCalendars] = useState<PayCalendarIndex | null>(null)
   const [certRows, setCertRows] = useState<GcReviewCertRow[]>([])
   /** The last six weeks of round marks: this week's say what is out, the older ones carry pay dates (v2.4887). */
   const [recentMarks, setRecentMarks] = useState<RoundMarkRow[]>([])
@@ -102,6 +106,7 @@ export function usePipelineMoneyOpportunities(opts: {
       supabase
         .rpc('list_payment_chase_touches' as never)
         .then(({ data }) => setTouches(parseChaseTouchesRpc(data as unknown)), () => {}),
+      loadPayCalendars(supabase).then((rows) => setPayCalendars(indexPayCalendars(rows)), () => {}),
       listGcReviewCertifications(weekStart).then(setCertRows, () => {}),
       listGcStatementRoundMarksSince(trailingWeekStarts(weekStart, 6)[0] ?? weekStart).then(setRecentMarks, () => {}),
     ])
@@ -140,8 +145,8 @@ export function usePipelineMoneyOpportunities(opts: {
   const chase = useMemo(() => {
     if (!isOffice || !leanBilledRows || touches == null) return null
     const today = calendarYmdInAppTzFromIso(new Date().toISOString())
-    return summarizePaymentChase(buildPaymentChaseQueue(leanBilledRows, paySpeeds, promises, touches, today))
-  }, [isOffice, leanBilledRows, paySpeeds, promises, touches])
+    return summarizePaymentChase(buildPaymentChaseQueue(leanBilledRows, paySpeeds, promises, touches, today, null, null, payCalendars))
+  }, [isOffice, leanBilledRows, paySpeeds, promises, touches, payCalendars])
   const gcRound = useMemo<PipelineGcRoundCards>(() => {
     if (!rollup || !leanBilledRows) return null
     // Office-wide (punch list #49): every GC over the line, whoever its account man is. An app send marks the GC sent, so the marks alone say what is out.

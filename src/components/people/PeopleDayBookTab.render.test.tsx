@@ -36,7 +36,7 @@ const payload = (over: Record<string, unknown>) => ({
   ],
   jobs: [
     { id: 'job-102', hcp_number: '102', click_number: null, job_name: 'Halvorsen' },
-    { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dudley Mason' },
+    { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dunmere Mallin' },
   ],
   ref_people: [],
   sessions: [{ user_id: 'u-taunya', work_date: today, clocked_in_at: `${today}T12:52:00Z`, clocked_out_at: null, on_bid: false, note: 'bids and office' }],
@@ -142,7 +142,7 @@ describe('PeopleDayBookTab', () => {
     H.rpc.mockImplementation(async () => ({
       data: payload({
         users: [{ id: 'u-wendi', name: 'Wendi', role: 'estimator' }],
-        bids: [{ id: 'bid-483', bid_number: '483', project_name: 'Lenox Hill' }],
+        bids: [{ id: 'bid-483', bid_number: '483', project_name: 'Linmor Hill' }],
         sessions: [{ user_id: 'u-wendi', work_date: today, clocked_in_at: `${today}T13:00:00Z`, clocked_out_at: `${today}T17:00:00Z`, on_bid: true, bid_id: 'bid-483', note: '' }],
         events: [{ actor_user_id: 'u-wendi', at: `${today}T15:00:00Z`, day: today, kind: 'bid_sent', ref_type: 'bid', ref_id: 'bid-483', amount_usd: 412000, detail: { gcs: 3 } }],
         system_counts: [],

@@ -4,9 +4,9 @@ import { plainWordsFailures } from '../plainWords'
 
 describe('the push when his signing code signs a notice on someone else’s screen (v2.5791)', () => {
   it('one line: the job, the money, the day, whose screen; the tap lands on the notice in Ready', () => {
-    const p = lienCodeUsedPush({ jobLabel: '804 · Summit GC- Auto Zone', jobId: 'j-804', claim: 9006, signedYmd: '2026-10-23', deviceName: 'Robert Douglas' })
+    const p = lienCodeUsedPush({ jobLabel: '804 · Selwick GC- Tire Barn', jobId: 'j-804', claim: 9006, signedYmd: '2026-10-23', deviceName: 'Robert Douglas' })
     expect(p.title).toBe('Your signing code signed a lien notice')
-    expect(p.body).toBe('804 · Summit GC- Auto Zone · $9,006 · signed Oct 23 · on Robert’s screen')
+    expect(p.body).toBe('804 · Selwick GC- Tire Barn · $9,006 · signed Oct 23 · on Robert’s screen')
     expect(p.url).toBe('/lien-desk?tab=notices&job=j-804&pile=ready')
     expect(p.tag).toBe('lien-code-j-804')
     expect(p.emailText).toContain('Your signing code was typed on Robert’s screen to sign a lien notice.')

@@ -86,8 +86,8 @@ describe('formatAddressTwoLines', () => {
       line1: '4527 Western Pine Woods',
       line2: 'San Antonio, TX',
     })
-    expect(formatAddressTwoLines('121 Moses Hughes Blanco, TX 78606')).toEqual({
-      line1: '121 Moses Hughes',
+    expect(formatAddressTwoLines('121 Milo Hollin Blanco, TX 78606')).toEqual({
+      line1: '121 Milo Hollin',
       line2: 'Blanco, TX',
     })
   })

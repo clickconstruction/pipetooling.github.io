@@ -222,7 +222,7 @@ describe('JobWindowDocumentsTab', () => {
       { ...base, id: 'c1', sentAt: '2026-10-02T15:12:00Z' },
       { ...base, id: 'c2', sentAt: '2026-10-02T15:40:00Z', copyPath: 'c2/J1-App1.xlsx', copyHash: 'w2' },
       { ...base, id: 'c3', sourceId: null, sentAt: '2026-10-01T15:00:00Z', copyPath: 'c3/J1-App.xlsx', copyHash: 'w3' },
-      { ...base, id: 's1', kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', sentByName: 'Dana', sentAt: '2026-10-05T20:30:00Z' },
+      { ...base, id: 's1', kind: 'owner_records_packet', title: 'Records for 9703 Linmor Hill', how: 'print', recipientName: 'Ulric Karrow', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', sentByName: 'Dana', sentAt: '2026-10-05T20:30:00Z' },
     ]
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
     const rows = await screen.findAllByTestId('job-documents-pay-app')
@@ -234,7 +234,7 @@ describe('JobWindowDocumentsTab', () => {
     expect(screen.getByTestId('job-documents-pay-app-unsaved').textContent).toContain('J1-App.xlsx Oct 1, 10:00 AM')
     // Sent from this job lists the records packet alone.
     const sentRows = await screen.findAllByTestId('job-documents-sent-row')
-    expect(sentRows.map((r) => r.textContent?.slice(0, 28))).toEqual(['Records for 9703 Lenox HillP'])
+    expect(sentRows.map((r) => r.textContent?.slice(0, 28))).toEqual(['Records for 9703 Linmor Hill'])
   })
 
   it('says what moved since the workbook went out', async () => {
@@ -473,7 +473,7 @@ describe('JobWindowDocumentsTab', () => {
   })
 
   it('lists what was sent from the job, newest first: a line opens its copy, a repeat folds, an email shows its attachment', async () => {
-    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana', sourceSnapshot: null }
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Linmor Hill', how: 'print', recipientName: 'Ulric Karrow', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana', sourceSnapshot: null }
     sent = [
       { ...base, id: 's1', sentAt: '2026-10-05T20:30:00Z' },
       { ...base, id: 's2', sentAt: '2026-10-05T20:34:00Z' },
@@ -484,13 +484,13 @@ describe('JobWindowDocumentsTab', () => {
     const rows = await screen.findAllByTestId('job-documents-sent-row')
     expect(rows).toHaveLength(3)
     expect(rows[0]!.textContent).toMatch(/^Bill 2Emailed Oct 6, 2026, .* · to ap@gc\.example · by DanaBill 2\.pdf$/)
-    expect(rows[1]!.textContent).toMatch(/^Records for 9703 Lenox HillPrinted 2 times, last Oct 5, 2026, .* · to Umar Khan · by Dana$/)
-    expect(rows[2]!.textContent).toMatch(/^Demand letterMailed Oct 1, 2026, .* · to Umar Khan · by DanaThe copy was not kept\. The send went out, and this row is the record\.$/)
+    expect(rows[1]!.textContent).toMatch(/^Records for 9703 Linmor HillPrinted 2 times, last Oct 5, 2026, .* · to Ulric Karrow · by Dana$/)
+    expect(rows[2]!.textContent).toMatch(/^Demand letterMailed Oct 1, 2026, .* · to Ulric Karrow · by DanaThe copy was not kept\. The send went out, and this row is the record\.$/)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Records for 9703 Lenox Hill' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Records for 9703 Linmor Hill' }))
     await waitFor(() => expect(openCopySpy).toHaveBeenCalledTimes(1))
     expect(openCopySpy.mock.calls[0]![0]).toMatchObject({ id: 's2', copyPath: 's1/copy.html' })
-    expect(openCopySpy.mock.calls[0]![1]).toMatch(/^Copy as it went out · Records for 9703 Lenox Hill · Printed 2 times/)
+    expect(openCopySpy.mock.calls[0]![1]).toMatch(/^Copy as it went out · Records for 9703 Linmor Hill · Printed 2 times/)
     fireEvent.click(screen.getByRole('button', { name: 'Bill 2.pdf' }))
     await waitFor(() => expect(openFileSpy).toHaveBeenCalledWith('s3/Bill-2.pdf'))
     // A row whose copy was not kept has nothing to open.

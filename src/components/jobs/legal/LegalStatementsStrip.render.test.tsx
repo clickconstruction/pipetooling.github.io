@@ -9,7 +9,7 @@ afterEach(cleanup)
 const TODAY = '2026-10-31'
 const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'e', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: {}, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z', ...over })
 const draft = row({ id: 'st-draft', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', incident_to: '2026-09-17', state: 'draft', prints: [] } })
-const signed = row({ id: 'st-signed', occurred_on: '2026-09-09', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen' }, form: 'declaration', venue_county: 'Williamson', state: 'signed', prints: [{ at: '2026-10-16T15:00:00Z', face: 'signing' }], signed_on: '2026-10-29', document_id: 'd-scan' } })
+const signed = row({ id: 'st-signed', occurred_on: '2026-09-09', meta: { title: 'Declaration of Tobin Newell', affiant: { kind: 'witness', name: 'Tobin Newell' }, form: 'declaration', venue_county: 'Williamson', state: 'signed', prints: [{ at: '2026-10-16T15:00:00Z', face: 'signing' }], signed_on: '2026-10-29', document_id: 'd-scan' } })
 const dropped = row({ id: 'st-gone', voided_at: '2026-10-30T10:00:00Z', meta: { title: 'Dropped' } })
 
 describe('LegalStatementsStrip (punch list #220, v2.6210)', () => {

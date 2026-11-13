@@ -104,8 +104,8 @@ describe('parseCoverLetterAltTexts', () => {
 
 describe('buildAlternatesBlock', () => {
   const plan = planSamePageLetter([
-    sec({ name: 'BURD & ASSOCIATES', revenueSum: 67311.11, isAlternate: true }),
-    sec({ name: 'BURD & ASSOCIATES · Alternate 1', revenueSum: 62024.11, isAlternate: true, offeredPricingId: 'p-alt' }),
+    sec({ name: 'BRUND & ASSOCIATES', revenueSum: 67311.11, isAlternate: true }),
+    sec({ name: 'BRUND & ASSOCIATES · Alternate 1', revenueSum: 62024.11, isAlternate: true, offeredPricingId: 'p-alt' }),
   ])!
   it('an offered price on the leading scope prints as a bare numbered alternate (internal names never auto-print); saved wording wins', () => {
     const block = buildAlternatesBlock(plan, {}, formatCurrency)
@@ -120,7 +120,7 @@ describe('buildAlternatesBlock', () => {
     ])
     const edited = buildAlternatesBlock(
       plan,
-      { heading: 'Alternates — priced in lieu of the proposal above:', sections: { 'BURD & ASSOCIATES · Alternate 1:p-alt': { label: 'Alternate 1 — PEX in lieu of copper', note: 'Same scope as below.' } } },
+      { heading: 'Alternates — priced in lieu of the proposal above:', sections: { 'BRUND & ASSOCIATES · Alternate 1:p-alt': { label: 'Alternate 1 — PEX in lieu of copper', note: 'Same scope as below.' } } },
       formatCurrency,
     )
     expect(edited.heading).toBe('Alternates — priced in lieu of the proposal above:')
@@ -146,7 +146,7 @@ describe('buildAlternatesBlock', () => {
   it('editable adds preview-only edit keys, on options too', () => {
     const block = buildAlternatesBlock(plan, {}, formatCurrency, true)
     expect(block.headingEditKey).toBe('heading')
-    expect(block.items[0]!.editKey).toBe('BURD & ASSOCIATES · Alternate 1:p-alt')
+    expect(block.items[0]!.editKey).toBe('BRUND & ASSOCIATES · Alternate 1:p-alt')
     const grouped = planSamePageLetter([
       sec({ name: 'base', bidVersionId: 'v-base', revenueSum: 100 }),
       sec({ name: 'alt', bidVersionId: 'v-alt', revenueSum: 90, isAlternate: true }),

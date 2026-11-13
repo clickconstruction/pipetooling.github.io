@@ -17,7 +17,7 @@ const inv = (over: Partial<Parameters<typeof convertToStripeEligibility>[0]> = {
 
 const job = (over: Partial<Parameters<typeof convertToStripeEligibility>[2]> = {}) => ({
   customer_id: 'c1',
-  customer_email: 'billing@knight.com',
+  customer_email: 'billing@kestrin.com',
   ...over,
 })
 

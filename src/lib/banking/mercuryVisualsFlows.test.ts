@@ -213,14 +213,14 @@ describe('focus mode: payee resolution and the focus sankey', () => {
   })
 
   it('resolveVisualsPayee splits Cash App by the memo name, title-cased', () => {
-    expect(resolveVisualsPayee('Cash App', 'CASH APP *JOHNATHAN BARTLET')).toEqual({
-      name: 'Johnathan Bartlet',
+    expect(resolveVisualsPayee('Cash App', 'CASH APP *JOHNATHAN BARWEL')).toEqual({
+      name: 'Johnathan Barwel',
       viaMemo: true,
     })
     expect(resolveVisualsPayee('CASH APP', 'Cash App * TRACE WHITES')).toEqual({ name: 'Trace Whites', viaMemo: true })
     // Most Cash App rows carry the name in the raw bank description, not the memo.
-    expect(resolveVisualsPayee('Cash App', null, 'CASH APP*JESSICA WHITE')).toEqual({
-      name: 'Jessica White',
+    expect(resolveVisualsPayee('Cash App', null, 'CASH APP*JESSICA WENDLE')).toEqual({
+      name: 'Jessica Wendle',
       viaMemo: true,
     })
     // Cash App with no usable memo/description stays Cash App; other counterparties never split.
@@ -253,7 +253,7 @@ describe('focus mode: payee resolution and the focus sankey', () => {
     const txs = [
       ptx({ id: 'm1', amount: -500, counterpartyName: 'Cash App', externalMemo: 'CASH APP *TRACE WHITES' }),
       ptx({ id: 'm2', amount: -300, counterpartyName: 'Cash App', externalMemo: 'CASH APP *TRACE WHITES' }),
-      ptx({ id: 'd1', amount: -400, counterpartyName: 'Johnathan Bartlett', externalMemo: null }),
+      ptx({ id: 'd1', amount: -400, counterpartyName: 'Johnathan Barwell', externalMemo: null }),
     ]
     const r = buildLabelFocusSankey({ title: 'Contract Labor', tone: 'series1', txs })
     expect(r.total).toBe(1200)

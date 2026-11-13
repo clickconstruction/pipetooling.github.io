@@ -28,7 +28,7 @@ Every row is a sub working with a balance open and nothing signed. The open row 
 - {{button:outline|Send the rest as drafted · N}} sends every remaining ready row at its pre-read values, with one confirm.
 
 :::example Two on a handshake
-Texas R & A · #977 · $40,000 · working 7 days — open first because it's the most money. Pick the job, Link and send. Airfordable HVAC · #880 · $4,200 — Send. The bar reads 2 of 2 handled and the tile drops to $0.
+Texas Q & E · #977 · $40,000 · working 7 days — open first because it's the most money. Pick the job, Link and send. Airlowe HVAC · #880 · $4,200 — Send. The bar reads 2 of 2 handled and the tile drops to $0.
 :::
 
 ## Stages waiting → Put a sub on it
@@ -53,7 +53,7 @@ Every row is a sent order waiting on a signature, expired ones first. *Sent · s
 Every row is an agreement signed this calendar month. The row shows where the sheet sits on its rail, the line of steps a sheet moves through. The office's next move is a button:
 
 - Sheet in **Pre-inspection** means the sub said done. {{button:outline|Schedule inspection…}} opens the inspection request. {{button:green|Passed → bill}} moves the sheet on.
-- Sheet **waiting on the customer**: {{button:blue|Bill Knight Contracting}} opens Bill Customer pre-filled.
+- Sheet **waiting on the customer**: {{button:blue|Bill Kestrin Contracting}} opens Bill Customer pre-filled.
 - Sheet **queued for the pay run**: {{button:blue|Pay Behar Kraja · $1,000.00}} opens Make Payment with the amount.
 - Rows the sub still owns read {{chip:gray|Waiting on the sub}}. That keeps the count of what needs the office honest.
 - Each row shows **portal** or **on paper** for how it was signed. It shows the sub's own picked dates when there are some. **Print** opens the document. The footer steps back a month: {{button:outline|‹ August · 5}}.

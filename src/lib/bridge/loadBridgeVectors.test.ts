@@ -34,7 +34,7 @@ const rows = {
   bid_versions: [{ bid_id: 'bidReal', outcome_at: '2026-11-03T15:00:00+00:00' }, { bid_id: 'bidZz', outcome_at: '2026-11-03T15:00:00+00:00' }],
   bids: [
     { id: 'bidReal', bid_number: '600', project_name: 'Elm Street clinic', estimator_id: 'u1', bid_value: 8_000, agreed_value: null, bid_date_sent: '2026-11-02' },
-    { id: 'bidZz', bid_number: '601', project_name: 'ZZ Shadow AUTOZONE', estimator_id: 'u1', bid_value: 9_000, agreed_value: null, bid_date_sent: '2026-11-02' },
+    { id: 'bidZz', bid_number: '601', project_name: 'ZZ Shadow TIREBARN', estimator_id: 'u1', bid_value: 9_000, agreed_value: null, bid_date_sent: '2026-11-02' },
   ],
 }
 const data = { windowStart: '2026-09-14', todayYmd: '2026-11-09', officeJobLedgerId: 'office', jobs: [], earned: { expectedHoursByJob: new Map() } } as unknown as BridgeData

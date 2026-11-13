@@ -6,7 +6,7 @@ const facts: RailFacts = {
   pendingByUserId: { u1: { count: 23, hours: 136.6 } },
   unsentDocsByName: { Isiah: 1 },
   expiringByName: { 'Michael A': 1 },
-  expiredByName: { 'Texas R & A Electrical': 2 },
+  expiredByName: { 'Texas Q & E Electrical': 2 },
   portalOnPersonIds: new Set(['p-dv']),
 }
 
@@ -32,7 +32,7 @@ describe('buildRailRow', () => {
     expect(buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)).toMatchObject({ attention: 'amber', badge: '23 · doc', reasons: ['23 sessions waiting', '1 contract never sent'] })
     // v2.2818: sessions waiting are a queue, not an alarm — badge and reason, no dot.
     expect(buildRailRow(p({ name: 'Only Hours', userId: 'u1', personId: 'p-oh' }), { ...facts, unsentDocsByName: {} })).toMatchObject({ attention: 'green', badge: '23', reasons: ['23 sessions waiting'] })
-    expect(buildRailRow(p({ name: 'Texas R & A Electrical', kind: 'sub' }), facts)).toMatchObject({ attention: 'red', badge: 'exp!' })
+    expect(buildRailRow(p({ name: 'Texas Q & E Electrical', kind: 'sub' }), facts)).toMatchObject({ attention: 'red', badge: 'exp!' })
     expect(buildRailRow(p({ name: 'Grace', userId: 'u9', personId: null, kind: 'assistant' }), facts)).toMatchObject({ attention: 'amber', badge: 'id', reasons: ['no roster row'] })
     expect(buildRailRow(p({ name: 'Bryan', userId: 'u8', personId: null, kind: 'primary' }), facts).attention).toBe('green')
   })
@@ -52,7 +52,7 @@ describe('buildRailRow', () => {
 describe('the bench (v2.2860)', () => {
   it('a benched sub gets one gray chip and their paperwork nags pause; sessions waiting still count', () => {
     const f: RailFacts = { ...facts, benchPersonIds: new Set(['p-tx']) }
-    const tx = buildRailRow(p({ name: 'Texas R & A Electrical', kind: 'sub', personId: 'p-tx' }), f)
+    const tx = buildRailRow(p({ name: 'Texas Q & E Electrical', kind: 'sub', personId: 'p-tx' }), f)
     expect(tx.attention).toBe('green')
     expect(tx.signals).toEqual([{ key: 'bench', label: 'on the bench', tone: 'gray' }])
     expect(tx.reasons).toEqual(['on the bench'])
@@ -68,12 +68,12 @@ describe('buildRailSections', () => {
     const people = [
       p({ name: 'Isiah', userId: 'u1' }),
       p({ name: 'Darren', userId: 'u2' }),
-      p({ name: 'Texas R & A Electrical', kind: 'sub' }),
+      p({ name: 'Texas Q & E Electrical', kind: 'sub' }),
       p({ name: 'Malachi', kind: 'master_technician', userId: 'u3' }),
       p({ name: 'Edgar', kind: 'sub', archived: true }),
     ]
     const r = buildRailSections(people, facts, '')
-    expect(r.attention.map((x) => x.name)).toEqual(['Texas R & A Electrical', 'Isiah'])
+    expect(r.attention.map((x) => x.name)).toEqual(['Texas Q & E Electrical', 'Isiah'])
     expect(r.sections.map((s) => s.label)).toEqual(['Leaders', 'Helpers', 'Subcontractors'])
     expect(r.archived.map((x) => x.name)).toEqual(['Edgar'])
     expect(buildRailSections(people, facts, 'dar').sections.flatMap((s) => s.rows.map((x) => x.name))).toEqual(['Darren'])
@@ -103,7 +103,7 @@ describe('training on the rail (punch list #111, v2.5568)', () => {
     const luis = buildRailRow(p({ name: 'Luis', userId: 'u-luis' }), withTraining)
     expect(luis.attention).toBe('amber')
     expect(luis.signals.find((s) => s.key === 'training')?.label).toBe('training lapsed')
-    const expiredAndLapsed = buildRailRow(p({ name: 'Texas R & A Electrical', userId: 'u-luis' }), withTraining)
+    const expiredAndLapsed = buildRailRow(p({ name: 'Texas Q & E Electrical', userId: 'u-luis' }), withTraining)
     expect(expiredAndLapsed.attention).toBe('red')
   })
   it('a person with no training fact, or no account, gets no chip', () => {

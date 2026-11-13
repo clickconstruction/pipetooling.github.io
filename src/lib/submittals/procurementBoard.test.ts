@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { blockersPress, onSiteDoor, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOfRow, stepOnlyWords, stepShares } from './procurementBoard'
 import { orderBlockers } from './procurementLog'
-import { row, spacexLater, spacexToday } from './procurementSpacex.fixtures'
+import { row, skylabLater, skylabToday } from './procurementSkylab.fixtures'
 
-const today = spacexToday
-const later = spacexLater
+const today = skylabToday
+const later = skylabLater
 
 describe('procurementSteps', () => {
   it('today: 44 wait on the GC with 5 sent back, nothing to order or on order, 3 on site; every line is counted once', () => {

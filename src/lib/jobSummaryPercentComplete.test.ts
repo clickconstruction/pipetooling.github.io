@@ -218,7 +218,7 @@ describe('the newest % wins (v2.3372)', () => {
     expect(reportPctIsCurrent('2026-05-15T20:12:54Z', null)).toBe(true)
     expect(reportPctIsCurrent('2026-09-04T10:00:00Z', '2026-09-03T18:53:56Z')).toBe(true)
   })
-  it('a hand-set after the report makes the report stale (Mission Hills: May 15 report, Sep 3 hand-set)', () => {
+  it('a hand-set after the report makes the report stale (Mission Flats: May 15 report, Sep 3 hand-set)', () => {
     expect(reportPctIsCurrent('2026-05-15T20:12:54Z', '2026-09-03T18:53:56Z')).toBe(false)
     expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:56:00Z')).toBe(false)
   })
