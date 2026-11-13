@@ -48,7 +48,9 @@ Every press but Short is one row in the ledger. A wrong press gets a new press. 
 
 ## Count a box
 
-A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. Tap **Right** when the number matches, type the number when it does not, or **Skip** a line.
+A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time.
+
+Tap **25 is right** when the number matches. Type the number when it does not. Tap **Skip this line** to leave a line as it is. Tap **Not in A1 any more** when the part is gone from the box.
 
 The count becomes the truth for that box. A short count is what the office reads as missing.
 
