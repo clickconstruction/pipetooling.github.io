@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -90,6 +90,18 @@ A pay application saved as a file reads *Saved as a file*. The app cannot know w
 Type in the box at the top. You can type a job, a customer, an address or a bill number.
 
 Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}} and {{chip:gray|Housecall Pro}}. Press {{chip:gray|All}} to see every send again.
+
+## Print the list or save it as a spreadsheet
+
+Narrow the list first if you want only part of it. Use the search box or a chip.
+
+Press {{button:outline|Print}} to print what the list shows. The page keeps the days, the totals and each line's words.
+
+Press {{button:outline|Download CSV}} to save what the list shows as a spreadsheet file. Each send is one row.
+
+The file has a column that says whether a row is in its day's total. Add only those rows to get the same totals as the screen.
+
+The bills with no send on record come along in both. Those bills are last in the file and first on the printed page.
 
 ## Bills with no send on record
 
