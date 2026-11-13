@@ -21,14 +21,20 @@ export type BookPriceRow = {
 
 export type PricePick = {
   price: number
-  from: 'book' | 'invoice'
-  /** The supply house whose price this is; null for an invoice price. */
+  /** `site`: a price a person accepted for the site (punch list #342), read off a bill or typed. */
+  from: 'book' | 'invoice' | 'site'
+  /** The supply house whose price this is; null for an invoice price or a typed one. */
   supplyHouse: string | null
+  /** The day the price is from: the book's check, the bill's day, the day it was typed. */
   checkedOn: string | null
   /** Whole days from the check to today; null for an invoice price or a price never checked. */
   ageDays: number | null
   /** A book price checked longer ago than `BOOK_PRICE_FRESH_DAYS`, or never checked. An invoice price is never stale: it is what was paid. */
   stale: boolean
+  /** A site's own price: where the person took it from. */
+  via?: 'bill' | 'typed'
+  /** A site's own price: who accepted it. */
+  byName?: string
 }
 
 /** The table's row (`material_part_prices` with its supply house joined) as the kernel reads it. */
@@ -67,7 +73,8 @@ export function pickBookPrice(rows: ReadonlyArray<BookPriceRow>, today: string):
   return { price: best.price, from: 'book', supplyHouse: best.supplyHouse || null, checkedOn: best.checkedOn, ageDays, stale: isStale(ageDays) }
 }
 
-function invoicePick(price: number | null): PricePick | null {
+/** The price the office read off the invoice that landed a part, kept on the device. */
+export function invoicePick(price: number | null): PricePick | null {
   if (price == null || !Number.isFinite(price) || price < 0) return null
   return { price, from: 'invoice', supplyHouse: null, checkedOn: null, ageDays: null, stale: false }
 }
@@ -95,10 +102,17 @@ function dayWords(ymd: string, today: string): string {
 
 /**
  * The words beside a priced figure: "parts book · checked Oct 3", "parts book · checked Jul 1, 129 days
- * ago" when stale, "parts book · never checked", or "invoice price". The supply house is `houseWords`.
+ * ago" when stale, "parts book · never checked", "invoice price", or a site's own price: "Pecan Supply’s
+ * bill · Sep 30", "typed by Dana · Nov 13".
  */
 export function priceWords(pick: PricePick, today: string): string {
   if (pick.from === 'invoice') return 'invoice price'
+  if (pick.from === 'site') {
+    const day = pick.checkedOn ? ` · ${dayWords(pick.checkedOn, today)}` : ''
+    const old = pick.stale && pick.ageDays != null ? `, ${pick.ageDays} days ago` : ''
+    if (pick.via === 'bill') return `${pick.supplyHouse ? `${pick.supplyHouse}’s bill` : 'a bill'}${day}${old}`
+    return `typed${pick.byName ? ` by ${pick.byName}` : ''}${day}${old}`
+  }
   if (!pick.checkedOn) return 'parts book · never checked'
   const day = dayWords(pick.checkedOn, today)
   if (pick.stale && pick.ageDays != null) return `parts book · checked ${day}, ${pick.ageDays} days ago`
@@ -108,6 +122,13 @@ export function priceWords(pick: PricePick, today: string): string {
 /** The longer line for a title: "Pecan Supply's price, checked Oct 3." / "The price typed off the invoice that landed the part." */
 export function priceTitle(pick: PricePick, today: string): string {
   if (pick.from === 'invoice') return 'The price typed off the invoice that landed the part.'
+  if (pick.from === 'site') {
+    const by = pick.byName ? ` by ${pick.byName}` : ''
+    const old = pick.stale ? ` It is older than ${BOOK_PRICE_FRESH_DAYS} days.` : ''
+    const on = pick.checkedOn ? ` of ${dayWords(pick.checkedOn, today)}` : ''
+    if (pick.via === 'bill') return `What ${pick.supplyHouse ? `${pick.supplyHouse}’s bill` : 'a bill'}${on} paid, accepted for this site${by}.${old}`
+    return `A price typed for this site${by}${pick.checkedOn ? ` on ${dayWords(pick.checkedOn, today)}` : ''}.${old}`
+  }
   const whose = pick.supplyHouse ? `${pick.supplyHouse}’s price` : 'The parts book’s price'
   if (!pick.checkedOn) return `${whose}, never checked.`
   const when = `checked ${dayWords(pick.checkedOn, today)}`

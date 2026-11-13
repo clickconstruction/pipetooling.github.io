@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: gated
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked what sending it further could look like, added the same day · nothing built · waits on the owner's calls
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added: what sending it further could look like, where in the app to offer it, and a magnifying glass for drawing by hand · nothing built · waits on the owner's calls
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: The owner reads the mock-up and answers the eleven calls. A yes to call 3 starts the one-day try on his own phones.
+next: The owner reads the mock-up and answers the thirteen calls. A yes to call 3 starts the one-day try on his own phones.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: The owner's calls, first of all whether walking with the screen on is good enough to build.
 opinion: build the one-day try, then PRs 1 to 4, then count. Strong for the way in and what is where, weak for measuring.
@@ -231,6 +231,41 @@ corner.
 - **Its limit is the picture.** A new development can be a bare field in a picture a year or two
   old. Where the drive cannot be seen, walk or drive it once. That is where walking earns its keep.
 
+### The magnifying glass
+
+The owner, 2026-11-13: *on draw it by hand, when a user is dragging by hand a magnifying glass
+shows up over where their finger would be, such that the user can be super precise where they
+place things.* Yes. It is the right fix, and it is in the first build of drawing by hand.
+
+**Why it is needed.** A fingertip covers fifty feet of ground or more at the zoom a route is drawn
+at, and it hides the very spot it is placing.
+
+- **While a finger drags, a round glass rides above it.** It shows what is under the finger about
+  four times larger, with a cross at its centre. The thing being placed sits on the cross.
+- **It shows on every drag by finger:** a corner of a line, a new corner (press and hold, then
+  slide before lifting), a place's dot, and an end being trimmed after a walk.
+- **A quick press still works.** One press drops a corner where it lands. The glass is for the
+  corners that matter.
+- **It catches.** Within a few feet of a place or of another line's end, the corner jumps onto it
+  and the ring turns green: *On Water stub, Lot 14*. Pull away and it lets go. So a line really
+  ends at the gate and two strokes really meet.
+- **It gets out of the way.** Near the top or a side of the screen the glass moves to whichever
+  side has room. The map does not pan while a corner is dragged, and slides slowly when the finger
+  reaches an edge.
+- **The readout follows.** The two legs that meet at the corner show their lengths while it moves.
+- **At a desk there is no glass.** A mouse is already that exact, and the wheel zooms.
+
+**Its honest limit: the glass is as sharp as the picture.** The view from above that the app
+draws is about one to two feet of ground to a dot across the United States, finer in some cities.
+So a corner can be placed to within a couple of feet and no finer. Past that the glass only makes
+the dots bigger. The measuring table above already assumes a few feet at each end, so its numbers
+stand, and the glass is what makes them reachable by a finger.
+
+**How it is built.** A second small map in a round window, kept centred on the dragged point and
+two zoom steps in, drawn over the first. A known Leaflet add-on does the same thing and
+says it was not tested on phones, so this one is written here, on pointer events, about a
+hundred lines. No new dependency. It belongs to PR 2.
+
 ### Length, said honestly
 
 - Always *about*, rounded to the nearest 10 ft, with its give or take and how it was made: *About
@@ -239,15 +274,45 @@ corner.
   on the line, and the line shows it from then on: *612 ft, measured with a wheel*.
 - No area and no height in the first build.
 
-## Where it lives and what it reuses
+## Where it is offered, and what it reuses
 
-- **On a job:** a *Painted maps* block in the job window, which has no map of its own today.
-- **On a development:** the same block on the Development page. *The way in for deliveries* belongs
-  to the whole site more often than to one lot.
-- **From anywhere:** *Paint a map* under the header's ＋, tied to nothing until the person picks.
-- **On a task, later:** a task's place gains the painted map that leads to it. *Where the work is*
-  becomes a dot and its way in.
-- **On the Map page and Materials on site's map, later:** painted maps as a layer.
+The owner, 2026-11-13: *where in the app should we offer this?* Drawn at the top of the mock-up.
+
+**Wherever the app already shows an address.** A painted map is the address, continued: the part
+a street address cannot say. So it gets no page, no tab and no header button of its own. It is
+one line under the 📍 address, on screens people already open. Where a map exists the line names
+it and opens it. Where none exists, the line is the press **＋ Paint a map**, for those who may
+paint.
+
+**The four doors of the first build:**
+
+1. **The job window's top band.** It holds the address and shows on all seven tabs (Job, Edit,
+   Bill, Costs, History, Documents, Materials). The line sits under the address. A press opens the
+   map with its places, Share and Add to it. No eighth tab.
+2. **A tech's own job card** (`DashboardJobModeCard`, the Job Mode card). The person standing on
+   the site is the one who can walk it, so the making press is here, beside the address. It is not
+   in the press bar, which is the day's own flow: clock, drive, arrive, report. The **On my way**
+   sheet gains the line too. It is the moment before the drive, and today that sheet shows no
+   address at all.
+3. **The Development page.** A **Painted maps** card after Plans, among History, Jobs & bids,
+   Money, Plans, Questions and Photos. The best home for a way in, since it serves every lot. A map
+   painted for a development shows on each of its jobs, with the development's name beside it.
+4. **The header's search.** Type *paint* and **Paint a map** is there, the way a new job is
+   (`src/lib/search/doors.ts`). A painted map is found by its name too. This is the door with no
+   job open. The header has four single-purpose buttons and no general ＋, so a fifth button is the
+   wrong price for a tool used now and then.
+
+**Where a painted map then shows by itself:** under the address on the Dashboard's job cards, and
+beside Directions on the field search's job card. Later: on a task with a place, under the boxes
+on Materials on site's map, as a chip on the Map page, and on a sub's work order page, which
+needs no sign-in and so is the owner's call.
+
+**Where it is not, on purpose:**
+
+- Not a page in the menu. A map belongs to a job or a development, not to a list of maps.
+- Not a tab on the job window, and not a button in the header.
+- Not in the press bar of a tech's day.
+- Not on a bid's price. A walked length must never feed a number that gets priced.
 
 **The map under it: Leaflet, with the view from above.** It is what the task maps and the box map
 already draw, it is free, and the drawing tool for lines is already loaded. The owner said *a
@@ -465,8 +530,8 @@ Each ships alone with its tests, its guide, a release note and a fragment.
 | 0 | **A one-day try.** A page for devs only that paints a walk on the screen and saves nothing. The owner walks a taped 50 ft and 500 ft on an iPhone and an Android, in the open and beside a building, and locks the phone mid-walk. | none | S |
 | | **Read the numbers.** If a walked line is worse than this card says, the train starts at drawing by hand and walking waits. | | |
 | 1 | The painted map itself, no screen | one migration: the three tables. The kernels and the types. | S |
-| 2 | Draw it by hand. The *Painted maps* block on a job and a development. Places with a photo. Typed lengths. | none | M |
-| 3 | Walk or drive it. The red bar, the screen held on, pause and restart, the faint part, *Look it over*, trim and redraw, kept on the phone with no signal. | none (one new outbox kind) | M |
+| 2 | Draw it by hand, with the magnifying glass. The line under the address on the job window and the Development page, its *Painted maps* card, the header search door. Places with a photo. Typed lengths. | none | M |
+| 3 | Walk or drive it. The red bar, the screen held on, pause and restart, the faint part, *Look it over*, trim and redraw, kept on the phone with no signal. The line and the press on a tech's own job card and on *On my way*. | none (one new outbox kind) | M |
 | 4 | The link. *Share this map*, the page at `/way/<code>`, *Show where I am*, *Directions to the start*, *End this link now*, *Text it…*, *Send it another way…*, *Show a code to scan*. | one migration: `painted_map_links`. One public door: the `painted-map-link` function. | M |
 | 4b | The copies. *A picture*, and *A page to print* with its code, *Save as a PDF* and *File it on the job*. | none | M |
 | | **Stop. Count the maps painted and the links opened for two weeks.** | | |
@@ -527,6 +592,10 @@ block and the places, and it is the half that works on every phone.
     the link, with those words on the sheet.
 11. **Filing the page.** *File it on the job* on a press (my pick), or by itself the first time a
     map is shared.
+12. **The doors.** Under the address on the job, the tech's own job card and the development, plus
+    the header's search (my pick). Or a header button as well.
+13. **A sub's work order.** May a painted way in show on a sub's page, which needs no sign-in? My
+    pick: yes, later, and only a map the office has shared.
 
 ## Sources
 
@@ -551,6 +620,10 @@ Read 2026-11-13.
   https://support.google.com/mymaps/answer/3024836
 - Google Earth, *Import data*: KML on the web and on a phone.
   https://developers.google.com/maps/documentation/earth/import-data
+- Esri, *World Imagery* (the view from above): 0.5 m a dot across the United States, 0.3 m in
+  select cities. https://doc.arcgis.com/en/data-appliance/2023/maps/world-imagery.htm
+- *Leaflet.MagnifyingGlass*, the add-on that shows the approach: a second map at a zoom offset,
+  not tested on phones. https://github.com/bbecquet/Leaflet.MagnifyingGlass
 - MDN, *Navigator.share()*: a link, words and files, on a press, and which kinds of file.
   https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share
 - Not found in any official document, and so left to step 0: Apple's and Google's own statement of

@@ -2,9 +2,9 @@
 name: "A site's materials: press the Worth, see everything with no price, and price it fast"
 number: 342
 group: ready
-status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156
+status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge)
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
-ver: v2.7156
+ver: v2.7156 · 7159
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -16,7 +16,7 @@ summary: >
   book where the book has the part, and otherwise a price kept for the site in one new table that
   every on-site money figure reads through the one price rule. Three drawings: the list priced in
   place, one name at a time, and a table grouped by where the price comes from.
-next: PR 2, a price of the site's own (one new table, pushed right after its merge), then PR 3, the end and the old prices.
+next: PR 2's migration is pushed right after its merge. Then PR 3, the end and the old prices.
 size: M · M · S as a train of three (the window and its offers · a price of the site's own · the end and the old prices)
 blocker: None.
 opinion: build — the owner said build the whole train; the walk on the real site after PR 1 shows how often the first offer is right
@@ -298,7 +298,13 @@ then said *build the entire PR train*. So calls 2 to 9 stand on their recommende
   measure's point: a short name fits many parts. No answer was pressed, since each is a write.
   The first look showed one house's part three times under three of its numbers, so the bills'
   offers fold by house and wording.
-- **PR 2 and PR 3**: not built yet.
+- **PR 2, a price of the site's own (v2.7159).** Built, with the migration
+  `20261113160000_on_site_prices.sql`. A bill's offer is an answer, a box takes a typed price,
+  **Not a part** sets a row aside, and every answer has **Undo**. Read is held to the money
+  roles, tighter than the ties: a price is money. The job page's Missing table, its flow and the
+  desk read the same price. The migration was applied twice to a throwaway Postgres and tried as
+  three made-up people. Before the push the window shows bills to read and no box.
+- **PR 3**: not built yet.
 
 ## How to verify (when it is built)
 

@@ -35,6 +35,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   priceOf: () => null,
   priceFor: () => null,
   loadBookPrices: async () => {},
+  setScopeTies: () => {},
   // How each job's own read stands (v2.7175): a job whose read failed is said over the site's screen.
   subscribe: () => () => {},
   getVersion: () => 0,

@@ -211,7 +211,13 @@ Sometimes checks from the payer came back this past year. Then the modal says so
 Someone records a $500 payment while you're looking at a $2,630 bill. When you press Send, the modal stops, shows the new **$2,130**, and asks you to look it over and send again — it never bills the new number silently.
 :::
 
-**What the customer will see** is filled in the moment the modal opens. It lists every line the bill will list, a discount as its negative line, and the total. It is built from the job's own line items. Stripe's exact rendering replaces it once it can run. Until then the small tag reads *from the job's lines*. The note above it says what Stripe is waiting on. That is the customer's email, or the bill row that is written when you send.
+On a Stripe bill, **What Dana will get** has three faces. The faces are **The bill**, **The email** and **The text**. Looking at a face sends nothing.
+
+**The email** is the message the customer will read. The face shows From, To and Subject, then the amount, the due day and the Pay now button. The Pay now button works once the bill is made. Stripe's PDF rides along.
+
+**The text** is the words a text would carry, with the number it would go to. The link shown is a sample. A text is your choice on the next screen. With no phone number on file, the face says so.
+
+**The bill** is filled in the moment the modal opens. The box is headed *On the bill*. It lists every line the bill will list, a discount as its negative line, and the total. It is built from the job's own line items. Stripe's exact rendering replaces it once it can run. Until then the small tag reads *from the job's lines*. The note above it says what Stripe is waiting on. That is the customer's email, or the bill row that is written when you send.
 
 If the job is already {{chip:green|Paid}}, Bill Customer says so instead of showing a preview. It reads ***This job is already paid in full — nothing to bill.*** All three send buttons stay off. The safe move is Cancel. Sometimes the customer really does owe more on that job. Only then, you tick **Bill this job again anyway** to unlock the buttons. The same check runs on the server, so an old browser tab cannot slip a bill past it.
 

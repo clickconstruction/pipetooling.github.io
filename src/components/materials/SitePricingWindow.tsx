@@ -4,9 +4,11 @@
  * and its offers (`priceOffers.ts`), takes one answer and moves to the next (`pricingWalk.ts`).
  *
  * An offer is a guess, drawn with a dashed edge and the word Offer, and nothing is taken until a
- * person presses it or its number key. In this PR the one answer that writes is a parts-book
- * part: the tie that already exists (`on_site_part_ties`), made by the screen and undone from the
- * window's foot. What a bill paid is shown beside it and cannot be pressed yet.
+ * person presses it or its number key. A parts-book part writes the tie that already exists
+ * (`on_site_part_ties`). Since PR 2 a bill's price, a price typed in the box and **Not a part**
+ * each write one row of the site's own prices (`on_site_prices`). Every answer is undone from the
+ * window's foot. Before that table is on the database, or for a reader it gives nothing to, the
+ * bills are shown to read and the box is not drawn.
  *
  * The window owns the walk and nothing else: the rows, the offers and the writes are handed in.
  */
@@ -16,13 +18,17 @@ import { EmptyState } from '../EmptyState'
 import { emptyWordsWithPress } from '../../lib/emptyWords'
 import { BookPartPicker } from './BookPartPicker'
 import type { BookPartHit } from '../../lib/materials/bookSearchIo'
-import { offerWords, rowOffers, type BookOffer, type PriceOffer } from '../../lib/materials/priceOffers'
+import { parsePriceInput } from '../../lib/materials/materialPriceIndex'
+import { offerWords, rowOffers, type BillOffer, type PriceOffer } from '../../lib/materials/priceOffers'
 import { answerWalk, currentKey, skipWalk, startWalk, undoWalk, walkEndWords, walkWords, type Walk } from '../../lib/materials/pricingWalk'
 import type { SitePartRow } from '../../lib/materials/siteRollup'
 import type { PriceOffersState } from '../../hooks/usePriceOffers'
 
 /** The two keys of the tie an answer wrote, so Undo can find it. */
 export type TiePair = { aKey: string; bKey: string }
+
+/** What an answer wrote, so Undo can take it back: a tie, or one row of the site's own prices. */
+export type PricingAnswer = { kind: 'tie'; pair: TiePair } | { kind: 'price'; id: string }
 
 type Props = {
   siteName: string
@@ -33,8 +39,16 @@ type Props = {
   searchBook: (term: string) => Promise<BookPartHit[]>
   /** Tie the row's name to a parts-book part. The pair written, or null when the table refused (the screen says why). */
   onUsePart: (row: SitePartRow, part: { id: string; name: string }) => Promise<TiePair | null>
-  /** Take that tie back. False when it could not be. */
-  onUndoPart: (pair: TiePair) => Promise<boolean>
+  /** The site's own prices can be written: a bill's price is an answer, and the box and Not a part are drawn. */
+  canOwnPrice: boolean
+  /** Accept what a bill paid as the row's price on this site. The answer's id, or null when refused. */
+  onUseBill: (row: SitePartRow, offer: BillOffer) => Promise<string | null>
+  /** Accept a typed price for one. */
+  onTypePrice: (row: SitePartRow, price: number) => Promise<string | null>
+  /** Set the row aside as not a part to price. */
+  onLeaveOut: (row: SitePartRow) => Promise<string | null>
+  /** Take an answer back. False when it could not be. */
+  onUndo: (answer: PricingAnswer) => Promise<boolean>
   onClose: () => void
 }
 
@@ -54,13 +68,14 @@ function typing(target: EventTarget | null): boolean {
   return Boolean(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))
 }
 
-export function SitePricingWindow({ siteName, rows, offers, today, searchBook, onUsePart, onUndoPart, onClose }: Props) {
+export function SitePricingWindow({ siteName, rows, offers, today, searchBook, onUsePart, canOwnPrice, onUseBill, onTypePrice, onLeaveOut, onUndo, onClose }: Props) {
   // The order is fixed when the window opens, so a row never jumps under the reader.
   const [walk, setWalk] = useState<Walk>(() => startWalk(rows.map((r) => r.key)))
   const [showAll, setShowAll] = useState(false)
   const [picking, setPicking] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [last, setLast] = useState<{ key: string; name: string; words: string; pair: TiePair } | null>(null)
+  const [draft, setDraft] = useState('')
+  const [last, setLast] = useState<{ key: string; name: string; words: string; answer: PricingAnswer } | null>(null)
 
   const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r] as const)), [rows])
   const key = currentKey(walk, (k) => byKey.has(k))
@@ -68,28 +83,49 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
   const rowKey = row?.key ?? null
   const found: PriceOffer[] = useMemo(() => (row && offers.index ? rowOffers(row, offers.index) : []), [row, offers.index])
   const shown = showAll ? found : found.slice(0, FIRST_OFFERS)
-  const bookShown = shown.filter((o): o is BookOffer => o.kind === 'book')
-  const billShown = shown.filter((o) => o.kind === 'bill')
+  // An offer that can be pressed is an answer, numbered as drawn. A bill is one once the site's own prices can be written.
+  const answers = shown.filter((o) => o.kind === 'book' || canOwnPrice)
+  const billsToRead = shown.filter((o): o is BillOffer => o.kind === 'bill' && !canOwnPrice)
+  const typed = parsePriceInput(draft)
   const pieces = rows.reduce((sum, r) => sum + r.total, 0)
 
   // A new row starts closed: its first offers, no picker.
   useEffect(() => {
     setShowAll(false)
     setPicking(false)
+    setDraft('')
   }, [rowKey])
 
-  const takePart = async (part: { id: string; name: string }, words: string) => {
+  /** One answer: the write, then the foot's line and the next row. A refused write leaves the row where it is. */
+  const take = async (write: (row: SitePartRow) => Promise<PricingAnswer | null>, words: string) => {
     if (!row || busy) return
     setBusy(true)
     try {
-      const pair = await onUsePart(row, part)
-      if (!pair) return
-      setLast({ key: row.key, name: row.name, words, pair })
+      const answer = await write(row)
+      if (!answer) return
+      setLast({ key: row.key, name: row.name, words, answer })
       setWalk((w) => answerWalk(w, row.key))
     } finally {
       setBusy(false)
     }
   }
+  const takePart = (part: { id: string; name: string }, words: string) =>
+    take(async (r) => {
+      const pair = await onUsePart(r, part)
+      return pair ? { kind: 'tie', pair } : null
+    }, words)
+  const asPrice = (id: string | null): PricingAnswer | null => (id ? { kind: 'price', id } : null)
+  const takeOffer = (offer: PriceOffer) => {
+    const w = offerWords(offer, today)
+    if (offer.kind === 'book') return takePart({ id: offer.partId, name: offer.name }, `${offer.name} · ${w.price}`)
+    return take(async (r) => asPrice(await onUseBill(r, offer)), `${w.price} from ${offer.houseName ? `${offer.houseName}’s bill` : 'a bill'}`)
+  }
+  const takeTyped = () => {
+    if (typed == null) return
+    const price = typed
+    void take(async (r) => asPrice(await onTypePrice(r, price)), `$${price.toFixed(2)} for one, typed`)
+  }
+  const leaveOut = () => void take(async (r) => asPrice(await onLeaveOut(r)), 'left out, not a part')
   const skip = () => {
     if (row && !busy) setWalk((w) => skipWalk(w, row.key))
   }
@@ -97,7 +133,7 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
     if (!last || busy) return
     setBusy(true)
     try {
-      if (await onUndoPart(last.pair)) {
+      if (await onUndo(last.answer)) {
         setWalk((w) => undoWalk(w, last.key))
         setLast(null)
       }
@@ -106,7 +142,7 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
     }
   }
 
-  // A number key takes that answer and S skips, unless a box is being typed in.
+  // A number key takes that answer, S skips and N says not a part, unless a box is being typed in.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || picking || !row) return
@@ -115,18 +151,23 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
         skip()
         return
       }
+      if ((e.key === 'n' || e.key === 'N') && canOwnPrice) {
+        e.preventDefault()
+        leaveOut()
+        return
+      }
       const n = Number(e.key)
-      const offer = Number.isInteger(n) && n >= 1 ? bookShown[n - 1] : undefined
+      const offer = Number.isInteger(n) && n >= 1 ? answers[n - 1] : undefined
       if (offer) {
         e.preventDefault()
-        void takePart({ id: offer.partId, name: offer.name }, `${offer.name} · ${offerWords(offer, today).price}`)
+        void takeOffer(offer)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // The handler reads the row and its offers as drawn; it is set again whenever they change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowKey, bookShown.map((o) => o.key).join('|'), picking, busy, today])
+  }, [rowKey, answers.map((o) => o.key).join('|'), picking, busy, today, canOwnPrice])
 
   const words = row ? walkWords(walk, row.key, rows.length, pieces) : null
   const done = walk.order.length > 0 ? Math.min(1, walk.answered.length / walk.order.length) : 0
@@ -177,15 +218,15 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
             {offers.bookError ? <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>The parts book’s offers are not here. {offers.bookError}</span> : null}
             {offers.billsError ? <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>The bills’ offers are not here. {offers.billsError}</span> : null}
 
-            {bookShown.length > 0 ? (
-              <div style={{ display: 'grid', gap: '0.4rem' }} role="group" aria-label="Parts-book parts that fit">
-                {bookShown.map((o, i) => {
+            {answers.length > 0 ? (
+              <div style={{ display: 'grid', gap: '0.4rem' }} role="group" aria-label="Offers that fit">
+                {answers.map((o, i) => {
                   const w = offerWords(o, today)
                   return (
-                    <button key={o.key} type="button" disabled={busy} onClick={() => void takePart({ id: o.partId, name: o.name }, `${o.name} · ${w.price}`)} style={{ ...offerBox, cursor: 'pointer', ...(i === 0 ? { borderColor: 'var(--text-link)', background: 'var(--bg-blue-tint)' } : {}) }} aria-label={`Use ${o.name} at ${w.price} for ${row.name}`} data-offer={o.key}>
+                    <button key={o.key} type="button" disabled={busy} onClick={() => void takeOffer(o)} style={{ ...offerBox, cursor: 'pointer', ...(i === 0 ? { borderColor: 'var(--text-link)', background: 'var(--bg-blue-tint)' } : {}) }} aria-label={`Use ${o.kind === 'book' ? o.name : `the bill’s price for ${o.description}`} at ${w.price} for ${row.name}`} data-offer={o.key}>
                       <span style={kbd} aria-hidden="true">{i + 1}</span>
                       <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                        <strong style={{ display: 'block', color: 'var(--text-strong)' }}>{w.name}{o.manufacturer ? <span style={{ ...muted, fontWeight: 500 }}> · {o.manufacturer}</span> : null}</strong>
+                        <strong style={{ display: 'block', color: 'var(--text-strong)' }}>{w.name}{o.kind === 'book' && o.manufacturer ? <span style={{ ...muted, fontWeight: 500 }}> · {o.manufacturer}</span> : null}</strong>
                         {w.from}
                       </span>
                       <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w.price}</span>
@@ -195,10 +236,10 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
               </div>
             ) : null}
 
-            {billShown.length > 0 ? (
+            {billsToRead.length > 0 ? (
               <div style={{ display: 'grid', gap: '0.4rem' }} role="group" aria-label="What a bill paid">
                 <span style={{ ...muted, fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>What a bill paid · to read, not to press</span>
-                {billShown.map((o) => {
+                {billsToRead.map((o) => {
                   const w = offerWords(o, today)
                   return (
                     <div key={o.key} style={{ ...offerBox, gridTemplateColumns: '1fr auto' }} data-offer={o.key}>
@@ -213,7 +254,18 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
               </div>
             ) : null}
 
-            {!offers.loading && found.length === 0 ? <span style={muted}>Nothing found in the parts book or on a bill. Press Other part… to search with other words, or Skip.</span> : null}
+            {!offers.loading && found.length === 0 ? <EmptyState compact main="Nothing found in the parts book or on a bill." tail={canOwnPrice ? 'Type a price for one, press Other part… to search with other words, or press Not a part.' : 'Press Other part… to search with other words, or Skip.'} /> : null}
+
+            {canOwnPrice && !picking ? (
+              <form style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); takeTyped() }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: '1 1 180px', minWidth: 0, minHeight: 44, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0 0.6rem', color: 'var(--text-muted)' }}>
+                  $
+                  <input type="text" inputMode="decimal" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="a price for one, as counted" aria-label="A price for one, as counted" style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-strong)', font: 'inherit', fontVariantNumeric: 'tabular-nums' }} />
+                </label>
+                {typed != null ? <button type="submit" disabled={busy} style={btnPrimary}>Save ${typed.toFixed(2)} for one</button> : null}
+                {draft.trim() && typed == null ? <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Type a price as a number, such as 3.12.</span> : null}
+              </form>
+            ) : null}
 
             {picking ? (
               <BookPartPicker name={row.name} busy={busy} search={searchBook} onPick={(part) => { setPicking(false); void takePart({ id: part.id, name: part.name }, part.name) }} onCancel={() => setPicking(false)} />
@@ -221,6 +273,7 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
                 {found.length > shown.length ? <button type="button" style={btn} onClick={() => setShowAll(true)}>{found.length - shown.length} more {found.length - shown.length === 1 ? 'fit' : 'fits'}…</button> : null}
                 {!row.partId ? <button type="button" style={btn} disabled={busy} onClick={() => setPicking(true)} title="Search the parts book with other words.">Other part…</button> : null}
+                {canOwnPrice ? <button type="button" style={btn} disabled={busy} onClick={leaveOut} title="Scrap, tools or a mixed box. The row leaves the count of lines that need a price.">Not a part <span style={kbd} aria-hidden="true">N</span></button> : null}
                 <button type="button" style={btn} disabled={busy} onClick={skip}>Skip <span style={kbd} aria-hidden="true">S</span></button>
               </div>
             )}

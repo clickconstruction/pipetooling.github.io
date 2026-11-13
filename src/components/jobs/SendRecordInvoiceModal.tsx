@@ -55,6 +55,10 @@ import { BillCustomerReturnedChecksLine } from './BillCustomerReturnedChecksLine
 import { BillCustomerPayCutoffLine } from './BillCustomerPayCutoffLine'
 import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
+import BillCustomerFaces, { type BillTextFaceState } from './BillCustomerFaces'
+import { billEmailFace, billTextFace, type BillFace } from '../../lib/billing/billCustomerFaces'
+import { loadBillTextFace } from '../../lib/billing/billCustomerFacesIo'
+import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
@@ -592,6 +596,9 @@ export default function SendRecordInvoiceModal({
    * every open so a tick never carries over to another job.
    */
   const [allowRebill, setAllowRebill] = useState(false)
+  /** Punch list #343, PR 2: which face of *What Dana will get* shows, and the text face's read. */
+  const [billFace, setBillFace] = useState<BillFace>('bill')
+  const [billTextFaceRead, setBillTextFaceRead] = useState<{ state: 'idle' | 'loading' | 'failed' } | { state: 'ready'; read: Awaited<ReturnType<typeof loadBillTextFace>> }>({ state: 'idle' })
   /** Per-invoice Bill-to override (v2.1086): when the billing target invoice
       has bill_to_email, overlay the alternate recipient onto the job context —
       every gate, preview payload, physical prefill, and notice send downstream
@@ -697,7 +704,31 @@ export default function SendRecordInvoiceModal({
     setEmailFixAlsoCustomer(true)
     setEmailFixError(null)
     setAllowRebill(false)
+    setBillFace('bill')
+    setBillTextFaceRead({ state: 'idle' })
   }, [open, jobRaw?.id])
+  // Punch list #343, PR 2: the text face reads the job's customer the first time it is opened, and never before.
+  // The reads are the Tell the customer sheet's own, and they write nothing (`billCustomerFacesIo.ts`).
+  const billFaceJobId = open ? (jobRaw?.id ?? null) : null
+  const billFaceUserId = authUser?.id ?? null
+  const billFaceOffice = Boolean(authRole) && GC_OFFICE_TEAM.includes(authRole!)
+  useEffect(() => {
+    if (billFace !== 'text' || !billFaceJobId || !billFaceUserId || billTextFaceRead.state !== 'idle') return
+    let live = true
+    setBillTextFaceRead({ state: 'loading' })
+    loadBillTextFace(billFaceJobId, billFaceUserId, billFaceOffice)
+      .then((read) => {
+        if (live) setBillTextFaceRead({ state: 'ready', read })
+      })
+      .catch(() => {
+        if (live) setBillTextFaceRead({ state: 'failed' })
+      })
+    return () => {
+      live = false
+    }
+    // The read runs once per open: `billTextFaceRead.state` leaves 'idle' on the first pass and is reset with the window.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [billFace, billFaceJobId, billFaceUserId, billFaceOffice])
 
   /** Customer contact persons with emails (v2.940): offered as extra recipients on the
       physical-invoice email — one send, extra addresses in the same email's `to`. */
@@ -2349,6 +2380,43 @@ export default function SendRecordInvoiceModal({
     })
   }
 
+  /** Punch list #343, PR 2: what the customer owes on this bill, in cents, as the box's own total reads it. */
+  function billFaceCents(): number {
+    const view = stripePreview ?? localStripePreview
+    if (view) return view.amount_remaining ?? Math.max(0, view.total - (view.amount_paid ?? 0))
+    const typed = Number(billAmountStr)
+    return Number.isFinite(typed) && typed > 0 ? Math.round(typed * 100) : 0
+  }
+
+  /** The bill email as the send will build it, from this bill's facts (`billEmailFace`); null while there is no amount. */
+  function billEmailFaceNow() {
+    return billEmailFace({
+      payerName: job?.customer_name,
+      toEmail: job?.customer_email,
+      jobAddress: job?.job_address,
+      invoiceNumber: stripePreview?.invoice_number,
+      amountDueCents: billFaceCents(),
+      dueYmd: stripeDueDate,
+      canReply: Boolean(authUser?.email),
+    })
+  }
+
+  /** The text the next screen would open on, once its face has been opened and read (`billTextFace`). */
+  function billTextFaceNow(): BillTextFaceState {
+    if (billTextFaceRead.state !== 'ready') return { state: billTextFaceRead.state }
+    const cents = billFaceCents()
+    return {
+      state: 'ready',
+      face: billTextFace({
+        read: billTextFaceRead.read,
+        amountLabel: `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        userId: billFaceUserId ?? '',
+        office: billFaceOffice,
+        nowIso: new Date().toISOString(),
+      }),
+    }
+  }
+
   /** Punch list #343: what the press does, what it does not, and where the copy is kept, in a box right above the press. */
   function pressBox(channel: BillSendChannel) {
     // A paid job's presses are dead until the tick: the notice above says why, and this box would promise a send.
@@ -3806,7 +3874,15 @@ export default function SendRecordInvoiceModal({
                 {discountStrip}
                 {sendToBlock('stripe')}
                 {job && !paidJobBlocked ? (
+                  <BillCustomerFaces
+                    who={sendWords('stripe').who}
+                    face={billFace}
+                    onFace={setBillFace}
+                    email={billFace === 'email' ? billEmailFaceNow() : null}
+                    text={billTextFaceNow()}
+                    bill={
                   <StripeBillPreSubmitPreview
+                    heading="On the bill:"
                     customerName={job.customer_name}
                     customerEmail={job.customer_email}
                     jobName={job.job_name}
@@ -3837,6 +3913,8 @@ export default function SendRecordInvoiceModal({
                     emphasizeLowercaseLeadingDescriptions
                     onLineDescriptionClick={handleStripePreviewLineClick}
                     stripeLineOverrideActive={stripeLineDescription.trim() !== ''}
+                  />
+                    }
                   />
                 ) : null}
                 {stripeError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}

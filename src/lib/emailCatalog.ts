@@ -533,7 +533,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'bridge_weekly_sheet',
-    name: 'The Bridge, the week’s call (the weekly email, to the owner and every dev)',
+    name: 'The Bridge, what to do now (the weekly email, to the owner and every dev)',
     group: 'digests',
     audience: 'internal',
     builtWhere: 'server',
