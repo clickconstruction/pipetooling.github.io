@@ -118,7 +118,7 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 
 After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
 
-A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself.
+A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself. The developer can take it back off the job too.
 
 ### Old mail is filed for the record
 

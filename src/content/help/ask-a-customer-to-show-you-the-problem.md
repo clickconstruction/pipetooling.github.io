@@ -99,6 +99,18 @@ A lead becomes a customer on either press. The thread comes with them.
 
 A number nobody has named has neither press. Name them first, as [Name a number nobody knows](/help/find-every-message-with-a-person-in-one-place#name-a-number-nobody-knows) shows.
 
+## Ask a tech before it is booked
+
+A tech can look at the photos before there is a job.
+
+1. Press {{button:outline|Ask a tech…}} on the First look card. Add a task opens with the look on it.
+2. Pick the tech. Change the words if you like.
+3. Send the task.
+
+The tech gets the task on their Checklist. The task's link opens that one look and nothing else of the thread.
+
+The tech answers **I can price it from this** or **Needs a visit to price**, with a note. The answer shows on the card and lands on the thread as a team note.
+
 ## The look goes with the job
 
 When a job is made from a look, the look goes with it. That happens when the customer accepts the estimate, when you press Create job, and when you press {{button:outline|Book a visit}}.

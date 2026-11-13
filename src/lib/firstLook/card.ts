@@ -23,6 +23,12 @@ export interface ThreadLook {
   words: string | null
   /** The look's own folder in Drive, once the sweep has made it (PR 2). Absent on a read from before the column. */
   drive_folder_id?: string | null
+  /** PR 7: the people it was asked of and when, and the tech's read. Absent on a read from before the columns. */
+  asked_tech_ids?: string[] | null
+  asked_tech_at?: string | null
+  tech_read?: string | null
+  tech_note?: string | null
+  tech_read_name?: string | null
 }
 
 /** A file that came in through the page, finished and not removed. */

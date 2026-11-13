@@ -1496,6 +1496,192 @@ describe('gmail-mine: a tag onto a job through the dev seat names the dev, never
   })
 })
 
+describe('gmail-mine: the dev seat untags a conversation the seat tagged, and no other', () => {
+  const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
+  const seatTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL }
+  const seatUntag = { action: 'untag', threadId: 't-elm', as: MARISOL }
+  const events = () => lines().filter((l) => l.channel === 'event')
+  const tagRows = () => db.rows('email_tag_threads')
+  const boxLine = () => lines().find((l) => l.id === 'm-box-1')
+  const mine = () => lines().filter((l) => l.mail_user_id === 'u-marisol')
+  const labelOf = () => google.boxes[MARISOL]!.labels.find((l) => l.name === LABEL)?.id
+  const labelled = () => google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelOf() ?? '-')).map((m) => m.id)
+  const ana = () => db.rows('contacts').find((c) => c.name === 'Ana Ruiz')
+  /** The seat's own record of its tag, as dev-mcp logs an ok apply_mail_tag: the dev, the box, the conversation and the job. */
+  const logSeatTag = (job: string = ELM) =>
+    db.rows('dev_mcp_calls').push({ id: `call-${db.rows('dev_mcp_calls').length + 1}`, verb: 'apply_mail_tag', status: 'ok', user_id: 'u-dev', created_at: new Date().toISOString(), args: { tag: { account: 'Marisol@ClickPlumbing.example', thread_id: 't-elm', job: { jobs_ledger_id: job } }, plan_hash: 'h' } })
+  const tagThroughSeat = async () => {
+    expect((await seat(seatTag)).status).toBe(200)
+    logSeatTag()
+  }
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = elmThread()
+    db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+    db.tables.dev_mcp_calls = []
+    db.tables.contact_owed = []
+    db.tables.message_promises = []
+    db.tables.message_highlights = []
+    db.tables.people = [{ id: PERSON, name: 'ZZ Test Person' }]
+    db.tables.person_file_entries = []
+  })
+
+  it('plans the untag and writes nothing: what goes, what comes off the job, the files, the label, and what would be left', async () => {
+    await tagThroughSeat()
+    const before = writes().length
+    const res = await seat({ ...seatUntag, plan: true })
+    expect(res.status).toBe(200)
+    expect(writes()).toHaveLength(before)
+    expect(tagRows()[0]).toMatchObject({ untagging_at: null })
+    const [out, in2] = mine()
+    expect(res.body).toEqual({
+      ok: true,
+      plan: true,
+      threadId: 't-elm',
+      account: MARISOL,
+      jobKey: `pipeline:${ELM}`,
+      taggedAt: tagRows()[0]!.tagged_at,
+      remove: [out!.id, in2!.id].sort(),
+      held: [],
+      untie: ['m-box-1'],
+      files: 1,
+      keptForMatter: 0,
+      greyLine: true,
+      // Dale and Ana were put on 4 Elm Ct's people by the tag, and Ana was made by it: none would keep a line there.
+      sweep: { ties: db.rows('contact_jobs').filter((j) => j.jobs_ledger_id === ELM).map((j) => String(j.id)).sort(), tiesLeft: 0, contacts: [String(ana()!.id)], contactsLeftEmpty: 0 },
+    })
+    expect((res.body.sweep as { ties: string[] }).ties).toHaveLength(2)
+    // The log carries counts and ids of ours, never a subject or an address.
+    expect(logged.filter((l) => l.includes('"event":"gmail_mine_untag_plan"'))).toHaveLength(1)
+    for (const line of logged) for (const secret of ['water heater', 'ridgeway.example', MARISOL]) expect(line, line).not.toContain(secret)
+  })
+
+  it('takes off what the seat tagged: the lines, files and raw copies, the tie, the grey line, the row and the label', async () => {
+    await tagThroughSeat()
+    const res = await seat(seatUntag)
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0, untied: 1, swept: { ties: 2, tiesLeft: 0, contacts: 1, contactsLeftEmpty: 0 } })
+    expect(mine()).toEqual([])
+    expect(db.rows('message_attachments')).toEqual([])
+    expect(Object.keys(db.files).filter((k) => k.startsWith('message-attachments/mine/'))).toEqual([])
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: null })
+    expect(events()).toEqual([])
+    expect(tagRows()).toEqual([])
+    expect(labelled()).toEqual([])
+    // Nothing still shows who was written to: nobody is left on the job's people, and the sender nobody knew is gone.
+    expect(db.rows('contact_jobs').filter((j) => j.jobs_ledger_id === ELM)).toEqual([])
+    expect(ana()).toBeUndefined()
+    expect(db.rows('contact_channels').some((c) => c.value === 'ana@ridgeway.example')).toBe(false)
+    // Dale was known before, and his star on 19 Harbor Ln is not the tag's.
+    expect(db.rows('contacts').some((c) => c.id === 'c-dale')).toBe(true)
+    expect(db.rows('contact_jobs')).toEqual([expect.objectContaining({ contact_id: 'c-dale', jobs_ledger_id: HARBOR, is_default: true })])
+  })
+
+  it('leaves it off: the follow lands nothing back, the app’s Sent read passes it by, and it may go onto an HR file after', async () => {
+    await tagThroughSeat()
+    await seat(seatUntag)
+    expect(db.rows('email_tag_threads_off')).toEqual([expect.objectContaining({ user_id: 'u-marisol', gmail_thread_id: 't-elm' })])
+    google.boxes[MARISOL]!.mails.push(mail('g-late', 't-elm', '2026-11-02T10:00:00.000Z', { From: DALE, Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<late-1@ridgeway.example>' }, 'One more thing.'))
+    expect((await cron({ action: 'follow' })).status).toBe(200)
+    expect(mine()).toEqual([])
+    expect(tagRows()).toEqual([])
+    // One target a conversation: with the job tag gone, the seat's person tag is taken.
+    const onFile = await seat({ action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL })
+    expect(onFile.body).toMatchObject({ ok: true, personId: PERSON })
+    expect(tagRows()).toEqual([expect.objectContaining({ person_id: PERSON, jobs_ledger_id: null })])
+    expect(mine()).toEqual([])
+  })
+
+  it('refuses a tag the seat did not make: a person’s own press, one the person moved since, and no tag at all', async () => {
+    // Marisol pressed it herself: nothing in the seat's log.
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    const before = writes().length
+    for (const body of [seatUntag, { ...seatUntag, plan: true }]) {
+      const own = await seat(body)
+      expect(own.status).toBe(400)
+      expect(String(own.body.words)).toContain('only a tag the dev seat made')
+    }
+    expect(writes()).toHaveLength(before)
+    expect(mine()).toHaveLength(2)
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    // The seat tagged it onto 4 Elm Ct, then Marisol moved it to 19 Harbor Ln: the tag is hers now.
+    await tagThroughSeat()
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: HARBOR } })
+    const moved = await seat(seatUntag)
+    expect(moved.status).toBe(400)
+    expect(tagRows()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, untagging_at: null })])
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    // Not tagged at all, though the log remembers an old tag.
+    const none = await seat(seatUntag)
+    expect(none.status).toBe(404)
+    expect(String(none.body.words)).toContain('not tagged')
+  })
+
+  it('keeps the seat’s door to the seat: a person’s press with a plan or another login, and a caller who is no dev', async () => {
+    await tagThroughSeat()
+    const plan = await post('marisol-jwt', { action: 'untag', threadId: 't-elm', plan: true })
+    expect(plan.status).toBe(400)
+    expect(String(plan.body.words)).toContain('dev seat')
+    const noHeader = await post('dev-jwt', seatUntag)
+    expect(noHeader.status).toBe(400)
+    const notDev = await seat(seatUntag, 'marisol-jwt')
+    expect(notDev.status).toBe(400)
+    db.rows('users').find((u) => u.id === 'u-dev')!.read_only = true
+    expect((await seat(seatUntag)).status).not.toBe(200)
+    expect(mine()).toHaveLength(2)
+    expect(tagRows()).toEqual([expect.objectContaining({ untagging_at: null })])
+  })
+
+  it('unties what the seat tied on a row tagged before the dev was stamped, where the row still names the person', async () => {
+    await tagThroughSeat()
+    // As every seat tag was kept before v2.7020: the row names the box's person, the tie is stamped the dev.
+    tagRows()[0]!.tagged_by = 'u-marisol'
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-dev' })
+    const plan = await seat({ ...seatUntag, plan: true })
+    expect(plan.body).toMatchObject({ untie: ['m-box-1'] })
+    await seat(seatUntag)
+    expect(boxLine()).toMatchObject({ jobs_ledger_id: null })
+  })
+
+  it('holds a line the office keeps something on, says why in the plan, and leaves that person on the job', async () => {
+    await tagThroughSeat()
+    const [out, in2] = mine()
+    db.rows('message_promises').push({ id: 'p-1', message_id: out!.id })
+    db.rows('contact_owed').push({ id: 'o-1', done_note_message_id: in2!.id })
+    const plan = await seat({ ...seatUntag, plan: true })
+    expect(plan.body).toMatchObject({
+      remove: [],
+      held: [
+        { id: out!.id, why: 'promise' },
+        { id: in2!.id, why: 'owed' },
+      ].sort((a, b) => String(a.id).localeCompare(String(b.id))),
+      // Both keep a line on the job, so neither tie goes and Ana stays.
+      sweep: { ties: [], tiesLeft: 0, contacts: [], contactsLeftEmpty: 0 },
+    })
+    const res = await seat(seatUntag)
+    expect(res.body).toMatchObject({ removed: 0, held: 2, untied: 1, swept: { ties: 0, tiesLeft: 0, contacts: 0, contactsLeftEmpty: 0 } })
+    expect(mine()).toHaveLength(2)
+    expect(ana()).toBeDefined()
+    expect(db.rows('contact_jobs').filter((j) => j.jobs_ledger_id === ELM)).toHaveLength(2)
+    expect(tagRows()).toEqual([])
+  })
+
+  it('takes the lines off for a teammate who has left since, and leaves a person’s own untag as it was', async () => {
+    await tagThroughSeat()
+    db.rows('users').find((u) => u.id === 'u-marisol')!.archived_at = '2026-11-10T00:00:00.000Z'
+    expect((await seat(seatUntag)).body).toMatchObject({ ok: true, removed: 2 })
+    // A person's own untag clears no tie and no contact, and leaves no tombstone: unchanged.
+    db.rows('users').find((u) => u.id === 'u-marisol')!.archived_at = null
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    const own = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(own.body).toEqual({ ok: true, removed: 2, keptForMatter: false, held: 0 })
+    expect(db.rows('contact_jobs').filter((j) => j.jobs_ledger_id === ELM)).toHaveLength(2)
+    expect(ana()).toBeDefined()
+    // Her tag by hand lifted the tombstone the seat's untag left, and her own untag leaves none.
+    expect(db.rows('email_tag_threads_off')).toEqual([])
+  })
+})
+
 describe('gmail-mine: the owner is told, in the app only, when the dev seat saves their mail (v2.7068)', () => {
   const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
   const DEV = 'robert@douglasmining.example'
