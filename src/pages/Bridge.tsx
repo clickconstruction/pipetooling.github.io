@@ -1387,6 +1387,8 @@ export default function Bridge() {
           <span style={det} data-testid="bridge-date">
             {new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
             {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
+            {/* The loaded page says the window it read, as its loading line does (punch list #334, PR 1). */}
+            <span data-testid="bridge-window"> · reads the last {BRIDGE_DAYS_BACK / 7} weeks, since {windowStartLabel}</span>
           </span>
         ) : (
           <span style={det}>Where we stand, where cash is going, what would change it.</span>
@@ -1397,7 +1399,7 @@ export default function Bridge() {
       </div>
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
-        <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
+        <p style={det}>{loading ? `Reading the last ${BRIDGE_DAYS_BACK / 7} weeks…` : '—'}</p>
       ) : (
         <>
           {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. */}

@@ -267,6 +267,10 @@ export type BillLeak = {
   detail: string
   proof: string
   door: { label: string; to: string }
+  /** The job's label as a cell writes it, "1024 · Lawver install" (the step window's rows name the job by it). */
+  label?: string
+  /** On a remainder its bills cover: the days since the newest bill. Null when payments cover it or no bill day is on record. */
+  partBilledDays?: number | null
 }
 
 export type BillFastRow = {
@@ -357,6 +361,7 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
       out.push({
         kind: 'no-price',
         jobId: j.id,
+        label: j.label,
         usd: 0,
         amountText: `${h} h`,
         satText: 'no clock',
@@ -377,6 +382,7 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
       out.push({
         kind: 'never-billed',
         jobId: j.id,
+        label: j.label,
         usd: j.item.usd,
         amountText: stageUsd(j.item.usd),
         ...sat,
@@ -394,6 +400,8 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
       out.push({
         kind: 'remainder',
         jobId: j.id,
+        label: j.label,
+        partBilledDays: side === 'bills' && j.newestBillYmd ? Math.max(0, daysBetween(j.newestBillYmd, todayYmd)) : null,
         usd: j.item.usd,
         amountText: stageUsd(j.item.usd),
         ...sat,
@@ -424,6 +432,7 @@ export function billHandMarked(input: Pick<BillDeskInput, 'bills' | 'todayYmd' |
     out.push({
       kind: 'hand-marked',
       jobId: b.jobId,
+      label: b.jobLabel,
       billId: b.id,
       usd: b.usd,
       amountText: stageUsd(b.usd),
