@@ -4,7 +4,7 @@
  * job's notes/reports/status events land on the target and the source is
  * deleted — historically with no visible record, so a tech who had marked the
  * (duplicate) source 100% + Ready to bill saw their work silently "reverted"
- * (Abraham, 2026-08-21; job 877 "Johnny Ingram").
+ * (Abraham, 2026-08-21; job 877 "Johnny Inglow").
  *
  * Two contracts live here:
  *

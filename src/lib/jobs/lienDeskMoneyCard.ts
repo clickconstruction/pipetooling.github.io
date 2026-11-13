@@ -18,7 +18,7 @@ export type LienDeskMoneyCardPile = { key: LienDeskPile; label: string; count: n
 export type LienDeskMoneyCardDeadline = {
   /** "closed Sep 15" · "6 notices by Oct 15 · in 20 days" · "today" — the count leads, the GCs are `who` (v2.4054) */
   label: string
-  /** The GCs on that day — "Southern Post", "Michael Holub +6" — drawn as a chip of their own (v2.4054). */
+  /** The GCs on that day — "Southern Pine", "Michael Holmby +6" — drawn as a chip of their own (v2.4054). */
   who: string | null
   tone: 'red' | 'amber' | 'gray'
   /** The old first sentence plus the mail-by warning, for the hover. */

@@ -25,6 +25,8 @@ export function useDashboardFinancials(
   viewerRole?: string | null,
   /** The signed-in user: the shared ZZ test job ids are kept per user (punch list #61, review on #5241). */
   viewerUserId?: string | null,
+  /** More job ids to leave out, beside the ZZ test jobs: the Bridge's own left-out list. Pass a stable set. */
+  alsoLeaveOut?: ReadonlySet<string> | null,
 ): {
   data: DashboardFinancials | null
   loading: boolean
@@ -50,8 +52,10 @@ export function useDashboardFinancials(
       try {
         // ZZ test jobs leave before anything reads them: their bills are then never billed ids, so
         // their payments and unlinked money are never read either (by their names and the shared ids).
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(viewerUserId) : null
+        const zz = hideZz ? await loadZzTestJobIds(viewerUserId) : null
         if (cancelled) return
+        // What the Bridge leaves out (punch list #334) leaves through the same ids.
+        const zzTestJobIds = alsoLeaveOut && alsoLeaveOut.size > 0 ? new Set([...(zz ?? []), ...alsoLeaveOut]) : zz
         const next = await loadDashboardFinancials(supabase, { assistantAggregates: viewerRole === 'assistant', zzTestJobIds })
         if (!cancelled) setData(next)
       } catch (e) {
@@ -63,7 +67,7 @@ export function useDashboardFinancials(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey, viewerRole, viewerUserId, hideZz])
+  }, [enabled, refreshKey, viewerRole, viewerUserId, hideZz, alsoLeaveOut])
 
   return { data, loading, error }
 }

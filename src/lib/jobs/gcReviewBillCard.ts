@@ -6,7 +6,7 @@ import type { GcReviewRow } from '../gcReviewRollup'
  * the job; the line under the address says who and when.
  */
 export type GcReviewBillCardWords = {
-  /** "650 · ATI Schertz — As per plans": the job number, then its name when it has one. */
+  /** "650 · AXO Schertz — As per plans": the job number, then its name when it has one. */
   job: string
   /** "Billed Jul 15, 2026 · 79 d", led by the customer when the job's name does not already say it. */
   when: string

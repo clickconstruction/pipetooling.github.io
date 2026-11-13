@@ -8,7 +8,7 @@
  * - **Text** and **Email** open the reply box on that kind in the thread the number or the address belongs to: this
  *   thread when it is this person's (*… pressed Email on …*), else the thread of whoever holds it, or a thread made
  *   for them by the press (`BodyContactsIo.makeThread`, never by a read), and the line reads *… opened a thread for
- *   glenn@maxxbuilders.com from …* with a door to it (`contactForPressValue`, drawn by the window on the event line).
+ *   glenn@marrexbuilders.example from …* with a door to it (`contactForPressValue`, drawn by the window on the event line).
  * - **Open the map** opens by itself; this writes *… opened the map for …*.
  *
  * The lines are held in `bodyContactsIo.ts`'s store, so Undo survives the viewer closing and the thread changing;

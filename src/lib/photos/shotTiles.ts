@@ -39,6 +39,20 @@ export function sendLostSignal(err: unknown, errorName: string): boolean {
   return typeof err === 'object' && err != null && (err as { name?: unknown }).name === errorName && (err as { kind?: unknown }).kind === 'network'
 }
 
+/**
+ * Whether an upload was refused because its object is already in the bucket (punch list #306, v2.7133): the resend of
+ * a shot whose first upload landed while its answer was lost to the signal. The path carries the shot's own id, minted
+ * on the phone, so what is there is this shot, and the send goes on to its row. Storage answers it as *The resource
+ * already exists* with 409 in the body's status code, on an HTTP 400 (read on the project, 2026-11-13). An upsert
+ * cannot stand in for this: a bucket with no update policy refuses an upsert onto an object that is there.
+ */
+export function bytesAlreadyThere(err: unknown): boolean {
+  if (typeof err !== 'object' || err == null) return false
+  const e = err as { statusCode?: unknown; status?: unknown; message?: unknown }
+  if (String(e.statusCode ?? '') === '409' || e.status === 409) return true
+  return typeof e.message === 'string' && /resource already exists/i.test(e.message)
+}
+
 /** A file's own time when it is a real moment already past, else now: the Job photos window's time for a picked file. */
 export function fileTimeOrNow(file: Pick<File, 'lastModified'>, now: number = Date.now()): string {
   return new Date(file.lastModified > 0 && file.lastModified < now ? file.lastModified : now).toISOString()

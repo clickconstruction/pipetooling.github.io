@@ -25,7 +25,7 @@ export type PieceRow = {
   waiting: PieceWaiting | null
   done: boolean
   /**
-   * A bid archived off the working board with no job and no answer out (the Gun Dog spike, 2026-11-02): it sits
+   * A bid archived off the working board with no job and no answer out (the Gray Fox spike, 2026-11-02): it sits
    * in its own fold between the live rows and the done ones, since nobody is chasing it and it is not decided.
    */
   archived: boolean

@@ -227,7 +227,7 @@ function propertyLabel(job: Pick<LienCalendarJob, 'address'>): string {
 
 /**
  * Two jobs at one property: the same linked record, the same typed address, or one typed address
- * that is the other cut short at a word ("628 Terrell Rd" and "628 Terrell Rd, San Antonio, TX").
+ * that is the other cut short at a word ("628 Tarrow Rd" and "628 Tarrow Rd, San Antonio, TX").
  * The short one must still name a number and two more words, so "12 Oak" matches nothing.
  */
 export function lienSameProperty(a: Pick<LienCalendarJob, 'address' | 'addressId'>, b: Pick<LienCalendarJob, 'address' | 'addressId'>): boolean {
@@ -331,7 +331,7 @@ export function placeOverdueWithProperty(buckets: ReadonlyArray<LienCalendarBuck
 /**
  * A property's money in two piles (v2.6849): what a lien can still cover and what closed its
  * window unsent. A group's total counts only the first pile, so the office read $13,439 on the
- * desk against $18,046.50 owed at 628 Terrell Rd and could not see the three jobs between them.
+ * desk against $18,046.50 owed at 628 Tarrow Rd and could not see the three jobs between them.
  * The heading now says both and their sum. Null when nothing at the property closed: the rows
  * already add up to the group's total there.
  */

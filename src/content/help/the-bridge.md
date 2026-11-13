@@ -13,6 +13,8 @@ order: 62
 
 The line beside the page's name says today's date and the pay week. That line also says the window the page reads: the last 8 weeks, since the day it names.
 
+The line under it says [what the Bridge leaves out](#what-the-bridge-leaves-out).
+
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## The first screen
@@ -93,6 +95,26 @@ The Bill card's pile is finished work not yet billed. On each working job that i
 The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
+
+## What the Bridge leaves out
+
+A line under the page's name says what the Bridge leaves out. It reads *Leaves out Oak Hollow.* or *Nothing is left out.*
+
+The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole.
+
+To change the list, press **Change ›** beside the line.
+
+1. Press {{button:outline|Development}}, {{button:outline|Customer}} or {{button:outline|Address}} to pick the kind.
+2. Type a few letters of the name.
+3. Press the button that names it, such as {{button:outline|Leave out Oak Hollow}}.
+
+For an address, type its words and press {{button:blue|Leave out this address}}. Every job, bid and estimate whose address holds those words is left out.
+
+To count a thing again, press **Put back** beside its name. Press **Done ▴** to fold the list away.
+
+The page reads again at once, and the list is saved. The company has one list, so everyone who opens the Bridge reads the same numbers. The owner and devs can change it.
+
+While you hide ZZ test jobs, the list offers no ZZ test development or customer. Their jobs have already left the page.
 
 ## What Market is worth
 

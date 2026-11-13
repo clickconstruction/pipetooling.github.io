@@ -206,8 +206,8 @@ export function stageNameLabel(n: MoneyBarName, blockPx: number | null): string 
  * first and the billed money after it, so an open bill sits on the blue, its own linked
  * payments just before it on the green. The old placement went by billing order alone, so
  * an unpaid first bill was bracketed on the green while its row read *nothing paid*
- * (273 Dudley), and a $6,700 bill that named the job's only $33,500 line spanned the
- * whole bar (650 ATI Schertz).
+ * (273 Dunmere), and a $6,700 bill that named the job's only $33,500 line spanned the
+ * whole bar (650 AXO Schertz).
  */
 export type MoneyBarBillMark =
   | { kind: 'bracket'; leftPct: number; widthPct: number; title: string }

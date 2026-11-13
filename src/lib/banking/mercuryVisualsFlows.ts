@@ -368,7 +368,7 @@ function titleCaseWords(raw: string): string {
 /**
  * Display payee for a transaction. Cash App is a platform, not a person — the
  * real name rides in the bank memo or (more often) the raw bank description
- * ("CASH APP*JESSICA WHITE"), so when the counterparty is Cash App we split by
+ * ("CASH APP*JESSICA WENDLE"), so when the counterparty is Cash App we split by
  * that name instead.
  */
 export function resolveVisualsPayee(
