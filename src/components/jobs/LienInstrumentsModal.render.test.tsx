@@ -291,22 +291,27 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
   })
 
-  it('carries a pay code per covered Stripe bill under the amount box, by a tick that starts on; a paper bill offers none (v2.4849)', async () => {
+  it('carries the bill’s pay code in the amount box, by a tick that starts on; a paper bill offers none (v2.4849, in the box since v2.7086)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ invoices: [{ ...INV, stripe_invoice_id: 'in_878a' }] })} />)
     await settle()
     await waitFor(() => expect(document.querySelector('[data-demand-amount-box]')).toBeTruthy())
     const tick = screen.getByRole('checkbox', { name: /^Pay codes/ }) as HTMLInputElement
     expect(tick.checked).toBe(true)
-    expect(tick.closest('label')!.textContent).toContain('one code under the amount box')
-    const codes = document.querySelector('[data-demand-pay-codes]') as HTMLElement
-    expect(codes).toBeTruthy()
-    expect(codes.previousElementSibling!.hasAttribute('data-demand-amount-box')).toBe(true)
-    expect(codes.textContent).toContain('Pay online')
-    expect(codes.textContent).toContain('Invoice #1')
-    expect(codes.textContent).toContain('$1,710.00')
-    expect(codes.textContent).toContain('clicktooling.com/pay/inv-867')
-    fireEvent.click(tick)
+    expect(tick.closest('label')!.textContent).toContain('one code in the amount box')
+    // Letter-first: one code is a cell of the box, and there is no band under it.
+    const code = document.querySelector('[data-demand-amount-box] [data-demand-pay-code]') as HTMLElement
+    expect(code).toBeTruthy()
     expect(document.querySelector('[data-demand-pay-codes]')).toBeNull()
+    expect(code.textContent).toContain('Pay online')
+    expect(code.textContent).toContain('Scan to pay')
+    expect(code.textContent).toContain('clicktooling.com/pay/inv-867')
+    // The letter ends before the account: the signature, then the break, then the statement.
+    const brk = document.querySelector('[data-demand-page-break]') as HTMLElement
+    expect(brk).toBeTruthy()
+    expect(brk.previousElementSibling!.textContent).not.toContain('Statement of account')
+    expect(brk.nextElementSibling!.textContent).toContain('Statement of account')
+    fireEvent.click(tick)
+    expect(document.querySelector('[data-demand-pay-code]')).toBeNull()
     cleanup()
     // A paper bill has no payment page: the tick is greyed and the letter carries no codes.
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)

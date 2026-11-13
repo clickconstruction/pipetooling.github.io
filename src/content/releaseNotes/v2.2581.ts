@@ -6,7 +6,7 @@ const note: ReleaseNote = {
   title: 'AR customer rows show the whole name',
   kind: 'feature',
   highlights: [
-    'In the Accounts Receivable Customers view, each row now puts the customer name on its own line with the Comm/Res tag and chase pill ("Owes a call", promises) beneath it — long names like "Southern Post Construction" no longer truncate to a few letters.',
+    'In the Accounts Receivable Customers view, each row now puts the customer name on its own line with the Comm/Res tag and chase pill ("Owes a call", promises) beneath it — long names like "Southern Pine Construction" no longer truncate to a few letters.',
     'Hovering a name that still overflows shows the full name in a tooltip.',
   ],
 }

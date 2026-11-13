@@ -1,7 +1,8 @@
 /**
  * The outbox (punch list #163, PR 1, v2.6074): the queue a phone keeps when a press cannot reach
- * the server. Four presses may queue, each with the moment it was pressed: clock in, clock out, a
- * job note and a field report. Money, a text or an email to a customer and a signature never do
+ * the server. The presses that may queue, each with the moment it was pressed: clock in, clock out, a
+ * job note and a field report, and since then the kinds `OutboxKind` names below (job photos, a signed
+ * checklist answer, a task photo, a ticket photo, bid photos). Money, a text or an email to a customer and a signature never do
  * (`NEVER_QUEUES`). The presses go out in the order they were pressed when the signal returns; a
  * press the server refuses keeps the server's reason and a door and the rest still go; a press
  * that waits past the next morning needs a person and says so.
@@ -35,11 +36,12 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
  * a task card's sheet with no signal, kept on the phone as a job photo is and sent to the card when the signal is back.
  * `counter-ticket` (punch list #295, PR 2): a photo of a supply house ticket saved with no signal, its pages kept on the
  * phone and sent with its job when the signal is back. It is a photo and a job, never money: the charge is sorted by a
- * person, online.
+ * person, online. `bid-photos` (punch list #306, PR 8): photos added to a bid from its Files window with no signal,
+ * kept on the phone as a job's are and sent to the bid, each with its name, when the signal is back.
  */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket'
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket' | 'bid-photos'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -55,6 +57,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'checklist-sign': 'Signed checklist answer',
   'task-photo': 'Task photo',
   'counter-ticket': 'Ticket photo',
+  'bid-photos': 'Bid photos',
 }
 
 /**
@@ -224,6 +227,23 @@ export interface CounterTicketPayload {
 }
 
 /**
+ * A photo added to a bid with no signal (punch list #306, PR 8): the `bid_photos` row's facts as `sendBidPhoto` writes
+ * them, under the id minted on the phone, and the name the person gave it, already trimmed.
+ */
+export interface KeptBidPhoto extends KeptShot {
+  name: string
+}
+
+/**
+ * The bid's Add press kept with no signal (punch list #306, PR 8). The replay sends the shots still on the phone, then
+ * lands the press by writing each name and `added_at` on a row that has none (`landBidPhotos`), so a repeat counts once.
+ */
+export interface BidPhotosPayload {
+  bidId: string
+  photos: KeptBidPhoto[]
+}
+
+/**
  * A signed checklist answer (punch list #237, PR 2): the pick and the signature in one press, as `signAnswer` takes
  * them. The drawn mark rides as a data URL, a few kilobytes, so the press carries everything it needs; the signed time
  * is the press's own. The landing writes under the table's own policies and lock, and a resend finds the row signed
@@ -258,7 +278,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
             ? TaskPhotoPayload
             : K extends 'counter-ticket'
               ? CounterTicketPayload
-              : FieldReportPayload
+              : K extends 'bid-photos'
+                ? BidPhotosPayload
+                : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
@@ -697,12 +719,17 @@ export function outboxHoldsEverything(presses: readonly OutboxPress[], now: numb
   return holding && !presses.some((p) => needsAPerson(p, now))
 }
 
-/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, since #273 of a task photo press, and since #295 every page of a counter ticket. */
+/** The kinds whose press carries photos kept on the phone: `payload.photos`, each a `KeptShot`. */
+export const PHOTO_CARRYING_KINDS: readonly OutboxKind[] = ['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos']
+
+export type PhotoCarryingPayload = FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload | BidPhotosPayload
+
+/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, since #273 of a task photo press, since #295 every page of a counter ticket, and since #306 of a bid photos press. */
 export function keptPhotoCount(presses: readonly OutboxPress[]): number {
   let n = 0
   for (const p of presses) {
-    if ((p.kind !== 'field-report' && p.kind !== 'job-photos' && p.kind !== 'task-photo' && p.kind !== 'counter-ticket') || (p.state !== 'waiting' && p.state !== 'sending')) continue
-    n += ((p.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload | CounterTicketPayload).photos ?? []).length
+    if (!PHOTO_CARRYING_KINDS.includes(p.kind) || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    n += ((p.payload as PhotoCarryingPayload).photos ?? []).length
   }
   return n
 }
