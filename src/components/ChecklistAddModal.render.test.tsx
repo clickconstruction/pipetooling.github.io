@@ -660,11 +660,12 @@ describe('ChecklistAddModal, a card written for one thing (punch list #334)', ()
     // The lines arrive trimmed, one a line, and the fold is open so the sender reads them.
     const lines = screen.getByDisplayValue(/201 · Maple Lofts: pay date written down\s+202 · Oak Court: pay date written down/) as HTMLTextAreaElement
     expect(lines.value).toBe('201 · Maple Lofts: pay date written down\n202 · Oak Court: pay date written down')
-    expect((screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement).checked).toBe(false)
-    // Settle before Send: the person is ticked by an effect that runs after the list of people lands. A press before
-    // it is refused for having nobody on the card, which a loaded runner made happen (the first CI run of this case).
-    await screen.findByRole('checkbox', { name: 'Robert', checked: true }, { timeout: 4000 })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    // The lines would turn the photo on by themselves; the card said no photo, so the press stays off.
+    expect(addPress('photo').getAttribute('aria-pressed')).toBe('false')
+    // Settle before Send: the window settles on its first person after the list of people lands, and Send names them
+    // from then on. A press before it is refused for having nobody on the card, which a loaded runner made happen.
+    await screen.findByRole('button', { name: 'Send to Robert' }, { timeout: 4000 })
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
     expect(row.links).toEqual(THING_PRESET.links)
@@ -681,7 +682,7 @@ describe('ChecklistAddModal, a card written for one thing (punch list #334)', ()
     updated.length = 0
     const title = await renderOpenModal()
     fireEvent.change(title, { target: { value: 'Order hose clamps' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     expect(updated).toEqual([])
