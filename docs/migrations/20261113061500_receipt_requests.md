@@ -30,3 +30,5 @@ Applied twice on a throwaway Postgres 15 with stub tables and `counter_tickets` 
 ## Undo
 
 `DROP FUNCTION public.receipt_request_ensure(uuid, uuid); DROP TABLE public.receipt_links; DROP TABLE public.receipt_requests;` and the two checks written again without `link`, once no ticket carries it.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

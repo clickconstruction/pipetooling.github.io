@@ -22,3 +22,5 @@ Merge, `bash scripts/db-push.sh`, then `supabase functions deploy first-look`. T
 ## Verify
 
 Read-only on prod after the push: `select proname from pg_proc where proname in ('mint_first_look','stamp_first_look')` reads two rows; `select has_function_privilege('anon', 'public.mint_first_look(uuid)', 'execute')` reads false; `select policyname from pg_policies where schemaname = 'storage' and policyname = 'first_look_files_select_office'` reads one row.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7760.

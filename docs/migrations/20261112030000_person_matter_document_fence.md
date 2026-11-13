@@ -21,3 +21,5 @@ No table is created, so no fence call is owed. Idempotent: each policy is made o
 Held by `npm run test:pg:person-matter-document-fence` (`supabase/tests/person_matter_document_fence/`, in `scripts/sql-beds.txt`): a dev, a master, an assistant, a controller and an estimator against a person matter's document, an account matter's and a person's own. Before the PR the scenario ran on a local Postgres 15 with the live policies as stand-ins; three mutants each failed it (no fence: the master read the person matter's document; `documents` fenced alone: the master read its prior version; a select-only fence: the assistant's insert landed).
 
 Deploy order: push this migration. No client or function change rides with it.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

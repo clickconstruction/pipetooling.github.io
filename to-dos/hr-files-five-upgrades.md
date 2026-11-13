@@ -84,7 +84,7 @@ by adding rows where a column would have meant stamping old entries.
   redeployed. After the push an agent links a correction through `plan_hr_entry` at once.
 - **PR 2 (v2.7098, built, #7879):** the Timeline, the composer, the flags on the narrative and the help guide. The links are a source of
   their own, read fail-soft, so the entries never disappear with them.
-- **PR 3 (v2.7104, built, #7880, server 0.81.0):** the seat's reads and the search's pair, joined in the kernel so `dev_case_search` is untouched. Deploy `dev-mcp` after its merge.
+- **PR 3 (v2.7104, built, #7880, server 0.81.0):** the seat's reads and the search's pair, joined in the kernel so `dev_case_search` is untouched. Deployed: the seat answers as server 0.81.0 (2026-11-13).
 - **Left of upgrade 1:** the chip on the Evidence view's rows and in the By theme item window; a search hit on a document section that cites a corrected entry is not flagged.
 - **His call:** linking the corrections already written in prose. It adds rows and changes no entry, and it is
   still a write on a real file, so it runs per person on his word through `plan_hr_entry { amendments }`.

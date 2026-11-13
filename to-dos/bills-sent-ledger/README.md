@@ -2,7 +2,7 @@
 name: "Bills sent: one list of every bill that left, to whom, and the minute it went"
 number: 327
 group: close
-status: built 2026-11-12 and 2026-11-13 on Grace's word · live at /bills-sent with the list, the sends with no copy, the no-send strip, delivered and bounced, one bill's record, print and CSV · open: #7827 say how it went, #7912 the Dashboard pin, #7917 the phone layout · left: the master's own look, and the notes under What should change next
+status: built 2026-11-12 and 2026-11-13 on Grace's word · live at /bills-sent with the list, the sends with no copy, the no-send strip, delivered and bounced, one bill's record, print and CSV, a record made by hand (v2.7057 #7827), the Dashboard pin (v2.7129 #7912) and the phone layout (v2.7130 #7917), those three merged 2026-11-13 · left: the master's own look, and the notes under What should change next
 summary: >
   The master asked for a ledger he can open at any time that shows which bills have gone out, to
   whom, and when exactly. The app already kept that record for every bill it emails, scattered and
@@ -11,11 +11,11 @@ summary: >
   the amount, the address, who sent it and whether it arrived, a band per day with its total, one
   bill's whole record, print and CSV, and a strip of bills that were made and have no send on
   record. What is left is written below as notes, not built.
-next: The master opens /bills-sent and finds the bill that made him ask. The open PRs #7827, #7912 and #7917 reach main and are walked live. The notes under What should change next wait for Grace's word.
+next: The master opens /bills-sent and finds the bill that made him ask. #7827, #7912 and #7917, merged 2026-11-13, are walked live. The notes under What should change next wait for Grace's word.
 size: L as a train of seven (M · M · S · M · S · M · S), built; left: notes only (the Pipeline doors S, the Monday email block S, the holes at the send M, the kernel split XS)
-blocker: Nothing for the open PRs but the merge queue. The notes are new behavior or a refactor, so they wait for Grace's word (no major changes on Opus 5.5, 2026-11-13).
+blocker: None for what is built. The notes are new behavior or a refactor, so they wait for Grace's word (no major changes on Opus 5.5, 2026-11-13).
 opinion: your call — the list is live and answers the ask; what is left is doors and depth, none of it urgent
-ver: v2.7049 · v2.7052 · v2.7053 · v2.7055 · v2.7056
+ver: v2.7049 · v2.7052 · v2.7053 · v2.7055 · v2.7056 · v2.7057 · v2.7129 · v2.7130
 ---
 
 # Bills sent (#327)
@@ -207,9 +207,9 @@ The calls were taken as recommended, since she said build: one screen over the r
 | 3 | *Delivered*, *Opened*, *Bounced* on each email, *Paid* and the day, the tile **Did not arrive**. One read function, `bill_send_marks` (migration `20261113030000`, pushed). | v2.7053, live |
 | 4 | One bill's record at `/bills-sent?bill=<id>`, with **Print this record**. | v2.7055, live |
 | 5 | **Print** and **Download CSV** of what the list shows. | v2.7056, live |
-| 6 | **Say how it went…** on a bill with no send on record: a record made by hand. | #7827, in the merge queue |
-| | Bills sent can be pinned to the Dashboard (Pin, and Pin for someone). | #7912, in the merge queue |
-| | The phone layout: the list first, a short card a send whose whole face opens the record, presses a thumb can hit. | #7917, waits on #7827 |
+| 6 | **Say how it went…** on a bill with no send on record: a record made by hand. | v2.7057, merged 2026-11-13 (#7827) |
+| | Bills sent can be pinned to the Dashboard (Pin, and Pin for someone). | v2.7129, merged 2026-11-13 (#7912) |
+| | The phone layout: the list first, a short card a send whose whole face opens the record, presses a thumb can hit. | v2.7130, merged 2026-11-13 (#7917) |
 
 What the live reads showed, counts only: 349 lines back to the spring under 101 days, 128 of them older emails that say the address was not kept, 24 open bills with no send on record and 58 more paid behind the press. Of the 69 emailed bills with a kept copy, 62 read *Delivered*, 6 have no answer from the mail server yet, and none bounced. The CSV's rows match the screen's lines, and the rows marked as in the day total add up to the screen's day totals.
 
