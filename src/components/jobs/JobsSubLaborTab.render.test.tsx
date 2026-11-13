@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, makeLaborJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobsSubLaborTab from './JobsSubLaborTab'
+import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 
 const narrow = { on: true }
 vi.mock('../../hooks/useIsNarrowScreen', () => ({ useIsNarrowScreen: () => narrow.on }))
@@ -134,5 +135,40 @@ describe('JobsSubLaborTab · an empty ledger (#184)', () => {
     expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No sub sheets match ‘zzz’. Clear the search')
     fireEvent.click(press)
     expect(onSubLaborSearchChange).toHaveBeenCalledWith('')
+  })
+})
+
+describe('JobsSubLaborTab · when a sheet was paid (#347)', () => {
+  it('a desk row says when its payments were made, and a paid sheet says the day it was paid in full (#347)', async () => {
+    narrow.on = false
+    const part = makeLaborJob({ id: 'sheet-part', job_number: 'S-300', payments: [{ id: 'p1', amount: 10, memo: null, created_at: '2026-10-21T15:00:00Z', payment_date: '2026-10-21' }] })
+    const full = makeLaborJob({ id: 'sheet-full', job_number: 'S-301' })
+    full.payments = [{ id: 'p2', amount: subLaborJobBalance(full).totalCost, memo: 'Zelle', created_at: '2026-11-02T15:00:00Z', payment_date: '2026-11-02' }]
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [part, full] })} />)
+    await settle()
+    const year = new Date().getFullYear() === 2026 ? '' : ', 2026'
+    expect(document.querySelector('[data-sub-pay-dates="sheet-part"]')?.textContent).toBe(`Oct 21${year}`)
+    // The paid sheet sits behind the Paid chip, with its day in the Paid cell and in Pay when.
+    fireEvent.click(screen.getByRole('button', { name: /^Paid/ }))
+    expect(document.querySelector('[data-sub-pay-dates="sheet-full"]')?.textContent).toBe(`Nov 2${year}`)
+    expect(document.body.textContent).toContain(`paid in full Nov 2${year}`)
+    expect(document.body.textContent).not.toContain('balance is $0')
+  })
+
+  it('on a phone a paid sheet reads the day it was paid in full', async () => {
+    narrow.on = true
+    const full = makeLaborJob({ id: 'sheet-full-phone', job_number: 'S-302' })
+    full.payments = [{ id: 'p3', amount: subLaborJobBalance(full).totalCost, memo: null, created_at: '2026-11-02T15:00:00Z', payment_date: '2026-11-02' }]
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [full] })} />)
+    await settle()
+    const year = new Date().getFullYear() === 2026 ? '' : ', 2026'
+    fireEvent.click(screen.getByRole('button', { name: /^Paid/ }))
+    const row = document.querySelector('[data-sub-pay-phone-row="sheet-full-phone"]') as HTMLElement | null
+    if (!row) {
+      // A sub's group opens on a tap when it is not open already.
+      const group = [...document.querySelectorAll('[data-sub-pay-phone] button')].find((b) => b.textContent?.includes('Sub Sam')) as HTMLElement
+      fireEvent.click(group)
+    }
+    expect((document.querySelector('[data-sub-pay-phone-row="sheet-full-phone"]') as HTMLElement).textContent).toContain(`paid in full Nov 2${year}`)
   })
 })
