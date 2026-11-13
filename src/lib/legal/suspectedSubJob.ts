@@ -71,7 +71,7 @@ export function suspectedSubJob(input: SuspectedSubJobInput): SuspectedSubJob {
   return { suspected: true, owner, customer, signals }
 }
 
-/** The desk's note: *Probably a subcontract on 891: the owner of record (Take 5 Properties) is not Burd & Assoc., and the customer is commercial.* */
+/** The desk's note: *Probably a subcontract on 891: the owner of record (Tune 5 Properties) is not Brund & Assoc., and the customer is commercial.* */
 export function suspectedSubJobLabel(jobLabel: string, s: Extract<SuspectedSubJob, { suspected: true }>): string {
   return `Probably a subcontract on ${jobLabel}: the owner of record (${s.owner}) is not ${s.customer}, and ${s.signals[0]}`
 }

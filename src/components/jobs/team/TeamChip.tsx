@@ -22,7 +22,7 @@ export function TeamChip({
   cell: TeamCell
   lens: 'job' | 'person'
   label: TeamTargetLabel | undefined
-  /** For unlinked cells: the dispatch block that day, already formatted ("J650 · ATI Schertz 8a–4p"). */
+  /** For unlinked cells: the dispatch block that day, already formatted ("J650 · AXO Schertz 8a–4p"). */
   suggestion?: string | null
   actions?: ReactNode
 }) {

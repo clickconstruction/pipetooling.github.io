@@ -36,7 +36,7 @@ export const CHASE_COLLECTIONS_SUGGESTION_THRESHOLD = 2
 export type ChaseBill = {
   invoiceId: string
   jobId: string
-  /** "964 · Pondhill demo" (falls back to the bare number on lean rows). */
+  /** "964 · Penmoor demo" (falls back to the bare number on lean rows). */
   label: string
   open: number
   /** Full line amount, for "partial paid" evidence (null when unknown). */

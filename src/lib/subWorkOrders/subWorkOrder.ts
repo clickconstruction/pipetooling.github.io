@@ -60,7 +60,7 @@ export type SubWorkOrderSnapshot = {
   anchor: 'sheet' | 'step' | 'job'
   lines: SubWorkOrderLine[]
   startsLabel: string | null
-  /** "J977 · 415 Springtown Way" — the portal card title for sheet work orders. */
+  /** "J977 · 415 Stonewick Way" — the portal card title for sheet work orders. */
   sheetLabel: string | null
   exclusions: string[]
   references: SubWorkOrderReference[]
@@ -164,7 +164,7 @@ export function parseSubWorkOrderSnapshot(raw: unknown): SubWorkOrderSnapshot {
   }
 }
 
-/** "J977 · 415 Springtown Way" / "415 Springtown Way" / "Sub sheet" — the sheet's name on every surface. */
+/** "J977 · 415 Stonewick Way" / "415 Stonewick Way" / "Sub sheet" — the sheet's name on every surface. */
 export function sheetWorkOrderLabel(sheet: { job_number?: string | null; address?: string | null }): string {
   const parts = [sheet.job_number, sheet.address].map((v) => (v ?? '').trim()).filter(Boolean)
   return parts.join(' · ') || 'Sub sheet'

@@ -52,7 +52,7 @@ export function LienLastWorkDayLine({
   setByName?: string | null
   /** After a save or a clear: the caller re-reads the job and the desk. */
   onSaved: () => void
-  /** "922 · Michael Palmer" — the window's subtitle. */
+  /** "922 · Michael Palvern" — the window's subtitle. */
   jobLabel?: string
   /** The months with approved hours (YYYY-MM), for the window's dates; the Edit Job row has none. */
   clockMonths?: ReadonlyArray<string>
