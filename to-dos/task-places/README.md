@@ -1,8 +1,8 @@
 ---
 name: "A place on a task: the giver marks where the work is, the doer gets the dot, the photo and directions, and Today opens on a map of my tasks"
 number: 328
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's go and her calls
+group: close
+status: built 2026-11-12 and 2026-11-13 on Grace's "Yes, build the entire train" · all eight PRs live and walked on clicktooling.com by 2026-11-13 14:50 UTC · four migrations applied · open for the notes below
 summary: >
   A task is words, a day and people. It cannot say where the work is, and on a large property the
   street address would not help anyway: the task is at the pump house, the north gate, a corner of
@@ -12,10 +12,11 @@ summary: >
   Today tab opens on a map of the tasks that have a place, in Task Mode and out of it. A task with
   no place is made and done exactly as today. The app asks a phone where it is only on a press and
   never saves where a doer is.
-next: Grace's go and her seven calls, then PR 1 (the place itself, no screen).
-size: L as a train of eight (S · M · M · M · S · M · M · S); PRs 1 to 4 are the whole loop, then a stop to count use
-blocker: Grace's go, and her calls on the photo, the map's home and the doer's press.
-opinion: build PRs 1 to 4, then count — three optional things like this are already in the app and almost nobody presses them, so the place has to cost one press or it will join them
+next: A real task gets a place and a photo, and its person walks to it: every walk so far fed the page made-up places. The notes under What should change next wait for Grace's word.
+size: L as a train of eight (S · M · M · M · S · M · M · S), built; left: notes only
+blocker: Nothing built is left. The notes are new behavior, so they wait for Grace's word (no major changes on Opus 5.5, 2026-11-13).
+opinion: count use in two weeks: how many tasks carry a place or a photo, and the presses on the Today map. Below a handful, leave it be.
+ver: v2.7058 · v2.7059 · v2.7061 · v2.7062 · v2.7063 · v2.7064 · v2.7066 · v2.7067
 ---
 
 # A place on a task (#328)
@@ -383,7 +384,32 @@ thing I would add if places catch on.
 
 ## Where it stands
 
-Card and mock-up, 2026-11-12. Nothing built, no migration written, no number claimed past this
-card's. The reading is on main as of that day, with Task Mode's rename (v2.7050) armed and not yet
-merged, so the mode's files are named in words here and not by path. The counts were read without
-writing anything and are in this card as counts only.
+All eight PRs are on main and live, 2026-11-13. The four migrations are applied (`20261112220000`, `…230000`, `20261113000000`, `20261113010000`) and their types are on main (#7840, #7901, #7927, #7925).
+
+| PR | Version | What | Live |
+|---|---|---|---|
+| #7828 | v2.7058 | the place itself, no screen | 2026-11-13 |
+| #7829 | v2.7059 | the giver's Place row and *Where is it?* | 2026-11-13 |
+| #7830 | v2.7061 | the place on the doer's card, *How far am I?*, Directions | 2026-11-13 |
+| #7831 | v2.7062 | *Where my tasks are* at the top of Today | 2026-11-13 |
+| #7832 | v2.7063 | a roadmap task carries a place | 2026-11-13 |
+| #7836 | v2.7064 | the giver's photo of the spot | 08:41 UTC |
+| #7837 | v2.7066 | the leader's map on Review | 10:37 UTC |
+| #7838 | v2.7067 | the doer adds a missing place | about 14:00 UTC |
+
+**Walked live** on clicktooling.com, signed in, every write refused, phone and desk. No task on the record had a place yet, so each walk fed the page's own read made-up places, and the doer's *Add this place* call was answered with a made-up success. What was seen:
+
+- The giver's Place row and *Where is it?*: the map draws, *Use where I am* reads, Cancel closes the sheet alone.
+- *Where my tasks are* on Today: the dot, a press shows the task, the place line, the place block, *How far am I?* and Directions to Google Maps.
+- The photo of the spot on the doer's card and in Add a task.
+- The leader's map: both dots, the people chips, the line under the map, a press on a dot.
+- The doer's *Standing at this task? Add its place*: the reading, the name, one call with the task, the reading and the name, and the place on the row after.
+- **A fault found and fixed:** on the roadmap, *Where is it?* opened behind the Add task window and a task's card. It came with #7832 and was fixed in #7836 (`windowLayers.ts` names the roadmap's layers); it was live and broken from #7832's deploy, soon after 05:47 UTC, until 08:41 UTC.
+
+**Not seen yet:** a real save. The first real place set on a real task, opened on a second phone, is the true test.
+
+## What should change next (notes, not built)
+
+- **A far-off task pulls the frame.** Both maps fit every dot, so one task miles away shrinks the rest to a cluster. A frame that fits the near dots and names the far one in words may read better. New behavior, so a note.
+- **A repeating task's tick may skip the photo at the finish.** `ChecklistInstanceCard.tsx` ticks a repeating task through `onToggleComplete` directly, past the ring that asks for the photo. Not checked; it belongs to the task cards card (#273).
+- **The roadmap's Add task gains the photo of the spot** with #331's PR 4 (#7876), not yet merged.
