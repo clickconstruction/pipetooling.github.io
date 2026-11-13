@@ -78,7 +78,7 @@ import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../..
 import type { PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
 import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
-import { calendarFor, calendarSourceFor, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { calendarFor, calendarSourceFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -1226,7 +1226,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             }}
             style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
           >
-            No pay calendar on this job
+            {JOB_NO_CALENDAR_WORDS}
           </button>
         ) : null}
         {calendar && clock && canMarkPromisedPay && inv ? (

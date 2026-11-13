@@ -222,6 +222,9 @@ export function asPayCalendarRead(arg: PayCalendarArg): PayCalendarRead {
   return { calendar: arg, from: 'payer', payerCalendar: arg }
 }
 
+/** What a job switched off reads, on its row, in the job window and in its payer's window: one home, so the three never drift. It is a state and the press back to it, not an empty list. */
+export const JOB_NO_CALENDAR_WORDS = 'No pay calendar on this job'
+
 /** The words that mark a calendar as one job's own, wherever a row says its calendar (punch list #341). */
 export const OWN_CALENDAR_WORDS = 'This job’s own'
 
@@ -250,7 +253,7 @@ export function jobPayCalendarWords(read: PayCalendarRead, payerName: string | n
   if (read.from === 'off') {
     return {
       lead: null,
-      press: 'No pay calendar on this job',
+      press: JOB_NO_CALENDAR_WORDS,
       tail: read.payerCalendar ? `${who} has one` : null,
       title: 'This job reads the usual guess: the bill date plus how long they take to pay.',
     }

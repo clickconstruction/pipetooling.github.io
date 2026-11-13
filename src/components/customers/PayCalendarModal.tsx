@@ -11,6 +11,7 @@ import { batchOutcomeWords } from '../../lib/batchWords'
 import { isStagesOfficeRole } from '../../lib/jobs/stagesRoleGates'
 import { dispatchPayCalendarChanged, loadDevelopmentJobIds, loadPayCalendarJobs, loadPayerPayCalendars, loadPayerReceipts, savePayCalendar, type PayCalendarJobFacts, type PayCalendarSave } from '../../lib/jobs/payCalendarIo'
 import {
+  JOB_NO_CALENDAR_WORDS,
   PAY_CALENDAR_CLAUSE_MAX,
   PAY_CALENDAR_CUTOFF_MAX,
   PAY_CALENDAR_DEFAULT,
@@ -432,7 +433,7 @@ export default function PayCalendarModal({
                     <span style={{ fontWeight: 600 }}>{label}</span>
                   )}
                   <span style={{ display: 'block', fontSize: '0.75rem', color: stale ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-                    {r.off || !r.calendar ? 'No pay calendar on this job' : `Its own: ${payCalendarShort(r.calendar)}`}
+                    {r.off || !r.calendar ? JOB_NO_CALENDAR_WORDS : `Its own: ${payCalendarShort(r.calendar)}`}
                     {stale ? `. ${payerName} no longer pays this job, so no bill reads it.` : ''}
                   </span>
                 </div>
