@@ -74,7 +74,7 @@ describe('BilledDatesLedger (v2.4205)', () => {
     fireEvent.click(screen.getByTestId('ledger-verdict'))
     expect(onMoney).toHaveBeenCalledTimes(1)
     document.body.innerHTML = ''
-    const { container } = render(<BilledDatesLedger ledger={{ rows: [], verdict: null, full: '' }} />)
+    const { container } = render(<BilledDatesLedger ledger={{ rows: [], verdict: null, full: '', lienTab: null }} />)
     expect(container.innerHTML).toBe('')
   })
 
@@ -92,6 +92,8 @@ describe('BilledDatesLedger (v2.4205)', () => {
     expect(screen.queryByTestId('ledger-sub-notice')).toBeNull()
     fireEvent.click(line)
     expect(onLienDesk).toHaveBeenCalledTimes(1)
+    // v2.7046: the press says which paper the line names, so the Lien window opens on its tab.
+    expect(onLienDesk).toHaveBeenCalledWith('notice')
   })
 
   it('the notice’s state (v2.5491) sits under the lien row in its tone, the sentence as its hover', () => {

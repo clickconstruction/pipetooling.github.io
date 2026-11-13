@@ -13,7 +13,7 @@ import { loadPaidClaims } from '../lib/jobs/paidClaimsIo'
 import type { PaceFacts } from '../lib/jobs/payPace'
 import { loadPaceFacts } from '../lib/jobs/payPaceIo'
 import { indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
-import { loadPayCalendars } from '../lib/jobs/payCalendarIo'
+import { loadInvoiceAcceptances, loadPayCalendars } from '../lib/jobs/payCalendarIo'
 import {
   buildCustomerPromiseRecords,
   classifyPromises,
@@ -46,6 +46,8 @@ export type BilledMoneyData = {
   /** The stored Pay calendars (punch list #323), keyed for `calendarFor`; null until read. A payer on one reads Due on its billed rows. */
   payCalendars: PayCalendarIndex | null
   loadPayCalendars: () => Promise<void>
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id; null until read. A calendar counts its cutoff from it. */
+  acceptedByInvoice: ReadonlyMap<string, string> | null
 }
 
 /**
@@ -158,12 +160,19 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
   // The Pay calendars (punch list #323): a payer who pays on a set day of the month reads Due on its rows. Fail-soft:
   // a read that fails, or a table not pushed yet, leaves every row on the pace guess.
   const [payCalendars, setPayCalendars] = useState<PayCalendarIndex | null>(null)
+  const [acceptedByInvoice, setAcceptedByInvoice] = useState<ReadonlyMap<string, string> | null>(null)
   const reloadPayCalendars = useCallback(async () => {
     if (!canSeeBilledExpectedPay) return
     try {
       setPayCalendars(indexPayCalendars(await loadPayCalendars(supabase)))
     } catch {
       // glanceable extra — never block the tab
+    }
+    // The accepted days ride the same reload: the window that sets one asks for the calendars again when it closes.
+    try {
+      setAcceptedByInvoice(await loadInvoiceAcceptances(supabase))
+    } catch {
+      // glanceable extra — every bill then counts from the day it went in
     }
   }, [canSeeBilledExpectedPay])
   useEffect(() => {
@@ -184,5 +193,6 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     paceFacts,
     payCalendars,
     loadPayCalendars: reloadPayCalendars,
+    acceptedByInvoice,
   }
 }
