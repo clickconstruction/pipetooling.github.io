@@ -71,6 +71,8 @@ Card #346 (*People → Subs shows what makes up what we owe each sub*, PR #7976)
 
 Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job → sheet → lines). This one's is `subPaymentsLedger` (lines by date).
 
+**Card #350 (sub papers, `to-dos/sub-papers-statement-of-account/`)** is the same money as PDFs to hand a sub. Its *Statement of account…* press sits on this card's by-sub statement, and its payment record prints what Record payment saved. It draws no second ledger and no second payment window. What it needs from this card is listed on its own card under *What this card asks of card #347*: read that list before building PR 3 or PR 4 here, since two of its asks land on them. One is a single sending recorded once across several sheets. The other is a number for each sending that is never reused.
+
 ## Where it plugs in
 
 | Piece | Exists | New |
