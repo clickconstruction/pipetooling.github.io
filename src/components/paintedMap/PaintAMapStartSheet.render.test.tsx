@@ -56,7 +56,7 @@ describe('PaintAMapStartSheet', () => {
   it('says a map with no home is the painter\'s and the office\'s, and closes on Cancel', () => {
     let closed = 0
     render(<PaintAMapStartSheet home={{}} onStart={() => {}} onClose={() => (closed += 1)} />)
-    expect(screen.getByText(/It is yours and the office’s until it is put on a job/)).toBeTruthy()
+    expect(screen.getByText(/It is on no job yet/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(closed).toBe(1)
   })

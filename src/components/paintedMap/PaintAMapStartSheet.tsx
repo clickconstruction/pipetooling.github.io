@@ -104,12 +104,12 @@ export function PaintAMapStartSheet({ home, onStart, onClose }: Props) {
             ) : home.jobId || home.developmentId ? (
               <span style={{ fontSize: '0.9375rem' }}>{(home.jobId ? home.label : home.developmentLabel) || (home.jobId ? 'This job' : 'This development')}</span>
             ) : (
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Nothing yet. It is yours and the office’s until it is put on a job.</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>It is on no job yet. It stays yours and the office’s until it is put on one.</span>
             )}
             {both && forSite ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>It will show on every job in the development.</span> : null}
           </div>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
-            Draw a line by hand on the view from above: press along the way, and each press is a corner. Or start with a place, such as the gate. Nothing is saved until you save a line or a place.
+            Draw a line by hand on the view from above: press along the way, and each press is a corner. Or start with a place, such as the gate. The map is saved with its first line or place.
           </p>
           <button type="button" data-paint-a-map-go onClick={() => start('line')} style={{ minHeight: 52, borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
             Start drawing

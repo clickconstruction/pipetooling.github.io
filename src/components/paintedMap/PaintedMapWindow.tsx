@@ -635,7 +635,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
                   <button type="button" data-painted-save style={canSaveDraftLine(draft) && !busy ? { ...bluePress, minHeight: 52 } : { ...deadPress, minHeight: 52 }} disabled={!canSaveDraftLine(draft) || busy} onClick={() => void saveLine()}>
                     {busy ? 'Saving…' : reshaping ? 'Save the line' : saved ? 'Save the line' : 'Save the map'}
                   </button>
-                  {!saved ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing is saved until you press Save the map.</p> : null}
+                  {!saved ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>The map is saved when you press Save the map, and not before.</p> : null}
                 </>
               ) : (
                 <>
@@ -672,7 +672,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
 
                   {lines.length === 0 && places.length === 0 ? (
                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                      Nothing is painted on this map yet. Press Draw a line or ＋ Place to start it.{saved ? '' : ' Nothing is saved until then.'}
+                      Nothing is painted on this map yet. Press Draw a line or ＋ Place to start it.{saved ? '' : ' The map is saved with its first line or place.'}
                     </p>
                   ) : lines.length === 0 ? null : (
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
