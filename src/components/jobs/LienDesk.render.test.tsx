@@ -1332,7 +1332,10 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650', true), ready('aff2', 'j651', true), ready('aff3', 'j652', false)])} initialKind="affidavit" />)
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
-    expect(bar.textContent).toContain('2 affidavits on the short form are ready to file.')
+    // The status line (v2.7209): the count in short, and the old sentence's fact as its tip. No paper is held, so no amber press.
+    expect(bar.querySelector('[data-lien-affidavit-print-ready]')?.textContent).toBe('2 ready to print')
+    expect(bar.querySelector('[data-lien-affidavit-print-ready]')?.getAttribute('title')).toBe('2 affidavits on the short form are ready to file.')
+    expect(bar.querySelector('[data-lien-affidavit-print-held]')).toBeNull()
     expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')?.textContent).toBe('1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.')
     fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
     expect(openPrintMock).toHaveBeenCalledTimes(1)
@@ -1361,7 +1364,9 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
     const box = within(bar.querySelector('[data-lien-affidavit-help-sheet]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
-    expect(bar.querySelector('[data-lien-affidavit-help-sheet]')?.textContent).toBe('Print the help sheet first')
+    // A chip under *Print with* (v2.7209): still a tick box, with the same stored choice.
+    expect(bar.querySelector('[data-lien-affidavit-help-sheet]')?.textContent).toBe('Help sheet')
+    expect(within(bar).getByRole('group', { name: 'Print with' }).contains(box)).toBe(true)
     expect(box.checked).toBe(true)
     fireEvent.click(box)
     expect(box.checked).toBe(false)
@@ -1390,11 +1395,13 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
     const recordBox = within(bar.querySelector('[data-lien-affidavit-notice-record]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
-    expect(bar.querySelector('[data-lien-affidavit-notice-record]')?.textContent).toBe('Print the notice record')
+    expect(bar.querySelector('[data-lien-affidavit-notice-record]')?.textContent).toBe('Notice record')
     expect(recordBox.checked).toBe(true)
     // The copies are the one box that starts unticked, and it says what it costs.
     const copiesBox = within(bar.querySelector('[data-lien-affidavit-notice-copies]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
-    expect(bar.querySelector('[data-lien-affidavit-notice-copies]')?.textContent).toBe('Add a copy of each notice (1 more page)')
+    expect(bar.querySelector('[data-lien-affidavit-notice-copies]')?.textContent).toBe('Notice copies, 1 page')
+    // The three chips keep the order the boxes had: help sheet, notice record, copies.
+    expect(within(within(bar).getByRole('group', { name: 'Print with' })).getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(['Help sheet', 'Notice record', 'Notice copies, 1 page'])
     expect(copiesBox.checked).toBe(false)
     fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
     let html = openPrintMock.mock.calls[0]![0]
@@ -1434,14 +1441,60 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
     await settle()
     const bar = document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
-    expect(bar.textContent).toContain('2 affidavits on the short form are ready to file.')
-    expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')?.textContent).toBe('1 ready affidavit is held by a gate and is left out. Its row says why.')
-    // The county box opens blank with no county in Settings, and says the notary writes it.
+    expect(bar.querySelector('[data-lien-affidavit-print-ready]')?.textContent).toBe('2 ready to print')
+    // The held paper is an amber press beside the count (v2.7209), not a grey line at the foot. Its tip keeps the old sentence.
+    const held = within(bar).getByRole('button', { name: /1 held, not in this print/ })
+    expect(held.getAttribute('title')).toBe('1 ready affidavit is held by a gate and is left out. Its row says why.')
+    expect(held.getAttribute('aria-pressed')).toBe('false')
+    expect(bar.querySelector('[data-lien-affidavit-print-all-foot]')).toBeNull()
+    // Pressed, the list narrows to the held paper, whose row says why, and a line over it offers the way back.
+    const rowJobs = () => Array.from(document.querySelectorAll('button')).map((b) => b.textContent ?? '').filter((t) => /last work/.test(t))
+    expect(rowJobs()).toHaveLength(3)
+    fireEvent.click(held)
+    expect(held.getAttribute('aria-pressed')).toBe('true')
+    expect(rowJobs()).toHaveLength(1)
+    expect(rowJobs()[0]).toContain('652')
+    expect(rowJobs()[0]).toContain('missing')
+    const strip = document.querySelector('[data-lien-affidavit-held-only]') as HTMLElement
+    expect(strip.textContent).toContain('Showing the 1 held paper. Its row says why.')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Show every paper' }))
+    expect(rowJobs()).toHaveLength(3)
+    expect(document.querySelector('[data-lien-affidavit-held-only]')).toBeNull()
+    // The press is its own way back too.
+    fireEvent.click(held)
+    expect(rowJobs()).toHaveLength(1)
+    fireEvent.click(held)
+    expect(rowJobs()).toHaveLength(3)
+    // The county is one line (v2.7209): the empty box says in grey that the notary writes it, and nothing stands under it.
     const county = bar.querySelector('[data-lien-signing-county] input') as HTMLInputElement
     expect(county.value).toBe('')
-    expect(bar.querySelector('[data-lien-signing-county-hint]')?.textContent).toBe('Left blank, the notary writes both county lines by hand. Type the county where it is signed to print it.')
+    expect(county.placeholder).toBe('the notary writes it')
+    const tip = bar.querySelector('[data-lien-signing-county-hint]') as HTMLElement
+    expect(tip.hidden).toBe(true)
+    // The paragraph is behind the ?, and it is the box's own description whether or not it is open.
+    expect(county.getAttribute('aria-describedby')).toBe(tip.id)
+    expect(tip.textContent).toBe('Type the county where it is signed to print it on both county lines.')
+    const ask = within(bar).getByRole('button', { name: 'About the county it is signed in' })
+    // The keyboard's focus opens it and leaving closes it; a tap opens it and a second tap closes it; Escape closes it.
+    fireEvent.focus(ask)
+    expect(tip.hidden).toBe(false)
+    expect(ask.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.blur(ask)
+    expect(tip.hidden).toBe(true)
+    fireEvent.click(ask)
+    expect(tip.hidden).toBe(false)
+    fireEvent.click(ask)
+    expect(tip.hidden).toBe(true)
+    fireEvent.click(ask)
+    fireEvent.keyDown(ask, { key: 'Escape' })
+    expect(tip.hidden).toBe(true)
+    // A tap somewhere else closes a tip a tap opened.
+    fireEvent.click(ask)
+    expect(tip.hidden).toBe(false)
+    fireEvent(document.body, new MouseEvent('pointerdown', { bubbles: true }))
+    expect(tip.hidden).toBe(true)
     fireEvent.change(county, { target: { value: 'Travis' } })
-    expect(bar.querySelector('[data-lien-signing-county-hint]')?.textContent).toBe('Both county lines print Travis County. Signing somewhere else? Type that county for this print.')
+    expect(tip.textContent).toBe('Both county lines print Travis County. Signing somewhere else? Type that county for this print.')
     fireEvent.click(within(bar).getByRole('button', { name: 'Print 2 for notarization' }))
     const html = openPrintMock.mock.calls[0]![0]
     expect(html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(2)
