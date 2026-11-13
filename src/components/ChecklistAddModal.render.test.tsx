@@ -45,6 +45,10 @@ vi.mock('./checklist/TaskSpotPhotoField', () => ({
 const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
 // Rows the modal updates after the insert (the card's tag, punch list #334).
 const updated = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
+// The roster and the rows a table lists (v2.7085, the faces): one made-up person unless a test fills them.
+const ONE_PERSON = vi.hoisted(() => [{ id: 'smoke-auth-user', name: 'Robert', email: 'smoke@example.com', role: 'dev' }])
+const db = vi.hoisted(() => ({ users: [] as Array<{ id: string; name: string; email: string; role: string }>, rows: {} as Record<string, unknown[]> }))
+db.users = ONE_PERSON
 
 vi.mock('../lib/supabase', () => {
   // Table-aware stub: the generic renderSmokeMocks stub resolves single() to
@@ -69,15 +73,12 @@ vi.mock('../lib/supabase', () => {
       listPromise().then(f, r)
     return builder
   }
-  const users = [
-    { id: 'smoke-auth-user', name: 'Robert', email: 'smoke@example.com', role: 'dev' },
-  ]
   return {
     supabase: {
       from: (table: string) =>
         table === 'users'
-          ? makeBuilder(table, users, { role: 'dev' })
-          : makeBuilder(table, [], table === 'checklist_items' ? { id: 'item-1' } : null),
+          ? makeBuilder(table, db.users, { role: 'dev' })
+          : makeBuilder(table, db.rows[table] ?? [], table === 'checklist_items' ? { id: 'item-1' } : null),
     },
   }
 })
@@ -120,8 +121,15 @@ async function renderOpenModal(keepsOpen?: boolean) {
   // Wait for the users fetch to settle: the form-reset effect re-fires when the
   // list lands, so typing before that would be wiped.
   await screen.findByText('Robert')
+  // And for the window to settle on its first person: Send names them from then on.
+  await screen.findByRole('button', { name: 'Send to Robert' })
   return screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement
 }
+
+/** The bar's Send. The one person on the roster is not the signed-in giver, so it names them. */
+const sendPress = () => screen.getByRole('button', { name: 'Send to Robert' }) as HTMLButtonElement
+/** A press on the Add row, by its key. */
+const addPress = (key: string) => document.querySelector<HTMLButtonElement>(`[data-add-press="${key}"]`)!
 
 describe('ChecklistAddModal "Go to checklist" button', () => {
   it('navigates behind the modal and keeps the draft open by default', async () => {
@@ -144,19 +152,22 @@ describe('ChecklistAddModal "Go to checklist" button', () => {
 })
 
 describe('ChecklistAddModal Done when… and the ring (v2.6617)', () => {
-  it('says what the closed fold is for, shows the photo switch beside it, and names what the card carries', async () => {
-    await renderOpenModal()
-    expect(screen.getByTestId('done-when-hint').textContent).toBe('what done means, one line each, ticked off on the card')
-    const photo = screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement
-    expect(photo.checked).toBe(false)
+  it('keeps Done when… and the photo as presses on the Add row, and the sentence names what the card carries', async () => {
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Rack the pipe' } })
+    expect(addPress('lines').textContent).toBe('+ Done when…')
+    expect(addPress('photo').textContent).toBe('+ Photo at the finish')
+    expect(addPress('photo').getAttribute('aria-pressed')).toBe('false')
     expect(screen.queryByLabelText('Done when')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Show done when' }))
-    expect(screen.queryByTestId('done-when-hint')).toBeNull()
+    fireEvent.click(addPress('lines'))
     fireEvent.change(screen.getByLabelText('Done when'), { target: { value: 'Pipe is racked by size\nFittings are in labeled bins' } })
-    expect((screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText(/stays until completed, 2 Done when… lines, a photo at the finish\./)).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('Asks for a photo at the finish'))
-    expect(screen.getByText(/stays until completed, 2 Done when… lines\./)).toBeTruthy()
+    // A line written turns the photo on by itself, until the writer touches the switch.
+    expect(addPress('lines').textContent).toBe('✓ Done when… · 2 lines')
+    expect(addPress('photo').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('status').textContent).toContain('It has 2 Done when… lines and asks for a photo at the finish.')
+    fireEvent.click(addPress('photo'))
+    expect(addPress('photo').textContent).toBe('+ Photo at the finish')
+    expect(screen.getByRole('status').textContent).toContain('It has 2 Done when… lines.')
     cleanup()
   })
 
@@ -171,15 +182,47 @@ describe('ChecklistAddModal Done when… and the ring (v2.6617)', () => {
   })
 })
 
-describe('ChecklistAddModal Send buttons', () => {
-  it('shows a header Send only once a title is typed, beside the footer Send', async () => {
+describe('ChecklistAddModal Send (v2.7085)', () => {
+  it('holds Send dead until a task is typed, says why, and names who gets it', async () => {
     const title = await renderOpenModal()
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    expect(sendPress().disabled).toBe(true)
+    expect(screen.getByRole('status').textContent).toBe('Type the task first.')
+    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
     fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+    expect(sendPress().disabled).toBe(false)
+    expect(screen.getByRole('status').textContent).toBe('Robert gets it today. It stays until it is done. You hear when it is done.')
     fireEvent.change(title, { target: { value: '   ' } })
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+    expect(sendPress().disabled).toBe(true)
+    cleanup()
+  })
+
+  it('keeps a second Send at the top of a phone once a title is typed', async () => {
+    phoneViewport = true
+    try {
+      const title = await renderOpenModal()
+      expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
+      fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
+      expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+      expect(sendPress().disabled).toBe(false)
+    } finally {
+      phoneViewport = false
+      cleanup()
+    }
+  })
+
+  it('the bell beside Send is Tell me when it is done, lit, and a press stores it off', async () => {
+    inserted.length = 0
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    const bell = screen.getByRole('button', { name: "Tell me when it's done" })
+    expect(bell.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(bell)
+    expect(screen.getByRole('status').textContent).toBe('Robert gets it today. It stays until it is done.')
+    fireEvent.click(sendPress())
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    expect((inserted.find((r) => r.table === 'checklist_items')!.row as { notify_creator_on_complete: boolean }).notify_creator_on_complete).toBe(false)
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     cleanup()
   })
 })
@@ -266,6 +309,7 @@ async function renderOpenModalWithJob() {
     </ChecklistAddModalProvider>,
   )
   await screen.findByText('Robert')
+  await screen.findByRole('button', { name: 'Send to Robert' })
   return screen.getByPlaceholderText('What needs doing on this job?') as HTMLTextAreaElement
 }
 
@@ -278,12 +322,12 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     expect(bar.textContent).toContain('1016 PLUM')
     expect(bar.textContent).toContain('Mission faucet')
     expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Inglow')
-    // The raw grammar never reaches the box; the header Send waits for typed text.
+    // The raw grammar never reaches the box; Send waits for typed text.
     expect(screen.queryByDisplayValue(/\{\{1:/)).toBeNull()
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+    expect(sendPress().disabled).toBe(true)
     fireEvent.change(title, { target: { value: '  Pick up the Moen cartridge ' } })
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    expect(sendPress().disabled).toBe(false)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as { title: string; links: string[] }
     expect(row.title).toBe('{{1:1016 · Mission faucet}} — Pick up the Moen cartridge')
@@ -296,10 +340,12 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
   it('× on the bar makes it an ordinary task: bar and link gone, the box keeps what was typed', async () => {
     const title = await renderOpenModalWithJob()
     fireEvent.change(title, { target: { value: 'Call the inspector back' } })
-    expect(screen.getByText('(1)')).toBeTruthy()
+    // The job is the task's first link, and its panel stays closed behind the bar.
+    expect(addPress('link').textContent).toBe('✓ 1 link')
+    expect(screen.queryByTestId('new-task-panel-link')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Remove job' }))
     expect(screen.queryByTestId('checklist-add-job-bar')).toBeNull()
-    expect(screen.queryByText('(1)')).toBeNull()
+    expect(addPress('link').textContent).toBe('+ Link')
     const plain = screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement
     expect(plain.value).toBe('Call the inspector back')
     cleanup()
@@ -351,6 +397,9 @@ describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () 
   it('a one-off on today draws only once it has a due day', async () => {
     await renderOpenModal()
     expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+    // Due by is a press on the Add row now; its date box opens under the row.
+    expect(document.querySelector('input[type="date"]')).toBeNull()
+    fireEvent.click(addPress('due'))
     const today = document.querySelector<HTMLInputElement>('input[type="date"]')!.min
     const due = new Date(today + 'T12:00:00')
     due.setDate(due.getDate() + 3)
@@ -360,7 +409,183 @@ describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () 
     expect(calendar).not.toBeNull()
     expect(landing()).toEqual([today])
     expect(calendar.querySelector(`[data-cal-day="${dueYmd}"]`)!.getAttribute('data-due')).toBe('true')
+    // A due day keeps the task until it is done, so Just for the day leaves the row.
+    expect(addPress('due').textContent).toMatch(/^✓ Due by /)
+    expect(addPress('oneDay')).toBeNull()
     cleanup()
+  })
+})
+
+/* ── the New task window's rows (punch list #331, v2.7085) ─────────────────── */
+
+// Made-up people. The signed-in giver is on this roster, so the faces lead with Me.
+const CREW_ROSTER = [
+  { id: 'smoke-auth-user-1', name: 'Rosa', email: 'rosa@example.com', role: 'dev' },
+  { id: 'theo', name: 'Theo', email: 'theo@example.com', role: 'helpers' },
+  { id: 'imani', name: 'Imani', email: 'imani@example.com', role: 'helpers' },
+  { id: 'wes', name: 'Wes', email: 'wes@example.com', role: 'helpers' },
+]
+
+async function renderWithRoster() {
+  db.users = CREW_ROSTER
+  // The giver's last task went to Theo, so Theo has a face. Imani and Wes are reached through Someone else.
+  db.rows = { checklist_items: [{ id: 't1' }], checklist_item_assignees: [{ checklist_item_id: 't1', user_id: 'theo' }] }
+  renderWithProviders(
+    <ChecklistAddModalProvider>
+      <OpenOnMount />
+      <ChecklistAddModal />
+    </ChecklistAddModalProvider>,
+  )
+  await screen.findByRole('button', { name: 'Theo' })
+  await screen.findByRole('button', { name: 'Add to my list' })
+  return screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement
+}
+const restoreRoster = () => {
+  db.users = ONE_PERSON
+  db.rows = {}
+  cleanup()
+}
+const faceNames = () => Array.from(screen.getByTestId('new-task-faces').querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))
+
+describe('ChecklistAddModal as New task (punch list #331)', () => {
+  it('is called New task and opens on the giver, for today', async () => {
+    try {
+      const title = await renderWithRoster()
+      expect(screen.getByRole('dialog').getAttribute('aria-labelledby')).toBe('checklist-add-modal-title')
+      expect(document.getElementById('checklist-add-modal-title')!.textContent).toBe('New task')
+      expect(faceNames()).toEqual(['Me', 'Theo'])
+      expect(screen.getByRole('button', { name: 'Me' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-pressed')).toBe('true')
+      fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+      expect(screen.getByRole('status').textContent).toBe('It goes on your list today. It stays until it is done.')
+      expect(screen.getByRole('button', { name: 'Add to my list' })).toBeTruthy()
+      // A task that is only the giver's has nobody to tell.
+      expect(screen.queryByRole('button', { name: "Tell me when it's done" })).toBeNull()
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('one press on a face gives the task to that person and takes the giver off', async () => {
+    try {
+      inserted.length = 0
+      const title = await renderWithRoster()
+      fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Theo' }))
+      expect(screen.getByRole('button', { name: 'Me' }).getAttribute('aria-pressed')).toBe('false')
+      expect(screen.getByRole('status').textContent).toBe('Theo gets it today. It stays until it is done. You hear when it is done.')
+      fireEvent.click(screen.getByRole('button', { name: 'Send to Theo' }))
+      await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_item_assignees')).toBe(true))
+      const sent = inserted.find((r) => r.table === 'checklist_item_assignees')!.row as Array<{ user_id: string }>
+      expect(sent.map((r) => r.user_id)).toEqual(['theo'])
+      await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('Someone else opens the full list in place, and a person picked there takes a face after Me', async () => {
+    try {
+      const title = await renderWithRoster()
+      fireEvent.change(title, { target: { value: 'Walk the north fence' } })
+      const everyone = screen.getByTestId('new-task-everyone')
+      expect(everyone.hidden).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Someone else' }))
+      expect(everyone.hidden).toBe(false)
+      expect(screen.getByRole('button', { name: 'Someone else' }).getAttribute('aria-expanded')).toBe('true')
+      fireEvent.click(screen.getByLabelText('Imani'))
+      expect(faceNames()).toEqual(['Me', 'Imani', 'Theo'])
+      expect(screen.getByRole('button', { name: 'Imani' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Send to Imani' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Theo' }))
+      expect(screen.getByRole('button', { name: 'Send to Imani and Theo' })).toBeTruthy()
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('Tomorrow is one press and stores the next day as a dated task', async () => {
+    try {
+      inserted.length = 0
+      const title = await renderWithRoster()
+      fireEvent.change(title, { target: { value: 'Check the water troughs' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
+      expect(screen.getByRole('button', { name: 'Tomorrow' }).getAttribute('aria-pressed')).toBe('true')
+      expect(document.querySelector('input[type="date"]')).toBeNull()
+      expect(screen.getByRole('status').textContent).toMatch(/^It goes on your list tomorrow\./)
+      fireEvent.click(screen.getByRole('button', { name: 'Add to my list' }))
+      await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+      const row = inserted.find((r) => r.table === 'checklist_items')!.row as { start_date: string; repeat_type: string }
+      const now = new Date()
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      expect(row.start_date).toBe(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`)
+      expect(row.repeat_type).toBe('once')
+      await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('Pick a day opens the date box, and the segment then reads the day', async () => {
+    try {
+      await renderWithRoster()
+      fireEvent.click(screen.getByRole('button', { name: 'Pick a day' }))
+      const box = document.querySelector<HTMLInputElement>('input[type="date"]')!
+      fireEvent.change(box, { target: { value: '2031-03-17' } })
+      expect(screen.getByRole('group', { name: 'When' }).textContent).toContain('Mon 17')
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('a rare thing opens under the Add row by its press, one at a time, and shows its value once set', async () => {
+    try {
+      inserted.length = 0
+      const title = await renderWithRoster()
+      fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+      expect(Array.from(document.querySelectorAll('[data-add-press]')).map((b) => b.textContent)).toEqual([
+        '+ Remind',
+        '+ Tell someone else',
+        '+ Link',
+        '+ Due by',
+        '+ Done when…',
+        '+ Photo at the finish',
+        '+ Just for the day',
+      ])
+      expect(screen.queryByTestId('new-task-panel-remind')).toBeNull()
+      fireEvent.click(addPress('remind'))
+      fireEvent.click(screen.getByRole('button', { name: 'Morning 7:00' }))
+      expect(addPress('remind').textContent).toBe('✓ Remind · Morning 7:00')
+      fireEvent.click(addPress('link'))
+      expect(screen.queryByTestId('new-task-panel-remind')).toBeNull()
+      fireEvent.change(screen.getByLabelText('Link 1'), { target: { value: 'https://example.com/pump-manual' } })
+      expect(addPress('link').textContent).toBe('✓ 1 link')
+      fireEvent.click(addPress('oneDay'))
+      expect(addPress('oneDay').getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('status').textContent).toContain('It leaves the list when that day ends.')
+      fireEvent.click(screen.getByRole('button', { name: 'Add to my list' }))
+      await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+      expect(inserted.find((r) => r.table === 'checklist_items')!.row).toMatchObject({
+        reminder_time: '07:00',
+        links: ['https://example.com/pump-manual'],
+        show_until_completed: false,
+      })
+      await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    } finally {
+      restoreRoster()
+    }
+  })
+
+  it('a repeating task leaves Due by and Just for the day off the row', async () => {
+    try {
+      await renderWithRoster()
+      fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+      expect(addPress('due')).toBeNull()
+      expect(addPress('oneDay')).toBeNull()
+      expect(screen.getByRole('status').textContent).toBe('Type the task first.')
+    } finally {
+      restoreRoster()
+    }
   })
 })
 
@@ -371,7 +596,7 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     const title = await renderOpenModal()
     expect((await screen.findByRole('button', { name: 'Pump house' })).getAttribute('aria-pressed')).toBe('false')
     fireEvent.change(title, { target: { value: 'Order hose clamps' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
     expect(Object.keys(row).filter((k) => k.startsWith('place_'))).toEqual([])
@@ -387,7 +612,7 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Pump house' }))
     expect(screen.getByRole('button', { name: 'Pump house' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
     expect(row).toMatchObject({ place_name: 'Pump house', place_lat: 29.5512, place_lng: -98.2874, place_accuracy_m: 6, place_set_by: 'smoke-auth-user-1' })
@@ -472,7 +697,7 @@ describe('ChecklistAddModal photo of the spot (punch list #328, PR 6)', () => {
     fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
     fireEvent.click(screen.getByRole('button', { name: 'stub: take the photo' }))
     expect(screen.getByRole('button', { name: 'photo held' })).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(spotPhotoIo.puts).toEqual(['item/item-1/p1']))
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     cleanup()
@@ -483,7 +708,7 @@ describe('ChecklistAddModal photo of the spot (punch list #328, PR 6)', () => {
     spotPhotoIo.puts = []
     const title = await renderOpenModal()
     fireEvent.change(title, { target: { value: 'Order hose clamps' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     expect(spotPhotoIo.puts).toEqual([])
     cleanup()
@@ -496,7 +721,7 @@ describe('ChecklistAddModal photo of the spot (punch list #328, PR 6)', () => {
     const title = await renderOpenModal()
     fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
     fireEvent.click(screen.getByRole('button', { name: 'stub: take the photo' }))
-    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    fireEvent.click(sendPress())
     expect(await screen.findByText('The task was sent, but its photo did not save: The photo did not upload. Add it from Checklist → Manage → Edit.')).toBeTruthy()
     expect(inserted.filter((r) => r.table === 'checklist_items')).toHaveLength(1)
     expect(screen.getByPlaceholderText('What needs to be done?')).toBeTruthy()

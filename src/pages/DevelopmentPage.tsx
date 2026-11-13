@@ -168,6 +168,11 @@ export default function DevelopmentPage() {
   const [pairMode, setPairMode] = useState(false)
   // The material location report (punch list #268): the site's cages and boxes on one paper, read when the window opens.
   const [reportOpen, setReportOpen] = useState(false)
+  // `?report=materials` (punch list #330): the site's materials screen links here to print, and the window opens by itself for the office door.
+  const reportAsked = searchParams.get('report') === 'materials'
+  useEffect(() => {
+    if (reportAsked && moneyShown) setReportOpen(true)
+  }, [reportAsked, moneyShown])
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
   // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line, the composer's door, and the entries people keep (read with the page, a kept one prepended).
@@ -1565,6 +1570,7 @@ export default function DevelopmentPage() {
       ) : null}
       {reportOpen ? (
         <SiteMaterialsReportModal
+          siteId={dev.id}
           site={{ name: dev.name, customer: data.customer?.name ?? null, address: address || null }}
           jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), name: (j.job_name ?? '').trim() }))}
           printedBy={profileName}
