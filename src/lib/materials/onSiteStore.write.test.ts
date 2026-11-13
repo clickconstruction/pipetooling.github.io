@@ -52,15 +52,29 @@ vi.mock('../supabase', () => ({ supabase: { from: (table: string) => query(table
 const signal = { online: true }
 const box = { id: 'a1', job_id: 'j1', label: 'A1', kind: 'cage', where_note: '', place_id: null, lat: null, lng: null, retired_at: null, created_at: '2026-10-29T00:00:00.000Z' }
 const use = (quantity: number) => ({ jobId: 'j1', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity, reason: 'used' as const, fromContainerId: 'a1', toContainerId: null, byUserId: 'u1', byName: 'Mateo' })
-/** Let a send run to its end: it loads its lander on first use, which takes more than a turn of the microtask queue. */
+/** Whether anything is still on its way in the modules of the test that is running; `bench` sets it. */
+let busy: () => boolean = () => false
+
+/**
+ * Let what was pressed run to its end. A send answers on a later turn of the event loop, so this waits until the
+ * sender holds nothing, the outbox sends nothing and the job is not being read, then three more turns for the store
+ * to hear the outcome. It used to wait a fixed 30 ms, which was not enough when many test files ran at once: the
+ * first send of a test file loads its lander, and under load that took longer.
+ */
 const settle = async () => {
-  for (let i = 0; i < 6; i += 1) await new Promise((r) => setTimeout(r, 5))
+  const deadline = Date.now() + 5000
+  do {
+    await new Promise((r) => setTimeout(r, 5))
+  } while (busy() && Date.now() < deadline)
+  for (let i = 0; i < 3; i += 1) await new Promise((r) => setTimeout(r, 0))
 }
 
 async function bench() {
   vi.resetModules()
-  const [store, { outbox }, { replayOutbox }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay')])
+  // The lander and the rows' sender are loaded here, ahead of the first press, so no test waits on a first import.
+  const [store, { outbox }, { replayOutbox }, { onSiteSender }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay'), import('./onSiteSend'), import('../offline/landFieldPress'), import('./onSiteWritesIo')])
   await outbox.load('u1', Date.now())
+  busy = () => onSiteSender().inHand().length > 0 || outbox.presses().some((p) => p.state === 'sending') || store.jobLoadState('j1').loading
   const said: Array<{ message: string; tone: string }> = []
   store.setOnSiteErrorHandler((message, tone) => said.push({ message, tone }))
   await store.loadJob('j1')
