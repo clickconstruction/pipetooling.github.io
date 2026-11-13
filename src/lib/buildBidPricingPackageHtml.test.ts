@@ -68,6 +68,20 @@ describe('buildBidPricingPackageExternalRows', () => {
     ])
     expect(out.map((r) => r.fixture)).toEqual(['B', 'A', 'C'])
   })
+
+  it('carries the fixed flag through for the share text, false on a row without it (v2.7136)', () => {
+    const out = buildBidPricingPackageExternalRows([row({ fixture: 'Mobilize', isFixedPrice: true }), row(), row({ isFixedPrice: false })])
+    expect(out.map((r) => r.isFixedPrice)).toEqual([true, false, false])
+  })
+
+  it('a fixed row draws the same email in both copies: the flag changes nothing there (v2.7136)', () => {
+    const externalRows = [ext({ fixture: 'Mobilize', count: 3, unitPrice: 5000, revenue: 5000, isFixedPrice: true })]
+    const args = { externalRows, totalRevenue: 5000 }
+    expect(buildBidPricingPackageTableHtml(args)).toBe(edgeTableHtml(args))
+    expect(buildBidPricingPackageTableHtml(args)).toBe(buildBidPricingPackageTableHtml({ ...args, externalRows: [ext({ fixture: 'Mobilize', count: 3, unitPrice: 5000, revenue: 5000 })] }))
+    const text = { ...args, bidLabel: 'BE1 Sample Clinic', plansLink: null }
+    expect(buildBidPricingPackagePlainText(text)).toBe(edgePlainText(text))
+  })
 })
 
 describe('escapeHtml', () => {

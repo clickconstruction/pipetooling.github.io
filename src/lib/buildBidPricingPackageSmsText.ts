@@ -14,12 +14,22 @@
  *   CountTooling Plans: {ctpLink}     ← omitted when null/blank
  *
  *   {fixture} — {count} × ${unit} = ${revenue}
+ *   {fixture} — {count}, fixed price ${revenue}   ← a fixed-price row (v2.7136)
  *   …
  *
  *   Total: ${totalRevenue}            ← omitted when externalRows is empty
  *
  * Per-row uses U+00D7 (×) as the multiplier and U+2014 (—) as the separator. No HTML escape
  * — this is plain text destined for an SMS app.
+ *
+ * A fixed-price row has one price for the whole line, whatever the count
+ * (`standardUnitRevenue`). Drawn with `×` it read `3 × $5,000 = $5,000`, a sum that does not
+ * add up, so its line shows no `×` and no `=` (v2.7136). The count shows as stored. The one
+ * figure is the line total, rounded like every other line total; for a fixed row that is the
+ * price itself. The row's own flag decides, a count of 1 included: `1 × $750` would read as a
+ * price for one, and the reader should know the price stays put if the count changes.
+ * "Fixed price" is the app's own name: the margin breakdown says it, and the print marks the
+ * price "(fixed)".
  *
  * Money reads in whole dollars (v2.7045): this is a look between teammates, not the paper
  * the GC gets, and cents on every line made a long text harder to read on a phone. The
@@ -57,14 +67,15 @@ function shareMoney(n: number): string {
 
 /**
  * A unit price in whole dollars when the line still reads right that way: it had no cents,
- * or the count times the whole price lands on the line total shown, or the price is the
- * line total itself (a fixed price). Otherwise it keeps its cents.
+ * or the count times the whole price lands on the line total shown. Otherwise it keeps its
+ * cents. A fixed price never comes here: the row's flag gives it its own line (v2.7136), in
+ * place of the old guess that a price equal to its line total was a fixed one.
  */
 function shareUnitPrice(r: PackageExternalRow): string {
   const whole = wholeDollars(r.unitPrice)
   const shown = wholeDollars(r.revenue)
   const hasCents = Number.isFinite(r.unitPrice) && Math.abs(r.unitPrice - whole) >= 0.005
-  const addsUp = wholeDollars(r.count * whole) === shown || whole === shown
+  const addsUp = wholeDollars(r.count * whole) === shown
   return hasCents && !addsUp ? `$${formatPackageCurrency(r.unitPrice)}` : shareMoney(r.unitPrice)
 }
 
@@ -103,7 +114,9 @@ export function buildBidPricingPackageSmsText(args: {
     for (const r of rows) {
       const fixture = (r.fixture ?? '').trim() || '—'
       lines.push(
-        `${fixture} \u2014 ${r.count} \u00d7 ${shareUnitPrice(r)} = ${shareMoney(r.revenue)}`,
+        r.isFixedPrice
+          ? `${fixture} \u2014 ${r.count}, fixed price ${shareMoney(r.revenue)}`
+          : `${fixture} \u2014 ${r.count} \u00d7 ${shareUnitPrice(r)} = ${shareMoney(r.revenue)}`,
       )
     }
     lines.push('')

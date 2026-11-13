@@ -20,3 +20,5 @@ The check allowed `email`, `push`, `both` and `held`. None is true of this row: 
 ## Rollback
 
 Add the constraint back without `app` once no row carries it (`DELETE FROM notification_history WHERE channel = 'app'` first).
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

@@ -5,11 +5,13 @@ import {
   lienStatusEmailText,
   lienStatusGroups,
   lienStatusMonthsWords,
+  lienStatusPayloadToPost,
   lienStatusSubject,
   lienStatusText,
   parseLienStatusPayload,
   type LienStatusHouseJob,
   type LienStatusJob,
+  type LienStatusNeed,
   type LienStatusPayload,
 } from '../../../supabase/functions/_shared/lienDeskStatus'
 
@@ -262,6 +264,51 @@ describe('parseLienStatusPayload — what the server accepts', () => {
     const long = 'x'.repeat(400)
     const p = parseLienStatusPayload({ ...JSON.parse(JSON.stringify(OCT1)), gc: ` ${long} ` })!
     expect(p.gc).toHaveLength(160)
+  })
+})
+
+describe('every gate the Affidavits tab can close holds a lien (v2.7138)', () => {
+  const lien = (number: string, needs: LienStatusNeed[]) => ({ number, name: `Job ${number}`, gc: RLC, owed: 100, byYmd: OCT, needs })
+  const held: LienStatusPayload = {
+    ...OCT1,
+    jobs: [],
+    liens: [lien('1', []), lien('2', ['contractor']), lien('3', ['homestead_answer']), lien('4', ['public_owner']), lien('5', ['owner', 'legal', 'contractor', 'notice', 'homestead_answer'])],
+  }
+  const o = { appUrl: 'https://clicktooling.com', senderName: 'Grace' }
+
+  it('counts only a paper with no need as ready to file', () => {
+    expect(lienStatusText(held)).toContain('Liens to file: 5 jobs, $500, the first by Oct 15. 1 is ready to file.')
+  })
+
+  it('says each need in the desk’s words, the facts to enter in one sentence', () => {
+    const text = lienStatusEmailText(held, o)
+    expect(text).toContain('• 1 Job 1, $100. It is ready to file.')
+    expect(text).toContain('• 2 Job 2, $100. It needs the general contractor’s address.')
+    expect(text).toContain('• 3 Job 3, $100. It needs the homestead answer.')
+    expect(text).toContain('• 4 Job 4, $100. It is public property, so no lien can be filed.')
+    expect(text).toContain('• 5 Job 5, $100. It needs the owner of record, the legal description, the general contractor’s address and the homestead answer. No notice was sent for its work month.')
+    expect(lienStatusEmailHtml(held, o)).toContain('It needs the general contractor’s address.')
+  })
+
+  it('reads the whole list of needs back off the payload', () => {
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(held)))).toEqual(held)
+  })
+
+  it('posts what a function from before v2.7138 reads, with the whole list beside it', () => {
+    const posted = lienStatusPayloadToPost(held)
+    // That function refuses a lien naming any need but these four, and more than four of them.
+    const first = new Set(['owner', 'legal', 'notice', 'homestead'])
+    for (const l of posted.liens) expect(l.needs.length <= 4 && l.needs.every((n) => first.has(n))).toBe(true)
+    expect(posted.liens.map((l) => l.needs)).toEqual([[], [], [], [], ['owner', 'legal', 'notice']])
+    expect(posted.liens.map((l) => l.allNeeds)).toEqual(held.liens.map((l) => l.needs))
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(posted)))).toEqual(held)
+  })
+
+  it('refuses a need it does not know in either list', () => {
+    const one = (l: Record<string, unknown>) => parseLienStatusPayload({ ...JSON.parse(JSON.stringify(held)), liens: [{ ...lien('1', []), ...l }] })
+    expect(one({ allNeeds: ['money'] })).toBeNull()
+    expect(one({ allNeeds: 'contractor' })).toBeNull()
+    expect(one({ needs: Array.from({ length: 8 }, () => 'owner') })).toBeNull()
   })
 })
 

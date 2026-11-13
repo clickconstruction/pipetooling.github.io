@@ -2,7 +2,7 @@
 name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a due day, and the forecast keeps its honest guess"
 number: 323
 group: gated
-status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · merged: PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791), PR 4 (a job's own calendar and the accepted day, v2.7036 #7798), PR 5 (Cutoffs coming and the Working row's line, v2.7037 #7801) and PR 7 (Their paper's Pay calendar term, v2.7039 #7802) · both migrations pushed 2026-11-12 · the first half of PR 6 (the job window and Call mode, v2.7040 #7803) merged · the second half of PR 6 in two parts: Money waiting and Dashboard Accounts Receivable (v2.7127 #7913) built and open, the two emails parked · the Bridge's part waits for #318
+status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · merged: PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791), PR 4 (a job's own calendar and the accepted day, v2.7036 #7798), PR 5 (Cutoffs coming and the Working row's line, v2.7037 #7801) and PR 7 (Their paper's Pay calendar term, v2.7039 #7802) · both migrations pushed 2026-11-12 · the first half of PR 6 (the job window and Call mode, v2.7040 #7803) merged · the second half of PR 6 in two parts: Money waiting and Dashboard Accounts Receivable (v2.7127 #7913) merged 2026-11-13, the two emails parked · the Bridge's part waits for #318
 summary: >
   Some commercial payers pay on a calendar, not at a pace: a pay application in by the end of the
   month, or by an earlier day, is paid on a set day of the next month. A bill sent on the 1st and
@@ -12,7 +12,7 @@ summary: >
   exception a job can carry. It gives each billed row the day the bill is due under the contract,
   keeps the expected day as the payer's real record measured against that due day, and puts the
   cutoff in front of whoever is about to bill: send by Nov 30 to be due Dec 10, after that Jan 10.
-next: land #7913 and walk it live. The two emails (the payment forecast and Money waiting) are parked at Grace's word of 2026-11-13 to land what is open before building more; they need the calendar kernel on the edge and two deploys. After them, the Needs you line and the pay application's line that PR 5 left. The pay calendar's save ran on the live site on a test customer on 2026-11-13; the accepted day's save, and a calendar on a payer with bills, have not.
+next: walk v2.7127 (#7913, merged 2026-11-13) live. The two emails (the payment forecast and Money waiting) are parked at Grace's word of 2026-11-13 to land what is open before building more; they need the calendar kernel on the edge and two deploys. After them, the Needs you line and the pay application's line that PR 5 left. The pay calendar's save ran on the live site on a test customer on 2026-11-13; the accepted day's save, and a calendar on a payer with bills, have not.
 size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
 blocker: none for what is built. The second half of PR 6 is edge kernel copies and deploys, and its Bridge part waits for #318.
 opinion: build — the cutoff and the due day are facts the app has never had, and the second pass took the wishful part out of the forecast
@@ -227,6 +227,9 @@ there is no staging. A new table takes no lock on either and leaves their row ty
 
 A development gets no level of its own. The job window offers *Also set on the other 12 jobs in
 this development* instead. See Grace's call 6.
+
+The way into a job's own calendar, the mark that shows it, and the terms a calendar cannot hold
+are card [#341](../job-own-pay-terms/README.md).
 
 ### The clock: what "received" means
 

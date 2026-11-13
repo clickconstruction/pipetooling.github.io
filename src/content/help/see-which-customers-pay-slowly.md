@@ -43,6 +43,8 @@ By the wait, a bill in on Oct 20 looks 33 days slow on Nov 22.
 **By the calendar it is due Nov 30, and nothing is late.**
 :::
 
+The weekly email does not read the calendar yet. The email still judges these customers by their wait.
+
 You set the calendar on the customer. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
 
 ## More on pay speed

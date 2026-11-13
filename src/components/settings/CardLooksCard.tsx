@@ -10,15 +10,18 @@
  * larger photo and one with larger words. They are offered the same way, by a switch and a
  * default, and kept in a setting of their own so that saving one never rewrites the other.
  *
- * Each setting is one row of `app_settings`, which any signed-in person reads and only a dev
- * writes, so the card shows for a dev alone. Each look and each size is drawn with the dev's own
- * facts, so the owner judges it on a real card.
+ * Each setting is one row of `app_settings`, which any signed-in person reads and the owner or a
+ * dev writes (`20261113130000_card_looks_keys_owner.sql`), so the card shows for those two
+ * (`approvesCardLooks`, v2.7139; a dev alone before, which kept the owner from his own card).
+ * Each look and each size is drawn with the viewer's own facts, so the owner judges it on a real
+ * card. A save the database refuses puts the switch back and says its reason.
  */
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { supabaseCardIo, supabaseLooksAdminIo, type CardIo, type LooksAdminIo } from '../../lib/brandKit/cardIo'
+import { approvesCardLooks } from '../../lib/brandKit/access'
 import { LOOKS_WORDS as W, lookUseWords } from '../../lib/brandKit/cardWords'
 import { drawKit, type KitDrawOptions, type KitPerson } from '../../lib/brandKit/draw'
 import { LOOK_IDS, THEMES, lookCounts, lookLayouts, withDefaultLook, withLookSwitched, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
@@ -50,7 +53,7 @@ export function CardLooksCard({
   const cardIo = useMemo(() => cardIoProp ?? supabaseCardIo(), [cardIoProp])
   const renderer = useMemo(() => rendererProp ?? browserKitRenderer(), [rendererProp])
   const clipId = `looks${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  const isDev = role === 'dev'
+  const canApprove = approvesCardLooks(role)
 
   // undefined while reading, null when the read failed
   const [setting, setSetting] = useState<CardLooksSetting | null | undefined>(undefined)
@@ -68,7 +71,7 @@ export function CardLooksCard({
 
   const userId = user?.id ?? null
   useEffect(() => {
-    if (!isDev) return
+    if (!canApprove) return
     let on = true
     setProblem(null)
     void (async () => {
@@ -98,7 +101,7 @@ export function CardLooksCard({
     return () => {
       on = false
     }
-  }, [isDev, io, cardIo, renderer, userId])
+  }, [canApprove, io, cardIo, renderer, userId])
 
   const previews = useMemo(() => {
     if (!kit || !person) return null
@@ -112,7 +115,7 @@ export function CardLooksCard({
     return Object.fromEntries(SIZE_IDS.map((id) => [id, drawKit(cardBackFor(defaultLook, id), person, { assets: kit.assets, measure: kit.measure, width: '100%', id: `${clipId}size${id}` })])) as Record<KitSizeId, string>
   }, [kit, person, clipId, defaultLook])
 
-  if (!isDev) return null
+  if (!canApprove) return null
 
   const counts = setting ? lookCounts(picks.map((p) => p.look), setting) : null
   const sizeUse = sizes ? sizeCounts(picks.map((p) => p.size), sizes) : null

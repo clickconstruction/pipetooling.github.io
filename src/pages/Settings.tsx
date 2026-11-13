@@ -1239,6 +1239,7 @@ export default function Settings() {
           search={
           <SettingsSearchBar
             groups={settingsJumpGroups}
+            role={myRole}
             onPick={(entry) => {
               setActiveSettingsTab(entry.tabId)
               // Guide-backed hit (v2.2902, J28-F4): route through the ?tab=&g= deep link so the

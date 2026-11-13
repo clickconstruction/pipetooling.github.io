@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: ready
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner called the result satisfactory and said to build the whole train · this card is step 0 · the twelve PRs are being built, each by its own session · nothing of the train is on main yet
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner called the result satisfactory and said to build the whole train · this card is step 0 · the twelve PRs are being built, each by its own session · PRs 1 to 8 merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105 and v2.7109) · PRs 9 to 12 are not on main yet
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,7 +12,7 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: PR 1, the Build, Bill and Collect windows on the shared frame. Then the stack in order, the bottom PR armed alone.
+next: PRs 9 to 12 in order, the bottom PR armed alone: the check on every line, the hours on a job with no percent, the Monday email without the call, the to-do's tag as its own column.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
 blocker: None for the build. The finished work is a snapshot on one computer, so a builder on another computer has nothing to read.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
@@ -254,7 +254,7 @@ Two faults turned up while PRs 2 and 3 were built. Each is bigger than a fix on 
 ## Where it stands
 
 Asked, built on a spike and walked by the owner on 2026-11-12. He called it satisfactory and said to build
-the whole train. This card is the train's step 0. None of the twelve PRs is on `main` yet.
+the whole train. This card is the train's step 0. PRs 1 to 8 are on `main` since 2026-11-13: v2.7089 (1), v2.7095 (2), v2.7119 (3), v2.7120 (4), v2.7088 (5), v2.7099 (6), v2.7105 (7) and v2.7109 (8). PRs 9 to 12 are not.
 
 Still open, and not the builder's to answer:
 
