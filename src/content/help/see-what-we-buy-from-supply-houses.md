@@ -64,7 +64,7 @@ Press {{button:outline|What to stock}} at the top. The list shows the parts boug
 - **Trips** is how many separate days it was bought. Two bills on one day are one trip.
 - **At a time** is the fewest and the most on one bill.
 - **Jobs** is how many jobs those bills were for.
-- **Where** says *the counter* when most trips were small bills or carried a PO Generator code. It says *delivered* when most came on big orders.
+- **Where** says *the counter* when most trips were small bills or carried a PO Generator code. **Where** says *delivered* when most came on big orders.
 - **Read as** puts the row in one line, such as *a trip every 18 days for a $3.10 part*.
 
 Pick **Last 30 days**, **Last 90 days** or **Last 180 days** under **Window**. Press a row's name to see its prices.
