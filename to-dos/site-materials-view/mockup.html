@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A site's materials on one screen</title>
+<style>
+  /* Punch list #330. One screen for all the material on a site. Drawn 2026-11-12, with that day as today. Nothing here
+     is built. Every name, job, number and count is made up: the site is a made-up development called Juniper Ridge with
+     96 boxes on two made-up jobs (the same made-up site as #329's mock-up), Dana Whitfield is in the office and Priya
+     Nair counts on site. No live box, job, part, price or person is here. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .two.wide { grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr)); }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 400px; }
+  .two.wide .frame { max-width: none; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; }
+  .pick p.b { font-weight: 600; color: var(--text-strong); }
+
+  /* her site, as steps */
+  .steps { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .steps .n { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--copper); }
+  .steps .big { font-size: 20px; font-weight: 800; color: var(--text-strong); line-height: 1.2; margin: 2px 0; }
+  .steps p { margin: 0; font-size: 13px; }
+
+  /* drawn app pieces */
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+  .hdr b { color: var(--text-strong); font-size: 14px; }
+  .hdr .x { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 10px; font-weight: 600; color: var(--text-strong); background: var(--surface); white-space: nowrap; }
+  .title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .title b { font-size: 17px; color: var(--text-strong); }
+  .sub { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+  .btn { min-height: 36px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-align: center; padding: 4px 12px; white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.sm { min-height: 28px; font-size: 12px; padding: 2px 9px; }
+  .btn.tall { min-height: 44px; }
+  .link { color: var(--text-link); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { min-height: 28px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .pill { display: inline-flex; align-items: center; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); color: var(--text-muted); white-space: nowrap; }
+  .pill.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .pill.green { background: var(--bg-green-tint); color: var(--text-green-700); border-color: var(--border-green); }
+  .pill.box { font-family: var(--mono); color: var(--text-strong); border-color: var(--border-strong); background: var(--bg-subtle); }
+  .field { min-height: 38px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); padding: 6px 10px; display: flex; align-items: center; font-size: 13.5px; }
+  .field.ph { color: var(--text-muted); }
+  .sec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sec > h4 { margin: 0; padding: 8px 12px; font-size: 13px; color: var(--text-strong); border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .th { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 6px 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  /* a desk row drawn as wrapping pairs, so the drawing never scrolls sideways */
+  .drow { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .drow:last-child { border-bottom: 0; }
+  .drow .j { flex: 1 1 220px; min-width: 0; }
+  .drow .k { color: var(--text-muted); font-size: 11.5px; }
+  .drow .v { font-variant-numeric: tabular-nums; color: var(--text-strong); }
+  .drow.amber { background: var(--bg-amber-tint); }
+  .drow.kid { padding-left: 28px; background: var(--bg-subtle); }
+  .drow.grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-muted); padding: 4px 12px; }
+  /* the glance */
+  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; min-width: 0; display: grid; gap: 1px; align-content: start; }
+  .tile .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .tile .v { font-size: 19px; font-weight: 800; color: var(--text-strong); line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile .m { font-size: 12px; color: var(--text-muted); }
+  .tile.amber { background: var(--bg-amber-tint); border-color: var(--border-amber); }
+  .tile.amber .v, .tile.amber .k { color: var(--text-amber-800); }
+  .tile.fresh { background: var(--bg-green-tint); border-color: var(--border-green); }
+  .tile.fresh .v, .tile.fresh .k { color: var(--text-green-700); }
+  /* a part row */
+  .prow { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; align-items: baseline; }
+  .prow:last-child { border-bottom: 0; }
+  .prow .nm { font-weight: 700; color: var(--text-strong); min-width: 0; }
+  .prow .nm small { font-weight: 500; color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+  .prow .tot { font-weight: 800; font-size: 16px; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prow .bx { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .prow .ask { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--new-tint); border: 1px solid var(--new); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; color: var(--text-strong); }
+  .prow .open { grid-column: 1 / -1; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; display: grid; gap: 4px; font-size: 12.5px; }
+  .prow .open .l { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: space-between; }
+  .prow .open .l b { color: var(--text-strong); }
+  .prow.warn { background: var(--bg-amber-tint); }
+  .sumline { padding: 6px 12px; font-size: 12.5px; color: var(--text-700); background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+  .sumline b { color: var(--text-strong); }
+  .paperthumb { background: #fff; color: #111; border: 1px solid #9aa1ab; border-radius: 3px; padding: 8px 10px; font-size: 11px; line-height: 1.35; display: grid; gap: 3px; max-width: 260px; }
+  .paperthumb .t { font-weight: 800; font-size: 13px; }
+  .paperthumb .r { display: flex; justify-content: space-between; border-top: 1px solid #c8cdd4; padding-top: 2px; }
+  .paperthumb .more { color: #4b5563; font-style: italic; }
+  .phone { max-width: 380px; }
+  .phone .drow .v { flex: 1 1 100%; }
+
+  /* calls and plan: cards, so nothing scrolls sideways */
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .card p { margin: 0; font-size: 13px; }
+  .card .rec { border-left: 3px solid var(--new); padding-left: 8px; }
+  .card .rec b { color: var(--new); }
+  .card .alt { border-left: 3px solid var(--border-strong); padding-left: 8px; color: var(--text-muted); }
+  .train { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+  .train > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .train b { display: block; color: var(--text-strong); font-size: 14px; }
+  .train .sz { font: 700 11px var(--mono); color: var(--copper); }
+  .train .stop { background: var(--new-tint); border: 2px solid var(--new); }
+  table.q { border-collapse: collapse; width: 100%; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+  table.q th, table.q td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.q th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  table.q td:first-child { font-weight: 600; color: var(--text-strong); }
+  table.q td.y { color: var(--text-green-700); font-weight: 600; }
+  @media (max-width: 560px) { table.q, table.q tbody, table.q tr, table.q td { display: block; } table.q thead { display: none; } table.q td { border-bottom: 0; padding: 2px 10px; } table.q tr { border-bottom: 1px solid var(--border); padding: 6px 0; } table.q td:nth-child(2)::before { content: "Today: "; color: var(--text-muted); } table.q td:nth-child(3)::before { content: "On the screen: "; color: var(--text-muted); font-weight: 400; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #330 · a decision mock-up · nothing here is built · every name and number is made up</p>
+    <h1>A site's materials on one screen</h1>
+    <p><b>My recommendation:</b> give a site one screen, read only. It opens from the Materials desk, from the Development page and from Go anywhere. Its top line says how fresh the record is. Under it you read the boxes, what is due a count, what cannot be found, what the material is worth and how much of it has a price. Then one row per part across the site's jobs, with its total and the boxes that hold it. Two names join only when their words are the same. Two names that are nearly the same ask you once. The first build needs no change to the database.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#case">Her site, replayed</a>
+  <a href="#screen">1 · The site on one screen</a>
+  <a href="#phone">2 · On a phone</a>
+  <a href="#fold">3 · One part, four spellings</a>
+  <a href="#worth">4 · What it is worth</a>
+  <a href="#doors">5 · The doors</a>
+  <a href="#calls">Your calls</a>
+  <a href="#plan">The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>The desk is one row per job. A site with boxes under two jobs is two rows.</li>
+      <li>The search lists lines. It gives no total.</li>
+      <li>The whole site is a paper of about ten pages, four presses away.</li>
+      <li>The same fitting sits under four spellings as four parts.</li>
+      <li>Money is priced for what went missing. Nothing prices what is on hand.</li>
+      <li>Nothing says when the record was last touched.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>One screen per site, one press from the desk.</li>
+      <li>How fresh the record is comes first.</li>
+      <li>One row per part with its total and its boxes.</li>
+      <li>The search adds up the rows it shows.</li>
+      <li>The same words join by themselves. Nearly the same asks you once.</li>
+      <li>The worth is shown with how much of the site has a price.</li>
+    </ul>
+    <p class="b">Nothing on the screen writes. A count and a correction stay on the job's page and the phone.</p>
+  </div>
+</div>
+
+<table class="q">
+  <thead><tr><th>The question</th><th>Today</th><th>On the screen</th></tr></thead>
+  <tbody>
+    <tr><td>How many boxes are on this site?</td><td>Two presses, then add two rows</td><td class="y">The Boxes figure</td></tr>
+    <tr><td>How many of one fitting do we have here?</td><td>Search, then add the lines by hand</td><td class="y">One row, or the search's total</td></tr>
+    <tr><td>What is in every box?</td><td>Four presses to a ten-page paper</td><td class="y">By place, on the screen</td></tr>
+    <tr><td>Which boxes are due a count?</td><td>A chip per job that names two</td><td class="y">The Due a count figure, a filter</td></tr>
+    <tr><td>What came in and was used this week?</td><td>One job at a time</td><td class="y">The This week figure</td></tr>
+    <tr><td>What is the material worth?</td><td>Nowhere</td><td class="y">Worth, with its cover</td></tr>
+    <tr><td>Is this record still alive?</td><td>Nowhere</td><td class="y">Last recorded, first on the screen</td></tr>
+  </tbody>
+</table>
+
+<h2 id="case">Her site, replayed <small>read on the live app with every write refused · figures rounded</small></h2>
+<p class="lede">The design was run on the one site that has boxes before it was called the best. Five things came back, and each one changed the drawing.</p>
+<div class="steps">
+  <div><div class="n">The boxes</div><div class="big">About 100, on 2 jobs</div><p>The desk shows the site as two rows. Almost every box holds one line.</p></div>
+  <div><div class="n">The names</div><div class="big">Nearly all were typed</div><p>About a hundred part names. Fewer than ten fold by their words alone.</p></div>
+  <div><div class="n">The near twins</div><div class="big">Dozens of pairs differ only in a size</div><p>A fold that guesses would join a 2 inch fitting with a 3 inch one. So nothing folds on a guess.</p></div>
+  <div><div class="n">The record</div><div class="big">Quiet for over a week</div><p>On hand is the first walk's count. So the screen opens on how fresh it is.</p></div>
+  <div><div class="n">The money</div><div class="big">1 piece in 20 has a price</div><p>A bare dollar total would mislead. So the worth always shows its cover.</p></div>
+</div>
+<p class="note"><b>One more thing the replay found.</b> A count resets its line. If two spellings in one box became one part before the sums, one count would wipe the other's pieces and call them missing. So each spelling keeps its own line and its own count, and the row adds them up.</p>
+
+<h2 id="screen">1 · The site on one screen <small>the desk, at a desk's width</small></h2>
+<p class="lede">The one spot: what you see when you ask what is on Juniper Ridge.</p>
+<div class="two wide">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>Materials desk</b><span>3 jobs with containers</span></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="th"><span>Job</span><span>Containers</span><span>On site, lines</span><span>Missing this week</span><span>Counts</span></div>
+          <div class="drow amber"><span class="j link">J1042 · Juniper Ridge, phase 2</span><span><span class="k">Containers</span> <span class="v">92 · 3 places</span></span><span><span class="k">Lines</span> <span class="v">113</span></span><span><span class="k">Missing</span> <span class="v">$86.40</span></span><span class="pill amber">R46, R58 +3 due a count</span></div>
+          <div class="drow"><span class="j link">J1057 · Juniper Ridge pump house</span><span><span class="k">Containers</span> <span class="v">4</span></span><span><span class="k">Lines</span> <span class="v">5</span></span><span><span class="k">Missing</span> <span class="v">$0.00</span></span><span class="pill green">all this fortnight</span></div>
+          <div class="drow"><span class="j link">J0988 · Alder Court remodel</span><span><span class="k">Containers</span> <span class="v">2</span></span><span><span class="k">Lines</span> <span class="v">3</span></span><span><span class="k">Missing</span> <span class="v">$0.00</span></span><span class="pill green">all this fortnight</span></div>
+        </div>
+        <p class="sub">The whole site is on the Development page, as a paper:</p>
+        <div class="paperthumb">
+          <div class="t">Material location report · Juniper Ridge</div>
+          <div class="r"><span>R1 · cage</span><span>1 line</span></div>
+          <div class="r"><span>R2 · cage</span><span>1 line</span></div>
+          <div class="r"><span>R3 · cage</span><span>2 lines</span></div>
+          <div class="more">93 more boxes, about 10 pages</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Two rows for one site, and a paper for the rest. No row is a part and no figure is the site's.</p>
+  </div>
+
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><span>Materials desk ›</span><b>Juniper Ridge</b><span>2 jobs</span><span class="x">Print the material location report</span></div>
+      <div class="pad">
+        <div class="glance new">
+          <div class="tile fresh"><span class="k">Last recorded</span><span class="v">2 days ago</span><span class="m">by Priya, a count</span></div>
+          <div class="tile"><span class="k">Boxes</span><span class="v">96</span><span class="m">2 jobs · 3 places</span></div>
+          <div class="tile"><span class="k">On hand</span><span class="v">118 lines</span><span class="m">1,940 pieces</span></div>
+          <div class="tile amber"><span class="k">Due a count</span><span class="v">5</span><span class="m">12 more this week</span></div>
+          <div class="tile amber"><span class="k">Can't find</span><span class="v">2</span><span class="m">since their count</span></div>
+          <div class="tile"><span class="k">Missing this week</span><span class="v">$86.40</span><span class="m">1 line · price checked Oct 3</span></div>
+          <div class="tile"><span class="k">This week</span><span class="v">240 in</span><span class="m">132 used · 2 invoices</span></div>
+          <div class="tile"><span class="k">Worth</span><span class="v">$2,310 known</span><span class="m">9 of 118 lines have a price</span></div>
+        </div>
+        <div class="chips">
+          <span class="chip on">By part</span><span class="chip">By place</span>
+          <span class="field ph" style="flex:1 1 180px">Find a part or a box on this site</span>
+        </div>
+        <div class="sec">
+          <div class="prow"><span class="nm">2" PVC 90 <small>3 spellings</small></span><span class="tot">164</span>
+            <span class="bx"><span class="pill box">R12 · 94</span><span class="pill box">R31 · 42</span><span class="pill box">R44 · 28</span><span class="pill">counted Mon</span></span></div>
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="bx"><span class="pill box">R58 · 42</span><span class="pill amber">due a count</span></span>
+            <span class="ask"><b>Same part?</b> 2" 90 and 2" PVC 90 <span class="btn sm pri">Same part</span><span class="btn sm">Different</span></span></div>
+          <div class="prow"><span class="nm">3" PVC 90</span><span class="tot">60</span>
+            <span class="bx"><span class="pill box">R14 · 30</span><span class="pill box">R15 · 20</span><span class="pill box">R40 · 10</span><span class="pill">counted Mon</span></span></div>
+          <div class="prow"><span class="nm">3/4" copper tee <small>parts book · $2.18 · checked Oct 3</small></span><span class="tot">300</span>
+            <span class="bx"><span class="pill box">R7 · 300</span><span class="pill">counted Tue</span></span></div>
+          <div class="prow warn"><span class="nm">1/2" PEX drop ear</span><span class="tot">25</span>
+            <span class="bx"><span class="pill box">R22 · 25</span><span class="pill amber">3 can't find</span></span></div>
+          <div class="prow"><span class="nm">Mixed PVC fittings</span><span class="tot">20</span>
+            <span class="bx"><span class="pill box">R9 · 20</span><span class="pill">counted Mon</span></span></div>
+        </div>
+        <p class="sub">112 more rows. A press on a row opens its boxes. A press on a box opens it on the job's page.</p>
+      </div>
+    </div>
+    <p class="say">One screen for the site. Every figure on top narrows the list under it. <span class="tag">new</span> marks what does not exist today.</p>
+  </div>
+</div>
+
+<h2 id="phone">2 · The same screen on a phone</h2>
+<p class="lede">The one spot: a manager on site asks how many 2 inch 90s there are.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame phone">
+      <div class="hdr"><b>On site</b><span>Every job</span></div>
+      <div class="pad">
+        <div class="field">2 90</div>
+        <p class="sub">4 lines in 4 boxes on 1 job</p>
+        <div class="sec">
+          <div class="drow"><span class="j"><b>R12</b> · Laydown yard</span><span class="v">2" 90 pvc · 94</span></div>
+          <div class="drow"><span class="j"><b>R31</b> · Laydown yard</span><span class="v">2 inch 90 PVC · 42</span></div>
+          <div class="drow"><span class="j"><b>R44</b> · Level 2</span><span class="v">2inch 90s pvc · 28</span></div>
+          <div class="drow"><span class="j"><b>R58</b> · Laydown yard</span><span class="v">2" 90 · 42</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Four lines under four names. You add them in your head, and you guess whether the last one is the same part.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame phone">
+      <div class="hdr"><span>On site ›</span><b>Juniper Ridge</b></div>
+      <div class="pad">
+        <div class="glance new" style="grid-template-columns: 1fr 1fr">
+          <div class="tile fresh"><span class="k">Last recorded</span><span class="v">2 days ago</span></div>
+          <div class="tile"><span class="k">Boxes</span><span class="v">96</span></div>
+          <div class="tile amber"><span class="k">Due a count</span><span class="v">5</span></div>
+          <div class="tile amber"><span class="k">Can't find</span><span class="v">2</span></div>
+        </div>
+        <div class="field">2 90</div>
+        <div class="sec new">
+          <div class="sumline"><b>206 pieces</b> in the 2 rows shown</div>
+          <div class="prow"><span class="nm">2" PVC 90 <small>3 spellings</small></span><span class="tot">164</span>
+            <span class="open">
+              <span class="l"><span><b>R12</b> · Laydown yard</span><span>94 · counted Mon</span></span>
+              <span class="l"><span><b>R31</b> · Laydown yard</span><span>42 · counted Mon</span></span>
+              <span class="l"><span><b>R44</b> · Level 2</span><span>28 · counted Tue</span></span>
+            </span></div>
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="bx"><span class="pill box">R58 · 42</span></span>
+            <span class="ask"><b>Same part?</b> <span class="btn sm pri">Same part</span><span class="btn sm">Different</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Two rows and one total. The first row already joined three spellings. The second asks before it joins.</p>
+  </div>
+</div>
+
+<h2 id="fold">3 · One part, four spellings <small>how names join without a wrong guess</small></h2>
+<p class="lede">The one spot: the rows for a 2 inch 90 and its neighbours.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>J1042 · Missing</b><span>per part across the job</span></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span></div>
+          <div class="prow"><span class="nm">2" 90 pvc</span><span class="tot">94</span></div>
+          <div class="prow"><span class="nm">2 inch 90 PVC</span><span class="tot">42</span></div>
+          <div class="prow"><span class="nm">2inch 90s pvc</span><span class="tot">28</span></div>
+          <div class="prow"><span class="nm">3" 90 pvc</span><span class="tot">30</span></div>
+          <div class="prow"><span class="nm">3 inch 90 PVC</span><span class="tot">30</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">A name is a part. Six rows here are two or three parts, and only a person can tell which.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><b>Juniper Ridge</b><span>By part</span></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="prow new"><span class="nm">2" PVC 90 <small>3 spellings</small></span><span class="tot">164</span>
+            <span class="open">
+              <span class="l"><span>2" 90 pvc</span><span><b>R12</b> · 94</span></span>
+              <span class="l"><span>2 inch 90 PVC</span><span><b>R31</b> · 42</span></span>
+              <span class="l"><span>2inch 90s pvc</span><span><b>R44</b> · 28</span></span>
+              <span class="sub">Joined by themselves. The words are the same.</span>
+            </span></div>
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="ask new"><b>Same part?</b> 2" 90 and 2" PVC 90 have the same size. One name has one more word. <span class="btn sm pri">Same part</span><span class="btn sm">Different</span></span></div>
+          <div class="prow"><span class="nm">3" PVC 90 <small>2 spellings</small></span><span class="tot">60</span>
+            <span class="bx"><span class="pill box">R14 · 30</span><span class="pill box">R15 · 30</span></span></div>
+        </div>
+        <p class="sub">2" PVC 90 and 3" PVC 90 are never offered as one part. Their sizes differ.</p>
+      </div>
+    </div>
+    <p class="say">Three steps. The same words join by themselves. Nearly the same asks once and remembers the answer for this site. A different size is never asked.</p>
+  </div>
+</div>
+<p class="note"><b>An answer can be undone.</b> The open row lists the names joined here, with who joined them and when, and <b>Undo</b>. A tie never changes a count or a box. It only changes which lines one row adds up.</p>
+
+<h2 id="worth">4 · What it is worth <small>and how honest the number can be</small></h2>
+<p class="lede">The one spot: the money figure for the site.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>Materials desk</b></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="drow amber"><span class="j link">J1042 · Juniper Ridge, phase 2</span><span><span class="k">Missing this week</span> <span class="v">$86.40</span></span></div>
+          <div class="drow"><span class="j link">J1057 · Juniper Ridge pump house</span><span><span class="k">Missing this week</span> <span class="v">$0.00</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The app prices what went missing. It has no figure for what is still there.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><b>Juniper Ridge</b><span>Worth</span></div>
+      <div class="pad">
+        <div class="tile new"><span class="k">Worth</span><span class="v">$2,310 known</span><span class="m">9 of 118 lines have a price · 2 of those prices are older than 90 days</span></div>
+        <div class="sec">
+          <h4>109 lines with no price <span class="sub">biggest count first</span></h4>
+          <div class="prow"><span class="nm">2" PVC 90</span><span class="tot">164</span><span class="bx"><span class="btn sm">This is a parts-book part</span></span></div>
+          <div class="prow"><span class="nm">1/2" PEX female adapter</span><span class="tot">90</span><span class="bx"><span class="btn sm">This is a parts-book part</span></span></div>
+          <div class="prow"><span class="nm">3" PVC 90</span><span class="tot">60</span><span class="bx"><span class="btn sm">This is a parts-book part</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The figure says known, and its cover never leaves it. A name with no price is counted, never guessed. A press ties a name to the parts book and the figure grows.</p>
+  </div>
+</div>
+
+<h2 id="doors">5 · The doors <small>one screen, reached from where you already are</small></h2>
+<p class="lede">The one spot: how you get to the site's screen.</p>
+<div class="two wide">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>Juniper Ridge</b><span>Development page · Jobs &amp; bids</span><span class="x">Print the material location report</span></div>
+      <div class="pad">
+        <p class="sub">A job of the site, then its development chip, then this look, then the press. Four presses to a paper. The desk does not know the site.</p>
+      </div>
+    </div>
+    <p class="say">The Development page has one press for materials, and it prints.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><b>Materials desk</b><span>2 sites and jobs with containers</span></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="drow new"><span class="j link">Juniper Ridge · 2 jobs</span><span><span class="k">Boxes</span> <span class="v">96</span></span><span><span class="k">Lines</span> <span class="v">118</span></span><span><span class="k">Missing</span> <span class="v">$86.40</span></span><span class="pill amber">5 due a count</span></div>
+          <div class="drow kid"><span class="j link">J1042 · Juniper Ridge, phase 2</span><span><span class="k">Boxes</span> <span class="v">92</span></span><span><span class="k">Lines</span> <span class="v">113</span></span></div>
+          <div class="drow kid"><span class="j link">J1057 · Juniper Ridge pump house</span><span><span class="k">Boxes</span> <span class="v">4</span></span><span><span class="k">Lines</span> <span class="v">5</span></span></div>
+          <div class="drow grp">Not on a site</div>
+          <div class="drow"><span class="j link">J0988 · Alder Court remodel</span><span><span class="k">Boxes</span> <span class="v">2</span></span><span><span class="k">Lines</span> <span class="v">3</span></span><span class="pill green">all this fortnight</span></div>
+        </div>
+        <div class="sec">
+          <h4>Development page · Jobs &amp; bids</h4>
+          <div class="drow new"><span class="j">96 boxes · 5 due a count · 2 can't find</span><span class="btn sm pri">Open the site's materials</span><span class="btn sm">Print the material location report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The desk groups a site's jobs under one row that opens the screen. The Development page gains one line and one press beside the print. A job on no site keeps its own row.</p>
+  </div>
+</div>
+
+<h2 id="calls">Your calls</h2>
+<p class="lede">Six calls. My pick is first on each.</p>
+<div class="cards">
+  <div class="card"><h3>1 · Where it lives</h3><p class="rec"><b>Recommended.</b> One screen on the On site tab, with doors from the desk, the Development page and Go anywhere.</p><p class="alt">A seventh look on the Development page. A primary and a superintendent cannot open that page.</p></div>
+  <div class="card"><h3>2 · Who sees it</h3><p class="rec"><b>Recommended.</b> The owner, the office and a primary, with the money. A superintendent, for the jobs they are on, with no money.</p><p class="alt">The owner and the office only.</p></div>
+  <div class="card"><h3>3 · How names fold</h3><p class="rec"><b>Recommended.</b> The same words join by themselves. Nearly the same asks once, and the answer belongs to that site.</p><p class="alt">No fold at all. Or every answer applies to every site.</p></div>
+  <div class="card"><h3>4 · The worth</h3><p class="rec"><b>Recommended.</b> Show what is known, with its cover beside it.</p><p class="alt">Hide the figure until half the lines have a price.</p></div>
+  <div class="card"><h3>5 · Places</h3><p class="rec"><b>Recommended.</b> Keep a place per job. The screen joins places by name and names the jobs.</p><p class="alt">A place that belongs to the site. It needs a database change and nothing on the site asks for it yet.</p></div>
+  <div class="card"><h3>6 · The order</h3><p class="rec"><b>Recommended.</b> Build the screen. Look at it on the real site. Then offer names as people type, before the stickers walk.</p><p class="alt">Build the whole train at once.</p></div>
+</div>
+
+<h2 id="plan">The plan</h2>
+<div class="train">
+  <div><span class="sz">PR 1 · M</span><b>The screen</b>The figures, By part, By place, the search's total, the three doors. Read only. No database change.</div>
+  <div class="stop"><span class="sz">STOP</span><b>Look at it on the site</b>It shows the real gaps the day it merges.</div>
+  <div><span class="sz">PR 2 · S</span><b>Names as you type</b>Add a part offers the site's own names first. No database change.</div>
+  <div><span class="sz">PR 3 · M</span><b>Same part?</b>The ask, the answer kept for the site, Undo. One new table.</div>
+  <div><span class="sz">PR 4 · M</span><b>The parts book and the worth</b>Tie a name to the book. The worth with its cover.</div>
+  <div><span class="sz">PR 5 · S</span><b>The paper and the job</b>By part on the report and on one job's page.</div>
+</div>
+<p class="note"><b>Is this the best we can do?</b> For seeing, yes. For the numbers behind it, not yet, and no screen can fix that alone. On hand is only as true as the last press, and on the real site the record went quiet for over a week. So the screen says how fresh it is before it says anything else.</p>
+
+</div>
+<script>
+  var buttons = document.querySelectorAll('.themes button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === t)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.set); }); });
+  var wanted = new URLSearchParams(location.search).get('theme');
+  if (wanted === 'dark' || wanted === 'light') setTheme(wanted);
+</script>
+</body>
+</html>

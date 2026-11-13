@@ -15,6 +15,10 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { parseLines, type TaskCriterion } from '../lib/taskCriteria'
 import { loadItemLines, syncItemLines } from '../lib/taskLinesIo'
+import { useAuth } from '../hooks/useAuth'
+import { taskPlaceColumns, taskPlaceDraft, taskPlaceDraftChanged, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { loadTaskPlace } from '../lib/tasks/taskPlaceIo'
+import { TaskPlaceRow } from './checklist/TaskPlaceRow'
 
 type UserRole =
   | 'dev'
@@ -140,6 +144,26 @@ export function ChecklistItemEditModal({
   const [saving, setSaving] = useState(false)
   /** The card's live Done when… lines as loaded; Save diffs the typed lines against them. */
   const [existingLines, setExistingLines] = useState<TaskCriterion[]>([])
+  // Punch list #328: the task's place as loaded and as the editor has it now. Save writes it only when it changed, so
+  // an edit to the title leaves who placed it and when alone.
+  const { user: authUser } = useAuth()
+  const [loadedPlace, setLoadedPlace] = useState<TaskPlaceDraft | null>(null)
+  const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
+  useEffect(() => {
+    setLoadedPlace(null)
+    setPlace(null)
+    if (!itemId) return
+    let cancelled = false
+    void loadTaskPlace(itemId).then((p) => {
+      if (cancelled) return
+      const draft = taskPlaceDraft(p)
+      setLoadedPlace(draft)
+      setPlace(draft)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [itemId])
   /** Due-change ledger for this item (v2.2371) — powers the "originally due" line. */
   const [dueChanges, setDueChanges] = useState<DueChangeRow[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -277,6 +301,8 @@ export function ChecklistItemEditModal({
           links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
           // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
           ...({ asks_for_photo: form.asks_for_photo } as Record<string, boolean>),
+          // A place (#328) is written only when the editor changed it; the columns are younger than the generated types.
+          ...(taskPlaceDraftChanged(loadedPlace, place) ? (taskPlaceColumns(place, authUser?.id ?? null, new Date().toISOString()) as Record<string, unknown>) : {}),
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
           repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
@@ -475,6 +501,7 @@ export function ChecklistItemEditModal({
               </button>
             </div>
           </label>
+          <TaskPlaceRow value={place} onChange={setPlace} />
           <label style={{ display: 'block', marginTop: '0.85rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>
               Done when… <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>what done means, one line each, ticked off on the card</span>

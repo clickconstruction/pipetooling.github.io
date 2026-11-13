@@ -141,6 +141,17 @@ You can also open the thread later, press {{button:outline|⋯}}, then **Reopen*
 
 A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 
+### When a developer tags your mail for you
+
+The app tells you. Nothing is sent to your inbox, and you get no push.
+
+- On the Dashboard, the **Needs you** card shows a line under *Your mail*. It names the developer, how many conversations, and the job.
+- On a phone, the same line is under the **Inbox** tab.
+- The line stays for seven days. Press **See the record** to open it.
+- The record itself stays under Settings, on the **Activity logs** tab. Only you can read it.
+
+Several conversations tagged close together show as one line with a count.
+
 ## Mail you send lands by itself
 
 You do not have to tag the mail you send. The app reads your Sent every five minutes.
