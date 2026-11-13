@@ -55,8 +55,8 @@
   <table>
     <tr><th>Job</th><th class="num">Ready, unbilled</th><th class="num">Sitting</th><th class="num">Cash-days so far</th><th></th></tr>
     <tr><td>1081 · Adams Pretest</td><td class="num">$9,600</td><td class="num late">6 days</td><td class="num">$57.6k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
-    <tr><td>977 · Springtown</td><td class="num">$5,400</td><td class="num warn">3 days</td><td class="num">$16.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
-    <tr><td>1044 · H &amp; I Creekside</td><td class="num">$3,600</td><td class="num">2 days</td><td class="num">$7.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
+    <tr><td>977 · Stonewick</td><td class="num">$5,400</td><td class="num warn">3 days</td><td class="num">$16.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
+    <tr><td>1044 · B &amp; D Creekside</td><td class="num">$3,600</td><td class="num">2 days</td><td class="num">$7.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
   </table>
 
   <h2>The ledger — every bill, ready day → billed day</h2>
@@ -65,13 +65,13 @@
     <tr><td>1087 · Edwards Ranch · $645</td><td>Oct 21</td><td>Oct 21</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
     <tr><td>1046 · Pretest · $1,350</td><td>Oct 17</td><td>Oct 23</td><td class="num late">6 days</td><td>Taunya</td><td class="num">$8.1k·d</td></tr>
     <tr><td>1048 · Tison per plans · $4,800</td><td>Oct 16</td><td>Oct 16</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
-    <tr><td>1007 · SPACEX pay app 3 · $11,800</td><td>Oct 10</td><td>Oct 14</td><td class="num late">4 days</td><td>Taunya</td><td class="num">$47.2k·d</td></tr>
-    <tr><td>1075 · DRF Line Repair · $2,210</td><td>Oct 9</td><td>Oct 9</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
-    <tr><td>804 · Summit · Auto Zone · $3,150</td><td>Oct 6</td><td>Oct 6</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
+    <tr><td>1007 · SKYLAB pay app 3 · $11,800</td><td>Oct 10</td><td>Oct 14</td><td class="num late">4 days</td><td>Taunya</td><td class="num">$47.2k·d</td></tr>
+    <tr><td>1075 · DLF Line Repair · $2,210</td><td>Oct 9</td><td>Oct 9</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
+    <tr><td>804 · Summit · Tire Barn · $3,150</td><td>Oct 6</td><td>Oct 6</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
   </table>
   <p class="muted">sample rows for the wireframe — live, every bill of the window, newest first</p>
 
-  <div class="cost"><b>What the sitting costs.</b> A bill starts its payer's clock the day it goes out, not the day the work finished. SPACEX pays at its ~33-day pace: pay app 3 sent 4 days late lands 4 days late. This window's late sends pushed ≈ <b>$55k·days</b> of receipts back — about one day of the company's cash float.</div>
+  <div class="cost"><b>What the sitting costs.</b> A bill starts its payer's clock the day it goes out, not the day the work finished. SKYLAB pays at its ~33-day pace: pay app 3 sent 4 days late lands 4 days late. This window's late sends pushed ≈ <b>$55k·days</b> of receipts back — about one day of the company's cash float.</div>
 
   <p class="foot">How this reads: ready day = the job's own <code>ready_to_bill</code> status change (job_status_events, who and when); billed day = the day the bill went to the customer, else the day it was marked billed (billedDay). Lag = billed − ready. Cash-days = lag × the bill. No plan to record here — the rule is daily, and the sitting rows carry their own door.</p>
 </div>
