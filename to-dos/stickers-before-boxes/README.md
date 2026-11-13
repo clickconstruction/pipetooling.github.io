@@ -1,8 +1,8 @@
 ---
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's go and her calls
+group: ready
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · nothing built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,9 +14,9 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: Grace's go and her seven calls, then PR 1 (the sticker itself, no new screen but a blank sticker's page).
+next: PR 1 (the sticker itself, no new screen but a blank sticker's page), in its own session, then PRs 2 and 3 and a stop to walk the site.
 size: L as a train of six (M · M · M · S · M · S); PRs 1 to 3 are the whole loop, then a stop to use it on the site
-blocker: Grace's go, and her calls on the number, the paper and who prints a run.
+blocker: none. The seven calls are answered; PR 1's migration is pushed right after its merge, with the person who pushes at hand.
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -304,7 +304,7 @@ match list), `docs/twins/APP_DIRECTORY.md` only if a page is added (none is plan
 
 ## What I would not build
 
-- **A site prefix on the number**, unless call 2 goes that way: it ties a leftover to a site.
+- **A site prefix on the number** (call 2 went the other way): it ties a leftover to a site.
 - **An expiry** on unused stickers, or a step where the office approves a new box.
 - **A sticker for a part or a place.** A part with its own id is #209's V3 (engraved items).
 - **Re-stickering every known box by force.** Old labels keep working.
@@ -333,9 +333,13 @@ or a sheet is right for 400 strips is known only after the first run.
 
 ## Grace's calls
 
-Each is one spot on the mock-up, today beside the suggestion.
+Each is one spot on the mock-up, today beside the suggestion. **Grace took all seven as recommended
+on 2026-11-12**, so the Recommended column is the design: a sticker is its own code, the number is
+company-wide with no prefix, a run prints on Brother tape first, a known box takes any blank sticker,
+the walk gets the camera in the app, the office, a primary and a superintendent print a run, and a
+new box is named by its sticker's number.
 
-| Call | Recommended | Also possible |
+| Call | Recommended, and taken | Also possible, not taken |
 |---|---|---|
 | 1 · what a sticker is | Its own code that points at a box | 200 empty boxes made at print time |
 | 2 · the number | One company-wide number, `0147` | A site prefix, `JR-0147` |

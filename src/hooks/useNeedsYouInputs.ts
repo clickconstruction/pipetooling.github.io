@@ -47,6 +47,7 @@ import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
 import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
 import { useWhileOff } from './useWhileOff'
+import { useMailSavedForYou } from './useMailSavedForYou'
 import { useBridgeMoves } from './useBridgeMoves'
 import { useClauseNeeds } from './useClauseNeeds'
 import { useRobotBacklogNudge } from './useRobotBacklogNudge'
@@ -212,6 +213,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own hours held, whoever they are.
   const whileOffEnabled = on('whileOff')
   const whileOff = useWhileOff(whileOffEnabled, authUserId)
+  // The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job.
+  const mailSavedEnabled = on('mailSaved')
+  const mailSaved = useMailSavedForYou(mailSavedEnabled, authUserId)
   // The week's call (punch list #303 PR 4): the Bridge's moves that carry the viewer's own account.
   const bridgeMovesEnabled = on('bridgeMoves')
   const bridgeMoves = useBridgeMoves(bridgeMovesEnabled, authUserId)
@@ -321,6 +325,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     todaysSends: todaysSends.need,
     whileOffEnabled,
     whileOff: whileOff.need,
+    mailSavedEnabled,
+    mailSaved: mailSaved.need,
     bridgeMovesEnabled,
     bridgeMoves: bridgeMoves.need,
     awayBackDayEnabled,

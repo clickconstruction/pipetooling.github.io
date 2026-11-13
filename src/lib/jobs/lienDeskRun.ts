@@ -1,4 +1,4 @@
-import { buildLienNoticeBlocks, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
+import { buildLienNoticeBlocks, FILING_PRINT_TIGHT_LEADING, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { correctedClaim } from './lienClaimCorrection'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
@@ -465,7 +465,8 @@ export function runCopyPages(
   const invoices = invoiceSectionsByJob?.[n.jobId] ?? []
   if (r.key === 'owner') {
     const note = runCoverNoteBlocks({ ...n, withInvoices: invoices.length > 0 })
-    if (note.length) pages.push({ label: n.coverLetter ? 'Cover letter' : 'Cover note', html: filingDocHtml(note) })
+    // A cover letter prints on the tight sheet (v2.7071, `RUN_COVER_LETTER_CLASS`), so counsel's letter is one sheet in the envelope. A short note keeps the paper's own leading.
+    if (note.length) pages.push({ label: n.coverLetter ? 'Cover letter' : 'Cover note', html: n.coverLetter ? `<div class="${RUN_COVER_LETTER_CLASS}">${filingDocHtml(note)}</div>` : filingDocHtml(note) })
   }
   // The conditional release (v2.4729) rides behind the owner's letter, so the letter's "enclosed" reads true at once; the GC, who is expected to pay, gets it behind the form.
   const releasePage = n.release ? { label: noticeReleaseLabel(n.release.amount), html: noticeReleasePageHtml(n.release, n.extras) } : null
@@ -514,6 +515,14 @@ export function runPacketHtml(
   return runPagesHtml(pages, `Lien notice run — ${demandDate(todayYmd)}`)
 }
 
+/**
+ * The class on a cover letter's page in the packet (v2.7071). In print its lines sit at the PDF's own leading
+ * (`FILING_PRINT_TIGHT_LEADING`, as the short lien affidavit prints) and its paragraphs a little closer, so the letter
+ * and its signature fit one Letter sheet where the paper's own 1.75 ran the signature onto a second. The screen keeps
+ * the paper's own leading. A letter too long for one sheet at this setting still runs on: print cannot measure itself.
+ */
+export const RUN_COVER_LETTER_CLASS = 'run-cover-letter'
+
 /** One print document from pages in order, each on its own sheet: the packet's shell, shared with a single copy or envelope (v2.4853). */
 export function runPagesHtml(pages: ReadonlyArray<string>, title: string): string {
   const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')
@@ -521,7 +530,7 @@ export function runPagesHtml(pages: ReadonlyArray<string>, title: string): strin
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   section + section { margin-top: 3rem; }
-  @media print { body { margin: 0.5in auto; } section + section { margin-top: 0; } }
+  @media print { body { margin: 0.5in auto; } section + section { margin-top: 0; } .${RUN_COVER_LETTER_CLASS} { line-height: ${FILING_PRINT_TIGHT_LEADING}; } .${RUN_COVER_LETTER_CLASS} p { margin-bottom: 0.5em !important; } }
 ${RUN_PAPER_CSS}
 </style></head><body>${body}</body></html>`
 }
