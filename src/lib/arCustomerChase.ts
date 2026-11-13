@@ -14,6 +14,7 @@ import {
 import { daysBetweenYmd, formatYmdMonthDay, type PromisedPayDate } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import type { ArCustomerRow } from './arCustomerRollup'
+import { calendarBillWords, payCalendarWords } from './jobs/payCalendar'
 import type { ArLineItem } from './arModalLineItems'
 
 export type ArChasePillKind = 'dispute' | 'broken' | 'promised' | 'snoozed' | 'quiet' | 'ask'
@@ -126,8 +127,15 @@ export function arCallOpener(row: ArCustomerRow): string {
   const money = (n: number) =>
     `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
   const total = `${money(row.open)} open on ${row.bills.length} ${row.bills.length === 1 ? 'bill' : 'bills'}.`
-  if (row.baselineDays == null) return total
   const late = row.bills.filter((b) => b.tone === 'warn' || b.tone === 'late')
+  // A customer on a Pay calendar (punch list #323): the call names the due day, not a count of days.
+  if (row.calendar) {
+    if (late.length === 0) return `Nothing past its expected day on their pay calendar. ${total}`
+    const worst = late.reduce((a, b) => ((b.calendar?.daysPastExpected ?? 0) > (a.calendar?.daysPastExpected ?? 0) ? b : a))
+    const words = worst.calendar ? calendarBillWords(worst.calendar) : `${worst.waitDays}d waiting`
+    return `${late.length} bill${late.length === 1 ? '' : 's'} past expected on their pay calendar — ${worst.item.label}, ${money(worst.item.amount)}, ${words}. ${total}`
+  }
+  if (row.baselineDays == null) return total
   if (late.length === 0) return `All within their ~${row.baselineDays}d pace. ${total}`
   const oldest = late[0]!
   const pace = row.ownMedianDays != null ? `their ~${row.ownMedianDays}d` : `the company ~${row.baselineDays}d`
@@ -144,10 +152,11 @@ export function arCallOpener(row: ArCustomerRow): string {
 export function buildArCallSummary(row: ArCustomerRow, linesByJob: Map<string, ArLineItem[]> | null): string {
   const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const out: string[] = [`${row.name} — ${money(row.open)} open on ${row.bills.length} bill${row.bills.length === 1 ? '' : 's'}`]
-  if (row.ownMedianDays != null) out.push(`Usually pays in ~${row.ownMedianDays}d.`)
+  if (row.calendar) out.push(`Pays on a calendar. ${payCalendarWords(row.calendar)}`)
+  else if (row.ownMedianDays != null) out.push(`Usually pays in ~${row.ownMedianDays}d.`)
   out.push('')
   for (const b of row.bills) {
-    const wait = b.waitDays != null ? `${b.waitDays}d waiting` : 'no bill date'
+    const wait = b.calendar ? calendarBillWords(b.calendar) : b.waitDays != null ? `${b.waitDays}d waiting` : 'no bill date'
     out.push(`• ${b.item.label} — ${money(b.item.amount)} (${wait})`)
     if (b.item.address) out.push(`  ${b.item.address}`)
     const lines = b.item.jobId ? linesByJob?.get(b.item.jobId) ?? [] : []
