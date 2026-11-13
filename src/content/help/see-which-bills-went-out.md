@@ -18,6 +18,22 @@ On a phone you can add the page to your home screen. The list opens to the newes
 
 You can also reach it from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
 
+## On a phone
+
+The list is the first thing on the screen. Each send is a card with three or four short rows.
+
+- The first row has the time, how the bill went, who sent it and the amount.
+- The next row names the job and the customer.
+- The last rows hold the address, then whether the bill arrived.
+
+Tap anywhere on a card to open that bill's record. The record has **Copy as sent** and **Print this record** as full buttons.
+
+The chips sit in one row. Slide the row sideways to reach the rest.
+
+The yellow box is one line on a phone. Tap the line, or the yellow tile above, to open the box.
+
+**Print** and **Download CSV** are under the list.
+
 ## Read a line
 
 Each line is one send. The line shows these facts.

@@ -10,7 +10,8 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import { BillsSentLedger } from './BillsSentLedger'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], refuse: null as null | Error, fail: null as null | Error }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], refuse: null as null | Error, fail: null as null | Error, phone: false }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
@@ -73,6 +74,7 @@ beforeEach(() => {
   io.filed = []
   io.refuse = null
   io.fail = null
+  io.phone = false
 })
 afterEach(() => cleanup())
 
@@ -248,6 +250,45 @@ describe('BillsSentLedger', () => {
     await waitFor(() => expect(io.filed).toHaveLength(1))
     expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'hand', recipientName: 'Sable Ridge Builders', source: { table: 'jobs_ledger_invoices', id: GAP }, sourceSnapshot: { how: 'handed', went_on: '2026-11-09' } })
     await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
+  })
+
+  it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
+    io.phone = true
+    const GAP = 'dddddddd-4444-4444-8444-444444444444'
+    io.data = {
+      ...data([
+        copy({ id: 'c2', sentAt: '2026-11-05T17:02:00.000Z' }),
+        copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s', sentAt: '2026-11-05T13:00:00.000Z' }),
+        copy({ id: 'c1' }),
+      ]),
+      unsent: [{ billId: GAP, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+      marks: new Map([['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-05T17:02:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }]]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const lines = await screen.findAllByTestId('bills-sent-line')
+    // The strip is one line until it is asked for, and no row of it is drawn.
+    expect(screen.getByTestId('bills-sent-gaps-fold').textContent).toBe('1 bill is billed with no send on recordShow')
+    expect(screen.queryByTestId('bills-sent-gap')).toBeNull()
+    // A bill's line is one press, the whole of it: the work, the address, whether it arrived, which send. No long number, no press inside.
+    expect(lines[0]?.tagName).toBe('A')
+    expect(lines[0]?.getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
+    expect(lines[0]?.textContent).toMatch(/^\d{1,2}:\d\d [AP]MEmail, sent againby Priya\$4,860\.00J1412 · Sable Ridge Lot 14 · Sable Ridge BuildersTo hal@sableridge\.exampleDelivered \d{1,2}:\d\d [AP]M · 2nd send$/)
+    expect(lines[0]?.querySelector('button, a')).toBeNull()
+    // A statement is no bill, so it keeps its own press for the copy.
+    expect(lines[1]?.tagName).toBe('DIV')
+    expect(lines[1]?.textContent).toContain('Statement · 12 jobs · Ridgeway BuildersTo billing@ridgeway.example')
+    fireEvent.click(lines[1]!.querySelector('button')!)
+    await waitFor(() => expect(io.opened).toEqual(['s1']))
+    // Print and the file come after the list.
+    const out = screen.getByTestId('bills-sent-out')
+    expect(lines[2]!.compareDocumentPosition(out) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The fold, and the tile, open the strip whole.
+    fireEvent.click(screen.getByTestId('bills-sent-gaps-fold'))
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    fireEvent.click(screen.getByTestId('bills-sent-tile-gaps'))
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
   })
 
   it('says what fills an empty list, and offers the Pipeline', async () => {
