@@ -275,7 +275,7 @@ export function lienNoticeRecordBatchHtml(papers: ReadonlyArray<LienNoticeRecord
   return (
     `<section class="lien-help" data-lien-help="records">` +
     STRIPE +
-    recordBand('Notice records · do not file these pages', count === 1 ? 'What was mailed before this affidavit' : `What was mailed before each of ${count} affidavits`, [printedOn ? `Printed ${printedOn}` : '', asks === 0 ? '' : asks === 1 ? '1 with a question: ask first' : `${asks} with a question: ask first`]) +
+    recordBand('Notice records · do not file these pages', count === 1 ? 'What was mailed before this affidavit' : `What was mailed before each of ${count} affidavits`, [printedOn ? `Printed ${printedOn}` : '', asks === 0 ? '' : asks === 1 ? '1 waits for the attorney' : `${asks} wait for the attorney`]) +
     `<p class="lien-help-small" style="margin-bottom:5pt" data-lien-record-batch-lead>${esc(LIEN_RECORD_BATCH_LEAD)} ${esc(LIEN_RECORD_ENVELOPE)} ${esc(LIEN_RECORD_FIX)}</p>` +
     blocks +
     foot(`Notice records for the batch${printedOn ? ` printed ${printedOn}` : ''}`, copiesFollow ? (count === 1 ? 'Copies of its notices are next, then 1 paper' : `Copies of the notices are next, then ${count} papers`) : count === 1 ? '1 paper follows these pages' : `${count} papers follow these pages`) +

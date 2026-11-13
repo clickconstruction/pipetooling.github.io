@@ -236,12 +236,12 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
   ]
   const html = lienNoticeRecordBatchHtml(papers, 'November 12, 2026')
 
-  it('is one striped section in front of the stack that says how many papers follow and how many want a question answered', () => {
+  it('is one striped section in front of the stack that says how many papers follow and how many wait for the attorney', () => {
     expect(html.match(/<section class="lien-help"/g)).toHaveLength(1)
     expect(html).toContain('data-lien-help="records"')
     expect(html).toContain('Notice records · do not file these pages')
     expect(html).toContain('What was mailed before each of 3 affidavits')
-    expect(html).toContain('1 with a question: ask first')
+    expect(html).toContain('1 waits for the attorney')
     expect(html).toContain('3 papers follow these pages')
     expect(html).toContain(`${LIEN_RECORD_BATCH_LEAD} ${LIEN_RECORD_ENVELOPE} ${LIEN_RECORD_FIX}`)
   })

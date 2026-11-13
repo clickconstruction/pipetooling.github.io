@@ -123,7 +123,7 @@ import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
 import { lienHelpBatchRecordCode, lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
+import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckRowLine } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -1687,10 +1687,11 @@ export default function LienDesk({
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
       const swornMonths = lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings })
-      const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings }))
+      const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings })
+      const noticeLines = lienNoticeCheckLines(noticeCheck)
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
       const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck) }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])

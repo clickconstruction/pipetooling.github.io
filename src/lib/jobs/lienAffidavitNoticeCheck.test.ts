@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckFlags, lienNoticeCheckLines } from './lienAffidavitNoticeCheck'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckFlags, lienNoticeCheckLines, lienNoticeCheckMonths, lienNoticeCheckRowLine, noticeMonthsSpanWords } from './lienAffidavitNoticeCheck'
 import { noticeDeadlineForMonth } from './lienDeadlines'
 import { buildLienAffidavitFieldsForJob, lienAffidavitSwornMonths } from './lienNoticeDraft'
 import { plainWordsFailures } from '../plainWords'
@@ -52,6 +52,44 @@ describe('the notice behind each sworn month (punch list #314)', () => {
   it('says it in plain words', () => {
     const lines = lienNoticeCheckLines(check('residential', ['2026-04', '2026-08'], [notice(['2026-04', '2026-08'], [['owner', '2026-09-22'], ['original_contractor', '2026-10-20']])]))
     for (const s of [LIEN_NOTICE_CHECK_LEAD, ...lines]) expect(plainWordsFailures(s), s).toEqual([])
+  })
+})
+
+describe('the check in one sentence, for the batch help sheet’s row (the owner, 2026-11-13)', () => {
+  const APR_JUL = ['2026-04', '2026-05', '2026-06', '2026-07']
+  it('names the months once, whichever copy raised the question', () => {
+    // The owner's copy and the contractor's copy both went late for the same four months: two lines, one sentence.
+    const both = check('residential', APR_JUL, [notice(APR_JUL, [['owner', '2026-09-22'], ['original_contractor', '2026-09-22']])])
+    expect(lienNoticeCheckLines(both)).toHaveLength(2)
+    expect(lienNoticeCheckMonths(both)).toEqual(APR_JUL)
+    expect(lienNoticeCheckRowLine(both)).toBe('Notices for April to July 2026 went late or are not on record.')
+    // The owner's copy alone on record: the months of either question, each once.
+    const ownerOnly = check('residential', ['2026-07', '2026-08'], [notice(['2026-07', '2026-08'], [['owner', '2026-10-01']])])
+    expect(ownerOnly.ownerLate).toEqual(['2026-07'])
+    expect(ownerOnly.contractorMissing).toEqual(['2026-07', '2026-08'])
+    expect(lienNoticeCheckRowLine(ownerOnly)).toBe('Notices for July and August 2026 went late or are not on record.')
+  })
+  it('says one month in the singular, and nothing when every month has a timely notice to both', () => {
+    expect(lienNoticeCheckRowLine(check('residential', ['2026-07'], []))).toBe('The notice for July 2026 went late or is not on record.')
+    const clear = check('residential', ['2026-08'], [notice(['2026-08'], [['owner', '2026-10-01'], ['original_contractor', '2026-10-01']])])
+    expect(lienNoticeCheckFlags(clear)).toBe(false)
+    expect(lienNoticeCheckRowLine(clear)).toBe('')
+    expect(lienNoticeCheckRowLine(check('residential', ['2026-08'], [], false))).toBe('')
+  })
+  it('reads three or more months in a row as a span, and lists the rest', () => {
+    expect(noticeMonthsSpanWords(APR_JUL)).toBe('April to July 2026')
+    expect(noticeMonthsSpanWords(['2026-07', '2026-05', '2026-06', '2026-06'])).toBe('May to July 2026')
+    expect(noticeMonthsSpanWords(['2026-11', '2026-12', '2027-01'])).toBe('November 2026 to January 2027')
+    expect(noticeMonthsSpanWords(['2026-06', '2026-07'])).toBe('June and July 2026')
+    expect(noticeMonthsSpanWords(['2026-04', '2026-05', '2026-07'])).toBe('April, May and July 2026')
+    expect(noticeMonthsSpanWords(['2026-07'])).toBe('July 2026')
+    expect(noticeMonthsSpanWords(['bad'])).toBe('')
+  })
+  it('follows the plain-words rules', () => {
+    for (const months of [APR_JUL, ['2026-07'], ['2026-04', '2026-05', '2026-07'], ['2026-11', '2026-12', '2027-01']]) {
+      const s = lienNoticeCheckRowLine(check('residential', months, []))
+      expect(plainWordsFailures(s), s).toEqual([])
+    }
   })
 })
 
