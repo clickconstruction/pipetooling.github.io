@@ -39,6 +39,8 @@ export type SiteBoxHold = {
   placeName: string
   /** The name this box's line was typed under. */
   spelling: string
+  /** The line's own key in the ledger (`partKey`): what a price typed off an invoice is kept under. */
+  partKey: string
   onHand: number
   /** When this line was last counted in this box; null when never. */
   lineCountedAt: string | null
@@ -145,9 +147,10 @@ function boxIsDue(c: Container, countedAt: string | undefined, now: Date): boole
 /**
  * The roll-up: one row per part across the site's jobs, by name as people read it (2" before 10").
  * `canon` maps a same-words key to the row it belongs to once a person has joined names
- * (`tieCanon` in `partTies.ts`); left out, every key is its own row.
+ * (`tieCanon` in `partTies.ts`); left out, every key is its own row. `bookNames` names a
+ * parts-book row that holds no book line of its own: a typed name tied to the book (PR 4).
  */
-export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, canon: (key: string) => string = (key) => key): SitePartRow[] {
+export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, canon: (key: string) => string = (key) => key, bookNames: ReadonlyMap<string, string> = new Map()): SitePartRow[] {
   const rows = new Map<string, SitePartRow>()
   /** A row that holds a parts-book line reads by the book's name. */
   const bookName = new Map<string, string>()
@@ -169,7 +172,7 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, cano
       if (l.partId && !row.partId) row.partId = l.partId
       const short = Math.max(0, -(l.lastCountDiff ?? 0))
       const due = boxIsDue(c, counted.get(c.id), now)
-      row.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, jobId: job.jobId, jobLabel: job.label, placeName: placeOf(job, c), spelling: l.partName, onHand: l.onHand, lineCountedAt: l.lastCountAt, due, cannotFind: l.cannotFindSinceCount, short })
+      row.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, jobId: job.jobId, jobLabel: job.label, placeName: placeOf(job, c), spelling: l.partName, partKey: l.partKey, onHand: l.onHand, lineCountedAt: l.lastCountAt, due, cannotFind: l.cannotFindSinceCount, short })
       row.total += l.onHand
       row.cannotFind += l.cannotFindSinceCount
       row.short += short
@@ -185,7 +188,9 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, cano
   const out = [...rows.values()]
   for (const row of out) {
     row.spellings.sort((a, b) => b.pieces - a.pieces || a.name.localeCompare(b.name))
-    row.name = bookName.get(row.key) ?? row.spellings[0]?.name ?? row.name
+    row.name = bookName.get(row.key) ?? bookNames.get(row.key) ?? row.spellings[0]?.name ?? row.name
+    // A row keyed on a parts-book part is that part, even when every line under it was typed.
+    if (!row.partId && row.key.startsWith('id:')) row.partId = row.key.slice('id:'.length)
     row.memberKeys.sort()
     row.boxes.sort((a, b) => b.onHand - a.onHand || compareLabels(a.label, b.label))
   }
