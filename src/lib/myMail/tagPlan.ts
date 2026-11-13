@@ -73,6 +73,11 @@ export interface MyMailKnown {
    * filed for the record: its line is written with `history`, so it asks nobody for a reply. Absent: nothing is filed.
    */
   nowIso?: string
+  /**
+   * File every mail of this tag for the record whatever its age (v2.7032, the dev seat's `for_record`): a batch of
+   * old conversations with nobody watching, where even last week's mail is filed for catching up and asks nobody.
+   */
+  forRecord?: boolean
 }
 
 /** A file on a written line: copied into the bucket up to 25 MB, else left in Gmail and named (`fileKeep`). */
@@ -286,7 +291,7 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
       }),
       links: fileLinks(email.links).map((l) => ({ name: l.name, url: l.url, host: l.host })),
       emlName: `${email.gmailId}.eml`,
-      history: filedByAge(email.at, known.nowIso),
+      history: known.forRecord === true || filedByAge(email.at, known.nowIso),
     })
   }
 

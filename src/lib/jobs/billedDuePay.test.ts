@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { billedExpectedPayModel, type PaySpeedData } from './billedExpectedPay'
-import { billedPayModel } from './billedDuePay'
+import { billedPayModel, payClockFor, payClockShort, payClockWords } from './billedDuePay'
 import { PAY_CALENDAR_DEFAULT, type PayCalendar } from './payCalendar'
 
 /** Paid the 10th of the month after it is received. */
@@ -30,7 +30,7 @@ describe('billedPayModel', () => {
   it('is the pace guess, unchanged, with no calendar', () => {
     const base = billedExpectedPayModel(row('2026-11-03'), DATA, TODAY)
     expect(base?.expectedYmd).toBe('2026-12-14')
-    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, calendar: null })
+    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, clockYmd: null, clockFrom: null })
     expect(billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, null)?.source).toBe('customer')
     expect(billedPayModel(row('2026-11-03'), null, TODAY)).toBeNull()
   })
@@ -86,6 +86,30 @@ describe('billedPayModel', () => {
   it('says pay when paid in the reason', () => {
     const m = billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, { ...TENTH, payWhenPaid: true })!
     expect(m.title).toContain('They pay when the owner pays them, so the due day is the earliest.')
+  })
+
+  it('counts the cutoff from the day they accepted the bill, when one is recorded (PR 4)', () => {
+    // Sent Nov 24 and accepted Dec 2: a month later under the contract. Without the accepted day it reads Dec 10.
+    const sent = billedPayModel(row('2026-11-24'), DATA, '2026-12-05', null, null, TENTH)!
+    expect(sent).toMatchObject({ dueYmd: '2026-12-10', clockYmd: '2026-11-24', clockFrom: 'billed' })
+    const accepted = billedPayModel({ ...row('2026-11-24'), acceptedYmd: '2026-12-02' }, DATA, '2026-12-05', null, null, TENTH)!
+    expect(accepted).toMatchObject({ dueYmd: '2027-01-10', expectedYmd: '2027-01-16', clockYmd: '2026-12-02', clockFrom: 'accepted', daysPastDue: 0 })
+    expect(accepted.title).toContain('Billed Nov 24. They accepted it Dec 2, and the calendar counts from that day.')
+    // The same month changes nothing but the reason.
+    expect(billedPayModel({ ...row('2026-11-03'), acceptedYmd: '2026-11-20' }, DATA, TODAY, null, null, TENTH)).toMatchObject({ dueYmd: '2026-12-10', clockFrom: 'accepted' })
+    // A day that is not one is ignored, and with no calendar the accepted day changes nothing.
+    expect(billedPayModel({ ...row('2026-11-24'), acceptedYmd: 'soon' }, DATA, '2026-12-05', null, null, TENTH)).toMatchObject({ dueYmd: '2026-12-10', clockFrom: 'billed' })
+    expect(billedPayModel({ ...row('2026-11-03'), acceptedYmd: '2026-12-02' }, DATA, TODAY)).toMatchObject({ source: 'customer', expectedYmd: '2026-12-14', clockYmd: null })
+  })
+
+  it('says which day it counted from', () => {
+    expect(payClockFor(row('2026-11-03'))).toEqual({ ymd: '2026-11-03', from: 'billed' })
+    expect(payClockFor({ ...row('2026-11-03'), acceptedYmd: '2026-12-02' })).toEqual({ ymd: '2026-12-02', from: 'accepted' })
+    expect(payClockFor({ billedAtIso: null, estBillYmd: null, customerId: 'lark' })).toBeNull()
+    expect(payClockWords({ ymd: '2026-11-03', from: 'billed' })).toBe('Counted from Nov 3, the day it went in')
+    expect(payClockWords({ ymd: '2026-12-02', from: 'accepted' })).toBe('Counted from Dec 2, the day they accepted it')
+    expect(payClockShort({ ymd: '2026-11-03', from: 'billed' })).toBe('Counted from Nov 3')
+    expect(payClockShort({ ymd: '2026-12-02', from: 'accepted' })).toBe('Accepted Dec 2')
   })
 
   it('falls back to the pace guess for a row with no day to count from', () => {
