@@ -40,6 +40,12 @@ Under the figures, **By part** lists one row per part across the site's jobs. Th
 
 Two names are one row when their words are the same. *2" 90 PVC* and *2 inch 90 pvc* are one row, and the row says **2 spellings**. Each name keeps its own count in its box. A name with a different size or a missing word stays its own row. The app never guesses.
 
+Some names are nearly the same. One may have one more word, or a small spelling slip. Under such a row the screen asks **Same part?** and shows the other name. Press {{button:blue|Same part}} to make them one row with one total. Press **Different** to keep them apart. The screen remembers either answer for this site and does not ask again.
+
+The chip **Same part?** beside By place lists only the rows with a question. The app asks only when the sizes match. A 2 inch part and a 3 inch part are never offered as one.
+
+To take a join back, press the row to open it. **Names joined here** lists each pair with who joined it. Press **Undo** beside a pair. A join never changes a count or a box.
+
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
 Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
