@@ -147,3 +147,5 @@ Each is one card on the mock-up with my pick first.
 
 2026-11-13: the card and the mock-up. Nothing is built. The Edit press of the same day (v2.7179) is the
 one place a name can be changed, to any text, until PR 1 holds it to the rule.
+
+2026-11-13, later: **a printed label carries the letters and number alone** since v2.7195, on the owner's word that a label should not depend on the rest of the name. `G12 COPPER 90` prints `G12` on tape, on the sheet and in the CSV (`labelPrintNames` in `labels.ts`). That settles half of call 4 ahead of the train: no words on a cage's or a box's label. Whether a loose pile's label adds the line is still the owner's call.
