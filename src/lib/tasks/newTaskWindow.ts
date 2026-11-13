@@ -285,6 +285,11 @@ export interface NewTaskSentenceInput extends TaskSendWho {
   tellMe: boolean
   /** Who else hears, or null. */
   tellOtherName: string | null
+  /**
+   * The giver's name when the person at the window is not the giver, as on an edit of someone else's task.
+   * The giver is then named where the sentence would say *You*.
+   */
+  giverName?: string | null
 }
 
 export interface NewTaskSentence {
@@ -357,10 +362,11 @@ export function newTaskSentence(input: NewTaskSentenceInput): NewTaskSentence {
   else if (input.asksForPhoto) parts.push('It asks for a photo at the finish.')
 
   const hears: string[] = []
-  if (input.tellMe && !onlyMe(input)) hears.push('You')
+  const giver = input.giverName ?? 'You'
+  if (input.tellMe && (input.giverName || !onlyMe(input))) hears.push(giver)
   if (input.tellOtherName) hears.push(input.tellOtherName)
   if (hears.length === 2) parts.push(`${joinAnd(hears)} hear when it is done.`)
-  else if (hears[0] === 'You') parts.push('You hear when it is done.')
+  else if (hears[0] === 'You' && !input.giverName) parts.push('You hear when it is done.')
   else if (hears.length === 1) parts.push(`${hears[0]} hears when it is done.`)
 
   return { text: parts.join(' '), dead: false }
