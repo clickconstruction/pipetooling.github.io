@@ -5,6 +5,10 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+// The card's place and photo have their own tests (RoadmapTaskPlaceSection.render.test.tsx). Stood in for here so
+// this file reads no office address and no place over the network.
+vi.mock('./RoadmapTaskPlaceSection', () => ({ RoadmapTaskPlaceSection: () => null }))
+
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 
 const USERS = [{ id: 'u-robert', name: 'Robert', email: 'r@x.com' }]

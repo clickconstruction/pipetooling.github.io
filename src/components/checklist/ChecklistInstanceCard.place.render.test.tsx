@@ -65,4 +65,21 @@ describe('ChecklistInstanceCard place', () => {
     await settle()
     expect(document.querySelector('[data-task-place-line]')).toBeNull()
   })
+
+  it('a task with a photo and no place shows the photo once opened, and nothing while closed', async () => {
+    renderCard({ spotPhotoUrl: 'signed:p1' })
+    await settle()
+    expect(document.querySelector('[data-task-spot-photo]')).toBeNull()
+    fireEvent.click(screen.getByText(/Add a note/))
+    expect(screen.getByRole('button', { name: 'Open the photo of the spot' })).toBeTruthy()
+    expect(document.querySelector('[data-task-place-block]')).toBeNull()
+  })
+
+  it('a task with both shows the photo inside the place\'s block', async () => {
+    renderCard({ place: PLACE, spotPhotoUrl: 'signed:p1' })
+    await settle()
+    fireEvent.click(screen.getByText(/Add a note/))
+    const block = document.querySelector('[data-task-place-block]') as HTMLElement
+    expect(block.querySelector('[data-task-spot-photo]')).toBeTruthy()
+  })
 })

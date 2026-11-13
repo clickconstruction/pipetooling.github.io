@@ -14,7 +14,7 @@ import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
 import type { TaskPhotoView } from '../../hooks/useTaskPhotos'
 import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
-import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -91,6 +91,8 @@ type ChecklistInstanceCardProps = {
   placeFar?: string | null
   /** Bumped by Show the task on the map (PR 4): the card opens. Zero or absent does nothing. */
   openSignal?: number
+  /** The giver's photo of the spot (PR 6), a signed address: beside the place's map when the card is open, or by itself. */
+  spotPhotoUrl?: string | null
 }
 
 /**
@@ -126,6 +128,7 @@ export function ChecklistInstanceCard({
   placeOverdue = false,
   placeFar = null,
   openSignal = 0,
+  spotPhotoUrl = null,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   useEffect(() => {
@@ -578,7 +581,12 @@ export function ChecklistInstanceCard({
       )}
       {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}{photoStrip}</div> : null}
       {ringSheet}
-      {threadOpen && place && variant === 'card' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} /> : null}
+      {threadOpen && place && variant === 'card' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} photoUrl={spotPhotoUrl} /> : null}
+      {threadOpen && !place && spotPhotoUrl && variant === 'card' ? (
+        <div style={{ marginTop: '0.6rem' }}>
+          <TaskSpotPhotoView url={spotPhotoUrl} />
+        </div>
+      ) : null}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity
