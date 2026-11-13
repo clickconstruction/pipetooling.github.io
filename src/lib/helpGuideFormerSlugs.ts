@@ -14,6 +14,8 @@
  */
 export const HELP_GUIDE_FORMER_SLUGS: ReadonlyArray<readonly [former: string, current: string]> = [
   ['farm-mode', 'task-mode'],
+  // Tag became Save (v2.7073): a tagged mail is copied into the app, so the guide says what it does.
+  ['tag-an-email-onto-a-job-from-your-own-mail', 'save-an-email-to-a-job-from-your-own-mail'],
 ]
 
 const CURRENT_BY_FORMER = new Map<string, string>(HELP_GUIDE_FORMER_SLUGS)

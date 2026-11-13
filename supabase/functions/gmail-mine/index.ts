@@ -1004,7 +1004,7 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     admin.from('email_tag_threads').select(TAG_ROW_COLUMNS).eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle(),
     hiddenLabelIds(ctx.token, me.hiddenLabels),
   ])
-  if (before.error) throw stopped('Reading the tag failed.', before.error.message)
+  if (before.error) throw stopped('Reading the saved conversation failed.', before.error.message)
   // A conversation on a person's HR file (punch list #289) follows one target: the seat lifts that follow first.
   if ((before.data as { person_id?: string | null } | null)?.person_id) return refuse(myMailRefusal('badRequest', MY_MAIL_ON_FILE_WORDS), MY_MAIL_REFUSAL_STATUS.badRequest, 'tag')
   // The job the conversation was on before this tag: a tag onto another job moves the grey line with it, and the lines
@@ -1054,7 +1054,7 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     )
     .select('id')
     .single()
-  if (saved.error) throw stopped('The tag stopped before it began.', saved.error.message)
+  if (saved.error) throw stopped('The save stopped before it began.', saved.error.message)
   const tagRowId = (saved.data as { id?: string } | null)?.id ?? null
   // A tag by hand lifts the tombstone (punch list #263 PR B): the app may place later mail of the conversation again.
   const lifted = await admin.from('email_tag_threads_off').delete().eq('user_id', me.id).eq('gmail_thread_id', ask.threadId)
@@ -1067,7 +1067,7 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     }
     if (step.kind === 'tie') {
       if (step.tie) {
-        await tieLine(ctx, step.messageId, chip, actorId, { tie: 'The tag stopped partway. A line could not be tied to the job.', stamp: 'The tag stopped partway. A tied line could not name who tagged it.' })
+        await tieLine(ctx, step.messageId, chip, actorId, { tie: 'The save stopped partway. A line could not be tied to the job.', stamp: 'The save stopped partway. A tied line could not name who saved it.' })
         done.tied++
       }
       const line = heldById.get(step.messageId)
@@ -1077,7 +1077,7 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     }
     const email = emailById.get(step.gmailId)
     if (!email) continue
-    const landed = await landMail(ctx, email, step, plan, run, 'The tag')
+    const landed = await landMail(ctx, email, step, plan, run, 'The save')
     contactId = contactId ?? landed.contactId
     if (landed.madeUnknown && !unknownSender) unknownSender = { contactId: landed.contactId, address: step.party.address, name: step.party.name?.trim() ?? '' }
   }
@@ -1257,7 +1257,7 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   // An untag reads nothing from Gmail and changes nothing there (v2.7035): the lines are the app's own copies.
   const planOnly = ask.plan === true
   const { data: tagRow, error: tagError } = await admin.from('email_tag_threads').select(TAG_ROW_COLUMNS).eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle()
-  if (tagError) throw stopped('Reading the tag failed.', tagError.message)
+  if (tagError) throw stopped('Reading the saved conversation failed.', tagError.message)
   if ((tagRow as { person_id?: string | null } | null)?.person_id) return refuse(myMailRefusal('badRequest', MY_MAIL_ON_FILE_WORDS), MY_MAIL_REFUSAL_STATUS.badRequest, 'untag')
   let record = myMailTagRecord(tagRow)
   // The seat takes off only a tag the seat made: its own call log must hold an ok apply_mail_tag that put this
@@ -1278,7 +1278,7 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   // and an untag that stops leaves the row, marked, for the next untag to find and finish. The seat's plan marks nothing.
   if (tagRow && !planOnly) {
     const marked = await admin.from('email_tag_threads').update({ untagging_at: nowIso() }).eq('id', tagRow.id)
-    if (marked.error) throw stopped('The untag stopped before it began.', marked.error.message)
+    if (marked.error) throw stopped('Taking it off the job stopped before it began.', marked.error.message)
   }
   const own = await rows<OffLine>(admin.from('messages').select('id, contact_id').eq('mail_user_id', me.id).eq('gmail_thread_id', ask.threadId), 'your lines')
   const ownIds = unique(own.map((l) => l.id))
@@ -1350,7 +1350,7 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   let untied = 0
   for (const id of plan.untie) {
     // The way a person unties a line on the thread, as the caller: no job, tied_by stamped.
-    await tieLine(ctx, id, null, record?.taggedBy ?? me.id, { tie: 'The untag stopped partway. A line could not be untied.', stamp: 'The untag stopped partway. An untied line could not name who untied it.' })
+    await tieLine(ctx, id, null, record?.taggedBy ?? me.id, { tie: 'Taking it off the job stopped partway. A line could not be untied.', stamp: 'Taking it off the job stopped partway. An untied line could not name who untied it.' })
     untied++
   }
   // The tag's grey line goes with it, before the row whose id keys it. One that will not go is logged and left.
@@ -1390,7 +1390,7 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   // The row goes last, so an untag that stopped before here finds the tag again and finishes.
   if (tagRow) {
     const off = await admin.from('email_tag_threads').delete().eq('id', tagRow.id)
-    if (off.error) throw stopped('The untag stopped before the tag came off.', off.error.message)
+    if (off.error) throw stopped('Taking it off the job stopped before the save came off.', off.error.message)
   }
   // A conversation the app placed from the person's Sent and the person took off stays off (punch list #263 PR B): the
   // tombstone, which the Sent read asks before it places anything, and which a tag by hand lifts. The seat's untag

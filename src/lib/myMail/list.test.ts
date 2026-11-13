@@ -109,8 +109,8 @@ describe('the page of rows', () => {
   })
 
   it('says an empty page is not the end of the box while Gmail holds older mail, and offers Older ›', () => {
-    expect(emptyPageWords('toTag')).toEqual({ main: 'Nothing to tag on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
-    expect(emptyPageWords('tagged')).toEqual({ main: 'No tagged conversations on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
+    expect(emptyPageWords('toTag')).toEqual({ main: 'Nothing to save on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
+    expect(emptyPageWords('tagged')).toEqual({ main: 'No saved conversations on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
     expect(emptyPageWords('all')).toEqual({ main: 'Only notices and newsletters on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
     // The good state is kept for the true end, with no older page.
     expect(emptyPageWords('toTag').main).not.toBe(MY_MAIL_WORDS.empty('toTag').main)
@@ -124,10 +124,10 @@ describe('the page of rows', () => {
 
 describe('the words of a tag and an untag', () => {
   it('says the job and what is on it now', () => {
-    expect(taggedWords({ lines: 2, tied: 1, files: 1 }, elm)).toBe('Tagged onto JP1077. 3 lines and 1 file are on the job now.')
-    expect(taggedWords({ lines: 1, tied: 0, files: 0 }, cedar)).toBe('Tagged onto BP523. 1 line is on the job now.')
-    expect(taggedWords({ lines: 0, tied: 0, files: 0 }, elm)).toBe('Tagged onto JP1077. Every mail in it was on the job already.')
-    expect(taggedWords({ lines: 2, tied: 0, files: 2 })).toBe('Tagged. 2 lines and 2 files are on the job now.')
+    expect(taggedWords({ lines: 2, tied: 1, files: 1 }, elm)).toBe('Saved to JP1077. 3 lines and 1 file are on the job now.')
+    expect(taggedWords({ lines: 1, tied: 0, files: 0 }, cedar)).toBe('Saved to BP523. 1 line is on the job now.')
+    expect(taggedWords({ lines: 0, tied: 0, files: 0 }, elm)).toBe('Saved to JP1077. Every mail in it was on the job already.')
+    expect(taggedWords({ lines: 2, tied: 0, files: 2 })).toBe('Saved. 2 lines and 2 files are on the job now.')
     expect(onTheJobWords({ lines: 0, tied: 1, files: 1 })).toBe('1 line and 1 file are on the job now.')
   })
 
@@ -153,15 +153,15 @@ describe('the words of a tag and an untag', () => {
   })
 
   it('says why a press of the tag did not go, by the press', () => {
-    expect(notTaggedWords('tag')).toBe('The conversation was not tagged.')
+    expect(notTaggedWords('tag')).toBe('The conversation was not saved.')
     expect(notTaggedWords('move')).toBe('The conversation was not moved.')
     expect(notTaggedWords('put')).toBe('The mail was not put on the job.')
   })
 
   it('says what came off, and the copy a legal matter keeps', () => {
-    expect(untaggedWords({ removed: 3, keptForMatter: false })).toBe('Untagged. 3 lines came off the job.')
-    expect(untaggedWords({ removed: 1, keptForMatter: true })).toBe('Untagged. 1 line came off the job. The legal matter keeps its own copy.')
-    expect(untaggedWords({ removed: 0, keptForMatter: false })).toBe('Untagged. Nothing came off the job.')
+    expect(untaggedWords({ removed: 3, keptForMatter: false })).toBe('Taken off the job. 3 lines came off.')
+    expect(untaggedWords({ removed: 1, keptForMatter: true })).toBe('Taken off the job. 1 line came off. The legal matter keeps its own copy.')
+    expect(untaggedWords({ removed: 0, keptForMatter: false })).toBe('Taken off the job. No line came off.')
   })
 
   it('keeps every sentence in plain words', () => {
