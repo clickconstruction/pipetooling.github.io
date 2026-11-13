@@ -123,15 +123,6 @@ export default function ChecklistAddModal({
   const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('today')
   const [repeatMode, setRepeatMode] = useState<'weekly' | 'after_done'>('weekly')
 
-  const assignToSelectOptions = useMemo(
-    () =>
-      users.map((u) => ({
-        value: u.id,
-        label: u.name?.trim() || u.email,
-      })),
-    [users],
-  )
-
   const canManage = useMemo(
     () =>
       role === 'dev' ||
