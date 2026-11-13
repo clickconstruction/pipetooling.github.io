@@ -351,6 +351,8 @@ export default function BilledPaymentForecastModal({
             rows={rows}
             paySpeeds={paySpeeds}
             todayYmd={todayYmd}
+            payCalendars={payCalendars}
+            acceptedByInvoice={acceptedByInvoice}
             onClose={() => setPaySpeedsOpen(false)}
             onOpenJobDetail={
               onOpenJobDetail

@@ -24,10 +24,10 @@ import {
 
 const NOTICE_FIELDS: LienNoticeFields = {
   noticeDate: '2026-09-03',
-  projectDescription: 'Reliant Health — 150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+  projectDescription: 'Relwyn Health — 150 E Sonmere Blvd 200B, San Antonio, TX 78258',
   claimantName: 'Click Plumbing and Electrical',
   laborMaterialsType: 'Plumbing labor and materials',
-  originalContractorName: 'Knight Contracting',
+  originalContractorName: 'Kestrin Contracting',
   contractedWithIfDifferent: '',
   claimAmount: '2711.50',
   contactPerson: 'Malachi Whites',
@@ -39,10 +39,10 @@ describe('§ 53.056 notice', () => {
     const text = filingDocText(
       buildLienNoticeBlocks({
         noticeDate: '2026-09-03',
-        projectDescription: 'Reliant Health — 150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+        projectDescription: 'Relwyn Health — 150 E Sonmere Blvd 200B, San Antonio, TX 78258',
         claimantName: 'Click Plumbing and Electrical',
         laborMaterialsType: 'Plumbing labor and materials',
-        originalContractorName: 'Knight Contracting',
+        originalContractorName: 'Kestrin Contracting',
         contractedWithIfDifferent: '',
         claimAmount: '2711.50',
         contactPerson: 'Malachi Whites',
@@ -50,13 +50,13 @@ describe('§ 53.056 notice', () => {
       }),
     )
     expect(text).toContain('NOTICE OF CLAIM FOR UNPAID LABOR OR MATERIALS')
-    expect(text).toContain('Project description and/or address: Reliant Health')
-    expect(text).toContain("Original contractor's name: Knight Contracting")
+    expect(text).toContain('Project description and/or address: Relwyn Health')
+    expect(text).toContain("Original contractor's name: Kestrin Contracting")
     // Blank "party if different" is omitted entirely (owner decision 2026-09-02).
     expect(text).not.toContain('Party with whom claimant contracted')
     expect(
-      filingDocText(buildLienNoticeBlocks({ ...NOTICE_FIELDS, contractedWithIfDifferent: 'Sonterra JV Partners' })),
-    ).toContain('Party with whom claimant contracted if different from original contractor: Sonterra JV Partners')
+      filingDocText(buildLienNoticeBlocks({ ...NOTICE_FIELDS, contractedWithIfDifferent: 'Sonmere JV Partners' })),
+    ).toContain('Party with whom claimant contracted if different from original contractor: Sonmere JV Partners')
     expect(text).toContain('Claim amount: $2,711.50')
     expect(text).toContain("(Claimant's contact person) Malachi Whites")
   })
@@ -68,15 +68,15 @@ describe('§ 53.054 affidavit', () => {
     claimantPersonName: 'Malachi Whites',
     claimantCompany: 'Click Plumbing and Electrical',
     claimantAddress: '5501 Balcones Dr, Austin, TX',
-    legalDescription: 'Lot 3, Block A, Sonterra Commercial Park',
-    propertyAddress: '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
-    contractedWithName: 'Knight Contracting',
+    legalDescription: 'Lot 3, Block A, Sonmere Commercial Park',
+    propertyAddress: '150 E Sonmere Blvd 200B, San Antonio, TX 78258',
+    contractedWithName: 'Kestrin Contracting',
     workDescription: 'Plumbing rough-in and trim',
     workStart: '2026-06-03',
     workEnd: '2026-07-28',
-    ownerName: 'Sonterra Holdings LLC',
+    ownerName: 'Sonmere Holdings LLC',
     ownerAddress: 'PO Box 1420, San Antonio, TX',
-    originalContractorName: 'Knight Contracting',
+    originalContractorName: 'Kestrin Contracting',
     originalContractorAddress: '2904 Corporate CR, Flower Mound, TX',
     contractAmount: '3850',
     paidAmount: '1138.50',
@@ -88,7 +88,7 @@ describe('§ 53.054 affidavit', () => {
     expect(text).toContain("MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT")
     expect(text).toContain('COUNTY OF BEXAR')
     expect(text).toContain('2. Claimant furnished labor and/or materials')
-    expect(text).toContain('Legal description: Lot 3, Block A, Sonterra Commercial Park')
+    expect(text).toContain('Legal description: Lot 3, Block A, Sonmere Commercial Park')
     expect(text).toContain('6. The name and last known address of the owner')
     expect(text).toContain('PO Box 1420')
     expect(text).toContain('8. The original contract amount was $3,850.00. The amount paid to date is $1,138.50.')
@@ -110,15 +110,15 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
     claimantPersonName: 'Malachi Whites',
     claimantCompany: 'Click Plumbing and Electrical',
     claimantAddress: '5501 Balcones Dr, Austin, TX',
-    legalDescription: 'Lot 3, Block A, Sonterra Commercial Park',
-    propertyAddress: '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
-    contractedWithName: 'Knight Contracting',
+    legalDescription: 'Lot 3, Block A, Sonmere Commercial Park',
+    propertyAddress: '150 E Sonmere Blvd 200B, San Antonio, TX 78258',
+    contractedWithName: 'Kestrin Contracting',
     workDescription: 'Plumbing labor and materials',
     workStart: '2026-06-03',
     workEnd: '2026-07-28',
-    ownerName: 'Sonterra Holdings LLC',
+    ownerName: 'Sonmere Holdings LLC',
     ownerAddress: 'PO Box 1420, San Antonio, TX',
-    originalContractorName: 'Knight Contracting',
+    originalContractorName: 'Kestrin Contracting',
     originalContractorAddress: '2904 Corporate CR, Flower Mound, TX',
     contractAmount: '3850',
     paidAmount: '1138.50',
@@ -140,9 +140,9 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
         'STATE OF TEXAS\nCOUNTY OF ___________',
         'BEFORE ME, the undersigned authority, on this day personally appeared Malachi Whites, who being by me duly sworn, upon oath states the following:',
         '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
-        '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
-        '3. Claimant did so under a contract with Knight Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.',
-        '4. The owner or reputed owner is Sonterra Holdings LLC, PO Box 1420, San Antonio, TX.',
+        '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonmere Commercial Park, 150 E Sonmere Blvd 200B, San Antonio, TX 78258.',
+        '3. Claimant did so under a contract with Kestrin Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.',
+        '4. The owner or reputed owner is Sonmere Holdings LLC, PO Box 1420, San Antonio, TX.',
         '5. Payment is requested for work done and materials furnished in July and August 2026.',
         '6. Notice of the claim was sent to the owner by certified mail on August 14, 2026 and September 11, 2026.',
         '7. The amount of the claim is $2,711.50. Claimant claims a lien on the property for that amount.',
@@ -153,11 +153,11 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
   })
 
   it('a job contracted with the owner: four paragraphs, no months and no notices', () => {
-    const owner = { ...short, isSub: false, contractedWithName: 'Sonterra Holdings LLC', originalContractorName: 'Click Plumbing and Electrical', originalContractorAddress: '5501 Balcones Dr, Austin, TX' }
+    const owner = { ...short, isSub: false, contractedWithName: 'Sonmere Holdings LLC', originalContractorName: 'Click Plumbing and Electrical', originalContractorAddress: '5501 Balcones Dr, Austin, TX' }
     expect(numbered(owner)).toEqual([
       '1. I am authorized to make this affidavit for Click Plumbing and Electrical ("Claimant"). Claimant\'s mailing address is 5501 Balcones Dr, Austin, TX.',
-      '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonterra Commercial Park, 150 E Sonterra Blvd 200B, San Antonio, TX 78258.',
-      '3. Claimant did so under a contract with the owner, Sonterra Holdings LLC, PO Box 1420, San Antonio, TX. Claimant is the original contractor.',
+      '2. Claimant furnished plumbing labor and materials to improve this property in Bexar County, Texas: Lot 3, Block A, Sonmere Commercial Park, 150 E Sonmere Blvd 200B, San Antonio, TX 78258.',
+      '3. Claimant did so under a contract with the owner, Sonmere Holdings LLC, PO Box 1420, San Antonio, TX. Claimant is the original contractor.',
       '4. The amount of the claim is $2,711.50. Claimant claims a lien on the property for that amount.',
     ])
     expect(text(owner)).not.toContain('Payment is requested')
@@ -171,11 +171,11 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
   })
 
   it('someone other than the original contractor hired us: that party and its address, then the original contractor and its address', () => {
-    expect(numbered({ ...short, contractedWithName: 'Alamo Mechanical', contractedWithAddress: '9 Yard St, Devine TX 78016' })[2]).toBe('3. Claimant did so under a contract with Alamo Mechanical, 9 Yard St, Devine TX 78016. The original contractor is Knight Contracting, 2904 Corporate CR, Flower Mound, TX.')
+    expect(numbered({ ...short, contractedWithName: 'Alamo Mechanical', contractedWithAddress: '9 Yard St, Devine TX 78016' })[2]).toBe('3. Claimant did so under a contract with Alamo Mechanical, 9 Yard St, Devine TX 78016. The original contractor is Kestrin Contracting, 2904 Corporate CR, Flower Mound, TX.')
     // The hiring party named with no address on file is a blank the office sees.
     expect(numbered({ ...short, contractedWithName: 'Alamo Mechanical' })[2]).toContain('Alamo Mechanical, _______________.')
     // The same party named twice, in another case, is one party.
-    expect(numbered({ ...short, contractedWithName: 'KNIGHT CONTRACTING ' })[2]).toBe('3. Claimant did so under a contract with Knight Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.')
+    expect(numbered({ ...short, contractedWithName: 'KESTRIN CONTRACTING ' })[2]).toBe('3. Claimant did so under a contract with Kestrin Contracting, 2904 Corporate CR, Flower Mound, TX, the original contractor.')
   })
 
   it('what the earlier form carried and the statute does not list is gone', () => {
@@ -187,9 +187,9 @@ describe('§ 53.054 affidavit · the short form (punch list #305)', () => {
   it('a fact not on the record prints a blank, never a guess', () => {
     const bare = numbered({ ...short, claimantAddress: '', legalDescription: '', originalContractorName: '', originalContractorAddress: '', contractedWithName: '', ownerAddress: '', workMonthsWords: '', noticesSentWords: undefined })
     expect(bare[0]).toContain("Claimant's mailing address is _______________.")
-    expect(bare[1]).toContain('Texas: _______________, 150 E Sonterra Blvd')
+    expect(bare[1]).toContain('Texas: _______________, 150 E Sonmere Blvd')
     expect(bare[2]).toBe('3. Claimant did so under a contract with _______________, _______________, the original contractor.')
-    expect(bare[3]).toBe('4. The owner or reputed owner is Sonterra Holdings LLC, _______________.')
+    expect(bare[3]).toBe('4. The owner or reputed owner is Sonmere Holdings LLC, _______________.')
     expect(bare[4]).toBe('5. Payment is requested for work done and materials furnished in _______________.')
     expect(bare[5]).toBe('6. Notice of the claim was sent to the owner by _______________.')
   })
@@ -293,8 +293,8 @@ describe('release of recorded lien', () => {
         recordingNumber: '2026-0455812',
         filedDate: '2026-09-04',
         legalDescription: 'Lot 3, Block A',
-        propertyAddress: '150 E Sonterra Blvd',
-        ownerName: 'Sonterra Holdings LLC',
+        propertyAddress: '150 E Sonmere Blvd',
+        ownerName: 'Sonmere Holdings LLC',
         paymentDate: '2026-10-01',
       }),
     )
@@ -467,17 +467,17 @@ describe('the window envelope blocks (the Docsmit train, PR 4)', () => {
   it('the HTML shows the recipient block in a window box and the code with its link in words; the text twin carries both', async () => {
     const { filingDocHtml, filingDocText } = await import('./lienFilingDocuments')
     const blocks = [
-      { kind: 'windowAddress' as const, lines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
+      { kind: 'windowAddress' as const, lines: ['AXO Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
       { kind: 'qrLink' as const, png: null, svg: '<svg data-code="1"></svg>', display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to see and pay the bills this notice is about.' },
     ]
     const html = filingDocHtml(blocks)
     expect(html).toContain('data-window-address')
-    expect(html).toContain('ATI Schertz Holdings LLC<br/>17300 IH 35 N<br/>Schertz, TX 78154')
+    expect(html).toContain('AXO Schertz Holdings LLC<br/>17300 IH 35 N<br/>Schertz, TX 78154')
     expect(html).toContain('data-qr-link')
     expect(html).toContain('<svg data-code="1"></svg>')
     expect(html).toContain('clicktooling.com/pay/abc?m=KX7M2QRT')
     expect(filingDocHtml([{ kind: 'qrLink', png: null, svg: null, display: 'x', caption: 'c' }])).toContain('border:1px dashed')
-    expect(filingDocText(blocks)).toBe('ATI Schertz Holdings LLC\n17300 IH 35 N\nSchertz, TX 78154\n\nScan to see and pay the bills this notice is about.\nclicktooling.com/pay/abc?m=KX7M2QRT')
+    expect(filingDocText(blocks)).toBe('AXO Schertz Holdings LLC\n17300 IH 35 N\nSchertz, TX 78154\n\nScan to see and pay the bills this notice is about.\nclicktooling.com/pay/abc?m=KX7M2QRT')
   })
 })
 

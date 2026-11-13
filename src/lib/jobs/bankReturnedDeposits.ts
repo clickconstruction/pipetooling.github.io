@@ -53,7 +53,7 @@ export function bankReturnedChipWords(r: MercuryBankReturn | null | undefined): 
 export type BankReturnedPayment = {
   paymentId: string
   jobId: string
-  /** "J878 Take 5 – Seguin" */
+  /** "J878 Tune 5 – Seguin" */
   jobLabel: string
   amount: number
   reason: string

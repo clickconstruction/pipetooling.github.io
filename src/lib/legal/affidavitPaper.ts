@@ -162,7 +162,7 @@ export function defaultStatementForm(_kind: AffiantKind): AffidavitForm {
   return 'notary'
 }
 
-/** The title the window offers once the affiant is named: *Affidavit of Daniel Alvarez* · *Statement of Thanh Nguyen*. */
+/** The title the window offers once the affiant is named: *Affidavit of Daniel Alvarez* · *Statement of Tobin Newell*. */
 export function suggestedStatementTitle(affiant: Pick<StatementAffiant, 'name' | 'kind'>, form: AffidavitForm): string {
   const name = affiant.name.trim()
   if (!name) return ''
@@ -485,7 +485,7 @@ export function statementFirmKindWords(meta: Pick<StatementMeta, 'form' | 'state
   return meta.state === 'signed' ? `${base} ${who}` : `${base} ${who} · draft, not signed`
 }
 
-/** *Daniel Alvarez · team* · *Thanh Nguyen · witness* — the by-line on the desk. */
+/** *Daniel Alvarez · team* · *Tobin Newell · witness* — the by-line on the desk. */
 export function statementByWords(affiant: Pick<StatementAffiant, 'name' | 'kind'>): string {
   return `${affiant.name.trim() || 'unnamed'} · ${affiant.kind === 'witness' ? 'witness' : 'team'}`
 }

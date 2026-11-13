@@ -13,6 +13,12 @@
  * completed payments don't move this view — it is strictly about money
  * sitting on the board today; payment form still shows in each customer's
  * history drill-down.
+ *
+ * A payer on a Pay calendar (punch list #323) is not judged by a count of days: a bill in on
+ * the 1st and one in on the 30th are paid the same day, so their waits differ by a month and
+ * prove nothing. Each of their bills is read against its expected day instead, the due day
+ * plus how late that payer usually runs (`calendarBillRead`), and the payer is off pace once
+ * a bill is past it.
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
@@ -26,6 +32,17 @@ import {
   type CustomerSegment,
   type PaySpeedData,
 } from './billedExpectedPay'
+import { payClockFor } from './billedDuePay'
+import {
+  calendarBasisWords,
+  calendarBillRead,
+  calendarFor,
+  latenessAgainst,
+  type CalendarBillRead,
+  type PayCalendar,
+  type PayCalendarIndex,
+  type PayCalendarLateness,
+} from './payCalendar'
 
 /** How one bill's wait reads against the customer's baseline. */
 export type OpenBillTone = 'ok' | 'warn' | 'late' | 'undated'
@@ -40,6 +57,8 @@ export type OpenBill = {
   /** Open dollars remaining on this bill. */
   open: number
   tone: OpenBillTone
+  /** The bill against its payer's Pay calendar; null or absent when it has none, and the tone reads the wait. */
+  calendar?: CalendarBillRead | null
 }
 
 export type MoneyWaitingRow = {
@@ -55,6 +74,21 @@ export type MoneyWaitingRow = {
   open: number
   /** Longest wait first; undated bills last. */
   bills: OpenBill[]
+  /** The worst tone among the bills: what colours the row's lead. */
+  worstTone: OpenBillTone
+  /** The payer's Pay calendar; null when they have none. */
+  calendar: PayCalendar | null
+  /** Their record against that calendar; null with no calendar or nothing measured. */
+  lateness: PayCalendarLateness | null
+  /** The most days any bill is past its expected day; null when none is, or with no calendar. */
+  pastExpectedDays: number | null
+}
+
+/** What the lists read beside the pay speeds for a payer on a Pay calendar. Absent, every bill reads its wait as before. */
+export type MoneyWaitingCalendars = {
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
 export type MoneyWaiting = {
@@ -75,11 +109,35 @@ export function billWaitTone(waitDays: number | null, baselineDays: number): Ope
   return 'ok'
 }
 
-export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string): MoneyWaiting | null {
+type RawBill = Omit<OpenBill, 'tone'>
+
+/** One open bill as the lists read it: its wait, and its read against the payer's calendar when there is one. */
+function rawBillOf(r: Exclude<StageRow, { kind: 'job' }>, payerId: string, open: number, paySpeeds: PaySpeedData | null, todayYmd: string, calendars: MoneyWaitingCalendars | null | undefined): RawBill {
+  const dates = { billedAtIso: r.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(r.inv) }
+  const refYmd = billedReferenceYmd(dates)
+  const rawWait = refYmd ? daysBetweenYmd(refYmd, todayYmd) : null
+  const cal = calendarFor(calendars?.payCalendars, { payerId, jobId: r.job.id })
+  const clock = cal ? payClockFor({ ...dates, customerId: payerId, acceptedYmd: calendars?.acceptedByInvoice?.get(r.inv.id) ?? null }) : null
+  return {
+    jobId: r.job.id ?? null,
+    jobName: (r.job.job_name ?? '').trim() || '—',
+    address: (r.job.job_address ?? '').trim() || null,
+    billedYmd: refYmd,
+    waitDays: rawWait != null && rawWait >= 0 ? rawWait : null,
+    open,
+    calendar: cal && clock ? calendarBillRead(clock.ymd, cal, latenessAgainst(paySpeeds?.receipts[payerId], cal), todayYmd) : null,
+  }
+}
+
+/** A bill on a calendar reads its expected day; any other reads its wait against the baseline. */
+const toneOf = (b: RawBill, baselineDays: number | null): OpenBillTone => (b.calendar ? b.calendar.tone : baselineDays != null ? billWaitTone(b.waitDays, baselineDays) : 'undated')
+
+const offPace = (tone: OpenBillTone): boolean => tone === 'warn' || tone === 'late'
+
+export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string, calendars?: MoneyWaitingCalendars | null): MoneyWaiting | null {
   const company = paySpeeds?.company
   if (!paySpeeds || !company) return null
 
-  type RawBill = Omit<OpenBill, 'tone'>
   type Acc = { name: string; open: number; bills: RawBill[] }
   const byCustomer = new Map<string, Acc>()
   const inKind = { count: 0, dollars: 0 }
@@ -97,49 +155,36 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
     const payer = listPayer(r.job, r.inv)
     const customerId = payer.id
     if (!customerId) continue
-    const refYmd = billedReferenceYmd({
-      billedAtIso: r.inv.billed_at,
-      estBillYmd: effectiveInvoiceEstBillDate(r.inv),
-    })
-    const rawWait = refYmd ? daysBetweenYmd(refYmd, todayYmd) : null
-    const waitDays = rawWait != null && rawWait >= 0 ? rawWait : null
     const acc = byCustomer.get(customerId) ?? {
       name: payer.name || '—',
       open: 0,
       bills: [],
     }
     acc.open += open
-    acc.bills.push({
-      jobId: r.job.id ?? null,
-      jobName: (r.job.job_name ?? '').trim() || '—',
-      address: (r.job.job_address ?? '').trim() || null,
-      billedYmd: refYmd,
-      waitDays,
-      open,
-    })
+    acc.bills.push(rawBillOf(r, customerId, open, paySpeeds, todayYmd, calendars))
     byCustomer.set(customerId, acc)
   }
 
-  const offPace: MoneyWaitingRow[] = []
+  const slow: MoneyWaitingRow[] = []
   let onPaceCount = 0
   let onPaceOpen = 0
   for (const [customerId, acc] of byCustomer) {
     const own = paySpeeds.customers[customerId]
     const hasOwn = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES
     const baselineDays = hasOwn ? own.medianDays : company.medianDays
-    const oldestWaitDays = acc.bills.reduce<number | null>(
-      (max, b) => (b.waitDays != null && (max == null || b.waitDays > max) ? b.waitDays : max),
-      null,
-    )
-    if (oldestWaitDays == null || oldestWaitDays <= baselineDays) {
+    const bills = acc.bills
+      .map((b) => ({ ...b, tone: toneOf(b, baselineDays) }))
+      .sort((a, b) => (b.waitDays ?? -1) - (a.waitDays ?? -1) || b.open - a.open)
+    // Off pace is one bill past its yardstick: the wait past the baseline, or the expected day gone by.
+    if (!bills.some((b) => offPace(b.tone))) {
       onPaceCount++
       onPaceOpen += acc.open
       continue
     }
-    const bills = acc.bills
-      .map((b) => ({ ...b, tone: billWaitTone(b.waitDays, baselineDays) }))
-      .sort((a, b) => (b.waitDays ?? -1) - (a.waitDays ?? -1) || b.open - a.open)
-    offPace.push({
+    const oldestWaitDays = bills.reduce((max, b) => (b.waitDays != null && b.waitDays > max ? b.waitDays : max), 0)
+    const calendar = calendarFor(calendars?.payCalendars, { payerId: customerId })
+    const pastExpected = bills.reduce((max, b) => Math.max(max, b.calendar?.daysPastExpected ?? 0), 0)
+    slow.push({
       customerId,
       name: acc.name,
       segment: paySpeeds.customerTypes[customerId] ?? null,
@@ -148,11 +193,29 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
       oldestWaitDays,
       open: acc.open,
       bills,
+      worstTone: bills.some((b) => b.tone === 'late') ? 'late' : 'warn',
+      calendar,
+      lateness: calendar ? latenessAgainst(paySpeeds.receipts[customerId], calendar) : null,
+      pastExpectedDays: calendar && pastExpected > 0 ? pastExpected : null,
     })
   }
 
-  offPace.sort((a, b) => b.oldestWaitDays - a.oldestWaitDays || b.open - a.open)
-  return { rows: offPace, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays, inKind }
+  slow.sort((a, b) => b.oldestWaitDays - a.oldestWaitDays || b.open - a.open)
+  return { rows: slow, onPaceCount, onPaceOpen, companyMedianDays: company.medianDays, inKind }
+}
+
+/** A row reads its calendar once a bill of theirs is past its expected day; a calendar payer held up by a job with no calendar reads its wait. */
+const readsCalendar = (row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays'>): boolean => row.calendar != null && row.pastExpectedDays != null
+
+/** The row's lead: "55d waiting", or for a payer on a Pay calendar "12d past expected". */
+export function moneyWaitingLead(row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays' | 'oldestWaitDays'>): string {
+  return readsCalendar(row) ? `${row.pastExpectedDays}d past expected` : `${row.oldestWaitDays}d waiting`
+}
+
+/** What the lead is measured against: "usually ~41d" · "no history — vs company ~33d" · "pay calendar · lands ~6d after the pay day". */
+export function moneyWaitingBasis(row: Pick<MoneyWaitingRow, 'calendar' | 'pastExpectedDays' | 'lateness' | 'ownMedianDays'>, companyMedianDays: number): string {
+  if (readsCalendar(row)) return calendarBasisWords(row.lateness)
+  return row.ownMedianDays != null ? `usually ~${row.ownMedianDays}d` : `no history — vs company ~${companyMedianDays}d`
 }
 
 /** The list's word on the bills it left out, so its money does not shrink with no word. Null when no bill is paid in kind. */
@@ -166,7 +229,7 @@ export function moneyWaitingInKindLine(inKind: { count: number; dollars: number 
  * the "By customer" list's expansion — tones read against that customer's
  * baseline exactly as above.
  */
-export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string): Map<string, OpenBill[]> {
+export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string, calendars?: MoneyWaitingCalendars | null): Map<string, OpenBill[]> {
   const out = new Map<string, OpenBill[]>()
   const company = paySpeeds?.company
   for (const r of rows) {
@@ -178,22 +241,9 @@ export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData 
     const own = paySpeeds?.customers[customerId]
     const hasOwn = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES
     const baselineDays = hasOwn ? own.medianDays : company?.medianDays ?? 0
-    const refYmd = billedReferenceYmd({
-      billedAtIso: r.inv.billed_at,
-      estBillYmd: effectiveInvoiceEstBillDate(r.inv),
-    })
-    const rawWait = refYmd ? daysBetweenYmd(refYmd, todayYmd) : null
-    const waitDays = rawWait != null && rawWait >= 0 ? rawWait : null
+    const bill = rawBillOf(r, customerId, open, paySpeeds, todayYmd, calendars)
     const list = out.get(customerId) ?? []
-    list.push({
-      jobId: r.job.id ?? null,
-      jobName: (r.job.job_name ?? '').trim() || '—',
-      address: (r.job.job_address ?? '').trim() || null,
-      billedYmd: refYmd,
-      waitDays,
-      open,
-      tone: billWaitTone(waitDays, baselineDays),
-    })
+    list.push({ ...bill, tone: toneOf(bill, baselineDays) })
     out.set(customerId, list)
   }
   for (const list of out.values()) {

@@ -84,7 +84,7 @@ const twinQuestions = [
   // from the text (no audience column yet), it must NOT appear on the panel.
   { id: 'tq4', twin_user_id: 'tw1', about_bid_id: 'bid-422', mission: 'R2-BT-25', question: 'The sandbox blocked the bids_plan_substrates insert — can someone add a harness verb?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-04T10:00:00Z', topic: null },
   // v2.3212: a PLANS ask — a task on the bid, pointed at from the panel, never counted as a ruling.
-  { id: 'tq5', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: null, question: 'SpaceX Level 1: the file on the bid is the electrical set. Attach the plumbing sheets?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-05T10:00:00Z', topic: null, kind: 'plans', choices: ['Attached — rerun', 'Use what is on the bid', 'Skip this bid'], recommended: 'Attached — rerun' },
+  { id: 'tq5', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: null, question: 'SkyLab Level 1: the file on the bid is the electrical set. Attach the plumbing sheets?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-05T10:00:00Z', topic: null, kind: 'plans', choices: ['Attached — rerun', 'Use what is on the bid', 'Skip this bid'], recommended: 'Attached — rerun' },
 ]
 
 // Chainable thenable PostgREST stub: every builder method returns itself; awaiting

@@ -44,7 +44,7 @@ describe('resolveCustomerIdForJobPayload (one company, v2.2972)', () => {
 
 describe('resolveGcCustomerIdForJobPayload (one company, v2.2972)', () => {
   it('keeps a pick, whichever account filed the customer', () => {
-    const customers = [cust('gc-b', MASTER_B, 'Knight Contracting'), cust('gc-a', MASTER_A, 'Knight Contracting')]
+    const customers = [cust('gc-b', MASTER_B, 'Kestrin Contracting'), cust('gc-a', MASTER_A, 'Kestrin Contracting')]
     expect(resolveGcCustomerIdForJobPayload('gc-b', MASTER_A, customers)).toBe('gc-b')
   })
 

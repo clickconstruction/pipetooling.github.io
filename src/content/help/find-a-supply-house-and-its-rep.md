@@ -43,7 +43,7 @@ Click a role chip on an existing contact to move them.
 :::
 
 :::example Ferguson
-**Curly Conley · curly.conley@ferguson.com · 210-344-4950** {{chip:green|Job accounts}} — the office calls Curly before a job's first parts run. The starred **cristian.almendarez** {{chip:gray|Price requests}} still gets the price requests.
+**Curly Conmere · curly.conmere@ferguson.com · 210-344-4950** {{chip:green|Job accounts}} — the office calls Curly before a job's first parts run. The starred **cristian.almendarez** {{chip:gray|Price requests}} still gets the price requests.
 :::
 
 ## Job accounts at a house

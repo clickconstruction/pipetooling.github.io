@@ -51,35 +51,35 @@ beforeEach(() => {
   stampMock.mockReset()
   stampMock.mockResolvedValue(undefined)
   tables.rows = {
-    jobs_ledger: { id: 'j650', job_address: '5498 Cibolo Valley Dr 200, Schertz, TX 78108', customer_id: 'c-ati', customer_name: 'ATI Schertz', gc_customer_id: 'c-loberg', customer_address_id: null },
+    jobs_ledger: { id: 'j650', job_address: '5498 Cinder Valley Dr 200, Schertz, TX 78108', customer_id: 'c-axo', customer_name: 'AXO Schertz', gc_customer_id: 'c-lowbeck', customer_address_id: null },
     'jobs_ledger:limit': [],
-    customers: { name: 'Loberg Contracting' },
+    customers: { name: 'Lowbeck Contracting' },
     customer_addresses: null,
     job_property_owners: null,
   }
 })
 
 function payload(owner: string, mailing: string) {
-  return { ok: true, county_geocoder: 'Guadalupe', parcel: { propId: '12345', ownerName: owner, nameCare: '', legalDescription: 'LOT 1', situsAddress: '5498 CIBOLO VALLEY DR, SCHERTZ, TX', mailingAddress: mailing, county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' } }
+  return { ok: true, county_geocoder: 'Guadalupe', parcel: { propId: '12345', ownerName: owner, nameCare: '', legalDescription: 'LOT 1', situsAddress: '5498 CINDER VALLEY DR, SCHERTZ, TX', mailingAddress: mailing, county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' } }
 }
 
 describe('BillCustomerOwnerLine', () => {
   it('a GC job with no owner: the roll’s answer with provenance, and Use writes the property through the shared helper', async () => {
-    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SCHERTZ STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')))
+    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')))
     renderWithProviders(<BillCustomerOwnerLine jobId="j650" userId="u-taunya" />)
     await waitFor(() => expect(screen.getByTestId('bill-customer-owner-line').getAttribute('data-state')).toBe('found'))
-    expect(screen.getByText(/Owner of record for 5498 Cibolo Valley Dr 200:/)).toBeTruthy()
-    expect(screen.getByText('Schertz Station Ltd')).toBeTruthy()
+    expect(screen.getByText(/Owner of record for 5498 Cinder Valley Dr 200:/)).toBeTruthy()
+    expect(screen.getByText('Sample Station Ltd')).toBeTruthy()
     expect(screen.getByText(/\(Guadalupe Appraisal District 2025\) — not yet on the job\./)).toBeTruthy()
     expect(screen.getByText(/so the lien notice can be mailed when it is due/)).toBeTruthy()
     fireEvent.click(screen.getByTestId('bill-customer-owner-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
     const input = confirmMock.mock.calls[0]![0] as { address: string; jobs: unknown[]; userId: string | null }
-    expect(input.address).toBe('5498 Cibolo Valley Dr 200, Schertz, TX 78108')
-    expect(input.jobs).toEqual([{ jobId: 'j650', customerId: 'c-ati', gcCustomerId: 'c-loberg', customerAddressId: null }])
+    expect(input.address).toBe('5498 Cinder Valley Dr 200, Schertz, TX 78108')
+    expect(input.jobs).toEqual([{ jobId: 'j650', customerId: 'c-axo', gcCustomerId: 'c-lowbeck', customerAddressId: null }])
     expect(input.userId).toBe('u-taunya')
     await waitFor(() => expect(screen.getByTestId('bill-customer-owner-line').getAttribute('data-state')).toBe('saved'))
-    expect(screen.getByText(/Schertz Station Ltd — on the job\./)).toBeTruthy()
+    expect(screen.getByText(/Sample Station Ltd — on the job\./)).toBeTruthy()
   })
 
   it('a direct job (no GC, customer not a builder) shows nothing and never asks the roll', async () => {
@@ -92,7 +92,7 @@ describe('BillCustomerOwnerLine', () => {
 
   it('an owner the nightly run saved from the roll offers Confirm, which stamps the record', async () => {
     tables.rows.jobs_ledger = { ...(tables.rows.jobs_ledger as Record<string, unknown>), customer_address_id: 'addr1' }
-    tables.rows.customer_addresses = { id: 'addr1', address: '5498 Cibolo Valley Dr 200, Schertz, TX 78108', owner_name: '', owner_company: 'SCHERTZ STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District', parcel_tax_year: '2025' }
+    tables.rows.customer_addresses = { id: 'addr1', address: '5498 Cinder Valley Dr 200, Schertz, TX 78108', owner_name: '', owner_company: 'SAMPLE STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District', parcel_tax_year: '2025' }
     renderWithProviders(<BillCustomerOwnerLine jobId="j650" userId="u-taunya" />)
     await waitFor(() => expect(screen.getByTestId('bill-customer-owner-line').getAttribute('data-state')).toBe('unconfirmed'))
     expect(screen.getByText(/from the roll \(2025\), not yet confirmed/)).toBeTruthy()
@@ -115,7 +115,7 @@ describe('BillCustomerOwnerLine', () => {
     lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, { ok: true, county_geocoder: 'Guadalupe', parcel: null, parcel_error: 'no parcel' }))
     renderWithProviders(<BillCustomerOwnerLine jobId="j650" userId="u-taunya" />)
     await waitFor(() => expect(screen.getByTestId('bill-customer-owner-line').getAttribute('data-state')).toBe('miss'))
-    expect(screen.getByText(/No owner of record on file for 5498 Cibolo Valley Dr 200/)).toBeTruthy()
+    expect(screen.getByText(/No owner of record on file for 5498 Cinder Valley Dr 200/)).toBeTruthy()
     fireEvent.click(screen.getByTestId('bill-customer-owner-paste-door'))
     expect(screen.getByTestId('bill-customer-owner-paste-panel')).toBeTruthy()
     expect(screen.getByTestId('paste-panel-marker')).toBeTruthy()

@@ -23,7 +23,7 @@ export type GcNoticePreviewCopy = 'owner' | 'original_contractor'
 
 export type GcNoticePreviewInput = {
   job: Pick<GcNoticeJob, 'jobId' | 'claimAmount' | 'months' | 'isBilled' | 'claimSplitByMonth'>
-  /** "273 · Dudley (Lennox)" */
+  /** "273 · Dunmere (Linmoor)" */
   label: string
   jobNumber: string
   jobName: string | null | undefined

@@ -20,9 +20,9 @@ const ROWS: HubJobsPanelProps['rows'] = [
   {
     id: 'job-1',
     hcp_number: '927',
-    job_name: 'Berg AirBnb',
+    job_name: 'Birkby AirBnb',
     project_id: null,
-    displayTitle: 'J927 · Berg AirBnb',
+    displayTitle: 'J927 · Birkby AirBnb',
     totalBlocks: 3,
     byDay: { '2026-09-28': 2, '2026-09-30': 1 },
   },
@@ -76,7 +76,7 @@ describe('HubJobsPanel', () => {
   it('lists the jobs with a block this week, then the bid visits, a count or a dash per day', async () => {
     renderWithProviders(<HubJobsPanel {...makeProps()} />)
     await settle()
-    expect(bodyRows()).toEqual(['J927 · Berg AirBnb32—1Open', 'Bid visit · B375 · Tower West1—1—Open'])
+    expect(bodyRows()).toEqual(['J927 · Birkby AirBnb32—1Open', 'Bid visit · B375 · Tower West1—1—Open'])
   })
 
   it('lists every job once "only jobs with blocks" is unticked', async () => {
@@ -84,7 +84,7 @@ describe('HubJobsPanel', () => {
     await settle()
     fireEvent.click(screen.getByLabelText('Only jobs with blocks this week'))
     expect(bodyRows()).toEqual([
-      'J927 · Berg AirBnb32—1Open',
+      'J927 · Birkby AirBnb32—1Open',
       'J412 · Rough-in0———Open',
       'Bid visit · B375 · Tower West1—1—Open',
     ])
@@ -96,8 +96,8 @@ describe('HubJobsPanel', () => {
     const search = screen.getByRole('searchbox', { name: 'Search HCP or job name' })
     fireEvent.change(search, { target: { value: 'tower' } })
     expect(bodyRows()).toEqual(['Bid visit · B375 · Tower West1—1—Open'])
-    fireEvent.change(search, { target: { value: 'berg' } })
-    expect(bodyRows()).toEqual(['J927 · Berg AirBnb32—1Open'])
+    fireEvent.change(search, { target: { value: 'birkby' } })
+    expect(bodyRows()).toEqual(['J927 · Birkby AirBnb32—1Open'])
   })
 
   it('says nothing matches when the search or the filter leaves no rows', async () => {
@@ -113,7 +113,7 @@ describe('HubJobsPanel', () => {
     fireEvent.change(search, { target: { value: 'zzqq' } })
     expect(bodyRows()).toEqual(['No jobs match ‘zzqq’. Clear the search'])
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
-    expect(bodyRows()).toEqual(['J927 · Berg AirBnb32—1Open', 'J412 · Rough-in0———Open'])
+    expect(bodyRows()).toEqual(['J927 · Birkby AirBnb32—1Open', 'J412 · Rough-in0———Open'])
   })
 
   it('says there are no jobs when there are none at all, and offers New Job', async () => {
@@ -127,7 +127,7 @@ describe('HubJobsPanel', () => {
     const onOpenJob = vi.fn()
     renderWithProviders(<HubJobsPanel {...makeProps({ onOpenJob })} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'J927 · Berg AirBnb' }))
+    fireEvent.click(screen.getByRole('button', { name: 'J927 · Birkby AirBnb' }))
     expect(onOpenJob).toHaveBeenLastCalledWith('job-1')
     const opens = screen.getAllByRole('button', { name: 'Open' })
     fireEvent.click(opens[0]!)

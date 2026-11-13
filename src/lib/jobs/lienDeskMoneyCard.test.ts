@@ -39,7 +39,7 @@ describe('buildLienDeskMoneyCard', () => {
           needsOwner: 1,
           earliestDeadline: '2026-10-15',
           ready: 4,
-          next: { deadline: '2026-10-15', notices: 2, dollars: 12_000, gcIds: ['a', 'b'], gcNames: ['Dudley Mason', 'RMC'], toDraft: 1, needsOwner: 1 },
+          next: { deadline: '2026-10-15', notices: 2, dollars: 12_000, gcIds: ['a', 'b'], gcNames: ['Dunmere Mallin', 'RLC'], toDraft: 1, needsOwner: 1 },
         },
         leader: { jobs: 2, dollars: 8_987, earliestDeadline: '2026-10-03' },
       }),
@@ -70,18 +70,18 @@ describe('buildLienDeskMoneyCard', () => {
           dollars: 13_680,
           needsOwner: 0,
           earliestDeadline: '2026-09-29',
-          next: { deadline: '2026-09-29', notices: 1, dollars: 13_680, gcIds: ['a'], gcNames: ['Southern Post'], toDraft: 1, needsOwner: 0 },
+          next: { deadline: '2026-09-29', notices: 1, dollars: 13_680, gcIds: ['a'], gcNames: ['Southern Pine'], toDraft: 1, needsOwner: 0 },
         },
       }),
       TODAY,
     )
     expect(card).toMatchObject({
       claim: '1 lien notice due · $13,680 — the earliest by Sep 29',
-      why: 'In 5 days: the notice under Southern Post · 1 to draft — mail by Sep 29 or the lien right on that work is gone',
+      why: 'In 5 days: the notice under Southern Pine · 1 to draft — mail by Sep 29 or the lien right on that work is gone',
       count: 1,
       tone: 'red',
     })
-    expect(card?.deadline).toEqual({ label: 'by Sep 29 · in 5 days', who: 'Southern Post', tone: 'red', hover: 'In 5 days: the notice under Southern Post — mail by Sep 29 or the lien right on that work is gone', pile: 'to_draft' })
+    expect(card?.deadline).toEqual({ label: 'by Sep 29 · in 5 days', who: 'Southern Pine', tone: 'red', hover: 'In 5 days: the notice under Southern Pine — mail by Sep 29 or the lien right on that work is gone', pile: 'to_draft' })
   })
 
   it('reads today / tomorrow, and stays gray past two weeks or with no date at all', () => {
@@ -107,7 +107,7 @@ describe('buildLienDeskMoneyCard', () => {
           dollars: 150_000,
           needsOwner: 2,
           earliestDeadline: '2026-09-15',
-          next: { deadline: '2026-09-15', notices: 1, dollars: 9_000, gcIds: ['a'], gcNames: ['Loberg Contracting'], toDraft: 1, needsOwner: 0 },
+          next: { deadline: '2026-09-15', notices: 1, dollars: 9_000, gcIds: ['a'], gcNames: ['Lowbeck Contracting'], toDraft: 1, needsOwner: 0 },
         },
         leader: { jobs: 1, dollars: 6_423, earliestDeadline: '2026-10-20' },
       }),
@@ -115,11 +115,11 @@ describe('buildLienDeskMoneyCard', () => {
     )
     expect(card).toMatchObject({
       claim: '16 lien notices due · $156,423 — the earliest closed Sep 15',
-      why: 'Closed 9 days ago: the notice under Loberg Contracting · 13 to draft · 2 waiting on the owner of record · 1 awaiting approval',
+      why: 'Closed 9 days ago: the notice under Lowbeck Contracting · 13 to draft · 2 waiting on the owner of record · 1 awaiting approval',
       count: 16,
       tone: 'red',
     })
-    expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the window closed; a late notice can still carry the affidavit while its own window is open', pile: 'to_draft' })
+    expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Lowbeck Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Lowbeck Contracting — the window closed; a late notice can still carry the affidavit while its own window is open', pile: 'to_draft' })
     expect(buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 1, earliestDeadline: '2026-09-23' } }), TODAY)?.why).toBe('Closed yesterday: the first window closes · 1 awaiting approval')
   })
 })

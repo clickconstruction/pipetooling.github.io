@@ -27,7 +27,7 @@ export type PiecesProps = {
   openJob: (jobId: string) => void
   /** The address matches drawn on the page while the toggle is on: their rows carry a small *not in <development>* mark. */
   notInIt: ReadonlySet<string>
-  /** The development's name, which the chip names: *not in Gun Dog*. */
+  /** The development's name, which the chip names: *not in Gray Fox*. */
   developmentName: string
   /** Pair mode (the owner's pick: a toggle, and when on the table reads as draft B): the row's gaps become the tool. */
   pairing?: PairingProps
@@ -312,7 +312,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         </div>
       ) : null}
       {archived.length > 0 ? (
-        // The archived bids (the Gun Dog spike, 2026-11-02): off the working board, never sent, not decided; they fold like the done rows so the live table reads what is in play.
+        // The archived bids (the Gray Fox spike, 2026-11-02): off the working board, never sent, not decided; they fold like the done rows so the live table reads what is in play.
         <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 8 }} data-testid="pieces-archived-fold">
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: 'var(--text-strong)' }}>Archived</strong>

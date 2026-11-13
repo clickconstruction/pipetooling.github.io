@@ -28,7 +28,7 @@ describe('normalizePhone', () => {
 
 describe('normalizeEmail', () => {
   it('lowercases and trims; requires an @', () => {
-    expect(normalizeEmail(' Caid_Lurwick@iCloud.com ')).toBe('caid_lurwick@icloud.com')
+    expect(normalizeEmail(' Cade_Sample@Example.com ')).toBe('cade_sample@example.com')
     expect(normalizeEmail('not an email')).toBeNull()
     expect(normalizeEmail(null)).toBeNull()
   })
@@ -46,8 +46,8 @@ describe('analyzeCandidates', () => {
 
   it('matches on email when phones differ', () => {
     const rows = [
-      cand({ id: 'a', email: 'caid@icloud.com', phone_number: '318 632 1034', rank_order: 1 }),
-      cand({ id: 'b', email: 'CAID@icloud.com', phone_number: '830-221-7757', rank_order: 2 }),
+      cand({ id: 'a', email: 'cade@example.com', phone_number: '318 632 1034', rank_order: 1 }),
+      cand({ id: 'b', email: 'CADE@example.com', phone_number: '830-221-7757', rank_order: 2 }),
     ]
     expect(analyzeCandidates(rows).duplicateOf).toEqual({ b: 'a' })
   })

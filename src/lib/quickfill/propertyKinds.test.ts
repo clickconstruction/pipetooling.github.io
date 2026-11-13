@@ -7,7 +7,7 @@ function job(over: Partial<PropertyKindQueueJob> & { id: string }): PropertyKind
     collections_at: null,
     customer_id: 'c1',
     gc_customer_id: null,
-    customer_name: 'Dudley Mason',
+    customer_name: 'Dunmere Mallin',
     gc_name: null,
     customer_address_id: null,
     job_address: '2210 Hunt Lane, San Antonio, TX 78245',

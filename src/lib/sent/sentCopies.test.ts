@@ -8,9 +8,9 @@ const JOB_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const row = (over: Partial<SentCopy> = {}): SentCopy => ({
   id: 'r1',
   kind: 'owner_records_packet',
-  title: 'Records for 9703 Lenox Hill',
+  title: 'Records for 9703 Linmor Hill',
   how: 'print',
-  recipientName: 'Umar Khan',
+  recipientName: 'Ulric Karrow',
   recipientEmails: [],
   subject: '',
   sourceTable: '',
@@ -29,15 +29,15 @@ describe('sentDocumentInsert', () => {
   it('writes what went, to whom and where the office finds it', () => {
     const out = sentDocumentInsert(
       ID,
-      { kind: 'owner_records_packet', title: '  Records for 9703 Lenox Hill ', how: 'hand', recipientName: ' Umar Khan ', jobIds: [JOB_A, JOB_B, JOB_A, null, 'not-an-id'], customerId: JOB_B, source: { table: 'lien_owner_record_requests', id: JOB_A } },
+      { kind: 'owner_records_packet', title: '  Records for 9703 Linmor Hill ', how: 'hand', recipientName: ' Ulric Karrow ', jobIds: [JOB_A, JOB_B, JOB_A, null, 'not-an-id'], customerId: JOB_B, source: { table: 'lien_owner_record_requests', id: JOB_A } },
       { path: `${ID}/copy.html`, type: 'text/html', hash: 'abc', bytes: 1200 },
     )
     expect(out).toMatchObject({
       id: ID,
       kind: 'owner_records_packet',
-      title: 'Records for 9703 Lenox Hill',
+      title: 'Records for 9703 Linmor Hill',
       how: 'hand',
-      recipient_name: 'Umar Khan',
+      recipient_name: 'Ulric Karrow',
       job_ids: [JOB_A, JOB_B],
       customer_id: JOB_B,
       bid_id: null,
@@ -113,7 +113,7 @@ describe('sentCopyLines', () => {
 describe('sentCopyWords', () => {
   const when = (iso: string) => `at ${iso.slice(0, 10)}`
   it('says how, when, to whom and by whom', () => {
-    expect(sentCopyWords({ row: row(), times: ['2026-10-05T20:30:00Z'] }, when)).toBe('Printed at 2026-10-05 · to Umar Khan · by Robert')
+    expect(sentCopyWords({ row: row(), times: ['2026-10-05T20:30:00Z'] }, when)).toBe('Printed at 2026-10-05 · to Ulric Karrow · by Robert')
   })
   it('counts a copy that went more than once, and falls back to the addresses', () => {
     const r = row({ how: 'email', recipientName: '', recipientEmails: ['ap@gc.example', 'pm@gc.example'], sentByName: '' })
@@ -167,8 +167,8 @@ describe('the Documents page groups', () => {
   })
 
   it('searches the title, who it went to and the subject, and drops anything a filter could read as syntax', () => {
-    expect(sentSearchFilter('Lenox')).toBe('title.ilike.*Lenox*,recipient_name.ilike.*Lenox*,subject.ilike.*Lenox*')
-    expect(sentSearchFilter('  9703, Lenox (Hill)*%  ')).toBe('title.ilike.*9703 Lenox Hill*,recipient_name.ilike.*9703 Lenox Hill*,subject.ilike.*9703 Lenox Hill*')
+    expect(sentSearchFilter('Linmor')).toBe('title.ilike.*Linmor*,recipient_name.ilike.*Linmor*,subject.ilike.*Linmor*')
+    expect(sentSearchFilter('  9703, Linmor (Hill)*%  ')).toBe('title.ilike.*9703 Linmor Hill*,recipient_name.ilike.*9703 Linmor Hill*,subject.ilike.*9703 Linmor Hill*')
     expect(sentSearchFilter('a')).toBeNull()
     expect(sentSearchFilter(',,()')).toBeNull()
   })

@@ -148,7 +148,7 @@ describe('the sender', () => {
 })
 
 describe('the open bid’s title', () => {
-  const openBid = { id: 'u1', bid_number: '494', project_name: 'SPACEX', estimator_id: 'robert', account_manager_id: 'wendi', service_type_id: null } as unknown as Bid
+  const openBid = { id: 'u1', bid_number: '494', project_name: 'SKYLAB', estimator_id: 'robert', account_manager_id: 'wendi', service_type_id: null } as unknown as Bid
 
   it('For someone… offers the bid’s estimator first and marks it with the note', async () => {
     resetBidMarksStoreForTests(undefined, { me: 'wendi', people: PEOPLE })

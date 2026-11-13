@@ -99,4 +99,6 @@ One PR. The group is of no use without its letters, and the letters have no plac
 
 ## Where it stands
 
-Built with its mock-up and live. The first export from the live site showed the sample notice form naming a month and a date of its own; v2.7070 puts it on the sample job's month and mailing day. v2.7071 indents the cover letter's bullets and holds the letters on one page, and v2.7080 does the same for the short demand letter. Left: the owner's look, and her call on redrawing the demand letter of today's shape, which is longer than the sample and takes two pages.
+Built with its mock-up and live. The first export from the live site showed the sample notice form naming a month and a date of its own; v2.7070 puts it on the sample job's month and mailing day. v2.7071 indents the cover letter's bullets and holds the letters on one page, and v2.7080 does the same for the short demand letter. The demand letter of today's shape is longer, so it was redrawn with the whole letter on page 1 and the account on page 2 (punch list #333, v2.7086, live 2026-11-13). The group's demand letter card now shows that letter. Left: the owner's look.
+
+Seen on the live walk, not changed: on a 390 px phone the page scrolls 55 px sideways whenever a paper is open, because its preview frame is a fixed 390 px wide. Every paper of the tab does it, not only this group. A frame no wider than its column would end it. It is a note by the owner's rule of 2026-11-13 that a session on Opus 5.5 writes what should change on a card.

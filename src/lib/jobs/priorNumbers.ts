@@ -1,5 +1,5 @@
 /**
- * The numbers a job answered to before (v2.6226; the owner, combining the Gun Dog import shells: *HCP 550,
+ * The numbers a job answered to before (v2.6226; the owner, combining the Gray Fox import shells: *HCP 550,
  * 549, 548, 422, 178 and 130 were all House Call Pro numbers from the old system, so we don't want to lose
  * the House Call Pro number*). `jobs_ledger.prior_numbers` holds them as 'HCP 550' / 'C# 543'; the combine
  * fills it from the source, `search_jobs_ledger` matches them, and the screens read them as *also JP550,

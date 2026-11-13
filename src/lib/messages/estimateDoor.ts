@@ -1,7 +1,7 @@
 /**
  * The estimate door on our side of the thread (v2.5698, punch list #139 PR 7; the owner, 2026-10-20: "a button that
  * allows our side to open the estimate really easily and quickly"). Our estimate email's line carries the number in its
- * subject — *Estimate #166 — Estimate for Evan Johnson — $6,250 · Click Plumbing and Electrical*, a change order's
+ * subject — *Estimate #166 — Estimate for Evan Jarrow — $6,250 · Click Plumbing and Electrical*, a change order's
  * *Change order #80 — …* — and its words are the email's own heading, which is the subject again. The door reads the
  * number and names the press, and where the words only repeat the subject it draws in their place. Pure; the slot is
  * `components/estimates/useEstimateDoorThreadSlots.tsx`.

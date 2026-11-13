@@ -4,7 +4,7 @@ import { firstTwoWords, quickAssignBusyBarLabel, quickAssignBusyBarTown } from '
 describe('quickAssignBusyBarLabel', () => {
   it('reads J-number · customer (two words) · town', () => {
     expect(
-      quickAssignBusyBarLabel({ hcpNumber: '568', clickNumber: null, customerName: 'Diamondback Homes LLC', jobAddress: '12 Gun Dog Trail, Neeses, SC 29107' }),
+      quickAssignBusyBarLabel({ hcpNumber: '568', clickNumber: null, customerName: 'Diamondback Homes LLC', jobAddress: '12 Gray Fox Trail, Neeses, SC 29107' }),
     ).toBe('J568 · Diamondback Homes · Neeses')
   })
 
@@ -15,7 +15,7 @@ describe('quickAssignBusyBarLabel', () => {
   })
 
   it('finds the town when the address ends in the state with no zip', () => {
-    expect(quickAssignBusyBarLabel({ hcpNumber: '1057', clickNumber: null, customerName: 'DRF Harwood Repairs', jobAddress: '5339 Texas 304, Harwood, TX' })).toBe('J1057 · DRF Harwood · Harwood')
+    expect(quickAssignBusyBarLabel({ hcpNumber: '1057', clickNumber: null, customerName: 'DLF Harlund Repairs', jobAddress: '5339 Texas 304, Harlund, TX' })).toBe('J1057 · DLF Harlund · Harlund')
   })
 
   it('leaves out what the block does not have', () => {
@@ -26,7 +26,7 @@ describe('quickAssignBusyBarLabel', () => {
 
 describe('firstTwoWords', () => {
   it('keeps two words, a lone word, and nothing', () => {
-    expect(firstTwoWords('  Megan   Connell  Jr ')).toBe('Megan Connell')
+    expect(firstTwoWords('  Megan   Corbray  Jr ')).toBe('Megan Corbray')
     expect(firstTwoWords('Office')).toBe('Office')
     expect(firstTwoWords('')).toBe('')
   })

@@ -62,7 +62,7 @@ vi.mock('../map/PinsMapCanvas', () => ({
 function bid(p: Partial<BidWithBuilder> & { id: string }): BidWithBuilder {
   return {
     bid_number: '385',
-    project_name: 'Galloway Park',
+    project_name: 'Gallenby Park',
     address: '1400 Oak Hollow Rd',
     outcome: null,
     bid_date_sent: null,
@@ -129,7 +129,7 @@ describe('BidBoardMapCard', () => {
     renderCard([bid({ id: 'a', bid_due_date: '2000-01-01' }), bid({ id: 'b', bid_number: '401', project_name: 'Pine Ridge', address: '5100 Pine Ridge Blvd', outcome: 'lost' })])
     await settle()
     expect(screen.getByText('Bids on a map')).toBeTruthy()
-    const pinButton = await screen.findByText(/^pin .*385 · Galloway Park$/)
+    const pinButton = await screen.findByText(/^pin .*385 · Gallenby Park$/)
     expect(pinButton.getAttribute('data-color')).toBe('#6b7280')
     // an unsent bid past its due date wears the red ring
     expect(pinButton.getAttribute('data-ring')).toBe('#dc2626')
@@ -156,21 +156,21 @@ describe('BidBoardMapCard', () => {
   it('legend chips toggle pins on the map only; Lost starts off', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'u' }), bid({ id: 'l', bid_number: '300', project_name: 'Lost One', outcome: 'lost' })])
-    await screen.findByText(/^pin .*385 · Galloway Park$/)
+    await screen.findByText(/^pin .*385 · Gallenby Park$/)
     expect(screen.queryByText(/^pin .*300 · Lost One$/)).toBeNull()
     const lostChip = screen.getByTitle(/Show Lost pins/)
     expect(lostChip.getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(lostChip)
     expect(screen.getByText(/^pin .*300 · Lost One$/)).toBeTruthy()
     fireEvent.click(screen.getByTitle(/Hide Unsent pins/))
-    expect(screen.queryByText(/^pin .*385 · Galloway Park$/)).toBeNull()
+    expect(screen.queryByText(/^pin .*385 · Gallenby Park$/)).toBeNull()
   })
 
   it('a pin click focuses the row on the board', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })])
     await settle()
-    fireEvent.click(await screen.findByText(/^pin .*385 · Galloway Park$/))
+    fireEvent.click(await screen.findByText(/^pin .*385 · Gallenby Park$/))
     expect(onFocusRow).toHaveBeenCalledWith('a')
   })
 
@@ -224,7 +224,7 @@ describe('BidBoardMapCard', () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })], { isMobile: true })
     await settle()
-    fireEvent.click(await screen.findByText(/^pin .*385 · Galloway Park$/))
+    fireEvent.click(await screen.findByText(/^pin .*385 · Gallenby Park$/))
     expect(screen.getByText(/96 mi from the office/)).toBeTruthy()
     fireEvent.click(screen.getByText('Open bid'))
     expect(onOpenBid).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
@@ -265,7 +265,7 @@ describe('BidBoardMapCard', () => {
       bid({ id: 'p', bid_number: '401', project_name: 'Pine Ridge', address: '5100 Pine Ridge Blvd', bid_date_sent: '2026-09-01' }),
       bid({ id: 'l', bid_number: '300', project_name: 'Lost One', address: '77 Lost Ln', outcome: 'lost' }),
     ])
-    await screen.findByText(/^pin .*385 · Galloway Park$/)
+    await screen.findByText(/^pin .*385 · Gallenby Park$/)
     await screen.findByText(/^pin .*401 · Pine Ridge$/)
     vi.useFakeTimers()
     const chip = (name: string) => screen.getByTitle(new RegExp(`(Hide|Show) ${name} pins`))
@@ -273,7 +273,7 @@ describe('BidBoardMapCard', () => {
     fireEvent.click(screen.getByText('Play'))
     expect(screen.getByText('Pause')).toBeTruthy()
     expect(chip('Unsent').getAttribute('data-tour-lit')).toBe('true')
-    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+    expect(screen.getByText(/^pin .*385 · Gallenby Park$/)).toBeTruthy()
     expect(screen.queryByText(/^pin .*401 · Pine Ridge$/)).toBeNull()
     // two seconds later: Pending (Won and Started have no pins and are skipped)
     act(() => {
@@ -282,7 +282,7 @@ describe('BidBoardMapCard', () => {
     expect(chip('Pending').getAttribute('data-tour-lit')).toBe('true')
     expect(chip('Unsent').getAttribute('data-tour-lit')).toBeNull()
     expect(screen.getByText(/^pin .*401 · Pine Ridge$/)).toBeTruthy()
-    expect(screen.queryByText(/^pin .*385 · Galloway Park$/)).toBeNull()
+    expect(screen.queryByText(/^pin .*385 · Gallenby Park$/)).toBeNull()
     // then Lost — a section that starts hidden still gets its turn — then back around to Unsent
     act(() => {
       vi.advanceTimersByTime(2000)
@@ -300,20 +300,20 @@ describe('BidBoardMapCard', () => {
     act(() => {
       vi.advanceTimersByTime(5000)
     })
-    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+    expect(screen.getByText(/^pin .*385 · Gallenby Park$/)).toBeTruthy()
     expect(screen.queryByText(/^pin .*401 · Pine Ridge$/)).toBeNull()
     // Play again, then a chip click pauses the tour and toggles that chip as usual
     fireEvent.click(screen.getByText('Play'))
     fireEvent.click(chip('Pending'))
     expect(screen.getByText('Play')).toBeTruthy()
     expect(screen.getByText(/^pin .*401 · Pine Ridge$/)).toBeTruthy()
-    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+    expect(screen.getByText(/^pin .*385 · Gallenby Park$/)).toBeTruthy()
   })
 
   it('offers no Play with fewer than two sections on the map', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })])
-    await screen.findByText(/^pin .*385 · Galloway Park$/)
+    await screen.findByText(/^pin .*385 · Gallenby Park$/)
     expect(screen.queryByText('Play')).toBeNull()
   })
 })

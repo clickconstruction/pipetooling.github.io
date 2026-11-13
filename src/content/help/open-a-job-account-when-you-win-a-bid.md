@@ -7,7 +7,7 @@ keywords: where this bid is, won lane, job opened, job account, bid, won, win, s
 
 You bid the property, and you know the GC. You already asked Ferguson and Reece for prices on it.
 
-GC means the general contractor. When the bid is won, you are the natural person to tell the house. You say "we got 4114 Pond Hill, open the account". The tools for that are on the job the win moment creates. They are yours as the estimator, even though the rest of the job is not.
+GC means the general contractor. When the bid is won, you are the natural person to tell the house. You say "we got 4114 Pen Moor, open the account". The tools for that are on the job the win moment creates. They are yours as the estimator, even though the rest of the job is not.
 
 ## Win, open the job, answer the question
 
@@ -25,8 +25,8 @@ You pick the house. The sheet shows who it goes to, the house's {{chip:green|Job
 {{button:blue|Email from my inbox}} opens the draft in your own mail client. {{button:outline|Copy for email}} puts the addressed text on your clipboard. Then one honest tap. {{button:blue|Sent — log it}} marks the house **requested** on the job and remembers the send. **Didn't send it** backs out.
 
 :::example What Curly gets
-**Subject: Job account — 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231 (Click Plumbing and Electrical)**
-Curly — we won this one. Please open a job account for Click Plumbing and Electrical at the property below; first parts run is around Sep 22. Property: 4114 Pond Hill Rd … General contractor: H & I Construction — Marco Reyes, 210-555-0170 … Owner of record: to follow from our office. Reply here or call the office at (512) 360-0599. — Tristen
+**Subject: Job account — 4114 Pen Moor Rd, Building #2, San Antonio, TX 78231 (Click Plumbing and Electrical)**
+Curly — we won this one. Please open a job account for Click Plumbing and Electrical at the property below; first parts run is around Sep 22. Property: 4114 Pen Moor Rd … General contractor: B & D Construction — Marco Reyes, 210-555-0170 … Owner of record: to follow from our office. Reply here or call the office at (512) 360-0599. — Tristen
 :::
 
 No rep with an email on file? The sheet says so. It points you to **Materials → Supply houses → the house → Contacts**, role *Job accounts*. You can edit that.
@@ -45,7 +45,7 @@ From a house's band, {{button:blue|Ask Curly for both}} drafts one email for the
 
 :::example One note to Curly for two properties
 **Subject: Job accounts — 2 properties (Click Plumbing and Electrical)**
-Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21. 1. 4114 Pond Hill Rd, Building #2 … General contractor: H & I Construction … 2. 118 Vaughn Ln, Buda … General contractor: Dudley Mason … Reply here or call the office at (512) 360-0599. — Tristen
+Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21. 1. 4114 Pen Moor Rd, Building #2 … General contractor: B & D Construction … 2. 118 Vaughn Ln, Buda … General contractor: Dunmere Mallin … Reply here or call the office at (512) 360-0599. — Tristen
 :::
 
 What you cannot see stays the same. Invoices, balances and the Held for suppliers money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.

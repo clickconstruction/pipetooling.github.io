@@ -9,16 +9,16 @@ const base = {
     const months = [month('2026-04', '2026-07-15', true), month('2026-07', '2026-10-15', false), month('2026-08', '2026-11-16', false)]
     return { jobId: 'j273', claimAmount: 17585, isBilled: true, months, ...gcNoticeJobClaim(months, 17585, null) }
   })(),
-  label: '273 · Dudley (Lennox)',
+  label: '273 · Dunmere (Linmoor)',
   jobNumber: '273',
-  jobName: 'Dudley (Lennox)',
-  jobAddress: '9703 Lenox Hl, San Antonio, TX',
-  gcName: 'RMC- Dudley Mason',
+  jobName: 'Dunmere (Linmoor)',
+  jobAddress: '9703 Linmor Hl, San Antonio, TX',
+  gcName: 'RLC- Dunmere Mallin',
   contactPerson: 'Malachi Whites, Master Plumber',
   issuer,
   todayYmd: '2026-09-21',
   includeLetter: true,
-  letter: defaultGcNoticeCoverLetter({ gcName: 'RMC- Dudley Mason', claimantName: 'Click Plumbing and Electrical' }),
+  letter: defaultGcNoticeCoverLetter({ gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical' }),
 }
 const text = (blocks: ReadonlyArray<unknown>) => JSON.stringify(blocks)
 
@@ -29,20 +29,20 @@ describe('buildGcNoticePreview', () => {
     expect(p.pages.owner.map((pg) => pg.key)).toEqual(['cover', 'notice'])
     expect(p.pages.original_contractor.map((pg) => pg.key)).toEqual(['notice'])
     const cover = text(p.pages.owner[0]!.blocks)
-    expect(cover).toContain('Re: 273 · Dudley (Lennox)')
-    expect(cover).toContain('To the owner of 9703 Lenox Hl, San Antonio, TX')
+    expect(cover).toContain('Re: 273 · Dunmere (Linmoor)')
+    expect(cover).toContain('To the owner of 9703 Linmor Hl, San Antonio, TX')
     expect(cover).not.toContain('{{')
     // one notice names every month — the closed April as information — and claims the whole balance, as approveAll saves it (owner, 2026-09-25)
     expect(cover).toContain('April, July and August')
     expect(cover).not.toContain('A further')
     const form = text(p.pages.owner[1]!.blocks)
     expect(form).toContain('Notice of Claim for Unpaid Labor or Materials')
-    expect(form).toContain('RMC- Dudley Mason')
+    expect(form).toContain('RLC- Dunmere Mallin')
     expect(p.fields.claimAmount).toBe('17585.00')
     expect(form).toContain('17,585')
     expect(form).toContain('Copy for: owner of record')
     expect(text(p.pages.original_contractor[0]!.blocks)).toContain('Copy for: original contractor')
-    expect(p.fields.originalContractorName).toBe('RMC- Dudley Mason')
+    expect(p.fields.originalContractorName).toBe('RLC- Dunmere Mallin')
   })
 
   it('unticked or empty, the owner gets the form alone — no standard note any more (v2.3828), as approveAll saves it', () => {
@@ -85,7 +85,7 @@ describe('the pay page in the preview (punch list #35, PR 3)', () => {
     expect(p.pages.owner.map((pg) => pg.key)).toEqual(['cover', 'notice', 'pay'])
     expect(p.pages.owner[2]!.label).toBe('pay codes')
     expect(text(p.pages.owner[2]!.blocks)).toContain('Copy for: owner of record')
-    expect(text(p.pages.owner[2]!.blocks)).toContain('only if RMC- Dudley Mason has told you in writing')
+    expect(text(p.pages.owner[2]!.blocks)).toContain('only if RLC- Dunmere Mallin has told you in writing')
     expect(p.pages.original_contractor.map((pg) => pg.key)).toEqual(['notice'])
     expect(gcNoticeCopyLine('owner', p, true)).toBe("Counsel's cover letter, then the notice, then the pay codes — the unpaid invoices follow in the packet")
     expect(gcNoticeCopyLine('original_contractor', p, true)).toBe("The GC's copy carries the statutory form only")

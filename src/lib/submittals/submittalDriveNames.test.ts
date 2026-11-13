@@ -5,7 +5,7 @@ import { driveFolderIdFromUrl } from '../../../supabase/functions/_shared/driveU
 
 describe('submittalDriveNames', () => {
   it('names the job folder as drive-intake does, and the file by revision and shared date', () => {
-    expect(jobFolderName({ project_name: '  SpaceX BA-02N ', bid_number: '375', id: 'x' })).toBe('SpaceX BA-02N')
+    expect(jobFolderName({ project_name: '  SkyLab BA-02N ', bid_number: '375', id: 'x' })).toBe('SkyLab BA-02N')
     expect(jobFolderName({ project_name: null, bid_number: '375', id: 'x' })).toBe('Bid 375')
     expect(packageFileName(3, '2026-09-17T15:00:00Z', APP_CALENDAR_TZ)).toBe('Rev 3 · 2026-09-17.pdf')
     expect(packageFileName(2, '2026-09-17T04:30:00Z', APP_CALENDAR_TZ)).toBe('Rev 2 · 2026-09-16.pdf')

@@ -138,11 +138,11 @@ describe('SubmittalTakeoffPicker', () => {
   it('parts, not assemblies · an assembly’s parts sit under its name, the loose lines under On the takeoff, with how many on a fixture', () => {
     const piece = (key: string, label: string, assembly: string | null, quantity = 1) => ({ key, label, partId: key, partTypeName: null, trim: false, houseId: null, houseName: null, quantity, lineId: assembly ? 'l-dwh' : key, templateItemId: assembly ? key : null, assembly, manufacturer: null })
     const dwh = cand({ countRowId: 'c-dwh', fixture: 'DWH1 & ET', tagText: 'DWH-1', tags: ['DWH-1'], group: 'fixtures', count: 1,
-      pieces: [piece('i-heater', 'RHEEM PROPH40-T2-RH400-SO', 'DWH1 & ET assembly SPACEX'), piece('i-tank', 'AMTROL ST-5', 'DWH1 & ET assembly SPACEX', 2), piece('l-pump', 'B&G 60B0B1001', null)],
+      pieces: [piece('i-heater', 'RHEEM PROPH40-T2-RH400-SO', 'DWH1 & ET assembly SKYLAB'), piece('i-tank', 'AMTROL ST-5', 'DWH1 & ET assembly SKYLAB', 2), piece('l-pump', 'B&G 60B0B1001', null)],
       productKeys: ['i-heater', 'i-tank', 'l-pump'], product: 'RHEEM PROPH40-T2-RH400-SO + AMTROL ST-5 + B&G 60B0B1001' })
     render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={[dwh]} onConfirm={() => {}} onClose={() => {}} />)
     fireEvent.click(screen.getByTestId('takeoff-parts-toggle'))
-    expect(screen.getAllByTestId('takeoff-piece-run').map((r) => r.textContent)).toEqual(['Inside DWH1 & ET assembly SPACEX', 'On the takeoff'])
+    expect(screen.getAllByTestId('takeoff-piece-run').map((r) => r.textContent)).toEqual(['Inside DWH1 & ET assembly SKYLAB', 'On the takeoff'])
     expect(screen.getAllByTestId('takeoff-piece').map((c) => c.textContent!.replace('GC sees itOrder onlyLeft out', ''))).toEqual(['RHEEM PROPH40-T2-RH400-SO', 'AMTROL ST-5 × 2', 'B&G 60B0B1001'])
   })
 

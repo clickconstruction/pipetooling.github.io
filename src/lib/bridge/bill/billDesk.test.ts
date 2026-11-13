@@ -23,18 +23,18 @@ const jobs: BillPileJob[] = [
 const labels = new Map<string, string>([
   ['j1024', '1024 · Lawver install'],
   ['j1051', '1051 · Patel repipe'],
-  ['j1017', '1017 · Terrell'],
+  ['j1017', '1017 · Tarrow'],
   ['j1081', '1081 · Adams Pretest'],
-  ['j977', '977 · Springtown'],
-  ['j1044', '1044 · H & I Creekside'],
+  ['j977', '977 · Stonewick'],
+  ['j1044', '1044 · B & D Creekside'],
   ['jguess', 'G1 · A guess'],
-  ['j473', '473 · Mike Holub'],
+  ['j473', '473 · Mike Holmby'],
   ['j1087', '1087 · Edwards Ranch'],
   ['j1046', '1046 · Pretest'],
   ['j1048', '1048 · Tison per plans'],
-  ['j1007', '1007 · SPACEX pay app 3'],
-  ['j1075', '1075 · DRF Line Repair'],
-  ['j804', '804 · Summit Auto Zone'],
+  ['j1007', '1007 · SKYLAB pay app 3'],
+  ['j1075', '1075 · DLF Line Repair'],
+  ['j804', '804 · Selwick Tire Barn'],
 ])
 const points: PctPoint[] = [
   { jobId: 'j1024', atYmd: '2026-09-10', pct: 80, source: 'hand' },
@@ -99,9 +99,9 @@ describe('the shapers', () => {
     expect(hoursByJobInWindow(sessions, WINDOW_START, TODAY).get('j1017')).toBe(38)
     const patel = shapedJobs.find((j) => j.id === 'j1051')!
     expect(patel).toMatchObject({ label: '1051 · Patel repipe', readyYmd: null, pct100SinceYmd: '2026-10-05', newestBillYmd: '2026-10-02', hoursInWindow: 0 })
-    const spacex = shapedBills.find((b) => b.id === 'i1007')!
-    expect(spacex.readyYmd).toBe('2026-10-10')
-    expect(shapedBills.find((b) => b.id === 'i473')).toMatchObject({ jobLabel: '473 · Mike Holub', readyYmd: null, sentFromHere: false, paid: false })
+    const skylab = shapedBills.find((b) => b.id === 'i1007')!
+    expect(skylab.readyYmd).toBe('2026-10-10')
+    expect(shapedBills.find((b) => b.id === 'i473')).toMatchObject({ jobLabel: '473 · Mike Holmby', readyYmd: null, sentFromHere: false, paid: false })
   })
 })
 
@@ -124,12 +124,12 @@ describe('the Bill desk (v2.5930)', () => {
     expect(desk.leaks[1]!.detail).toBe('1051 Patel repipe billed $5.2k of $8.8k on Oct 2. The rest has no bill and no date.')
     expect(desk.leaks[1]!.proof).toContain('the bills cover $5.2k')
     expect(desk.leaks[1]!.door.label).toBe('Bill the rest')
-    expect(desk.leaks[2]!.detail).toBe('1017 Terrell has hours and no contract price. Its finished work reads $0 forever.')
+    expect(desk.leaks[2]!.detail).toBe('1017 Tarrow has hours and no contract price. Its finished work reads $0 forever.')
     expect(desk.leaks[2]!.door).toEqual({ label: 'Price the job', to: '/jobs?tab=stages&edit=j1017' })
     // v2.5938: a hand-marked bill is billed, so it lists apart and stays out of the headline.
     expect(desk.handMarked.map((l) => [l.kind, l.jobId, l.billId, l.amountText, l.satText])).toEqual([['hand-marked', 'j473', 'i473', '$1.5k', '2 weeks']])
     expect(desk.handMarkedUsd).toBe(1_500)
-    expect(desk.handMarked[0]!.detail).toBe('473 Mike Holub was marked billed Oct 12 with no send on file.')
+    expect(desk.handMarked[0]!.detail).toBe('473 Mike Holmby was marked billed Oct 12 with no send on file.')
     expect(desk.handMarked[0]!.door).toEqual({ label: 'Open the bill', to: '/jobs?tab=billing' })
     expect(desk.handMarkedNote).toBe("1 bill, $1.5k, was marked billed by hand with no send on file. A GC's pay application is recorded this way. The question is whether the customer got each one.")
     // The ready jobs and the guess stay out of the leaks; a paid bill and an old one never leak.
@@ -146,8 +146,8 @@ describe('the Bill desk (v2.5930)', () => {
   it('draws the fast lane with the days sat and the cover words, biggest remainder first', () => {
     expect(desk.fast.map((r) => [r.label, r.usd, r.satText, r.coverText, r.late])).toEqual([
       ['1081 · Adams Pretest', 9_600, 'sat 6 days', 'nothing billed yet', true],
-      ['977 · Springtown', 5_400, 'sat 3 days', 'bills cover $4.1k of $9.5k', true],
-      ['1044 · H & I Creekside', 3_600, 'sat 2 days', 'payments cover $6.1k of $9.7k', true],
+      ['977 · Stonewick', 5_400, 'sat 3 days', 'bills cover $4.1k of $9.5k', true],
+      ['1044 · B & D Creekside', 3_600, 'sat 2 days', 'payments cover $6.1k of $9.7k', true],
     ])
     expect(desk.fastUsd).toBe(18_600)
     expect(desk.fast[0]!.door).toEqual({ label: 'Bill it', to: '/jobs?tab=billing' })
@@ -168,10 +168,10 @@ describe('the Bill desk (v2.5930)', () => {
       ['1046 · Pretest · $1.4k', 'Oct 17', 'Oct 23', '6 days', 'Taunya', '$8.1k·d'],
       ['1087 · Edwards Ranch · $645', 'Oct 21', 'Oct 21', 'same day', 'Taunya', '0'],
       ['1048 · Tison per plans · $4.8k', 'Oct 16', 'Oct 16', 'same day', 'Dana', '0'],
-      ['1007 · SPACEX pay app 3 · $11.8k', 'Oct 10', 'Oct 14', '4 days', 'Taunya', '$47.2k·d'],
-      ['473 · Mike Holub · $1.5k', '—', 'Oct 12', '—', 'by hand', '—'],
-      ['1075 · DRF Line Repair · $2.2k', 'Oct 9', 'Oct 9', 'same day', 'Dana', '0'],
-      ['804 · Summit Auto Zone · $3.1k', 'Oct 6', 'Oct 6', 'same day', 'Taunya', '0'],
+      ['1007 · SKYLAB pay app 3 · $11.8k', 'Oct 10', 'Oct 14', '4 days', 'Taunya', '$47.2k·d'],
+      ['473 · Mike Holmby · $1.5k', '—', 'Oct 12', '—', 'by hand', '—'],
+      ['1075 · DLF Line Repair · $2.2k', 'Oct 9', 'Oct 9', 'same day', 'Dana', '0'],
+      ['804 · Selwick Tire Barn · $3.1k', 'Oct 6', 'Oct 6', 'same day', 'Taunya', '0'],
       ['1051 · Patel repipe · $5.2k', '—', 'Oct 2', '—', 'Taunya', '—'],
     ])
     expect(s.noReadyLine).toBe('2 bills have no ready day on record. They sit in the table with a dash.')

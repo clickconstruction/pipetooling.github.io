@@ -12,13 +12,13 @@ import { lienPaperGaps, paintGaps, gapToken } from '../../lib/jobs/lienPaperGaps
 
 afterEach(cleanup)
 
-const facts = { ownerName: '', ownerAddress: '', county: '', legalDescription: '', gcName: 'Loberg Contracting', contactPerson: 'Robert Douglas', claimantAddress: '5501 Balcones Dr' }
+const facts = { ownerName: '', ownerAddress: '', county: '', legalDescription: '', gcName: 'Lowbeck Contracting', contactPerson: 'Robert Douglas', claimantAddress: '5501 Balcones Dr' }
 const noticeGaps = lienPaperGaps('notice', facts)
 const affGaps = lienPaperGaps('affidavit', facts)
 const entries: LienPaperPreviewEntry[] = [
   { key: 'a', title: '838 · Bruce Hall', kind: 'affidavit', deadline: 'File by Oct 15 · 10 days left', envelope: null, html: paintGaps(`<p>COUNTY OF ${gapToken(1)}</p><p>Legal: ${gapToken(2)}</p><p>Owner: ${gapToken(3)}</p>`, affGaps), gaps: affGaps, next: 'Draft affidavit', button: 'Fix the property' },
-  { key: 'n', title: '804 · Summit GC- Auto Zone', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: paintGaps(gapToken(1), noticeGaps), gcHtml: 'Loberg Contracting' }, html: '<p>Notice of Claim</p>', gaps: noticeGaps, next: 'Draft notice', button: 'Find the owner' },
-  { key: 'w', title: '878 · Take 5- Seguin', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: 'TC/JP SEGUIN 2019 LLC', gcHtml: 'Take 5' }, html: '<p>Notice of Claim</p>', gaps: [], next: 'Approve', button: null },
+  { key: 'n', title: '804 · Selwick GC- Tire Barn', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: paintGaps(gapToken(1), noticeGaps), gcHtml: 'Lowbeck Contracting' }, html: '<p>Notice of Claim</p>', gaps: noticeGaps, next: 'Draft notice', button: 'Find the owner' },
+  { key: 'w', title: '878 · Tune 5- Seguin', kind: 'notice', deadline: 'In the mail by Oct 15 · 10 days left', envelope: { ownerHtml: 'TC/JP SEGUIN 2019 LLC', gcHtml: 'Tune 5' }, html: '<p>Notice of Claim</p>', gaps: [], next: 'Approve', button: null },
 ]
 
 describe('LienPaperPreviewOverlay', () => {

@@ -34,8 +34,8 @@ her word too on how she works a bid request: from wendi@, or from bids@ in Apple
 ## The findings, in Wendi's words
 
 1. "What if I am already handling a project from my personal email, but it is duplicated through the
-   bids email?" Rusty Cottar's thread read *Our move · 23 h · We owe them… · Rusty emailed yesterday. We
-   have not written yet.* under *Wendi took Rusty Cottar · 2:49 PM*. She had already answered him from
+   bids email?" Rusty Cotterby's thread read *Our move · 23 h · We owe them… · Rusty emailed yesterday. We
+   have not written yet.* under *Wendi took Rusty Cotterby · 2:49 PM*. She had already answered him from
    wendi@clickplumbing.com.
 2. "This is what emails look like that we send, I don't love it." From *Click Construction*
    <team@noreply.clicktooling.com>, Reply-To bids@clickplumbing.com; a navy bar reading CLICK CONSTRUCTION
@@ -275,7 +275,7 @@ and land one after the other. The two pairs are independent.
 - 2026-11-08, later: **PR 3 built**, v2.6731: `gmail-sync` reads each box's own Sent folder beside its Inbox. The history is
   asked with no label (Gmail takes one at most) and `recordMessageIds` keeps the Inbox's and Sent's messages alone, so a
   draft, a chat or a Spam mail never fills the run's 40; a mail the box itself sent (`sentByTheBox`) lands on the first
-  To or Cc not ours as ours, going out (`sentParty`), `who_text` *Wendi Doll <bids@…> to Rusty Cottar <rusty@…> · sent
+  To or Cc not ours as ours, going out (`sentParty`), `who_text` *Wendi Doll <bids@…> to Rusty Cotterby <rusty@…> · sent
   from bids@*, `who_user_id` the one team member whose name is the From's display name; one sent only to the team is
   left; the app's own send as the box is held by its Message-ID and only labelled. The reply box's grey line now reads
   *Answering from your own mailbox? Answer from bids@ in Apple Mail, or copy it, and this thread hears it.* The guide
@@ -320,7 +320,7 @@ guide's words, `docs/MESSAGES_ARCHITECTURE.md` and `docs/EDGE_FUNCTIONS.md` amen
   (`SENT_LABEL`), so drafts, Spam and chats never count against `MAX_PER_RUN`. The test gains the Sent cases.
 - `leftOut.ts`: a new `sentByTheBox(email, isTheBox)`: labels hold `SENT` and not `SPAM`/`TRASH`, and the From is the
   box. `outsideInbox` is unchanged for everything else.
-- `emailLine.ts`: the sent line's who, `Wendi Doll <bids@…> to Rusty Cottar <rusty@…> · sent from bids@`, as a sibling
+- `emailLine.ts`: the sent line's who, `Wendi Doll <bids@…> to Rusty Cotterby <rusty@…> · sent from bids@`, as a sibling
   of the *copied to* words (a `how` on `emailLine`, or `sentLine`).
 - `gmail-sync/index.ts`'s `takeMail`: before `leftOut`, when `sentByTheBox`, the party is the first To or Cc that is
   not ours (`isOurs`), direction out; none outside (the box wrote a teammate) is `'left'`. `heldLine` by Message-ID

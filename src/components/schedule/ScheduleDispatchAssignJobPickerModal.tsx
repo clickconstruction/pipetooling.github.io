@@ -95,7 +95,7 @@ export function ScheduleDispatchAssignJobPickerModal({
   onOpenJobDetail?: (jobId: string) => void
   onCreateNewJob?: () => void
   searchPlaceholder?: string
-  /** Same-address ambiguity warning shown under the search box (e.g. "2 jobs at 109 Tuscarora Trail…"). */
+  /** Same-address ambiguity warning shown under the search box (e.g. "2 jobs at 109 Tamberline Trail…"). */
   duplicateAddressNotice?: string | null
   /** Money rail mode: 'money' shows revenue + payment recency, 'lines-only' hides all dollars. */
   evidenceMode?: JobSearchEvidenceMode

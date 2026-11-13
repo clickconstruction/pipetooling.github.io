@@ -1,6 +1,6 @@
 /**
  * The Next line (punch list #176, change 2): one line under a station's question naming the
- * first row to act on and its verb, *Lean on TF Harper · $29,323 · 38 days*. The body sorts its
+ * first row to act on and its verb, *Lean on TF Halden · $29,323 · 38 days*. The body sorts its
  * rows worst first and reports the first row's sentence as the metric's `nextLine`; this draws
  * it the same way on the Roller, the round and the Page. A station with nothing to say reports
  * null and the line is not drawn.

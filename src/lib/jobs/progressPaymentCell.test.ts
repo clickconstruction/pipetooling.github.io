@@ -69,7 +69,7 @@ describe('the words', () => {
 })
 
 describe('buildProgressPaymentView — the five rows', () => {
-  it('J931 Heron: recognized stages, the money covers Rough In, the crew was on site Sat → Top Out is live, the Aug 7 seed is stale and not drawn', () => {
+  it('J931 Hadlow: recognized stages, the money covers Rough In, the crew was on site Sat → Top Out is live, the Aug 7 seed is stale and not drawn', () => {
     const fixtures = [line('r', 'Rough In', 19_480, 0), line('t', 'Top Out', 19_480, 1), line('s', 'Trim Set', 9_740, 2)]
     const money = buildStagesMoneyBarModel({ totalBill: 48_700, paymentsMade: 24_359.44, pctComplete: 40 })
     const stageBar = buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: 40, todayYmd: today })
@@ -92,7 +92,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.words).toMatchObject({ text: 'Worked Sat · 40%', full: 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed', tone: 'plain' })
   })
 
-  it('J931 Heron with pct_set_at: the seed carries its date — "40% set Aug 7", still stale and not drawn; SpaceX reads "12% reported Sep 11"', () => {
+  it('J931 Hadlow with pct_set_at: the seed carries its date — "40% set Aug 7", still stale and not drawn; SkyLab reads "12% reported Sep 11"', () => {
     const fixtures = [line('r', 'Rough In', 19_480, 0), line('t', 'Top Out', 19_480, 1), line('s', 'Trim Set', 9_740, 2)]
     const money = buildStagesMoneyBarModel({ totalBill: 48_700, paymentsMade: 24_359.44, pctComplete: 40 })
     const stageBar = buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: 40, todayYmd: today })
@@ -103,7 +103,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.percent).toEqual({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })
     expect(v.words).toMatchObject({ text: 'Worked Sat · 40% Aug 7', full: 'Top Out · Behar & Malachi on site Sat · 40% set Aug 7 · $24,359 paid, nothing billed', tone: 'plain' })
 
-    const spacex = buildProgressPaymentView({
+    const skylab = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 20_000, paymentsMade: 0, pctComplete: 12 }),
       stageBar: null,
       fixtures: [line('p', 'Plumbing per plans', 20_000, 0)],
@@ -113,13 +113,13 @@ describe('buildProgressPaymentView — the five rows', () => {
       status: 'working',
       todayYmd: today,
     })
-    expect(spacex.stale).toBe(false)
-    expect(spacex.segments[0]).toMatchObject({ fillPct: 12, label: 'Plumbing per plans · 12%' })
-    expect(spacex.words.text).toBe('Worked Thu · 12% Sep 11')
-    expect(spacex.words.full).toBe('Miguel on site Thu · 12% reported Sep 11 · nothing billed · $2,400 done, not billed')
+    expect(skylab.stale).toBe(false)
+    expect(skylab.segments[0]).toMatchObject({ fillPct: 12, label: 'Plumbing per plans · 12%' })
+    expect(skylab.words.text).toBe('Worked Thu · 12% Sep 11')
+    expect(skylab.words.full).toBe('Miguel on site Thu · 12% reported Sep 11 · nothing billed · $2,400 done, not billed')
   })
 
-  it('Michael Palmer · Moses Hughes: no % ever typed; paid = Rough In to the dollar and 3 on site today → Top Out, no office input', () => {
+  it('Michael Palvern · Milo Hollin: no % ever typed; paid = Rough In to the dollar and 3 on site today → Top Out, no office input', () => {
     const fixtures = [line('r', 'Rough In', 16_620, 0), line('t', 'Top Out', 16_620, 1), line('s', 'Trim Set', 8_310, 2)]
     const money = buildStagesMoneyBarModel({ totalBill: 41_550, paymentsMade: 16_620, pctComplete: null })
     const stageBar = buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: null, todayYmd: today })
@@ -136,7 +136,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.words.full).toBe('Top Out · 3 on site today · no % yet · $16,620 paid, nothing billed')
   })
 
-  it('J977 Springtown (the screenshot): one line, the work at 80 over the money at 63, the amber named', () => {
+  it('J977 Stonewick (the screenshot): one line, the work at 80 over the money at 63, the amber named', () => {
     const fixtures = [line('e', 'Electrical', 40_000, 0)]
     const money = buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 })
     const crew = crewOf({ sheet_stage: 'working', sheet_names: 'Texas Rooter', pct_manual_at: '2026-09-03T12:00:00Z' })
@@ -151,7 +151,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.words).toMatchObject({ text: 'On the sheet, no clock-ins · 80% Sep 3', full: 'Texas Rooter on the sheet, no clock-ins · 80% typed Sep 3 · $13,412 paid · $11,770 billed · $6,818 done, not billed', tone: 'amber' })
   })
 
-  it('Take 5 Seguin: billed ahead of the work, Miguel’s crew on site Friday, amber', () => {
+  it('Tune 5 Seguin: billed ahead of the work, Miguel’s crew on site Friday, amber', () => {
     const fixtures = [line('f', 'Fixtures per plans', 40_135, 0)]
     const money = buildStagesMoneyBarModel({ totalBill: 40_135, paymentsMade: 0, pctComplete: 60, billedUnpaid: 32_108.3 })
     const crew = crewOf({ last_work_date: '2026-09-11', last_day_people: ['Miguel Rodriguez', 'Edgar Lopez', 'Jose Cruz'], sessions_60d: 41, people_60d: 7, sheet_stage: 'working', sheet_names: 'Miguel Rodriguez', pct_manual_at: '2026-09-12T12:00:00Z' })
@@ -161,8 +161,8 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.words).toMatchObject({ text: 'Worked Fri · 60% Sep 12', full: '3 people on site Fri · 60% typed Sep 12 · $32,108 billed, nothing paid', tone: 'amber' })
   })
 
-  it('the empty rows: Vecchio Pinpoint says what is missing; DRF with a crew on site and no lines reads red', () => {
-    const vecchio = buildProgressPaymentView({
+  it('the empty rows: Vellano Pinpoint says what is missing; DLF with a crew on site and no lines reads red', () => {
+    const vellano = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 450, paymentsMade: 0, pctComplete: null }),
       stageBar: null,
       fixtures: [line('p', 'Pinpoint', 450, 0)],
@@ -172,11 +172,11 @@ describe('buildProgressPaymentView — the five rows', () => {
       status: 'working',
       todayYmd: today,
     })
-    expect(vecchio.mode).toBe('lines')
-    expect(vecchio.segments[0]).toMatchObject({ name: 'Pinpoint', fillPct: 0, label: 'Pinpoint' })
-    expect(vecchio.words).toMatchObject({ text: 'No hours · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
+    expect(vellano.mode).toBe('lines')
+    expect(vellano.segments[0]).toMatchObject({ name: 'Pinpoint', fillPct: 0, label: 'Pinpoint' })
+    expect(vellano.words).toMatchObject({ text: 'No hours · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
 
-    const drf = buildProgressPaymentView({
+    const dlf = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 0, paymentsMade: 0, pctComplete: null }),
       stageBar: null,
       fixtures: [],
@@ -186,11 +186,11 @@ describe('buildProgressPaymentView — the five rows', () => {
       status: 'working',
       todayYmd: today,
     })
-    expect(drf.mode).toBe('nobid')
-    expect(drf.segments).toEqual([])
+    expect(dlf.mode).toBe('nobid')
+    expect(dlf.segments).toEqual([])
     // A no-bid row has no legend money to repeat, so the whole sentence prints — minus the names (v2.3459).
-    expect(drf.words).toEqual({ text: 'Worked today · no lines on the job · nothing to bill against', full: 'Edgar & Jose on site today · no lines on the job · nothing to bill against', tone: 'red' })
-    const quiet = buildProgressPaymentView({ ...drf, money: buildStagesMoneyBarModel({ totalBill: null, paymentsMade: null, pctComplete: null }), stageBar: null, fixtures: [], invoices: [], crew: null, pctComplete: null, todayYmd: today } as never)
+    expect(dlf.words).toEqual({ text: 'Worked today · no lines on the job · nothing to bill against', full: 'Edgar & Jose on site today · no lines on the job · nothing to bill against', tone: 'red' })
+    const quiet = buildProgressPaymentView({ ...dlf, money: buildStagesMoneyBarModel({ totalBill: null, paymentsMade: null, pctComplete: null }), stageBar: null, fixtures: [], invoices: [], crew: null, pctComplete: null, todayYmd: today } as never)
     expect(quiet.words.tone).toBe('muted')
   })
 })

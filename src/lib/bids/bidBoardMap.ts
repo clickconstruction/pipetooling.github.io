@@ -57,7 +57,7 @@ export const BID_BOARD_MAP_DUE_RING_COLOR: Record<BidBoardMapDueTone, string> = 
 /** One bid the card wants on the map, before coordinates are known. */
 export type BidBoardMapBid = {
   id: string
-  /** `B385 · Galloway Park Concession Stand` — number first, like the board rows. */
+  /** `B385 · Gallenby Park Concession Stand` — number first, like the board rows. */
   label: string
   numberLabel: string
   projectName: string

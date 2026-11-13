@@ -42,15 +42,15 @@ describe('formatUnifiedResult — plainTradePrefixes', () => {
     id: 'j1',
     hcp_number: '870',
     job_name: 'Heron',
-    job_address: '105 Dover Rd',
+    job_address: '105 Dorrow Rd',
     service_type_id: 'plum',
   }
   const bid: UnifiedSearchResult = {
     source: 'bid',
     id: 'b1',
     bid_number: '356',
-    project_name: '105 DOVER',
-    address: '105 Dover Rd',
+    project_name: '105 DORROW',
+    address: '105 Dorrow Rd',
     customer_name: 'Heron',
     service_type_id: 'plum',
   }
@@ -117,15 +117,15 @@ describe('formatUnifiedResultSplit', () => {
     source: 'job',
     id: 'j1',
     hcp_number: '941',
-    job_name: 'Berg AirBnb- Door Repair',
-    job_address: '6288 River Rd New Braunfels, TX 78132',
+    job_name: 'Birkby AirBnb- Door Repair',
+    job_address: '6288 Rill Rd New Braunfels, TX 78132',
     service_type_id: 'plum',
   }
 
   it('splits a job into title (no address) + zip-stripped address', () => {
     expect(formatUnifiedResultSplit(job, prefixMap, { plainTradePrefixes: true })).toEqual({
-      title: 'J941 · Berg AirBnb- Door Repair',
-      secondary: '6288 River Rd New Braunfels, TX',
+      title: 'J941 · Birkby AirBnb- Door Repair',
+      secondary: '6288 Rill Rd New Braunfels, TX',
     })
   })
 
@@ -134,14 +134,14 @@ describe('formatUnifiedResultSplit', () => {
       source: 'bid',
       id: 'b1',
       bid_number: '319',
-      project_name: 'TAKE 5 - KERRVILLE',
+      project_name: 'TUNE 5 - KERRVILLE',
       address: '',
-      customer_name: 'Take 5 Oil',
+      customer_name: 'Tune 5 Oil',
       service_type_id: 'plum',
     }
     expect(formatUnifiedResultSplit(bid, prefixMap, { plainTradePrefixes: true })).toEqual({
-      title: 'B319 · TAKE 5 - KERRVILLE',
-      secondary: 'Take 5 Oil',
+      title: 'B319 · TUNE 5 - KERRVILLE',
+      secondary: 'Tune 5 Oil',
     })
   })
 
@@ -152,7 +152,7 @@ describe('formatUnifiedResultSplit', () => {
     })
     // The joined formatter must reproduce its historical output through the split.
     expect(formatUnifiedResult(job, prefixMap, { plainTradePrefixes: true })).toBe(
-      'J941 · Berg AirBnb- Door Repair - 6288 River Rd New Braunfels, TX',
+      'J941 · Birkby AirBnb- Door Repair - 6288 Rill Rd New Braunfels, TX',
     )
     expect(formatUnifiedResult(customer({ address: null }), noPrefixMap)).toBe('C · Acme LLC')
     expect(formatUnifiedResult(job, prefixMap)).toContain('JP941')

@@ -3,10 +3,10 @@ import { buildGcStatementRequestInsert, describePendingGcStatementSend } from '.
 
 const base = {
   requestedBy: 'user-1',
-  toEmail: 'ap@knight.com',
+  toEmail: 'ap@kestrin.com',
   byDevelopment: false,
   entityId: 'gc-1',
-  entityName: 'Knight Contracting',
+  entityName: 'Kestrin Contracting',
   includeCollections: false,
   sendDateYmd: '2026-08-10',
   sendTimeHm: '07:00',
@@ -70,8 +70,8 @@ describe('buildGcStatementRequestInsert', () => {
 
 describe('describePendingGcStatementSend', () => {
   it('labels entity and destination', () => {
-    expect(describePendingGcStatementSend({ entity_name: 'Knight Contracting', sent_to: 'ap@knight.com' })).toBe(
-      'Knight Contracting → ap@knight.com',
+    expect(describePendingGcStatementSend({ entity_name: 'Kestrin Contracting', sent_to: 'ap@kestrin.com' })).toBe(
+      'Kestrin Contracting → ap@kestrin.com',
     )
     expect(describePendingGcStatementSend({ entity_name: '  ', sent_to: 'x@y.co' })).toBe('Statement → x@y.co')
   })

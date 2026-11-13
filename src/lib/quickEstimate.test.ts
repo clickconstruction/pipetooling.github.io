@@ -14,7 +14,7 @@ import {
 
 const coInput: QuickEstimateSummaryInput = {
   branch: 'change_order',
-  jobLabel: 'HCP 5124 — Herber Custom Homes',
+  jobLabel: 'HCP 5124 — Helbrow Custom Homes',
   customerLabel: null,
   description: 'Added a hose bib on the back wall and move the water heater to the attic.',
   photoCount: 2,
@@ -56,7 +56,7 @@ describe('quickEstimateReviewRows', () => {
   it('CO branch: Job/Change labels, filled rows, office tail', () => {
     const rows = quickEstimateReviewRows(coInput)
     expect(rows.map((r) => r.label)).toEqual(['Job', 'Change', 'Ballpark', 'Rest'])
-    expect(rows[0]!).toMatchObject({ value: 'HCP 5124 — Herber Custom Homes', filled: true })
+    expect(rows[0]!).toMatchObject({ value: 'HCP 5124 — Helbrow Custom Homes', filled: true })
     expect(rows[1]!.filled).toBe(true)
     expect(rows[1]!.value).toContain('2 photos')
     expect(rows[2]!).toMatchObject({ value: '$1,000', filled: true })
@@ -86,7 +86,7 @@ describe('quickEstimateReviewRows', () => {
 describe('dispatch title + reference summary', () => {
   it('titles by kind and target', () => {
     expect(quickEstimateDispatchTitle(coInput)).toBe(
-      'Review field change order — HCP 5124 — Herber Custom Homes',
+      'Review field change order — HCP 5124 — Helbrow Custom Homes',
     )
     expect(
       quickEstimateDispatchTitle({ ...coInput, branch: 'estimate', customerLabel: 'Mike down the road' }),

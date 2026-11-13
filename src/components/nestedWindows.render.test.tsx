@@ -119,7 +119,7 @@ const CASES: { name: string; render: (onClose: () => void) => ReactElement; back
   },
   {
     name: 'GC notes (Bid Board row)',
-    render: (onClose) => <BidGcNotesPopover bidId="b-385" bidLabel="Galloway Park" gcId={null} gcName="HCS, Inc." sentOn="9/22" outcome={null} onClose={onClose} onChanged={() => {}} />,
+    render: (onClose) => <BidGcNotesPopover bidId="b-385" bidLabel="Gallenby Park" gcId={null} gcName="HCS, Inc." sentOn="9/22" outcome={null} onClose={onClose} onChanged={() => {}} />,
     backdrop: backdropOfDialog(),
   },
   {
@@ -130,7 +130,7 @@ const CASES: { name: string; render: (onClose: () => void) => ReactElement; back
   {
     name: 'Mark account opened (a job account chip)',
     render: (onClose) => (
-      <MarkJobAccountOpenedModal jobId="j-258" jobLabel="258 · Dudley Mason" house={{ id: 'h-1', name: 'Ferguson' }} existing={null} reps={[]} onClose={onClose} onSaved={() => {}} />
+      <MarkJobAccountOpenedModal jobId="j-258" jobLabel="258 · Dunmere Mallin" house={{ id: 'h-1', name: 'Ferguson' }} existing={null} reps={[]} onClose={onClose} onSaved={() => {}} />
     ),
     backdrop: backdropOfDialog(),
   },

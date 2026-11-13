@@ -210,7 +210,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Customers / new table
 
 **`20260817221950_merge_customers_accepted_estimates.sql`** _(applied via `supabase db push` with the v2.1785 merge — `CREATE OR REPLACE` of two existing functions; old clients unaffected, the RPC signature is unchanged)_
-- **Purpose**: Un-blocks merging duplicate customers who hold an accepted estimate. `merge_customers` sets a transaction-local flag (`set_config('app.merging_customers','1',true)`) before its re-link UPDATEs, and `estimates_protect_after_accept` now allows a `customer_id` change **only** while that flag is set — every other accepted-estimate mutation stays forbidden. Hit live: the Michael Palmer duplicate pair failed with "estimate is accepted; only job_ledger_id and internal_notes can change".
+- **Purpose**: Un-blocks merging duplicate customers who hold an accepted estimate. `merge_customers` sets a transaction-local flag (`set_config('app.merging_customers','1',true)`) before its re-link UPDATEs, and `estimates_protect_after_accept` now allows a `customer_id` change **only** while that flag is set — every other accepted-estimate mutation stays forbidden. Hit live: the Michael Palvern duplicate pair failed with "estimate is accepted; only job_ledger_id and internal_notes can change".
 - **Category**: Customers / function replace
 
 **`20260817160624_duplicate_bid_same_service_type.sql`** _(applied via `supabase db push` with the v2.1765 merge — `CREATE OR REPLACE` of an existing function; old clients unaffected, they never pass a same-type target)_
@@ -730,7 +730,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 
 **`20260730190000_deleted_records_list_labels.sql`** _(apply via `supabase db push` after the file is on `main`; return shape unchanged so client/migration order is safe either way)_
-- **Purpose**: Recently deleted label quality (v2.1129) — `list_deleted_records()` re-created with smarter labels: partial bundles resolve the still-alive parent by `group_key` ("Under job 878 · Take 5- Seguin" across jobs_ledger/bids/customers/projects/estimates, fallback to the old hex text); `clock_sessions` bundles gain the deleter-independent owner name + work date + job number.
+- **Purpose**: Recently deleted label quality (v2.1129) — `list_deleted_records()` re-created with smarter labels: partial bundles resolve the still-alive parent by `group_key` ("Under job 878 · Tune 5- Seguin" across jobs_ledger/bids/customers/projects/estimates, fallback to the old hex text); `clock_sessions` bundles gain the deleter-independent owner name + work date + job number.
 - **Security**: CREATE OR REPLACE of the existing SECURITY DEFINER SQL function; still gated on `public.is_dev()`; grants unchanged.
 - **Ordering**: independent of the v2.1129 client (filters + "What's inside" read the archive table directly under its existing dev-only RLS).
 - **Category**: Settings / data safety

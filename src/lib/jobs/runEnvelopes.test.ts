@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { envelopeCourtesy, envelopeKey, runCopies, runEnvelopes } from './runEnvelopes'
 import type { RunNotice } from './lienDeskRun'
 
-const fields = { noticeDate: '2026-09-22', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Dudley Mason', contractedWithIfDifferent: '', claimAmount: '0.00', contactPerson: 'Robert', claimantAddress: '' }
+const fields = { noticeDate: '2026-09-22', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Dunmere Mallin', contractedWithIfDifferent: '', claimAmount: '0.00', contactPerson: 'Robert', claimantAddress: '' }
 
-function notice(itemId: string, jobId: string, label: string, owner: { name: string; address: string; email?: string }, gc = { name: 'RMC- Dudley Mason', address: '100 Builder Way, San Antonio, TX 78230', email: 'ap@dudley.test' }): RunNotice {
+function notice(itemId: string, jobId: string, label: string, owner: { name: string; address: string; email?: string }, gc = { name: 'RLC- Dunmere Mallin', address: '100 Builder Way, San Antonio, TX 78230', email: 'ap@dunmere.test' }): RunNotice {
   return {
     itemId, jobId, kind: 'notice_53_056', label, jobNumber: label.split(' ')[0]!, months: ['2026-07'], amount: 9_400, fields, extras: {}, coverNote: 'note', coverLetter: null, ownerUnconfirmed: false,
     recipients: [
@@ -16,8 +16,8 @@ function notice(itemId: string, jobId: string, label: string, owner: { name: str
 
 describe('envelopeKey', () => {
   it('is one party at one address — case, punctuation and spacing do not make a second envelope', () => {
-    expect(envelopeKey('Elbel Holdings LLC', '4 Example Way, Schertz, TX')).toBe(envelopeKey('ELBEL HOLDINGS, L.L.C.', '4 Example Way  Schertz TX'))
-    expect(envelopeKey('Elbel Holdings LLC', '4 Example Way')).not.toBe(envelopeKey('Elbel Holdings LLC', '5 Example Way'))
+    expect(envelopeKey('Elwick Holdings LLC', '4 Example Way, Schertz, TX')).toBe(envelopeKey('ELWICK HOLDINGS, L.L.C.', '4 Example Way  Schertz TX'))
+    expect(envelopeKey('Elwick Holdings LLC', '4 Example Way')).not.toBe(envelopeKey('Elwick Holdings LLC', '5 Example Way'))
   })
   it('is empty when the name or the address is missing — those never merge', () => {
     expect(envelopeKey('', '4 Example Way')).toBe('')
@@ -27,15 +27,15 @@ describe('envelopeKey', () => {
 
 describe('runEnvelopes', () => {
   it('two notices to one owner at one address share an envelope, and the original contractor gets one envelope with every notice inside', () => {
-    const a = notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78240' })
-    const b = notice('i2', 'j1031', '1031 · Dudley (Lenox II)', { name: 'lenox hill owner, lp', address: '9703 Lenox Hl San Antonio TX 78240' })
-    const c = notice('i3', 'j706', '706 · Dudley (Vance)', { name: 'Vance Jackson LLC', address: '1 Vance Jackson Rd, San Antonio, TX' })
+    const a = notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl, San Antonio, TX 78240' })
+    const b = notice('i2', 'j1031', '1031 · Dunmere (Linmor II)', { name: 'linmor hill owner, lp', address: '9703 Linmor Hl San Antonio TX 78240' })
+    const c = notice('i3', 'j706', '706 · Dunmere (Vance)', { name: 'Vance Jackson LLC', address: '1 Vance Jackson Rd, San Antonio, TX' })
     const envs = runEnvelopes([a, b, c])
     expect(runCopies([a, b, c])).toBe(6)
     expect(envs.map((e) => [e.n, e.label, e.name, e.contents.map((x) => x.notice.label)])).toEqual([
-      [1, 'Owner of record', 'Lenox Hill Owner LP', ['1016 · Dudley (Lenox)', '1031 · Dudley (Lenox II)']],
-      [2, 'Original contractor', 'RMC- Dudley Mason', ['1016 · Dudley (Lenox)', '1031 · Dudley (Lenox II)', '706 · Dudley (Vance)']],
-      [3, 'Owner of record', 'Vance Jackson LLC', ['706 · Dudley (Vance)']],
+      [1, 'Owner of record', 'Linmor Hill Owner LP', ['1016 · Dunmere (Linmor)', '1031 · Dunmere (Linmor II)']],
+      [2, 'Original contractor', 'RLC- Dunmere Mallin', ['1016 · Dunmere (Linmor)', '1031 · Dunmere (Linmor II)', '706 · Dunmere (Vance)']],
+      [3, 'Owner of record', 'Vance Jackson LLC', ['706 · Dunmere (Vance)']],
     ])
     // every content remembers where it sits in the notices, so a patch on the envelope reaches each recipient
     expect(envs[1]!.contents.map((x) => [x.noticeIndex, x.recipientIndex])).toEqual([[0, 1], [1, 1], [2, 1]])
@@ -63,41 +63,41 @@ describe('runEnvelopes', () => {
 describe('a copy that already went through Docsmit keeps its own envelope (v2.5532)', () => {
   const went = (n: RunNotice, key: 'owner' | 'original_contractor', pieceId: string): RunNotice => ({ ...n, recipients: n.recipients.map((r) => (r.key === key ? { ...r, via: 'docsmit', pieceId, pieceStatus: 'mailed' } : r)) })
   it('a new copy to the same party gets an envelope of its own, so it is never taken for mailed', () => {
-    const a = went(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78230' }), 'original_contractor', 'p2')
-    const b = notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228' })
+    const a = went(notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl, San Antonio, TX 78230' }), 'original_contractor', 'p2')
+    const b = notice('i2', 'j1017', '1017 · Dunmere (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228' })
     const envs = runEnvelopes([a, b])
-    const gc = envs.filter((e) => e.name === 'RMC- Dudley Mason')
-    expect(gc.map((e) => e.key)).toEqual(['docsmit:p2', envelopeKey('RMC- Dudley Mason', '100 Builder Way, San Antonio, TX 78230')])
+    const gc = envs.filter((e) => e.name === 'RLC- Dunmere Mallin')
+    expect(gc.map((e) => e.key)).toEqual(['docsmit:p2', envelopeKey('RLC- Dunmere Mallin', '100 Builder Way, San Antonio, TX 78230')])
     expect(gc.map((e) => e.contents.map((c) => c.notice.itemId))).toEqual([['i1'], ['i2']])
   })
   it('the copies that went in one piece stay one envelope; a copy Docsmit refused rejoins its party', () => {
-    const a = went(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl' }), 'original_contractor', 'p2')
-    const b = went(notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' }), 'original_contractor', 'p2')
+    const a = went(notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl' }), 'original_contractor', 'p2')
+    const b = went(notice('i2', 'j1017', '1017 · Dunmere (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' }), 'original_contractor', 'p2')
     expect(runEnvelopes([a, b]).filter((e) => e.key === 'docsmit:p2').map((e) => e.contents.length)).toEqual([2])
     const refused = { ...a, recipients: a.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, pieceStatus: 'failed' as const } : r)) }
-    expect(runEnvelopes([refused, notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' })]).filter((e) => e.name === 'RMC- Dudley Mason')).toHaveLength(1)
+    expect(runEnvelopes([refused, notice('i2', 'j1017', '1017 · Dunmere (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' })]).filter((e) => e.name === 'RLC- Dunmere Mallin')).toHaveLength(1)
   })
 })
 
 describe('envelopeCourtesy (punch list #87 B)', () => {
   const ticked = (n: RunNotice): RunNotice => ({ ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) })
   it('offers the tick on the original contractor\u2019s envelope only, on while every copy inside is ticked, one email per notice', () => {
-    const a = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78240', email: 'owner@lp.test' }))
-    const b = ticked(notice('i2', 'j1017', '1017 · Dudley (Wurzbach)', { name: 'Wurzbach Owner LLC', address: '1 Wurzbach Rd, San Antonio, TX' }))
+    const a = ticked(notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl, San Antonio, TX 78240', email: 'owner@lp.test' }))
+    const b = ticked(notice('i2', 'j1017', '1017 · Dunmere (Wurzbach)', { name: 'Wurzbach Owner LLC', address: '1 Wurzbach Rd, San Antonio, TX' }))
     const envs = runEnvelopes([a, b])
     expect(envs.map((e) => e.label)).toEqual(['Owner of record', 'Original contractor', 'Owner of record'])
     // The owner has an email on file and still gets no tick.
     expect(envelopeCourtesy(envs[0]!)).toBeNull()
-    expect(envelopeCourtesy(envs[1]!)).toEqual({ emails: ['ap@dudley.test'], copies: 2, on: true })
+    expect(envelopeCourtesy(envs[1]!)).toEqual({ emails: ['ap@dunmere.test'], copies: 2, on: true })
     // One copy unticked: the tick reads off, so the click turns every copy back on.
     const half = runEnvelopes([a, { ...b, recipients: b.recipients.map((r) => ({ ...r, courtesy: false })) }])
     expect(envelopeCourtesy(half[1]!)!.on).toBe(false)
   })
   it('offers none when the envelope goes by email or no email is on file', () => {
-    const a = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78240' }))
+    const a = ticked(notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl, San Antonio, TX 78240' }))
     const env = runEnvelopes([a])[1]!
     expect(envelopeCourtesy({ ...env, method: 'email' })).toBeNull()
-    const blank = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl' }, { name: 'RMC- Dudley Mason', address: '100 Builder Way', email: '' }))
+    const blank = ticked(notice('i1', 'j1016', '1016 · Dunmere (Linmor)', { name: 'Linmor Hill Owner LP', address: '9703 Linmor Hl' }, { name: 'RLC- Dunmere Mallin', address: '100 Builder Way', email: '' }))
     expect(envelopeCourtesy(runEnvelopes([blank])[1]!)).toBeNull()
   })
 })

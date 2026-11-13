@@ -13,8 +13,8 @@ const io = vi.hoisted(() => ({ insert: vi.fn(), activity: vi.fn() }))
 vi.mock('../../lib/gcReviewCertifications', () => ({ insertGcReviewCertification: io.insert }))
 vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: io.activity }))
 
-const row = (key: string, remaining: number): GcReviewRow => ({ key, jobId: `job-${key}`, hcp: key, jobName: 'Dudley Mason', jobAddress: '', customerName: 'Cust', referenceDateDisplay: 'Sep 21, 2026', ageDays: 7, remaining, inCollections: false })
-const group: GcReviewGroup = { key: 'gc-rmc', gcId: 'gc-rmc', gcName: 'RMC- Dudley Mason', isNoGc: false, rows: [row('651', 8780), row('186', 6200)], subtotal: 14980, jobCount: 2, oldestAgeDays: 7 }
+const row = (key: string, remaining: number): GcReviewRow => ({ key, jobId: `job-${key}`, hcp: key, jobName: 'Dunmere Mallin', jobAddress: '', customerName: 'Cust', referenceDateDisplay: 'Sep 21, 2026', ageDays: 7, remaining, inCollections: false })
+const group: GcReviewGroup = { key: 'gc-rlc', gcId: 'gc-rlc', gcName: 'RLC- Dunmere Mallin', isNoGc: false, rows: [row('651', 8780), row('186', 6200)], subtotal: 14980, jobCount: 2, oldestAgeDays: 7 }
 
 function open() {
   const handlers = { onClose: vi.fn(), onCertified: vi.fn(), onOpenJobDetail: vi.fn() }
@@ -32,13 +32,13 @@ beforeEach(() => {
 describe('GcReviewCertifyModal', () => {
   it('lists the group’s bills and keeps the sign-off locked until each is ticked', () => {
     open()
-    expect(screen.getByRole('dialog', { name: 'Certify RMC- Dudley Mason' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Certify RLC- Dunmere Mallin' })).toBeTruthy()
     expect(screen.getAllByTestId('gc-bill-line')).toHaveLength(2)
     expect(screen.getByText(/0 of 2/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Check only' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 651 Dudley Mason' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 651 Dunmere Mallin' }))
     expect((screen.getByRole('button', { name: 'Check only' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 186 Dudley Mason' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 186 Dunmere Mallin' }))
     expect(screen.getByText(/2 of 2/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Check only' }) as HTMLButtonElement).disabled).toBe(false)
     expect((screen.getByRole('button', { name: 'Check & send…' }) as HTMLButtonElement).disabled).toBe(false)
@@ -46,10 +46,10 @@ describe('GcReviewCertifyModal', () => {
 
   it('opening a job keeps the ticks', () => {
     const h = open()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 651 Dudley Mason' }))
-    fireEvent.click(screen.getByRole('button', { name: '186 · Dudley Mason' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Reviewed 651 Dunmere Mallin' }))
+    fireEvent.click(screen.getByRole('button', { name: '186 · Dunmere Mallin' }))
     expect(h.onOpenJobDetail).toHaveBeenCalledWith('job-186')
-    expect((screen.getByRole('checkbox', { name: 'Reviewed 651 Dudley Mason' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'Reviewed 651 Dunmere Mallin' }) as HTMLInputElement).checked).toBe(true)
   })
 
   it('records who checked what, then hands on', async () => {
@@ -57,6 +57,6 @@ describe('GcReviewCertifyModal', () => {
     screen.getAllByRole('checkbox').forEach((box) => fireEvent.click(box))
     fireEvent.click(screen.getByRole('button', { name: 'Check & send…' }))
     await waitFor(() => expect(h.onCertified).toHaveBeenCalledWith({ andSend: true }))
-    expect(io.insert).toHaveBeenCalledWith(expect.objectContaining({ week_start: '2026-09-28', gc_customer_id: 'gc-rmc', certified_by: 'u-taunya', certified_by_name: 'Taunya', job_count: 2, total: 14980 }))
+    expect(io.insert).toHaveBeenCalledWith(expect.objectContaining({ week_start: '2026-09-28', gc_customer_id: 'gc-rlc', certified_by: 'u-taunya', certified_by_name: 'Taunya', job_count: 2, total: 14980 }))
   })
 })

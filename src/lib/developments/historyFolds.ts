@@ -1,5 +1,5 @@
 /**
- * The History look's folds (the Gun Dog spike, 2026-11-02). One act by one person on one piece on one
+ * The History look's folds (the Gray Fox spike, 2026-11-02). One act by one person on one piece on one
  * day often leaves many lines: the Nov 1 merge of six HouseCall Pro shells into JP629 wrote ten *Combined
  * … into this job* notes and five identical *Ready to Bill · moved from Paid* moves, fifteen lines before
  * the first other thing. A run of three or more neighbouring lines that share the day, the kind, the verb,
