@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick
+keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, directions, how far
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -56,6 +56,21 @@ Some cards list what done looks like. The lines sit under the title as boxes. Th
 :::
 
 Tap the last box and the card is done. It takes the same path as the big checkbox. Tap a ticked box to untick it. Every tick and untick is a line on the card's notes. On a computer the card shows a chip like {{chip:gray|2 of 3 done when…}}. Tap the chip to open the lines. A card that comes back starts its lines over. The notes keep who ticked what.
+
+## Find where a task is
+
+Some tasks have a place, like *Pump house*. The place's name sits under the task with a blue dot. A task with no place has no dot, and nothing else about it changes.
+
+Tap the task to open it. Under its details you see a small picture of the spot from above. Tap the picture to open the map full size, where you can drag and zoom.
+
+- {{button:blue|Directions}} opens your phone's maps app at the spot. Off a road, the maps app gets you to the nearest road. The picture does the rest.
+- {{button:outline|How far am I?}} asks your phone where it is and answers, like *250 ft north-east of you*. The answer also says how sure your phone is.
+
+The app asks your phone where it is only when you tap **How far am I?**. Your location stays on your phone. The app does not save it or send it.
+
+The line under the buttons says who set the place and when. A machine moves and a gate gets rebuilt. If the place looks wrong, say so in a note.
+
+With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
 
 ## Notes are a conversation
 

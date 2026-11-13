@@ -5,6 +5,7 @@ import type { Database } from '../../types/database'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
+import { MAIL_SAVED_CHANNEL, MAIL_SAVED_WORDS } from '../../lib/myMail/savedForYou'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -35,7 +36,7 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
               .from('notification_history')
               .select('id, sent_at, title, body_preview, template_type, channel, project_id, step_id, checklist_instance_id')
               .eq('recipient_user_id', userId)
-              .in('channel', ['push', 'both'])
+              .in('channel', ['push', 'both', MAIL_SAVED_CHANNEL])
               .order('sent_at', { ascending: false })
               .limit(5),
           'settings recent push notifications',
@@ -65,17 +66,17 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
         background: 'var(--bg-subtle)',
       }}
     >
-      <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '1rem', fontWeight: 600 }}>Most recent push notifications</h2>
+      <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '1rem', fontWeight: 600 }}>Most recent notifications</h2>
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
       ) : error ? (
         <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{error}</p>
       ) : rows.length === 0 ? (
-        <EmptyState compact main="No push notifications have been logged for your account yet. Each one sent to you lands here." />
+        <EmptyState compact main="No notifications have been logged for your account yet. Each one sent to you lands here." />
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rows.map((row) => {
-            const channelBadge = row.channel === 'both' ? 'Push + email' : 'Push'
+            const channelBadge = row.channel === 'both' ? 'Push + email' : row.channel === MAIL_SAVED_CHANNEL ? MAIL_SAVED_WORDS.badge : 'Push'
             const link =
               row.project_id && row.step_id
                 ? `/workflows/${row.project_id}#step-${row.step_id}`
@@ -104,7 +105,7 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
                   <div style={{ fontWeight: 500 }}>{row.title}</div>
                   {(row.body_preview?.trim() || row.template_type) && (
                     <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.35 }}>
-                      {row.template_type ? <span style={{ marginRight: '0.5rem' }}>{row.template_type}</span> : null}
+                      {row.template_type && row.channel !== MAIL_SAVED_CHANNEL ? <span style={{ marginRight: '0.5rem' }}>{row.template_type}</span> : null}
                       {row.body_preview?.trim() ?? ''}
                     </div>
                   )}

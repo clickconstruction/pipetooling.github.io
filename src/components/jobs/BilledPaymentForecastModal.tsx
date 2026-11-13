@@ -4,6 +4,7 @@ import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import type { PaceContext } from '../../lib/jobs/payPace'
 import type { PayCalendarIndex } from '../../lib/jobs/payCalendar'
+import type { CutoffComing } from '../../lib/jobs/cutoffsComing'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -108,6 +109,7 @@ export default function BilledPaymentForecastModal({
   pace,
   payCalendars,
   acceptedByInvoice,
+  cutoffsComing,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -147,6 +149,8 @@ export default function BilledPaymentForecastModal({
   payCalendars?: PayCalendarIndex | null
   /** The day a payer accepted each bill that has one (PR 4), by the bill's id. */
   acceptedByInvoice?: ReadonlyMap<string, string> | null
+  /** The cutoffs ahead for payers on a Pay calendar (PR 5): each with work not yet billed, the nearest first. Empty or absent draws no strip. */
+  cutoffsComing?: ReadonlyArray<CutoffComing>
 }) {
   const forecast = useMemo(
     () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace, payCalendars, acceptedByInvoice),
@@ -221,6 +225,23 @@ export default function BilledPaymentForecastModal({
           <p style={{ margin: '0 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status" aria-busy>
             Loading the whole board — totals can still grow…
           </p>
+        ) : null}
+
+        {cutoffsComing && cutoffsComing.length > 0 ? (
+          // Punch list #323, PR 5: the calendar of cutoffs. A bill in one day past a cutoff waits a whole month, so
+          // this is what to get out, and by when, before the money below can be counted on.
+          <section data-testid="cutoffs-coming" aria-label="Cutoffs coming" style={{ margin: '0 0 0.9rem', padding: '0.55rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '0.8125rem' }}>Cutoffs coming</h3>
+            {cutoffsComing.map((c) => (
+              <div key={c.key} data-testid="cutoff-coming" data-soon={c.soon ? 'true' : 'false'} title={`${c.calendarShort}. A bill in one day past the cutoff is due ${formatYmdMonthDay(c.nextDueYmd)}.`} style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: '0.8125rem', minWidth: 0 }}>
+                <div style={{ fontWeight: 600, color: c.soon ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>
+                  {c.title}
+                  {c.soon ? <span style={{ fontWeight: 600 }}> · {c.daysLeft === 0 ? 'today' : c.daysLeft === 1 ? 'tomorrow' : `in ${c.daysLeft}d`}</span> : null}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.detail}</div>
+              </div>
+            ))}
+          </section>
         ) : null}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: '0.6rem' }}>
