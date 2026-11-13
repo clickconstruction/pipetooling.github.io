@@ -57,6 +57,7 @@ import type {
 import { EmptyState } from '../EmptyState'
 import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRunEmptyWords'
 import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
+import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -819,7 +820,7 @@ export default function JobsSubLaborTab({
                                       {(job.payments ?? []).map((p) => (
                                         <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
                                         </tr>

@@ -37,7 +37,7 @@ There is one row per sub, biggest owed first, named for the subcontractor. Teamm
 
 The line under the bar says the same in words.
 
-- {{button:green|Pay $1,500.00}} appears when part of the money is ready. The button opens Make Payment on the sub's biggest ready sheet, filled in. When more than one sheet is ready, the label says so. Then the button moves to the next one after you save.
+- {{button:green|Pay $1,500.00}} appears when part of the money is ready. The button opens **Record payment** on the sub's biggest ready sheet, filled in. When more than one sheet is ready, the label says so. Then the button moves to the next one after you save.
 - {{button:blue|Draft a work order…}} appears when everything owed is on a handshake, with nothing signed.
 - Otherwise the slot says why, like *Pays Fri Sep 11*, *Nothing payable yet* or *Payroll*.
 - Click a sub's name to jump to their sheets in the ledger. The 🌐 globe beside the name is their portal. The globe holds Copy link, **Preview as ‹sub›**, and the gear. The globe is the same as the one on People → Subs.
@@ -66,6 +66,12 @@ Each row keeps ***Agreed · Paid · Due*** and the rail. See [where the sheet st
 
 The ⋯ on a row holds **Payment…** while money is due, **Back-charge…**, **Edit sheet**, **Print**, **Story…** and **Lien waiver…**. Expanding a row shows Payment…, Back-charge…, **Edit**, Print and Lien waiver…. The expanded row also shows the sheet date, the invoice link, the line items and every payment and back-charge. The sheet date saves when it is finished. Pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved. The tiles and rows update the moment a payment or back-charge is saved.
 
+**Payment…** opens the **Record payment** window. Its grey line shows the sheet's total, what is paid and what remains. **Amount paid** starts on what remains. Type less to record a part payment. The window says what stays due, and the sheet stays in the pay run until nothing is left. An amount past what remains is refused, and the window says by how much.
+
+**How it was sent** is a row of chips. They are {{chip:gray|Check}}, {{chip:gray|Zelle}}, {{chip:gray|Mercury}}, {{chip:gray|Cash App}}, {{chip:gray|Apple Pay}}, {{chip:gray|Cash}}, {{chip:gray|Client direct}} and {{chip:gray|Other}}. A check opens a box for its number. The method shows beside the payment in the Payments list. The sub does not see it on their portal.
+
+**Memo for the sub** is the only text the sub reads on their portal. Tick **Hide this memo from the sub's portal** to keep a note for the office.
+
 When you record a payment, the **Date sent** field lets you backdate it. The date can go back to the day the money actually went out. The field starts on today. The ledger's Payments list shows that date. You can fix it later with **Edit** on the payment row, inside **Edit sheet**.
 
 The row shows when a sheet was paid without opening it. The dates sit under the **Paid** amount. One or two payments show each date. More payments show the count and the last date. A paid sheet's Pay when line reads *paid in full* with the date. A payment with no Date sent shows the day it was recorded, and says *recorded*.
@@ -73,4 +79,5 @@ The row shows when a sheet was paid without opening it. The dates sit under the 
 ## More on paying subs
 
 - [Fix a payment on the wrong sheet](/help/fix-a-payment-on-the-wrong-sheet): move it, remove it, or undo a removal.
+- [See every payment made to subs by date](/help/see-every-sub-payment-by-date): the Ledger beside Pay, to check against the bank.
 - [Work the Subs tab on a phone](/help/work-the-subs-tab-on-a-phone): the Pay and Work views as rows.
