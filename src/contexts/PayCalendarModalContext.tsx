@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
-import PayCalendarModal from '../components/customers/PayCalendarModal'
+import PayCalendarModal, { type PayCalendarJob } from '../components/customers/PayCalendarModal'
 
 /**
  * App-level opener for the Pay calendar window (punch list #323), the
@@ -12,19 +12,20 @@ import PayCalendarModal from '../components/customers/PayCalendarModal'
  */
 
 export type PayCalendarModalContextValue = {
-  openPayCalendar: (payer: { id: string; name: string }, options?: { onSaved?: () => void }) => void
+  /** `job` (PR 4): the job the press sits on, so the window can set a calendar for that job alone. */
+  openPayCalendar: (payer: { id: string; name: string }, options?: { onSaved?: () => void; job?: PayCalendarJob | null }) => void
   closePayCalendar: () => void
 }
 
 const PayCalendarModalContext = createContext<PayCalendarModalContextValue | null>(null)
 
 export function PayCalendarModalProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState<{ id: string; name: string; instanceKey: number } | null>(null)
+  const [open, setOpen] = useState<{ id: string; name: string; job: PayCalendarJob | null; instanceKey: number } | null>(null)
   const onSavedRef = useRef<(() => void) | undefined>(undefined)
 
-  const openPayCalendar = useCallback((payer: { id: string; name: string }, options?: { onSaved?: () => void }) => {
+  const openPayCalendar = useCallback((payer: { id: string; name: string }, options?: { onSaved?: () => void; job?: PayCalendarJob | null }) => {
     onSavedRef.current = options?.onSaved
-    setOpen((prev) => ({ id: payer.id, name: payer.name, instanceKey: (prev?.instanceKey ?? 0) + 1 }))
+    setOpen((prev) => ({ id: payer.id, name: payer.name, job: options?.job ?? null, instanceKey: (prev?.instanceKey ?? 0) + 1 }))
   }, [])
 
   const closePayCalendar = useCallback(() => {
@@ -40,6 +41,7 @@ export function PayCalendarModalProvider({ children }: { children: ReactNode }) 
           key={`${open.id}-${open.instanceKey}`}
           payerId={open.id}
           payerName={open.name}
+          job={open.job}
           onClose={closePayCalendar}
           onSaved={() => onSavedRef.current?.()}
         />

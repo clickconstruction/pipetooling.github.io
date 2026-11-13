@@ -27,6 +27,8 @@ export interface MailTagArgs {
   person: MailTagPerson | null
   /** The call log's target. */
   target: string
+  /** `tag.for_record: true` (server 0.80.0, punch list #324): file every mail of this tag for the record, whatever its age. A job tag's alone. */
+  forRecord: boolean
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -50,7 +52,7 @@ export function mailTagPersonOf(person: Record<string, unknown>): MailTagPerson 
   return { personId: id.toLowerCase(), stop: person.stop === true }
 }
 
-const SHAPE = '{ account, thread_id, job: { jobs_ledger_id | bid_id | project_id } | person: { person_id, stop? } }'
+const SHAPE = '{ account, thread_id, job: { jobs_ledger_id | bid_id | project_id } | person: { person_id, stop? }, for_record? }'
 
 /**
  * `plan_mail_tag` / `apply_mail_tag`'s arguments: `tag = { account, thread_id, job: { jobs_ledger_id | bid_id | project_id } }`,
@@ -72,12 +74,14 @@ export function mailTagArgs(args: Record<string, unknown>, known: readonly MailA
   if (personIn) {
     const person = mailTagPersonOf(personIn)
     if (!person) return { ok: false, error: 'tag.person needs person_id, a people.id (find_person), a uuid; stop: true lifts the follow instead of tagging.' }
-    return { ok: true, value: { account: found, threadId, job: null, person, target: `person ${person.personId}` } }
+    if (tag.for_record !== undefined) return { ok: false, error: 'for_record belongs to a tag onto a job; an HR file takes each mail as a dated entry and asks nobody.' }
+    return { ok: true, value: { account: found, threadId, job: null, person, target: `person ${person.personId}`, forRecord: false } }
   }
   if (found.archived) return { ok: false, error: `${found.email} is an archived login; a tag onto a job lands lines as a current person. A tag onto a person's HR file (tag.person) may read an archived box.` }
   const job = jobIn ? mailTagJobOf(jobIn) : null
   if (!job) return { ok: false, error: `tag needs job — one of jobs_ledger_id (a Pipeline job — find_job), bid_id or project_id, a uuid — or person: { person_id } (an HR file).` }
-  return { ok: true, value: { account: found, threadId, job, person: null, target: `${job.kind} ${job.id}` } }
+  if (tag.for_record !== undefined && typeof tag.for_record !== 'boolean') return { ok: false, error: 'for_record is true or false: true files every mail of this tag for the record, whatever its age.' }
+  return { ok: true, value: { account: found, threadId, job, person: null, target: `${job.kind} ${job.id}`, forRecord: tag.for_record === true } }
 }
 
 /** What the plan commits to: the account, the conversation, the job, and what the tag would do with each mail. The hash is over this alone. */
@@ -88,6 +92,8 @@ export interface MailTagCommitment {
   counts: MyMailTagPlanOk['counts']
   mails: Array<{ gmailId: string; kind: 'write' | 'tie' | 'skip'; tie?: boolean }>
   moving_from: string | null
+  /** Present and true when the plan was asked to file every mail for the record (server 0.80.0): an apply without it is another plan. */
+  for_record?: true
 }
 
 export function tagCommitment(args: MailTagArgs, preview: MyMailTagPlanOk): MailTagCommitment {
@@ -98,6 +104,7 @@ export function tagCommitment(args: MailTagArgs, preview: MyMailTagPlanOk): Mail
     counts: preview.counts,
     mails: preview.mails.map((m) => (m.kind === 'tie' ? { gmailId: m.gmailId, kind: m.kind, tie: m.tie === true } : { gmailId: m.gmailId, kind: m.kind })),
     moving_from: preview.movingFrom,
+    ...(args.forRecord ? { for_record: true as const } : {}),
   }
 }
 
@@ -132,6 +139,18 @@ export function tagReading(preview: MyMailTagPlanOk): string {
   return `${words(preview.mails.length, 'mail', 'mails')} in the conversation: ${parts.join(', ')}${preview.movingFrom ? `; moves off ${preview.movingFrom}` : ''}${nothing ? '. Nothing would land: every mail is on the job already or never written' : ''}.`
 }
 
+/**
+ * What the tag would do to Follow up (server 0.80.0, punch list #324): each mail's `lands` says `record` (filed for the
+ * record, asks nobody) or `followUp` (lands as mail that came in today would, and a mail of theirs opens the thread).
+ */
+export function followUpReading(counts: Pick<MyMailTagPlanOk['counts'], 'lines' | 'filed'>): string {
+  if (counts.lines === 0) return 'Nothing new would reach Follow up.'
+  const live = counts.lines - counts.filed
+  if (live === 0) return `All ${words(counts.lines, 'new line', 'new lines')} would be filed for the record: nothing opens on Follow up, and nobody is asked for a reply.`
+  const filed = counts.filed > 0 ? `${words(counts.filed, 'line', 'lines')} would be filed for the record (older than 14 days). ` : ''
+  return `${filed}${words(live, 'line', 'lines')} would land as mail that came in today: a mail of theirs opens the thread on Follow up. Pass for_record: true to file every mail instead.`
+}
+
 /** One line on what a person tag would do. */
 export function personTagReading(preview: MyMailPersonTagPlanOk): string {
   const c = preview.counts
@@ -152,7 +171,7 @@ export function tagPlanReply(commitment: MailTagCommitment, preview: MyMailTagPl
     next: `Read this plan. If it is what you meant, call apply_mail_tag with the same tag and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply plans again first and tags only when the conversation and the job are as the plan saw them. One apply per plan.`,
     reading: tagReading(preview),
     // The lines are the person's mail; the tag is the dev's, and the thread says so (gmail-mine's `myMailTagEventWords`).
-    lands: `${words(commitment.counts.lines + commitment.counts.tied, 'line', 'lines')} on ${preview.job.num ? `${preview.job.num} ` : ''}${preview.job.name}'s Activity and notes, each at its mail's own time, as ${commitment.account}. A new tag's grey line on the thread names you, through the dev seat.`,
+    lands: `${words(commitment.counts.lines + commitment.counts.tied, 'line', 'lines')} on ${preview.job.num ? `${preview.job.num} ` : ''}${preview.job.name}'s Activity and notes, each at its mail's own time, as ${commitment.account}. A new tag's grey line on the thread names you, through the dev seat. ${followUpReading(preview.counts)}`,
     ...commitment,
     /** The job as its chip reads, and each mail with its headers and why: over the commitment's bare ids. */
     job: preview.job,

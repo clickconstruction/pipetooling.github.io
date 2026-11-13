@@ -20,12 +20,16 @@ type Props = {
   height: number | string
   onPinTap?: (id: string) => void
   /** Placing a box: the ring sits at the centre; the caller reads the centre through `onCenterChange`. */
-  placing?: { label: string } | null
+  placing?: { label: string; /** The words under the ring's label; the box's own by default. An empty label draws no label. */ hint?: string } | null
   /** Where the caller wants the map to go now (Use my location); a new object each time. */
   flyTo?: LatLng | null
   onCenterChange?: (c: LatLng) => void
   /** The pin to open on; it wins over `center`. */
   focusId?: string | null
+  /** What the frame says when there is nowhere to open the map; the job's words by default. */
+  emptyWords?: string
+  /** The zoom the map opens at when it opens on `center`; a property's by default. A caller with only a far-off centre opens wide. */
+  startZoom?: number
 }
 
 const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }
@@ -65,7 +69,7 @@ function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
   return null
 }
 
-export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId }: Props) {
+export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom }: Props) {
   const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
   const focus = pins.find((p) => p.id === focusId) ?? null
   const first = focus ?? pins[0] ?? null
@@ -74,13 +78,13 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
   if (!start) {
     return (
       <div style={{ height, display: 'grid', placeItems: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem', textAlign: 'center' }}>
-        The job’s address is not on the map yet. Press Use my location to start the map where you stand.
+        {emptyWords ?? 'The job’s address is not on the map yet. Press Use my location to start the map where you stand.'}
       </div>
     )
   }
   return (
     <div style={{ position: 'relative', height, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)' }}>
-      <MapContainer center={[start.lat, start.lng]} zoom={first ? 19 : 18} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl>
+      <MapContainer center={[start.lat, start.lng]} zoom={first ? 19 : (startZoom ?? 18)} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl>
         <TileLayer key={layer} url={tiles.url} attribution={tiles.attribution} maxNativeZoom={19} maxZoom={21} />
         <SizeFix />
         <FlyTo to={flyTo} zoom={19} />
@@ -95,10 +99,10 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
         <>
           <div aria-hidden style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 500 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', borderWidth: 4, borderStyle: 'solid', borderColor: '#ffffff', boxShadow: '0 0 0 3px #2563eb, 0 2px 10px rgba(0,0,0,.45)', background: 'rgba(37, 99, 235, 0.3)' }} />
-            <div style={{ position: 'absolute', left: '50%', top: -34, transform: 'translateX(-50%)', background: '#111827', color: '#fff', fontWeight: 800, fontSize: '0.85rem', padding: '0.1rem 0.5rem', borderRadius: 6, whiteSpace: 'nowrap' }}>{placing.label}</div>
+            {placing.label ? <div style={{ position: 'absolute', left: '50%', top: -34, transform: 'translateX(-50%)', background: '#111827', color: '#fff', fontWeight: 800, fontSize: '0.85rem', padding: '0.1rem 0.5rem', borderRadius: 6, whiteSpace: 'nowrap' }}>{placing.label}</div> : null}
           </div>
           <div style={{ position: 'absolute', left: 8, right: 8, top: 88, zIndex: 500, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
-            <span style={{ background: 'rgba(17, 24, 39, 0.82)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999 }}>Drag the map until the ring is on {placing.label}</span>
+            <span style={{ background: 'rgba(17, 24, 39, 0.82)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999 }}>{placing.hint ?? `Drag the map until the ring is on ${placing.label}`}</span>
           </div>
         </>
       ) : null}
