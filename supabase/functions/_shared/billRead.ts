@@ -140,7 +140,7 @@ export const BILL_SCHEMA = {
           qty_backordered: { type: 'string', description: 'The quantity back ordered when the paper prints it in its own column, digits only. Empty when none.' },
           unit_price: { type: 'string', description: 'The unit price as printed, digits and a decimal point, with every decimal the paper prints. Empty when none.' },
           pricing_unit: { type: 'string', enum: ['each', 'per_hundred', 'per_thousand'], description: 'What the unit price is for: each when it is for one; per_hundred when the paper marks the price per C or per 100; per_thousand when it marks it per M or per 1000.' },
-          extended: { type: 'string', description: 'The extended price of the line as printed, digits and a decimal point. A credit or a return is still a positive number. Empty when none.' },
+          extended: { type: 'string', description: "The extended price of the line as printed, digits and a decimal point. A credit memo's lines are still positive numbers. A line that takes money off the paper it is on, a rebate, a discount, a return or a credit printed among an invoice's items with a minus sign, in parentheses or with CR, keeps a minus sign in front: -40.00. Empty when none." },
         },
         required: ['line_kind', 'house_code', 'mfr_number', 'description', 'unit', 'quantity', 'qty_ordered', 'qty_shipped', 'qty_backordered', 'unit_price', 'pricing_unit', 'extended'],
         additionalProperties: false,
@@ -163,6 +163,7 @@ export const BILL_SYSTEM = [
   'Copy exactly what is printed. Never guess a value the paper does not print; leave the field empty instead.',
   'Amounts and quantities are the digits as printed, with a decimal point and no currency sign or thousands separator.',
   'A credit memo\'s amounts are still positive numbers.',
+  'A line that takes money off the paper it is on, a rebate, a discount, a return or a credit among an invoice\'s items, keeps a minus sign on its extended price.',
   'The lines are the item rows only. The subtotal, tax and total rows go in their own fields.',
   'Every printed line is its own entry, with the house\'s own part code copied exactly as printed, letter for letter and digit for digit.',
   'A line printed under a kit or a bundle with no price of its own is a component; a freight, delivery or restock row among the lines is a charge.',
@@ -194,6 +195,7 @@ export interface BillLine {
   quantity: number | null
   /** Cents; null when the paper prints none. Rounded: a wholesaler's 2.159 is kept whole in `unitPrice`. */
   unitPriceCents: number | null
+  /** Cents, signed since v2.7103: negative for a line that takes money off the paper it is on (a rebate among an invoice's parts). */
   extendedCents: number | null
   /** The paper's own columns (v2.6817): the house's part code, the manufacturer's number, the unit, the three quantities, the price as printed with its pricing unit, the kind of line. */
   lineKind: BillLineKind
@@ -251,6 +253,21 @@ export function moneyCents(printed: unknown): number | null {
   return Number(whole) * 100 + Number((frac + '00').slice(0, 2))
 }
 
+/**
+ * A line's printed extension to cents, with its sign (PR 1c of punch list #298, v2.7103): '-40.00', '(40.00)',
+ * '40.00-' and '40.00 CR' → -4000; '40.00' → 4000. A rebate or a credit printed among an invoice's parts takes money
+ * off the paper, so its line is negative and the lines still sum to the subtotal. A paper's own money (the subtotal,
+ * the tax, the total) stays unsigned through `moneyCents`: there the kind carries the direction.
+ */
+export function signedMoneyCents(printed: unknown): number | null {
+  if (typeof printed === 'number') return Number.isFinite(printed) ? Math.round(printed * 100) : null
+  if (typeof printed !== 'string') return null
+  const t = printed.trim()
+  const negative = /^-/.test(t) || /^\(.*\)$/.test(t) || /-$/.test(t) || /\bCR$/i.test(t)
+  const cents = moneyCents(t.replace(/-$/, '').replace(/\s*CR$/i, ''))
+  return cents == null ? null : negative && cents !== 0 ? -cents : cents
+}
+
 /** A printed unit price kept whole, in dollars: '2.159' → 2.159, '$48.10' → 48.1, '' → null. Four decimals at most, the column's width. */
 export function priceNumber(printed: unknown): number | null {
   if (typeof printed === 'number') return Number.isFinite(printed) ? Math.round(Math.abs(printed) * 10000) / 10000 : null
@@ -296,7 +313,7 @@ export function readBillAnswer(json: unknown): BillRead | null {
     for (const raw of o.lines.slice(0, 200)) {
       const l = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
       const description = text(l.description, 240)
-      const extendedCents = moneyCents(l.extended)
+      const extendedCents = signedMoneyCents(l.extended)
       if (!description && extendedCents === null) continue
       const qtyShipped = quantityNumber(l.qty_shipped)
       lines.push({

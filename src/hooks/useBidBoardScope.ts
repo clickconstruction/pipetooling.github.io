@@ -14,12 +14,14 @@ import { partitionBidsByScope } from '../lib/bidBoardScope'
 import { countBidsMissingAccounts } from '../lib/bids/bidBoardJobAccounts'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
 import { bidSentCounts, type BidSentScope } from '../lib/bids/bidSentCounts'
+import { landedBidPhotos } from '../lib/bids/bidPhotoWindow'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { useBidBoardBudgetChips } from './useBidBoardBudgetChips'
 import { useBidCountSourcesByBid } from './useBidCountSourcesByBid'
 import { useBidPlanSetsByBid } from './useBidPlanSetsByBid'
 import { useBidPhotoCountsByBid } from './useBidPhotoCountsByBid'
+import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from './useOutboxReplay'
 import { useBidBoardJobAccountStrips } from './useBidBoardJobAccountStrips'
 import { useBidBoardMoneyStrips } from './useBidBoardMoneyStrips'
 import type { useBidGcPackets } from './useBidGcPackets'
@@ -79,6 +81,14 @@ export function useBidBoardScope(input: {
   const [bidPhotoCountsGen, setBidPhotoCountsGen] = useState(0)
   const bidBoardPhotoCounts = useBidPhotoCountsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true, bidPhotoCountsGen)
   const refreshBidPhotoCounts = useCallback(() => setBidPhotoCountsGen((g) => g + 1), [])
+  // An Add press kept with no signal landed from the phone's queue (PR 8): the counts are behind until read again.
+  useEffect(() => {
+    const onLanded = (e: Event) => {
+      if (landedBidPhotos((e as CustomEvent<OutboxLandedDetail>).detail)) refreshBidPhotoCounts()
+    }
+    window.addEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    return () => window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
+  }, [refreshBidPhotoCounts])
   // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
   // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
   // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)

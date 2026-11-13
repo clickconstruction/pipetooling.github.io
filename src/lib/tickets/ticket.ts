@@ -19,11 +19,17 @@ export {
   type TicketNameInput,
 } from '../../../supabase/functions/_shared/ticketNames'
 
-/** How a ticket met its charge: with no press (`minute`, `total`), on a person's Yes (`asked`), or by the office's pick. */
-export type TicketMatchKind = 'minute' | 'total' | 'asked' | 'picked'
+/**
+ * How a ticket met its charge: with no press (`minute`, `total`), on a person's Yes (`asked`), by the office's pick, or
+ * through the charge's own receipt link (`link`, punch list #299: the link carried the charge, so nothing was guessed).
+ */
+export type TicketMatchKind = 'minute' | 'total' | 'asked' | 'picked' | 'link'
 /** Where `taken_at` came from: the shutter at the counter, the time the picture carries, or nothing that says when. */
 export type TicketTakenAtFrom = 'press' | 'photo' | 'none'
-export type TicketSource = 'camera' | 'file' | 'office'
+/** Which door the paper came by: the Tally press, a file on the phone, the office's desk, or a receipt link (#299). */
+export type TicketSource = 'camera' | 'file' | 'office' | 'link'
+/** The doors a signed-in person's press writes. A receipt link's ticket is written on the server and never waits on a phone. */
+export type TicketPressSource = Exclude<TicketSource, 'link'>
 export type TicketPaidOther = 'cash' | 'own_money' | 'another_card' | 'other'
 
 /** A `counter_tickets` row, as the screens read it. */
@@ -159,6 +165,8 @@ export function ticketMatchKindWords(kind: TicketMatchKind): string {
       return 'Matched on a Yes'
     case 'picked':
       return 'Matched by the office'
+    case 'link':
+      return 'Sent through the charge’s receipt link'
   }
 }
 

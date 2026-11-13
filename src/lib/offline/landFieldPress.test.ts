@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, landCounterTicket, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landBidPhotos, landCounterTicket, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket', 'bid-photos': 'bid_photos' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -80,6 +80,49 @@ describe('landJobPhotos', () => {
     expect(failed.kind).toBe('failed')
     const refused = await landJobPhotos(press, { land: async () => Promise.reject(new DatabaseError('Failed to add photos: The job is not one you can see.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add photos', serverMessage: 'The job is not one you can see.' })) })
     expect(refused.kind).toBe('refused')
+  })
+})
+
+// Punch list #306, PR 8: a bid photos press lands without the RPC, as the window's own update on each sent row.
+describe('landBidPhotos', () => {
+  const shot = (id: string, sent: boolean, name = 'Meter bank') => ({ id, sent, name, takenAt: '2026-11-12T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Dana Whitfield' })
+  const press = newPress({ id: 'bp', seq: 1, kind: 'bid-photos', userId: 'u', pressedAt: T, payload: { bidId: 'b1', photos: [shot('a', true), shot('b', false), shot('c', true, '')] } })
+
+  it('names the kind and the ids for the record, and lands only the sent shots, each with its name', async () => {
+    expect(rpcPayload(press)).toEqual({ bid_id: 'b1', photo_ids: ['a', 'b', 'c'] })
+    const landed: unknown[] = []
+    const out = await landBidPhotos(press, {
+      land: async (writes) => {
+        landed.push(...writes)
+        return { added: writes.length }
+      },
+    })
+    // The result names the bid, so the board and an open window know whose photos landed.
+    expect(out).toEqual({ kind: 'landed', result: { bid_id: 'b1', added: 2 } })
+    expect(landed).toEqual([
+      { id: 'a', name: 'Meter bank' },
+      { id: 'c', name: '' },
+    ])
+  })
+
+  it('a second landing that adds nothing still lands, so a repeat counts once', async () => {
+    const out = await landBidPhotos(press, { land: async () => ({ added: 0 }) })
+    expect(out).toEqual({ kind: 'landed', result: { bid_id: 'b1', added: 0 } })
+  })
+
+  it('a press whose every shot was lost with the phone’s data lands with nothing to write', async () => {
+    const empty = newPress({ id: 'bp2', seq: 2, kind: 'bid-photos', userId: 'u', pressedAt: T, payload: { bidId: 'b1', photos: [] } })
+    const writes: unknown[] = []
+    const out = await landBidPhotos(empty, { land: async (w) => void writes.push(...w) })
+    expect(out).toEqual({ kind: 'landed', result: { bid_id: 'b1' } })
+    expect(writes).toEqual([])
+  })
+
+  it('a lost signal fails and waits; a refusal keeps the server’s reason', async () => {
+    const failed = await landBidPhotos(press, { land: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(failed.kind).toBe('failed')
+    const refused = await landBidPhotos(press, { land: async () => Promise.reject(new DatabaseError('Failed to add photos: That bid is not one you can change.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add photos', serverMessage: 'That bid is not one you can change.' })) })
+    expect(refused).toEqual({ kind: 'refused', refusal: { message: 'That bid is not one you can change.', code: '42501' } })
   })
 })
 

@@ -16,9 +16,11 @@
  *     number is not in its file is held; a paper with no row is kept with no bill, for the Add invoice door later.
  *   * The rows written (`paperRowOf`): the paper checked by `checkPaper` against the row's amount and the PDF's own
  *     text, so a paper counts only when every sum holds and every part code is on the paper.
+ *   * One more check under new rules (`recheckStored`, PR 1c, v2.7103). A paper held off under older rules is checked
+ *     again from the lines on file, with no model read, and counts once the sums the check now knows hold.
  */
 import { BILL_SCHEMA, BILL_SYSTEM, readBillAnswer, type BillRead } from './billRead.ts'
-import { checkPaper, moneyWords, paperFromBillRead, PURCHASE_KINDS, type PaperCheck, type PaperKind } from './paperChecks.ts'
+import { CHECK_RULES, checkPaper, moneyWords, paperFromBillRead, PURCHASE_KINDS, settlePaper, type LineKind, type PaperCheck, type PaperKind, type PaperLine, type PaperRead, type PricingUnit } from './paperChecks.ts'
 
 /** The `app_settings` key of the sweep's switch. 'true' reads bills by themselves (the card's call 1); anything else stops the cron. */
 export const BILL_SWEEP_SWITCH_KEY = 'bill_lines_sweep_on_v1'
@@ -524,7 +526,8 @@ export function paperRowOf(args: { paper: FilePaper; invoice: SweepInvoice | nul
       read_id: args.readId,
       read_at: args.readAt,
       check_state: check.state,
-      check_note: check.state === 'off' ? check.words.replace(/^\d+ lines? · /, '').slice(0, 400) : '',
+      check_note: checkNoteOf(check),
+      check_rules: CHECK_RULES,
       text_layer: args.text.layer,
     },
     lines: paper.lines.map((l) => ({
@@ -542,6 +545,87 @@ export function paperRowOf(args: { paper: FilePaper; invoice: SweepInvoice | nul
       extended_cents: l.extendedCents,
     })),
   }
+}
+
+/** The note a paper keeps: the first problem in words while it is off, nothing once it adds up. */
+export function checkNoteOf(check: PaperCheck): string {
+  return check.state === 'off' ? check.words.replace(/^\d+ lines? · /, '').slice(0, 400) : ''
+}
+
+// ---------------------------------------------------------------------------
+// One more check under new rules
+// ---------------------------------------------------------------------------
+
+/** The off papers a run checks again, and the files it opens for their text. Small: the work is a handful of reads. */
+export const RECHECK_PAPERS = 12
+export const RECHECK_FILES = 3
+
+/** A `supply_paper_lines` row as the recheck reads it. PostgREST answers a numeric as a number or a string. */
+export interface StoredLineRow {
+  line_no: number
+  line_kind: string
+  house_code: string | null
+  mfr_number: string | null
+  description: string | null
+  unit: string | null
+  qty_ordered: number | string | null
+  qty_shipped: number | string | null
+  qty_backordered: number | string | null
+  unit_price: number | string | null
+  pricing_unit: string
+  extended_cents: number | null
+}
+
+const numberOrNull = (v: number | string | null): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
+
+export function lineOfStoredRow(r: StoredLineRow): PaperLine {
+  return {
+    lineNo: r.line_no,
+    lineKind: (r.line_kind === 'charge' || r.line_kind === 'component' ? r.line_kind : 'part') as LineKind,
+    houseCode: r.house_code ?? '',
+    mfrNumber: r.mfr_number ?? '',
+    description: r.description ?? '',
+    unit: r.unit ?? '',
+    qtyOrdered: numberOrNull(r.qty_ordered),
+    qtyShipped: numberOrNull(r.qty_shipped),
+    qtyBackordered: numberOrNull(r.qty_backordered),
+    unitPrice: numberOrNull(r.unit_price),
+    pricingUnit: (r.pricing_unit === 'per_hundred' || r.pricing_unit === 'per_thousand' ? r.pricing_unit : 'each') as PricingUnit,
+    extendedCents: r.extended_cents,
+  }
+}
+
+export interface Recheck {
+  check: PaperCheck
+  /** What `supply_papers` takes: the state, the note, and the rules it was checked under. */
+  paper: { check_state: 'adds_up' | 'off'; check_note: string; check_rules: number }
+  /** The lines the paper's own sums turned (`settlePaper`), as the columns to write, by line number. */
+  lineFixes: { line_no: number; qty_shipped: number | null; unit_price: number | null; extended_cents: number | null }[]
+}
+
+/**
+ * A paper on file, checked again from its own lines: settled by its sums, then held to every check against the
+ * bill's amount and, when the caller has it, the PDF's text. No model read. The caller writes the line fixes first
+ * and the state after, so a paper never counts with a line the check did not see.
+ */
+export function recheckStored(args: { paper: PaperRead; rowAmountCents: number | null; text?: string | null }): Recheck {
+  const settled = settlePaper(args.paper)
+  const check = checkPaper(settled.paper, { rowAmountCents: args.rowAmountCents, text: args.text })
+  const byNo = new Map(settled.paper.lines.map((l) => [l.lineNo, l]))
+  return {
+    check,
+    paper: { check_state: check.state, check_note: checkNoteOf(check), check_rules: CHECK_RULES },
+    lineFixes: settled.changed.map((lineNo) => {
+      const l = byNo.get(lineNo)!
+      return { line_no: lineNo, qty_shipped: l.qtyShipped, unit_price: l.unitPrice, extended_cents: l.extendedCents }
+    }),
+  }
+}
+
+/** The recheck in one line: *Checked 6 bills again under the new rules: 4 now add up.* '' when none was due. */
+export function recheckWords(checked: number, addUp: number): string {
+  if (!checked) return ''
+  return `Checked ${count(checked, 'bill', 'bills')} again under the new rules: ${addUp} now ${addUp === 1 ? 'adds' : 'add'} up.`
 }
 
 // ---------------------------------------------------------------------------
