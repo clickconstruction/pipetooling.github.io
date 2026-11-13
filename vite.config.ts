@@ -12,6 +12,7 @@ import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { formerHelpGuideSlugs } from './src/lib/helpGuideFormerSlugs'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
+import { renderTodoHistoryModule } from './scripts/todos/readTodoHistory'
 import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
 import { parseThemeTokens } from './src/lib/lens/lensTokens'
 
@@ -93,6 +94,26 @@ function todoBoardPlugin() {
         server.ws.send({ type: 'full-reload' })
       }
       for (const ev of ['change', 'add', 'unlink']) server.watcher.on(ev, onChange)
+    },
+  }
+}
+
+/**
+ * The punch list's history, replayed from git when the Punch list page's chunk is built: `virtual:punch-list-history`
+ * is every change of `to-dos/` on main as the burndown on /punch-list draws it (`scripts/todos/readTodoHistory.ts`).
+ * Nothing is committed. A build with no git history serves an empty one and the page says so; `deploy.yml` checks
+ * the whole history out. The dev server replays once a start.
+ */
+const PUNCH_HISTORY_ID = 'virtual:punch-list-history'
+const PUNCH_HISTORY_RESOLVED = '\0' + PUNCH_HISTORY_ID
+function todoHistoryPlugin() {
+  return {
+    name: 'todo-history',
+    resolveId(id: string) {
+      return id === PUNCH_HISTORY_ID ? PUNCH_HISTORY_RESOLVED : null
+    },
+    load(id: string) {
+      return id === PUNCH_HISTORY_RESOLVED ? renderTodoHistoryModule(process.cwd()) : null
     },
   }
 }
@@ -324,6 +345,7 @@ export default defineConfig({
     helpSharePagesPlugin(),
     todoMockupsPlugin(),
     todoBoardPlugin(),
+    todoHistoryPlugin(),
     lensSchemaPlugin(),
     lensTokensPlugin(),
     ...(bundleAnalyze
