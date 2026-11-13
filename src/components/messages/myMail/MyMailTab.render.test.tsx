@@ -76,10 +76,10 @@ describe('MyMailTab', () => {
     await screen.findByTestId('my-mail-list')
     expect(io.list).toHaveBeenCalledWith({ view: 'toTag', pageToken: null })
     expect(rowIds()).toEqual(['dale-new', 'priya-out', 'harlan'])
-    expect(screen.getByRole('button', { name: 'To tag' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Not saved' }).getAttribute('aria-pressed')).toBe('true')
     const words = document.querySelector('[data-my-mail-words]') as HTMLElement
-    expect(words.textContent).toContain('Your mail, read live from marisol@clickplumbing.example. Nothing is kept until you tag it.')
-    expect(within(words).getByRole('link', { name: 'What this reads' }).getAttribute('href')).toBe('/help?g=tag-an-email-onto-a-job-from-your-own-mail#what-the-tab-reads-and-keeps')
+    expect(words.textContent).toContain('Your mail, read live from marisol@clickplumbing.example. Nothing is kept until you save it.')
+    expect(within(words).getByRole('link', { name: 'What this reads' }).getAttribute('href')).toBe('/help?g=save-an-email-to-a-job-from-your-own-mail#what-the-tab-reads-and-keeps')
     const fold = document.querySelector('[data-my-mail-fold]') as HTMLElement
     expect(fold.textContent).toContain('1 notice or newsletter, left out as the bids@ reader leaves it out')
     fireEvent.click(within(fold).getByRole('button', { name: 'show' }))
@@ -93,7 +93,7 @@ describe('MyMailTab', () => {
     await screen.findByTestId('my-mail-list')
     fireEvent.click(rowOf('dale-new').getByRole('button', { name: 'Yes' }))
     await waitFor(() => expect(io.tag).toHaveBeenCalledWith({ threadId: 't-dale-new', job: { kind: 'pipeline', id: 'job-elm' } }))
-    expect(await screen.findByText('Tagged onto JP1077. 3 lines and 1 file are on the job now.')).toBeTruthy()
+    expect(await screen.findByText('Saved to JP1077. 3 lines and 1 file are on the job now.')).toBeTruthy()
     await waitFor(() => expect(io.list).toHaveBeenCalledTimes(2))
     expect(host.onChanged).toHaveBeenCalledTimes(1)
   })
@@ -101,22 +101,22 @@ describe('MyMailTab', () => {
   it('Tag… opens the job picker with their jobs first, and the pick tags the conversation', async () => {
     const { io, host } = await tab()
     await screen.findByTestId('my-mail-list')
-    fireEvent.click(rowOf('harlan').getByRole('button', { name: 'Tag…' }))
-    const picker = await screen.findByRole('dialog', { name: 'Tag this conversation onto' })
+    fireEvent.click(rowOf('harlan').getByRole('button', { name: 'Save to job…' }))
+    const picker = await screen.findByRole('dialog', { name: 'Save this conversation to' })
     expect(host.jobs.theirs).toHaveBeenCalledWith('ap@harlanfreight.example')
     expect(within(picker).getByText('Their jobs')).toBeTruthy()
     fireEvent.click(within(picker).getByText('19 Harbor Ln'))
     await waitFor(() => expect(io.tag).toHaveBeenCalledWith({ threadId: 't-harlan', job: { kind: 'pipeline', id: 'job-harbor' } }))
-    expect(await screen.findByText('Tagged onto JP1081. 3 lines and 1 file are on the job now.')).toBeTruthy()
-    expect(screen.queryByRole('dialog', { name: 'Tag this conversation onto' })).toBeNull()
+    expect(await screen.findByText('Saved to JP1081. 3 lines and 1 file are on the job now.')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Save this conversation to' })).toBeNull()
   })
 
   it('asks Who is this? at once for a sender nobody knows, and the tag stands when it closes unnamed', async () => {
     const io = fakeMyMailIo({ tag: async () => ({ ...TAG_OK, unknownSender: { contactId: 'c-harlan', address: 'ap@harlanfreight.example', name: 'Harlan Freight' } }) })
     await tab(io)
     await screen.findByTestId('my-mail-list')
-    fireEvent.click(rowOf('harlan').getByRole('button', { name: 'Tag…' }))
-    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Tag this conversation onto' })).getByText('4 Elm Ct'))
+    fireEvent.click(rowOf('harlan').getByRole('button', { name: 'Save to job…' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Save this conversation to' })).getByText('4 Elm Ct'))
     const who = await screen.findByRole('dialog', { name: 'Who is this? Harlan Freight' })
     fireEvent.click(within(who).getByRole('button', { name: 'Not now' }))
     expect(screen.queryByRole('dialog', { name: 'Who is this? Harlan Freight' })).toBeNull()
@@ -136,7 +136,7 @@ describe('MyMailTab', () => {
     const spy = { onView: vi.fn() }
     const { io } = await tab(fakeMyMailIo(), { spy })
     await screen.findByTestId('my-mail-list')
-    fireEvent.click(screen.getByRole('button', { name: 'Tagged' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Saved' }))
     await waitFor(() => expect(io.list).toHaveBeenLastCalledWith({ view: 'tagged', pageToken: null }))
     await waitFor(() => expect(rowIds()).toEqual(['dale-old']))
     expect(rowOf('dale-old').getByRole('button', { name: 'open the line ›' })).toBeTruthy()
@@ -148,35 +148,35 @@ describe('MyMailTab', () => {
 
     const allTagged = fakeMyMailIo({ list: async () => ({ ...MY_MAIL_PAGE, rows: [MY_MAIL_ROWS[3]!], nextPageToken: null }) })
     await tab(allTagged)
-    expect((await screen.findByText('Nothing waiting to tag.')).closest('[data-empty-state]')?.querySelector('button, a')).toBeNull()
+    expect((await screen.findByText('Nothing waiting to save.')).closest('[data-empty-state]')?.querySelector('button, a')).toBeNull()
     cleanup()
 
     const none = fakeMyMailIo({ list: async () => ({ ...MY_MAIL_PAGE, rows: [], nextPageToken: null }) })
     const second = await tab(none, { start: 'tagged', spy })
-    const empty = (await screen.findByText('No tagged conversations yet.')).closest('[data-empty-state]') as HTMLElement
-    expect(empty.textContent).toBe('No tagged conversations yet. To tag lists the mail you can tag.')
-    fireEvent.click(within(empty).getByRole('button', { name: 'To tag' }))
+    const empty = (await screen.findByText('No saved conversations yet.')).closest('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No saved conversations yet. Not saved lists the mail you can save.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Not saved' }))
     expect(spy.onView).toHaveBeenLastCalledWith('toTag')
     await waitFor(() => expect(second.io.list).toHaveBeenLastCalledWith({ view: 'toTag', pageToken: null }))
   })
 
-  it('says a page the view drew nothing of is not the end while Gmail holds older mail, and keeps Nothing waiting to tag. for the end', async () => {
+  it('says a page the view drew nothing of is not the end while Gmail holds older mail, and keeps Nothing waiting to save. for the end', async () => {
     // A tagged conversation, a newsletter and a mail a box holds: To tag draws none of them, and Gmail has an older page.
     const hidden = [MY_MAIL_ROWS[3]!, MY_MAIL_ROWS[4]!, MY_MAIL_ROWS[5]!]
     const io = fakeMyMailIo({ list: async ({ pageToken }) => (pageToken === 'tok-2' ? { ...MY_MAIL_PAGE, rows: [], nextPageToken: null } : { ...MY_MAIL_PAGE, rows: hidden, nextPageToken: 'tok-2' }) })
     await tab(io)
-    const line = (await screen.findByText('Nothing to tag on this page.')).closest('[data-empty-state]') as HTMLElement
-    expect(line.textContent).toBe('Nothing to tag on this page. Older › shows the next fifty mails.')
-    expect(screen.queryByText('Nothing waiting to tag.')).toBeNull()
+    const line = (await screen.findByText('Nothing to save on this page.')).closest('[data-empty-state]') as HTMLElement
+    expect(line.textContent).toBe('Nothing to save on this page. Older › shows the next fifty mails.')
+    expect(screen.queryByText('Nothing waiting to save.')).toBeNull()
     // Older › once, on the line, and not again under the list.
     expect(screen.getAllByRole('button', { name: 'Older ›' })).toHaveLength(1)
     fireEvent.click(within(line).getByRole('button', { name: 'Older ›' }))
     await waitFor(() => expect(io.list).toHaveBeenLastCalledWith({ view: 'toTag', pageToken: 'tok-2' }))
-    const end = (await screen.findByText('Nothing waiting to tag.')).closest('[data-empty-state]') as HTMLElement
+    const end = (await screen.findByText('Nothing waiting to save.')).closest('[data-empty-state]') as HTMLElement
     expect(end.querySelector('button, a')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Older ›' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '‹ Newer' }))
-    expect(await screen.findByText('Nothing to tag on this page.')).toBeTruthy()
+    expect(await screen.findByText('Nothing to save on this page.')).toBeTruthy()
   })
 
   it('sends the search to the function, and an empty search offers to clear it', async () => {
@@ -215,13 +215,13 @@ describe('MyMailTab', () => {
     await waitFor(() => expect(rowIds()).toEqual(['dale-old']))
     fireEvent.click(rowOf('dale-old').getByRole('button', { name: 'open the line ›' }))
     const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
-    fireEvent.click(await within(reader).findByRole('button', { name: 'Untag' }))
+    fireEvent.click(await within(reader).findByRole('button', { name: 'Take off the job' }))
     const ask = await screen.findByRole('alertdialog')
-    expect(ask.textContent).toContain('Untag takes this conversation off the job.')
+    expect(ask.textContent).toContain('This takes the conversation off the job.')
     expect(ask.textContent).toContain('A line the bids@ or team@ reader took goes back to where it was.')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Untag' }))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Take off the job' }))
     await waitFor(() => expect(io.untag).toHaveBeenCalledWith({ threadId: 't-dale-old' }))
-    expect(await screen.findByText('Untagged. 3 lines came off the job.')).toBeTruthy()
+    expect(await screen.findByText('Taken off the job. 3 lines came off.')).toBeTruthy()
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })).getByRole('button', { name: 'open the thread ›' }))
     expect(host.onOpenThread).toHaveBeenCalledWith('c-dale', 'm-elm-1')
     expect(screen.queryByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })).toBeNull()
@@ -244,7 +244,7 @@ describe('MyMailTab', () => {
     fireEvent.click(rowOf('dale-old').getByRole('button', { name: 'open the line ›' }))
     const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
     fireEvent.click(await within(reader).findByRole('button', { name: 'Another job…' }))
-    const picker = await screen.findByRole('dialog', { name: 'Move this conversation onto' })
+    const picker = await screen.findByRole('dialog', { name: 'Move this conversation to' })
     expect(theirs).toHaveBeenCalledWith('dale@ridgeway.example')
     expect(within(picker).getByText('Their jobs')).toBeTruthy()
     fireEvent.click(within(picker).getByText('19 Harbor Ln'))
@@ -258,8 +258,8 @@ describe('MyMailTab', () => {
     expect(host.onChanged).toHaveBeenCalledTimes(1)
     // A pick of the job it is on already does nothing.
     fireEvent.click(within(reader).getByRole('button', { name: 'Another job…' }))
-    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Move this conversation onto' })).getByText('19 Harbor Ln'))
-    expect(screen.queryByRole('dialog', { name: 'Move this conversation onto' })).toBeNull()
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Move this conversation to' })).getByText('19 Harbor Ln'))
+    expect(screen.queryByRole('dialog', { name: 'Move this conversation to' })).toBeNull()
     expect(io.tag).toHaveBeenCalledTimes(1)
     expect(io.list).toHaveBeenCalledTimes(2)
   })

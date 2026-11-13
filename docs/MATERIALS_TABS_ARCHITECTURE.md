@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 ---
 
 ## Overview
@@ -29,7 +29,7 @@ This map is coupling/refactor-oriented and follows [`PAGE_DECOMPOSITION_PLAYBOOK
 | `Materials.tsx` | 2,012 | 69 | 0 | 11 | 0 | 0 | 4 | 8 | 35 | 23 |
 | `SupplyHousesTab.tsx` | 1,898 | 44 | 0 | 11 | 3 | 0 | 1 | 9 | 20 | 30 |
 
-**Data, parent:** `users`, `service_types`, `purchase_orders`, `material_templates`, `material_template_items`, `purchase_order_items`, `material_part_prices`; RPC `get_supply_house_stats_by_service_type` (called `as any` at 331 — the fact sheet's RPC column misses it). **Data, SupplyHousesTab:** `supply_houses`, `supply_house_contacts`, `job_supply_house_accounts`, `service_types`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_po_generator_entries`, and since v2.6819 `supply_papers` and `supply_paper_lines` through `lib/materials/lines/paperIo.ts` (each bill's **Lines** cell and `materials/PaperLookModal.tsx`; writes through the RPCs `supply_paper_save` and `supply_paper_accept`), since v2.6821 `counter_tickets` through `lib/tickets/ticketMatchIo.ts` (Add invoice's *Start from* a ticket); RPCs `search_jobs_ledger`, `get_jobs_ledger_by_ids`. No realtime subscriptions, no edge functions in either file.
+**Data, parent:** `users`, `service_types`, `purchase_orders`, `material_templates`, `material_template_items`, `purchase_order_items`, `material_part_prices`; RPC `get_supply_house_stats_by_service_type` (called `as any` at 331 — the fact sheet's RPC column misses it). **Data, SupplyHousesTab:** `supply_houses`, `supply_house_contacts`, `job_supply_house_accounts`, `service_types`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_po_generator_entries`, and since v2.6819 `supply_papers` and `supply_paper_lines` through `lib/materials/lines/paperIo.ts` (each bill's **Lines** cell and `materials/PaperLookModal.tsx`, both reads chunked by id and paged; writes through the RPCs `supply_paper_save` and `supply_paper_accept`), since v2.6821 `counter_tickets` through `lib/tickets/ticketMatchIo.ts` (Add invoice's *Start from* a ticket); RPCs `search_jobs_ledger`, `get_jobs_ledger_by_ids`. No realtime subscriptions, no edge functions in either file.
 
 The page is tab-switched on one `activeTab` state (63–65, the seven keys spelled literally rather than as the kernel's `MaterialsTab` type); the canonical list is `MATERIALS_TABS` in [`lib/materials/materialsTabs.ts`](../src/lib/materials/materialsTabs.ts):
 
@@ -225,7 +225,7 @@ Props (`SupplyHousesTabProps`, 144–154): `supplyHouses?`, `onSupplyHousesChang
 | AP section (`supplyHouseSummaryLoading` ternary 867–1381): total + three toggles + caption (~870–912; header total is an inline `reduce` at 874) | 866–1382 | 517 | inline |
 | ↳ Aging heat map — phone cards vs desktop table (`narrowAging`) | 913–1063 | 151 | **inline** — presentational, reads `agingMatrix` |
 | ↳ Summary table (`summaryHeader` ×5, rows 1077+) | 1065–1380 | 316 | inline |
-| ↳↳ Expanded house detail (`isExpanded && selectedSupplyHouseForDetail`; its Edit button is a separate same-condition block in the summary row, 1115–1127): address/phone/website (1138–1149), `SupplyHouseJobAccountsRoster` (1151–1156), Invoices table (1157–1312; PO-code warning via `parsePoGeneratorCodeFromPurchaseOrderName` 1207–1211, `daysPastDue` 1235, credit display 1254–1256), Purchase Orders (1313–1372, Create PO + `handleNavigateToPO`) | 1130–1374 | 245 | **inline** |
+| ↳↳ Expanded house detail (`isExpanded && selectedSupplyHouseForDetail`; its Edit button is a separate same-condition block in the summary row, 1115–1127): address/phone/website (1138–1149), Invoices, since v2.7088 [`SupplyHouseBillsCard`](../src/components/materials/SupplyHouseBillsCard.tsx) over the kernel [`supplyBillGroups.ts`](../src/lib/materials/supplyBillGroups.ts) (the bills in groups by due day, each marked paid in place by `toggleInvoicePaid`; the PO-code warning via `parsePoGeneratorCodeFromPurchaseOrderName` and the credit display ride on its rows), `SupplyHouseJobAccountsRoster` folded under them, Purchase Orders (1313–1372, Create PO + `handleNavigateToPO`) | 1130–1374 | 245 | **inline** |
 | `SupplyHouseJobAccountsSection` | 1384 | 1 | extracted |
 | `houseEditor.modal` | 1386 | 1 | extracted hook |
 | **Invoice form modal** (IIFE: derived hints 1389–1405) — ⓪ kind (1420–1455), ① fields + PO check + ledger card (1456–1523; card 1498–1521), ③ job search (1524–1622; results 1544–1576, pct 1596–1610), ④ job account on the job card (1623–1673), ③b codes for this job (1674–1698), `MarkJobAccountOpenedModal` (1700–1717), ⑤ status/paid (1719–1759), ⑥ paperwork (1760–1773), ⑧ credit effect (1774–1794), ⑦ sticky footer (1795–1815) | 1388–1815 | 428 | **inline — largest block**; uses `InvoiceFormSection` ×5, `UnifiedSearchResultRow`, `MarkJobAccountOpenedModal` |
@@ -314,7 +314,7 @@ Open candidates at a05cef4c4:
 | Aging map, sort | `supplyHouseAging.test.ts` (16, incl. credits + job-account share), `supplyHouseSummarySort.test.ts` (6) | render |
 | S7 detail loader (grouping, ledger mapping, PO items) | none (the join it duplicates is tested) | all |
 | S4/S10 invoice form | `supplyHouseInvoiceForm.test.ts` (50: PO hint/card/job matches/mismatch, due hint, paid-on, allocations, sign/kind, credit sentence), `supplyHouseDocument.test.ts` (4), `parsePoGeneratorCodeFromPurchaseOrderName.test.ts` (3), `jobSupplyHouseAccounts.test.ts` (9) | **`saveInvoice` payload assembly + delete-then-insert allocations — untested money path**; job-account default effect |
-| S10 `applyPayment`, `toggleInvoicePaid`, `createBlankPOForSupplyHouse` | `applyPayment`'s payload: `applyPaymentUpdate` in `supplyHouseInvoiceForm.test.ts` (quirk 21, v2.3830 / v2.3843) | `toggleInvoicePaid`, `createBlankPOForSupplyHouse` |
+| S10 `applyPayment`, `toggleInvoicePaid`, `createBlankPOForSupplyHouse` | `applyPayment`'s payload: `applyPaymentUpdate` in `supplyHouseInvoiceForm.test.ts` (quirk 21, v2.3830 / v2.3843) | `toggleInvoicePaid` (its card's presses: `SupplyHouseBillsCard.render.test.tsx`), `createBlankPOForSupplyHouse` |
 | e2e | [`e2e/viewport-smoke.spec.ts`](../e2e/viewport-smoke.spec.ts) visits `/materials` | — |
 
 ---

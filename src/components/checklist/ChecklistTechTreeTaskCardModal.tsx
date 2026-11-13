@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
+import { RoadmapTaskPlaceSection } from './RoadmapTaskPlaceSection'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import type { BridgeChip, BridgeState } from '../../lib/roadmapBridge'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
@@ -593,6 +594,9 @@ export function ChecklistTechTreeTaskCardModal({
             </>
           )}
         </div>
+
+        {/* Where the work is (punch list #328, PR 5): the planner's Place row, or the place for anyone else. */}
+        {task ? <RoadmapTaskPlaceSection taskId={task.id} canEdit={canEditStructure} userId={currentUserId} nameOf={(id) => users.find((u) => u.id === id)?.name ?? null} /> : null}
 
         {/* ⏱ estimate (v2.2358): the Timeline's slot weight — sizing, never scheduling. */}
         <div style={{ padding: '2px 16px 10px', borderBottom: '1px solid var(--border)' }}>

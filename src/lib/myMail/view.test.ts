@@ -38,7 +38,7 @@ describe('viewRows: what each view draws', () => {
     expect(ids(viewRows(page, 'toTag').folded)).toEqual(['news'])
   })
 
-  it('Tagged shows the tagged conversations alone, a tagged notice too, with no fold line', () => {
+  it('Tagged shows the saved conversations alone, a tagged notice too, with no fold line', () => {
     expect(ids(rowsForView(page, 'tagged'))).toEqual(['tagged', 'notice-tagged'])
     expect(viewRows(page, 'tagged').folded).toEqual([])
   })
@@ -67,7 +67,7 @@ describe('viewRows: what each view draws', () => {
 describe('MY_MAIL_WORDS: the tab’s words', () => {
   it('says what is read, what is kept and what a tag does', () => {
     expect(MY_MAIL_WORDS.card(' marisol@clickplumbing.example ')).toBe(
-      'Your mail, read live from marisol@clickplumbing.example. Nothing is kept until you tag it. A tag puts that conversation on the job for the office to read.',
+      'Your mail, read live from marisol@clickplumbing.example. Nothing is kept until you save it. Saving puts the whole conversation on the job for the office to read. Later mail in it follows by itself.',
     )
   })
 
@@ -77,11 +77,11 @@ describe('MY_MAIL_WORDS: the tab’s words', () => {
   })
 
   it('says what an empty view means, in EmptyState’s parts', () => {
-    expect(MY_MAIL_WORDS.empty('toTag')).toEqual({ main: 'Nothing waiting to tag.', next: '', tail: '' })
-    expect(MY_MAIL_WORDS.empty('tagged')).toEqual({ main: 'No tagged conversations yet.', next: 'To tag', tail: 'lists the mail you can tag.' })
+    expect(MY_MAIL_WORDS.empty('toTag')).toEqual({ main: 'Nothing waiting to save.', next: '', tail: '' })
+    expect(MY_MAIL_WORDS.empty('tagged')).toEqual({ main: 'No saved conversations yet.', next: 'Not saved', tail: 'lists the mail you can save.' })
     expect(MY_MAIL_WORDS.empty('all')).toEqual({ main: 'No emails in your Inbox or Sent yet.', next: 'Your account', tail: 'shows what this tab reads.' })
     expect(MY_MAIL_WORDS.empty('toTag', ' Ridgeway ')).toEqual({ main: 'No emails match ‘Ridgeway’.', next: 'Clear the search', tail: '' })
-    expect(MY_MAIL_WORDS.views).toEqual({ toTag: 'To tag', tagged: 'Tagged', all: 'All' })
+    expect(MY_MAIL_WORDS.views).toEqual({ toTag: 'Not saved', tagged: 'Saved', all: 'All' })
   })
 
   it('keeps every sentence in plain words', () => {
