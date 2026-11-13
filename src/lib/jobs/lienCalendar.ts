@@ -313,7 +313,7 @@ export function lienCalendarAxis(jobs: ReadonlyArray<LienCalendarJob>, todayYmd:
 }
 
 export type LienCalendarMark =
-  | { kind: 'work'; pct: number; ymd: string; offAxis: boolean; fromCreation: boolean; label: string }
+  | { kind: 'work'; pct: number; ymd: string; offAxis: boolean; fromCreation: boolean; fromBill?: boolean; label: string }
   | { kind: 'gone'; pct: number; ymd: string; by: 'notice' | 'lien'; label: string }
   | { kind: 'pay'; pct: number; ymd: string }
   | { kind: 'pay_missing'; pct: number }
@@ -344,7 +344,7 @@ export function workMarkFor(job: Pick<LienCalendarJob, 'runway'>, axis: Pick<Lie
   const fromCreation = job.runway.datedFromCreation
   // The stand-in whispers (v2.4266): the month and "no hours"; the creation-day words are the hover and the key.
   const words = fromCreation ? `${monthShort(ymd)} · no hours` : formatYmdMonthDay(ymd)
-  return { kind: 'work', pct: offAxis ? 0 : axis.pct(ymd), ymd, offAxis, fromCreation, label: offAxis ? `◂ ${words}` : words }
+  return { kind: 'work', pct: offAxis ? 0 : axis.pct(ymd), ymd, offAxis, fromCreation, ...(job.runway.datedFromBill ? { fromBill: true } : {}), label: offAxis ? `◂ ${words}` : words }
 }
 
 /**

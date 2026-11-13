@@ -1,8 +1,8 @@
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { filingDeadlineForMonth, noticeDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
+import { DATED_FROM_BILL_WORDS, lienStandInMonth, type LienBill } from './lienBillMonths'
 
 /**
  * The lien runway (v2.4051): does the money land before the lien dies?
@@ -48,6 +48,8 @@ export type LienRunwayInput = {
   lastWorkYmd: string | null | undefined
   /** The job's creation instant — its month in the company calendar stands in when there are no clock hours (the Lien desk's rule). */
   createdAt?: string | null
+  /** The job's bills (v2.7224): with no clock hours and no day set by hand, the month of the latest sent, unpaid bill stands in before the creation month does (`lienStandInMonth`), as in the four lien readers. */
+  bills?: ReadonlyArray<LienBill> | null
   /** The last day of work set by hand (`jobs_ledger.lien_last_work_on`, v2.4676): when present it is the day every date counts from, before the clock hours and the creation day (v2.4830 — the four lien readers already took it; the runway did not). */
   handLastWorkYmd?: string | null
   /** '' | 'residential' | 'non_residential' from the property record. */
@@ -125,8 +127,10 @@ export type LienPayRunway = {
   serveByYmd: string
   /** Days from today to `serveByYmd` (negative once late); null when there is none. */
   daysToServe: number | null
-  /** No clock hours — the clock counts from the month the job was created. */
+  /** No clock hours and no day set by hand: the clock counts from a stand-in, the month of a bill when `datedFromBill`, else the month the job was created. */
   datedFromCreation: boolean
+  /** The stand-in is the job's latest sent, unpaid bill (v2.7224). */
+  datedFromBill: boolean
   /** The day every date counts from was set by hand (v2.4830). */
   datedByHand: boolean
   /** The day every date was counted from: the last work day, or the creation day when there are no hours (the Lien calendar's tick, v2.4265); '' when there is neither. */
@@ -163,6 +167,7 @@ const NONE: LienPayRunway = {
   serveByYmd: '',
   daysToServe: null,
   datedFromCreation: false,
+  datedFromBill: false,
   datedByHand: false,
   basisYmd: '',
   closedBy: null,
@@ -209,11 +214,11 @@ function daysWords(n: number): string {
 
 const KIND_ASSUMED_NOTE = 'Property kind is not set, so the earlier (residential) date is shown — set the kind on the property record to confirm.'
 
-function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean, datedFromCreation: boolean, datedByHand: boolean): string {
+function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean, datedFromCreation: boolean, datedByHand: boolean, datedFromBill = false): string {
   const month = new Date(`${lastWorkYmd.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const nth = kindAssumed || propertyKind === 'residential' ? '3rd' : '4th'
   const kindWords = kindAssumed ? 'residential assumed' : propertyKind === 'residential' ? 'residential' : 'commercial'
-  const from = datedByHand ? `${month}, ${LAST_DAY_SET_BY_HAND_WORDS}` : datedFromCreation ? `${month}, ${DATED_FROM_CREATION_WORDS}` : `${month}, approved hours`
+  const from = datedByHand ? `${month}, ${LAST_DAY_SET_BY_HAND_WORDS}` : datedFromCreation ? `${month}, ${datedFromBill ? DATED_FROM_BILL_WORDS : DATED_FROM_CREATION_WORDS}` : `${month}, approved hours`
   return `Counts from the last work month (${from}) · ${kindWords}: the 15th of the ${nth} month after (§ 53.052)`
 }
 
@@ -269,9 +274,11 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const hand = (input.handLastWorkYmd ?? '').trim().slice(0, 10)
   const datedByHand = /^\d{4}-\d{2}-\d{2}$/.test(hand)
   const worked = datedByHand ? hand : (input.lastWorkYmd ?? '').trim().slice(0, 10)
-  const created = calendarYmdInAppTzFromIso((input.createdAt ?? '').trim())
-  const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
-  const lastWork = datedFromCreation ? created : worked
+  // Neither: a stand-in (v2.7224), the latest sent, unpaid bill's day, else the day the job was made.
+  const standIn = lienStandInMonth({ bills: input.bills, createdAt: input.createdAt })
+  const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(standIn.day)
+  const datedFromBill = datedFromCreation && standIn.source === 'bill'
+  const lastWork = datedFromCreation ? standIn.day : worked
   const basisYmd = /^\d{4}-\d{2}-\d{2}$/.test(lastWork) ? lastWork : ''
 
   if (input.filedYmd) {
@@ -294,6 +301,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       chipLabel: 'lien filed',
       basisYmd,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       sortKey: 3_000_000,
     }
@@ -302,7 +310,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   if (!lienBy) return NONE
   const daysToLien = daysBetweenYmd(today, lienBy)
   if (daysToLien == null) return NONE
-  const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation, datedByHand)
+  const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation, datedByHand, datedFromBill)
   const kindNote = kindAssumed ? ` ${KIND_ASSUMED_NOTE}` : ''
   const lienWords = formatYmdMonthDay(lienBy)
   const wordsOf = (lines: string[]) => lines.join(' · ')
@@ -318,7 +326,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   // A month printed and in the mail (v2.5522) keeps its place on the clock — recording the number is what is still owed.
   const mailedMonths = input.mailedMonths ?? []
   const noticeMonths = isSub
-    ? noticeMonthsFor(input.workMonths, workMonth, kindEff, today, (key) => ((key === workMonth ? noticeSent : noticedMonths.includes(key)) ? 'sent' : mailedMonths.includes(key) ? 'mailed' : null))
+    ? noticeMonthsFor(datedFromBill ? standIn.months : input.workMonths, workMonth, kindEff, today, (key) => ((key === workMonth ? noticeSent : noticedMonths.includes(key)) ? 'sent' : mailedMonths.includes(key) ? 'mailed' : null))
     : []
   const lastNotice = noticeMonths[noticeMonths.length - 1] ?? null
   // The months still owed set the date; the months in the mail step up only when nothing else is owed, since
@@ -358,6 +366,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent,
       noticeMailed,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       basisYmd,
       closedBy: 'notice',
@@ -383,6 +392,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent,
       noticeMailed,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       basisYmd,
       closedBy: 'lien',
@@ -424,6 +434,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent,
       noticeMailed,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       basisYmd,
       closedBy: null,
@@ -453,6 +464,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent,
       noticeMailed,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       basisYmd,
       closedBy: null,
@@ -482,6 +494,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent,
       noticeMailed,
       datedFromCreation,
+      datedFromBill,
       datedByHand,
       basisYmd,
       closedBy: null,
@@ -511,6 +524,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     noticeSent,
     noticeMailed,
     datedFromCreation,
+    datedFromBill,
     datedByHand,
     basisYmd,
     closedBy: null,

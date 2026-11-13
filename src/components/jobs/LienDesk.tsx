@@ -31,7 +31,8 @@ import {
   type LienAskReason,
   type LienDeskEntry,
   type LienDeskPile,
-  type LienNoticePolicy, DATED_FROM_CREATION_WORDS, LIEN_DESK_LEAD_DAYS } from '../../lib/jobs/lienDesk'
+  type LienNoticePolicy, LIEN_DESK_LEAD_DAYS } from '../../lib/jobs/lienDesk'
+import { lienStandInSourceOf, lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import {
   holdLienDeskItem,
   pullBackLienDeskItem,
@@ -1663,9 +1664,11 @@ export default function LienDesk({
       const filings = data.filingsByJob[e.jobId] ?? []
       const swornMonths = lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings })
       const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings }))
+      // A month from a bill or the job's creation (v2.7224) is flagged on both sheets, never held: neither reads On record for it.
+      const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
-      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
+      const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn })
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, monthStandIn }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
@@ -1870,7 +1873,7 @@ export default function LienDesk({
                       </span>
                     ) : null}
                     <span>{named.map(workMonthShort).join(' + ')}</span>
-                    {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {DATED_FROM_CREATION_WORDS}</span> : null}
+                    {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {lienStandInWords(e.datedFromBill === true)}</span> : null}
                     {state ? <span>· {state}</span> : null}
                     {sentWords ? <span data-lien-desk-sent-words>· {sentWords}</span> : null}
                     {(() => {
@@ -2009,6 +2012,7 @@ export default function LienDesk({
         noticed: m.noticed,
         closed: m.closed,
         fromCreation: m.fromCreation,
+        fromBill: m.fromBill,
       }
     })
 
@@ -2044,6 +2048,7 @@ export default function LienDesk({
     monthsOnJob: selected?.months.length ?? 0,
     pendingSessions: wm?.pendingSessions ?? 0,
     datedFromCreation: selected?.datedFromCreation ?? false,
+    datedFromBill: selected?.datedFromBill ?? false,
     billedOpen: selected ? openBalance : undefined,
     unbilled,
     sentBills: claimBills.length,

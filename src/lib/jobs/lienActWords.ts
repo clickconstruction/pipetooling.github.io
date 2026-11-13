@@ -111,8 +111,9 @@ export function lienActFor(input: LienActInput): LienAct | null {
 }
 
 /** The tip's one extra sentence when the clock's day is a guess; '' when the day is firm. */
-export function lienDayGuessSentence(f: { kindAssumed: boolean; datedFromCreation: boolean }): string {
+export function lienDayGuessSentence(f: { kindAssumed: boolean; datedFromCreation: boolean; datedFromBill?: boolean }): string {
   if (f.kindAssumed) return 'The property kind is not set, so the earlier day shows.'
+  if (f.datedFromBill) return 'The day counts from the bill, since no hours are on the clock.'
   if (f.datedFromCreation) return 'The day counts from the day the job was made, since no hours are on the clock.'
   return ''
 }

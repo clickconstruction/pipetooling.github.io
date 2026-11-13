@@ -236,8 +236,12 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
         expect(el?.textContent).toMatch(/notice/)
         return el!
       })
-    // Made today, with no clock hours: this month's notice window is open whatever day the suite runs.
-    const fresh = () => job({ created_at: new Date().toISOString(), last_work_date: null })
+    // Made and billed today, with no clock hours: this month's notice window is open whatever day the suite runs.
+    // The bill carries today too, since a job nobody clocked on is dated from its sent, unpaid bill (v2.7224).
+    const fresh = () => {
+      const now = new Date().toISOString()
+      return job({ created_at: now, last_work_date: null, invoices: [{ ...INV, billed_at: now, sent_to_customer_at: now }] })
+    }
     const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} />)
     await settle()
     expect((await verdict()).textContent).toMatch(/Draft the \w+ notice/)

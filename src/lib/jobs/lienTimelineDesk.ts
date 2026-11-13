@@ -1,6 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
-import { monthFromCreation } from './lienDesk'
+import { monthFromBill, monthIsStandIn } from './lienDesk'
+import { lienStandInMonth, type LienBill } from './lienBillMonths'
 import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
 import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
@@ -125,14 +126,14 @@ export function lienWindowDeskAffidavit(entry: Pick<LienAffidavitEntry, 'pile' |
 export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string, propertyKind = ''): LienTimelineMonth[] {
   const deskMonths: LienDeskMonth[] = rows
     .filter((r) => r.job_id === jobId)
-    .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthFromCreation(r) }))
+    .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) }))
   const history = buildLienMonthHistory(jobId, items, deskMonths)
   const byKey = new Map<string, LienTimelineMonth>()
-  for (const m of deskMonths) byKey.set(m.key, { key: m.key, deadline: m.deadline, fromCreation: m.fromCreation, outcome: 'open', at: '' })
+  for (const m of deskMonths) byKey.set(m.key, { key: m.key, deadline: m.deadline, fromCreation: m.fromCreation, ...(m.fromBill ? { fromBill: true } : {}), outcome: 'open', at: '' })
   for (const h of history) {
     const prev = byKey.get(h.month)
     // A closed month the RPC no longer returns carries no deadline in its history row; the statute still knows it (v2.4111 — the fold's tray prints it).
-    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline || noticeDeadlineForMonth(`${h.month}-01`, propertyKind), fromCreation: prev?.fromCreation ?? false, outcome: h.outcome, at: calendarYmdInAppTzFromIso(h.at) })
+    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline || noticeDeadlineForMonth(`${h.month}-01`, propertyKind), fromCreation: prev?.fromCreation ?? false, ...(prev?.fromBill ? { fromBill: true } : {}), outcome: h.outcome, at: calendarYmdInAppTzFromIso(h.at) })
   }
   return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
@@ -145,6 +146,8 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
   const handMonth = src.rows.find((r) => r.job_id === jobId && r.month_source === 'hand')?.work_month ?? ''
   const lastMonth = src.affidavit?.lastMonth || handMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
   const lastMonthFromCreation = src.affidavit ? src.affidavit.lastMonthFromCreation : Boolean(fromRows && fromRows.key === lastMonth && fromRows.fromCreation) || Boolean(src.entry?.datedFromCreation && (!fromRows || fromRows.key === lastMonth))
+  // The stand-in month came from a bill (v2.7224): the affidavit entry says so, else the desk row for the last month.
+  const lastMonthFromBill = lastMonthFromCreation && (src.affidavit ? src.affidavit.lastMonthFromBill === true : Boolean(fromRows && fromRows.key === lastMonth ? fromRows.fromBill : src.entry?.datedFromBill))
   // The last day of work set by hand (v2.4676): the affidavit entry says so, else the desk row for the last month.
   const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : src.rows.some((r) => r.job_id === jobId && r.work_month === lastMonth && r.month_source === 'hand')
 
@@ -175,6 +178,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     propertyKind: src.propertyKind,
     lastMonth,
     lastMonthFromCreation,
+    lastMonthFromBill,
     lastMonthByHand,
     laterHoursDay: lastMonthByHand && fromLedger > lastMonth ? (src.lastWorkDate ?? '').slice(0, 10) : '',
     months,
@@ -240,15 +244,17 @@ export function lienRetainageClockFromDesk(data: unknown, jobId: string): NonNul
  */
 export function lienWindowLastMonth(src: {
   workMonths: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null | undefined
-  job: { created_at?: string | null; last_work_date?: string | null; lien_last_work_on?: string | null }
-}): { lastMonth: string; fromCreation: boolean; byHand: boolean; laterHoursDay: string } {
+  job: { created_at?: string | null; last_work_date?: string | null; lien_last_work_on?: string | null; invoices?: ReadonlyArray<LienBill> | null }
+}): { lastMonth: string; fromCreation: boolean; byHand: boolean; laterHoursDay: string; /** The stand-in month came from a sent, unpaid bill (v2.7224). */ fromBill?: boolean; /** Every bill month, oldest first, on a job dated from its bills. */ standInMonths?: string[] } {
   const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
   const wm = src.workMonths
   const clock = lienClockMonths(wm?.months.length ? wm.months.map((m) => m.key) : fromLedger ? [fromLedger] : [], src.job.lien_last_work_on)
   if (clock.byHand) return { lastMonth: clock.lastMonth, fromCreation: false, byHand: true, laterHoursDay: lienHoursAfterHandDay(src.job) }
   if (wm && wm.months.length) return { lastMonth: wm.lastMonthKey || fromLedger, fromCreation: false, byHand: false, laterHoursDay: '' }
-  const created = calendarYmdInAppTzFromIso(src.job.created_at ?? '').slice(0, 7)
-  return { lastMonth: fromLedger || created, fromCreation: !fromLedger && Boolean(created), byHand: false, laterHoursDay: '' }
+  if (fromLedger) return { lastMonth: fromLedger, fromCreation: false, byHand: false, laterHoursDay: '' }
+  // Nobody clocked on the job and nobody set its last day: the month of its sent, unpaid bills (v2.7224), else of its creation (v2.3747).
+  const standIn = lienStandInMonth({ bills: src.job.invoices, createdAt: src.job.created_at })
+  return { lastMonth: standIn.month, fromCreation: Boolean(standIn.month), byHand: false, laterHoursDay: '', ...(standIn.source === 'bill' ? { fromBill: true, standInMonths: standIn.months } : {}) }
 }
 
 /**
@@ -264,7 +270,7 @@ export function lienWindowLastMonth(src: {
 export function buildLienTimelineFromWindow(src: {
   workMonths: JobWorkMonths | null
   filings: ReadonlyArray<JobLienFilingRow>
-  job: { id: string; created_at: string | null; last_work_date: string | null; lien_contract_ended_on?: string | null; lien_last_work_on?: string | null }
+  job: { id: string; created_at: string | null; last_work_date: string | null; lien_contract_ended_on?: string | null; lien_last_work_on?: string | null; invoices?: ReadonlyArray<LienBill> | null }
   isSub: boolean
   propertyKind: string
   openBalance: number
@@ -283,7 +289,7 @@ export function buildLienTimelineFromWindow(src: {
   for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? calendarYmdInAppTzFromIso(f.created_at))
   let months: LienTimelineMonth[] = []
   // The last month and what named it: one rule with the affidavit's period (v2.6809).
-  const { lastMonth, fromCreation: lastMonthFromCreation, byHand: lastMonthByHand, laterHoursDay } = lienWindowLastMonth(src)
+  const { lastMonth, fromCreation: lastMonthFromCreation, fromBill: lastMonthFromBill, standInMonths, byHand: lastMonthByHand, laterHoursDay } = lienWindowLastMonth(src)
   const wm = src.workMonths
   if (wm && wm.months.length) {
     // The months on the clock (v2.7193, punch list #335, row 1): with a day set by hand, the worked months before its month and
@@ -296,10 +302,13 @@ export function buildLienTimelineFromWindow(src: {
       return { key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
     })
   } else if (lastMonth && src.isSub) {
-    const deadline = noticeDeadlineForMonth(`${lastMonth}-01`, src.propertyKind)
-    const sentAt = sentMonths.get(lastMonth)
-    const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
-    months = [{ key: lastMonth, deadline, fromCreation: lastMonthFromCreation, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }]
+    // One notice month, or one per sent, unpaid bill on a job dated from its bills (v2.7224).
+    months = (standInMonths?.length ? standInMonths : [lastMonth]).map((key) => {
+      const deadline = noticeDeadlineForMonth(`${key}-01`, src.propertyKind)
+      const sentAt = sentMonths.get(key)
+      const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
+      return { key, deadline, fromCreation: lastMonthFromCreation, ...(lastMonthFromBill ? { fromBill: true } : {}), outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
+    })
   }
   const affidavitFiling = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0] ?? null
   const releaseFiling = live.filter((f) => f.kind === 'release_of_record').sort((a, b) => (b.filed_at ?? b.created_at).localeCompare(a.filed_at ?? a.created_at))[0] ?? null
@@ -309,6 +318,7 @@ export function buildLienTimelineFromWindow(src: {
     propertyKind: src.propertyKind,
     lastMonth,
     lastMonthFromCreation,
+    lastMonthFromBill,
     lastMonthByHand,
     laterHoursDay,
     months,

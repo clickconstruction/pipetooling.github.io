@@ -9,6 +9,7 @@ import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 import { buildLienTimeline, type LienTimelineAffidavitState, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
 import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from './lienWindowNextStep'
 import { buildLienTimelineFromWindow } from './lienTimelineDesk'
+import { lienWindowSwornMonths } from './lienWindowAffidavit'
 import type { JobWorkMonths } from './forecastWorkMonths'
 
 /**
@@ -194,5 +195,43 @@ describe('a last day set by hand, with approved hours after it: the row and the 
     expect(rowLabel(row(after), null, after)).toBe('Lien gone')
     expect(phoneChip(row(after), null, after).label).toBe('lien gone')
     expect(header(after).kind).toBe('lien_gone')
+  })
+})
+
+describe('a job nobody clocked on, dated from its bill: the row, the window and the paper count from the same month (v2.7224)', () => {
+  // The owner's call of 2026-11-13: with no clock hours the month comes from the bill, not from the day the job was made.
+  // A commercial sub job typed in on Aug 18, weeks after its work, whose sent, unpaid bill carries Jul 24. Every reader
+  // said August, the month it was typed in: the notice by Nov 16 and the affidavit by Dec 15, a month too generous.
+  const bill = { status: 'billed', billed_at: '2026-08-18T06:01:42Z', sent_to_customer_at: '2026-07-24T17:00:00Z' }
+  const job = { id: 'j1', created_at: '2026-08-18T05:59:40Z', last_work_date: null, invoices: [bill] }
+  const row = (todayYmd: string) => buildLienPayRunway(runwayInput({ todayYmd, lastWorkYmd: null, createdAt: job.created_at, bills: job.invoices }))
+  const window = (todayYmd: string) => buildLienTimelineFromWindow({ workMonths: null, filings: [], job, isSub: true, propertyKind: 'non_residential', openBalance: 4200, todayYmd })
+
+  it('all three name July: the notice by Oct 15, the affidavit by Nov 16', () => {
+    const before = '2026-09-23'
+    expect(row(before)).toMatchObject({ basisYmd: '2026-07-24', noticeByYmd: '2026-10-15', lienByYmd: '2026-11-16', datedFromBill: true })
+    const t = window(before)
+    expect(t.next).toMatchObject({ kind: 'notice', date: '2026-10-15' })
+    expect(t.steps.find((s) => s.kind === 'last_work')?.words).toBe('dated from the bill · no clock hours')
+    // The paper's month: a notice that names July and August is read against the job's own month, July.
+    const filings = [{ kind: 'notice_53_056', voided_at: null, months_covered: ['2026-07', '2026-08'], sends: [{ recipient: 'owner', method: 'certified_mail', tracking: 't', sent_on: '2026-09-10' }] }]
+    expect(lienWindowSwornMonths({ job, workMonths: null, isSub: true, todayYmd: before, filings: filings as never })).toEqual(['2026-07'])
+  })
+
+  it('past July’s notice day both ask for the late notice, and past the affidavit’s day both say the lien is gone', () => {
+    const late = '2026-10-20'
+    expect(rowLabel(row(late), null, late)).toBe('Send the late notice')
+    expect(window(late).next.kind).toBe('late_notice')
+    const after = '2026-11-20'
+    expect(rowLabel(row(after), null, after)).toBe('Lien gone')
+    expect(phoneChip(row(after), null, after).label).toBe('lien gone')
+    expect(window(after).next.kind).toBe('lien_gone')
+  })
+
+  it('with no dated unpaid bill the creation month stands, on the row and in the window alike', () => {
+    const made = { ...job, invoices: [{ ...bill, status: 'paid' }] }
+    const before = '2026-09-23'
+    expect(buildLienPayRunway(runwayInput({ todayYmd: before, lastWorkYmd: null, createdAt: made.created_at, bills: made.invoices }))).toMatchObject({ noticeByYmd: '2026-11-16', lienByYmd: '2026-12-15', datedFromBill: false, datedFromCreation: true })
+    expect(buildLienTimelineFromWindow({ workMonths: null, filings: [], job: made, isSub: true, propertyKind: 'non_residential', openBalance: 4200, todayYmd: before }).next).toMatchObject({ kind: 'notice', date: '2026-11-16' })
   })
 })

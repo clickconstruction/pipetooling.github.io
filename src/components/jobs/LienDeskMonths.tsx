@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
+import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
 import { lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
@@ -33,6 +33,8 @@ export type LienDeskMonthCard = {
   noticed: boolean
   closed: boolean
   fromCreation?: boolean
+  /** The stand-in month came from a sent, unpaid bill (v2.7224). */
+  fromBill?: boolean
 }
 
 const METHOD_LABELS: Record<string, string> = { certified_mail: 'certified mail', mail: 'mail', traceable_courier: 'courier', email: 'email', hand: 'hand delivery' }
@@ -179,7 +181,7 @@ export default function LienDeskMonths({
               <tr key={r.month} data-lien-grid-row={r.month} data-window={r.window.state} data-on={r.thisNotice.on ? 'yes' : 'no'} style={r.window.state === 'closed' && !r.window.noticed && !r.window.skipped ? { background: 'var(--bg-red-tint)' } : r.window.state === 'none' ? { color: 'var(--text-muted)' } : undefined}>
                 <td style={td}>
                   <div style={{ fontWeight: 700 }}>{workMonthLabel(r.month)}</div>
-                  <div style={faint}>{r.fromCreation ? DATED_FROM_CREATION_WORDS : r.pendingOnly ? 'sessions await approval' : <>{r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h{r.crew ? ` · ${r.crew}` : ''}</>}</div>
+                  <div style={faint}>{r.fromCreation ? lienStandInWords(r.fromBill === true) : r.pendingOnly ? 'sessions await approval' : <>{r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h{r.crew ? ` · ${r.crew}` : ''}</>}</div>
                 </td>
                 <td style={td}>{windowCell(r, onNoteMissed, view, grid.lateUntil)}</td>
                 {filings.map((p) => {

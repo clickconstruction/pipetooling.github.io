@@ -75,6 +75,8 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
     // The last day of work set by hand (v2.4676) counts first, as on the desk (v2.4830).
     handLastWorkYmd: job.lien_last_work_on ?? null,
     createdAt: job.created_at ?? null,
+    // v2.7224: a job nobody clocked on is dated from its sent, unpaid bills before its creation day.
+    bills: job.invoices ?? null,
     propertyKind: clock.propertyKind,
     expectedPayYmd: model?.expectedYmd ?? null,
     filedYmd: clock.filedYmd,

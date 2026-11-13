@@ -794,7 +794,7 @@ export default function LienInstrumentsModal({
             workMonths: windowWorkMonths?.[job.id] ?? null,
             filings,
             // v2.4735: the day set by hand reaches the window's timeline too (it read the clock hours and the creation day only).
-            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null },
+            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null, invoices: job.invoices ?? null },
             isSub,
             propertyKind,
             openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),

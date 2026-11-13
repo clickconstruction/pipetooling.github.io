@@ -19,6 +19,7 @@
  * The words follow `src/lib/plainWords.ts` and name each press as the screen writes it.
  */
 
+import { lienStandInFlag, type LienStandInSource } from './lienBillMonths'
 import { noticeDeadlineForMonth } from './lienDeadlines'
 import { signingCountyWords } from './lienSigningCounty'
 
@@ -99,6 +100,8 @@ export function lienHelpChecks(f: {
   /** The notice check's lines (`lienNoticeCheckLines`); none when every month has a timely notice to both. */
   noticeLines: ReadonlyArray<string>
   contractorName: string
+  /** The paper's month is a stand-in, from a bill or the job's creation (v2.7224): the sheet asks, on a sub job and on a job contracted with the owner alike. */
+  monthStandIn?: LienStandInSource | null
 }): LienHelpCheck[] {
   const checks: LienHelpCheck[] = []
   const owner = f.ownerName.trim()
@@ -114,6 +117,8 @@ export function lienHelpChecks(f: {
     else if (f.monthsWords.trim()) checks.push({ state: 'ok', lead: 'Notices.', words: `A notice went on time for every month sworn: ${f.monthsWords.trim()}. It went to the owner and to ${contractor}.` })
     else checks.push({ state: 'ask', lead: 'Notices.', words: 'The paper names no month of work with a notice behind it.' })
   }
+  const standIn = lienStandInFlag(f.monthStandIn)
+  if (standIn) checks.push({ state: 'ask', lead: 'Work month.', words: standIn })
   return checks
 }
 
@@ -715,7 +720,7 @@ export function lienHelpPaperFromFields(input: {
   claimWords: string
   fields: { county: string; propertyAddress: string; claimantPersonName: string; ownerName: string; ownerAddress: string; originalContractorName: string; originalContractorAddress: string; isSub?: boolean; workMonthsWords?: string; signingCounty?: string }
   /** What the desk knows of the property and the notices, for the checks; absent, the sheet keeps its list of warnings. */
-  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string> }
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; monthStandIn?: LienStandInSource | null }
   /** The property's county clerk as Settings hold it; absent, the sheet names the clerk and no more. */
   clerk?: LienHelpClerk
   /** Who to ask about this job (`lienAskFor`). */
@@ -726,7 +731,7 @@ export function lienHelpPaperFromFields(input: {
   const signingCounty = signingCountyWords(f.signingCounty)
   return {
     ...(input.checked
-      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, contractorName: f.originalContractorName }) }
+      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, contractorName: f.originalContractorName, monthStandIn: input.checked.monthStandIn }) }
       : {}),
     ...(signingCounty ? { signingCounty } : {}),
     ...(input.clerk ? { clerk: input.clerk } : {}),

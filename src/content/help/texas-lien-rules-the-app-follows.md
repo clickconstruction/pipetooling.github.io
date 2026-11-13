@@ -70,7 +70,7 @@ This page was checked on 2026-09-14 against the statute text at statutes.capitol
 
 Count from the month the work was done, never from the bill date. Each unpaid month has its own clock.
 
-**What it says.** Every lien deadline counts from the month the labor or materials were furnished. The bill date does not matter. Each unpaid month has its own clock. The clock reads the approved clock sessions. A last day of work set by hand counts in their place. Hours approved after that day do not move the clock. A sub's notice is due by the 15th of the third month after the work. The lien is due by the 15th of the fourth month after the last month worked. On a house both dates are a month earlier.
+**What it says.** Every lien deadline counts from the month the labor or materials were furnished. The bill date does not matter. Each unpaid month has its own clock. The clock reads the approved clock sessions. A last day of work set by hand counts in their place. Hours approved after that day do not move the clock. A job with neither has no record of its work month. The app then shows the month of its sent, unpaid bill as a stand-in, and says so. Set the last day of work to replace the stand-in. A sub's notice is due by the 15th of the third month after the work. The lien is due by the 15th of the fourth month after the last month worked. On a house both dates are a month earlier.
 
 :::example Work done in 2026, on a job with a GC
 
