@@ -9,6 +9,19 @@
  * or a path with nothing left on it, has no button.
  */
 import type { LienTimelineNext, LienTimelineWaitingOn } from './lienTimeline'
+import type { StagesLienWindowTab } from './stagesDeepLinks'
+
+/**
+ * The names on the window's paper tabs (v2.7181, punch list #335, row 6). The third read *Mechanic's lien* while the billed
+ * row, the header above it and the Lien desk all call that paper the affidavit, so a person told to *File the
+ * affidavit* looked for a tab that was not there. A screen label only: no notice, affidavit or letter prints it.
+ */
+export const LIEN_WINDOW_TAB_LABEL: Record<StagesLienWindowTab, string> = {
+  demand: 'Demand letter',
+  notice: '§ 53.056 notice',
+  affidavit: 'Lien affidavit',
+  release_record: 'Release of record',
+}
 
 export type LienWindowNextDoor = { to: 'desk'; kind: 'notice' | 'retainage' } | { to: 'tab'; tab: 'notice' | 'affidavit' | 'release_record' }
 

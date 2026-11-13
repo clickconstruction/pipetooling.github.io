@@ -172,7 +172,7 @@ The affidavit needs six things.
 - A property that is not a homestead.
 - A yes or a no to the homestead question, on a house. An unanswered question is not a no.
 
-**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
+**What you do.** Open the job's Lien window on the Lien affidavit tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.054, § 53.055*
 

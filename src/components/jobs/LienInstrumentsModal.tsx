@@ -51,7 +51,7 @@ import type { LienTimelineCourtesy } from '../../lib/jobs/lienTimeline'
 import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
-import { lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
+import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -1074,10 +1074,10 @@ export default function LienInstrumentsModal({
       </button>
     ) : null
   const paperTabs = [
-    ['demand', 'Demand letter'],
-    ['notice', '§ 53.056 notice'],
-    ['affidavit', "Mechanic's lien"],
-    ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
+    ['demand', LIEN_WINDOW_TAB_LABEL.demand],
+    ['notice', LIEN_WINDOW_TAB_LABEL.notice],
+    ['affidavit', LIEN_WINDOW_TAB_LABEL.affidavit],
+    ...(hasFiledAffidavit ? ([['release_record', LIEN_WINDOW_TAB_LABEL.release_record]] as const) : []),
   ] as const
   // Save & record send… on a phone is a sheet over the whole card (v2.4414); a computer keeps the panel at the foot.
   const recordSheetOpen = isMobile && recordOpen && activeTab === 'demand'

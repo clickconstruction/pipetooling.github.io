@@ -48,6 +48,19 @@ describe('applyOnSiteWrites', () => {
     expect(back.containers[0]).toMatchObject({ retiredAt: null, locationId: 'p1', lat: 29.5 })
   })
 
+  it('an edit changes the name, the kind and the where line, each only when sent', () => {
+    const start = applyOnSiteWrites(empty(), [box], 'j1', AT)
+    const before = start.containers[0]!
+    const renamed = applyOnSiteWrites(start, [{ table: 'job_containers', op: 'update', id: 'a1', row: { label: 'R70' } }], 'j1', AT)
+    expect(renamed.containers[0]).toEqual({ ...before, label: 'R70' })
+    const piled = applyOnSiteWrites(renamed, [{ table: 'job_containers', op: 'update', id: 'a1', row: { kind: 'loose', where_note: 'on a pallet' } }], 'j1', AT)
+    expect(piled.containers[0]).toEqual({ ...before, label: 'R70', kind: 'loose', where: 'on a pallet' })
+    const cleared = applyOnSiteWrites(piled, [{ table: 'job_containers', op: 'update', id: 'a1', row: { where_note: '' } }], 'j1', AT)
+    expect(cleared.containers[0]).toMatchObject({ label: 'R70', kind: 'loose', where: '' })
+    // A name is never blanked by a bad row: the database would refuse it too.
+    expect(applyOnSiteWrites(cleared, [{ table: 'job_containers', op: 'update', id: 'a1', row: { label: '' } }], 'j1', AT).containers[0]!.label).toBe('R70')
+  })
+
   it('an update of a row that is not there changes nothing', () => {
     expect(applyOnSiteWrites(empty(), [{ table: 'job_containers', op: 'update', id: 'gone', row: { retired_at: AT } }], 'j1', AT)).toEqual(empty())
   })
