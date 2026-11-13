@@ -17,7 +17,7 @@ summary: >
   so the card calls the record a First look and the customer's page Show us the problem. The
   files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
   under each job, and what is picked on the phone is kept there until it has signal to send.
-next: the owner's first real call with it, and his try of a real iPhone clip on the office's machines
+next: #7842 merges, so Ask a tech opens where it can be seen; then the owner's first real call with it, and his try of a real iPhone clip on the office's machines
 size: L, built as nine PRs and four small ones after
 blocker: Three things that are the owner's: the Worker's /show/ line in the Cloudflare dashboard, raising the 50 MiB a file limit if a video longer than about 40 seconds is wanted, and a real iPhone clip played on the office's machines.
 opinion: built — what is left is small and named under *What is not done*
@@ -446,8 +446,11 @@ Asked 2026-11-11 and read against `main` the same day. The owner's side read the
 - **The job**: a look was tied to a ZZ Test job with the function **Book a visit** calls. The job read its look, the photo and the video opened from signed addresses, and the next sweep filed both to Drive and stamped the folder as moved under the job.
 - **Spanish**: a phone set to Spanish opened the sample and a real link in Spanish, one press turned the page to English and back, the button read *Enviar 1 foto*, and the thank-you read *Recibido. Robert tiene 1 foto.* The office's card read the place as *Kitchen* and their words as written.
 
+- **The presses' row**: on the live site the three presses sit level with Text, at the right edge, and at 375 wide they wrap under the kinds with nothing off the side.
+- **The tech**: **Ask a tech…** was on the card, and the press found a fault. Add a task opened with the question on it underneath the thread's window, where nobody could see it, because the thread's window sits on a higher layer. **Send as a task** in a thread's menu had the same fault. #7842 puts Add a task on top; it was seen right on the real thread window from a local server. The tech's page opened for the one look, drew the photo with the place and the words, and kept **Send my answer** dead until an answer was picked. An answer sent by the office's own sign-in read *The office has your answer*, and the card and a team note on the thread both read *Robert: Needs a visit to price* with the note. No task was saved.
+
 Every ZZ Test look was removed from the desk afterwards, with its rows and its files. Two Drive folders the walks made stay under the ZZ Test customer and the ZZ Test job, since nothing here can delete from Drive.
 
-**Not walked live**: **Ask a tech…**, since the walk would put a task on a real person's Checklist. Its tests hold the gate, the page and the answer. Nor the Job Mode card itself. It draws only for a job the signed-in person is clocked in on or scheduled for, and that would write a real person's hours on the live data. Its drawing is held by its render tests, and the read behind it is what the job walk checked. A swap of a kept file (v2.7002) was not tried on the live site by hand either. The sample of the page after Send reads in English on a Spanish phone, because the sample's words come from the function with no language; a real send answers in the page's language.
+**Not walked live**: a task saved to a tech, since it would land on a real person's Checklist, so the gate that opens one look to one tech is held by its tests alone. Nor the Job Mode card itself. It draws only for a job the signed-in person is clocked in on or scheduled for, and that would write a real person's hours on the live data. Its drawing is held by its render tests, and the read behind it is what the job walk checked. A swap of a kept file (v2.7002) was not tried on the live site by hand either. The sample of the page after Send reads in English on a Spanish phone, because the sample's words come from the function with no language; a real send answers in the page's language.
 
 **Next**: the owner's first real call with it.
