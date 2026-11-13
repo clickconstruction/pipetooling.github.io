@@ -5,7 +5,7 @@ file: docs/dev-mcp/README.md
 type: Integration guide
 purpose: What dev-mcp is, how a dev connects an agent to it, what the door allows and refuses, and how to extend it. The plan and the naming scheme live in to-dos/mcp-servers.md; the function reference is EDGE_FUNCTIONS.md → dev-mcp.
 audience: Developers, AI agents
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 sections:
   - The idea
   - Connect

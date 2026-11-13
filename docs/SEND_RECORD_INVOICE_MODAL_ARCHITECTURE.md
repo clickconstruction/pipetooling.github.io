@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/SendRecordInvoiceModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 ---
 
 > **Line numbers are as of `f423bd6e5`** (read from `npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`). They rot on the next commit — search the symbol; every region below names one.
@@ -198,7 +198,7 @@ The modal's equivalent of Bids' `useBidPricingEngine` — **no shared selection 
 - **In kind note and question** (punch list #301; the rule is in [What this surface is](#what-this-surface-is)): the `bill-on-deal-note` and `InKindBillQuestion` render above the missing-email banner. While the question holds, `inKindUnanswered` keeps `outsideReady` false, and that one flag is what every send and record press reads: Stripe's, the physical invoice's (`physicalSendReady`) and HouseCall Pro's.
 - **Tab bar** (L2508–2544): Stripe bill · Physical invoice · ▾ / HouseCall Pro.
 - **Paid-job notice** (L2546–2574): `PAID_JOB_BILL_BLOCKED_MESSAGE` + "Bill this job again anyway" (`allowRebill`, disabled while `busy`).
-- **Send-to block** (`sendToBlock`, L2249–2332) and **`discountStrip`** — rendered by 2 tabs → parent-built. After the owner line the block ends with `BillCustomerReturnedChecksLine` (L2329, v2.4333; `payerCustomerId={contactsCustomerId}`), a 41-line child that calls RPC `list_ar_returned_check_payers` itself and is never a gate.
+- **Send-to block** (`sendToBlock`, L2249–2332) and **`discountStrip`** — rendered by 2 tabs → parent-built. After the owner line the block ends with `BillCustomerReturnedChecksLine` (L2329, v2.4333; `payerCustomerId={contactsCustomerId}`), a 41-line child that calls RPC `list_ar_returned_check_payers` itself and is never a gate; since v2.7031 (punch list #323) `BillCustomerPayCutoffLine` comes after it and ends the block (`payerCustomerId={contactsCustomerId}`, `jobId={job.id}`): it reads the payer's Pay calendar itself (`loadPayerPayCalendars`) and says what sending today makes the bill, never a gate, with no line on a failed read.
 - **Edit-dates dialog** (L3801–3890): opened from Stripe (`onEditDueDate`) AND Physical (both date link-buttons); Physical variant also edits service date; Save writes `sentDate` (physical only) + `stripeDueDate`. Its backdrop closes on `onClick` (v2.4347) and pads its top by `var(--app-top-chrome, 0px)` (v2.4447).
 - **`BillCustomerPreviewLineEditModal` wiring** (L3891–3904; `zIndex = overlayZIndex + 30`, material edit disabled for superintendent; `onFixtureSaved`/`onMaterialSaved`/`onStripeOverrideSaved` → `refreshBillCustomerJobDetails`; the override save first writes `stripeLineDescription`).
 - **`lineLeadingLowercaseHint` memo** (L1835–1891): reads Stripe preview lines AND a throwaway physical doc build.

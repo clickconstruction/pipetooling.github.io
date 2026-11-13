@@ -19,3 +19,5 @@ Merge, `bash scripts/db-push.sh`, then `supabase functions deploy get-estimate-f
 ## Verify
 
 Read-only on prod after the push: `select column_name from information_schema.columns where table_name = 'estimates' and column_name = 'first_look_id'` reads one row; `select convalidated from pg_constraint where conname = 'estimates_first_look_id_fkey'` reads true.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7800.

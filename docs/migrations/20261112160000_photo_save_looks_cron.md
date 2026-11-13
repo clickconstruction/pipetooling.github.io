@@ -22,3 +22,5 @@ Merge, `bash scripts/db-push.sh`, then `supabase functions deploy photo-save`. A
 ## Verify
 
 Read-only on prod after the push: `select command like '%first_look_files%' from cron.job where jobname = 'photo-save'` reads true, and `select count(*) from cron.job where jobname = 'photo-save'` reads 1.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7800.
