@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: waiting
-status: carried from #325 when it closed 2026-11-12 · rows 5 and 6 shipped v2.7184 and v2.7181 · row 1 waits on the owner's reading
+status: carried from #325 when it closed 2026-11-12 · rows 2, 5 and 6 shipped v2.7187, v2.7184 and v2.7181 · row 1 waits on the owner's reading
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The owner says which last day of work counts in row 1. Then one of the two readers changes. Rows 2 and 4 can be built any time.
-size: M as six small pieces (S · S · XS · M · S · XS)
+next: The owner says which last day of work counts in row 1. Then one of the two readers changes. Row 4 changes the same clock, so it follows row 1.
+size: M as six small pieces (S · S · XS · M · S · XS), three shipped
 blocker: The owner's call on row 1.
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -46,12 +46,16 @@ what still differed. Counts only are given here, since the repo is public.
    window's, because the paper the office files already follows it. Then `buildLienPayRunway` takes
    the later of the two, and the Lien desk's Deadlines view, the phone chip and the Dashboard's lien
    card are walked, since they read the same clock.
-2. **The header for an affidavit that is not drafted or approved (S).** It reads *File the
+2. ~~**The header for an affidavit that is not drafted or approved (S).** It reads *File the
    affidavit* at every step. The row reads *Draft the affidavit*, *Approve the affidavit* or the
    fact that holds it (*Answer the homestead question*). `buildLienTimeline` has no sentence for
    those steps. v2.7077 did the same for a notice by handing the window the job's desk entry
    (`lienWindowDeskNotice`). The affidavit needs its entry handed over the same way, a sentence per
-   step and a *Waiting on* line for each.
+   step and a *Waiting on* line for each.~~ **Shipped v2.7187.** The openers hand over the
+   affidavit's entry (`lienWindowDeskAffidavit`). The header reads *Draft the affidavit*, *Approve
+   the affidavit*, the fact that holds it (*Answer the homestead question, then file the
+   affidavit*) or *Held*, each with its own *Waiting on* line. The Lien desk's own timeline reads
+   the same.
 3. **A held notice (XS, maybe nothing).** The row reads *Review the hold*, the act. The header reads
    *Held — the Sep notice re-asks Oct 5*, the state. Both are true. Left as it is unless it reads
    wrong in use.
@@ -73,6 +77,12 @@ what still differed. Counts only are given here, since the repo is public.
 
 ## Also seen
 
+- The header's button for an affidavit to draft, approve or review opens the Lien desk's Affidavits
+  list, not the job's row in it. The desk selects a notice from its address (`&job=`) and has no
+  such read for an affidavit. The Accounts Receivable chip's door lands the same way.
+- A paper that waits on someone else's approval reads *Waiting on Robert* on the row and *Approve
+  the affidavit* in the header, whose second line says *the leader's approval*. A notice reads the
+  same two ways. The header could name the leader.
 - The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
   *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.
 - One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
