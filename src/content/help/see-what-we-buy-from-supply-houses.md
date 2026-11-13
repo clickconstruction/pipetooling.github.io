@@ -4,7 +4,7 @@ category: Billing & Money
 roles: assistant, controller, master_technician
 keywords: what we buy, purchases, bill lines, line items, parts, spend, quantity, how often, how many, supply house, by month, last paid, price, stock, charges, freight, code, no part yet
 ---
-Every supply house bill is read line by line. **What we buy** adds those lines up. It shows which parts the company buys, how often, how many and for how much.
+Every supply house bill is read line by line. **What we buy** adds those lines up. The page shows which parts the company buys, how often, how many and for how much.
 
 Open **Materials**, then {{button:outline|What we buy}} in the Purchase group.
 
@@ -15,7 +15,7 @@ Four figures sit at the top.
 - **Spent on parts** is the spend in the months you picked, and how many bills it is on.
 - **Charges** is freight, fuel and fees. A charge is never counted as a part.
 - **Distinct parts** is how many rows the table has. The line under it says how many have no part yet.
-- **Bills not counted** is how many bills wait for a person. Each has a reason on [Supply houses](/materials?tab=supply-houses).
+- **Bills not counted** is how many bills wait for a person. Each of those bills has a reason on [Supply houses](/materials?tab=supply-houses).
 
 Each row under the figures is one thing the company buys.
 
@@ -52,6 +52,6 @@ The same part bought at two houses is two rows until both codes are matched. Tea
 
 Only bills whose lines add up are counted. A quote, an acknowledgement and a ship ticket are never counted.
 
-A bill says what was bought. It does not say what was installed or what is on a truck.
+A bill says what was bought. A bill does not say what was installed or what is on a truck.
 
-Card purchases at big-box stores are not here. They have no lines on any paper.
+Card purchases at big-box stores are not here. A card purchase has no lines on any paper.
