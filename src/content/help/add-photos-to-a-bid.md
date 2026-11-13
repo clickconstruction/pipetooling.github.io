@@ -2,7 +2,7 @@
 title: add photos to a bid
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: photo, photos, camera, picture, bid photos, site walk, bid board, links, photos icon, grey icon, drive, project folder, team only, drop photos, pick files, take a photo, not in drive yet, personal drive, shared drive
+keywords: photo, photos, camera, picture, bid photos, site walk, bid board, links, photos icon, grey icon, drive, project folder, team only, drop photos, pick files, take a photo, not in drive yet, personal drive, shared drive, no signal, offline, kept on this phone, waiting to send, basement
 where: /bids?tab=bid-board
 order: 97
 ---
@@ -47,6 +47,34 @@ Close the window without pressing the button and the new photos are let go.
 5. Press the blue button to add them.
 
 Press {{button:outline|Pick from this phone}} to choose photos you already took.
+
+## With no signal
+
+A site walk often has no signal. You can still take the bid's photos.
+
+1. Open the bid's photos before you lose the signal, if you can. The Bid Board must already be on the screen.
+2. Press {{button:blue|Take a photo}} and take the photo.
+3. The tile reads **Kept on this phone.** The photo is safe on the phone.
+4. Type a name if you want one.
+5. Press the blue button. It reads {{button:blue|Add 1 photo}}, with its count.
+
+:::example A photo taken with no signal
+{{chip:yellow|Kept on this phone.}}
+
+{{button:blue|Add 1 photo}}
+:::
+
+The window then says how many photos wait. It reads **1 photo waits on this phone.** The line at the top of the screen counts them too. It reads **Bid photos**, then the time, then **waiting to send**.
+
+The photos go to the bid by themselves when the signal is back. You do not take them again. Each one is sent once.
+
+Press the blue button before you close the window. A kept photo you did not add is let go, as any new photo is.
+
+The window may open with no signal. It then says it could not load, and it still offers {{button:blue|Take a photo}}.
+
+A waiting photo stays on the phone if you close the app. It is sent the next time the app is open with a signal. Keep the app open until the line at the top reads **sent**.
+
+Do not clear the browser's data while a photo waits. That removes the photo. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line at the top of the screen.
 
 ## What you can add
 
