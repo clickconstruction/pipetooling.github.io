@@ -52,14 +52,30 @@ vi.mock('../supabase', () => ({ supabase: { from: (table: string) => query(table
 const signal = { online: true }
 const box = { id: 'a1', job_id: 'j1', label: 'A1', kind: 'cage', where_note: '', place_id: null, lat: null, lng: null, retired_at: null, created_at: '2026-10-29T00:00:00.000Z' }
 const use = (quantity: number) => ({ jobId: 'j1', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity, reason: 'used' as const, fromContainerId: 'a1', toContainerId: null, byUserId: 'u1', byName: 'Mateo' })
-/** Let a send run to its end: it loads its lander on first use, which takes more than a turn of the microtask queue. */
+/** The sender of the bench in hand, so `settle` can ask it whether a press is still on its way. */
+let sender: { inHand(): ReadonlyArray<unknown> } | null = null
+/**
+ * Let a send run to its end. A send loads its lander on first use (`landFieldPress` imports `onSiteWritesIo`), and how
+ * long that takes is the machine's to say: this used to wait a fixed 30 ms, a loaded runner took longer, the write
+ * landed in the next case, and both cases failed (the merge queue, 2026-11-13). So it waits on the sender's own word
+ * that nothing is in hand, and only then gives what follows a send its few turns: the word to the person, the read
+ * after a refusal, the store's answer to the outbox. None of those loads anything.
+ */
 const settle = async () => {
+  await vi.waitFor(
+    () => {
+      if (sender && sender.inHand().length > 0) throw new Error('a press is still on its way')
+    },
+    { timeout: 10_000, interval: 5 },
+  )
   for (let i = 0; i < 6; i += 1) await new Promise((r) => setTimeout(r, 5))
 }
 
 async function bench() {
   vi.resetModules()
-  const [store, { outbox }, { replayOutbox }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay')])
+  const [store, { outbox }, { replayOutbox }, { onSiteSender }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay'), import('./onSiteSend')])
+  // The same sender the store sends through: both come from this bench's fresh modules.
+  sender = onSiteSender()
   await outbox.load('u1', Date.now())
   const said: Array<{ message: string; tone: string }> = []
   store.setOnSiteErrorHandler((message, tone) => said.push({ message, tone }))
@@ -76,7 +92,12 @@ beforeEach(() => {
   vi.stubGlobal('navigator', { get onLine() { return signal.online } })
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} })
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(async () => {
+  // A case that failed part way may have left a press on its way: let it land here, never in the next case.
+  await settle()
+  sender = null
+  vi.unstubAllGlobals()
+})
 
 describe('an on-site press through the store', () => {
   it('with a signal it is on the screen at once and at the office, and nothing waits', async () => {
