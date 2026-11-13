@@ -99,4 +99,4 @@ One PR. The group is of no use without its letters, and the letters have no plac
 
 ## Where it stands
 
-Built with its mock-up and live. The first export from the live site showed the sample notice form naming a month and a date of its own; v2.7070 puts it on the sample job's month and mailing day. Left: the owner's look.
+Built with its mock-up and live. The first export from the live site showed the sample notice form naming a month and a date of its own; v2.7070 puts it on the sample job's month and mailing day. v2.7071 indents the cover letter's bullets and holds the letters on one page, and v2.7080 does the same for the short demand letter. Left: the owner's look, and her call on redrawing the demand letter of today's shape, which is longer than the sample and takes two pages.
