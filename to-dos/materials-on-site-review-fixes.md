@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: ready
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes opened the same day (PRs #7968, #7969 and #7970, and v2.7164 with this card) · the rest not built
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built the same day: PR 1 #7986, PR 2 #7990 and PR 3 #7988 open and armed, PR 4 on the branch `claude/on-site-reads-again`, which opens once #7986 merges · PRs 5 to 9 not built
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -12,10 +12,10 @@ summary: >
   file the public box page then streams. Four defects were fixed the same day. This card lists the
   rest as small PRs in the order they would hurt a person in the field or a number the office
   reads.
-next: PR 1, the on-site presses through the outbox, on the owner's word. It is the one that decides whether a crew with poor signal can trust the screen.
-size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 4 are what "good to go in the field" waits on
-blocker: The owner's word to build. PR 5 carries a migration and needs someone at hand to push it.
-opinion: build PRs 1 to 4 before a crew relies on it with poor signal — the numbers are right when the presses arrive, and today a press can fail to arrive with a green toast on the screen
+next: See PRs 1 to 4 through the queue, then the owner's look at a press made with a real phone's radio off. PR 5, what a teammate may change, is next on his word; it carries a migration.
+size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 4 are built; left: PRs 5 to 9 (M · S · S · M · S)
+blocker: None for PRs 1 to 4 beyond the merge queue. The owner's word for PR 5, which carries a migration and needs someone at hand to push it.
+opinion: your call — the four that a crew with poor signal waited on are built; try a press on a phone with the radio off, then say the word on PR 5
 mockup: not required — PR 1 uses the outbox bar that is already on the phone; no new screen
 ---
 
@@ -63,10 +63,10 @@ Each row is one PR. *Read* means found in the code and not walked. Line numbers 
 
 | PR | What is wrong | How a person meets it | Size |
 |---|---|---|---|
-| 1 · presses through the outbox | `addMovement` and every other write in `onSiteStore.ts` lands in the cache, the tab toasts green, and the insert is sent once (`afterWrite`, 349). Nothing queues it. The outbox #163 built for the clock, notes and reports (`src/lib/offline/`) does not carry an on-site press. | With no signal a count shows as saved. A red toast follows, five seconds long, perhaps after the person has walked on. The next good read puts the old number back. If the row did land and only the answer was lost, the toast says nothing was saved, and a second press doubles it, since each press mints a new id. | M |
-| 2 · a photo taken with no signal | The photo's own row is a plain insert that fails with no signal, so it lives in memory alone (`PhotoPress.tsx` 64, `addPhoto` 487). On reconnect the job is read again and the note is gone, with its **Send now**. The bytes stay in the phone's store. The upload is `upsert: false` with no branch for *already exists* (`photoUpload.ts` 29), which is #338's fault in its 409 form: a send whose answer was lost is refused on every later try. *Read.* | A photo taken in a basement never reaches the job's Drive folder, and nothing says so the next day. | S |
-| 3 · a failed read is not a zero | `loadJob` keeps its own error, so `loadDesk` succeeds around it (189). The desk never reads `jobLoadState`, so a job whose read failed draws 0 containers and $0.00. `useOnSiteSites` (52) and `usePartTies` (35) swallow a failure the same way: a site reads *across 0 jobs*, and joined names split with no word. *Read.* | The office reads a job as empty when the read failed. | S |
-| 4 · the store reads again | A job or the desk is read once a page session (`loadJob` 126, `loadDesk` 179). Nothing reads again on focus or on opening a box. | The desk left open shows the morning's numbers all day. A second phone caps **Used** at a stale number and offers *40 is right* from it. | S |
+| ~~1 · presses through the outbox~~ built, #7986 | `addMovement` and every other write in `onSiteStore.ts` lands in the cache, the tab toasts green, and the insert is sent once (`afterWrite`, 349). Nothing queues it. The outbox #163 built for the clock, notes and reports (`src/lib/offline/`) does not carry an on-site press. | With no signal a count shows as saved. A red toast follows, five seconds long, perhaps after the person has walked on. The next good read puts the old number back. If the row did land and only the answer was lost, the toast says nothing was saved, and a second press doubles it, since each press mints a new id. | M |
+| ~~2 · a photo taken with no signal~~ built, #7990 | The photo's own row is a plain insert that fails with no signal, so it lives in memory alone (`PhotoPress.tsx` 64, `addPhoto` 487). On reconnect the job is read again and the note is gone, with its **Send now**. The bytes stay in the phone's store. The upload is `upsert: false` with no branch for *already exists* (`photoUpload.ts` 29), which is #338's fault in its 409 form: a send whose answer was lost is refused on every later try. *Read.* | A photo taken in a basement never reaches the job's Drive folder, and nothing says so the next day. | S |
+| ~~3 · a failed read is not a zero~~ built, #7988 | `loadJob` keeps its own error, so `loadDesk` succeeds around it (189). The desk never reads `jobLoadState`, so a job whose read failed draws 0 containers and $0.00. `useOnSiteSites` (52) and `usePartTies` (35) swallow a failure the same way: a site reads *across 0 jobs*, and joined names split with no word. *Read.* | The office reads a job as empty when the read failed. | S |
+| ~~4 · the store reads again~~ built, on its branch | A job or the desk is read once a page session (`loadJob` 126, `loadDesk` 179). Nothing reads again on focus or on opening a box. | The desk left open shows the morning's numbers all day. A second phone caps **Used** at a stale number and offers *40 is right* from it. | S |
 
 ### Before the office leans on the numbers
 
@@ -115,6 +115,37 @@ the team. **View as** a superintendent on the real site answers it in a minute.
 
 ## Where it stands
 
-2026-11-13: the review is done and its four small fixes are open. Nothing else is built. #342
-(price what has no price) and #329's PRs 2 to 6 (stickers) are their own cards and are not
-repeated here.
+2026-11-13: the review is done and its four small fixes are merged. #342 (price what has no price)
+and #329's PRs 2 to 6 (stickers) are their own cards and are not repeated here.
+
+2026-11-13, later: the owner said *Yes, build 1 to 4*, and all four are built. Each row above tells
+what was wrong; this is what each PR did.
+
+- **PR 1, #7986.** A press is plain data (`onSiteWrites.ts`), written to the phone's store before its
+  first send and sent one at a time in the order pressed (`onSiteSend.ts`). With a signal it goes at
+  once. With none, or behind a press that waits, it joins the outbox as a tenth kind,
+  `on-site-press`, and the replay lands it through the tables' own policies. A resend carries the
+  same ids, and an insert that meets its own row counts once. A fresh read of the job draws the
+  presses still on their way over it. No migration. Walked at 375 wide on the dev server with every
+  on-site write answered by the walk's script: 8 to 7 with signal, then 6 and 5 kept with the signal
+  cut, both still drawn after a reload, both landed once and in order when it came back.
+- **PR 2, #7990.** A box photo's send that meets its own file in the bucket is a landing, so a send
+  whose answer was lost can be made again. A send has 30 seconds. A shot the phone could not keep
+  is said as lost. The photo's row rides PR 1.
+- **PR 3, #7988.** The desk draws a job whose read failed as *Did not load* with its reason and
+  **Read again**, its site's row counts it, and a site's screen names how many of its jobs are not
+  on it. A failed read of which job is on which site, and of the joined names, is said. Walked on
+  the dev server with one job's reads dropped on purpose.
+- **PR 4, branch `claude/on-site-reads-again`.** Every on-site screen reads again when the page
+  comes back to the front, the signal returns and every five minutes, and the phone when a box is
+  opened. The read is quiet, and a kept press stays on the screen through it. It sits on PR 1's
+  store, so its PR opens once #7986 merges.
+
+**Not checked by any of the four:** a real phone with its radio off, a real camera, and what the
+database answers a resent row. The last is read from Postgres' own rule, a duplicate on the primary
+key, and held by tests against a stand-in; the first press that waits and lands on the ZZ test job
+proves it on the project.
+
+**Still open from the same rows:** a kept photo waits for a person's **Send now** and is not sent
+by itself; the Needs you card leaves out a job whose read failed; two phones can still press
+against one box inside the same few seconds.
