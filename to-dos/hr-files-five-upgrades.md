@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884), v2.7111 the engagements' migration (#7886), v2.7122 the kept plans' migration (#7903), v2.7125 the Waiting on you list · not built: the seat's verbs for the numbers, the case and the kept plans, Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
+status: mapped 2026-11-11 (#7707) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 v2.6969 (#7716) live · live and walked on clicktooling.com 2026-11-13: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880, dev-mcp 0.81.0), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · merged with their migrations pushed: v2.7106 the numbers (#7881), v2.7111 engagements (#7886), v2.7122 the kept plans (#7903) · v2.7125 the Waiting on you list (#7911) rides with this change · not built: the seat's verbs for the numbers, the case and the kept plans, Apply and Drop from the tab, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -12,7 +12,7 @@ summary: >
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
 ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122, v2.7125
-next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884, #7886 then push its migration, #7903 then push its migration, then the list). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then the seat's keep and list for the kept plans, Apply and Drop once the owner picks who may press, upgrade 4, 5b and 5c.
+next: Paused 2026-11-13 on Grace's word (finish and ship only, nothing new). When building resumes, in order: upgrade 2 PR 3 (the seat's reads of the numbers and plan_case), the seat's keep and list for the kept plans, Apply and Drop once the owner picks who may press, the rest of upgrade 4, 5b and 5c.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -170,6 +170,12 @@ right to apply in the session on his word, as today.
 1 → 2 → 3 → 4 → 5 as he accepted them, one PR merged, pushed and deployed before
 the next starts on the same files. 5a touches no file the others touch and can go whenever a session is
 free.
+
+## Found on the live walks (2026-11-13)
+
+- A cold load of `/people?tab=hr&person=<people.id>` opens the HR roster, and the `person` part of the address is gone. Seen locally and live. The People page's tab effect is not the cause. It is older than this train; a fix for whoever owns People → HR's deep links.
+- `dev-mcp` passed Supabase's 5 MB upload limit with v2.7104. The upload carries `src/types/database.ts` (1.45 MB) through type-only imports in the generated edge kernels. It was deployed with that file stood in by a type stub, so the code that runs is main's. The lasting fix is to keep the type-only file out of the upload, likely in `scripts/edge-kernels.mjs`. Every later seat PR of this train needs one of the two.
+- Test rows on `ZZ Test Hand`, all made up: two entries and one correction link, a narrative written twice, one counsel-only record numbered Ev #1, and case Item 1 (closed) with its two log lines.
 
 ## How to verify each PR
 
