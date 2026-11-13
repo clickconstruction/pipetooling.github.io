@@ -72,10 +72,13 @@ export function tieCanon(ties: ReadonlyArray<PartTie>): (key: string) => string 
   return (key) => find(key)
 }
 
-/** The `same` answers behind one row, oldest first: what *Names joined here* lists, each with its Undo. */
-export function joinedTies(row: Pick<SitePartRow, 'memberKeys'>, ties: ReadonlyArray<PartTie>): PartTie[] {
-  const members = new Set(row.memberKeys)
-  return ties.filter((t) => t.verdict === 'same' && members.has(t.aKey) && members.has(t.bKey)).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+/**
+ * The `same` answers behind one row, oldest first: what *Names joined here* lists, each with its
+ * Undo. Read through `canon`, since a typed name tied to a parts-book part that has no line of its
+ * own on the site is still one of the row's ties.
+ */
+export function joinedTies(row: Pick<SitePartRow, 'key'>, ties: ReadonlyArray<PartTie>, canon: (key: string) => string = tieCanon(ties)): PartTie[] {
+  return ties.filter((t) => t.verdict === 'same' && canon(t.aKey) === row.key && canon(t.bKey) === row.key).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
 }
 
 /** A typed name's words and numbers, from its same-words key. A parts-book row is read from its name the same way. */

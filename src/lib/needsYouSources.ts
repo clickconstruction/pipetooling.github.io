@@ -78,8 +78,6 @@ export type NeedsYouSource =
   // v2.6098 (punch list #178): the Customers line and Today's sends, sources of their own so the Messages station can carry them.
   | 'customerMessages'
   | 'todaysSends'
-  // The week's call (punch list #303 PR 4, v2.6864): the Bridge's moves that carry the viewer's own account.
-  | 'bridgeMoves'
   // The owner is told (v2.7068): someone else saved the viewer's mail onto a job, through the dev seat.
   | 'mailSaved'
 
@@ -137,7 +135,6 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'awayBackDay',
   'customerMessages',
   'todaysSends',
-  'bridgeMoves',
   'mailSaved',
 ]
 
@@ -226,9 +223,6 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
       return role != null
     case 'whileOff':
       // While you were off (v2.6060, punch list #141 PR 4): the person's own held pushes, whoever they are.
-      return role != null
-    case 'bridgeMoves':
-      // The week's call (punch list #303 PR 4): a move is given to an account, whatever its role; `bridge_my_moves` hands each caller only their own.
       return role != null
     case 'mailSaved':
       // The owner is told (v2.7068): whoever's mail it was, a field role too; each person reads only their own notices.

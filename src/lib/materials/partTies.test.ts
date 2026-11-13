@@ -76,6 +76,15 @@ describe('the roll-up with ties', () => {
     expect(tee.key).toBe('id:book-1')
     expect(tee.name).toBe('3/4 COPPER TEE')
     expect(tee.total).toBe(312)
+    expect(joinedTies(tee, ties)).toHaveLength(1)
+  })
+  it('a name tied to a book part with no line of its own on the site is still listed as joined', () => {
+    const ties = [tie('id:book-77', key('2" 90'))]
+    const rows = sitePartRows(site, NOW, tieCanon(ties), new Map([['id:book-77', '2 PVC 90 DWV']]))
+    const row = rows.find((r) => r.key === 'id:book-77')!
+    expect(row.name).toBe('2 PVC 90 DWV')
+    expect(row.partId).toBe('book-77')
+    expect(joinedTies(row, ties)).toHaveLength(1)
   })
   it('with no tie, every row is as before', () => {
     expect(sitePartRows(site, NOW, tieCanon([])).map((r) => r.total)).toEqual(sitePartRows(site, NOW).map((r) => r.total))

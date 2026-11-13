@@ -63,8 +63,6 @@ export type CollectOutcomePlan = {
   recordPaymentFirst: boolean
   /** What the app then does, one sentence each, for the sheet's grey line. */
   then: string[]
-  /** Friday's bucket. */
-  friday: 'landed' | 'dated' | 'no_date' | 'on_the_owner'
 }
 
 const trim = (s: string | null | undefined): string | null => {
@@ -78,8 +76,7 @@ export function collectOutcomePlan(input: CollectOutcomeInput, opts: { graceDays
       return {
         writes: [{ kind: 'touch', outcome: 'note', note: `Paid after the call.${trim(input.words) ? ` ${trim(input.words)}` : ''}` }],
         recordPaymentFirst: true,
-        then: ['The pile falls by what landed once the payment is recorded.', 'Friday counts it under landed, after a call.', 'The payer gets a pay speed on record, and the next bill reads at that pace.'],
-        friday: 'landed',
+        then: ['The pile falls by what landed once the payment is recorded.', 'The payer gets a pay speed on record, and the next bill reads at that pace.'],
       }
     case 'promised': {
       // Before a date is picked the words name the day to come, never "Invalid Date" (v2.5873).
@@ -87,8 +84,7 @@ export function collectOutcomePlan(input: CollectOutcomeInput, opts: { graceDays
       return {
         writes: [{ kind: 'promise', ymd: input.ymd, saidBy: trim(input.saidBy), note: trim(input.words) }],
         recordPaymentFirst: false,
-        then: [`The forecast moves the money to ${day}.`, 'Until then the payer waits off the call sheet, unless other bills are late.', 'Friday counts this call under ended with a date.', `If ${day} passes unpaid, the row turns to past a promise after the ${opts.graceDays}-day grace. The broken promise is then this payer's call.`, 'A second miss on the account puts the owner on the next call.', 'The Lien desk’s clock does not move. It counts from the work month, never from a promise.'],
-        friday: 'dated',
+        then: [`The forecast moves the money to ${day}.`, 'Until then the payer waits off the call sheet, unless other bills are late.', `If ${day} passes unpaid, the row turns to past a promise after the ${opts.graceDays}-day grace. The broken promise is then this payer's call.`, 'A second miss on the account puts the owner on the next call.', 'The Lien desk’s clock does not move. It counts from the work month, never from a promise.'],
       }
     }
     case 'nodate': {
@@ -99,8 +95,7 @@ export function collectOutcomePlan(input: CollectOutcomeInput, opts: { graceDays
       return {
         writes,
         recordPaymentFirst: false,
-        then: [couldNotReach ? 'Recorded as could not reach.' : 'Recorded as a note with their words, so the next caller knows they spoke.', `The row keeps its state and is back on the sheet after ${opts.quietDays} quiet days.`, 'A second miss on the account, a no-answer or a broken date, puts the owner on the next call.', 'Friday counts it under no date. The forecast does not move, so the weeks stay honest.'],
-        friday: 'no_date',
+        then: [couldNotReach ? 'Recorded as could not reach.' : 'Recorded as a note with their words, so the next caller knows they spoke.', `The row keeps its state and is back on the sheet after ${opts.quietDays} quiet days.`, 'A second miss on the account, a no-answer or a broken date, puts the owner on the next call.', 'The forecast does not move, so the weeks stay honest.'],
       }
     }
     case 'dispute': {
@@ -108,8 +103,7 @@ export function collectOutcomePlan(input: CollectOutcomeInput, opts: { graceDays
       return {
         writes: [{ kind: 'touch', outcome: 'dispute', note: trim(input.words) ? `${reasonWords}. ${trim(input.words)}` : reasonWords }],
         recordPaymentFirst: false,
-        then: ['The row leaves the call sheet and reaches the owner with their words, under Only you can decide.', 'The bills stay in the pile, marked disputed, so the weeks do not flatter.', 'The Lien desk keeps its clock running.', 'Friday counts it under on the owner.'],
-        friday: 'on_the_owner',
+        then: ['The row leaves the call sheet and reaches the owner with their words, under Only you can decide.', 'The bills stay in the pile, marked disputed, so the weeks do not flatter.', 'The Lien desk keeps its clock running.'],
       }
     }
   }
