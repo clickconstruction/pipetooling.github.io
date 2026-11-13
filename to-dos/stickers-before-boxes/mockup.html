@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stickers before boxes: print a run, stick one on, then say what it is</title>
+<style>
+  /* Punch list #329. A sticker that exists before its box. Drawn 2026-11-12, with that day as today. Nothing here is
+     built. Every name, job, number and count is made up: the site is a made-up development called Juniper Ridge with
+     96 boxes on two made-up jobs, Dana Whitfield prints in the office, Marcus Reyes is sent ahead with the stickers and
+     Priya Nair counts later. The QR squares are random dots and open nothing. No live box, job or person is here. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 400px; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; }
+  .pick p.b { font-weight: 600; color: var(--text-strong); }
+
+  /* her case, as four steps */
+  .steps { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .steps .n { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--copper); }
+  .steps .big { font-size: 22px; font-weight: 800; color: var(--text-strong); line-height: 1.2; margin: 2px 0; }
+  .steps p { margin: 0; font-size: 13px; }
+
+  /* drawn app pieces */
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .hdr b { color: var(--text-strong); font-size: 14px; }
+  .hdr .x { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 10px; font-weight: 600; color: var(--text-strong); background: var(--surface); }
+  .sheet { background: var(--surface); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; padding: 14px 12px 12px; display: grid; gap: 10px; }
+  .sheet h4 { margin: 0; font-size: 17px; color: var(--text-strong); }
+  .sub { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .lab { font-weight: 600; font-size: 13px; color: var(--text-strong); }
+  .btn { min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 6px 12px; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; min-height: 50px; }
+  .btn.quiet { border: 0; background: none; color: var(--text-link); min-height: 30px; padding: 0; justify-content: flex-start; }
+  .btn.dash { border-style: dashed; background: transparent; color: var(--text-700); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { min-height: 32px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg .btn { font-size: 13px; }
+  .seg .on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .field { min-height: 46px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); padding: 8px 12px; display: flex; align-items: center; font-size: 14px; }
+  .field.big { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+  .field.ph { color: var(--text-muted); }
+  .num { display: inline-block; font: 700 12px/1.5 var(--mono); padding: 0 7px; border-radius: 6px; border: 1px solid var(--new); color: var(--new); background: var(--new-tint); white-space: nowrap; }
+  .none { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--border-amber); color: var(--text-amber-800); background: var(--bg-amber-tint); white-space: nowrap; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .box.sel { border: 2px solid #2563eb; background: var(--bg-blue-tint); }
+  .box .t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 800; font-size: 15px; color: var(--text-strong); }
+  .box .t span.k { font-weight: 500; color: var(--text-muted); font-size: 13px; }
+  .box .m { color: var(--text-muted); font-size: 12.5px; }
+  .grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+  .line { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .line b { color: var(--text-strong); }
+  .sum { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-size: 13.5px; }
+  .sum b { color: var(--text-strong); }
+  .bar { height: 8px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--new); }
+  .ok { background: var(--bg-green-tint); border: 1px solid var(--border-green); color: var(--text-green-700); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+  .wait { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+  .hist { font-size: 12.5px; color: var(--text-muted); border-left: 2px solid var(--border-strong); padding-left: 8px; }
+  ol.moves { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+
+  /* paper: a strip, a run of strips, a sheet. Paper stays light in both themes. */
+  .paperbg { background: #d9dde3; padding: 12px; display: grid; gap: 8px; justify-items: start; }
+  .strip { background: #fff; color: #000; border: 1px solid #9aa1ab; border-radius: 3px; display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; padding: 5px 8px 5px 5px; width: 100%; max-width: 250px; }
+  .strip svg { width: 58px; height: 58px; display: block; background: #fff; }
+  .strip .big { font-size: 28px; font-weight: 900; line-height: 1; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .big.s { font-size: 21px; }
+  .strip .ad { font: 9px/1.3 var(--mono); margin-top: 4px; }
+  .strip .w { font-size: 9px; line-height: 1.2; }
+  .roll { display: grid; gap: 0; width: 100%; max-width: 250px; }
+  .roll .strip { border-radius: 0; border-bottom: 1px dashed #9aa1ab; }
+  .roll .strip + .strip { border-top: 0; }
+  .more { font-size: 12px; color: #374151; }
+  .page { background: #fff; border: 1px solid #9aa1ab; width: 100%; max-width: 250px; aspect-ratio: 8.5 / 11; padding: 5% 3%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(10, 1fr); gap: 1px 4px; }
+  .page .cell { border: 1px dotted #b5bbc4; border-radius: 2px; display: grid; grid-template-columns: 34% 1fr; align-items: center; gap: 3px; padding: 1px 2px; min-width: 0; overflow: hidden; }
+  .page .cell svg { width: 100%; aspect-ratio: 1; display: block; }
+  .page .cell b { font: 800 9px/1 var(--font); color: #000; }
+
+  /* the camera */
+  .cam { background: #0b0f17; border-radius: 12px; aspect-ratio: 16 / 10; position: relative; display: grid; place-items: center; overflow: hidden; }
+  .cam .strip { max-width: 190px; transform: rotate(-3deg); grid-template-columns: 46px 1fr; }
+  .cam .strip svg { width: 46px; height: 46px; }
+  .cam .strip .big { font-size: 22px; }
+  .cam i { position: absolute; width: 22px; height: 22px; border: 3px solid #fff; opacity: .9; }
+  .cam i.a { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+  .cam i.b { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+  .cam i.c { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+  .cam i.d { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+  /* mistakes and calls: cards, so nothing scrolls sideways */
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .card p { margin: 0; font-size: 13px; }
+  .card .scr { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text-strong); }
+  .card .rec { border-left: 3px solid var(--new); padding-left: 8px; }
+  .card .rec b { color: var(--new); }
+  .card .alt { border-left: 3px solid var(--border-strong); padding-left: 8px; color: var(--text-muted); }
+  .train { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+  .train > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .train b { display: block; color: var(--text-strong); font-size: 14px; }
+  .train .sz { font: 700 11px var(--mono); color: var(--copper); }
+  .train .stop { background: var(--new-tint); border: 2px solid var(--new); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #329 · a decision mock-up · nothing here is built · every name and number is made up</p>
+    <h1>Stickers before boxes</h1>
+    <p><b>My recommendation:</b> make the sticker its own thing. It is a printed code and a short number that point at a box, or at nothing yet. The office prints a run of 200. On site, a scan of a blank sticker asks one question: an old box or a new one. The next unused sticker is the next box, with no office step. A scan later opens the box, and the box can be renamed there. Every label printed so far keeps working.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#case">Her site, replayed</a>
+  <a href="#print">1 · Print a run</a>
+  <a href="#sticker">2 · The sticker</a>
+  <a href="#first">3 · The first scan</a>
+  <a href="#rename">4 · Rename by scanning</a>
+  <a href="#list">5 · The site's boxes</a>
+  <a href="#walk">6 · Twenty in a row</a>
+  <a href="#mistakes">Mistakes</a>
+  <a href="#calls">Your calls</a>
+  <a href="#plan">The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>A box is typed into the app first. Its label is printed from that record.</li>
+      <li>A label's code is cut from the box's own row. No box, no label.</li>
+      <li>Nothing renames a box. A wrong name means retire it, add another and print a new label.</li>
+      <li>A scan is the phone's own camera, one box at a time.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>A sticker is printed first. It is blank until someone scans it.</li>
+      <li>The first scan asks one thing: an old box or a new one.</li>
+      <li>The sticker never carries the name, so a rename needs no new sticker.</li>
+      <li>A walk screen keeps the camera open for a hundred in a row.</li>
+    </ul>
+    <p class="b">Build the first three steps, then walk the site with a roll.</p>
+  </div>
+</div>
+
+<h2 id="case">Her site, replayed <small>a development with about a hundred boxes, drawn here as Juniper Ridge with 96</small></h2>
+<p class="lede">The real site was read on 2026-11-12 with every write refused. Its boxes sit under two jobs. Nearly all are cages named by a painted stencil. The crew's first walk took about a minute a box, because each one was typed in.</p>
+<div class="steps">
+  <div><div class="n">In the office</div><div class="big">200 sets</div><p>Dana prints stickers 0101 to 0300, two of each. No box is made.</p></div>
+  <div><div class="n">Day one on site</div><div class="big">96 old boxes</div><p>Marcus sticks, scans, types two digits and presses the box. About 20 seconds each, so under an hour.</p></div>
+  <div><div class="n">The weeks after</div><div class="big">9 new boxes</div><p>The next sticker on the roll is the next box. Nobody calls the office.</p></div>
+  <div><div class="n">Left on the roll</div><div class="big">96 not used</div><p>One old box was not found. The roll still holds 0205 to 0300 for this site or another.</p></div>
+</div>
+<p class="note"><b>Where a person would get stuck:</b> the boxes are under two jobs, so the list of old boxes reads the whole development. A stencil may not match the paint, so the search reads every word. The 20 seconds is my estimate until someone walks it.</p>
+
+<h2 id="print">1 · Print a run <small>the office, or a lead on site</small></h2>
+<p class="lede">The spot is the print window. Today it can only list boxes that exist.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>Labels · JP1204</b><span class="x">Close</span></div>
+      <div class="pad">
+        <p class="sub">96 boxes, 2 strips each. 192 strips.</p>
+        <div class="chips"><span class="chip on">R1</span><span class="chip on">R2</span><span class="chip on">R3</span><span class="chip on">R4</span><span class="chip on">R5</span><span class="chip on">R6</span><span class="chip">and 90 more</span></div>
+        <div class="chips"><span class="lab">Copies of each</span><span class="chip">−</span><b>2</b><span class="chip">+</span></div>
+        <div class="btn pri">Print 192 tape labels</div>
+      </div>
+    </div>
+    <p class="say">Every label belongs to a box that is already typed in. There is no way to print one for a box nobody has seen yet.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><b>Print blank stickers</b><span class="x">Close</span></div>
+      <div class="pad">
+        <span class="lab">How many</span>
+        <div class="chips"><span class="chip">30</span><span class="chip">60</span><span class="chip">100</span><span class="chip on">200</span><span class="chip">Type a number</span></div>
+        <span class="lab">New boxes go on</span>
+        <div class="field">JP1204 · Juniper Ridge, phase 2</div>
+        <p class="sub">Juniper Ridge has 96 boxes on 2 jobs.</p>
+        <div class="chips"><span class="lab">Copies of each</span><span class="chip">−</span><b>2</b><span class="chip">+</span><span class="sub">A set goes on two sides of one box.</span></div>
+        <p class="sub">Prints on Brother tape. The last run ended at 0100.</p>
+        <div class="btn pri">Print 200 sets, 0101 to 0300</div>
+        <div class="btn quiet">Print 1 test strip</div>
+      </div>
+    </div>
+    <p class="say">Ask for a count and a job, get a roll. A second run starts where the last one ended, so two runs never share a number.</p>
+  </div>
+</div>
+<p class="note"><b>A run that stops part way</b> says how many went and offers <b>Print the rest, 0163 to 0300</b>. <b>A damaged sticker</b> is <b>Print 0163 again</b>: the same code, so nothing can collide.</p>
+
+<h2 id="sticker">2 · The sticker <small>what is printed on it</small></h2>
+<p class="lede">The spot is one strip of tape. Today it carries the box's name, so it cannot be printed before the box has one.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="paperbg">
+      <div class="strip"><svg class="qr" data-seed="12"></svg><div><div class="big s">R40 TOILETS</div><div class="ad">PRTS.CO/B/7D75-9246</div><div class="w">Scan for what is inside</div></div></div>
+    </div></div>
+    <p class="say">The stencil is printed on the strip. A new name means a new strip.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="paperbg">
+      <div class="roll">
+        <div class="strip"><svg class="qr" data-seed="101"></svg><div><div class="big">0101</div><div class="ad">PRTS.CO/B/4F2A-9C18</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="101"></svg><div><div class="big">0101</div><div class="ad">PRTS.CO/B/4F2A-9C18</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="102"></svg><div><div class="big">0102</div><div class="ad">PRTS.CO/B/B31E-07A4</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="102"></svg><div><div class="big">0102</div><div class="ad">PRTS.CO/B/B31E-07A4</div><div class="w">Scan for what is inside</div></div></div>
+      </div>
+      <span class="more">… and on to 0300. A set prints together.</span>
+    </div></div>
+    <p class="say">A number a person can read aloud, and a code that never changes. The name lives in the app, not on the tape.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Also possible · a sheet of 30</div>
+    <div class="frame"><div class="paperbg">
+      <div class="page" id="page30"></div>
+      <span class="more">Sheet 1 of 14. Weatherproof labels, one inch tall.</span>
+    </div></div>
+    <p class="say">Fourteen pages print in a minute, where 400 strips of tape take about half an hour. It needs a laser printer and one alignment test.</p>
+  </div>
+</div>
+<p class="note"><b>Why a plain number.</b> One count for the whole company means a leftover sticker works on any site and no two runs collide. A site prefix, such as JR-0147, is the other way. The code in the square cannot be guessed, which matters because a box's page opens with no sign-in.</p>
+
+<h2 id="first">3 · The first scan of a blank sticker <small>on a phone, on site</small></h2>
+<p class="lede">The spot is what the phone asks when a box starts. Today the box is typed in first and the label comes later, from a printer.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> JP1204</div>
+      <div class="sheet">
+        <h4>Add a container</h4>
+        <p class="sub">The stencil on the steel is its name. Say where it stands so the next crew finds it.</p>
+        <div class="chips"><span class="chip on">Cage</span><span class="chip">Box</span><span class="chip">Loose pile</span></div>
+        <span class="lab">The stencil</span>
+        <div class="field big">A1</div>
+        <span class="lab">Which place on site</span>
+        <div class="chips"><span class="chip on">Barn</span><span class="chip">Laydown yard</span></div>
+        <div class="field ph">Or a new place: Laydown yard</div>
+        <span class="lab">Where exactly, if it helps</span>
+        <div class="field ph">by the north stair</div>
+        <div class="btn pri">Add A1</div>
+      </div>
+    </div>
+    <p class="say">Type the box in, then go find a printer for its label. The suggested stencil starts at A, whatever letter the site paints.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · an old box</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> Juniper Ridge</div>
+      <div class="sheet">
+        <h4>Sticker <span class="num">0147</span> is new</h4>
+        <p class="sub">What is it on?</p>
+        <div class="seg"><div class="btn on">A box already here</div><div class="btn">A new box</div></div>
+        <div class="field">76</div>
+        <div class="box sel"><div class="t">R76 GAS VALVES <span class="k">cage</span> <span class="none">no sticker</span></div><div class="m">Barn · 1 part · counted Nov 1 by Marcus</div></div>
+        <p class="sub">49 more boxes on this site have no sticker yet.</p>
+        <div class="btn pri">Put 0147 on R76</div>
+      </div>
+    </div>
+    <p class="say">Two digits and two presses. The box keeps its name, its counts, its photos and its old label. The list reads both jobs of the site.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · a new box</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> Juniper Ridge</div>
+      <div class="sheet">
+        <h4>Sticker <span class="num">0197</span> is new</h4>
+        <p class="sub">What is it on?</p>
+        <div class="seg"><div class="btn">A box already here</div><div class="btn on">A new box</div></div>
+        <span class="lab">Its name</span>
+        <div class="field big">0197</div>
+        <div class="chips"><span class="chip on">Use 0197</span><span class="chip">Use R97, the next stencil</span></div>
+        <div class="chips"><span class="chip">Cage</span><span class="chip on">Box</span><span class="chip">Loose pile</span></div>
+        <div class="chips"><span class="chip on">Barn</span><span class="chip">Laydown yard</span></div>
+        <p class="sub">Goes on JP1204 · Juniper Ridge, phase 2. <span style="color:var(--text-link);font-weight:600">Change</span></p>
+        <div class="btn pri">Save box 0197</div>
+      </div>
+    </div>
+    <p class="say">One press when the defaults are right. The name is the sticker's number until someone types a better one. The kind and place are the last box's.</p>
+  </div>
+</div>
+<p class="note"><b>Signed out</b>, a blank sticker reads <b>Sticker 0147 is not on a box yet. Sign in to say what it is.</b> and shows nothing else. <b>When the square will not scan</b>, type 147 into Scan a label.</p>
+
+<h2 id="rename">4 · Rename a box by scanning it <small>the part she asked for by name</small></h2>
+<p class="lede">The spot is the box's own screen, where a scan lands. Today it has no press that changes a name.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>R40 TOILETS · cage</b></div>
+      <div class="pad">
+        <p class="sub">Barn · 1 part · counted Nov 1 by Marcus</p>
+        <div class="line"><span>Elongated toilet, white</span><b>12</b></div>
+        <div class="btn">Count this box</div>
+        <div class="btn dash">Add a part</div>
+        <div class="chips"><span class="chip">Move this box</span><span class="chip">Mark on the map</span><span class="chip">Photo</span></div>
+        <div class="chips"><span class="chip">Print the label</span><span class="chip">Print the manifest</span></div>
+        <div class="btn quiet" style="color:var(--text-muted)">Retire R40 TOILETS</div>
+      </div>
+    </div>
+    <p class="say">A wrong name means retire the box and add another. The new box has a new code, so its label is printed again.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the box</div>
+    <div class="frame">
+      <div class="hdr"><b>R40 TOILETS · cage</b> <span class="num">0140</span></div>
+      <div class="pad">
+        <p class="sub">Barn · 1 part · counted Nov 1 by Marcus</p>
+        <div class="line"><span>Elongated toilet, white</span><b>12</b></div>
+        <div class="btn">Count this box</div>
+        <div class="btn dash">Add a part</div>
+        <div class="chips new"><span class="chip">Rename</span><span class="chip">This sticker is on the wrong box</span><span class="chip">Empty it and start over</span></div>
+        <div class="chips"><span class="chip">Move this box</span><span class="chip">Mark on the map</span><span class="chip">Photo</span></div>
+      </div>
+    </div>
+    <p class="say">Three new presses on the screen a scan already opens. Each one answers a different mistake.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the rename</div>
+    <div class="frame">
+      <div class="hdr"><b>R40 URINALS · cage</b> <span class="num">0140</span></div>
+      <div class="sheet">
+        <h4>Rename R40 TOILETS</h4>
+        <div class="field big">R40 URINALS</div>
+        <p class="sub">The parts, the counts and the photos stay. The sticker stays.</p>
+        <p class="sub">Different things inside now? Empty it and start over.</p>
+        <div class="btn pri">Rename to R40 URINALS</div>
+        <div class="hist">History · Renamed from R40 TOILETS by Priya, Nov 14</div>
+      </div>
+    </div>
+    <p class="say">A rename keeps the old name in the history. A box that holds different things becomes a new box under the same sticker, so last week's count stays true.</p>
+  </div>
+</div>
+
+<h2 id="list">5 · The site's boxes, with the unused stickers counted <small>phone first, then the office</small></h2>
+<p class="lede">The spot is the list of a site's boxes. Today it says nothing about labels at all.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> JP1204</div>
+      <div class="pad">
+        <div class="field ph">Find a part on this job</div>
+        <div class="grp">Barn</div>
+        <div class="box"><div class="t">R1 <span class="k">cage</span></div><div class="m">1 part · counted Nov 1 by Marcus</div></div>
+        <div class="box"><div class="t">R40 TOILETS <span class="k">cage</span></div><div class="m">1 part · counted Nov 1 by Marcus</div></div>
+        <div class="box"><div class="t">R88 <span class="k">cage</span></div><div class="m">2 parts · counted Nov 2 by Priya</div></div>
+        <div class="btn dash">Add a container</div>
+      </div>
+    </div>
+    <p class="say">The list cannot say which boxes have a label on them, or how many labels are left.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the phone</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> Juniper Ridge</div>
+      <div class="pad">
+        <div class="sum new">
+          <div><b>105 boxes.</b> 104 have a sticker. 1 does not.</div>
+          <div class="bar"><i style="width:52%"></i></div>
+          <div><b>96 stickers not used yet,</b> 0205 to 0300.</div>
+        </div>
+        <div class="field ph">Find a part, a box or a sticker number</div>
+        <div class="grp">Barn</div>
+        <div class="box"><div class="t">R1 <span class="k">cage</span> <span class="num">0101</span></div><div class="m">1 part · counted Nov 1 by Marcus</div></div>
+        <div class="box"><div class="t">R40 URINALS <span class="k">cage</span> <span class="num">0140</span></div><div class="m">1 part · counted Nov 1 by Marcus</div></div>
+        <div class="box"><div class="t">R88 <span class="k">cage</span> <span class="none">no sticker</span></div><div class="m">2 parts · counted Nov 2 by Priya</div></div>
+        <div class="box"><div class="t">0197 <span class="k">box</span> <span class="num">0197</span></div><div class="m">3 parts · counted today by Marcus</div></div>
+      </div>
+    </div>
+    <p class="say">One line counts the roll down. Each box shows its sticker's number, and a box with none says so.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the office</div>
+    <div class="frame">
+      <div class="hdr"><b>Materials · Juniper Ridge</b></div>
+      <div class="pad">
+        <div class="grp">Stickers</div>
+        <div class="sum new">
+          <div><b>Run of 200 sets</b> · 0101 to 0300</div>
+          <div class="sub">Printed Nov 12 by Dana · tape, 2 of each</div>
+          <div class="bar"><i style="width:52%"></i></div>
+          <div>104 on boxes · <b>96 not used</b></div>
+          <div class="chips" style="margin-top:4px"><span class="chip">Print one again</span><span class="chip">Move the 96 unused to another job</span></div>
+        </div>
+        <div class="sum">
+          <div><b>Run of 100</b> · 0001 to 0100</div>
+          <div class="sub">Printed Oct 30 by Dana · for Oak Meadow</div>
+          <div>100 on boxes · 0 not used</div>
+        </div>
+        <div class="btn">Print blank stickers</div>
+      </div>
+    </div>
+    <p class="say">Each run is a row. Unused stickers never expire, and the office can hand them to another job.</p>
+  </div>
+</div>
+
+<h2 id="walk">6 · Twenty in a row <small>the fifth step of the plan</small></h2>
+<p class="lede">The spot is what happens between one sticker and the next.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now, and after the first three steps</div>
+    <div class="frame">
+      <div class="hdr"><b>Around every sticker</b></div>
+      <div class="pad">
+        <ol class="moves">
+          <li>Open the phone's camera.</li>
+          <li>Point it at the square and tap the link.</li>
+          <li>A new browser tab opens the app.</li>
+          <li>Say what the box is and save.</li>
+          <li>Go back to the camera.</li>
+        </ol>
+        <p class="sub">It works on any phone with nothing to install. It leaves a hundred tabs open.</p>
+      </div>
+    </div>
+    <p class="say">Fine for one box. Slow for a hundred, and it needs signal for every page.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="hdr"><b>Sticker walk</b> Juniper Ridge<span class="x">Done</span></div>
+      <div class="pad">
+        <div class="sum"><div><b>37 of 96 old boxes have a sticker.</b> 163 stickers left.</div><div class="bar"><i style="width:38%"></i></div></div>
+        <div class="cam"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i>
+          <div class="strip"><svg class="qr" data-seed="138"></svg><div><div class="big">0138</div><div class="w">Scan for what is inside</div></div></div>
+        </div>
+        <div class="btn new">Or use the next sticker, 0138</div>
+        <div class="ok">0137 is on R52. Undo</div>
+        <div class="wait">2 are waiting to send. They go when the signal is back.</div>
+      </div>
+    </div>
+    <p class="say">One screen. The camera comes back after each save. A press with no scan covers a dark corner, and weak signal holds nothing up.</p>
+  </div>
+</div>
+<p class="note"><b>Why the scan stays the default.</b> A scan proves which sticker is in your hand. Counting along is faster, and one skipped sticker would shift every box after it. The camera in the app must be checked on a real iPhone and a real Android phone before it ships.</p>
+
+<h2 id="mistakes">Mistakes <small>what the phone says for each</small></h2>
+<div class="cards">
+  <div class="card"><h3>Two stickers on one box</h3><p>Allowed. A cage has more than one side.</p><div class="scr">Stickers <span class="num">0147</span> <span class="num">0152</span> · Take 0152 off this box</div></div>
+  <div class="card"><h3>Two people name one sticker</h3><p>Only a blank sticker can be placed, so the second person is told.</p><div class="scr">Marcus put 0147 on R76 a minute ago. Open R76 · That is wrong</div></div>
+  <div class="card"><h3>A sticker on the wrong box</h3><p>The sticker moves. Both boxes keep their own counts.</p><div class="scr">This sticker is on the wrong box · pick the right one</div></div>
+  <div class="card"><h3>A sticker fell off</h3><p>The box is still in the list by name. Any blank sticker takes its place.</p><div class="scr">0147 was on R76 and was marked lost.</div></div>
+  <div class="card"><h3>A new box that was already in the app</h3><p>Move the sticker onto the old box, then retire the empty new one.</p><div class="scr">Put 0199 on R61 · Retire 0199</div></div>
+  <div class="card"><h3>The wrong job</h3><p>A run names its job, so nobody picks one by hand on site.</p><div class="scr">Goes on JP1204 · Juniper Ridge, phase 2. Change</div></div>
+</div>
+
+<h2 id="calls">Your calls <small>seven, each with my pick first · all seven taken as recommended on 2026-11-12</small></h2>
+<div class="cards">
+  <div class="card"><h3>1 · What a sticker is</h3><p class="rec"><b>Recommended:</b> its own code that points at a box.</p><p class="alt">Also possible: 200 empty boxes made at print time. An old box could then never take a new sticker.</p></div>
+  <div class="card"><h3>2 · The number</h3><p class="rec"><b>Recommended:</b> one company-wide number, 0147.</p><p class="alt">Also possible: a site prefix, JR-0147. A leftover then looks wrong on another site.</p></div>
+  <div class="card"><h3>3 · The paper</h3><p class="rec"><b>Recommended:</b> Brother tape now, and the sheet of 30 if a run is too slow.</p><p class="alt">Also possible: the sheet of 30 first.</p></div>
+  <div class="card"><h3>4 · The boxes the app already knows</h3><p class="rec"><b>Recommended:</b> any blank sticker, matched on the phone. Old labels keep working.</p><p class="alt">Also possible: a named label for each known box, found by hand in a pile of a hundred.</p></div>
+  <div class="card"><h3>5 · The walk</h3><p class="rec"><b>Recommended:</b> the camera in the app, with a press that needs no scan.</p><p class="alt">Also possible: the phone's own camera only.</p></div>
+  <div class="card"><h3>6 · Who prints a run</h3><p class="rec"><b>Recommended:</b> the office, a primary and a superintendent.</p><p class="alt">Also possible: anyone on the job. Placing a sticker is open to the whole team either way.</p></div>
+  <div class="card"><h3>7 · A new box's name</h3><p class="rec"><b>Recommended:</b> the sticker's number until someone types one.</p><p class="alt">Also possible: ask for a name every time.</p></div>
+</div>
+
+<h2 id="plan">The plan <small>six steps, one migration</small></h2>
+<div class="train">
+  <div><span class="sz">PR 1 · M</span><b>The sticker</b>The tables, the code, and a blank sticker's page. The one migration.</div>
+  <div><span class="sz">PR 2 · M</span><b>Print a run</b>The window, on tape. Print again, print the rest.</div>
+  <div><span class="sz">PR 3 · M</span><b>The first scan</b>An old box or a new one. Numbers on the list.</div>
+  <div class="stop"><span class="sz">Stop</span><b>Walk the site</b>The loop is whole here, with the phone's own camera.</div>
+  <div><span class="sz">PR 4 · S</span><b>Change it afterwards</b>Rename, wrong box, start over.</div>
+  <div><span class="sz">PR 5 · M</span><b>The sticker walk</b>The camera in the app. Weak signal.</div>
+  <div><span class="sz">PR 6 · S</span><b>The sheet of 30</b>Only if tape is too slow.</div>
+</div>
+<p class="note"><b>Not built on purpose:</b> an expiry on stickers, an office step to approve a new box, a sticker for a single part, tags that need a reader, and a box changing job by its sticker.</p>
+
+</div>
+<script>
+  // The squares are random dots with the three corner marks of a QR code. They open nothing.
+  function drawQr(svg) {
+    var n = 25, s = (Number(svg.dataset.seed) || 1) * 2654435761 % 4294967296, d = '';
+    function rnd() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }
+    function corner(x, y) {
+      var cx = x < 8 ? x : x - (n - 7), cy = y < 8 ? y : y - (n - 7);
+      if (cx < 0 || cx > 6 || cy < 0 || cy > 6) return false;
+      return cx === 0 || cx === 6 || cy === 0 || cy === 6 || (cx >= 2 && cx <= 4 && cy >= 2 && cy <= 4);
+    }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      var inCorner = (x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8);
+      var dark = inCorner ? corner(x, y) : rnd() < 0.48;
+      if (dark) d += 'M' + (x + 2) + ' ' + (y + 2) + 'h1v1h-1z';
+    }
+    svg.setAttribute('viewBox', '0 0 ' + (n + 4) + ' ' + (n + 4));
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="' + d + '"/>';
+  }
+  var page = document.getElementById('page30');
+  for (var i = 0; i < 30; i++) {
+    var num = String(101 + Math.floor(i / 2)).padStart(4, '0');
+    var cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = '<svg class="qr" data-seed="' + (101 + Math.floor(i / 2)) + '"></svg><b>' + num + '</b>';
+    page.appendChild(cell);
+  }
+  document.querySelectorAll('svg.qr').forEach(drawQr);
+  var buttons = document.querySelectorAll('.themes button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === t)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.set); }); });
+  var wanted = new URLSearchParams(location.search).get('theme');
+  if (wanted === 'dark' || wanted === 'light') setTheme(wanted);
+</script>
+</body>
+</html>

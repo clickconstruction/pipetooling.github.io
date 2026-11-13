@@ -83,12 +83,13 @@ export const UNTAG_OK: MyMailUntagOk = { ok: true, removed: 3, keptForMatter: fa
 
 export type FakeMyMailIo = { [K in keyof MyMailIo]: Mock<MyMailIo[K]> }
 
-/** The four actions over the rows above; pass any to answer otherwise. */
+/** The four actions and the press after a tag, over the rows above; pass any to answer otherwise. */
 export function fakeMyMailIo(over: Partial<MyMailIo> = {}): FakeMyMailIo {
   return {
     list: vi.fn<MyMailIo['list']>(over.list ?? (async () => MY_MAIL_PAGE)),
     open: vi.fn<MyMailIo['open']>(over.open ?? (async ({ gmailId }) => openedMail(MY_MAIL_ROWS.find((r) => r.gmailId === gmailId) ?? mailRow(gmailId)))),
     tag: vi.fn<MyMailIo['tag']>(over.tag ?? (async () => TAG_OK)),
     untag: vi.fn<MyMailIo['untag']>(over.untag ?? (async () => UNTAG_OK)),
+    afterTag: vi.fn<MyMailIo['afterTag']>(over.afterTag ?? (async () => undefined)),
   }
 }
