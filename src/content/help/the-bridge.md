@@ -124,6 +124,10 @@ Press **How Market's figure is counted** under the pipe to read today's counts. 
 
 Press Market's row on the pipe, or **Break it down** on the Market card. A window opens on what comes in to price. The headline says what Market is worth a week, beside what the field builds a week. One line under it says how far short of the field that is. Two figures split the amount into bids and estimates, each with its won rate. A small chart reads the won rate for each size of bid.
 
+Each of the two figures is a press. It reads **what makes it up ›** under the amount. Press the bids' amount and a second window opens over the first. It has a row for each size of bid. A row says what went out a week, the won rate, and what that wins a week. The rows add up to the amount you pressed. Press the estimates' amount for the estimates' window. Its rows are **Approved**, **Declined**, **Passed over**, **No answer** and **Still out**.
+
+Press a row to see the bids or estimates behind it, by name, the largest first. A list shows five. Press **Show all** for the rest. Press a name to open that bid on the Bid Board, or that estimate. Esc closes the second window and leaves the Market window open. So does a press outside it.
+
 **Do this week** lists up to three things, the biggest first. Each has one press. One row counts the old bids to mark won or lost. One names a quiet GC to call. One counts the bids that have no value. **Open the Bid Board**, **Open their bids** and **Open the bids** take you to the work.
 
 Four presses at the foot open the rest. **Every source** lists each GC with a chip. Feeding means they keep asking. Fading means they ask less than half their usual. New name means their first bid was in the last 91 days. No answers means six priced bids with nothing marked won or lost. Press a row for its quarters and its door. **The asks by week** shows three tiles and the last 26 pay weeks. Press a week and its numbers read under the strip. **What this window cannot see** names courting, reputation and invites that never became a bid. **How this is counted** gives the rules for a win and for the list.
