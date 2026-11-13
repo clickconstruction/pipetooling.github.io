@@ -91,6 +91,15 @@ export async function payQrSvgMarkup(url: string, size: number, markDataUrl: str
   return renderToStaticMarkup(createElement(QRCodeSVG, payQrProps(url, size, markDataUrl)))
 }
 
+/**
+ * The markup with the SVG namespace on its root (v2.7090). The code is drawn as markup for a page, where the
+ * HTML parser supplies the namespace. Loaded into an `<img>` it is read as XML, and without the namespace the
+ * browser refuses it, so no code ever became a PNG: a PDF drew an empty square and Copy image failed.
+ */
+export function withSvgNamespace(svg: string): string {
+  return /^<svg\b[^>]*\sxmlns=/.test(svg) ? svg : svg.replace(/^<svg\b/, '<svg xmlns="http://www.w3.org/2000/svg"')
+}
+
 /** Rasterise an SVG string at `px` square (browser only): the PNG the clipboard, a download and jsPDF take. */
 export function svgMarkupToPngDataUrl(svg: string, px: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -107,7 +116,7 @@ export function svgMarkupToPngDataUrl(svg: string, px: number): Promise<string> 
       resolve(canvas.toDataURL('image/png'))
     }
     img.onerror = () => reject(new Error('svg did not load'))
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(withSvgNamespace(svg))))}`
   })
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_FIND_MAX, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_FIND_MAX, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageStickerAnswer, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
 import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
 
 const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
@@ -254,5 +254,51 @@ describe('the office number (v2.6910)', () => {
     expect(boxPageOfficePhone([null, undefined, '(512) 555-0199'])).toBe('(512) 555-0199')
     expect(boxPageOfficePhone(['  ', null])).toBe('')
     expect(boxPageOfficePhone([])).toBe('')
+  })
+})
+
+describe('a sticker\'s code (v2.7072, punch list #329)', () => {
+  const STICKER = { id: '9b1c0d2e-1111-4222-8333-444455556666', number: 147, code: '9B1C0D2E', container_id: null as string | null, lost_at: null as string | null }
+
+  it('no sticker carries the code: it is read as a box\'s own', () => {
+    expect(boxPageStickerAnswer(null)).toEqual({ kind: 'none' })
+  })
+
+  it('a blank sticker answers its number and nothing else', () => {
+    const a = boxPageStickerAnswer(STICKER)
+    expect(a).toEqual({ kind: 'blank', status: 404, body: { error: 'sticker_blank', number: 147 } })
+    // nothing of a job, a box, a run or a person
+    expect(Object.keys(a.kind === 'blank' ? a.body : {})).toEqual(['error', 'number'])
+    expect(boxPageView(404, a.kind === 'blank' ? a.body : null)).toEqual({ kind: 'sticker_blank', number: 147 })
+  })
+
+  it('a sticker on a box goes on to that box', () => {
+    expect(boxPageStickerAnswer({ ...STICKER, container_id: CONTAINER.id })).toEqual({ kind: 'box', containerId: CONTAINER.id, number: 147 })
+  })
+
+  it('a lost sticker says so, even while it keeps the box it was on', () => {
+    const a = boxPageStickerAnswer({ ...STICKER, container_id: CONTAINER.id, lost_at: '2026-11-14T15:00:00Z' }, '2026-11-14')
+    expect(a).toEqual({ kind: 'lost', status: 410, body: { error: 'sticker_lost', number: 147, lostOn: '2026-11-14' } })
+    expect(boxPageView(410, a.kind === 'lost' ? a.body : null)).toEqual({ kind: 'sticker_lost', number: 147, lostOn: '2026-11-14' })
+    expect(boxPageView(410, { error: 'sticker_lost', number: 147, lostOn: null })).toEqual({ kind: 'sticker_lost', number: 147, lostOn: null })
+  })
+
+  it('the old answers still read as they did', () => {
+    expect(boxPageView(404, { error: 'not_found' })).toEqual({ kind: 'not_found' })
+    expect(boxPageView(404, { error: 'sticker_blank' })).toEqual({ kind: 'not_found' })
+    expect(boxPageView(404, { error: 'sticker_blank', number: 'x' })).toEqual({ kind: 'not_found' })
+    expect(boxPageView(410, { error: 'retired', retiredOn: '2026-11-08' }).kind).toBe('retired')
+  })
+
+  it('the box a sticker is on answers under the scanned code, with the sticker\'s number, and round-trips', () => {
+    const p = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines: [], lastCountedOn: null, photo: null, scannedCode: '9B1C0D2E', stickerNumber: 147 })
+    expect(p.box.code).toBe('9B1C0D2E')
+    expect(p.box.stickerNumber).toBe(147)
+    expect(JSON.stringify(p)).not.toContain('job')
+    expect(parseBoxPageResponse(JSON.parse(JSON.stringify(p)))).toEqual(p)
+    // a label's own code carries no sticker number
+    const own = buildBoxPagePayload({ container: CONTAINER, place: '', lines: [], lastCountedOn: null, photo: null, scannedCode: null, stickerNumber: null })
+    expect(own.box.code).toBe('4F2A9C18')
+    expect('stickerNumber' in own.box).toBe(false)
   })
 })

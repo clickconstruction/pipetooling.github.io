@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -54,6 +54,18 @@ A line whose bill was paid says *Paid* and the day.
 Every send is its own line. A second send reads *Email, sent again*.
 
 A second send also says which send it is and the day of the first one. The words read like *2nd send. First sent Tue, Nov 3.*
+
+## See every send of one bill
+
+Press the bill's name on a line. The name is underlined.
+
+The bill's record opens. The record lists every send of that bill, newest first.
+
+Each send shows the day and time, who sent it, who it went to and whether it arrived. Press **Copy as sent** on a send to open that email.
+
+Press {{button:outline|Print this record}} to print the record as one page. The page is for your file or for counsel.
+
+The address of the record is a link you can save or paste. Press **← All bills sent** to go back to the list.
 
 ## Read a day
 
