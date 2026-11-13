@@ -122,22 +122,22 @@ beforeEach(() => {
   })
   box.db.tables.users = [{ id: 'u-office', name: 'Taunya', email: 'taunya@example.com' }]
   box.db.tables.gc_review_certifications = [
-    check('gc-knight', 'j-knight', 26000),
+    check('gc-kestrin', 'j-kestrin', 26000),
     // Checked at $250; a second $250 bill landed after.
     check('gc-done-right', 'j-sheppard', 250),
     // Last week's check does not count this week.
-    { ...check('gc-harper', 'j-harper', 30000), week_start: gcCertWeekStartYmd(new Date(Date.parse(`${week}T12:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10)) },
+    { ...check('gc-halden', 'j-halden', 30000), week_start: gcCertWeekStartYmd(new Date(Date.parse(`${week}T12:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10)) },
   ]
   box.payloads = {
-    'gc-knight': payloadFor('gc-knight', 'Knight Contracting', [row('j-knight', 'b-knight', 26000)]),
-    'gc-harper': payloadFor('gc-harper', 'TF Harper', [row('j-harper', 'b-harper', 30000)]),
-    'gc-done-right': payloadFor('gc-done-right', 'Done Right Foundation', [row('j-sheppard', 'b-sheppard', 250), row('j-mccluskey', 'b-mccluskey', 250)]),
+    'gc-kestrin': payloadFor('gc-kestrin', 'Kestrin Contracting', [row('j-kestrin', 'b-kestrin', 26000)]),
+    'gc-halden': payloadFor('gc-halden', 'TF Halden', [row('j-halden', 'b-halden', 30000)]),
+    'gc-done-right': payloadFor('gc-done-right', 'Dead Level Foundation', [row('j-sheppard', 'b-sheppard', 250), row('j-mccluskey', 'b-mccluskey', 250)]),
     'gc-oldco': payloadFor('gc-oldco', 'Oldco Builders', [row('j-oldco', 'b-oldco', 5000, true)]),
   }
   box.db.tables.gc_statement_email_requests = [
-    queued('q-knight', 'gc-knight', 'Knight Contracting'),
-    queued('q-harper', 'gc-harper', 'TF Harper', { repeat_weekly: true }),
-    queued('q-done-right', 'gc-done-right', 'Done Right Foundation'),
+    queued('q-kestrin', 'gc-kestrin', 'Kestrin Contracting'),
+    queued('q-halden', 'gc-halden', 'TF Halden', { repeat_weekly: true }),
+    queued('q-done-right', 'gc-done-right', 'Dead Level Foundation'),
     queued('q-oldco', 'gc-oldco', 'Oldco Builders', { include_collections: true }),
   ]
 })
@@ -158,42 +158,42 @@ const stamped = (id: string) => box.db.writes.filter((w) => w.op === 'update' &&
 describe('gc-statement-email-dispatch holds a GC’s statement until it is checked (v2.5022)', () => {
   it('sends the checked GC and the one that owes only in Collections; refuses the rest with the words and why', async () => {
     expect(await runCron()).toEqual({ status: 200, body: { ok: true, processed: 4, sent: 2, skipped: 0, duplicates: 0, refused: 2, errors: [] } })
-    expect(mail).toEqual([['ap@q-knight.example'], ['ap@q-oldco.example']])
-    expect(stamped('q-knight')).toEqual([expect.objectContaining({ error: null })])
-    expect(stamped('q-harper')).toEqual([expect.objectContaining({ error: 'refused: Check the bills first — a statement never goes out unchecked (not checked this week)' })])
-    expect(stamped('q-harper')[0]!.sent_at).toEqual(expect.any(String))
+    expect(mail).toEqual([['ap@q-kestrin.example'], ['ap@q-oldco.example']])
+    expect(stamped('q-kestrin')).toEqual([expect.objectContaining({ error: null })])
+    expect(stamped('q-halden')).toEqual([expect.objectContaining({ error: 'refused: Check the bills first — a statement never goes out unchecked (not checked this week)' })])
+    expect(stamped('q-halden')[0]!.sent_at).toEqual(expect.any(String))
     expect(stamped('q-done-right')).toEqual([expect.objectContaining({ error: 'refused: Check the bills first — a statement never goes out unchecked (changed since it was checked)' })])
     // Nothing went out for the refused two: no audit row, no send-log row.
     const audited = box.db.writes.filter((w) => w.op === 'insert' && w.table === 'gc_statement_emails').map((w) => w.values.gc_customer_id)
-    expect(audited).toEqual(['gc-knight', 'gc-oldco'])
+    expect(audited).toEqual(['gc-kestrin', 'gc-oldco'])
   })
 
   it('a refused weekly send still books next week, when the check is asked for again', async () => {
     await runCron()
     const booked = box.db.writes.filter((w) => w.op === 'insert' && w.table === 'gc_statement_email_requests').map((w) => w.values)
-    expect(booked).toEqual([expect.objectContaining({ gc_customer_id: 'gc-harper', send_at: '2026-10-15T12:00:00.000Z', repeat_weekly: true })])
+    expect(booked).toEqual([expect.objectContaining({ gc_customer_id: 'gc-halden', send_at: '2026-10-15T12:00:00.000Z', repeat_weekly: true })])
   })
 
   it('the whole report by GC leaves out the GCs not checked, names them at the top, and the checked ones still go', async () => {
-    const harper = payloadFor('gc-harper', 'TF Harper', [row('j-harper', 'b-harper', 30000)]).groups[0]!
-    const knight = payloadFor('gc-knight', 'Knight Contracting', [row('j-knight', 'b-knight', 26000)]).groups[0]!
+    const halden = payloadFor('gc-halden', 'TF Halden', [row('j-halden', 'b-halden', 30000)]).groups[0]!
+    const kestrin = payloadFor('gc-kestrin', 'Kestrin Contracting', [row('j-kestrin', 'b-kestrin', 26000)]).groups[0]!
     const noGc = { ...payloadFor('', 'Not billed to a GC', [row('j-none', 'b-none', 250)]).groups[0]!, entity_id: null, is_no_entity: true }
-    box.payloads[''] = { generated_at: '2026-10-09T15:00:00Z', group_by: 'gc', include_collections: false, grand_total: 56250, groups: [harper, knight, noGc] }
+    box.payloads[''] = { generated_at: '2026-10-09T15:00:00Z', group_by: 'gc', include_collections: false, grand_total: 56250, groups: [halden, kestrin, noGc] }
     box.db.tables.gc_statement_email_requests = [queued('q-all', null as never, 'All GCs', { gc_customer_id: null })]
     expect((await runCron()).body).toMatchObject({ processed: 1, sent: 1, refused: 0, errors: [] })
-    expect(bodies[0]).toContain('Held, not checked this week: TF Harper')
-    expect(bodies[0]).toContain('>Knight Contracting <span')
-    expect(bodies[0]).not.toContain('>TF Harper <span')
+    expect(bodies[0]).toContain('Held, not checked this week: TF Halden')
+    expect(bodies[0]).toContain('>Kestrin Contracting <span')
+    expect(bodies[0]).not.toContain('>TF Halden <span')
     const audit = box.db.writes.find((w) => w.op === 'insert' && w.table === 'gc_statement_emails')!.values
     expect(audit).toMatchObject({ group_by: 'all', gc_name: 'All GCs', total: 26250, job_count: 2 })
   })
 
   it('a check that cannot be read fails the attempt: nothing sent, the row tried again', async () => {
     box.certsFail = true
-    box.db.tables.gc_statement_email_requests = [queued('q-knight', 'gc-knight', 'Knight Contracting')]
+    box.db.tables.gc_statement_email_requests = [queued('q-kestrin', 'gc-kestrin', 'Kestrin Contracting')]
     const { body } = await runCron()
-    expect(body).toMatchObject({ sent: 0, refused: 0, errors: ['q-knight: gc_review_certifications: timeout'] })
+    expect(body).toMatchObject({ sent: 0, refused: 0, errors: ['q-kestrin: gc_review_certifications: timeout'] })
     expect(mail).toEqual([])
-    expect(stamped('q-knight')).toEqual([{ error: 'gc_review_certifications: timeout', attempts: 1 }])
+    expect(stamped('q-kestrin')).toEqual([{ error: 'gc_review_certifications: timeout', attempts: 1 }])
   })
 })

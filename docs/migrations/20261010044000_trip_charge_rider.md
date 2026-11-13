@@ -39,13 +39,13 @@ On PGlite 0.2.17 with stand-ins (`supabase/tests/revenue_riders/00_schema.sql`),
 - The migration is applied twice, then the scenario runs.
 
 The seed:
-- **Southern Post:** lines of $1,000 and 2 × $250, a $200 hazmat fee and a voided $75 one, a $30 returned check fee on bill 1, and a $99 trip charge (client not home) made by main's function.
+- **Southern Pine:** lines of $1,000 and 2 × $250, a $200 hazmat fee and a voided $75 one, a $30 returned check fee on bill 1, and a $99 trip charge (client not home) made by main's function.
 - **Job B:** one bill per backfill guard. A $250 trip charge made by the function. One whose amount changed after. One with a check fee on it. One whose memo the office renamed. And typed by hand, each with a matching closed note: one with a line item on it, the primary bill, a split part, one made yesterday, and one with no note.
 
 - **Before** (main, no migration): after the $99 trip charge the revenue is $1,829. Add discount ($10) then writes **$1,720**, losing the $99, while the bills total $929. Edit Job's save (the render test) writes $2,800 for Hawthorne where $2,899 is right.
 - **After:**
   - the backfill marks exactly the two bills the function made, once each, and leaves the eight others alone;
-  - `job_rider_fees` reads $329 for Southern Post (200 + 30 + 99), $0 for a job with no rider, and $0 for an unknown job;
+  - `job_rider_fees` reads $329 for Southern Pine (200 + 30 + 99), $0 for a job with no rider, and $0 for an unknown job;
   - Add discount writes **$1,819**;
   - a trip charge made now carries `[{"trip_charge": "site_not_ready", "amount": 250}]` from the start, with no description, and the revenue rises by $250;
   - a second press on its closed request is a duplicate and makes no second bill;

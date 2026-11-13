@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ownerShareApplies, ownerSharePropertyState, ownerShareScope, ownerShareState, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob } from './ownerBillShare'
 
-// 9703 Lenox Hl on 2026-09-25: Umar Khan is the customer, RMC- Dudley Mason the GC and the payer.
-const LENOX = 'addr-lenox'
-const job = (id: string, over: Partial<OwnerShareJob> = {}): OwnerShareJob => ({ id, customer_id: 'umar', gc_customer_id: 'rmc', bill_to_party: 'gc', customer_address_id: LENOX, show_bills_to_other_party: false, ...over })
+// 9703 Linmor Hl on 2026-09-25: Ulric Karrow is the customer, RLC- Dunmere Mallin the GC and the payer.
+const LINMOR = 'addr-linmor'
+const job = (id: string, over: Partial<OwnerShareJob> = {}): OwnerShareJob => ({ id, customer_id: 'ulric', gc_customer_id: 'rlc', bill_to_party: 'gc', customer_address_id: LINMOR, show_bills_to_other_party: false, ...over })
 const bill = (id: string, jobId: string, over: Partial<OwnerShareInvoice> = {}): OwnerShareInvoice => ({ id, job_id: jobId, status: 'billed', bill_to_party: null, bill_to_email: null, shown_to_party: null, ...over })
 
 describe('ownerShareApplies', () => {
@@ -13,7 +13,7 @@ describe('ownerShareApplies', () => {
   it('not when the customer pays, when there is no GC, or when the GC is the customer row', () => {
     expect(ownerShareApplies(job('a', { bill_to_party: 'customer' }))).toBe(false)
     expect(ownerShareApplies(job('b', { gc_customer_id: null }))).toBe(false)
-    expect(ownerShareApplies(job('c', { customer_id: 'rmc' }))).toBe(false)
+    expect(ownerShareApplies(job('c', { customer_id: 'rlc' }))).toBe(false)
   })
 })
 
@@ -38,15 +38,15 @@ describe('ownerShareState', () => {
 })
 
 describe('the whole property (the owner, 2026-09-25)', () => {
-  const lenox = [job('j273'), job('j858'), job('j866'), job('j881'), job('j1009')]
+  const linmor = [job('j273'), job('j858'), job('j866'), job('j881'), job('j1009')]
   const elsewhere = job('j500', { customer_address_id: 'addr-other' })
-  const someoneElse = job('j600', { customer_id: 'rizvi' })
+  const someoneElse = job('j600', { customer_id: 'rilvo' })
   it('one flip covers every job at the saved property with the same owner', () => {
-    expect(ownerShareScope(lenox[0]!, [...lenox, elsewhere, someoneElse]).map((j) => j.id)).toEqual(['j273', 'j858', 'j866', 'j881', 'j1009'])
+    expect(ownerShareScope(linmor[0]!, [...linmor, elsewhere, someoneElse]).map((j) => j.id)).toEqual(['j273', 'j858', 'j866', 'j881', 'j1009'])
   })
   it('a job with no saved property is alone', () => {
     const loose = job('j258', { customer_address_id: null })
-    expect(ownerShareScope(loose, [loose, ...lenox]).map((j) => j.id)).toEqual(['j258'])
+    expect(ownerShareScope(loose, [loose, ...linmor]).map((j) => j.id)).toEqual(['j258'])
   })
   it('the property reads on only when every job is on', () => {
     expect(ownerSharePropertyState(['on', 'on'])).toBe('on')

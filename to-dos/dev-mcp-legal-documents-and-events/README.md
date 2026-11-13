@@ -2,7 +2,7 @@
 name: "Dev MCP: put documents and past events on a Legal desk matter"
 number: 169
 group: gated
-status: Do 2026-11-07 (proposed 2026-10-24) · rank 4 of 10 from the review of the Burd matter (job 891) · the document verbs built as v2.6004 (#6355, 2026-10-27: plan_matter_document → apply_matter_document, the file sent as content_base64) · the event verbs built as v2.6682 (2026-11-08: plan_matter_event → apply_matter_event over dev_legal_event_write, migration 20261108080000, server 0.40.0) · built, the owner's look left
+status: Do 2026-11-07 (proposed 2026-10-24) · rank 4 of 10 from the review of the Brund matter (job 891) · the document verbs built as v2.6004 (#6355, 2026-10-27: plan_matter_document → apply_matter_document, the file sent as content_base64) · the event verbs built as v2.6682 (2026-11-08: plan_matter_event → apply_matter_event over dev_legal_event_write, migration 20261108080000, server 0.40.0) · built, the owner's look left
 summary: >
   The dev MCP writes a matter's narrative and its planned steps but cannot add a document or
   record an event, so a Claude session filing a case has to drive the desk in a browser, and a
@@ -23,10 +23,10 @@ mockup: not required — MCP verbs; the desk already shows what they write
 
 ## The ask
 
-The owner, 2026-10-24, after filing Click v Burd & Assoc. (job 891) on the Legal desk: *"Are
-there features that if we had added to the legal desk would have made this recording of the burd
+The owner, 2026-10-24, after filing Click v Brund & Assoc. (job 891) on the Legal desk: *"Are
+there features that if we had added to the legal desk would have made this recording of the brund
 situation better?"* The review found ten, ranked by what each would have saved on job 891, and the
-owner asked for each as a to-do with the Burd case as its example. This is rank 4.
+owner asked for each as a to-do with the Brund case as its example. This is rank 4.
 
 ## What happened on job 891
 

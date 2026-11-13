@@ -54,7 +54,7 @@ const salary = (id: string, inMs: number, outMs: number | null, seg: number, ext
 const twoJobs = () => [row('a', T('08:00'), T('10:00'), { job_ledger_id: 'J1' }), row('b', T('10:00'), T('12:00'), { job_ledger_id: 'J2' })]
 const aligned = (c: DayEditorSession[]): SplitEditorState => initialClusterSplitState(c, NOW)
 const JOB_LABELS = { J1: 'J878 · Smith', J2: 'J879 · Jones' }
-const BID_LABELS = { B1: 'B404 · Hyper Kidz' }
+const BID_LABELS = { B1: 'B404 · Jumpy Kidz' }
 
 describe('assignJobNeedsPersistedSplits / mergeAllocChoiceRequired', () => {
   it('only a multi-segment split that no longer matches the rows needs persisting first', () => {
@@ -76,7 +76,7 @@ describe('assignJobNeedsPersistedSplits / mergeAllocChoiceRequired', () => {
 describe('labels', () => {
   it('labelForSession: map label, then a truncated id, then null', () => {
     expect(labelForSession(row('a', 0, 1, { job_ledger_id: 'J1' }), JOB_LABELS, BID_LABELS)).toBe('J878 · Smith')
-    expect(labelForSession(row('a', 0, 1, { bid_id: 'B1' }), JOB_LABELS, BID_LABELS)).toBe('B404 · Hyper Kidz')
+    expect(labelForSession(row('a', 0, 1, { bid_id: 'B1' }), JOB_LABELS, BID_LABELS)).toBe('B404 · Jumpy Kidz')
     expect(labelForSession(row('a', 0, 1, { job_ledger_id: '0123456789abcdef' }), {}, {})).toBe('Job 01234567…')
     expect(labelForSession(row('a', 0, 1, { bid_id: 'fedcba9876543210' }), {}, {})).toBe('Bid fedcba98…')
     expect(labelForSession(row('a', 0, 1), JOB_LABELS, BID_LABELS)).toBeNull()
@@ -135,7 +135,7 @@ describe('per-segment views (aligned vs re-cut)', () => {
   })
 
   it('segmentAllocationLabelsForOverlap: override → one; aligned → one; re-cut → every distinct allocation in row order', () => {
-    expect(segmentAllocationLabelsForOverlap(c, { ...recut, segmentJobOverrides: { 0: { job_ledger_id: null, bid_id: 'B1' } } }, NOW, 0, JOB_LABELS, BID_LABELS)).toEqual(['B404 · Hyper Kidz'])
+    expect(segmentAllocationLabelsForOverlap(c, { ...recut, segmentJobOverrides: { 0: { job_ledger_id: null, bid_id: 'B1' } } }, NOW, 0, JOB_LABELS, BID_LABELS)).toEqual(['B404 · Jumpy Kidz'])
     expect(segmentAllocationLabelsForOverlap(c, aligned(c), NOW, 1, JOB_LABELS, BID_LABELS)).toEqual(['J879 · Jones'])
     expect(segmentAllocationLabelsForOverlap(c, recut, NOW, 0, JOB_LABELS, BID_LABELS)).toEqual(['J878 · Smith', 'J879 · Jones'])
     const dup = [row('a', T('08:00'), T('10:00'), { job_ledger_id: 'J1' }), row('b', T('10:00'), T('12:00'), { job_ledger_id: 'J1' })]

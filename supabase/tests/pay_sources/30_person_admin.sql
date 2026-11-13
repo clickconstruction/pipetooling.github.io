@@ -68,8 +68,8 @@ BEGIN
   ASSERT (r->'after'->>'is_salary')::boolean = true, 'row created';
 
   -- 4. alias: not staff, then a person, key normalised
-  r := public.set_cashapp_alias('  Michael   Zinna ', NULL, true, 'payouts were not wages');
-  ASSERT r->'after'->>'counterparty_key' = 'michael zinna' AND (r->'after'->>'not_staff')::boolean = true, 'alias not staff: ' || r::text;
+  r := public.set_cashapp_alias('  Michael   Zellin ', NULL, true, 'payouts were not wages');
+  ASSERT r->'after'->>'counterparty_key' = 'michael zellin' AND (r->'after'->>'not_staff')::boolean = true, 'alias not staff: ' || r::text;
   r := public.set_cashapp_alias('Jessie Lopez', 'Jesse', false, 'nickname');
   ASSERT r->'after'->>'person_name' = 'Jesse' AND (r->'after'->>'not_staff')::boolean = false, 'alias person';
   BEGIN

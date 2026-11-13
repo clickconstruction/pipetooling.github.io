@@ -1,5 +1,5 @@
 /**
- * Who a Cash App payment is for. Cash App names ("Abe Whites", "michael Archambault") rarely equal
+ * Who a Cash App payment is for. Cash App names ("Abe Whites", "michael Archley") rarely equal
  * app person names ("Abraham", "Michael A"), and two people are paid through someone else's
  * account (Tristen through Taunya when the note says "Tristen"; Malachi through Jessica Whites).
  * An alias row ties a counterparty to a person, or marks it not staff, with an optional note rule

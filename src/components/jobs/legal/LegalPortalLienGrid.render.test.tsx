@@ -14,7 +14,7 @@ const month = (job_id: string, work_month: string, deadline: string, over: Parti
 
 const raw: LienBookRaw = {
   rows: [
-    // Dudley: June's window closed Sep 15, July and August still open.
+    // Dunmere: June's window closed Sep 15, July and August still open.
     month('job-273', '2026-06', '2026-09-15'),
     month('job-273', '2026-07', '2026-10-15'),
     month('job-273', '2026-08', '2026-11-16'),
@@ -27,12 +27,12 @@ const raw: LienBookRaw = {
   items: [],
   filings: [],
   jobs: [
-    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl, Kyle, TX 78640', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
-    { id: 'job-300', hcp_number: '300', click_number: null, job_name: 'Reliant Health', job_address: '150 E Sonterra Blvd', gc_customer_id: 'gc-2', customer_address_id: null, revenue: 4800, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: 'no', lien_contract_ended_on: null },
+    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dunmere (Linmoor)', job_address: '9703 Linmor Hl, Kyle, TX 78640', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
+    { id: 'job-300', hcp_number: '300', click_number: null, job_name: 'Relwyn Health', job_address: '150 E Sonmere Blvd', gc_customer_id: 'gc-2', customer_address_id: null, revenue: 4800, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: 'no', lien_contract_ended_on: null },
     { id: 'job-310', hcp_number: '310', click_number: null, job_name: 'Whitfield repipe', job_address: '7 Willow Ct', gc_customer_id: null, customer_address_id: null, revenue: 1795, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: null, lien_contract_ended_on: null },
   ],
   gcs: [
-    { id: 'gc-1', name: 'Lenox', lien_notice_policy: null },
+    { id: 'gc-1', name: 'Linmor', lien_notice_policy: null },
     { id: 'gc-2', name: 'EPC Sparti', lien_notice_policy: null },
   ],
   addresses: [],
@@ -44,9 +44,9 @@ describe('LegalPortalLienGrid', () => {
     const { openHtmlPrintWindow } = await import('../../../lib/jobsDocuments/printWindow')
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     expect(screen.getByText('Lien grid')).toBeTruthy()
-    const dudley = screen.getByText('273 · Dudley (Lennox)').closest('td')!
-    expect(within(dudley).getByText('9703 Lenox Hl').nextElementSibling?.textContent).toBe('Kyle, TX 78640')
-    const row = dudley.closest('tr')!
+    const dunmere = screen.getByText('273 · Dunmere (Linmoor)').closest('td')!
+    expect(within(dunmere).getByText('9703 Linmor Hl').nextElementSibling?.textContent).toBe('Kyle, TX 78640')
+    const row = dunmere.closest('tr')!
     expect(row.textContent).toContain('Residential')
     expect(row.textContent).toContain('No homestead')
     expect(within(row).getByText('$17,585').tagName).toBe('B')
@@ -70,7 +70,7 @@ describe('LegalPortalLienGrid', () => {
     const marks = screen.getAllByTitle('A fact the office has not entered yet')
     expect(marks.length).toBeGreaterThan(0)
     for (const m of marks) expect(m.closest('td')!.style.textAlign).toBe('center')
-    expect(screen.getByText('300 · Reliant Health').closest('tr')!.textContent).toContain('Commercial')
+    expect(screen.getByText('300 · Relwyn Health').closest('tr')!.textContent).toContain('Commercial')
     const owner = screen.getByText('none needed')
     expect(owner.nextElementSibling?.textContent).toBe('(with the owner)')
     expect(owner.closest('tr')!.textContent).toContain('310 · Whitfield repipe')
@@ -83,7 +83,7 @@ describe('LegalPortalLienGrid', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const table = document.querySelector('table.legalCardTable') as HTMLTableElement
     expect(table.closest('.legalCardWrap')).toBeTruthy()
-    const row = screen.getByText('273 · Dudley (Lennox)').closest('tr')!
+    const row = screen.getByText('273 · Dunmere (Linmoor)').closest('tr')!
     const cells = [...row.children] as HTMLElement[]
     expect(cells.map((c) => c.getAttribute('data-label'))).toEqual(['', 'Owner of record', 'Property', 'Court', 'Last on site', 'Amount due · for work in', '§ 53.056 per month', 'Affidavit by', 'Bond', 'Paid out to GC', '10 % reserved', 'Contract completed', ''])
     // The facts the office has not entered drop out of the card; the last cell names them, a card's only.
@@ -104,19 +104,19 @@ describe('LegalPortalLienGrid', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     const names = rail.getAllByRole('button').filter((b) => b.hasAttribute('data-legal-lien-gc')).map((b) => b.textContent)
-    expect(names).toEqual(['All GCs3 jobs$24,180', 'Lenox1 job$17,585', 'EPC Sparti1 job$4,800', 'No GC · with the owner1 job$1,795'])
+    expect(names).toEqual(['All GCs3 jobs$24,180', 'Linmor1 job$17,585', 'EPC Sparti1 job$4,800', 'No GC · with the owner1 job$1,795'])
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
     expect(rail.queryByLabelText('Find a GC')).toBeNull()
     fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
     expect(rail.getByRole('button', { name: /EPC Sparti/ }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.queryByText('273 · Dudley (Lennox)')).toBeNull()
-    expect(screen.getByText('300 · Reliant Health')).toBeTruthy()
+    expect(screen.queryByText('273 · Dunmere (Linmoor)')).toBeNull()
+    expect(screen.getByText('300 · Relwyn Health')).toBeTruthy()
     expect(screen.getByText(/1 job · \$4,800 open · EPC Sparti/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
     expect(String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])).toContain('Lien grid — EPC Sparti')
     fireEvent.click(rail.getByRole('button', { name: /No GC/ }))
     expect(screen.getByText('310 · Whitfield repipe')).toBeTruthy()
-    expect(screen.queryByText('300 · Reliant Health')).toBeNull()
+    expect(screen.queryByText('300 · Relwyn Health')).toBeNull()
   })
 
   it('the rail follows Due in 30 days / Upcoming, and a chosen GC that empties falls back to All GCs', () => {
@@ -124,10 +124,10 @@ describe('LegalPortalLienGrid', () => {
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
     fireEvent.click(screen.getByRole('button', { name: /Due in 30 days/ }))
-    // Reliant's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
+    // Relwyn's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
     expect(rail.queryByRole('button', { name: /EPC Sparti/ })).toBeNull()
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByText('273 · Dudley (Lennox)')).toBeTruthy()
+    expect(screen.getByText('273 · Dunmere (Linmoor)')).toBeTruthy()
     expect(screen.queryByText(/Nothing on the grid/)).toBeNull()
   })
   it('the rail reads by court: counties by their dollars, the justice precincts under them, over the limit apart, bands when more than one court shows, and the print follows (v2.4825)', async () => {
@@ -164,8 +164,8 @@ describe('LegalPortalLienGrid', () => {
     expect(all).toContain('Hays County · Justice Court, Precinct 2 · 1 job · $17,585')
     // One court: its rows only, no band, and the print says which court.
     fireEvent.click(entries().find((b) => b.querySelector('.legalLienCourtFull')?.textContent === 'Precinct 2')!)
-    expect(screen.getByText('273 · Dudley (Lennox)')).toBeTruthy()
-    expect(screen.queryByText('300 · Reliant Health')).toBeNull()
+    expect(screen.getByText('273 · Dunmere (Linmoor)')).toBeTruthy()
+    expect(screen.queryByText('300 · Relwyn Health')).toBeNull()
     expect(bands()).toEqual([])
     expect(container.querySelector('[data-legal-lien-summary]')?.textContent).toMatch(/1 job · \$17,585 open · Hays County · Justice Court, Precinct 2$/)
     fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
@@ -176,7 +176,7 @@ describe('LegalPortalLienGrid', () => {
     fireEvent.click(rail.getByRole('button', { name: 'GCs' }))
     const gcs = within(screen.getByRole('navigation', { name: 'GCs' }))
     expect(gcs.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByText('300 · Reliant Health')).toBeTruthy()
+    expect(screen.getByText('300 · Relwyn Health')).toBeTruthy()
     expect(bands()).toEqual([])
   })
 })

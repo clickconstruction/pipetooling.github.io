@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseLienDeskDraftFields, buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, buildLienAffidavitFieldsForJob, retainageInsideClaim, lienRetainageCoverLetter } from './lienNoticeDraft'
 import { buildLienAffidavitBlocks, filingDocText, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 
-const notice = { noticeDate: '2026-09-23', projectDescription: '9703 Lenox Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RMC- Dudley Mason', contractedWithIfDifferent: '', claimAmount: '7902.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
+const notice = { noticeDate: '2026-09-23', projectDescription: '9703 Linmor Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RLC- Dunmere Mallin', contractedWithIfDifferent: '', claimAmount: '7902.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
 
 describe('parseLienDeskDraftFields · months dated from the job’s creation (v2.3747)', () => {
   it('keeps the flag when the item carries it and drops it otherwise, so older drafts read as before', () => {
@@ -14,7 +14,7 @@ describe('parseLienDeskDraftFields · months dated from the job’s creation (v2
 
 describe('parseLienDeskDraftFields · the pay page lines (v2.4724)', () => {
   it('keeps the typed lines by invoice id, drops anything that is not text, and reads older drafts without them', () => {
-    expect(parseLienDeskDraftFields({ notice, gcEmail: '', payLines: { a: 'Plumbing for the Lennox house', b: '', c: 3 } })).toMatchObject({ payLines: { a: 'Plumbing for the Lennox house', b: '' } })
+    expect(parseLienDeskDraftFields({ notice, gcEmail: '', payLines: { a: 'Plumbing for the Linmoor house', b: '', c: 3 } })).toMatchObject({ payLines: { a: 'Plumbing for the Linmoor house', b: '' } })
     expect(parseLienDeskDraftFields({ notice, gcEmail: '', payLines: { c: 3 } })?.payLines).toEqual({})
     expect(parseLienDeskDraftFields({ notice, gcEmail: '' })).not.toHaveProperty('payLines')
   })
@@ -79,11 +79,11 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(lienRetainageCoverLetter({ ...base, inClaim: false, contact: 'Robert', phone: '' })).toContain('Call Robert before you release retainage')
   })
   it("the form's type of labor and the affidavit's work description follow the job's service type (v2.3849)", () => {
-    const facts = { jobName: '', jobAddress: '9703 Lenox Hl', originalContractorName: 'RMC', openBalance: 100, contactPerson: 'R', issuer: null, todayYmd: '2026-09-26' }
+    const facts = { jobName: '', jobAddress: '9703 Linmor Hl', originalContractorName: 'RLC', openBalance: 100, contactPerson: 'R', issuer: null, todayYmd: '2026-09-26' }
     expect(buildLienNoticeFieldsForJob(facts).laborMaterialsType).toBe('Plumbing labor and materials')
     expect(buildLienNoticeFieldsForJob({ ...facts, serviceTypeName: 'Electrical' }).laborMaterialsType).toBe('Electrical labor and materials')
     expect(buildLienNoticeFieldsForJob({ ...facts, serviceTypeName: null }).laborMaterialsType).toBe('Plumbing labor and materials')
-    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
+    const aff = { jobName: '', jobAddress: '9703 Linmor Hl', isSub: true, originalContractorName: 'RLC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RLC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
     expect(buildLienAffidavitFieldsForJob({ ...aff, serviceTypeName: 'HVAC' }).workDescription).toBe('HVAC labor and materials')
     expect(buildLienAffidavitFieldsForJob(aff).workDescription).toBe('Plumbing labor and materials')
     // v2.4719: a job named for its customer never becomes the kind of work.
@@ -91,7 +91,7 @@ describe('retainage inside the claim (v2.3753)', () => {
   })
 
   it('the short form carries the company’s physical address when Settings hold one (punch list #305)', () => {
-    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', noticesRecorded: true }
+    const aff = { jobName: '', jobAddress: '9703 Linmor Hl', isSub: true, originalContractorName: 'RLC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RLC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', noticesRecorded: true }
     const issuer = (physicalAddressText?: string) => ({ companyName: 'Click Plumbing', addressText: 'PO Box 9\nKingsbury TX', phone: '', email: '', tagline: '', licenseLine: '', ...(physicalAddressText === undefined ? {} : { physicalAddressText }) })
     const both = buildLienAffidavitFieldsForJob({ ...aff, issuer: issuer('12925 FM 20\r\nKingsbury TX  ') })
     expect([both.claimantAddress, both.claimantPhysicalAddress]).toEqual(['PO Box 9, Kingsbury TX', '12925 FM 20, Kingsbury TX'])
@@ -104,7 +104,7 @@ describe('retainage inside the claim (v2.3753)', () => {
   })
 
   it('swears to what the sent bills owe when the desk hands it over (v2.4969), the correction still off it', () => {
-    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
+    const aff = { jobName: '', jobAddress: '9703 Linmor Hl', isSub: true, originalContractorName: 'RLC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RLC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
     expect(buildLienAffidavitFieldsForJob(aff).unpaidAmount).toBe('5000.00')
     expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000 }).unpaidAmount).toBe('4000.00')
     expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000, claimAmountOff: 500 }).unpaidAmount).toBe('3500.00')
@@ -113,7 +113,7 @@ describe('retainage inside the claim (v2.3753)', () => {
 })
 
 describe('buildLienAffidavitFieldsForJob · the period the earlier form’s paragraph 5 swears (v2.6061)', () => {
-  const base = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-07', contactPerson: 'R', issuer: null, noticesRecorded: true }
+  const base = { jobName: '', jobAddress: '9703 Linmor Hl', isSub: true, originalContractorName: 'RLC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RLC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-07', contactPerson: 'R', issuer: null, noticesRecorded: true }
   // The period prints on the earlier form alone; the short form (punch list #305) names months, not days.
   const aff = { ...base, todayYmd: '2026-10-29', form: 'long' as const }
   const paragraph5 = (fields: LienAffidavitFields) => filingDocText(buildLienAffidavitBlocks(fields))

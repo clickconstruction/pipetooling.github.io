@@ -15,7 +15,7 @@ import type { CallLetterFacts } from '../../lib/jobs/lienOwnerCallScript'
 type Props = {
   /** The selected job's last notice, or null when no job is under the reader. */
   facts: CallLetterFacts | null
-  /** The job as the desk names it — "273 · Dudley (Lennox)". */
+  /** The job as the desk names it — "273 · Dunmere (Linmoor)". */
   jobLabel: string | null
   /** A notice has gone out on the job, so the call can be recorded on it. */
   hasLetter: boolean

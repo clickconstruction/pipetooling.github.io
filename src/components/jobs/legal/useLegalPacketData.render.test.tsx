@@ -30,7 +30,7 @@ const job = makeJob({
   hcp_number: '717',
   status: 'billed',
   customer_id: 'tle',
-  customer_name: 'The Learning Experience',
+  customer_name: 'The Reading Corner',
   collections_at: '2026-08-20T15:00:00Z',
   // The first bill: noon UTC on Apr 17, the morning of Apr 17 in Central.
   invoices: [makeInvoice({ id: 'inv-a', amount: 500, status: 'billed', billed_at: '2026-04-17T12:00:00Z', sequence_order: 1 })],

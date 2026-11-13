@@ -90,7 +90,7 @@ function templateFor(ctx: TeamSampleContext, type: string): { subject: string; b
 /** Sample GCs for the account man's ask — the sample company's builders, with what they owe. */
 const SAMPLE_WORD_ASK_GCS = [
   { gcName: SAMPLE_GC.company, amount: 125_000, promise: { payBy: '2026-10-15', late: false, daysLate: 0 } },
-  { gcName: 'RMC · Dudley Mason', amount: 98_500, promise: null },
+  { gcName: 'RLC · Dunmere Mallin', amount: 98_500, promise: null },
   { gcName: 'Structura', amount: 89_000, promise: { payBy: '2026-09-20', late: true, daysLate: 9 } },
 ] as const
 
@@ -126,9 +126,9 @@ export function sampleLienStatusPayload(todayYmd: string): LienStatusPayload {
     jobs: [
       job(1048, 'Cedar Bend Apartments, Building A', SAMPLE_GC.company, 24_800, [month(2)], 'approval', soon, ymdAddDays(todayYmd, -5)),
       job(1052, 'Cedar Bend Apartments, Building B', SAMPLE_GC.company, 12_150, [month(2)], 'draft'),
-      job(1031, 'Lennox remodel', 'RMC · Dudley Mason', 9_800, [month(2), month(1)], 'draft'),
-      job(1039, 'Service visit, 628 Terrell Rd', 'RMC · Dudley Mason', 1_710, [month(1)], 'owner'),
-      job(1044, 'Mission Hills drains', 'Structura', 6_400, [month(1)], 'draft', later),
+      job(1031, 'Linmoor remodel', 'RLC · Dunmere Mallin', 9_800, [month(2), month(1)], 'draft'),
+      job(1039, 'Service visit, 628 Tarrow Rd', 'RLC · Dunmere Mallin', 1_710, [month(1)], 'owner'),
+      job(1044, 'Mission Flats drains', 'Structura', 6_400, [month(1)], 'draft', later),
     ],
     liens: [{ number: '1012', name: 'Wildflower', gc: '', owed: 603, byYmd: soon, needs: ['legal'] }],
     kindsUnset: 1,

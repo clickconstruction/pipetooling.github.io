@@ -93,7 +93,7 @@ describe('buildJobActivityLines', () => {
       statusEvent('e1', '2026-08-12T14:58:00Z', 'Working → Ready to Bill'),
       note('n1', '2026-08-12T14:45:00Z', 'Arrived 9am end 9:20', 'Abraham'),
       report('r1', '2026-08-12T14:57:00Z', 'Status Report'),
-      note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DRF'),
+      note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DLF'),
     ])
     expect(lines.map((l) => [l.kind, l.number])).toEqual([
       ['note', 1],
@@ -162,7 +162,7 @@ describe('filterJobActivityLines', () => {
     note('n1', '2026-08-12T14:45:00Z', 'Arrived 9am end 9:20', 'Abraham'),
     report('r1', '2026-08-12T14:57:00Z', 'Status Report'),
     statusEvent('e1', '2026-08-12T14:58:00Z', 'Working → Ready to Bill'),
-    note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DRF'),
+    note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DLF'),
   ])
 
   it('returns everything for all', () => {

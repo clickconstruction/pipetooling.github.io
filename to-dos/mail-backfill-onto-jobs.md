@@ -2,7 +2,7 @@
 name: "Messages: file the mail we already have onto its jobs, for the record"
 number: 332
 group: gated
-status: proposed 2026-11-13 on Grace's word ("I wanna do it, let's come up with a clear plan") · measured the same day · nothing built, nothing filed
+status: parked by Grace 2026-11-13 · the rule, the runner and the runbook built · the read-only count run · nothing filed · no further design or build until she says so
 summary: >
   The office's mail about a job sits in thirteen separate mailboxes. Punch list #324 made it safe to
   file old mail onto a job: it lands at its own date and asks nobody for a reply. This card is the
@@ -12,10 +12,11 @@ summary: >
   which about a quarter match by the customer's address alone, and a single-job customer holds 4
   to 13 conversations. The hard part is not the cost. It is picking the right job for a customer
   who has several, and keeping private mail out.
-next: Grace's ten calls (the table under The calls). Then the matching kernel, the runner, and a read-only count of every open job before anything is filed.
-size: M as two PRs and four runs (S · S, then runs)
-blocker: The calls, and the never-tag list, which only the office can name.
-opinion: build — the record is worth having and the run is hours, not days; go in stages and let a person place what a rule cannot
+next: Parked. Start at the section Pick up here. First Grace's calls 11 to 13, then the office's never-tag list, then the customer's contact step, then the pilot on one job.
+size: M; left: the contact step and the held sheet's workflow (S · S), then the runs
+blocker: Parked by Grace. When it resumes: the never-tag list, which only the office can name, and call 11, since a rule alone files 93 of 5,451.
+ver: v2.7084
+opinion: build, but the count changed the shape — a rule is sure of 1 conversation in 60, so the held mail is the real work and needs its own answer before a wide run
 mockup: not required — a data run through the dev seat; no screen changes
 ---
 
@@ -194,6 +195,79 @@ For a first pass, yes. Three honest limits:
 - **Every stage**: the ledger's filed count equals the seat's ok applies. No unnamed sender was made for an address a customer's record holds.
 - **Undo, once, on the pilot job**, then file it again, before stage 2.
 
+## What the count found (2026-11-13)
+
+`docs/recent-features/v2.7084.md` has the whole story. The count ran read-only over every open job: 162 searches, 13 mailboxes, 5,451 conversations. It is a floor: in 7 searches one mailbox had more hits than the run could read.
+
+| | Conversations |
+|---|---|
+| Sure, the run would file | **93**, on 20 of the 120 open jobs, at most 15 on one |
+| Held for a person | **2,659** |
+| Left out | 2,699 |
+
+Held, by why: a customer with several jobs 757 · a street several jobs share 612 · two jobs named 490 · a customer who also has a bid or a project 447 · the street named and a stranger on the mail 319 · only someone else at the customer's company 34.
+
+Four things this changes in the plan above:
+
+1. **The one-job rule is far narrower than section *The matching rule* says.** The first count let it file 529 conversations, 257 of them on one job. It now needs an address on the customer's own record and a customer with no bid or project, and a job that would still take more than 40 is held whole. It files 8.
+2. **The street is the rule that works:** 65 of the 93, once the search's own finding of a street in a mail's body counted.
+3. **Many jobs share one street.** 612 held conversations name a street that two to twenty jobs share, in 44 groups. One house with a job a phase is the likely reason; nobody has checked.
+4. **The held mail is the work.** 2,659 is too many for a person to place a line at a time. Stage 3 as written does not scale.
+
+Three calls the count adds:
+
+| # | Call | My pick |
+|---|---|---|
+| 11 | What to do about the 2,659 held | **Do not place them by hand.** File the 93, then decide from what the pilot shows. The two cheap wins are calls 12 and 13. |
+| 12 | A street several jobs share: file on the job under way when the mail was written | **Yes, if the office confirms those are phases of one house.** It would place most of the 612 by rule. |
+| 13 | A customer with several jobs and nothing named (757), or who also bids (447) | **Leave them out of this run.** They need a person or a reader of the mail's words, and that is a different, costlier project. |
+
 ## Where it stands
 
-2026-11-13: measured and planned. Nothing built, nothing filed. The dev seat's key on the office Mac works again. The measurement script is not in the repo: it printed counts only and kept nothing.
+2026-11-13: the rule, the runner and the runbook are built (v2.7084). `seed` and `count` have run against prod, read-only. **`plan`, `apply` and `undo` have never run, and nothing was filed.** The never-tag list is empty: the app holds no law-firm addresses to seed it. Filing the 93 today would make 59 unnamed senders, so the customer's contact step comes first. Nobody who knows the jobs has read one of the 93.
+
+## Pick up here
+
+Grace parked this card on 2026-11-13. She asked for a stopping point that anyone can come back to. No mock-up and no further build until she says so.
+
+### What exists
+
+- **The rule:** `src/lib/myMail/backfillMatch.ts`, with its tests beside it.
+- **The runner:** `scripts/mail-backfill.ts`, run as `npm run mail:backfill`.
+- **The runbook:** `docs/MAIL_BACKFILL.md`. Read it before any run.
+- **The story of the count:** `docs/recent-features/v2.7084.md`.
+
+### What you need before a run
+
+1. A dev key of your own in `PT_DEV_MCP_TOKEN`. Issue it at Settings, Your account, Dev MCP keys.
+2. A folder outside the repo. The runner uses `~/.pipetooling/mail-backfill` unless `--dir` names another.
+3. The never-tag list in that folder, as `never-tag.txt`. `count` runs with an empty list and warns. `plan` and `apply` refuse.
+
+**The sheet from 2026-11-13 is on one Mac and is not in the repo.** It holds real names. To get your own, run `npm run mail:backfill -- count`. It only reads, and it writes `sheets/count-<date>.csv` in your folder. Expect numbers near the ones above, not the same ones, since mail keeps arriving.
+
+### What has never run
+
+`plan`, `apply` and `undo`. A test pins their guards by reading the script. Nobody has watched one work against the seat. Nothing has been filed on any job.
+
+### What is left, in order
+
+1. **Grace answers calls 11 to 13.** Calls 1 to 10 stand as picked unless she changes one.
+2. **The office names the never-tag list.** The app holds no law-firm addresses, so `seed` wrote an empty one.
+3. **Build the customer's contact step (S).** Filing the 93 without it makes 59 unnamed senders. The database already has `contact_for_job` and `contact_for_customer`. How the runner calls them is not settled.
+4. **The pilot on one job.** `plan --job <n>`, read the sheet, `apply --job <n> --approved`. Someone who knows the job reads its Activity. Check that New and the badge did not move. Then `undo` once and file it again.
+5. **The rest of the 93,** a few jobs a batch, each sheet approved first.
+6. **If call 12 is yes,** add one rule (S): a street several jobs share files on the job under way when the mail was written. Then count again.
+7. **The held mail.** See below.
+
+### The held mail has no answer yet
+
+Grace asked on 2026-11-13 how to see and process the count in the app. The answers given:
+
+- **Seeing it:** nothing in the app shows the count. It is the sheet. A filed conversation shows on its job's Activity at its own date with the *filed* chip, and never in New.
+- **Processing it:** the app has no screen for a batch. My email's own tag press files one conversation at a time, for the record when the mail is old. That suits a handful, not 2,659.
+- **An idea, not designed:** a place in Messages where a person places held mail a customer at a time. It was offered as a card with a mock-up and Grace declined it for now. Do not start it without her.
+
+### Small things found on the way, not fixed
+
+- Messages overflows sideways on a 375 px phone on main. Found while walking #324. It has no card.
+- The seat's limits that shaped the runner are written nowhere else. A reply is cut short near 80,000 characters, so the runner reads 40 rows at a time by `id`. A read gives 200 rows at most. A search takes 500 characters at most and gives 100 hits a mailbox. The runner tries a failed read again and never tries a failed `apply` again.

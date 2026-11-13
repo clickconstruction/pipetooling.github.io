@@ -3,7 +3,7 @@
  *
  * Every bill reads the same three lines:
  *   1. chip · amount · actions          (the component)
- *   2. whoLine   — "sent Sep 4 to RMC-Dudley Mason" / "not sent · bills Maria"
+ *   2. whoLine   — "sent Sep 4 to RLC-Dunmere Mallin" / "not sent · bills Maria"
  *   3. moneyLead · moneyDetail · promise — "$9,800 open · 21 d past expected · They said Sep 19"
  *
  * A bill is paid or it isn't (customers don't part-pay), so the state is the

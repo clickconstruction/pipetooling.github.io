@@ -15,7 +15,7 @@ const JOBS = [
   {
     id: 'j1',
     hcp_number: '740',
-    job_name: 'Mission Hills',
+    job_name: 'Mission Flats',
     job_address: '123 Main St',
     service_type_id: 'st-plumbing',
     project_name: 'Riverside Subdivision',
@@ -40,7 +40,7 @@ const JOBS = [
 
 describe('normalizeForecastJobSearchQuery', () => {
   it('lowercases and collapses whitespace', () => {
-    expect(normalizeForecastJobSearchQuery('  MISSION   Hills ')).toBe('mission hills')
+    expect(normalizeForecastJobSearchQuery('  Mission   Flats ')).toBe('mission flats')
   })
 
   it('returns empty for blank input', () => {

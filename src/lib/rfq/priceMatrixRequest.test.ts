@@ -142,10 +142,10 @@ describe('requestAgeLabel', () => {
 
 describe('buildPricerRequestPrompt', () => {
   it('pins the kickoff to the request: id, bid, who asked, sources, row count, the rules', () => {
-    const p = buildPricerRequestPrompt(req(), { bid_number: '359', project_name: 'SPACEX BA-2 CORE AND SHELL' }, 'Wendi')
+    const p = buildPricerRequestPrompt(req(), { bid_number: '359', project_name: 'SKYLAB BA-2 CORE AND SHELL' }, 'Wendi')
     expect(p).toContain('twin-pricer-1')
     // 19:14 UTC is 2:14 pm CDT: the prompt prints the office's clock.
-    expect(p).toContain('request req-1 on b359 (SPACEX BA-2 CORE AND SHELL; asked by Wendi 2026-09-10 14:14)')
+    expect(p).toContain('request req-1 on b359 (SKYLAB BA-2 CORE AND SHELL; asked by Wendi 2026-09-10 14:14)')
     expect(p).toContain('1 source (National Wholesale Supply)')
     expect(p).toContain('The 1 fixture rows in the request snapshot are the only rows you price.')
     expect(p).toContain('every bid verb is refused to you')
@@ -172,7 +172,7 @@ describe('buildPriceMatrixSources · a request with no day of its own keeps its 
 describe('buildPricerRequestPrompt · an evening request keeps its day and the office’s clock (v2.4476)', () => {
   it('prints the Central date and time', () => {
     // 00:30 UTC on Sep 11 is 7:30 pm CDT on Sep 10.
-    const p = buildPricerRequestPrompt(req({ requested_at: '2026-09-11T00:30:00Z' }), { bid_number: '359', project_name: 'SPACEX' }, 'Wendi')
+    const p = buildPricerRequestPrompt(req({ requested_at: '2026-09-11T00:30:00Z' }), { bid_number: '359', project_name: 'SKYLAB' }, 'Wendi')
     expect(p).toContain('asked by Wendi 2026-09-10 19:30)')
   })
 })

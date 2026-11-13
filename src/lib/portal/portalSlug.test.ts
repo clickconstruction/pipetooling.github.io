@@ -12,12 +12,12 @@ import {
 
 describe('isValidSlug', () => {
   it('mirrors the DB constraint', () => {
-    expect(isValidSlug('knight-contracting')).toBe(true)
+    expect(isValidSlug('kestrin-contracting')).toBe(true)
     expect(isValidSlug('ab')).toBe(false) // too short
     expect(isValidSlug('abc')).toBe(true)
     expect(isValidSlug('-abc')).toBe(false)
     expect(isValidSlug('abc-')).toBe(false)
-    expect(isValidSlug('Knight')).toBe(false) // uppercase
+    expect(isValidSlug('Kestrin')).toBe(false) // uppercase
     expect(isValidSlug('a'.repeat(60))).toBe(true)
     expect(isValidSlug('a'.repeat(61))).toBe(false)
   })
@@ -25,15 +25,15 @@ describe('isValidSlug', () => {
 
 describe('normalizeSlugInput', () => {
   it('lowercases, dashes spaces, strips illegal chars, collapses runs', () => {
-    expect(normalizeSlugInput('Knight Contracting')).toBe('knight-contracting')
+    expect(normalizeSlugInput('Kestrin Contracting')).toBe('kestrin-contracting')
     expect(normalizeSlugInput("Terry's Lake_House")).toBe('terrys-lake-house')
     expect(normalizeSlugInput('a  --  b')).toBe('a-b')
     expect(normalizeSlugInput('--lead')).toBe('lead')
   })
 
   it('keeps a trailing dash while typing (validity gate catches it)', () => {
-    expect(normalizeSlugInput('knight-')).toBe('knight-')
-    expect(isValidSlug('knight-')).toBe(false)
+    expect(normalizeSlugInput('kestrin-')).toBe('kestrin-')
+    expect(isValidSlug('kestrin-')).toBe(false)
   })
 
   it('caps at 60 chars', () => {
@@ -43,7 +43,7 @@ describe('normalizeSlugInput', () => {
 
 describe('suggestSlugFromName', () => {
   it('slugifies the customer name cleanly', () => {
-    expect(suggestSlugFromName('Knight Contracting, LLC.')).toBe('knight-contracting-llc')
+    expect(suggestSlugFromName('Kestrin Contracting, LLC.')).toBe('kestrin-contracting-llc')
     expect(suggestSlugFromName('DSI ')).toBe('dsi')
   })
   it('returns empty when nothing usable survives', () => {
@@ -55,18 +55,18 @@ describe('suggestSlugFromName', () => {
 describe('slugGuessability (advisory only)', () => {
   it('flags short or single plain words as easy', () => {
     expect(slugGuessability('dsi')).toBe('easy')
-    expect(slugGuessability('knight')).toBe('easy')
+    expect(slugGuessability('kestrin')).toBe('easy')
     expect(slugGuessability('plumbing1')).toBe('hard') // digit → composite
-    expect(slugGuessability('knight-gc')).toBe('hard')
-    expect(slugGuessability('knight-contracting')).toBe('hard')
+    expect(slugGuessability('kestrin-gc')).toBe('hard')
+    expect(slugGuessability('kestrin-contracting')).toBe('hard')
     expect(slugGuessability('bexarlofts')).toBe('hard') // 10+ chars
   })
 })
 
 describe('appendRandomTail', () => {
   it('appends a 4-char tail from the non-confusable alphabet', () => {
-    const out = appendRandomTail('knight', () => 0.5)
-    expect(out).toMatch(/^knight-[a-km-np-z2-9]{4}$/)
+    const out = appendRandomTail('kestrin', () => 0.5)
+    expect(out).toMatch(/^kestrin-[a-km-np-z2-9]{4}$/)
     expect(out).not.toMatch(/[l1o0]/)
   })
   it('is deterministic under an injected rng and keeps within 60 chars', () => {
@@ -81,9 +81,9 @@ describe('appendRandomTail', () => {
 
 describe('suggestSlugWithTail (the default for a new address — B18 / J21-F6)', () => {
   it('is the name plus a 4-char tail, and hands back the tail-less base for re-rolls', () => {
-    const out = suggestSlugWithTail('Knight Contracting', () => 0.5)
-    expect(out.base).toBe('knight-contracting')
-    expect(out.slug).toMatch(/^knight-contracting-[a-km-np-z2-9]{4}$/)
+    const out = suggestSlugWithTail('Kestrin Contracting', () => 0.5)
+    expect(out.base).toBe('kestrin-contracting')
+    expect(out.slug).toMatch(/^kestrin-contracting-[a-km-np-z2-9]{4}$/)
     expect(out.slug.startsWith(out.base + '-')).toBe(true)
   })
   it('is empty when the name yields nothing usable (no tail-only slug)', () => {
@@ -97,26 +97,26 @@ describe('suggestSlugWithTail (the default for a new address — B18 / J21-F6)',
 
 describe('slugGuessabilityDetail — the meter says why', () => {
   it('the bare name grades easy however long it is, and says so', () => {
-    const d = slugGuessabilityDetail('knight-contracting', 'knight-contracting')
+    const d = slugGuessabilityDetail('kestrin-contracting', 'kestrin-contracting')
     expect(d).toEqual({ grade: 'easy', reason: 'just-their-name' })
     expect(slugGuessabilityLabel(d)).toBe("⚠ easy to guess — it's just their name")
     // ...but the same slug with no name to compare against keeps the old composite verdict
-    expect(slugGuessabilityDetail('knight-contracting')).toEqual({ grade: 'hard', reason: 'composite' })
-    expect(slugGuessability('knight-contracting')).toBe('hard')
+    expect(slugGuessabilityDetail('kestrin-contracting')).toEqual({ grade: 'hard', reason: 'composite' })
+    expect(slugGuessability('kestrin-contracting')).toBe('hard')
   })
   it('the name plus a tail grades hard, reason has-tail', () => {
-    const { slug } = suggestSlugWithTail('Knight Contracting', () => 0.5)
-    const d = slugGuessabilityDetail(slug, 'knight-contracting')
+    const { slug } = suggestSlugWithTail('Kestrin Contracting', () => 0.5)
+    const d = slugGuessabilityDetail(slug, 'kestrin-contracting')
     expect(d).toEqual({ grade: 'hard', reason: 'has-tail' })
     expect(slugGuessabilityLabel(d)).toBe('✓ hard to guess — random tail')
   })
   it('short and single plain words keep their reasons', () => {
     expect(slugGuessabilityDetail('dsi')).toEqual({ grade: 'easy', reason: 'short' })
     expect(slugGuessabilityLabel(slugGuessabilityDetail('dsi'))).toBe('⚠ easy to guess — too short')
-    expect(slugGuessabilityDetail('knight')).toEqual({ grade: 'easy', reason: 'plain-word' })
-    expect(slugGuessabilityDetail('knight-gc')).toEqual({ grade: 'hard', reason: 'composite' })
+    expect(slugGuessabilityDetail('kestrin')).toEqual({ grade: 'easy', reason: 'plain-word' })
+    expect(slugGuessabilityDetail('kestrin-gc')).toEqual({ grade: 'hard', reason: 'composite' })
   })
   it('ignores a trailing dash while typing', () => {
-    expect(slugGuessabilityDetail('knight-contracting-', 'knight-contracting').reason).toBe('just-their-name')
+    expect(slugGuessabilityDetail('kestrin-contracting-', 'kestrin-contracting').reason).toBe('just-their-name')
   })
 })

@@ -81,7 +81,7 @@ function memoSnippet(d: ArDepositRowDeposit): string | null {
   return first.length > 42 ? `${first.slice(0, 40).trimEnd()}…` : first
 }
 
-/** The trail (v2.4277): "→ **#650 ATI Schertz** today 4:02 PM by Taunya · was ~~#878 Take 5- Seguin~~ 9/29". */
+/** The trail (v2.4277): "→ **#650 AXO Schertz** today 4:02 PM by Taunya · was ~~#878 Tune 5- Seguin~~ 9/29". */
 export function ArDepositTrailLine({ trail }: { trail: ArDepositTrail }) {
   return (
     <div

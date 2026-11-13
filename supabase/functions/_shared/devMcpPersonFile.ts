@@ -15,6 +15,7 @@
 // Tests: src/lib/devMcp/devMcpBigCase.test.ts.
 
 import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
+import { AMENDMENTS_NOTE, amendmentCounts, amendmentKeyOfRow, readPersonAmendments, seatAmendmentBits, type SeatAmendmentBits } from './devMcpAmendments.ts'
 import type { RowFilter } from './devMcpDoor.ts'
 import { cutText, fitReply, replyChars, type FitStep, type Shortened, type ShortenedBlock } from './devMcpReplyFit.ts'
 import {
@@ -99,7 +100,7 @@ export type PersonFileBriefLine = {
   files?: number
   /** The row behind the line, `table:id`: read_rows on the table with id eq answers it whole. */
   row: string
-}
+} & SeatAmendmentBits
 
 export function briefPersonFileLine(l: PersonTimelineLine, max: number): PersonFileBriefLine {
   const what = cutText(l.what, max)
@@ -358,6 +359,16 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
       // Before the migration is pushed the function is not there: nothing to name.
     }
   }
+  // Punch list #315 (0.81.0): the correction links, a source of their own. A read that fails is named in `held` under the
+  // entries' source and takes only the links out; every line still draws.
+  const amendRead = isDev ? await readPersonAmendments(reader, personId) : null
+  if (amendRead?.heldWhy) held.push({ source: 'file', reason: `the correction links could not be read (${amendRead.heldWhy}); the entries and records are whole` })
+  if (amendRead?.capped && !atCap.includes('person_file_amendments')) atCap.push('person_file_amendments')
+  const amendDays = new Map<string, string>()
+  for (const e of entries) amendDays.set(`hr_entry:${e.id}`, e.entry_date)
+  for (const r of evidenceRows) amendDays.set(`hr_evidence:${r.id}`, r.dated_on)
+  const amendBits = (table: string, id: string): SeatAmendmentBits => (amendRead ? seatAmendmentBits(amendmentKeyOfRow(table, id), amendRead.index, (k) => amendDays.get(k) ?? null) : {})
+
   // A held source is named once, even when two reads share it.
   const seen = new Set<string>()
   const heldOnce = held.filter((h) => {
@@ -385,7 +396,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   let evidenceNewest: number | null = null
   let summaryOut = filter.brief && !filter.docsAsked
   let narrativeOut = filter.brief && !filter.docsAsked
-  const drawLine = (l: PersonTimelineLine): PersonTimelineLine | PersonFileBriefLine => (lineChars == null ? l : briefPersonFileLine(l, lineChars))
+  // A line a link touches gains standing, amended_by, amends and latest_word; a line none touches is what the kernel wrote.
+  const drawLine = (l: PersonTimelineLine): (PersonTimelineLine & SeatAmendmentBits) | PersonFileBriefLine => {
+    const bits = amendBits(l.ref.table, l.ref.id)
+    return lineChars == null ? { ...l, ...bits } : { ...briefPersonFileLine(l, lineChars), ...bits }
+  }
   const monthsShown = () => (monthsKept == null ? monthsWhole : monthsWhole.slice(0, monthsKept))
   const aheadBlock = () => ahead.map(drawLine)
   const monthsBlock = () => monthsShown().map((m) => ({ month: m.monthKey, label: m.label, lines: m.lines.map(drawLine) }))
@@ -396,11 +411,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const evidenceDrive = (r: EvidenceRow) => evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] })
   const evidenceWhole = (r: EvidenceRow) => {
     const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files }
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files, ...amendBits('person_file_evidence', r.id) }
   }
   const evidenceShort = (r: EvidenceRow, max: number) => {
     const memo = cutText(r.memo, max)
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length }
+    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length, ...amendBits('person_file_evidence', r.id) }
   }
   const evidenceBlock = () => (evidenceNewest == null ? evidenceSorted : evidenceSorted.slice(0, evidenceNewest)).map((r) => (evidenceChars == null ? evidenceWhole(r) : evidenceShort(r, evidenceChars)))
 
@@ -455,6 +470,8 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     held: heldOnce,
     at_cap: atCap.length ? { tables: atCap, note: `Every source is read a page at a time, and a read stops at ${ALL_ROWS_MAX} rows: these tables hold more, so the file here is short of them. read_rows the table with filters for the rest.` } : null,
     filter: filtered ? { lane: filter.lane, source: filter.source, since: filter.since, until: filter.until } : null,
+    // Punch list #315 (0.81.0): the correction links on the file, counted; null for another role or a file with none read.
+    amendments: amendRead && !amendRead.heldWhy ? { ...amendmentCounts(amendRead), note: AMENDMENTS_NOTE } : null,
     ahead: aheadBlock(),
     months: monthsBlock(),
     evidence: evidenceBlock(),
@@ -554,7 +571,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
 export type PersonFileReply = Exclude<Awaited<ReturnType<typeof getPersonFile>>, { refused: string }>
 /** The same reply when nothing was shortened: every line and every evidence record as the kernel wrote it. */
 export type PersonFileWholeReply = Omit<PersonFileReply, 'ahead' | 'months' | 'evidence'> & {
-  ahead: PersonTimelineLine[]
-  months: { month: string; label: string; lines: PersonTimelineLine[] }[]
+  ahead: (PersonTimelineLine & SeatAmendmentBits)[]
+  months: { month: string; label: string; lines: (PersonTimelineLine & SeatAmendmentBits)[] }[]
   evidence: Extract<PersonFileReply['evidence'][number], { files: unknown[] }>[]
 }

@@ -131,9 +131,9 @@ describe('the estimate moment (v2.5594)', () => {
     expect(blanksLeftIn('Dana, see {link}', 'booked')).toEqual(['link'])
   })
   it('a default title’s lead-in drops from {job}, so the line never reads "estimate for Estimate for" (v2.5696)', () => {
-    const f = tellFills({ customerName: 'Evan Johnson', me: 'Taunya Reed', jobName: null, jobAddress: null, estimate: { amount: '$6,250.00', title: 'Estimate for Evan Johnson' } })
-    expect(f.job).toBe('Evan Johnson')
-    expect(tellWords(lineFor('estimate', [], 'taunya'), f, 'en').text).toContain('Your estimate for Evan Johnson is ready, $6,250.00.')
+    const f = tellFills({ customerName: 'Evan Jarrow', me: 'Taunya Reed', jobName: null, jobAddress: null, estimate: { amount: '$6,250.00', title: 'Estimate for Evan Jarrow' } })
+    expect(f.job).toBe('Evan Jarrow')
+    expect(tellWords(lineFor('estimate', [], 'taunya'), f, 'en').text).toContain('Your estimate for Evan Jarrow is ready, $6,250.00.')
     expect(tellFills({ customerName: null, me: null, jobName: 'Whitfield water heater', jobAddress: null, estimate: { amount: '$1', title: 'Estimate for Dana' } }).job).toBe('Whitfield water heater')
   })
   it('takes the office’s Estimate line when it has one', () => {

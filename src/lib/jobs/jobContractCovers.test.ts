@@ -19,7 +19,7 @@ const paper = (o: Partial<PaperRowLike> & { id: string; job_id: string }): Paper
   voided_at: null,
   signer_mode: 'paper',
   signed_at: '2025-03-14T12:00:00Z',
-  signer_printed_name: 'Michael Palmer',
+  signer_printed_name: 'Michael Palvern',
   signed_document_url: 'https://docs.google.com/document/d/abc',
   paper_upload_path: null,
   covers_group_id: null,
@@ -62,11 +62,11 @@ describe('words', () => {
 
 describe('buildCoverableJobs', () => {
   const jobs = [
-    { id: 'a', hcp_number: '251', click_number: null, job_name: 'Michael Palmer', job_address: '180 Go Away Rd, Blanco, TX', status: 'billed' },
-    { id: 'b', hcp_number: '843', click_number: null, job_name: 'x', job_address: '102 Jacob Roberts, Blanco', status: 'billed' },
+    { id: 'a', hcp_number: '251', click_number: null, job_name: 'Michael Palvern', job_address: '180 Go Away Rd, Blanco, TX', status: 'billed' },
+    { id: 'b', hcp_number: '843', click_number: null, job_name: 'x', job_address: '102 Jared Robson, Blanco', status: 'billed' },
     { id: 'c', hcp_number: '', click_number: 'J922', job_name: 'y', job_address: '138 W Pat Dolan, Blanco', status: 'working' },
     { id: 'd', hcp_number: '620', click_number: null, job_name: 'z', job_address: null, status: 'paid' },
-    { id: 'e', hcp_number: '825', click_number: null, job_name: 'w', job_address: '121 North Calvin Barrett', status: 'billed' },
+    { id: 'e', hcp_number: '825', click_number: null, job_name: 'w', job_address: '121 North Calvin Barlow', status: 'billed' },
   ]
   it('leaves out the anchor job, puts open jobs first by number, paid last', () => {
     const out = buildCoverableJobs(jobs, 'a', new Set())

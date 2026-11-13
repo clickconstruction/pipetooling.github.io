@@ -82,18 +82,18 @@ describe('defaultShowOtherParty', () => {
 
 describe('shownToChipText', () => {
   it('names who sees it, with a role fallback, and no chip when nobody does', () => {
-    expect(shownToChipText('gc', { customer: 'Maria Delgado', gc: 'Done Right Foundation' })).toBe('👁 shown to Done Right Foundation')
-    expect(shownToChipText('customer', { customer: null, gc: 'Done Right Foundation' })).toBe('👁 shown to the customer')
+    expect(shownToChipText('gc', { customer: 'Maria Delgado', gc: 'Dead Level Foundation' })).toBe('👁 shown to Dead Level Foundation')
+    expect(shownToChipText('customer', { customer: null, gc: 'Dead Level Foundation' })).toBe('👁 shown to the customer')
     expect(shownToChipText(null, { customer: 'x', gc: 'y' })).toBeNull()
   })
 })
 
 describe('shouldDefaultShowOtherParty (v2.3377)', () => {
-  const doneRight = { id: GC, sees_customer_bills: true }
+  const deadLevel = { id: GC, sees_customer_bills: true }
   it('a flagged GC starts a fresh job on, only when it is not the customer row and the memory is still off', () => {
-    expect(shouldDefaultShowOtherParty({ gc: doneRight, customerId: OWNER, current: false })).toBe(true)
-    expect(shouldDefaultShowOtherParty({ gc: doneRight, customerId: GC, current: false })).toBe(false)
-    expect(shouldDefaultShowOtherParty({ gc: doneRight, customerId: OWNER, current: true })).toBe(false)
+    expect(shouldDefaultShowOtherParty({ gc: deadLevel, customerId: OWNER, current: false })).toBe(true)
+    expect(shouldDefaultShowOtherParty({ gc: deadLevel, customerId: GC, current: false })).toBe(false)
+    expect(shouldDefaultShowOtherParty({ gc: deadLevel, customerId: OWNER, current: true })).toBe(false)
     expect(shouldDefaultShowOtherParty({ gc: { id: GC, sees_customer_bills: false }, customerId: OWNER, current: false })).toBe(false)
     expect(shouldDefaultShowOtherParty({ gc: null, customerId: OWNER, current: false })).toBe(false)
   })

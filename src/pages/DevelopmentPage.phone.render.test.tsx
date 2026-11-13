@@ -50,7 +50,7 @@ function windowWide(px: number) {
 
 function bid(over: Partial<MemberBid> & { id: string }): MemberBid {
   return {
-    bid_number: '161', project_name: 'Lot 4', address: '1 Gun Dog Trl', customer_id: null, estimator_id: 'u-est', account_manager_id: null, development_id: 'dev-zz',
+    bid_number: '161', project_name: 'Lot 4', address: '1 Gray Fox Trl', customer_id: null, estimator_id: 'u-est', account_manager_id: null, development_id: 'dev-zz',
     outcome: null, outcome_at: null, bid_value: null, agreed_value: null, priced_revenue_usd: null, bid_date_sent: '2026-10-01', bid_due_date: null, estimated_job_start_date: null,
     plans_link: null, design_drawing_plan_date: null, gc_contact_name: null, gc_contact_phone: null, gc_contact_email: null, created_at: '2026-09-01T00:00:00Z', updated_at: null,
     working_board_archived_at: null, service_type_id: null, last_contact: null, ...over,
@@ -58,7 +58,7 @@ function bid(over: Partial<MemberBid> & { id: string }): MemberBid {
 }
 function job(over: Partial<MemberJob> & { id: string }): MemberJob {
   return {
-    hcp_number: '956', click_number: null, job_name: 'Lot 4', job_address: '1 Gun Dog Trl', customer_id: null, customer_name: null, gc_customer_id: null, development_id: 'dev-zz', bid_id: 'b1',
+    hcp_number: '956', click_number: null, job_name: 'Lot 4', job_address: '1 Gray Fox Trl', customer_id: null, customer_name: null, gc_customer_id: null, development_id: 'dev-zz', bid_id: 'b1',
     status: 'billed', revenue: null, payments_made: null, last_work_date: '2026-10-20', last_bill_date: null, job_plans_link: null, created_at: '2026-09-02T00:00:00Z', updated_at: null, service_type_id: null, ...over,
   }
 }
@@ -173,7 +173,7 @@ describe('DevelopmentPage at 1280 wide, the control', () => {
     fireEvent.pointerEnter(chip!, { clientX: 300, clientY: 400 })
     const card = await screen.findByTestId('job-hover-card')
     expect(within(card).getByTestId('job-hover-card-name').textContent).toBe('Lot 4')
-    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('1 Gun Dog Trl')
+    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('1 Gray Fox Trl')
     expect(within(card).getByTestId('job-hover-card-lines').textContent).toContain('Stage')
     expect(within(card).getByTestId('job-hover-card-lines').textContent).toContain('Value$5,000')
     fireEvent.pointerLeave(chip!)
@@ -184,7 +184,7 @@ describe('DevelopmentPage at 1280 wide, the control', () => {
     windowWide(1280)
     authState.current = { role: 'dev' }
     const d = data()
-    served.data = { ...d, atAddress: { bids: [], jobs: [job({ id: 'j2', hcp_number: '957', job_name: 'Lot 9', job_address: '9 Gun Dog Trl', development_id: null, bid_id: null, status: 'waiting' })] } }
+    served.data = { ...d, atAddress: { bids: [], jobs: [job({ id: 'j2', hcp_number: '957', job_name: 'Lot 9', job_address: '9 Gray Fox Trl', development_id: null, bid_id: null, status: 'waiting' })] } }
     renderWithProviders(<DevelopmentPage />)
     await settle()
     fireEvent.click(await screen.findByTestId('not-in-it-chip-jobs'))
@@ -196,7 +196,7 @@ describe('DevelopmentPage at 1280 wide, the control', () => {
     fireEvent.pointerEnter(chip, { clientX: 300, clientY: 400 })
     const card = await screen.findByTestId('job-hover-card')
     expect(within(card).getByTestId('job-hover-card-name').textContent).toBe('Lot 9')
-    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('9 Gun Dog Trl')
+    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('9 Gray Fox Trl')
     expect(within(card).getByTestId('job-hover-card-lines').textContent).not.toContain('Crew')
   })
 })

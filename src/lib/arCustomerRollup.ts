@@ -10,16 +10,24 @@
  * their baseline (their own 12-mo median with enough samples, else the
  * company median). Without pay-speed data (RPC gated/failed) every row is
  * neutral: no pace split, tones grey, sorted by open dollars.
+ *
+ * A customer on a Pay calendar (punch list #323) is judged by each bill's expected day, the
+ * due day plus how late they usually run, as the Money waiting list judges them. The modal's
+ * items carry the job's customer and its own bill clock, so the calendar read here is that
+ * customer's, counted from that clock; the day a payer accepted a bill is not read.
  */
 import type { FinancialItem } from './dashboardFinancials'
 import { billWaitTone, type OpenBillTone } from './jobs/moneyWaiting'
 import { PAY_SPEED_MIN_SAMPLES, daysBetweenYmd, type CustomerSegment, type PaySpeedData } from './jobs/billedExpectedPay'
+import { calendarBillRead, calendarFor, latenessAgainst, type CalendarBillRead, type PayCalendar, type PayCalendarIndex, type PayCalendarLateness } from './jobs/payCalendar'
 
 export type ArCustomerBill = {
   item: FinancialItem
   /** Days since the modal's own bill clock (item.dateYmd); null = undated. */
   waitDays: number | null
   tone: OpenBillTone
+  /** The bill against its customer's Pay calendar; null or absent when it has none, and the tone reads the wait. */
+  calendar?: CalendarBillRead | null
 }
 
 export type ArCustomerRow = {
@@ -33,8 +41,16 @@ export type ArCustomerRow = {
   baselineDays: number | null
   oldestWaitDays: number | null
   open: number
-  /** Oldest bill has waited past the baseline (always false without a baseline). */
+  /** A bill is past its yardstick: the wait past the baseline, or on a Pay calendar its expected day gone by. */
   pastPace: boolean
+  /** The worst tone among the bills: what colours the row's wait. */
+  worstTone: OpenBillTone
+  /** The customer's Pay calendar; null when they have none. */
+  calendar: PayCalendar | null
+  /** Their record against that calendar; null with no calendar or nothing measured. */
+  lateness: PayCalendarLateness | null
+  /** The most days any bill is past its expected day; null when none is, or with no calendar. */
+  pastExpectedDays: number | null
   /** Longest wait first, undated last; amount breaks ties. */
   bills: ArCustomerBill[]
 }
@@ -55,6 +71,7 @@ export function buildArCustomerRollup(
   items: FinancialItem[],
   paySpeeds: PaySpeedData | null,
   todayYmd: string,
+  payCalendars?: PayCalendarIndex | null,
 ): ArCustomerRollup {
   const company = paySpeeds?.company ?? null
   type Acc = { name: string; open: number; bills: Array<Omit<ArCustomerBill, 'tone'>> }
@@ -69,7 +86,8 @@ export function buildArCustomerRollup(
       bills: [],
     }
     acc.open += item.amount
-    acc.bills.push({ item, waitDays })
+    const cal = customerId ? calendarFor(payCalendars, { payerId: customerId, jobId: item.jobId }) : null
+    acc.bills.push({ item, waitDays, calendar: cal && customerId ? calendarBillRead(item.dateYmd, cal, latenessAgainst(paySpeeds?.receipts[customerId], cal), todayYmd) : null })
     byCustomer.set(customerId, acc)
   }
 
@@ -85,13 +103,16 @@ export function buildArCustomerRollup(
       (max, b) => (b.waitDays != null && (max == null || b.waitDays > max) ? b.waitDays : max),
       null,
     )
-    const isPastPace = baselineDays != null && oldestWaitDays != null && oldestWaitDays > baselineDays
     const bills: ArCustomerBill[] = acc.bills
       .map((b) => ({
         ...b,
-        tone: baselineDays != null ? billWaitTone(b.waitDays, baselineDays) : ('undated' as OpenBillTone),
+        tone: b.calendar ? b.calendar.tone : baselineDays != null ? billWaitTone(b.waitDays, baselineDays) : ('undated' as OpenBillTone),
       }))
       .sort((a, b) => (b.waitDays ?? -1) - (a.waitDays ?? -1) || b.item.amount - a.item.amount)
+    // Past pace is one bill past its yardstick. For waits that is the oldest past the baseline, as it always was.
+    const isPastPace = bills.some((b) => b.tone === 'warn' || b.tone === 'late')
+    const calendar = customerId ? calendarFor(payCalendars, { payerId: customerId }) : null
+    const pastExpected = bills.reduce((max, b) => Math.max(max, b.calendar?.daysPastExpected ?? 0), 0)
     billCount += bills.length
     if (isPastPace) {
       pastPace.count++
@@ -110,6 +131,10 @@ export function buildArCustomerRollup(
       open: acc.open,
       pastPace: isPastPace,
       bills,
+      worstTone: bills.some((b) => b.tone === 'late') ? 'late' : isPastPace ? 'warn' : oldestWaitDays != null && (baselineDays != null || calendar) ? 'ok' : 'undated',
+      calendar,
+      lateness: calendar && customerId ? latenessAgainst(paySpeeds?.receipts[customerId], calendar) : null,
+      pastExpectedDays: calendar && pastExpected > 0 ? pastExpected : null,
     })
   }
 

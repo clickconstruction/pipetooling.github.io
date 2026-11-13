@@ -5,12 +5,12 @@ describe('normalizeIdentityKey (T5-07)', () => {
   it('folds case, punctuation, whitespace and diacritics', () => {
     expect(normalizeIdentityKey('  José García. ')).toBe('jose garcia')
     expect(normalizeIdentityKey('WATTS')).toBe('watts')
-    expect(normalizeIdentityKey('Mike. Holub')).toBe('mike holub')
+    expect(normalizeIdentityKey('Mike. Holmby')).toBe('mike holmby')
   })
-  it('reads "&" as "and" so "H & I" and "H&I" share a key', () => {
-    expect(normalizeIdentityKey('H & I')).toBe('h and i')
-    expect(normalizeIdentityKey('H&I')).toBe('h and i')
-    expect(normalizeIdentityKey('H and I Builders')).toBe('h and i builders')
+  it('reads "&" as "and" so "B & D" and "B&D" share a key', () => {
+    expect(normalizeIdentityKey('B & D')).toBe('b and d')
+    expect(normalizeIdentityKey('B&D')).toBe('b and d')
+    expect(normalizeIdentityKey('B and D Builders')).toBe('b and d builders')
   })
   it('is empty for blanks', () => {
     expect(normalizeIdentityKey(null)).toBe('')
@@ -25,8 +25,8 @@ describe('identityKeysLooselyEqual', () => {
     expect(identityKeysLooselyEqual('j garcia', 'jose garcia')).toBe(true)
     expect(identityKeysLooselyEqual('garcia jose', 'jose luis garcia')).toBe(true)
   })
-  it('never merges on a single token ("Summit" stays separate from "Summit General Contractors")', () => {
-    expect(identityKeysLooselyEqual('summit', 'summit general contractors')).toBe(false)
+  it('never merges on a single token ("Selwick" stays separate from "Selwick General Contractors")', () => {
+    expect(identityKeysLooselyEqual('selwick', 'selwick general contractors')).toBe(false)
     expect(identityKeysLooselyEqual('jose', 'jose garcia')).toBe(false)
     expect(identityKeysLooselyEqual('', 'jose')).toBe(false)
   })
@@ -38,8 +38,8 @@ describe('findLooseIdentityPairs', () => {
       { key: 'acme builders', name: 'Acme Builders' },
       { key: 'acme builders', name: 'ACME builders' },
       { key: 'acme builders llc', name: 'Acme Builders LLC' },
-      { key: 'summit', name: 'Summit' },
-      { key: 'summit general contractors', name: 'Summit General Contractors' },
+      { key: 'selwick', name: 'Selwick' },
+      { key: 'selwick general contractors', name: 'Selwick General Contractors' },
     ])
     expect(pairs).toHaveLength(1)
     expect(pairs[0]![0].name).toBe('Acme Builders')

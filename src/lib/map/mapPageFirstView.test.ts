@@ -54,7 +54,7 @@ describe('the fits', () => {
 })
 
 describe('the far list', () => {
-  const neeses = { addressKey: 'gun dog trail neeses sc', addressLabel: 'Gun Dog Trail, Neeses, SC', lat: 33.52, lng: -81.12 }
+  const neeses = { addressKey: 'gray fox trail neeses sc', addressLabel: 'Gray Fox Trail, Neeses, SC', lat: 33.52, lng: -81.12 }
   const far = splitFarFromOffice(
     [
       { ...salinas, kind: 'job' as const, addressKey: 'ranch', addressLabel: 'Ranch' },
@@ -68,7 +68,7 @@ describe('the far list', () => {
 
   it('groups the far pins by address, farthest first, and counts by kind', () => {
     const places = farFromOfficePlaces(far)
-    expect(places.map((p) => p.addressLabel)).toEqual(["Zack's house", 'Ranch', 'Gun Dog Trail, Neeses, SC'])
+    expect(places.map((p) => p.addressLabel)).toEqual(["Zack's house", 'Ranch', 'Gray Fox Trail, Neeses, SC'])
     expect(places[2]!.items).toHaveLength(3)
     expect(farPlaceCountWords(places[2]!.items)).toBe('2 jobs · 1 bid')
     expect(farPlaceCountWords(places[0]!.items)).toBe('1 job')

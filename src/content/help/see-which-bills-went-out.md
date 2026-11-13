@@ -18,6 +18,16 @@ On a phone you can add the page to your home screen. The list opens to the newes
 
 You can also reach it from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
 
+## Put a button on your Dashboard
+
+1. Turn on Pin Mode. See [turn on Pin Mode to pin pages](/help/pin-mode).
+2. Open [Bills sent](/bills-sent).
+3. Press {{button:outline|Pin}} in the footer at the bottom of the page.
+
+A **Bills sent** button now sits in the pinned row on your Dashboard. One tap opens the list.
+
+The owner and developers can pin the page for someone else. Press the small button beside **Pin** in the same footer. Pick the person, then press **Pin for**.
+
 ## Read a line
 
 Each line is one send. The line shows these facts.

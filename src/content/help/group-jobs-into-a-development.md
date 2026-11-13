@@ -13,7 +13,7 @@ When one site has many moving pieces, the bids and jobs belong together. Same bu
 
 1. Open the job and click {{button:outline|Edit}}.
 2. Click the **Project | Plans | Bid | Development** row to expand it.
-3. Under **Development**, pick one from the list. Or click {{button:outline|+ New development}}, type a name like *Sagebrush Phase 2*, and hit **Create**. The new development is selected automatically.
+3. Under **Development**, pick one from the list. Or click {{button:outline|+ New development}}, type a name like *Sagemoor Phase 2*, and hit **Create**. The new development is selected automatically.
 4. It saves automatically. Pick **None** to take the job back out.
 
 ## Put a bid in a development
@@ -26,7 +26,7 @@ When one site has many moving pieces, the bids and jobs belong together. Same bu
 When you make a job from a won bid, the job takes the bid's development. The development comes along with the customer and the address. You do not pick it a second time.
 
 :::example One list per company
-Developments are shared: once anyone creates *Sagebrush Phase 2*, everyone picks it from the list. That's the point — one spelling, one group, no near-duplicate names splitting your bids and jobs apart.
+Developments are shared: once anyone creates *Sagemoor Phase 2*, everyone picks it from the list. That's the point — one spelling, one group, no near-duplicate names splitting your bids and jobs apart.
 :::
 
 ## Let the address do it

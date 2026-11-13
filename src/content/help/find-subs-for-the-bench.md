@@ -24,7 +24,7 @@ Press {{button:blue|New Prospect}} and pick **A sub** at the top. Type the perso
 Save puts them in the Subs queue. The card shows the trades as chips, with the range, the language and the source under the name.
 
 :::example A company from a GC's sub list
-You type Bexar Fire Protection, Fire sprinkler and HVAC, 40 miles, English. The card reads "goes up to 40 mi · English · from A GC's sub list". The queue shows them as {{chip:green|never called}}.
+You type Baxter Fire Protection, Fire sprinkler and HVAC, 40 miles, English. The card reads "goes up to 40 mi · English · from A GC's sub list". The queue shows them as {{chip:green|never called}}.
 :::
 
 ## Make the call

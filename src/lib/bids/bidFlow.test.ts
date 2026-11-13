@@ -11,7 +11,7 @@ import {
 
 /**
  * Fixtures follow three real bids from the 2026-09-09 board walk: a bid that just
- * arrived (only the folder link), Galloway Park mid-flow (counted, taken off,
+ * arrived (only the folder link), Gallenby Park mid-flow (counted, taken off,
  * priced, letter next), and a sent bid from before the RFQ desk existed.
  */
 
@@ -49,7 +49,7 @@ describe("deriveBidFlow — the poster's twelve steps as the app's ten", () => {
     expect(bidFlowSummary(flow)).toBe('1 of 9 done · next: Send RFQ')
   })
 
-  it('Galloway Park mid-flow: counted, taken off, priced — Cover letter is next', () => {
+  it('Gallenby Park mid-flow: counted, taken off, priced — Cover letter is next', () => {
     const facts: BidFlowFacts = { hasRfq: true, hasCounts: true, hasTakeoffLines: true, hasPriceAssignments: true, hasRoom: false }
     const flow = deriveBidFlow(bid({ drive_link: 'd', plans_link: 'p', count_tooling_plans_link: 'ct', bid_value: 412900 }), facts)
     expect(flow.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done', 'untracked', 'next', 'todo', 'todo'])

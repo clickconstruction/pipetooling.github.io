@@ -29,7 +29,7 @@ export type HouseFilePart = {
 }
 
 export type HouseFileRead = {
-  /** The job line stamped on the pages ("SPACEX BA-2 CORE & SHELL"). */
+  /** The job line stamped on the pages ("SKYLAB BA-2 CORE & SHELL"). */
   header: string
   /** The tags in file order. */
   tags: string[]

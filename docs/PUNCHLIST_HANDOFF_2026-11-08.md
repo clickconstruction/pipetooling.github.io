@@ -70,4 +70,4 @@ The rest of the day's sessions (#111, #119, #125, #129, #150, #153, #171, #173, 
 
 ## 5. What is left on the board after the open PRs land
 
-The cards hold it. In short: the owner's looks and walks on what shipped (most Close out rows), the people's reads (Brian Herber on #120 and #122, counsel on #42, #144 and #231, the firm on #85, Grace on #230, Taunya on #222 and #277, Wendi on #223), the cards waiting on time (#130 Dec 7, #190 Nov 17, #66 Nov 19, #187 Jan 25), and #46, untouched by the owner's choice. `npm run shortlist` prints the board as it stands.
+The cards hold it. In short: the owner's looks and walks on what shipped (most Close out rows), the people's reads (Brian Helbrow on #120 and #122, counsel on #42, #144 and #231, the firm on #85, Grace on #230, Taunya on #222 and #277, Wendi on #223), the cards waiting on time (#130 Dec 7, #190 Nov 17, #66 Nov 19, #187 Jan 25), and #46, untouched by the owner's choice. `npm run shortlist` prints the board as it stands.

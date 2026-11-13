@@ -3,7 +3,7 @@
 ---
 file: docs/PARTNERSHIPS_PLAN.md
 type: Engineering / Feature plan — APPROVED 2026-08-19 (owner signed off with all defaults)
-purpose: Staged plan for the dev-gated /partnerships page (per-partner deal config, job-majority gate, weekly statements, agreements) and the partner-facing ledger surfaces, making the Bryan Herber agreement operational and repeatable for future partners. Written 2026-08-19 from a full code/docs audit; companion clickable prototype in the "Partnerships Prototype" artifact.
+purpose: Staged plan for the dev-gated /partnerships page (per-partner deal config, job-majority gate, weekly statements, agreements) and the partner-facing ledger surfaces, making the Bryan Helbrow agreement operational and repeatable for future partners. Written 2026-08-19 from a full code/docs audit; companion clickable prototype in the "Partnerships Prototype" artifact.
 audience: Developers, AI Agents
 last_updated: 2026-09-05
 ---

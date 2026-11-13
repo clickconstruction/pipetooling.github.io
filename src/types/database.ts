@@ -6265,6 +6265,12 @@ export type Database = {
           id: string
           percent_complete: number
           pinned_at: string | null
+          place_accuracy_m: number | null
+          place_lat: number | null
+          place_lng: number | null
+          place_name: string | null
+          place_set_at: string | null
+          place_set_by: string | null
           sort_index: number
           title: string
         }
@@ -6278,6 +6284,12 @@ export type Database = {
           id?: string
           percent_complete?: number
           pinned_at?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           sort_index?: number
           title: string
         }
@@ -6291,6 +6303,12 @@ export type Database = {
           id?: string
           percent_complete?: number
           pinned_at?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           sort_index?: number
           title?: string
         }
@@ -6307,6 +6325,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_place_set_by_fkey"
+            columns: ["place_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

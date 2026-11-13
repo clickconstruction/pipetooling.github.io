@@ -63,7 +63,7 @@ function row(p: Partial<Record<string, unknown>> = {}) {
     po_code: 14233,
     notes: null,
     created_at: '2026-09-21T15:54:44Z',
-    jobs_ledger: { job_name: 'Aguirre Well', hcp_number: '1022', click_number: null, service_type_id: 'st-1' },
+    jobs_ledger: { job_name: 'Agrell Well', hcp_number: '1022', click_number: null, service_type_id: 'st-1' },
     for_user: { name: 'Paige', email: null },
     supply_houses: { name: 'Reece' },
     created_by_user: { name: 'Taunya', email: null },

@@ -3,7 +3,7 @@ import { baselineFrozenWords, baselineHeadWords, baselineReadWords, baselineScor
 import type { JobBurnModel } from './jobBurn'
 import type { ResolvedJobBudget } from './jobBudget'
 
-// Mission Hills J523 on 2026-09-12, as the live tab read it.
+// Mission Flats J523 on 2026-09-12, as the live tab read it.
 const burn: JobBurnModel = {
   status: 'hot', spentUsd: 80_600, undatedUsd: 0, percentDone: 77, percentSource: 'report',
   budget: { usd: 80_340, source: 'target_margin', targetMarginPct: 35 } as JobBurnModel['budget'],

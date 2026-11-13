@@ -120,7 +120,7 @@ const askedOfMaster2 = {
   amount: 11240,
   through_date: '2026-09-30',
   signed_date: null,
-  fields: { companyName: 'Click Plumbing', checkFrom: 'Summit GC', amount: '11240.00', projectDescription: 'Job j1', throughDate: '2026-09-30', signedDate: '', signerName: 'Robert Douglas', signerTitle: 'Owner' },
+  fields: { companyName: 'Click Plumbing', checkFrom: 'Selwick GC', amount: '11240.00', projectDescription: 'Job j1', throughDate: '2026-09-30', signedDate: '', signerName: 'Robert Douglas', signerTitle: 'Owner' },
   voided_at: null,
   minted_at: '2026-10-05T15:00:00Z',
   created_at: '2026-10-05T14:00:00Z',

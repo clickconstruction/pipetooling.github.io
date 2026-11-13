@@ -60,15 +60,15 @@ describe('parseLegalPortalDocuments (v2.4810)', () => {
 describe('the paper’s own day, and draft · final · sent · received (punch list #168, v2.5846)', () => {
   const day = (y: string) => y.slice(5)
   it('reads the new columns off a row, and reads an older row as a final paper with no day of its own', () => {
-    const row = legalPortalDocumentFromRow({ id: 'd', title: 'Response letter', shows: 'Our answer.', mime: 'application/pdf', size_bytes: 10, added_at: '2026-10-24T15:00:00Z', dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'Burd & Assoc.', proof_document_id: 'r1', received_on: null }, 'Grace', '', (iso) => iso.slice(0, 10))
-    expect(row).toEqual(expect.objectContaining({ datedOn: '2026-10-27', state: 'sent', sentOn: '2026-10-27', sentHow: 'certified_mail', sentTo: 'Burd & Assoc.', proofDocumentId: 'r1', receivedOn: '' }))
+    const row = legalPortalDocumentFromRow({ id: 'd', title: 'Response letter', shows: 'Our answer.', mime: 'application/pdf', size_bytes: 10, added_at: '2026-10-24T15:00:00Z', dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'Brund & Assoc.', proof_document_id: 'r1', received_on: null }, 'Grace', '', (iso) => iso.slice(0, 10))
+    expect(row).toEqual(expect.objectContaining({ datedOn: '2026-10-27', state: 'sent', sentOn: '2026-10-27', sentHow: 'certified_mail', sentTo: 'Brund & Assoc.', proofDocumentId: 'r1', receivedOn: '' }))
     const old = legalPortalDocumentFromRow({ id: 'o', title: 'Old', shows: 'x', added_at: '2026-10-07T15:00:00Z' }, '', '', (iso) => iso.slice(0, 10))
     expect(old).toEqual(expect.objectContaining({ datedOn: '', state: 'final', sentOn: '', proofDocumentId: '' }))
     expect(legalDocumentStateOf('bogus')).toBe('final')
   })
   it('words the state and the day', () => {
-    const sent = { state: 'sent' as const, sentOn: '2026-10-27', sentHow: 'certified_mail', sentTo: 'Burd & Assoc.', receivedOn: '' }
-    expect(legalDocumentStateWords(sent, day)).toBe('Sent 10-27 by certified mail to Burd & Assoc.')
+    const sent = { state: 'sent' as const, sentOn: '2026-10-27', sentHow: 'certified_mail', sentTo: 'Brund & Assoc.', receivedOn: '' }
+    expect(legalDocumentStateWords(sent, day)).toBe('Sent 10-27 by certified mail to Brund & Assoc.')
     expect(legalDocumentStateWords({ ...sent, sentHow: 'other', sentTo: '' }, day)).toBe('Sent 10-27')
     expect(legalDocumentStateWords({ state: 'draft', sentOn: '', sentHow: '', sentTo: '', receivedOn: '' })).toBe('Draft')
     expect(legalDocumentStateWords({ state: 'received', sentOn: '', sentHow: '', sentTo: '', receivedOn: '2026-10-22' }, day)).toBe('Received 10-22')
@@ -81,7 +81,7 @@ describe('the paper’s own day, and draft · final · sent · received (punch l
     expect(legalDocumentSentHowWords('hand')).toBe('by hand')
   })
   it('refuses a send record with no day, a day ahead, no way or no one, and a draft with a bad day', () => {
-    const ok = { sentOn: '2026-10-27', sentHow: 'email' as const, sentTo: 'Burd', proofDocumentId: '' }
+    const ok = { sentOn: '2026-10-27', sentHow: 'email' as const, sentTo: 'Brund', proofDocumentId: '' }
     expect(legalDocumentSentProblem(ok, '2026-10-28')).toBeNull()
     expect(legalDocumentSentProblem({ ...ok, sentOn: '' }, '2026-10-28')).toBe('Pick the day it went out.')
     expect(legalDocumentSentProblem({ ...ok, sentOn: '2026-10-29' }, '2026-10-28')).toMatch(/ahead of today/)
@@ -109,7 +109,7 @@ describe('whose paper it is (punch list #214, v2.6108)', () => {
     expect(legalDocumentWhoseOf(null)).toBeNull()
     expect(legalDocumentPayerPossessive('Northline Builders')).toBe('Northline Builders’')
     expect(legalDocumentPayerPossessive('Northline')).toBe('Northline’s')
-    expect(legalDocumentPayerPossessive('Burd & Assoc.')).toBe('Burd & Assoc.’s')
+    expect(legalDocumentPayerPossessive('Brund & Assoc.')).toBe('Brund & Assoc.’s')
     expect(legalDocumentPayerPossessive('')).toBe('The payer’s')
     expect(LEGAL_DOCUMENT_GROUP_ORDER.map((k) => legalDocumentGroupWords(k, 'Northline'))).toEqual(['Northline’s', 'Ours', 'Public record', 'The supplier’s', 'Our record'])
     expect(legalDocumentWhoseChoices('Northline').map((c) => c.value)).toEqual(['theirs', 'ours', 'public', 'supplier', ''])

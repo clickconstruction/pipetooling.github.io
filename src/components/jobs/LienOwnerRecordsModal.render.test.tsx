@@ -35,21 +35,21 @@ const jobs: OwnerPacketJobInput[] = [
   {
     id: 'j273',
     number: '273',
-    name: 'Dudley (Lennox)',
-    address: '9703 Lenox Hl, San Antonio, TX',
-    gcName: 'RMC- Dudley Mason',
+    name: 'Dunmere (Linmoor)',
+    address: '9703 Linmor Hl, San Antonio, TX',
+    gcName: 'RLC- Dunmere Mallin',
     total: 20000,
     bills: [{ id: 'b1', amount: 12000, status: 'billed', billedAt: '2026-08-03T15:00:00Z', order: 0 }],
     payments: [{ id: 'p1', billId: 'b1', amount: 2415, paidOn: '2026-08-14', recordedAt: '2026-08-15T19:30:00Z', type: 'Check', reference: '1042' }],
   },
-  { id: 'j881', number: '881', name: 'Dudley Mason', address: '9703 Lenox Hl, San Antonio, TX', gcName: 'RMC- Dudley Mason', total: 1050, bills: [], payments: [] },
+  { id: 'j881', number: '881', name: 'Dunmere Mallin', address: '9703 Linmor Hl, San Antonio, TX', gcName: 'RLC- Dunmere Mallin', total: 1050, bills: [], payments: [] },
 ]
 const properties: OwnerRecordsPropertyRow[] = [
-  { key: 'j273', seedJobId: 'j273', owner: 'Khan Umar & Bangash Shazmeena', address: '9703 Lenox Hl, San Antonio, TX', gcName: 'RMC- Dudley Mason', jobs: 2, open: 18635 },
-  { key: 'j867', seedJobId: 'j867', owner: 'Terrell Holdings LLC', address: '628 Terrell Rd', gcName: 'RMC- Dudley Mason', jobs: 1, open: 1710 },
+  { key: 'j273', seedJobId: 'j273', owner: 'Karrow Ulric & Barrowby Shelmina', address: '9703 Linmor Hl, San Antonio, TX', gcName: 'RLC- Dunmere Mallin', jobs: 2, open: 18635 },
+  { key: 'j867', seedJobId: 'j867', owner: 'Tarrow Holdings LLC', address: '628 Tarrow Rd', gcName: 'RLC- Dunmere Mallin', jobs: 1, open: 1710 },
 ]
-const seedFor = (jobId: string) => ({ jobId, customerId: 'c1', addressId: 'addr-lenox', gcId: 'gc1' })
-const full: OwnerRecordsFile = { request: { on: '2026-10-03', how: 'email', from: 'Umar Khan', link: 'https://drive.example/r' }, contractChecked: { by: 'Malachi', at: '2026-10-04T16:00:00Z' }, acknowledgment: { signedOn: '2026-10-05', link: '' }, offer: null, sent: null }
+const seedFor = (jobId: string) => ({ jobId, customerId: 'c1', addressId: 'addr-linmor', gcId: 'gc1' })
+const full: OwnerRecordsFile = { request: { on: '2026-10-03', how: 'email', from: 'Ulric Karrow', link: 'https://drive.example/r' }, contractChecked: { by: 'Malachi', at: '2026-10-04T16:00:00Z' }, acknowledgment: { signedOn: '2026-10-05', link: '' }, offer: null, sent: null }
 
 function mount(over: Partial<Parameters<typeof LienOwnerRecordsModal>[0]> = {}) {
   const onClose = vi.fn()
@@ -59,7 +59,7 @@ function mount(over: Partial<Parameters<typeof LienOwnerRecordsModal>[0]> = {}) 
   return { onClose }
 }
 async function pick() {
-  fireEvent.click(screen.getByRole('button', { name: /Khan Umar & Bangash Shazmeena/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Karrow Ulric & Barrowby Shelmina/ }))
   await settle()
   await screen.findByTestId('owner-records-total')
 }
@@ -82,12 +82,12 @@ describe('LienOwnerRecordsModal', () => {
     io.file = EMPTY_OWNER_RECORDS
     mount()
     const picker = screen.getByTestId('owner-records-picker')
-    expect(within(picker).getAllByRole('button').map((b) => b.querySelector('strong')?.textContent)).toEqual(['Khan Umar & Bangash Shazmeena', 'Terrell Holdings LLC'])
-    fireEvent.change(screen.getByLabelText('Find an owner'), { target: { value: 'terrell' } })
+    expect(within(picker).getAllByRole('button').map((b) => b.querySelector('strong')?.textContent)).toEqual(['Karrow Ulric & Barrowby Shelmina', 'Tarrow Holdings LLC'])
+    fireEvent.change(screen.getByLabelText('Find an owner'), { target: { value: 'tarrow' } })
     expect(within(picker).getAllByRole('button')).toHaveLength(1)
     fireEvent.change(screen.getByLabelText('Find an owner'), { target: { value: '' } })
     await pick()
-    expect(screen.getByText('Khan Umar & Bangash Shazmeena · 9703 Lenox Hl, San Antonio, TX · GC RMC- Dudley Mason')).toBeTruthy()
+    expect(screen.getByText('Karrow Ulric & Barrowby Shelmina · 9703 Linmor Hl, San Antonio, TX · GC RLC- Dunmere Mallin')).toBeTruthy()
   })
 
   it('a find with no owner offers Clear the search; a desk with no notice offers the desk (punch list #184, sweep C)', async () => {
@@ -152,8 +152,8 @@ describe('LienOwnerRecordsModal', () => {
     fireEvent.change(screen.getByLabelText('Link to their request'), { target: { value: 'https://drive.example/r' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save the request' }))
     await waitFor(() => expect(step('request').getAttribute('data-state')).toBe('done'))
-    expect(io.saved[0]).toMatchObject({ rowId: null, customerId: 'c1', addressId: 'addr-lenox', gcId: 'gc1', seedJobId: 'j273', jobIds: ['j273', 'j881'], ownerName: 'Khan Umar & Bangash Shazmeena' })
-    expect((io.saved[0]!.file as OwnerRecordsFile).request).toEqual({ on: '2026-10-03', how: 'email', from: 'Khan Umar & Bangash Shazmeena', link: 'https://drive.example/r' })
+    expect(io.saved[0]).toMatchObject({ rowId: null, customerId: 'c1', addressId: 'addr-linmor', gcId: 'gc1', seedJobId: 'j273', jobIds: ['j273', 'j881'], ownerName: 'Karrow Ulric & Barrowby Shelmina' })
+    expect((io.saved[0]!.file as OwnerRecordsFile).request).toEqual({ on: '2026-10-03', how: 'email', from: 'Karrow Ulric & Barrowby Shelmina', link: 'https://drive.example/r' })
     expect(sendButton().disabled).toBe(true)
     // 2 · the leader's tick
     fireEvent.click(within(step('contract')).getByRole('button', { name: 'I read it. No clause stops this.' }))
@@ -176,8 +176,8 @@ describe('LienOwnerRecordsModal', () => {
     expect(screen.getByTestId('owner-records-foot').textContent).toMatch(/^Sent [A-Z][a-z]{2} \d{1,2}, \d{4} by Taunya\. Mailed\.$/)
     // The packet as it stood is filed with the send, pointing at the request's row.
     await waitFor(() => expect(io.filed).toHaveLength(1))
-    expect(io.filed[0]).toMatchObject({ kind: 'owner_records_packet', how: 'mail', title: 'Records for 9703 Lenox Hl, San Antonio, TX', recipientName: 'Khan Umar & Bangash Shazmeena', jobIds: ['j273', 'j881'], customerId: 'c1', source: { table: 'lien_owner_record_requests', id: 'row-1' } })
-    expect(io.filed[0]!.html).toContain('Statement for 9703 Lenox Hl, San Antonio, TX')
+    expect(io.filed[0]).toMatchObject({ kind: 'owner_records_packet', how: 'mail', title: 'Records for 9703 Linmor Hl, San Antonio, TX', recipientName: 'Karrow Ulric & Barrowby Shelmina', jobIds: ['j273', 'j881'], customerId: 'c1', source: { table: 'lien_owner_record_requests', id: 'row-1' } })
+    expect(io.filed[0]!.html).toContain('Statement for 9703 Linmor Hl, San Antonio, TX')
   })
 
   it('a file with everything but the acknowledgment still cannot be sent', async () => {
@@ -198,15 +198,15 @@ describe('LienOwnerRecordsModal', () => {
     await waitFor(() => expect(io.printed).toHaveLength(1))
     // Counsel approved the wording (v2.4627): no ask before a print.
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(io.printed[0]).toContain('Statement for 9703 Lenox Hl, San Antonio, TX')
+    expect(io.printed[0]).toContain('Statement for 9703 Linmor Hl, San Antonio, TX')
     expect(io.printed[0]).toContain('You asked us in writing on Oct 3, 2026')
     fireEvent.click(screen.getByRole('button', { name: 'Print the acknowledgment' }))
     await waitFor(() => expect(io.printed).toHaveLength(2))
     expect(io.printed[1]).toContain('Acknowledgment of a records request')
     // A print counts as a send: each page is filed as it was printed.
     expect(io.filed.map((f) => [f.kind, f.how, f.title])).toEqual([
-      ['owner_records_packet', 'print', 'Records for 9703 Lenox Hl, San Antonio, TX'],
-      ['owner_records_acknowledgment', 'print', 'Acknowledgment for 9703 Lenox Hl, San Antonio, TX'],
+      ['owner_records_packet', 'print', 'Records for 9703 Linmor Hl, San Antonio, TX'],
+      ['owner_records_acknowledgment', 'print', 'Acknowledgment for 9703 Linmor Hl, San Antonio, TX'],
     ])
   })
 
@@ -219,21 +219,21 @@ describe('LienOwnerRecordsModal', () => {
     mount()
     await pick()
     fireEvent.click(screen.getByTestId('owner-records-offer'))
-    fireEvent.change(screen.getByLabelText('A second name allowed to sign'), { target: { value: 'Bangash Shazmeena' } })
+    fireEvent.change(screen.getByLabelText('A second name allowed to sign'), { target: { value: 'Barrowby Shelmina' } })
     fireEvent.click(screen.getByRole('button', { name: 'Offer it and copy the link' }))
     await waitFor(() => expect(written).toHaveLength(1))
     expect(written[0]).toContain('/portal?t=tok-owner')
     const saved = io.saved[io.saved.length - 1] as { file: { offer: { by: string; alsoAllowed: string } } }
-    expect(saved.file.offer).toMatchObject({ by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' })
+    expect(saved.file.offer).toMatchObject({ by: 'Taunya', alsoAllowed: 'Barrowby Shelmina' })
     expect(step('request').textContent).toContain('Offered on their portal')
     expect(screen.getByTestId('owner-records-copy-link')).toBeTruthy()
     // The owner signed on the portal: check 4 names them and offers no Change.
-    io.file = { ...EMPTY_OWNER_RECORDS, offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: '' }, request: { on: '2026-10-06', how: 'portal', from: 'Umar Khan', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw' } }
+    io.file = { ...EMPTY_OWNER_RECORDS, offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: '' }, request: { on: '2026-10-06', how: 'portal', from: 'Ulric Karrow', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Ulric Karrow', mode: 'draw' } }
     cleanup()
     mount()
     await pick()
     expect(step('acknowledgment').textContent).toContain('Signed on their portal')
-    expect(step('acknowledgment').textContent).toContain('by Umar Khan, drawn')
+    expect(step('acknowledgment').textContent).toContain('by Ulric Karrow, drawn')
     expect(within(step('acknowledgment')).queryByRole('button', { name: 'Change' })).toBeNull()
     // Their signing is the request: check 1 offers no Change either (v2.4866).
     expect(step('request').textContent).toContain('Their signing is the request.')
@@ -263,7 +263,7 @@ describe('LienOwnerRecordsModal', () => {
     mount()
     await pick()
     fireEvent.click(screen.getByRole('button', { name: 'Download the packet' }))
-    await waitFor(() => expect(io.downloaded).toEqual([{ name: 'Records-9703-Lenox-Hl-San-Antonio-TX-2026-10-05.pdf', type: 'application/pdf' }]))
+    await waitFor(() => expect(io.downloaded).toEqual([{ name: 'Records-9703-Linmor-Hl-San-Antonio-TX-2026-10-05.pdf', type: 'application/pdf' }]))
     await waitFor(() => expect(io.filed.map((f) => [f.kind, f.how])).toEqual([['owner_records_packet', 'download']]))
   })
 
@@ -309,7 +309,7 @@ describe('the Dashboard’s door (punch list #86)', () => {
     await settle()
     await screen.findByTestId('owner-records-total')
     expect(screen.queryByTestId('owner-records-picker')).toBeNull()
-    expect(screen.getByText('Khan Umar & Bangash Shazmeena · 9703 Lenox Hl, San Antonio, TX · GC RMC- Dudley Mason')).toBeTruthy()
+    expect(screen.getByText('Karrow Ulric & Barrowby Shelmina · 9703 Linmor Hl, San Antonio, TX · GC RLC- Dunmere Mallin')).toBeTruthy()
   })
 
   it('lands once: Another owner goes back to the list and stays there', async () => {

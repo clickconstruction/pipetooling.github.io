@@ -1,5 +1,5 @@
 /**
- * The GC contact's writes (the Gun Dog spike, 2026-11-02): the three fields onto the named bids, read back
+ * The GC contact's writes (the Gray Fox spike, 2026-11-02): the three fields onto the named bids, read back
  * so a policy's silent refusal is an error, and the way back for the toast: each bid's own fields as they were.
  */
 import { supabase } from '../supabase'
