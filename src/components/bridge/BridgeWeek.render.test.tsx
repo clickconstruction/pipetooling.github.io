@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeWeek } from './BridgeWeek'
 import type { WeekCallModel, WeekMove } from '../../lib/bridge/weekCall'
 import type { MoneyLine } from '../../lib/bridge/moneyCard'
+import type { DiveFacts } from '../../lib/bridge/callDive'
 
 // Made-up numbers: the model is built by hand so the smoke reads the drawing, not the kernel.
 
@@ -106,6 +107,37 @@ describe('BridgeWeek', () => {
     expect(moves[1]!.textContent).not.toContain('cash')
     expect(screen.queryByTestId('bridge-week-record')).toBeNull()
     expect(screen.getByTestId('bridge-week-card').textContent).not.toMatch(/Friday|week’s call/)
+  })
+
+  it('names the things behind each move as a table, with the move’s one press on its heading (#334, PR 8)', () => {
+    // Made-up customers and jobs.
+    const dives: DiveFacts = {
+      payers: [{ key: 'c1', name: 'Alder Builders', lateUsd: 40_000, usd: 52_000, oldestAgeDays: 71, promise: { state: 'none', ymd: null } }],
+      billJobs: [{ id: 'j201', label: '201 · Maple Lofts', usd: 18_000 }],
+      noPctJobs: [],
+      noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk' }],
+      supplyBills: [],
+      dayLabel: (ymd) => ymd,
+    }
+    const onDive = vi.fn()
+    renderWithProviders(week(propose, { dives, onDive }))
+    const moves = screen.getAllByTestId('bridge-week-move')
+    // The bill move: its heading, its press, and its jobs under their headings.
+    expect(moves[0]!.textContent).toContain('Bill the 11 finished jobs.')
+    fireEvent.click(within(moves[0]!).getByTestId('bridge-week-dive-press'))
+    expect(onDive).toHaveBeenLastCalledWith({ kind: 'desk', stage: 'bill' })
+    expect(within(moves[0]!).getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'To bill'])
+    expect(within(moves[0]!).getByRole('link', { name: '201 · Maple Lofts' }).getAttribute('href')).toBe('/jobs?tab=stages&edit=j201')
+    // With its things named, the move's title is no longer a link to a whole page.
+    expect(within(moves[0]!).queryByRole('link', { name: /Bill the 11 finished jobs/ })).toBeNull()
+    // The price move names its job and carries no press of its own: the Jobs page would add nothing.
+    expect(within(moves[1]!).queryByTestId('bridge-week-dive-press')).toBeNull()
+    expect(within(moves[1]!).getByRole('link', { name: '401 · Willow Walk' }).getAttribute('href')).toBe('/jobs?tab=stages&edit=j401')
+    // A move the page names nothing for is its heading alone.
+    expect(within(moves[2]!).queryByTestId('bridge-week-dive')).toBeNull()
+    // The card is framed by a rule down its left side, not a box.
+    const card = screen.getByTestId('bridge-week-card')
+    expect(card.style.borderLeft).toBe('4px solid rgb(220, 38, 38)')
   })
 
   it('says under the cash balance which account is left out, and the sentence opens the list', () => {

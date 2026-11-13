@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the access fix found while mapping live the same day (v2.6966, #7711, migration pushed 22:42 UTC) · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 (the links table, the write's keys, the kernel) built as v2.6969 on claude/hr-amendments-db · the rest in order below
+status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · not built: the seat's verbs for the numbers and the case, upgrade 3, upgrade 4, 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,8 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107
-next: Upgrade 2 PR 3, the seat's reads of the numbers and plan_case. Then upgrade 3, drawn in the mock-up.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108
+next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -82,9 +82,10 @@ by adding rows where a column would have meant stamping old entries.
 - **PR 1 (v2.6969, built):** the table, the two functions, the kernel with its tests, the bed
   (`npm run test:pg:person-file-amendments`), the docs. No screen reads the table and the seat is not
   redeployed. After the push an agent links a correction through `plan_hr_entry` at once.
-- **PR 2:** the Timeline, the composer, the flags on the narrative and the help guide. The links are a source of
+- **PR 2 (v2.7098, built, #7879):** the Timeline, the composer, the flags on the narrative and the help guide. The links are a source of
   their own, read fail-soft, so the entries never disappear with them.
-- **PR 3:** the seat's reads and the search's pair.
+- **PR 3 (v2.7104, built, #7880, server 0.81.0):** the seat's reads and the search's pair, joined in the kernel so `dev_case_search` is untouched. Deploy `dev-mcp` after its merge.
+- **Left of upgrade 1:** the chip on the Evidence view's rows and in the By theme item window; a search hit on a document section that cites a corrected entry is not flagged.
 - **His call:** linking the corrections already written in prose. It adds rows and changes no entry, and it is
   still a write on a real file, so it runs per person on his word through `plan_hr_entry { amendments }`.
 
@@ -104,7 +105,7 @@ numbers. And one door takes items and log lines together, so the seat needs one 
 
 - **PR 1 (v2.7106, built):** the migration, the kernel with its tests, the bed
   (`npm run test:pg:person-file-numbers`), the docs. New records are numbered from the push on.
-- **PR 2:** the numbers on the screen, *Number them…*, the Case view, the help guide.
+- **PR 2 (v2.7107, built, #7882):** the numbers on the screen, *Number them…*, the Case view, the help guide, the mock-up.
 - **PR 3:** the seat's reads and `plan_case`.
 - **His calls:** running the backfill on a real file, and what each clash and each lettered number it reports becomes. Whether the titles with no number are numbered after the highest.
   Moving a file's prose items into rows, with their numbers, per person. Whether a session may add a log line
@@ -154,7 +155,8 @@ right to apply in the session on his word, as today.
 | Screens | 5a: each section of the summary and narrative shows when it last changed and how many entries are newer. 5b: the matter's Evidence row opens the person's document in place of a copy, with the lock when it is counsel-only. 5c: a chip when the Drive file and the text no longer match. |
 | Seat | `get_person_document`'s index carries each section's freshness; `plan_matter_document { person_document_id }`; the brief names a reference as one. |
 
-- **PR 5a (first, S):** kernel `sectionFreshness` with tests and the chips. No migration, so it can
+- **PR 5a (v2.7108, built, #7884):** kernel `sectionFreshness` with tests, drawn as a fold that reads the prior versions only when opened (a chip on every section would read every version on every visit). The seat's `get_person_document` does not carry it yet.
+- **PR 5a as mapped:** kernel `sectionFreshness` with tests and the chips. No migration, so it can
   ship at any point in the train.
 - **5b:** the reference, on PR 0's fence. **5c:** the Drive chip and a report, by hash alone, of the copies
   that no longer match.

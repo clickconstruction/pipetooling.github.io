@@ -72,6 +72,8 @@ export type BridgeCollectDeskProps = {
   /** PR D: the after-the-call sheet writes through this; absent, the rows offer no sheet. */
   outcomeWriter?: CollectOutcomeWriter | null
   onOutcomeRecorded?: () => void
+  /** The customer the window was opened on, from the card What to do now (punch list #334, PR 8). It leads the list, with where it stands open under it. */
+  focusPayerKey?: string | null
 }
 
 function edgeFor(p: CollectPayer): string {
@@ -89,9 +91,9 @@ const WAIT_WORDS: Partial<Record<string, string>> = {
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
-  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, customerHref, outcomeWriter, onOutcomeRecorded } = props
+  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, customerHref, outcomeWriter, onOutcomeRecorded, focusPayerKey = null } = props
   const [outcomeFor, setOutcomeFor] = useState<CollectPayer | null>(null)
-  const [standsOpen, setStandsOpen] = useState<ReadonlySet<string>>(() => new Set())
+  const [standsOpen, setStandsOpen] = useState<ReadonlySet<string>>(() => new Set(focusPayerKey ? [focusPayerKey] : []))
   const [owners, setOwners] = useState<Map<string, string>>(() => new Map())
   const [copied, setCopied] = useState(false)
 
@@ -205,7 +207,9 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
 
   // The payers still on the sheet lead, biggest first. A payer waiting off it follows.
   const onSheet = (p: CollectPayer): boolean => sheet?.rows.find((r) => r.payer === p)?.move.onSheet ?? true
-  const payersInOrder = [...cut.cut.filter(onSheet), ...cut.cut.filter((p) => !onSheet(p))]
+  const sheetOrder = [...cut.cut.filter(onSheet), ...cut.cut.filter((p) => !onSheet(p))]
+  const isFocus = (p: CollectPayer): boolean => focusPayerKey != null && (p.payerId ?? p.payerName) === focusPayerKey
+  const payersInOrder = [...sheetOrder.filter(isFocus), ...sheetOrder.filter((p) => !isFocus(p))]
   const payerRows = payersInOrder.map(payerRow)
   const decisionRows: StepRow[] = (decisions ?? []).map((d) => ({
     key: d.kind + d.head,
