@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildNeedsYouItems, type NeedsYouInputs } from './dashboardNeedsYou'
+import { resolveSettingsDeepLink } from './settingsDeepLink'
 import { MAIL_SAVED_DOOR, MAIL_SAVED_WORDS } from './myMail/savedForYou'
 import { needsYouDoor } from './needsYouDoors'
 import { NEEDS_YOU_SOURCES, needsYouSourceEnabled } from './needsYouSources'
@@ -65,6 +68,14 @@ describe('the line on the Needs you card', () => {
     expect(item).toMatchObject({ key: 'mail-saved', severity: 'blue', kicker: MAIL_SAVED_WORDS.kicker, title: need.title, detail: need.detail, figure: '2', actionLabel: MAIL_SAVED_WORDS.action })
     expect(needsYouDoor(item, { role: 'helpers' }, 'dashboard')).toEqual({ kind: 'href', href: MAIL_SAVED_DOOR })
     expect(MAIL_SAVED_DOOR).toBe('/settings?tab=settings-recent-push#settings-recent-push')
+  })
+
+  it('the door lands on the record itself, not on the top of its tab: an owner has a card of sent emails above it', () => {
+    const [search, hash] = MAIL_SAVED_DOOR.slice('/settings'.length).split('#')
+    expect(resolveSettingsDeepLink(search!, `#${hash}`)).toEqual({ tabId: 'settings-recent-push', anchorId: 'settings-recent-push' })
+    // The card carries the id the door names.
+    const card = readFileSync(join(process.cwd(), 'src/components/settings/SettingsRecentPushNotifications.tsx'), 'utf8')
+    expect(card).toContain('id="settings-recent-push"')
   })
 
   it('draws nothing when the source is off or there is no notice', () => {
