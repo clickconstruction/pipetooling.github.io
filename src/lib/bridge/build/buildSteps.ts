@@ -115,7 +115,6 @@ export function buildBuildSteps(desk: BuildDesk): BuildSteps {
     `The crew on a job comes from the Schedule for the next ${BUILD_DESK_CREW_DAYS} days.`,
     'The hours a job still expects are its expected hours less the hours already clocked.',
     'The percent window files a status report on the job, as a crew’s does.',
-    'The week’s call is recorded on the link desk, not here.',
   ]
 
   return { headline, line, groups, nothingWaiting, moved: { label: `What moved (${moved.length})`, words: movedWords, rows: moved }, everyLabel: `Every open job (${desk.rows.length})`, counted }

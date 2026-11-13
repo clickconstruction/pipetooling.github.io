@@ -5,7 +5,7 @@ import type { ChaseTouch } from '../../jobs/paymentChase'
 import { plainWordsFailures } from '../../plainWords'
 import { buildCollectPile, type CollectBill } from './collectPile'
 import { buildCollectPayers } from './collectPayers'
-import { buildCollectSheet, collectMoveFor, collectSheetAsCallMoves, collectSheetText } from './collectMoves'
+import { buildCollectSheet, collectMoveFor, collectSheetText } from './collectMoves'
 import { collectDecisions } from './collectDecisions'
 import { collectWhatIf } from './collectWhatIf'
 
@@ -70,11 +70,11 @@ describe('collectMoveFor (v2.5854)', () => {
     expect(m.opener).toBe('Say: the $350 from Sep 3 is 9 times your usual pace. Is something wrong with it?')
     plain(m.opener)
   })
-  it('sends a statement alone on a small account, and reads the owner from the recorded plan', () => {
-    const m = collectMoveFor({ ...payer('Kestrin Contracting'), lastTouch: null }, { ...opts, smallUsd: 10_000, recordedMoves: [{ key: 'chase', title: 'Send the statement', who: 'Taunya · Tue', then: 6_087 }] })
-    expect(m).toMatchObject({ kind: 'statement', title: 'Send the statement', opener: null, isCall: false, owner: 'Taunya · Tue' })
+  it('sends a statement alone on a small account, with no owner until one is typed', () => {
+    const m = collectMoveFor({ ...payer('Kestrin Contracting'), lastTouch: null }, { ...opts, smallUsd: 10_000 })
+    expect(m).toMatchObject({ kind: 'statement', title: 'Send the statement', opener: null, isCall: false, owner: '' })
   })
-  it('builds the sheet: calls, statements, the ask, the money that pays itself; the call moves; the text', () => {
+  it('builds the sheet: calls, statements, the ask, the money that pays itself; the text', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, opts))
     // The cut is four payers here: Structura, RLC, Southern Pine and TF Halden hold over nine tenths.
     expect(sheet.rows.map((r) => r.move.kind)).toEqual(['call_date', 'statement_call', 'call_promise', 'call_date'])
@@ -83,8 +83,6 @@ describe('collectMoveFor (v2.5854)', () => {
     expect(sheet.askUsd).toBe(sheet.rows.reduce((s, r) => s + r.move.askUsd, 0))
     // Structura's $103k is not yet due on an account with nothing late: it pays itself.
     expect(sheet.paysItselfUsd).toBe(103_386)
-    const moves = collectSheetAsCallMoves(sheet, new Map([['structura', 'Taunya · Mon']]))
-    expect(moves[0]).toMatchObject({ key: 'chase', title: `Structura, Inc. – Austin: ${sheet.rows[0]!.move.title}`, who: 'Taunya · Mon', then: sheet.rows[0]!.move.askUsd })
     const text = collectSheetText(sheet, 'The Collect desk, Sun, Oct 25')
     expect(text.split('\n')[0]).toBe('The Collect desk, Sun, Oct 25')
     expect(text).toContain('Southern Pine Construction · $38.6k · Call: the Oct 16 promise')
@@ -169,7 +167,7 @@ describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () 
     expect(payer('Southern Pine Construction').misses).toBe(1)
     expect(collectMoveFor(payer('Southern Pine Construction'), opts)).toMatchObject({ escalated: false, owner: '' })
   })
-  it('the copied sheet, the plan and the counts leave the waiting rows out', () => {
+  it('the copied sheet and the counts leave the waiting rows out', () => {
     const all = buildCollectPayers(pile, { touches, maxCut: 10, shareTarget: 1 })
     const sheet = buildCollectSheet(all, (p) => collectMoveFor(p, opts))
     const waiting = sheet.rows.filter((r) => !r.move.onSheet)
@@ -177,7 +175,6 @@ describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () 
     expect(sheet.moves).toBe(sheet.rows.length - 1)
     expect(sheet.waiting).toBe(1)
     expect(sheet.askUsd).toBe(sheet.rows.filter((r) => r.move.onSheet).reduce((s, r) => s + r.move.askUsd, 0))
-    expect(collectSheetAsCallMoves(sheet, new Map()).some((m) => m.title.startsWith('Kestrin'))).toBe(false)
     const text = collectSheetText(sheet, 'The Collect desk')
     expect(text).not.toContain('Kestrin Contracting')
     expect(text.trim().endsWith('1 more payer waits off the sheet.')).toBe(true)

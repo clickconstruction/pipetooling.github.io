@@ -171,7 +171,7 @@ describe('BridgeMarketDesk on the step frame (punch list #318)', () => {
     // Under 200 words, and nothing in it says the list counts wins another way.
     expect((counted.textContent ?? '').replace(/([a-z.])([A-Z])/g, '$1 $2').split(/\s+/).filter(Boolean).length).toBeLessThan(200)
     expect(counted.textContent).not.toMatch(/job was made|became a job/)
-    expect(counted.textContent).toContain('No plan is recorded here. The week’s call stays with the lit link above.')
+    expect(counted.textContent).toContain('Nothing is recorded in this window.')
     expect(counted.textContent).not.toMatch(/How this reads|[a-z]_[a-z]/)
     expect(dialog.textContent).not.toMatch(OLD_JUDGEMENT)
   })

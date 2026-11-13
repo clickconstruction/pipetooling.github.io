@@ -749,7 +749,6 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     'A loss with no reason opens on its bid, where Why we lost is written.',
     'Nothing is recorded in this window.',
     'An answer is written on the bid: its mark, its reason and the next follow up.',
-    "The week's call is recorded on the link desk above, not here.",
   ].join(' ')
 
   return {
