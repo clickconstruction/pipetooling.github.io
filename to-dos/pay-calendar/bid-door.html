@@ -7,8 +7,10 @@
 <style>
   /* Punch list #323 and #341. The owner's question of 2026-11-13: should an estimator be able to set a payer's Pay
      calendar while working a bid? This page draws the form I would build: the estimator writes down the terms they
-     read, and the office makes them the calendar. Nothing here is built. Every name, bid, clause and date is made up:
-     Larkfield Construction, Sable Ridge Builders, Dana Whitfield, Maya Okafor, bid B412, section 5.2. No live row and
+     read, and the office makes them the calendar. Redrawn the same day at his word that the terms are sometimes one
+     job's and sometimes the GC's: the estimator says which, and each kind takes its own road. Nothing here is built. Every name, bid, clause and date is made up:
+     Larkfield Construction, Sable Ridge Builders, Corwin Build Group, Dana Whitfield, Maya Okafor, bids B398 and B412,
+     job J1502, sections 5.2 and 7.1. No live row and
      no real contract's words are on this page. */
   :root {
     color-scheme: light;
@@ -100,6 +102,15 @@
   .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; margin-top: 11px; }
   .check i { flex: none; width: 15px; height: 15px; border: 1.5px solid var(--border-strong); border-radius: 3px; margin-top: 2px; }
 
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg span { flex: 1 1 130px; min-width: 0; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-base); }
+  .seg span.on { font-weight: 700; border-color: var(--text-link); background: var(--bg-blue-tint); }
+  .why { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); }
+  .or { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 6px 0 0; }
+  .jobrow { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--border); }
+  .jobrow:first-of-type { border-top: none; }
+  .jobrow dt { color: var(--text-muted); }
+  .jobrow dd { margin: 0; min-width: 0; }
   .inbox { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .inbox b { color: var(--text-strong); }
 
@@ -120,7 +131,7 @@
   <div>
     <p class="eyebrow">Punch list #323 and #341 · the owner's question, 2026-11-13 · a draft, nothing built</p>
     <h1>Should an estimator set the Pay calendar from a bid?</h1>
-    <p><b>My pick: yes, in a narrower form.</b> The estimator writes down the terms they read in the GC's contract, on the bid. The office gets them in Dispatch and makes them the calendar with one press, with the payer's record in front of them. The estimator never sees a payment, and no bill's due day moves until the office says so.</p>
+    <p><b>My pick: yes, in a narrower form.</b> The estimator writes down the terms they read, on the bid, and says whose they are: <b>this job's</b> or <b>the GC's on every job</b>. The GC's go to the office now. This job's wait on the bid and follow the job when it is won. Either way the office makes them the calendar with one press, with the payer's record in front of them. The estimator never sees a payment.</p>
   </div>
   <div class="themes" role="group" aria-label="Theme">
     <button type="button" data-set="light" aria-pressed="true">Light</button>
@@ -135,7 +146,7 @@
 
   <div class="col">
     <div class="cap">1 · The estimator, in the bid window</div>
-    <p class="say">The bid window's <b>People</b> section already shows each GC on the bid as a card. The card gains one row, <b>Pay terms</b>. This is where the estimator has the GC's contract open.</p>
+    <p class="say">The bid window's <b>People</b> section already shows each GC on the bid as a card. The card gains one row, <b>Pay terms</b>. It reads one of three ways.</p>
     <div class="frame">
       <div class="bar"><b>Edit bid · B412 Larkfield Medical Office</b><span class="x">×</span></div>
       <div class="pad">
@@ -146,8 +157,9 @@
           <div class="who">410 Harrow Street · Maya Okafor · (555) 010-0142</div>
           <dl class="fact new">
             <dt>Pay terms</dt>
-            <dd><span class="press">Write down their pay terms…</span><span class="tag">new</span>
-              <span class="small">From their contract or the bid documents. The office sets the pay calendar from it.</span></dd>
+            <dd><span class="press">In by the 25th, paid the 10th of the next month</span>
+              <span class="chip plain">Only this job</span>
+              <span class="small">You wrote this Nov 13. § 5.2. It follows the job when the bid is won.</span></dd>
           </dl>
         </div>
         <div class="card">
@@ -155,62 +167,97 @@
           <div class="who">88 Quarry Road</div>
           <dl class="fact new">
             <dt>Pay terms</dt>
-            <dd>In by the 25th, paid the 30th of the next month <span class="chip">With the office</span>
-              <span class="small">You sent this Nov 11. § 7.1</span></dd>
+            <dd>In by month end, paid the 30th of the next month
+              <span class="chip plain">Every Sable Ridge job</span> <span class="chip">With the office</span>
+              <span class="small">Dana Whitfield read this on bid B398, Oct 2. § 7.1</span>
+              <span class="small"><span class="press">This job's contract says something else…</span></span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="gchead"><b>Corwin Build Group</b><span class="chip plain">also bidding to</span></div>
+          <div class="who">1200 Mill Lane</div>
+          <dl class="fact new">
+            <dt>Pay terms</dt>
+            <dd><span class="press">Write down their pay terms…</span><span class="tag">new</span>
+              <span class="small">From their contract or the bid documents.</span></dd>
           </dl>
         </div>
       </div>
     </div>
-    <p class="say">A second door, same window: the <b>Go / no-go</b> checklist's <i>Payment terms</i> question gets the same press under it.</p>
+    <p class="say">Terms read for a GC show on the next bid to that GC, so nobody types them twice. A second door, same window: the <b>Go / no-go</b> checklist's <i>Payment terms</i> question gets the same press under it.</p>
   </div>
 
   <div class="col">
     <div class="cap">2 · What the estimator fills in</div>
-    <p class="say">The same three choices the office's window has, and the same plain-date read-back. No payment record, and the button sends. It does not save a calendar.</p>
+    <p class="say">One question first: whose terms are these? Then the same three choices the office's window has, and the same plain-date read-back. No payment record.</p>
     <div class="frame">
       <div class="win new">
         <h3>Pay terms · Larkfield Construction</h3>
-        <p class="hint">What their contract says. Skip this for a GC who pays some days after each bill.</p>
+        <p class="hint">What you read. Skip this for a GC who pays some days after each bill.</p>
+        <span class="fl">These terms are for</span>
+        <div class="seg"><span class="on">Only this job</span><span>Every job Larkfield Construction pays</span></div>
+        <p class="why">This job's contract or bid documents say it. It waits on this bid and follows the job when the bid is won.</p>
         <span class="fl">Bills must be in by</span>
         <span class="sel">The 25th</span>
         <span class="fl">They pay on the</span>
         <div class="row"><span class="sel">10th</span><span>of</span><span class="sel">the next month</span></div>
         <div class="check"><i></i><span>They pay when the owner pays them</span></div>
-        <span class="fl">Where the contract says it</span>
+        <span class="fl">Where it says so</span>
         <div class="row"><span class="inp">§ 5.2</span><span class="inp" style="flex:1 1 180px">Paid the 10th of the month after it is received.</span></div>
         <div class="box blue"><b>In by Nov 25, due Dec 10.</b><br>One day late is due Jan 10.</div>
         <div class="box gone">Their record against this. <b>Not drawn for an estimator.</b> It is the payer's payment history.</div>
-        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Send to the office</span></div>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Save on this bid</span></div>
         <p class="foot">Nothing changes on a bill until the office sets it.</p>
       </div>
     </div>
+    <p class="or">With the other choice picked</p>
+    <div class="frame">
+      <div class="win new">
+        <span class="fl" style="margin-top:0">These terms are for</span>
+        <div class="seg"><span>Only this job</span><span class="on">Every job Larkfield Construction pays</span></div>
+        <p class="why">Their standard subcontract says it, whatever the job. The office gets it now, won or not.</p>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Send to the office</span></div>
+      </div>
+    </div>
+    <p class="say">The window opens on <b>Only this job</b>, the smaller reach. The button names what the press does.</p>
   </div>
 
   <div class="col">
-    <div class="cap">3 · The office, in Dispatch</div>
-    <p class="say">The terms land as a row in the Dispatch inbox, like a won bid's <i>Open the job</i>. The press opens today's Pay calendar window, already filled in.</p>
+    <div class="cap">3 · The office, by either road</div>
+    <p class="say"><b>The GC's terms</b> land in the Dispatch inbox the day they are sent. The press opens today's Pay calendar window on the payer, already filled in.</p>
     <div class="frame">
       <div class="pad">
         <div class="inbox new">
-          <b>Pay terms read on B412 · Larkfield Construction</b>
-          <span class="small">From Dana Whitfield · In by the 25th, paid the 10th of the next month · § 5.2</span>
+          <b>Pay terms for every Sable Ridge Builders job</b>
+          <span class="small">Read by Dana Whitfield on bid B398 · In by month end, paid the 30th of the next month · § 7.1</span>
           <div class="btnrow" style="justify-content:flex-start;margin-top:8px"><span class="btn blue">Open the pay calendar</span><span class="btn quiet">Not a calendar payer</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say"><b>This job's terms</b> ask nothing of the office until the bid is won. Then they are on the job, in the job window's <b>Pay calendar</b> row, which is there today.</p>
+    <div class="frame">
+      <div class="bar"><b>J1502 Larkfield Medical Office · Edit</b><span class="x">×</span></div>
+      <div class="pad">
+        <div class="card">
+          <dl style="margin:0">
+            <div class="jobrow"><dt>Bills go to</dt><dd>Larkfield Construction</dd></div>
+            <div class="jobrow new"><dt>Pay calendar</dt>
+              <dd>Read on the bid by Dana Whitfield · In by the 25th, paid the 10th of the next month · <span class="press">Set for this job</span>
+                <span class="small">§ 5.2 · Larkfield Construction has no pay calendar of their own.</span></dd></div>
+          </dl>
         </div>
       </div>
       <div class="win" style="border-top:1px solid var(--border)">
         <h3>Pay calendar · Larkfield Construction</h3>
-        <p class="hint">Filled in from Dana Whitfield's read of bid B412. Check it, then save.</p>
-        <span class="fl">Bills must be in by</span>
-        <span class="sel">The 25th</span>
-        <span class="fl">They pay on the</span>
-        <div class="row"><span class="sel">10th</span><span>of</span><span class="sel">the next month</span></div>
+        <span class="fl">This calendar is for</span>
+        <div class="seg"><span>Every job Larkfield Construction pays</span><span class="on">Only J1502 Larkfield Medical Office</span></div>
         <div class="box blue"><b>In by Nov 25, due Dec 10.</b><br>One day late is due Jan 10.</div>
         <div class="box amber"><b>Their record against this.</b> The office reads how the payer's past payments landed, as today.</div>
-        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Save pay calendar</span></div>
-        <p class="foot">Every bill this payer pays reads it.</p>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Save for this job</span></div>
+        <p class="foot">Only this job's bills read it.</p>
       </div>
     </div>
-    <p class="say">After the save the estimator's row reads <span class="chip green">Set by the office Nov 14</span>. When the bid is won, its job follows the payer's calendar from its first bill. Nothing is copied.</p>
+    <p class="say">A lost bid keeps its terms and nothing else happens. When a bid went to several GCs, only the winner's terms follow the job. The office can still widen one job's terms to the whole payer in the window, as it can today.</p>
   </div>
 
 </div>
@@ -224,10 +271,10 @@
   <tbody>
     <tr class="pick">
       <td><b>Write it down, the office sets it</b><span class="tag">my pick</span></td>
-      <td>Types the terms on the bid and sends them. The office saves the calendar.</td>
-      <td><b>None.</b> A Dispatch row carries the terms. The two money gates are not touched.</td>
-      <td><b>Nothing.</b> Their own sent row and its answer.</td>
-      <td>One press of office work per GC. An estimator cannot see that a GC already has a calendar.</td>
+      <td>Types the terms on the bid and says whose they are. The office saves the calendar: now for a GC, after the win for a job.</td>
+      <td><b>One small migration.</b> One new column on the bid's own GC row, where the terms wait. The two money gates are not touched.</td>
+      <td><b>No money and no calendar.</b> Only what estimators wrote on bids, which they read already.</td>
+      <td>One press of office work per GC or per won job. An estimator sees what was read for a GC, not what the office set.</td>
     </tr>
     <tr>
       <td><b>The estimator sets it</b></td>
