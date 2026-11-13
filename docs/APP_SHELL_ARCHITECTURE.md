@@ -69,7 +69,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | 1–92 | imports | 7 eager pages (6–12: 5 auth + `BidRoom`, `SubmittalRoom`), **34 `lazy()` staff pages** (13–46), 14 eager public/room pages (47–60, incl. `PartnerStatement` 56), 30 contexts/components |
 | 100–118 | `AuthGateLoadingScreen` | "Loading…", then after 5 s a `/fix-cache.html` link |
 | 120–125 | `ProtectedRoute` | `useAuth` loading → gate screen; no user → `SignedOutGate` (`components/SignInReturn.tsx`): keeps the asked-for address for a visitor who arrived signed out, then `/sign-in` |
-| 127–146 | `SignInRoute` | signed in → `LeaveSignIn`: the one-shot return address (the page's own `?next=`, else `POST_LOGIN_REDIRECT_KEY`; a path on this site only, `lib/signInReturnAddress.ts`) else the role's landing |
+| 127–146 | `SignInRoute` | signed in → `LeaveSignIn`: the one-shot return address (the page's own `?next=`, else `POST_LOGIN_REDIRECT_KEY`, written only by `keepReturnAddress` and good for an hour; a path on this site only, `lib/signInReturnAddress.ts`) else the role's landing |
 | 149–184 | `AuthHandler` | `#access_token&refresh_token&type=magiclink` → clear hash → `setSession` → `wipeServiceWorkersAndCaches` → reload |
 | 186–189 | `NavigateToEditCustomer` | `/customers/:id/edit` → `/customers` with `state.openEditCustomer` |
 | 191–353 | `AppContent` | `session-expiring` toast effect (194–205); `AuthHandler`, `UpdatePrompt`, `<Routes>` (211–350) |
@@ -196,7 +196,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 - Mode shells are just routes: `dispatch-mode` ×5 → `DispatchMode`, `job-mode/*` ×3 → `JobModeTabs`.
 - **Parsers that read this JSX as text:** `customerSurfaceRegistry.test.ts` (`publicRoutesFromAppSource`, 8 cases). Every absolute `path` inside `<Routes>` whose chunk lacks the text `ProtectedRoute` counts as public and needs a journey step. Also `twins/appDirectoryCheck.test.ts` (`appRoutePathsFromSource`, 6) and `scripts/map-surface.mjs --routes`. A route config array or a route split into another file silently changes what all three see.
-- **Tests:** the two parser tests above. The return address is held by `signInReturnAddress.test.ts` (the rule that keeps only a path on this site, the gate's keep / forget / leave, the emailed link's `?next=` round trip) and `SignInReturn.render.test.tsx` (`SignedOutGate`, `LeaveSignIn` under StrictMode). `ProtectedRoute` / `SignInRoute` themselves are not rendered by a test.
+- **Tests:** the two parser tests above. The return address is held by `signInReturnAddress.test.ts` (the rule that keeps only a path on this site, the gate's keep / forget / leave, the emailed link's `?next=` round trip) and `SignInReturn.render.test.tsx` (`SignedOutGate`, `LeaveSignIn` under StrictMode); `qrDoors.test.ts` lists every file that draws a code with what it opens, and holds the one writer. `ProtectedRoute` / `SignInRoute` themselves are not rendered by a test.
 - **Approach:** keep in place. The redirect sanitizer (inventory #7) is out.
 
 ### C. Role route guard + per-role landing

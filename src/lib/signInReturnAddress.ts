@@ -8,7 +8,9 @@
  * link opened in another tab. The emailed link also carries it as `/sign-in?next=…`, since a mail app may open the
  * link in a browser that shares no storage with the one that asked.
  *
- * Writers: the sign-in gate (`SignedOutGate`), the standalone /task launch, a box label's page and a file link.
+ * Writers: the sign-in gate (`SignedOutGate`), the standalone /task launch, a box label's page and a file link, each
+ * through `keepReturnAddress`, which also notes the time. A stored address is good for `RETURN_ADDRESS_KEEP_MS`: past
+ * that it reads as nothing, so a scan somebody gave up on does not decide where the next sign-in lands (v2.7182).
  * Reader: `LeaveSignIn`, the one place a signed-in person leaves the sign-in page.
  */
 
@@ -16,6 +18,12 @@ import { POST_LOGIN_REDIRECT_KEY } from './iosPwa'
 
 /** The longest address kept. A job's Lien window address is about 90 characters. */
 export const RETURN_ADDRESS_MAX = 2000
+
+/** How long a stored address is good for. An emailed sign-in link is good for an hour too. */
+export const RETURN_ADDRESS_KEEP_MS = 60 * 60 * 1000
+
+/** Where the time an address was stored is kept, beside `POST_LOGIN_REDIRECT_KEY`. */
+export const POST_LOGIN_REDIRECT_AT_KEY = `${POST_LOGIN_REDIRECT_KEY}_at`
 
 /** The sign-in page's own path. Never a place to return to. */
 export const SIGN_IN_PATH = '/sign-in'
@@ -134,10 +142,45 @@ export function browserReturnAddressStore(): ReturnAddressStore | null {
   }
 }
 
-/** The stored address as written. `waitingReturnAddress` holds it to the rule. Reads only: the caller's render stays pure. */
-export function readStoredReturnAddress(store: ReturnAddressStore | null): string | null {
+/**
+ * Whether an address stored at `storedAt` is still good at `now`. No time beside it reads as good: a build from before
+ * this one stored the address alone. A time that is not a number, or one ahead of the clock, reads as not good.
+ */
+export function returnAddressIsFresh(storedAt: string | null | undefined, now: number): boolean {
+  if (storedAt == null || storedAt === '') return true
+  const at = Number(storedAt)
+  if (!Number.isFinite(at)) return false
+  const age = now - at
+  return age >= 0 && age <= RETURN_ADDRESS_KEEP_MS
+}
+
+/**
+ * Keep an address to come back to after the sign-in, with the time. The one writer: every door that sends a person to
+ * sign in calls it. An address that fails the rule is not kept, and whatever was stored before it is forgotten.
+ */
+export function keepReturnAddress(store: ReturnAddressStore | null, address: string, now: number = Date.now()): void {
+  const kept = safeReturnAddress(address)
+  if (!kept) {
+    forgetStoredReturnAddress(store)
+    return
+  }
   try {
-    return store?.getItem(POST_LOGIN_REDIRECT_KEY) ?? null
+    store?.setItem(POST_LOGIN_REDIRECT_KEY, kept)
+    store?.setItem(POST_LOGIN_REDIRECT_AT_KEY, String(now))
+  } catch {
+    /* the sign-in still works; the person lands on the default page */
+  }
+}
+
+/**
+ * The stored address as written, or null when it has gone past its time. `waitingReturnAddress` holds it to the rule.
+ * Reads only: the caller's render stays pure.
+ */
+export function readStoredReturnAddress(store: ReturnAddressStore | null, now: number = Date.now()): string | null {
+  try {
+    const address = store?.getItem(POST_LOGIN_REDIRECT_KEY) ?? null
+    if (address === null) return null
+    return returnAddressIsFresh(store?.getItem(POST_LOGIN_REDIRECT_AT_KEY), now) ? address : null
   } catch {
     return null
   }
@@ -147,21 +190,15 @@ export function readStoredReturnAddress(store: ReturnAddressStore | null): strin
 export function forgetStoredReturnAddress(store: ReturnAddressStore | null): void {
   try {
     store?.removeItem(POST_LOGIN_REDIRECT_KEY)
+    store?.removeItem(POST_LOGIN_REDIRECT_AT_KEY)
   } catch {
     /* the sign-in still works; the address was one use either way */
   }
 }
 
 /** Carry out the gate's decision. */
-export function applyGateMemory(store: ReturnAddressStore | null, memory: GateMemory): void {
+export function applyGateMemory(store: ReturnAddressStore | null, memory: GateMemory, now: number = Date.now()): void {
   if (memory.act === 'leave') return
-  if (memory.act === 'forget') {
-    forgetStoredReturnAddress(store)
-    return
-  }
-  try {
-    store?.setItem(POST_LOGIN_REDIRECT_KEY, memory.address)
-  } catch {
-    /* the sign-in still works; the person lands on the default page */
-  }
+  if (memory.act === 'forget') forgetStoredReturnAddress(store)
+  else keepReturnAddress(store, memory.address, now)
 }

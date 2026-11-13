@@ -22,6 +22,8 @@ The link signs in whichever browser opens it. If you want to be signed in on you
 
 Did a link or a scanned code send you to the sign-in page? The app keeps the page you asked for. Sign in with your password or with the emailed link. The app then opens that page. A job, a guide and the code on a lien help sheet all open this way.
 
+The app keeps the page for one hour. Past the hour, scan the code or open the link again.
+
 Did you open the app with no page in mind? Then you land on your usual first page.
 
 ## If the email doesn't arrive

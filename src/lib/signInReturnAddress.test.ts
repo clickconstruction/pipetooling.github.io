@@ -1,17 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
 import { POST_LOGIN_REDIRECT_KEY } from './iosPwa'
+import { helpGuideAppPath } from './helpShareCard'
 import { lienDeskHref } from './lien/lienDeskRoute'
 import { lienWindowHref } from './jobs/stagesDeepLinks'
+import { boxPagePath } from './materials/boxPage'
 import {
   MAGIC_LINK_DEFAULT_LANDING,
+  POST_LOGIN_REDIRECT_AT_KEY,
+  RETURN_ADDRESS_KEEP_MS,
   RETURN_ADDRESS_MAX,
   applyGateMemory,
   forgetStoredReturnAddress,
   gateMemory,
+  keepReturnAddress,
   magicLinkLandingPath,
   readStoredReturnAddress,
   returnAddressFromSignInSearch,
+  returnAddressIsFresh,
   returnAddressOf,
   safeReturnAddress,
   signInHrefCarrying,
@@ -198,32 +204,122 @@ describe('waitingReturnAddress / signedInDestination', () => {
   })
 })
 
+const NOW = Date.UTC(2026, 10, 13, 18, 0, 0)
+
 describe('storage', () => {
-  it('keeps, reads and forgets under the one key the other doors already write', () => {
+  it('keeps, reads and forgets under the one key, with the time beside it', () => {
     const store = fakeStore()
-    applyGateMemory(store, { act: 'keep', address: LIEN_DESK })
+    applyGateMemory(store, { act: 'keep', address: LIEN_DESK }, NOW)
     expect(store.data[POST_LOGIN_REDIRECT_KEY]).toBe(LIEN_DESK)
-    expect(readStoredReturnAddress(store)).toBe(LIEN_DESK)
+    expect(store.data[POST_LOGIN_REDIRECT_AT_KEY]).toBe(String(NOW))
+    expect(readStoredReturnAddress(store, NOW)).toBe(LIEN_DESK)
     // A read does not spend it: a render that reads twice sees the same address both times.
-    expect(readStoredReturnAddress(store)).toBe(LIEN_DESK)
+    expect(readStoredReturnAddress(store, NOW)).toBe(LIEN_DESK)
     forgetStoredReturnAddress(store)
-    expect(readStoredReturnAddress(store)).toBeNull()
+    expect(readStoredReturnAddress(store, NOW)).toBeNull()
+    expect(store.data).toEqual({})
   })
 
   it('forget clears an older address and leave touches nothing', () => {
-    const store = fakeStore({ [POST_LOGIN_REDIRECT_KEY]: '/task' })
-    applyGateMemory(store, { act: 'leave' })
+    const store = fakeStore({ [POST_LOGIN_REDIRECT_KEY]: '/task', [POST_LOGIN_REDIRECT_AT_KEY]: String(NOW) })
+    applyGateMemory(store, { act: 'leave' }, NOW)
     expect(store.data[POST_LOGIN_REDIRECT_KEY]).toBe('/task')
-    applyGateMemory(store, { act: 'forget' })
-    expect(POST_LOGIN_REDIRECT_KEY in store.data).toBe(false)
+    applyGateMemory(store, { act: 'forget' }, NOW)
+    expect(store.data).toEqual({})
   })
 
   it('is quiet when there is no storage or storage refuses', () => {
     expect(readStoredReturnAddress(null)).toBeNull()
     expect(() => applyGateMemory(null, { act: 'keep', address: '/jobs' })).not.toThrow()
+    expect(() => keepReturnAddress(null, '/jobs')).not.toThrow()
     expect(() => forgetStoredReturnAddress(null)).not.toThrow()
     expect(readStoredReturnAddress(refusingStore)).toBeNull()
     expect(() => applyGateMemory(refusingStore, { act: 'keep', address: '/jobs' })).not.toThrow()
+    expect(() => keepReturnAddress(refusingStore, '/jobs')).not.toThrow()
     expect(() => applyGateMemory(refusingStore, { act: 'forget' })).not.toThrow()
   })
+})
+
+describe('a stored address is good for an hour', () => {
+  it('reads until the hour is up, then reads as nothing', () => {
+    const store = fakeStore()
+    keepReturnAddress(store, LIEN_WINDOW, NOW)
+    expect(readStoredReturnAddress(store, NOW + RETURN_ADDRESS_KEEP_MS)).toBe(LIEN_WINDOW)
+    expect(readStoredReturnAddress(store, NOW + RETURN_ADDRESS_KEEP_MS + 1)).toBeNull()
+    expect(RETURN_ADDRESS_KEEP_MS).toBe(60 * 60 * 1000)
+  })
+
+  it('a newer ask takes the place of an older one, with its own time', () => {
+    const store = fakeStore()
+    keepReturnAddress(store, LIEN_WINDOW, NOW - 2 * RETURN_ADDRESS_KEEP_MS)
+    expect(readStoredReturnAddress(store, NOW)).toBeNull()
+    keepReturnAddress(store, '/b/4f2a9c18', NOW)
+    expect(readStoredReturnAddress(store, NOW)).toBe('/b/4f2a9c18')
+  })
+
+  it('an address stored with no time, by a build from before the time was kept, still reads', () => {
+    const store = fakeStore({ [POST_LOGIN_REDIRECT_KEY]: '/task' })
+    expect(readStoredReturnAddress(store, NOW)).toBe('/task')
+    expect(returnAddressIsFresh(null, NOW)).toBe(true)
+    expect(returnAddressIsFresh('', NOW)).toBe(true)
+  })
+
+  it('a time that is not a time, or one ahead of the clock, reads as past', () => {
+    expect(returnAddressIsFresh('soon', NOW)).toBe(false)
+    expect(returnAddressIsFresh(String(NOW + 60_000), NOW)).toBe(false)
+    expect(returnAddressIsFresh(String(NOW), NOW)).toBe(true)
+  })
+
+  it('never keeps an address that fails the rule, and forgets what was there', () => {
+    const store = fakeStore()
+    keepReturnAddress(store, '/task', NOW)
+    keepReturnAddress(store, '//evil.example/jobs', NOW)
+    expect(store.data).toEqual({})
+  })
+})
+
+/**
+ * Every code the app prints or shows whose address needs a sign-in, and the two links that do (punch list #314, the
+ * owner's ask of 2026-11-13). Each one must come out of the sign-in whole, by every way in. The codes that open a
+ * public page (a bill's pay code, a portal, a First look, a receipt, a review room) never meet the sign-in.
+ */
+const SIGN_IN_DOORS: ReadonlyArray<{ door: string; address: string; kept: 'gate' | 'own page' }> = [
+  { door: "a lien cover sheet's Scan to record", address: lienWindowHref(JOB, 'affidavit'), kept: 'gate' },
+  { door: "a lien batch sheet's Scan to record", address: lienDeskHref({ kind: 'affidavit' }), kept: 'gate' },
+  { door: "a lien notice sheet's Scan to record", address: lienWindowHref(JOB, 'notice'), kept: 'gate' },
+  { door: "a lien sheet's Scan for the full guide, after its share page", address: helpGuideAppPath('file-a-lien-and-never-miss-its-deadlines'), kept: 'gate' },
+  { door: "Today's mail's guide code, after its share page", address: helpGuideAppPath('send-lien-notices-from-the-lien-desk'), kept: 'gate' },
+  { door: "a machine's label", address: '/m/A1B2C3D4', kept: 'gate' },
+  { door: "a box label or a sticker, from its public page's Sign in press", address: boxPagePath('7D759246'), kept: 'own page' },
+  { door: 'a kept file link', address: '/files/messages/att-1', kept: 'own page' },
+  { door: 'the Add Task icon', address: '/task', kept: 'own page' },
+]
+
+describe('every door that needs a sign-in comes out of it whole', () => {
+  for (const { door, address, kept } of SIGN_IN_DOORS) {
+    it(door, () => {
+      // The address is one the rule keeps as written.
+      expect(safeReturnAddress(address)).toBe(address)
+      const store = fakeStore()
+      if (kept === 'gate') {
+        // The gate, for a visitor who arrived signed out: a dead session on a phone reads the same way.
+        const url = new URL(address, 'https://clicktooling.com')
+        applyGateMemory(store, gateMemory({ pathname: url.pathname, search: url.search, hash: url.hash }, false), NOW)
+      } else {
+        keepReturnAddress(store, address, NOW)
+      }
+      const stored = readStoredReturnAddress(store, NOW)
+      expect(stored).toBe(address)
+      // The password form: the page reloads onto the sign-in page carrying the address, and leaves for it.
+      const back = signInHrefCarrying(waitingReturnAddress({ search: '', stored }))
+      expect(back).not.toBeNull()
+      expect(signedInDestination({ search: new URL(back!, 'https://clicktooling.com').search, stored: null, landing: '/dashboard' })).toBe(address)
+      // The emailed link, opened in a browser that holds nothing.
+      const landing = new URL(magicLinkLandingPath(stored), 'https://clicktooling.com')
+      expect(landing.pathname).toBe('/sign-in')
+      expect(signedInDestination({ search: landing.search, stored: null, landing: '/dashboard' })).toBe(address)
+      // The emailed link, opened in another tab of the same browser.
+      expect(signedInDestination({ search: landing.search, stored, landing: '/dashboard' })).toBe(address)
+    })
+  }
 })
