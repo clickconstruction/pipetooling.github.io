@@ -13,6 +13,7 @@ import {
   FILED_AFTER_DAYS,
   fullWhen,
   isLong,
+  lastAsk,
   lastIn,
   lastMessage,
   lastOut,
@@ -246,9 +247,10 @@ describe('a mail filed for the record (v2.7027, punch list #324)', () => {
     expect(filedByAge('not a date', NOW)).toBe(false)
   })
 
-  it('is not their last word, so a thread of old mail alone reads Nothing waits', () => {
+  it('asks for nothing, so a thread of old mail alone reads Nothing waits, and is still when they last wrote', () => {
     const lines = [mail('a', 'out', '2026-03-01T15:00:00Z', true), mail('b', 'in', '2026-03-03T15:00:00Z', true)]
-    expect(lastIn(lines, 'dale')).toBeUndefined()
+    expect(lastAsk(lines, 'dale')).toBeUndefined()
+    expect(lastIn(lines, 'dale')?.id).toBe('b')
     expect(courtOf(lines, 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
     expect(courtOf([mail('b', 'in', '2026-03-03T15:00:00Z', true)], 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
   })
@@ -261,7 +263,7 @@ describe('a mail filed for the record (v2.7027, punch list #324)', () => {
 
   it('is our move again when a new mail comes after the filed ones', () => {
     const lines = [mail('a', 'out', '2026-03-01T15:00:00Z', true), mail('b', 'in', '2026-03-03T15:00:00Z', true), mail('c', 'in', '2026-11-12T15:00:00Z')]
-    expect(lastIn(lines, 'dale')?.id).toBe('c')
+    expect(lastAsk(lines, 'dale')?.id).toBe('c')
     expect(courtOf(lines, 'dale', NOW)).toMatchObject({ side: 'ours', word: 'Our move · 3 h' })
   })
 

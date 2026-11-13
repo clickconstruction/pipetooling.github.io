@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { KEEP_FILE_BYTES } from '../emailIn/emailLine'
 import type { EmailAddress, EmailFile, EmailIn } from '../emailIn/gmailMessage'
-import { MY_MAIL_GMAIL_LABEL, type MyMailJobChip } from './contract'
+import type { MyMailJobChip } from './contract'
 import { MY_MAIL_MAILBOX, planTag, type MyMailKnown, type MyMailPerson, type MyMailTagStep } from './tagPlan'
 
 // Made-up people: Marisol Vega (the estimator whose box it is) and Rosa Diaz in the office; Dale Okafor at Ridgeway
@@ -93,7 +93,8 @@ describe('planTag: what a tag writes, mail by mail', () => {
     expect(plan.mailbox).toBe(MY_MAIL_MAILBOX)
     expect(plan.mailUserId).toBe('u-marisol')
     expect(plan.threadRow).toEqual({ user_id: 'u-marisol', gmail_thread_id: 't-elm', bid_id: null, project_id: null, jobs_ledger_id: 'job-elm', tagged_by: 'u-marisol' })
-    expect(plan.label).toBe(MY_MAIL_GMAIL_LABEL)
+    // Nothing is written to Gmail: the plan names no label (v2.7035).
+    expect('label' in plan).toBe(false)
     expect(plan.counts).toEqual({ lines: 3, tied: 0, files: 1, skipped: 0, filed: 0 })
   })
 
@@ -273,5 +274,11 @@ describe('planTag: what a tag writes, mail by mail', () => {
   it('files nothing when the plan is given no clock, or a mail has no time', () => {
     expect(planTag({ threadId: 't-elm', messages: [email('g-old', { at: '2026-03-03T15:00:00.000Z' })] }, marisol, elm, known()).counts.filed).toBe(0)
     expect(planTag({ threadId: 't-elm', messages: [email('g-none', { at: null })] }, marisol, elm, { ...known(), nowIso: '2026-11-12T18:00:00.000Z' }).counts.filed).toBe(0)
+  })
+
+  it('files every mail whatever its age when the seat asks for the record (v2.7032)', () => {
+    const plan = planTag(conversation, marisol, elm, { ...known(), nowIso: '2026-11-02T18:00:00.000Z', forRecord: true })
+    expect(plan.counts).toMatchObject({ lines: 3, filed: 3 })
+    expect(planTag(conversation, marisol, elm, { ...known(), nowIso: '2026-11-02T18:00:00.000Z' }).counts.filed).toBe(0)
   })
 })

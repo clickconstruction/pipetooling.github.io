@@ -85,6 +85,8 @@ export interface NewLaneCardIo {
   markNotice(contactId: string, scope: 'address' | 'domain'): Promise<void>
   /** *Not a notice after all*: takes the thread's rows off the list and puts the thread back in New. */
   unmarkNotice(contactId: string): Promise<void>
+  /** **No reply needed** on the sort card (v2.7029): closes the thread and writes who closed it, the sender left as they are. */
+  noReplyNeeded(contactId: string, byName: string): Promise<void>
   /**
    * *A new customer* on the *Bid it?* card (v2.6222): the customer's row alone, from the sender, as `makeCustomer` makes
    * it, answering the customer's id so the bid can go on them. The card then names the contact through `name`.
@@ -402,5 +404,6 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       const result = await db.rpc('unmark_notice', { p_contact_id: contactId })
       checkSupabaseError(result, 'put a notice back')
     },
+    noReplyNeeded: presses.noReplyNeeded,
   }
 }

@@ -26,7 +26,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Ask the GC a plans question (RFI) / see what's unanswered → `/bids?tab=rfi`
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
-- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Farm Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
+- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Task Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
 - Search a bid's plans, ask the robot what they say and make an RFI of what they do not → the **Plans** button at the end of the bid tabs' row while a bid is picked (`&plans=1` on the Followup tab opens it; v2.5736, v2.5737; guide `search-the-plans-on-a-bid`)
 - Everything new for an estimator in two minutes: the robots' ring, the Plans button, the Dashboard's lines and Messages → `/help?g=use-the-robots-and-the-new-bid-tools-as-an-estimator`
 
@@ -366,6 +366,9 @@ The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.
 
 ### /first-looks — First looks, the desk (the owner and the developers)
 A spike (v2.6981, punch list #319). **Make a link** makes a First look's link, shown once with a QR, **Copy the link** and **Copy the ask**. Under it, every look with its photos, its video in a player, the customer's place and words, and how each upload went. **Close the link** stops it taking files. **Remove this look…** deletes it and its files. `?contact=<a Messages contact's id>` ties the new link to that person. Nothing is texted from the page.
+
+### /first-look/:id — One First look, for the tech it was asked of
+The link on the task the office sends with **Ask a tech…** on a look's card (v2.7006, punch list #319 PR 7). It shows that one look: the customer's photos, their video in a player, where the problem is and their words, and nothing else of the thread. The person it was asked of picks **I can price it from this** or **Needs a visit to price**, adds a note and presses **Send my answer**, which lands on the customer's thread as a team note. The office can open and answer it too, and so can the crew of the job made from the look. Anyone else reads *This look is not yours to see, or it is gone.* Guide: `/help?g=read-a-customers-photos-before-a-job-is-booked`.
 
 ### /show/:code — A First look's link (public)
 The page a First look's link opens with no sign-in (v2.6981, punch list #319): *Show us the problem*, **Take a photo**, **Take a video**, **Choose from your phone**, then **Send** with its count. Files are kept on the phone and sent when there is signal. It shows who asked and a count, never a name, an address, a price or a picture. A link is ten letters, made on `/first-looks`, and takes files for 7 days. Since v2.7007 a customer's phone never loads the app for it: `index.html`'s first script sends `/show/<code>` to the page’s own small entry (the file show.html, with the code after a #), which is React and the page and nothing else.

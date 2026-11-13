@@ -1,8 +1,8 @@
 ---
 name: "Pipeline: a billed row's lien line says it once, and names the next act"
 number: 325
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's four calls
+group: ready
+status: asked 2026-11-12 · Grace took all four picks, asked for a second pass (five changes), then said build the entire train · PR 1 is v2.7042, PR 2 is v2.7043 and PR 3 is v2.7046 · PRs 4 and 5 stacked behind them
 summary: >
   A row in Billed Awaiting Payment or Collections prints two lien lines in its Progress & payment
   column, and they often say one thing twice: File the lien by Nov 16, 4d, then File the affidavit,
@@ -11,9 +11,9 @@ summary: >
   whose words are the next act on the lien path and whose day is the legal last day that act
   protects, a second line only for paper that is already out, a line under the rule that speaks of
   money alone, and a press that opens the Lien window on the right paper.
-next: Grace's four calls, then PR 1 (trim the repeat), which fixes the row she sent on its own.
+next: PRs 4 and 5, each armed when the one under it has merged.
 size: M as a train of five (S · M · S · M · S); PR 1 alone removes the repeat
-blocker: Grace's go on the design and her four calls.
+blocker: None. The train is being built.
 opinion: build — PR 1 is small and safe, and PR 2 fixes the cause, a bold line that asks for an act the job is not ready for
 ---
 
@@ -77,15 +77,15 @@ different acts, or one is wrong. **Adds**: the second line says something new.
 |---|---|---|---|---|---|
 | Nothing open, or released | none | none | none | Agree | none |
 | Notice far, money due first | ○ Lien notice by Jan 15 · 64d | none | Can run late · 51d | Agree | unchanged |
-| Notice far, money past or unnamed | ● **Lien notice** by Jan 15 · 64d | none | none | Agree | ● **Send the notice** by Jan 15 · 64d |
+| Notice far, money past or unnamed | ● **Lien notice** by Jan 15 · 64d | none | none | Agree | unchanged. No paper is on the desk yet, so the line keeps its words. |
 | Notice soon, no owner of record | ● **Lien notice** by Nov 16 · 4d | Needs the owner · by Nov 16 · 4d | none | Differ, day repeats | ● **Find the owner** by Nov 16 · 4d |
 | Notice soon, to draft | same | Notice to draft · by Nov 16 · 4d | none | Differ, day repeats | ● **Draft the notice** by Nov 16 · 4d |
 | Notice soon, waits on the leader | same | Waiting on Marisol · by Nov 16 · 4d | none | Differ, day repeats | ● **Waiting on Marisol** by Nov 16 · 4d. On the leader's screen, **Approve the notice** |
 | Notice soon, approved | same | Approved · unsigned · by … or Approved · ready to send · by … | none | Differ, day repeats | ● **Sign the notice** or **Send the notice** by Nov 16 · 4d |
-| Notice in the mail | same, red | In the mail · tracking owed | none | Adds | ● **Record the mailing** by Nov 16 · 4d, blue |
+| Notice printed with the run | same, red | In the mail · tracking owed | none | Adds | ● **Record the mailing** by Nov 16 · 4d, in the clock's colour |
 | Notice held by the leader | same | Held · they promised · asks again Nov 13 | none | Adds | ● **Review the hold** by Nov 16 · 4d, with the hold's reason as the second line |
 | Notice soon, money due first | ○ Lien notice by Nov 16 · 4d | Notice to draft · by Nov 16 · 4d | Can run late · 2d | Differ, day repeats | ● **Draft the notice** by Nov 16 · 4d over Can run late · 2d |
-| Notice window closed, nothing written down | ● Notice window closed Oct 15 · 28d ago | none (a closed row draws no second line) | Lien gone | Repeat | ● **Lien gone** · closed Oct 15, red until it is written down, grey after |
+| Notice window closed, nothing written down | ● Notice window closed Oct 15 · 28d ago | none (a closed row draws no second line) | Lien gone | Repeat | ● **Lien gone** Oct 15 · 28d ago, red until it is written down, grey after |
 | Notice window closed, affidavit's still open | ● Notice window closed Oct 15 · 28d ago | none | Lien gone | **Differ.** The Lien window says a late notice can still go (v2.4708). | ● **Send the late notice** by Nov 16 · 4d |
 | Notice sent, lien day far | ○ Lien by Jan 15 · 64d | Sent Nov 6, or *notice sent* | Can run late · 46d | Adds | unchanged, the second line reads *Notice sent Nov 6* |
 | Notice sent, attorney's letter overdue | ○ Lien by Dec 15 · 33d | day 12 · the attorney's letter overdue | Ask for a date · 21d past | Adds, the money count repeats | second line kept, *Ask for a date* loses its count |
@@ -100,13 +100,40 @@ different acts, or one is wrong. **Adds**: the second line says something new.
 | Affidavit held by the leader | same | Affidavit · Held · the leader will call first | none | Adds | ● **Review the hold** by Nov 16 · 4d, with the reason under it |
 | Filed, copies not served | ● Lien filed Nov 9, green | Lien filed · serve it · by Nov 14 · 2d, red. Missing until the desk has been opened once. | none | Differ: green over red | ● **Serve the affidavit** by Nov 14 · 2d, with *Filed Nov 9* under it |
 | Filed and served | ● Lien filed Nov 9 | Lien filed Nov 9 · served Nov 11 | none | Repeat | ● Lien filed Nov 9 · served Nov 11 |
-| Lien window closed, nothing filed | ● Lien window closed Oct 15 · 28d ago | none | Lien gone | Repeat | ● **Lien gone** · closed Oct 15 |
+| Lien window closed, nothing filed | ● Lien window closed Oct 15 · 28d ago, cut to three dots at the column's width | none | Lien gone | Repeat | ● **Lien gone** Oct 15 · 28d ago |
 | A release owed after payment | none. A paid job leaves the stage, so the row never says it. | none | none | Agree | not on this row (see *Seen, not in this card*) |
 | Retainage notice due | ○ Lien by Jan 15 · 64d | Retainage · Notice to draft · by Dec 2 · 20d | Can run late · 46d | Differ: two papers, two days | ● **Draft the retainage notice** by Dec 2 · 20d. The nearest act takes the line. |
 | Contracted with the owner (no notice step) | ○ Lien by Feb 15 · 95d, then **File the lien** inside three weeks | the affidavit's state, as above | as above | as the affidavit rows | as the affidavit rows |
 | Commercial against residential | the day is a month later | same | same | Agree | unchanged. Kind not set: the earlier day shows, and the tip says so. |
 | In Collections | the same lien lines. *Expected* turns red. | same | same | as above | unchanged |
-| Several unpaid months | the earliest month still owed sets the day | the desk's earliest deadline, the same day | none | Differ, day repeats | one line, the next act, that day |
+| Several unpaid months, one window closed | the earliest month still open sets the day: Nov 16 · 4d | the notice's earliest month, already closed: by Oct 15 · 28d late | none | **Differ: two days.** Three live rows. | ● **Approve the notice** by Nov 16 · 4d. The day is the clock's. |
+| A paper in work, nothing urgent | ○ Lien by Dec 15 · 33d | Affidavit · Notice to draft · by Dec 15 · 33d | Ask for a date · 21d past | Differ, day repeats | ○ Draft the affidavit by Dec 15 · 33d, a quiet ring, over Ask for a date |
+
+## The second pass (2026-11-12)
+
+Grace: "I like all of your suggestions. Please give it a pass asking yourself is this the best we can
+do?" The design was replayed on every live row of both stages, 61 billed and 10 in Collections, read
+only. Five things changed.
+
+1. **The day always comes from the clock.** Three live rows show two different days: the first line
+   has the month that can still be saved, the chip has a month already lost on the same notice
+   (*Lien notice by Nov 16 · 4d* over *Approve the notice · by Oct 15 · 28d late*). Two more carry a
+   chip with no day at all. So the paper gives the words only. The day, the count, the dot, the weight
+   and the colour are the clock's. The row and the Lien calendar can then never disagree.
+2. **The column is 208 px wide, not the 232 the first mock-up drew.** Every line was fitted again.
+   An act that ends the path fits on one line. A longer act wraps as a unit with its day under it.
+3. **A closed window's line is cut to three dots on all eight live rows that have one.** The new line
+   is short: *Lien gone Oct 15 · 28d ago*. Which window closed is in the tip.
+4. **A printed notice keeps the clock's colour.** The first draft turned *Record the mailing* blue. The
+   app cannot tell a printed notice was mailed until its number is typed, so the line stays red
+   inside a week.
+5. **A paper in work with nothing urgent is a quiet ring that names the step**: *Draft the affidavit by
+   Dec 15 · 33d*, not bold. With no paper on the desk the line keeps today's words, so a far notice
+   that asks still reads *Lien notice by Jan 15*.
+
+Also seen: on a bill an in-kind deal pays, the row asks to file while its tip says to wait for the
+money. The new tip is built from the line itself, so the two cannot differ. And the tips are held to
+`plainWords.ts` by a test.
 
 ## The recommendation
 
@@ -169,7 +196,8 @@ together by a test. A full merge is a larger job than this fault deserves today.
 - `src/components/jobs/JobsStagesTab.tsx`: `onLienDesk` passes `initialTab` from the chip's paper
   (`setLienInstrumentsModal({ job, invoice, initialTab })`, which the window already takes).
 - `src/lib/jobs/lienPayRunway.ts`: takes v2.4708's rule, so a closed notice window with the affidavit's
-  still open is not `closed`. The Lien calendar, the phone chip and the Dashboard's lien card read the
+  still open is not `closed`. If that ripples too far, the ledger can read the late notice from the
+  runway's own `lienByYmd` and leave the runway's states alone. The Lien calendar, the phone chip and the Dashboard's lien card read the
   runway too.
 - `src/hooks/useBilledLienClocks.ts`: its read of `job_lien_filings` adds `served_at` and `serve_due`,
   so *Serve the affidavit* shows without the Lien desk having been opened.
@@ -200,6 +228,8 @@ together by a test. A full merge is a larger job than this fault deserves today.
 - 375, 768 and 1400 wide, light and dark, on the desk's rows and a Mobile card.
 
 ## Grace's calls
+
+Answered 2026-11-12: "I like all of your suggestions." All four picks stand.
 
 1. **One line with the next act first, or only trim the repeat?** My pick: the next act first. PR 1 is
    the same either way.

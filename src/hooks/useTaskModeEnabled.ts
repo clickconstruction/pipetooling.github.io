@@ -1,47 +1,47 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  FARM_MODE_CHANGED_EVENT,
-  farmModeStorageKey,
-  readFarmModeEnabled,
-  writeFarmModeEnabled,
-} from '../lib/farmModeToggle'
+  TASK_MODE_CHANGED_EVENT,
+  taskModeStorageKey,
+  readTaskModeEnabled,
+  writeTaskModeEnabled,
+} from '../lib/taskModeToggle'
 
 /**
- * Reads the per-user Farm Mode flag from localStorage and stays in sync
+ * Reads the per-user Task Mode flag from localStorage and stays in sync
  * across tabs via the storage event. Mirrors `useJobModeEnabled`.
  */
-export function useFarmModeEnabled(
+export function useTaskModeEnabled(
   userId: string | null | undefined,
 ): [boolean, (next: boolean) => void] {
-  const [enabled, setEnabled] = useState<boolean>(() => readFarmModeEnabled(userId))
+  const [enabled, setEnabled] = useState<boolean>(() => readTaskModeEnabled(userId))
 
   useEffect(() => {
-    setEnabled(readFarmModeEnabled(userId))
+    setEnabled(readTaskModeEnabled(userId))
   }, [userId])
 
   useEffect(() => {
     if (!userId) return
-    const key = farmModeStorageKey(userId)
+    const key = taskModeStorageKey(userId)
     function onStorage(e: StorageEvent) {
       if (e.key !== key) return
       setEnabled(e.newValue === '1')
     }
     function onLocalChange() {
-      setEnabled(readFarmModeEnabled(userId))
+      setEnabled(readTaskModeEnabled(userId))
     }
     window.addEventListener('storage', onStorage)
-    window.addEventListener(FARM_MODE_CHANGED_EVENT, onLocalChange)
+    window.addEventListener(TASK_MODE_CHANGED_EVENT, onLocalChange)
     return () => {
       window.removeEventListener('storage', onStorage)
-      window.removeEventListener(FARM_MODE_CHANGED_EVENT, onLocalChange)
+      window.removeEventListener(TASK_MODE_CHANGED_EVENT, onLocalChange)
     }
   }, [userId])
 
   const set = useCallback(
     (next: boolean) => {
-      writeFarmModeEnabled(userId, next)
+      writeTaskModeEnabled(userId, next)
       setEnabled(next)
-      window.dispatchEvent(new Event(FARM_MODE_CHANGED_EVENT))
+      window.dispatchEvent(new Event(TASK_MODE_CHANGED_EVENT))
     },
     [userId],
   )
