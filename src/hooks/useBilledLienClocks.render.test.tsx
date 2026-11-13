@@ -35,7 +35,7 @@ vi.mock('../lib/supabase', () => {
 
 const A: BilledLienClockJob = { id: 'a', customer_address_id: null, gc_customer_id: 'gc-1' }
 const B: BilledLienClockJob = { id: 'b', customer_address_id: 'addr-b', gc_customer_id: null }
-const CLOCK_A: BilledLienClock = { propertyKind: '', filedYmd: null, releasedYmd: null, noticedMonths: [], noticeOnFile: false, mailedMonths: [], workMonths: [] }
+const CLOCK_A: BilledLienClock = { propertyKind: '', filedYmd: null, servedYmd: null, serveDueYmd: null, releasedYmd: null, noticedMonths: [], noticeOnFile: false, mailedMonths: [], workMonths: [] }
 
 /** Reads wait until `release()`. */
 function hold() {
@@ -134,12 +134,15 @@ describe('a filing with no filed day keeps its Central day (v2.4468)', () => {
     db.rows.job_lien_filings = [
       { job_id: 'a', kind: 'affidavit', filed_at: null, created_at: '2026-12-02T00:30:00Z', months_covered: null },
       { job_id: 'a', kind: 'release_of_record', filed_at: null, created_at: '2026-10-03T00:30:00+00:00', months_covered: null },
-      { job_id: 'b', kind: 'affidavit', filed_at: '2026-09-14', created_at: '2026-09-15T00:30:00Z', months_covered: null },
+      { job_id: 'b', kind: 'affidavit', filed_at: '2026-09-14', created_at: '2026-09-15T00:30:00Z', months_covered: null, served_at: null, serve_due: '2026-09-21' },
       { job_id: 'b', kind: 'release_of_record', filed_at: null, created_at: '2026-10-03T12:00:00Z', months_covered: null },
     ]
     const hook = mount([A, B])
     await waitFor(() => expect(hook.result.current).not.toBeNull())
     expect(hook.result.current?.a).toMatchObject({ filedYmd: '2026-12-01', releasedYmd: '2026-10-02' })
     expect(hook.result.current?.b).toMatchObject({ filedYmd: '2026-09-14', releasedYmd: '2026-10-03' })
+    // v2.7047: the affidavit's service facts come with its filing day, so the row asks to serve without the Lien desk open.
+    expect(hook.result.current?.b).toMatchObject({ servedYmd: null, serveDueYmd: '2026-09-21' })
+    expect(hook.result.current?.a).toMatchObject({ servedYmd: null, serveDueYmd: null })
   })
 })
