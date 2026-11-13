@@ -493,6 +493,23 @@ describe('billsSent — a record made by hand (PR 6)', () => {
     expect(byHandFiling(gap, { ...draft, how: 'housecall_pro' }).how).toBe('email')
   })
 
+  it('files the way picked from the office\u2019s list: its code, its words and how it went', () => {
+    const way = (key: string, label: string, sentHow: 'hand' | 'mail' | 'email' | 'other', retiredAtIso: string | null = null) => ({ id: `id-${key}`, key, label, sentHow, sortOrder: 1, retiredAtIso, retiredByName: '', createdByName: '', createdAtIso: null })
+    const ways = [way('mailed', 'Mailed, first class', 'mail'), way('w_3f9a1c2e77', 'Uploaded to the builder\u2019s pay portal', 'other'), way('handed', 'Handed over', 'hand', '2026-11-13T16:00:00Z')]
+    // A way the office typed is not by hand, by mail or by email.
+    expect(byHandFiling(gap, { ...draft, how: 'w_3f9a1c2e77' }, ways)).toMatchObject({
+      title: 'Bill · J1412 · Sable Ridge Lot 14 · Uploaded to the builder\u2019s pay portal, recorded by hand',
+      how: 'other',
+      sourceSnapshot: { how: 'w_3f9a1c2e77', how_label: 'Uploaded to the builder\u2019s pay portal' },
+    })
+    // A way the office renamed files the words it has today, under the code it always had.
+    expect(byHandFiling(gap, { ...draft, how: 'mailed' }, ways)).toMatchObject({ how: 'mail', sourceSnapshot: { how: 'mailed', how_label: 'Mailed, first class' } })
+    // A way taken off the list, or one the list never had, is no pick.
+    expect(byHandProblem({ ...draft, how: 'handed' }, '2026-11-12', ways)).toBe('Pick how the bill went.')
+    expect(byHandProblem({ ...draft, how: 'own_mailbox' }, '2026-11-12', ways)).toBe('Pick how the bill went.')
+    expect(byHandProblem({ ...draft, how: 'mailed' }, '2026-11-12', ways)).toBe('')
+  })
+
   it('reads the record as a line on the day it went, marked as someone\u2019s word, and closes the gap', () => {
     const record = copy({
       id: 'h1',

@@ -39,6 +39,7 @@ import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
+import { BILL_HAND_WAYS_BUILT_IN, liveBillHandWays, type BillHandWay } from './billHandWays'
 
 /** Who may open the screen: the people who read sent copies, as the table's own policy (dev, master, assistant, controller). */
 export function canOpenBillsSent(role: string | null | undefined): boolean {
@@ -986,19 +987,16 @@ ${days.length ? `<table>${days.map(dayBlock).join('')}</table>` : ''}
 /** The kind a sent copy carries when a person recorded, by hand, how a bill went. */
 export const BILLS_SENT_BY_HAND_KIND = 'bill_by_hand'
 
-/** How a bill went when the app did not send it. */
-export type BillsSentByHandHow = 'handed' | 'mailed' | 'own_mailbox' | 'housecall_pro'
+/**
+ * The four ways the form began with, by the code a record carries. A record made before the words were kept
+ * (v2.7145) has only its code, and it is always one of these. The list the form offers today is `bill_hand_ways`
+ * (`billHandWays.ts`), which the office edits.
+ */
+export const BILLS_SENT_BY_HAND_HOWS: ReadonlyArray<{ key: string; label: string }> = BILL_HAND_WAYS_BUILT_IN.map((w) => ({ key: w.key, label: w.label }))
 
-export const BILLS_SENT_BY_HAND_HOWS: ReadonlyArray<{ key: BillsSentByHandHow; label: string }> = [
-  { key: 'handed', label: 'Handed over' },
-  { key: 'mailed', label: 'Mailed' },
-  { key: 'own_mailbox', label: 'Emailed from a person’s own mailbox' },
-  { key: 'housecall_pro', label: 'Sent from Housecall Pro' },
-]
-
-function byHandHowOf(copy: BillsSentCopy): BillsSentByHandHow | null {
+function byHandHowOf(copy: BillsSentCopy): string | null {
   const how = copy.sourceSnapshot?.how
-  return BILLS_SENT_BY_HAND_HOWS.some((h) => h.key === how) ? (how as BillsSentByHandHow) : null
+  return typeof how === 'string' && BILLS_SENT_BY_HAND_HOWS.some((h) => h.key === how) ? how : null
 }
 
 /**
@@ -1022,7 +1020,8 @@ function byHandWentAtIso(copy: BillsSentCopy): string {
 
 /** What the person fills in. */
 export interface BillsSentByHandDraft {
-  how: BillsSentByHandHow | ''
+  /** The key of the way picked from the list; '' until one is. */
+  how: string
   /** Who it went to: a name, and an address or number when they have one. */
   toWhom: string
   /** The day it went, YYYY-MM-DD. */
@@ -1031,8 +1030,9 @@ export interface BillsSentByHandDraft {
 }
 
 /** What the form still needs, as one sentence; '' when the record can be saved. */
-export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string): string {
-  if (!draft.how) return 'Pick how the bill went.'
+export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string, ways: ReadonlyArray<BillHandWay> = BILL_HAND_WAYS_BUILT_IN): string {
+  // A way taken off the list while the form was open is no pick.
+  if (!draft.how || !liveBillHandWays(ways).some((w) => w.key === draft.how)) return 'Pick how the bill went.'
   if (!draft.toWhom.trim()) return 'Say who the bill went to.'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.wentOnYmd)) return 'Pick the day the bill went.'
   if (draft.wentOnYmd > todayYmd) return 'The day cannot be after today.'
@@ -1043,14 +1043,19 @@ export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string): st
  * The sent copy a by-hand record files: no copy body, the bill as its source, and what the person said in
  * `source_snapshot` (`how`, its words as picked in `how_label`, `went_on`, `note`). The addresses stay empty on purpose: the words are a person's, typed
  * as they knew them, and an address there would read into a customer's thread as an email the app sent.
+ *
+ * `ways` is the list the form offered (`bill_hand_ways`, or the four in code when it could not be read). The way
+ * picked gives the record its code, its words and the sent copy's own `how`: by hand, by mail, by email, or
+ * another way for one the office typed.
  */
-export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { jobId: string | null }, draft: BillsSentByHandDraft): SentFiling {
-  const picked = BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === draft.how)?.label ?? ''
+export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { jobId: string | null }, draft: BillsSentByHandDraft, ways: ReadonlyArray<BillHandWay> = BILL_HAND_WAYS_BUILT_IN): SentFiling {
+  const way = ways.find((w) => w.key === draft.how) ?? null
+  const picked = way?.label ?? ''
   const label = picked || 'Recorded by hand'
   return {
     kind: BILLS_SENT_BY_HAND_KIND,
     title: ['Bill', gap.jobWords, `${label}, recorded by hand`].filter(Boolean).join(' · '),
-    how: draft.how === 'handed' ? 'hand' : draft.how === 'mailed' ? 'mail' : 'email',
+    how: way?.sentHow ?? 'other',
     recipientName: draft.toWhom.trim(),
     jobIds: [gap.jobId],
     source: { table: BILL_SOURCE, id: gap.billId },
