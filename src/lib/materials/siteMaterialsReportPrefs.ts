@@ -10,7 +10,8 @@ const VIEW_KEY = 'pt.materialLocationReport.view'
 /** The grouping the device last printed with; by job until a pick is made. */
 export function readReportView(): ReportView {
   try {
-    return window.localStorage.getItem(VIEW_KEY) === 'location' ? 'location' : 'job'
+    const kept = window.localStorage.getItem(VIEW_KEY)
+    return kept === 'location' || kept === 'part' ? kept : 'job'
   } catch {
     return 'job'
   }

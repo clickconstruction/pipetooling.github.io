@@ -44,6 +44,8 @@ import { withoutZzTestJobMoney } from './jobs/zzTestJobVisibility.ts'
 export type DashboardApBill = {
   /** Matches the AP FinancialItem key (`supply:<invoice id>`). */
   itemKey: string
+  /** The supply house's id, for a press that opens that house; absent on a bill read before this was added. */
+  houseId?: string | null
   houseName: string
   invoiceNumber: string
   purchaseOrderNumber: string | null
@@ -127,7 +129,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
         async () =>
           await db
             .from('supply_house_invoices')
-            .select('id, amount, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_houses(name)')
+            .select('id, amount, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_house_id, supply_houses(name)')
             .eq('is_paid', false),
         'dashboard financials supply invoices',
       ),
@@ -185,6 +187,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
     const { jobs, invoices } = zzJobIds ? withoutZzTestJobMoney(read, zzJobIds) : read
     const supplyInvoices = (supplyRes ?? []) as unknown as Array<
       FinancialSupplyInvoiceRow & {
+        supply_house_id?: string | null
         due_date: string | null
         link: string | null
         invoice_number: string
@@ -195,6 +198,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
     for (const inv of supplyInvoices) {
       apBills[`supply:${inv.id}`] = {
         itemKey: `supply:${inv.id}`,
+        houseId: inv.supply_house_id ?? null,
         houseName: (inv.supply_houses?.name ?? '').trim() || 'Supply house',
         invoiceNumber: inv.invoice_number,
         purchaseOrderNumber: inv.purchase_order_number?.trim() || null,

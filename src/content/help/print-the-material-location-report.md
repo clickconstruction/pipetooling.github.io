@@ -2,7 +2,7 @@
 title: print the material location report
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: material location report, materials on site, development, site, cages, boxes, stencil, places, locations, what is where, print, pdf, save as pdf, by job, by location, unsorted, no place yet
+keywords: material location report, materials on site, development, site, cages, boxes, stencil, places, locations, what is where, print, pdf, save as pdf, by job, by location, by part, every part, totals, unsorted, no place yet
 order: 76
 ---
 The material location report is one paper that shows what is in every cage and box across a development. The report reads the same ledger the crew writes on the phone and the office reads on Jobs → Materials. You print it from the Development page and save it as a PDF.
@@ -12,6 +12,8 @@ The material location report is one paper that shows what is in every cage and b
 1. Open the development. The guide [see everything on a development in one place](/help/see-everything-on-a-development) shows the doors to the page.
 2. Find the **Jobs & bids** look.
 3. Press {{button:outline|Print the material location report}} in the look's head.
+
+The site's materials screen has the same press. Open **Materials**, press **On site** and press the site's name. Press **Print the material location report** at the top.
 
 A window opens and reads every job on the site. The paper draws once the read is in. The press is there for the office roles, the same people who open a job's materials.
 
@@ -27,11 +29,13 @@ The paper closes with **Nothing on site**. One line names each job with no mater
 
 ## Switch the grouping
 
-The window's head has two chips, **By job** and **By location**. By job is the paper above. Press **By location** to read the same boxes by place instead.
+The window's head has three chips, **By job**, **By location** and **By part**. By job is the paper above. Press **By location** to read the same boxes by place instead.
 
 By location gives each place one section across the jobs. Two jobs that each name a place Arena share one Arena section. Under the place, each job is a heading with its cages and boxes. Unsorted and No place yet get sections of their own at the end, with the job named on each box.
 
-The app remembers your last pick on this device. The counts and the lines are the same both ways. Only the order changes.
+Press **By part** to read the site as a parts list. Each part gets one line with its total across the site. Under the name you read each cage or box that holds it, with its count and its place. Two names are one line when their words are the same, or when someone joined them on the site's screen. The line then says how else the part was written. By part takes fewer pages.
+
+The app remembers your last pick on this device. The counts are the same all three ways. Only the order changes.
 
 ## Print it and save a PDF
 

@@ -48,3 +48,14 @@ describe('boxDoors', () => {
     expect(searchDoors('level 2', doors)[0]!.doors.map((d) => d.label)).toEqual(['A1 · cage'])
   })
 })
+
+describe('siteDoors: a site that holds boxes is a door to its whole materials (punch list #330)', () => {
+  it('one door per site with boxes, to the On site tab on that site', async () => {
+    const { siteDoors, siteMaterialsLink } = await import('./boxSearch')
+    const doors = siteDoors([{ siteId: 'dev1', name: 'Juniper Ridge', boxes: 96, jobs: 2 }, { siteId: 'dev2', name: 'Alder Court', boxes: 0, jobs: 1 }])
+    expect(doors).toHaveLength(1)
+    expect(doors[0]).toMatchObject({ id: 'site-materials:dev1', kind: 'box', label: 'Juniper Ridge · the whole site', where: '96 boxes on 2 jobs · every part on one screen', to: '/materials?tab=on-site&site=dev1' })
+    expect(doors[0]!.words).toContain('juniper ridge')
+    expect(siteMaterialsLink('dev1')).toBe('/materials?tab=on-site&site=dev1')
+  })
+})
