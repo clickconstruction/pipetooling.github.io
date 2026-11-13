@@ -55,10 +55,10 @@ const STORED: PayCalendarRow = {
   setAt: '2026-11-03T18:00:00Z',
 }
 
-function open(props: { onClose?: () => void; onSaved?: () => void; job?: PayCalendarJob } = {}) {
+function open(props: { onClose?: () => void; onSaved?: () => void; job?: PayCalendarJob; initial?: { clause?: string; words?: string }; zIndex?: number } = {}) {
   const onClose = props.onClose ?? vi.fn()
   const onSaved = props.onSaved ?? vi.fn()
-  renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" job={props.job} onClose={onClose} onSaved={onSaved} />)
+  renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" job={props.job} initial={props.initial} zIndex={props.zIndex} onClose={onClose} onSaved={onSaved} />)
   return { onClose, onSaved }
 }
 
@@ -156,6 +156,20 @@ describe('PayCalendarModal', () => {
     open()
     expect((await screen.findByRole('alert')).textContent).toContain('permission denied for table payer_pay_calendars')
     expect((screen.getByRole('button', { name: 'Save pay calendar' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('starts from a paper’s clause and words when nothing is stored, and draws above the window that opened it (PR 7)', async () => {
+    open({ initial: { clause: ' § 5.2 ', words: 'in by the 25th, paid the 30th of the next month' }, zIndex: 1410 })
+    await waitFor(() => expect((screen.getByLabelText('Clause number') as HTMLInputElement).value).toBe('§ 5.2'))
+    expect((screen.getByLabelText('The clause in a few words') as HTMLInputElement).value).toBe('in by the 25th, paid the 30th of the next month')
+    expect(screen.getByTestId('pay-calendar-modal').style.zIndex).toBe('1410')
+  })
+
+  it('keeps a stored calendar over a paper’s clause', async () => {
+    io.loadPayerPayCalendars.mockResolvedValue([STORED])
+    open({ initial: { clause: '§ 9', words: 'something else' } })
+    await waitFor(() => expect((screen.getByLabelText('Clause number') as HTMLInputElement).value).toBe('§ 5.2'))
+    expect(screen.getByTestId('pay-calendar-modal').style.zIndex).toBe('1200')
   })
 
   describe('opened from a job (PR 4)', () => {

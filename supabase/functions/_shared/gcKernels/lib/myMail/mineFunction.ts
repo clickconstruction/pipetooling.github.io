@@ -826,9 +826,9 @@ export function tagAllFiled(counts: Pick<MyMailTagPlan['counts'], 'lines' | 'fil
 export function myMailTagEventWords(who: MyMailNamed, seat?: MyMailNamed | null, filed = false): string {
   // Every mail the tag wrote was old (v2.7027, punch list #324): the line says so, and that nobody was asked.
   const later = `${filed ? `${MY_MAIL_FILED_WORDS} ` : ''}Later mail in it lands here by itself.`
-  if (!seat) return `${namedAs(who)} tagged this conversation from their mail. ${later}`
+  if (!seat) return `${namedAs(who)} saved this conversation from their mail. ${later}`
   const own = seat.email.trim() !== '' && seat.email.trim().toLowerCase() === who.email.trim().toLowerCase()
-  return `${namedAs(seat)} tagged this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
+  return `${namedAs(seat)} saved this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
 }
 
 /**
@@ -1363,10 +1363,10 @@ export function placedLineWords(name: string): string {
 
 /** The words of the untag's confirm on such a line, and its press. */
 export const PLACED_LINE_WORDS = {
-  untag: 'Untag',
+  untag: 'Take off the job',
   untagAsk: 'Take this conversation off the job? The lines the app put here go, with their files. The app will not put it back.',
   untagged: 'The conversation is off the job. The app will not put it back.',
-  notUntagged: 'The conversation was not untagged.',
+  notUntagged: 'The conversation was not taken off the job.',
 } as const
 
 // ---------- telling a mailbox's owner that someone else saved their mail (v2.7068) ----------
