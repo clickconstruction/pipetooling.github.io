@@ -10,12 +10,14 @@ import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/peop
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
 import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsByEvidenceId, documentsTabCount, recordPickWords, tieToRecordProblem, transcribedRecordWords, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
 import { loadPersonDocument, loadPersonDocuments, savePersonDocument, tieDocumentToEvidence } from '../../../lib/people/personDocumentsIo'
-import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, sectionByNumber, splitByDoors } from '../../../lib/people/hrDocCitations'
+import { citationsBySection, parseSectionCitations, citedByWords, citedCorrectedWords, headingNumber, sectionByNumber, splitByDoors } from '../../../lib/people/hrDocCitations'
 import { amendmentCountWords, amendmentEnds, amendmentIndex, amendmentKey, amendmentKindOfTable, amendmentTargetsProblem, amendmentThingWord, correctedKeys, type AmendmentHow, type AmendmentTarget, type PersonAmendmentRow } from '../../../lib/people/personAmendments'
 import { addAmendments, loadPersonAmendments, withdrawAmendment } from '../../../lib/people/personAmendmentsIo'
 import { caseItemCounts, exhibitBackfillWords, exhibitBesideTitle, exhibitLabel, exhibitNoFromTitle, type ExhibitBackfillReport, type PersonCaseItem, type PersonCaseLogLine } from '../../../lib/people/personCase'
 import { loadExhibitNumbers, loadPersonCase, runExhibitBackfill } from '../../../lib/people/personCaseIo'
 import { PersonCaseView } from './PersonCaseView'
+import { sectionChangedWords, sectionFreshness, sectionFreshnessHeadWords, sectionNeedsALook, sectionNewerWords, type DocRevision } from '../../../lib/people/sectionFreshness'
+import { loadDocRevisions } from '../../../lib/people/sectionFreshnessIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
@@ -298,6 +300,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   // opens the entries that cite a section.
   const [pendingSection, setPendingSection] = useState<number | null>(null)
   const [citedOpen, setCitedOpen] = useState<number | null>(null)
+  /** Punch list #315 (upgrade 5a): the prior versions of the summary and the narrative, read when their fold is opened. */
+  const [docRevisions, setDocRevisions] = useState<Partial<Record<'summary' | 'narrative', { state: 'loading' } | { state: 'held'; why: string } | { state: 'ready'; revisions: DocRevision[]; capped: boolean }>>>({})
   /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
   const [themes, setThemes] = useState<LegalTheme[]>([])
   const [marks, setMarks] = useState<LegalThemeMark[]>([])
@@ -476,6 +480,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     for (const l of lines) if (l.ref.table === 'person_file_entries') m.set(l.ref.id, l)
     return m
   }, [lines])
+  /** When each entry was written and the sections its words cite: what the freshness fold counts against a section. */
+  const freshnessEntries = useMemo(() => (sources?.input.entries ?? []).map((e) => ({ created_at: e.created_at, cites: parseSectionCitations(e.content).map((c) => c.section) })), [sources])
+  // A file that was saved, or another person's, starts the folds over: the versions read are that text's no longer.
+  const docStamp = `${personId ?? ''}|${sources?.docs.summary?.updated_at ?? ''}|${sources?.docs.narrative?.updated_at ?? ''}`
+  /** The folds already asked for, so a second toggle before the first answer lands reads nothing twice. */
+  const docRevisionsAsked = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    docRevisionsAsked.current = new Set()
+    setDocRevisions({})
+  }, [docStamp])
+  const openDocFreshness = useCallback(
+    async (kind: 'summary' | 'narrative') => {
+      if (!personId || !viewer.isDev || docRevisionsAsked.current.has(kind)) return
+      docRevisionsAsked.current.add(kind)
+      setDocRevisions((prev) => ({ ...prev, [kind]: { state: 'loading' } }))
+      const r = await loadDocRevisions(personId, kind)
+      setDocRevisions((prev) => ({ ...prev, [kind]: r.heldWhy ? { state: 'held', why: r.heldWhy } : { state: 'ready', revisions: r.revisions, capped: r.capped } }))
+    },
+    [personId, viewer.isDev],
+  )
   const amendIndex = useMemo(() => amendmentIndex(amendRows), [amendRows])
   /** The record a number names: the database's number first, then the number an old title wears when only one record wears it. */
   const evidenceIdByNumber = useMemo(() => {
@@ -1836,6 +1860,48 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
+  /**
+   * Punch list #315 (upgrade 5a): when each section last changed and how many entries were written since. A fold, read
+   * when opened: the prior versions are whole texts, so nothing is fetched until a dev asks.
+   */
+  const renderDocFreshness = (doc: PersonFileDoc, kind: 'summary' | 'narrative') => {
+    const read = docRevisions[kind]
+    const rows = read?.state === 'ready' ? sectionFreshness({ content: doc.content, updatedAt: doc.updated_at, revisions: read.revisions, entries: freshnessEntries }) : []
+    return (
+      <details
+        data-testid={`hr-doc-freshness-${kind}`}
+        onToggle={(e) => {
+          if ((e.currentTarget as HTMLDetailsElement).open) void openDocFreshness(kind)
+        }}
+        style={{ maxWidth: '70ch', marginBottom: '0.7rem', fontSize: '0.8rem' }}
+      >
+        <summary style={{ cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600 }}>When each section last changed</summary>
+        {!read || read.state === 'loading' ? (
+          <p style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)' }}>Reading the earlier versions…</p>
+        ) : read.state === 'held' ? (
+          <p role="alert" style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)' }}>
+            The earlier versions could not be read: {read.why}
+          </p>
+        ) : (
+          <div style={{ marginTop: '0.4rem' }}>
+            <p style={{ margin: '0 0 0.35rem', color: 'var(--text-muted)' }}>
+              {sectionFreshnessHeadWords(rows)}.{read.capped ? ` Read against the newest ${read.revisions.length} earlier versions.` : ''}
+            </p>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {rows.map((r) => (
+                <li key={r.key} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.6rem', alignItems: 'baseline', padding: '0.3rem 0', borderTop: '1px solid var(--border)', paddingLeft: `${Math.max(0, r.level - 2) * 0.8}rem` }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-base)', overflowWrap: 'anywhere' }}>{r.heading || 'Before the first heading'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{sectionChangedWords(r, calendarYmdInAppTzFromIso)}</span>
+                  {sectionNewerWords(r) ? <span style={sectionNeedsALook(r) ? chip(FACT_TONE.amber) : { color: 'var(--text-muted)' }}>{sectionNewerWords(r)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </details>
+    )
+  }
+
   const renderDoc = (doc: PersonFileDoc | undefined, kind: 'summary' | 'narrative') => {
     const fr = freshness
     const html = doc ? hrDocMarkdownToSafeHtml(doc.content) : ''
@@ -1876,6 +1942,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                 {fr.staleDays > 0 ? `, ${fr.staleDays} days behind` : ''}. Ask the agent to bring it current, or press Edit the summary.
               </div>
             )}
+            {viewer.isDev ? renderDocFreshness(doc, kind) : null}
             {headings.length > 2 && (
               <nav aria-label="Jump to section" style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', marginBottom: '0.8rem', maxWidth: '70ch', fontSize: '0.8rem' }}>
                 <div style={{ textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.35rem' }}>Jump to</div>
