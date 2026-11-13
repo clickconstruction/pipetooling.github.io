@@ -20,6 +20,7 @@ import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import { buildPaymentChaseQueue } from '../../lib/jobs/paymentChase'
 import type { PaceContext } from '../../lib/jobs/payPace'
 import type { PayCalendarIndex } from '../../lib/jobs/payCalendar'
+import type { CutoffComing } from '../../lib/jobs/cutoffsComing'
 import type { PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import type { StagesSectionOpenState } from '../../lib/jobs/stagesSectionPrefs'
@@ -81,6 +82,8 @@ export type StagesBilledMoneyModalsProps = {
   payCalendars?: PayCalendarIndex | null
   /** The day a payer accepted each bill that has one (PR 4), for the forecast's due days. */
   acceptedByInvoice?: ReadonlyMap<string, string> | null
+  /** The cutoffs ahead for payers on a Pay calendar (PR 5), for the Payment forecast's strip. */
+  cutoffsComing?: ReadonlyArray<CutoffComing>
   gcTemperatureById: ReturnType<typeof latestTemperatureByGc>
   chaseTodayYmd: string
   forecastTodayYmd: string
@@ -136,6 +139,7 @@ export default function StagesBilledMoneyModals({
   billedPace,
   payCalendars,
   acceptedByInvoice,
+  cutoffsComing,
   gcTemperatureById,
   chaseTodayYmd,
   forecastTodayYmd,
@@ -274,6 +278,7 @@ export default function StagesBilledMoneyModals({
           pace={billedPace}
           payCalendars={payCalendars}
           acceptedByInvoice={acceptedByInvoice}
+          cutoffsComing={cutoffsComing}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {

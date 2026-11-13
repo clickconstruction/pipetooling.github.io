@@ -23,6 +23,8 @@ import {
   taskPlaceFixWords,
   taskPlaceFromRow,
   taskPlaceHowFarWords,
+  taskPlaceNoFixWords,
+  taskPlacedByWords,
   tasksWithoutPlaceWords,
   type TaskPlace,
 } from './taskPlace'
@@ -253,6 +255,21 @@ describe('the giver\'s hands (PR 2)', () => {
     expect(taskPlaceSheetStart(null, [last], office)).toEqual(last)
     expect(taskPlaceSheetStart(null, [], office)).toEqual(office)
     expect(taskPlaceSheetStart(null, [], null)).toBeNull()
+  })
+})
+
+describe('the doer\'s words (PR 3)', () => {
+  it('says who placed it and when, with whatever of the two is known', () => {
+    expect(taskPlacedByWords('Rosa', 'Nov 3')).toBe('Placed by Rosa on Nov 3.')
+    expect(taskPlacedByWords('Rosa', null)).toBe('Placed by Rosa.')
+    expect(taskPlacedByWords(null, 'Nov 3')).toBe('Placed on Nov 3.')
+    expect(taskPlacedByWords(' ', '')).toBeNull()
+  })
+
+  it('a reading that did not come says what still works', () => {
+    expect(taskPlaceNoFixWords('refused')).toBe('Location is off for this app. The map and Directions still work. To see how far you are, allow location in the phone’s settings.')
+    expect(taskPlaceNoFixWords('none')).toBe('This device gives no location. The map and Directions still work.')
+    expect(taskPlaceNoFixWords('failed')).toBe('Could not find you. Try again in the open, or use Directions.')
   })
 })
 

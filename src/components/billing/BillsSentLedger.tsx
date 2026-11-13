@@ -6,6 +6,7 @@ import {
   BILLS_SENT_GAP_LABEL,
   BILLS_SENT_ROUTE_CHIPS,
   billsSentAgainWords,
+  billsSentByWords,
   billsSentCopyLabel,
   billsSentDayExtras,
   billsSentDays,
@@ -15,9 +16,11 @@ import {
   billsSentGaps,
   billsSentLines,
   billsSentMoney,
+  billsSentPaidWords,
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
@@ -42,6 +45,9 @@ import { EmptyState } from '../EmptyState'
  * PR 2: a send that kept no copy is still a line and says what it lacks (an older email with no address, a bill
  * entered from Housecall Pro with the day only, a text with the pay link). Above the days sits the strip of bills
  * that were made and have no send on record, so a bill that never went is seen and not left off the list.
+ *
+ * PR 3: an email line says whether it arrived (*Delivered 9:28 AM*, *Opened*, *Bounced. It did not arrive.*), a paid
+ * bill says the day, and a red tile counts the sends that did not arrive on a bill still open.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -115,10 +121,13 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
   const time = line.dayOnly ? 'Day only' : billsSentTime(line.atIso)
   const span: CSSProperties = phone ? { gridColumn: '1 / -1', minWidth: 0 } : { gridColumn: '2 / -1', minWidth: 0 }
   const kept = !!line.copy?.copyPath
+  const by = billsSentByWords(line)
+  const paid = billsSentPaidWords(line)
+  const toneColor = line.deliveryTone === 'ok' ? 'var(--text-green-700)' : line.deliveryTone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)'
   // The payer is on the line above: the name is said again only when the copy went to someone else, or names no address.
   const toName = line.toAddresses.length > 0 && line.toName === line.payer ? '' : line.toName
   return (
-    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto' }}>
+    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto', ...(line.stillMissed ? { borderColor: 'var(--text-red-700)' } : {}) }}>
       <div style={phone ? { ...strong, gridColumn: '1 / -1', fontVariantNumeric: 'tabular-nums' } : { ...strong, gridRow: '1 / span 3', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{time}</div>
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         <b style={strong}>{line.what}</b>
@@ -153,10 +162,10 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
       {line.note ? <div style={{ ...span, color: 'var(--text-700)' }}>{line.note}</div> : null}
       <div style={{ ...span, display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.5rem', alignItems: 'center', color: 'var(--text-muted)' }}>
         <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
-        {line.by ? <span>by {line.by}</span> : null}
+        {by ? <span>{by}</span> : null}
         {again ? <span>{again}</span> : null}
-        {line.delivery ? <span style={{ color: line.delivery === 'Delivered' ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 600 }}>{line.delivery}</span> : null}
-        {line.paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>Paid since</span> : null}
+        {line.delivery ? <span style={{ color: toneColor, fontWeight: line.deliveryTone === 'quiet' ? 500 : 600 }}>{line.delivery}</span> : null}
+        {paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{paid}</span> : null}
         {kept ? (
           <button type="button" style={press} onClick={() => onOpen(line)} title="Open the copy as it went out">
             {line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
@@ -241,7 +250,7 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
-  const [route, setRoute] = useState<BillsSentRoute | 'all' | 'gap'>('all')
+  const [route, setRoute] = useState<BillsSentChip>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
   const [data, setData] = useState<BillsSentInput | null>(null)
@@ -275,6 +284,7 @@ export function BillsSentLedger() {
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])
+  const missed = useMemo(() => lines.filter((l) => l.stillMissed).length, [lines])
   const gaps = useMemo(() => (data ? billsSentGaps(data, lines) : { open: [], paid: [] }), [data, lines])
   const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
@@ -298,6 +308,12 @@ export function BillsSentLedger() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
+        {missed > 0 ? (
+          <div style={{ ...tile, background: 'var(--bg-red-tint)', borderColor: 'var(--text-red-700)' }} data-testid="bills-sent-tile-missed">
+            <span style={{ ...tileSmall, color: 'var(--text-red-700)' }}>Did not arrive</span>
+            <b style={{ color: 'var(--text-red-700)', fontSize: '0.9375rem' }}>{missed}</b>
+          </div>
+        ) : null}
         {gaps.open.length > 0 ? (
           <div style={{ ...tile, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
             <span style={{ ...tileSmall, color: 'var(--text-amber-800)' }}>{BILLS_SENT_GAP_LABEL}</span>
@@ -353,7 +369,7 @@ export function BillsSentLedger() {
       ) : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
-          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then.
+          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
         </p>
       ) : null}
     </section>

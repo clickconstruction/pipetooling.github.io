@@ -5,10 +5,12 @@ import {
   billsSentGapHeading,
   billsSentGaps,
   billsSentAgainWords,
+  billsSentByWords,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
   billsSentLines,
+  billsSentPaidWords,
   billsSentSumWords,
   billsSentTiles,
   canOpenBillsSent,
@@ -297,5 +299,69 @@ describe('billsSentGaps (PR 2)', () => {
     const { open } = billsSentGaps(data, [])
     expect(billsSentGapFilter(open, 'juniper').map((g) => g.billId)).toEqual([BILL_A])
     expect(billsSentGapFilter(open, 'larkfield')).toEqual([])
+  })
+})
+
+describe('billsSent — whether a send arrived (PR 3)', () => {
+  const mark = (id: string, lastEvent: string | null, lastEventAtIso: string | null, over: Partial<{ emailType: string; paidOn: string; paidHow: string }> = {}) =>
+    [id, { id, lastEvent, lastEventAtIso, emailType: over.emailType ?? 'stripe_bill', paidOn: over.paidOn ?? null, paidHow: over.paidHow ?? null }] as const
+
+  it('says what the mail service last said, in the line\u2019s words', () => {
+    const copies = [
+      copy({ id: 'd1', sentAt: '2026-11-12T15:28:00.000Z' }),
+      copy({ id: 'o1', sentAt: '2026-11-10T15:28:00.000Z' }),
+      copy({ id: 'w1', sentAt: '2026-11-09T15:28:00.000Z' }),
+      copy({ id: 'n1', sentAt: '2026-11-08T15:28:00.000Z' }),
+    ]
+    const marks = new Map([mark('d1', 'delivered', '2026-11-12T15:28:20.000Z'), mark('o1', 'opened', '2026-11-11T14:12:00.000Z'), mark('w1', 'sent', '2026-11-09T15:28:00.000Z'), mark('n1', null, null)])
+    const lines = billsSentLines(input(copies, { marks }))
+    expect(lines.map((l) => [l.id, l.delivery, l.deliveryTone, l.stillMissed])).toEqual([
+      ['d1', 'Delivered 9:28 AM', 'ok', false],
+      ['o1', 'Opened Wed, Nov 11 at 8:12 AM', 'ok', false],
+      ['w1', 'Sent. Their mail server has not answered yet.', 'quiet', false],
+      ['n1', '', '', false],
+    ])
+  })
+
+  it('marks a bounce on an open bill until a later send arrives', () => {
+    const bounced = copy({ id: 'b1', sentAt: '2026-11-11T22:47:00.000Z' })
+    const marks = new Map([mark('b1', 'bounced', '2026-11-11T22:47:05.000Z')])
+    const [alone] = billsSentLines(input([bounced], { marks }))
+    expect(alone).toMatchObject({ delivery: 'Bounced. It did not arrive.', deliveryTone: 'bad', stillMissed: true })
+
+    const again = copy({ id: 'b2', sentAt: '2026-11-12T15:28:00.000Z' })
+    const lines = billsSentLines(input([again, bounced], { marks: new Map([...marks, mark('b2', 'delivered', '2026-11-12T15:28:10.000Z')]) }))
+    expect(lines.map((l) => [l.id, l.deliveryTone, l.stillMissed])).toEqual([
+      ['b2', 'ok', false],
+      ['b1', 'bad', false],
+    ])
+    expect(billsSentFilter(billsSentLines(input([bounced], { marks })), 'missed', '').map((l) => l.id)).toEqual(['b1'])
+    expect(billsSentFilter(lines, 'missed', '')).toEqual([])
+    expect(billsSentDayExtras(billsSentDays(lines, '2026-11-12')[1]!)).toBe('1 did not arrive')
+  })
+
+  it('does not chase a bounce on a bill that is paid', () => {
+    const [line] = billsSentLines(input([copy({ id: 'p1', sourceId: BILL_B, jobIds: [JOB_B] })], { marks: new Map([mark('p1', 'bounced', '2026-11-12T15:28:05.000Z', { paidOn: '2026-11-09', paidHow: 'card' })]) }))
+    expect(line).toMatchObject({ deliveryTone: 'bad', stillMissed: false, paidOn: '2026-11-09' })
+    expect(billsSentPaidWords(line!)).toBe('Paid Nov 9')
+  })
+
+  it('says a paid bill is paid when the day is not known, and nothing for an open one', () => {
+    expect(billsSentPaidWords({ paid: true, paidOn: null })).toBe('Paid since')
+    expect(billsSentPaidWords({ paid: false, paidOn: null })).toBe('')
+  })
+
+  it('says a statement on the schedule went by the app', () => {
+    const statement = copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', sourceTable: '', sourceId: null, jobIds: [], sentByName: 'Marcus' })
+    const [line] = billsSentLines(input([statement], { marks: new Map([mark('s1', 'delivered', '2026-11-12T15:28:05.000Z', { emailType: 'gc_statement_scheduled' })]) }))
+    expect(billsSentByWords(line!)).toBe('by the app, on Marcus’s schedule')
+    expect(billsSentByWords({ by: 'Priya', bySchedule: false })).toBe('by Priya')
+    expect(billsSentByWords({ by: '', bySchedule: true })).toBe('by the app, on a schedule')
+    expect(billsSentByWords({ by: '', bySchedule: false })).toBe('')
+  })
+
+  it('reads a text Quo could not deliver as a send that did not arrive', () => {
+    const data = input([], { texts: [{ id: 't1', atIso: '2026-11-12T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: '', by: 'Priya', delivery: 'failed' }] })
+    expect(billsSentLines(data)[0]).toMatchObject({ delivery: 'Not delivered', deliveryTone: 'bad', stillMissed: true })
   })
 })
