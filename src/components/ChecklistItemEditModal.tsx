@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
 import { newTaskSentence, taskPersonName } from '../lib/tasks/newTaskWindow'
+import { DONE_WHEN_HINT } from '../lib/tasks/taskRowsOnAPhone'
 import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TaskSendBar } from './checklist/newTask/TaskSendBar'
 import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindowShell'
@@ -474,7 +475,7 @@ export function ChecklistItemEditModal({
         onRepeatMode={setRepeatMode}
         linesText={form.lines}
         onLinesText={(lines) => setForm((f) => ({ ...f, lines }))}
-        linesHint="The card reads its percent from the ticks. A line taken off keeps the ticks already on it. With Photo at the finish on, the finish holds until a photo is in or a reason is typed."
+        linesHint={DONE_WHEN_HINT.edit}
         asksForPhoto={form.asks_for_photo}
         onAsksForPhoto={(asks_for_photo) => setForm((f) => ({ ...f, asks_for_photo }))}
         place={place}

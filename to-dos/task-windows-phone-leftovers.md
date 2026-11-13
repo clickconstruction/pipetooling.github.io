@@ -1,8 +1,8 @@
 ---
 name: "Tasks on a phone: what the New task walk left"
 number: 348
-group: ready
-status: carried from #331 when it closed 2026-11-13 · found on a walk in the iPhone simulator · nothing built
+group: close
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 open as #8003, #8008, #8009 and #8012 · rows 9 and 10 built in v2.7203 on the owner's word *Yes, build both* · left: a walk of two sheets on a phone, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,12 +11,12 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: Build PR 1, the Manage menu and its empty line, then PR 2, the three sheets. PR 3 is words and can go any time. PR 4 wants a look at the four rows first.
-size: M as four small PRs (S · S · XS · S)
-blocker: nothing for PRs 1 to 3. PR 4 changes what a row shows, so it waits on a pick.
-ver: v2.7155
-opinion: build PRs 1 and 2 — a menu that hides Delete is a fault, and a sheet that slides away from its own title is the fault v2.7155 fixed next door
-mockup: not required — each row is a fix to a screen that exists, found on a walk; PR 4's rows get a before and after when they are picked
+next: The five PRs merge. Then someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
+size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
+blocker: a person at a phone for the walk, and Grace's word for her two notes.
+ver: v2.7155 · v2.7203
+opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
+mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
 
 # Tasks on a phone: what the New task walk left (#348)
@@ -26,7 +26,7 @@ mockup: not required — each row is a fix to a screen that exists, found on a w
 Punch list #331 closed on 2026-11-13 on the owner's word. Its last step was a walk of **New task**,
 **Edit task** and the roadmap's **Add task** in the iOS Simulator: an iPhone 17 Pro on iOS 26.4,
 Safari, the on-screen keyboard up. The walk and its fix are in
-[docs/recent-features/v2.7155.md](../docs/recent-features/v2.7155.md), with two pictures.
+[docs/recent-features/v2.7155.md](../docs/recent-features/v2.7155.md).
 
 The walk also saw the rows below. None was a reason to keep #331 open, and none has a home
 without this card. Every one was seen on the simulator, not on a phone in a hand.
@@ -58,8 +58,8 @@ without this card. Every one was seen on the simulator, not on a phone in a hand
 
 ### PR 3 · Words (XS)
 
-6. **The roadmap's sentence doubles a full stop.** A stage named *Concrete the upper bridge.*
-   reads "It joins the stage Concrete the upper bridge.. Nobody has it yet."
+6. **The roadmap's sentence doubles a full stop.** A stage named *North fence.*
+   reads "It joins the stage North fence.. Nobody has it yet."
    (`roadmapTaskSentence` in `src/lib/tasks/newTaskWindow.ts`). Drop the stage name's own last
    full stop before the sentence adds one.
 7. **Edit task tells a one-time task about days to come.** Every Edit task shows "Saving reshapes
@@ -112,6 +112,24 @@ without this card. Every one was seen on the simulator, not on a phone in a hand
 | 2 | Where is it?, `PhoneSheet` and the dispatch job picker follow the keyboard's slide, each walked in the simulator | S |
 | 3 | The roadmap sentence's full stop, and Edit task's hint only on a task that repeats | XS |
 | 4 | Someone else's names, the Done when… hint, Pick a day's four weeks and the narrow When bar, after a pick | S |
+
+## Where it stands
+
+Built 2026-11-13 on the owner's word *build the leftovers*. Each PR carries its release note and its fragment, and this card is not edited by any of them.
+
+| PR | Rows | What was built | Checked |
+|---|---|---|---|
+| #8003 | 1, 2, 3 | The ⋮ press and its menu are one piece, drawn over the page. It opens above its press when there is no room under it. No empty line draws beside a load error. A task only for its giver no longer reads *notifies on done*. | On the local app at phone size: the menu of the last task opened upward with *Delete* in reach. |
+| #8008 | 4, 5 | Where is it?, `PhoneSheet` and the dispatch job picker fill the part of the page that shows. The place sheet's map gives way so the name and **Use this place** stay above the keyboard. | Where is it? walked in the iPhone simulator with the keyboard up. The other two are covered by tests and were not walked. |
+| #8009 | 6, 7 | The roadmap sentence closes a stage name once. Edit task shows its line about days to come only on a task that repeats. | Tests. |
+| #8012 | 8, 11 | The Someone else search box goes to the top of the rows when it takes the keyboard. The When bar's words tighten on a narrow screen. | Both walked in the iPhone simulator, the bar at 125% text. |
+| v2.7203 | 9, 10 | The Done when… hint is one line in each window. On a phone the four weeks draw only for a task that repeats. | Measured on the local app at phone size: with Done when… open the window no longer scrolls, and Pick a day shows the date box alone. |
+
+**Left.**
+
+- **Row 5** wants a walk of `PhoneSheet` and the dispatch job picker on a phone. Reaching them means a real person's thread or Dispatch mode, so it was left for someone at a phone.
+- **Rows 12 and 13** are left alone, as written.
+- **Grace's two notes** below still wait on her word.
 
 To walk a phone window in the simulator, switch its on-screen keyboard on first. It is hidden
 until this is run once for the device, and a field is tapped again:

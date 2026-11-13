@@ -21,6 +21,7 @@ import {
   type TaskAddKey,
   type TaskAddPress,
 } from '../../../lib/tasks/newTaskWindow'
+import { showsFourWeeks } from '../../../lib/tasks/taskRowsOnAPhone'
 import { TaskFacesRow, type TaskCrewFace } from './TaskFacesRow'
 import { TaskWhenBar } from './TaskWhenBar'
 import { TaskAddRow } from './TaskAddRow'
@@ -327,9 +328,8 @@ export function TaskFormRows(props: Props) {
           </div>
         ) : null}
         {/* The schedule drawn (punch list #217, office-13): this week and the next three. It draws for a repeating
-            task, a picked day and a one-off with a due day. Tomorrow needs no picture, the sentence says it, and a
-            day that has passed is not on these weeks at all. */}
-        {when !== 'repeat' && !value.due_date && (whenChoice === 'tomorrow' || value.start_date < todayStr) ? null : (
+            task and, at a desk, for a picked day and a one-off with a due day (`showsFourWeeks`). */}
+        {!showsFourWeeks({ phone, repeats: when === 'repeat', hasDue: !!value.due_date, choice: whenChoice, startInPast: value.start_date < todayStr }) ? null : (
           <div style={{ gridColumn: '1 / -1', minWidth: 0 }} data-testid="new-task-calendar">
             <ChecklistScheduleCalendar
               input={{
